@@ -662,6 +662,25 @@ def _make_agent_outputs() -> dict:
                 },
                 "node_id": "n1",
             },
+            {
+                "id": "tool-1",
+                "parent_id": "round-1",
+                "error": None,
+                "status": "success",
+                "data": {
+                    "tool_name": "current_time",
+                    "tool_call_args": {"timezone": "Asia/Shanghai"},
+                    "output": "2026-07-28 18:00:00",
+                },
+                "label": "CALL current_time",
+                # Tool CALL logs also set provider (tool provider); must not become LLM spans.
+                "metadata": {
+                    "started_at": 6056.990500000,
+                    "finished_at": 6056.990600000,
+                    "provider": "langgenius/time/time",
+                },
+                "node_id": "n1",
+            },
             {"data": []},
         ],
     }
@@ -711,7 +730,7 @@ def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: p
     node_start_ns = 1_000_000_000
     monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 9)
     monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: node_start_ns)
-    span_ids = iter([100, 200])
+    span_ids = iter([100, 200, 300])
     monkeypatch.setattr(aliyun_trace_module, "generate_span_id", lambda: next(span_ids))
 
     trace_metadata = _make_trace_metadata()
@@ -722,8 +741,8 @@ def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: p
     node_execution.finished_at = _dt()
 
     spans = trace_instance.build_agent_react_spans(node_execution, trace_metadata)
-    assert len(spans) == 2
-    step_span, llm_span = spans
+    assert len(spans) == 3
+    step_span, llm_span, tool_span = spans
 
     assert step_span.parent_span_id == 9
     assert step_span.span_id == 100
@@ -746,6 +765,15 @@ def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: p
     assert llm_span.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "325"
     assert llm_span.attributes[GEN_AI_COMPLETION] == " pong!"
     assert llm_span.start_time == node_start_ns + int((6055.211450345 - 6055.211092814) * 1e9)
+
+    assert tool_span.parent_span_id == 100
+    assert tool_span.span_id == 300
+    assert tool_span.name == "CALL current_time"
+    assert tool_span.attributes["gen_ai.span.kind"] == GenAISpanKind.TOOL
+    assert tool_span.attributes[TOOL_NAME] == "current_time"
+    assert tool_span.attributes[TOOL_DESCRIPTION] == "langgenius/time/time"
+    assert tool_span.attributes[TOOL_PARAMETERS] == '{"timezone": "Asia/Shanghai"}'
+    assert tool_span.start_time == node_start_ns + int((6056.990500000 - 6055.211092814) * 1e9)
 
 
 def test_build_agent_react_spans_returns_empty_without_log(trace_instance: AliyunDataTrace):

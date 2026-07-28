@@ -182,6 +182,7 @@ def convert_seconds_to_nanoseconds(seconds: float) -> int:
 
 _REACT_ROUND_LABEL_PATTERN = re.compile(r"ROUND\s+(\d+)", re.IGNORECASE)
 _LLM_THOUGHT_LABEL_SUFFIX = " Thought"
+_TOOL_CALL_LABEL_PREFIX = "CALL "
 
 
 @dataclass
@@ -254,14 +255,31 @@ def extract_react_round_number(label: str, fallback: int) -> int:
     return fallback
 
 
+def is_tool_call_entry(entry: AgentLogEntry) -> bool:
+    """Tool invocations use labels like ``CALL {tool_name}`` (also carry a provider in metadata)."""
+    return entry.label.startswith(_TOOL_CALL_LABEL_PREFIX)
+
+
 def is_llm_thought_entry(entry: AgentLogEntry) -> bool:
-    """LLM thought entries carry the model provider in metadata (e.g. label ``{model} Thought``)."""
-    return bool(entry.metadata.get("provider")) or entry.label.endswith(_LLM_THOUGHT_LABEL_SUFFIX)
+    """LLM thought entries use labels like ``{model} Thought``.
+
+    Do not key off ``metadata.provider`` alone: tool CALL entries also set provider
+    (to the tool provider), which previously misclassified them as LLM spans.
+    """
+    if is_tool_call_entry(entry):
+        return False
+    return entry.label.endswith(_LLM_THOUGHT_LABEL_SUFFIX) or bool(entry.metadata.get("provider"))
 
 
 def extract_model_name_from_thought_label(label: str) -> str:
     if label.endswith(_LLM_THOUGHT_LABEL_SUFFIX):
         return label.removesuffix(_LLM_THOUGHT_LABEL_SUFFIX)
+    return ""
+
+
+def extract_tool_name_from_call_label(label: str) -> str:
+    if label.startswith(_TOOL_CALL_LABEL_PREFIX):
+        return label.removeprefix(_TOOL_CALL_LABEL_PREFIX).strip()
     return ""
 
 

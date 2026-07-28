@@ -64,12 +64,14 @@ from dify_trace_aliyun.utils import (
     extract_model_name_from_thought_label,
     extract_react_round_number,
     extract_retrieval_documents,
+    extract_tool_name_from_call_label,
     format_input_messages,
     format_output_messages,
     format_retrieval_documents,
     get_user_id_from_message_data,
     get_workflow_node_status,
     is_llm_thought_entry,
+    is_tool_call_entry,
     parse_agent_log_entries,
     serialize_json_data,
 )
@@ -529,7 +531,7 @@ class AliyunDataTrace(BaseTraceInstance):
     def build_agent_react_spans(
         self, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
     ) -> list[SpanData]:
-        """Build ReAct STEP spans (one per round) and their child LLM spans from the agent execution log.
+        """Build ReAct STEP spans and child LLM / TOOL spans from the agent execution log.
 
         The agent log lives in ``outputs["json"]``; ``started_at``/``finished_at`` there are
         monotonic-clock seconds, so they are mapped onto wall-clock time by anchoring the
@@ -595,17 +597,28 @@ class AliyunDataTrace(BaseTraceInstance):
                 )
 
                 for child in round_entry.children:
-                    if not is_llm_thought_entry(child):
-                        continue
-                    spans.append(
-                        self._build_agent_llm_call_span(
-                            entry=child,
-                            step_span_id=step_span_id,
-                            trace_metadata=trace_metadata,
-                            start_time=to_wall_clock_ns(child.metadata.get("started_at"), node_start_ns),
-                            end_time=to_wall_clock_ns(child.metadata.get("finished_at"), node_end_ns),
+                    child_start = to_wall_clock_ns(child.metadata.get("started_at"), node_start_ns)
+                    child_end = to_wall_clock_ns(child.metadata.get("finished_at"), node_end_ns)
+                    if is_tool_call_entry(child):
+                        spans.append(
+                            self._build_agent_tool_call_span(
+                                entry=child,
+                                step_span_id=step_span_id,
+                                trace_metadata=trace_metadata,
+                                start_time=child_start,
+                                end_time=child_end,
+                            )
                         )
-                    )
+                    elif is_llm_thought_entry(child):
+                        spans.append(
+                            self._build_agent_llm_call_span(
+                                entry=child,
+                                step_span_id=step_span_id,
+                                trace_metadata=trace_metadata,
+                                start_time=child_start,
+                                end_time=child_end,
+                            )
+                        )
             return spans
         except Exception as e:
             logger.warning("Error occurred in build_agent_react_spans: %s", e, exc_info=True)
@@ -640,6 +653,43 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_PROVIDER_NAME: str(entry.metadata.get("provider") or ""),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(entry.metadata.get("total_tokens", 0)),
                 GEN_AI_COMPLETION: completion,
+            },
+            status=create_status_from_agent_log_entry(entry),
+            links=trace_metadata.links,
+        )
+
+    def _build_agent_tool_call_span(
+        self,
+        entry: AgentLogEntry,
+        step_span_id: int,
+        trace_metadata: TraceMetadata,
+        start_time: int | None,
+        end_time: int | None,
+    ) -> SpanData:
+        tool_name = str(entry.data.get("tool_name") or extract_tool_name_from_call_label(entry.label) or "tool")
+        tool_parameters = entry.data.get("tool_call_args")
+        if tool_parameters is None:
+            tool_parameters = entry.data.get("tool_call_input")
+        if tool_parameters is None:
+            tool_parameters = entry.data
+        return SpanData(
+            trace_id=trace_metadata.trace_id,
+            parent_span_id=step_span_id,
+            span_id=generate_span_id(),
+            name=entry.label or f"CALL {tool_name}",
+            start_time=start_time,
+            end_time=end_time,
+            attributes={
+                **create_common_span_attributes(
+                    session_id=trace_metadata.session_id,
+                    user_id=trace_metadata.user_id,
+                    span_kind=GenAISpanKind.TOOL,
+                    inputs=serialize_json_data(tool_parameters),
+                    outputs=serialize_json_data(entry.data.get("output", entry.data)),
+                ),
+                TOOL_NAME: tool_name,
+                TOOL_DESCRIPTION: str(entry.metadata.get("provider") or ""),
+                TOOL_PARAMETERS: serialize_json_data(tool_parameters),
             },
             status=create_status_from_agent_log_entry(entry),
             links=trace_metadata.links,
