@@ -4,7 +4,7 @@ import json
 import time
 from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from typing import Any, cast, override
+from typing import Any, Protocol, override, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
 from libs.broadcast_channel.channel import CursorSubscription, Topic
@@ -17,6 +17,17 @@ class StreamEventWithCursor:
 
     event: Mapping[str, Any]
     cursor: str
+
+
+@runtime_checkable
+class _Closable(Protocol):
+    def close(self) -> None: ...
+
+
+def close_stream(stream: object) -> None:
+    """Close a stream when its concrete iterator exposes the close protocol."""
+    if isinstance(stream, _Closable):
+        stream.close()
 
 
 class WorkflowRunIdentifiedStream(Iterator[str]):
@@ -41,9 +52,7 @@ class WorkflowRunIdentifiedStream(Iterator[str]):
         return next(self._iterator)
 
     def close(self) -> None:
-        close = getattr(self._stream, "close", None)
-        if callable(close):
-            close()
+        close_stream(self._stream)
 
 
 def stream_topic_events(
@@ -72,8 +81,8 @@ def stream_topic_events(
         yield StreamEvent.PING.value
         while True:
             try:
-                if getattr(type(sub), "receive_with_cursor", None) is not None:
-                    cursor_message = cast(CursorSubscription, sub).receive_with_cursor(timeout=1)
+                if isinstance(sub, CursorSubscription):
+                    cursor_message = sub.receive_with_cursor(timeout=1)
                     msg = None if cursor_message is None else cursor_message.payload
                 else:
                     cursor_message = None

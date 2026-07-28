@@ -234,8 +234,8 @@ def resume_workflow_handoff_task(
     generation: int,
 ) -> dict[str, Any]:
     request = task.request
-    hostname = getattr(request, "hostname", None) or socket.gethostname()
-    celery_task_id = getattr(request, "id", None) or str(uuidv7())
+    hostname = request.hostname or socket.gethostname()
+    celery_task_id = request.id or str(uuidv7())
     lease_owner = _build_lease_owner(
         hostname=hostname,
         process_id=os.getpid(),

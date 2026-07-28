@@ -120,6 +120,34 @@ describe('ssePost and sseGet', () => {
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
   })
 
+  it('should cancel the stream reader after an application error event', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const reader = {
+      read: vi.fn().mockResolvedValueOnce({
+        done: false,
+        value: new TextEncoder().encode(
+          ['data: {"event":"error","message":"run failed","code":"run_failed"}', '', ''].join(
+            '\n',
+          ),
+        ),
+      }),
+      cancel: vi.fn().mockResolvedValue(undefined),
+    }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      headers: new Headers(),
+      body: { getReader: () => reader },
+    } as unknown as Response)
+
+    await ssePost('/apps/app-1/workflows/draft/run', {}, { onError, onCompleted })
+
+    expect(reader.cancel).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith('run failed', 'run_failed')
+    expect(onCompleted).toHaveBeenCalledWith(true, 'run failed')
+  })
+
   it('should not notify when the stream reader is aborted', async () => {
     const onError = vi.fn()
     const onCompleted = vi.fn()
@@ -316,6 +344,58 @@ describe('ssePost and sseGet', () => {
     expect(onCompleted).toHaveBeenCalledTimes(1)
   })
 
+  it('should bound lifecycle deduplication while retaining recent event keys', async () => {
+    const lifecycleEventLimit = 4096
+    const onTextReplace = vi.fn()
+    const frames = Array.from({ length: lifecycleEventLimit + 1 }, (_, index) => [
+      `data: ${JSON.stringify({
+        event: 'text_replace',
+        workflow_run_id: 'run-lifecycle-limit',
+        data: { text: `text-${index}` },
+      })}`,
+      '',
+    ]).flat()
+    frames.push(
+      `data: ${JSON.stringify({
+        event: 'text_replace',
+        workflow_run_id: 'run-lifecycle-limit',
+        data: { text: `text-${lifecycleEventLimit}` },
+      })}`,
+      '',
+      `data: ${JSON.stringify({
+        event: 'text_replace',
+        workflow_run_id: 'run-lifecycle-limit',
+        data: { text: 'text-0' },
+      })}`,
+      '',
+      'data: {"event":"workflow_finished","workflow_run_id":"run-lifecycle-limit","data":{"id":"run-lifecycle-limit"}}',
+      '',
+      '',
+    )
+    const reader = {
+      read: vi
+        .fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new TextEncoder().encode(frames.join('\n')),
+        })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+    }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      headers: new Headers(),
+      body: { getReader: () => reader },
+    } as unknown as Response)
+
+    await ssePost('/apps/app-1/workflows/draft/run', {}, { onTextReplace })
+
+    const replacedTexts = onTextReplace.mock.calls.map(([event]) => event.data.text)
+    expect(replacedTexts).toHaveLength(lifecycleEventLimit + 2)
+    expect(replacedTexts.filter((text) => text === 'text-0')).toHaveLength(2)
+    expect(replacedTexts.filter((text) => text === `text-${lifecycleEventLimit}`)).toHaveLength(1)
+  })
+
   it('should hide maintenance handoff events and reconnect immediately', async () => {
     const onUnhandledEvent = vi.fn()
     const onWorkflowFinished = vi.fn()
@@ -373,6 +453,9 @@ describe('ssePost and sseGet', () => {
 
   it('should share the cursor with a human-input continuation without opening a second reconnect', async () => {
     const onCompleted = vi.fn()
+    const onWorkflowPaused = vi.fn()
+    const onHumanInputFormFilled = vi.fn()
+    const onWorkflowFinished = vi.fn()
     const pausedReader = {
       read: vi
         .fn()
@@ -400,6 +483,12 @@ describe('ssePost and sseGet', () => {
           value: new TextEncoder().encode(
             [
               'id: 32-0',
+              'data: {"event":"workflow_paused","workflow_run_id":"run-paused","data":{"workflow_run_id":"run-paused","paused_nodes":["human-2"]}}',
+              '',
+              'id: 33-0',
+              'data: {"event":"human_input_form_filled","workflow_run_id":"run-paused","data":{"form_id":"form-2","node_id":"human-2"}}',
+              '',
+              'id: 34-0',
               'data: {"event":"workflow_finished","workflow_run_id":"run-paused","data":{"id":"run-paused"}}',
               '',
             ].join('\n'),
@@ -421,22 +510,86 @@ describe('ssePost and sseGet', () => {
         headers: new Headers(),
         body: { getReader: () => continuedReader },
       } as unknown as Response)
-    let continuation: Promise<void> | undefined
+    const continuations: Promise<void>[] = []
     const callbacks: Parameters<typeof ssePost>[2] = {
       onCompleted,
-      onWorkflowPaused: () => {
-        continuation = sseGet('/workflow/run-paused/events', {}, callbacks)
+      onHumanInputFormFilled,
+      onWorkflowFinished,
+      onWorkflowPaused: (event) => {
+        onWorkflowPaused(event)
+        continuations.push(sseGet('/workflow/run-paused/events', {}, callbacks))
       },
     }
 
     await ssePost('/apps/app-1/workflows/draft/run', {}, callbacks)
-    await continuation
+    await continuations[0]
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     const [resumeUrl, resumeOptions] = fetchMock.mock.calls[1]!
     expect(String(resumeUrl)).toContain('cursor=31-0')
+    expect(String(resumeUrl)).toContain('continue_on_pause=true')
     expect(new Headers(resumeOptions?.headers).get('Last-Event-ID')).toBe('31-0')
+    expect(onWorkflowPaused).toHaveBeenCalledTimes(2)
+    expect(onHumanInputFormFilled).toHaveBeenCalledTimes(1)
+    expect(onWorkflowFinished).toHaveBeenCalledTimes(1)
     expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
+  it('should discard a paused session when no synchronous continuation is created', async () => {
+    const pausedReader = {
+      read: vi
+        .fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new TextEncoder().encode(
+            [
+              'id: 35-0',
+              'data: {"event":"workflow_paused","workflow_run_id":"run-late-resume","data":{"workflow_run_id":"run-late-resume"}}',
+              '',
+              '',
+            ].join('\n'),
+          ),
+        })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+    }
+    const finishedReader = {
+      read: vi
+        .fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new TextEncoder().encode(
+            [
+              'data: {"event":"workflow_finished","workflow_run_id":"run-late-resume","data":{"id":"run-late-resume"}}',
+              '',
+            ].join('\n'),
+          ),
+        })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+    }
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: new Headers(),
+        body: { getReader: () => pausedReader },
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: new Headers(),
+        body: { getReader: () => finishedReader },
+      } as unknown as Response)
+
+    await ssePost('/apps/app-1/workflows/draft/run', {}, {})
+    await sseGet('/workflow/run-late-resume/events', {}, {})
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const lateResumeUrl = String(fetchMock.mock.calls[1]![0])
+    expect(lateResumeUrl).toContain('include_state_snapshot=true')
+    expect(lateResumeUrl).not.toContain('continue_on_pause=true')
+    expect(lateResumeUrl).not.toContain('cursor=35-0')
+    expect(new Headers(fetchMock.mock.calls[1]![1]?.headers).get('Last-Event-ID')).toBeNull()
   })
 
   it('should retry a transient 404 after an accepted workflow response header', async () => {

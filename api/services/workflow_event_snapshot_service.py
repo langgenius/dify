@@ -7,7 +7,7 @@ import threading
 import time
 from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Protocol, runtime_checkable
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -48,7 +48,7 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.broadcast_channel.channel import CursorSubscription, Topic
+from libs.broadcast_channel.channel import CursorMessage, Topic
 from libs.broadcast_channel.cursor import normalize_stream_cursor
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models.enums import WorkflowRunTriggeredFrom
@@ -89,6 +89,18 @@ class BufferState:
     done_event: threading.Event
     task_id_ready: threading.Event
     task_id_hint: str | None = None
+
+
+@runtime_checkable
+class _RetainedCursorTopic(Protocol):
+    def earliest_cursor(self) -> str | None: ...
+
+    def latest_cursor(self) -> str | None: ...
+
+
+@runtime_checkable
+class _CursorReceiver(Protocol):
+    def receive_with_cursor(self, timeout: float | None = 0.1) -> CursorMessage | None: ...
 
 
 def build_workflow_event_stream(
@@ -314,24 +326,21 @@ def build_workflow_event_stream(
 
 
 def _topic_has_retained_events(topic: Topic) -> bool:
-    latest_cursor = getattr(type(topic), "latest_cursor", None)
-    if latest_cursor is None:
+    if not isinstance(topic, _RetainedCursorTopic):
         return False
     try:
-        return latest_cursor(topic) is not None
+        return topic.latest_cursor() is not None
     except Exception:
         logger.exception("Failed to inspect retained workflow events")
         return False
 
 
 def _topic_retained_cursor_window(topic: Topic) -> tuple[str, str] | None:
-    earliest_cursor = getattr(type(topic), "earliest_cursor", None)
-    latest_cursor = getattr(type(topic), "latest_cursor", None)
-    if earliest_cursor is None or latest_cursor is None:
+    if not isinstance(topic, _RetainedCursorTopic):
         return None
     try:
-        earliest = earliest_cursor(topic)
-        latest = latest_cursor(topic)
+        earliest = topic.earliest_cursor()
+        latest = topic.latest_cursor()
     except Exception:
         logger.exception("Failed to inspect retained workflow event cursor window")
         return None
@@ -949,8 +958,8 @@ def _start_buffering(subscription) -> BufferState:
     def _worker() -> None:
         try:
             while not buffer_state.stop_event.is_set():
-                if getattr(type(subscription), "receive_with_cursor", None) is not None:
-                    cursor_message = cast(CursorSubscription, subscription).receive_with_cursor(timeout=1)
+                if isinstance(subscription, _CursorReceiver):
+                    cursor_message = subscription.receive_with_cursor(timeout=1)
                     msg = None if cursor_message is None else cursor_message.payload
                 else:
                     cursor_message = None

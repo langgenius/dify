@@ -179,7 +179,9 @@ def _validate_chat_records(
     # Conversation has no tenant column in current schemas. Keep this check
     # forward-compatible for deployments that expose one without inferring
     # tenant ownership from unrelated fields.
-    conversation_tenant_id = getattr(conversation, "tenant_id", None)
+    conversation_tenant_id = getattr(  # guard-ignore: no-new-getattr -- optional forward-schema tenant column
+        conversation, "tenant_id", None
+    )
     if conversation_tenant_id is not None:
         conversation_identities["tenant"] = (conversation_tenant_id, workflow_run.tenant_id)
     _validate_owned_resource("Chatflow conversation", conversation_identities)

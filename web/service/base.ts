@@ -275,11 +275,13 @@ type WorkflowStreamSession = {
   seenEventIds: Set<string>
   seenEventIdOrder: string[]
   seenLifecycleEvents: Set<string>
+  seenLifecycleEventOrder: string[]
   hasMessageChunk: boolean
   expectsMessageEnd: boolean
   hasMessageEnd: boolean
   hasWorkflowFinished: boolean
   waitingAfterWorkflowPause: boolean
+  activeContinueOnPauseRequest: boolean
   terminal: boolean
   completionNotified: boolean
   dispatchedEventCount: number
@@ -321,11 +323,13 @@ const createWorkflowStreamSession = (): WorkflowStreamSession => ({
   seenEventIds: new Set(),
   seenEventIdOrder: [],
   seenLifecycleEvents: new Set(),
+  seenLifecycleEventOrder: [],
   hasMessageChunk: false,
   expectsMessageEnd: false,
   hasMessageEnd: false,
   hasWorkflowFinished: false,
   waitingAfterWorkflowPause: false,
+  activeContinueOnPauseRequest: false,
   terminal: false,
   completionNotified: false,
   dispatchedEventCount: 0,
@@ -456,6 +460,12 @@ const dispatchStreamEvent = (
   if (lifecycleEventKey) {
     if (session.seenLifecycleEvents.has(lifecycleEventKey)) return { kind: 'continue' }
     session.seenLifecycleEvents.add(lifecycleEventKey)
+    session.seenLifecycleEventOrder.push(lifecycleEventKey)
+    if (session.seenLifecycleEventOrder.length > MAX_TRACKED_EVENT_IDS) {
+      const oldestLifecycleEventKey = session.seenLifecycleEventOrder.shift()
+      if (oldestLifecycleEventKey !== undefined)
+        session.seenLifecycleEvents.delete(oldestLifecycleEventKey)
+    }
   }
 
   session.dispatchedEventCount += 1
@@ -627,7 +637,10 @@ const consumeEventStream = async (
           await reader.cancel().catch(() => undefined)
           return parsedResult
         }
-        if (parsedResult.kind === 'application-error') return parsedResult
+        if (parsedResult.kind === 'application-error') {
+          await reader.cancel().catch(() => undefined)
+          return parsedResult
+        }
         if (parsedResult.kind === 'workflow-paused') sawWorkflowPause = true
       }
     }
@@ -702,10 +715,17 @@ const extractWorkflowRunIdFromEventsUrl = (url: string) => {
   return match?.[1] ? decodeURIComponent(match[1]) : undefined
 }
 
-const addReconnectSearchParams = (url: string, cursor?: string, includeStateSnapshot = true) => {
+const addReconnectSearchParams = (
+  url: string,
+  cursor?: string,
+  includeStateSnapshot = true,
+  continueOnPause = false,
+) => {
   const isAbsolute = /^https?:\/\//.test(url)
   const parsedUrl = new URL(url, 'http://dify.local')
   parsedUrl.searchParams.set('include_state_snapshot', String(includeStateSnapshot))
+  if (continueOnPause) parsedUrl.searchParams.set('continue_on_pause', 'true')
+  else parsedUrl.searchParams.delete('continue_on_pause')
   if (cursor) parsedUrl.searchParams.set('cursor', cursor)
   else parsedUrl.searchParams.delete('cursor')
   if (isAbsolute) return parsedUrl.toString()
@@ -806,9 +826,13 @@ const runSseRequest = async (
     createWorkflowStreamSession()
   bindWorkflowRunId(session, initialWorkflowRunId, Boolean(responseWorkflowRunId))
 
+  const isContinueOnPauseRequest = method === 'GET' && session.waitingAfterWorkflowPause
+  if (isContinueOnPauseRequest && session.activeContinueOnPauseRequest) return
+
   const abortController = initialResponse?.abortController ?? new AbortController()
   otherOptions.getAbortController?.(abortController)
   const callbacks = createStreamCallbacks(otherOptions)
+  if (isContinueOnPauseRequest) session.activeContinueOnPauseRequest = true
   const maxAttempts = reconnectOptions?.maxAttempts ?? DEFAULT_RECONNECT_ATTEMPTS
   const initialDelay = reconnectOptions?.initialDelayMs ?? DEFAULT_RECONNECT_INITIAL_DELAY
   const maxDelay = reconnectOptions?.maxDelayMs ?? DEFAULT_RECONNECT_MAX_DELAY
@@ -820,6 +844,7 @@ const runSseRequest = async (
   let pendingResponse = initialResponse?.response
 
   const cleanupSession = () => {
+    if (isContinueOnPauseRequest) session.activeContinueOnPauseRequest = false
     if (session.workflowRunId && workflowStreamSessions.get(session.workflowRunId) === session)
       workflowStreamSessions.delete(session.workflowRunId)
   }
@@ -845,6 +870,7 @@ const runSseRequest = async (
           resolvedUrl,
           session.cursor,
           !session.waitingAfterWorkflowPause || Boolean(session.cursor),
+          isContinueOnPauseRequest || session.waitingAfterWorkflowPause,
         )
       : undefined
   }
@@ -873,6 +899,7 @@ const runSseRequest = async (
             currentUrl,
             session.cursor,
             !session.waitingAfterWorkflowPause || Boolean(session.cursor),
+            isContinueOnPauseRequest || session.waitingAfterWorkflowPause,
           )
         : currentUrl
     const requestOptions = createSseRequestOptions(
@@ -975,7 +1002,10 @@ const runSseRequest = async (
       return
     }
 
-    if (outcome.kind === 'workflow-paused') return
+    if (outcome.kind === 'workflow-paused' && !isContinueOnPauseRequest) {
+      if (!session.activeContinueOnPauseRequest) cleanupSession()
+      return
+    }
 
     if (session.terminal) {
       if (!session.completionNotified) {

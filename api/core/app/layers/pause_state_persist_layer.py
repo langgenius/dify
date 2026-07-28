@@ -29,9 +29,7 @@ WORKFLOW_HANDOFF_ACTIVE_EXECUTION_SECONDS_EXTRA_KEY = "workflow_handoff_active_e
 def get_workflow_handoff_active_execution_seconds(
     generate_entity: WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity | RagPipelineGenerateEntity,
 ) -> float:
-    extras = getattr(generate_entity, "extras", None)
-    if extras is None:
-        return 0.0
+    extras = generate_entity.extras
     if not isinstance(extras, dict):
         raise ValueError("Workflow generate entity extras are invalid")
     value = extras.get(WORKFLOW_HANDOFF_ACTIVE_EXECUTION_SECONDS_EXTRA_KEY, 0.0)

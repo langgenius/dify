@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Callable, Generator, Iterator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override, runtime_checkable
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -32,6 +32,22 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _Closable(Protocol):
+    def close(self) -> object: ...
+
+
+@runtime_checkable
+class _WorkflowRunIdentified(Protocol):
+    workflow_run_id: str | None
+
+
+@runtime_checkable
+class _ValueBearing(Protocol):
+    @property
+    def value(self) -> object: ...
 
 
 @with_config(ConfigDict(extra="allow"))
@@ -426,7 +442,7 @@ def compact_generate_response(
 ) -> Response:
     if isinstance(response, Mapping):
         event = response.get("event")
-        event_value = getattr(event, "value", event)
+        event_value = event.value if isinstance(event, _ValueBearing) else event
         is_maintenance_handoff = event_value == "workflow_maintenance_paused"
         workflow_run_id = response.get("workflow_run_id")
         headers: dict[str, str] = {}
@@ -451,7 +467,9 @@ def compact_generate_response(
         )
     else:
         stream_response = response
-        workflow_run_id = getattr(stream_response, "workflow_run_id", None)
+        workflow_run_id = (
+            stream_response.workflow_run_id if isinstance(stream_response, _WorkflowRunIdentified) else None
+        )
 
         def generate() -> Generator[str, None, None]:
             try:
@@ -465,9 +483,8 @@ def compact_generate_response(
                         continue
                     yield chunk
             finally:
-                close = getattr(stream_response, "close", None)
-                if callable(close):
-                    close()
+                if isinstance(stream_response, _Closable):
+                    stream_response.close()
 
         response_headers: dict[str, str] = {}
         if isinstance(workflow_run_id, str) and workflow_run_id:
@@ -544,9 +561,8 @@ def length_prefixed_response(
                 else:
                     yield pack_response_with_length_prefix(chunk)
         finally:
-            close = getattr(stream_response, "close", None)
-            if callable(close):
-                close()
+            if isinstance(stream_response, _Closable):
+                stream_response.close()
 
     return Response(
         _stream_with_request_context(generate()),

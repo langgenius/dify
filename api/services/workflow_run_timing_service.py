@@ -38,7 +38,7 @@ def get_workflow_run_public_timing(
         return None
     return WorkflowRunPublicTiming(
         started_at=workflow_run.created_at,
-        handoff_duration=max(float(getattr(workflow_run, "handoff_duration", 0.0) or 0.0), 0.0),
+        handoff_duration=max(float(workflow_run.handoff_duration or 0.0), 0.0),
     )
 
 

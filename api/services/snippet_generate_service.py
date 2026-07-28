@@ -22,7 +22,7 @@ import json
 import logging
 import uuid
 from collections.abc import Generator, Iterator, Mapping, Sequence
-from typing import Any, Union, cast
+from typing import Any, Protocol, Union, cast, runtime_checkable
 
 from sqlalchemy.orm import Session, make_transient, sessionmaker
 
@@ -46,6 +46,11 @@ logger = logging.getLogger(__name__)
 
 type SnippetGenerateResponse = Mapping[str, Any] | Iterator[str]
 _file_access_controller = DatabaseFileAccessController()
+
+
+@runtime_checkable
+class _Closable(Protocol):
+    def close(self) -> object: ...
 
 
 class _SnippetAsApp:
@@ -132,9 +137,8 @@ class SnippetGenerateService:
                         continue
                     yield message
             finally:
-                close = getattr(response, "close", None)
-                if callable(close):
-                    close()
+                if isinstance(response, _Closable):
+                    response.close()
 
         return _stream()
 

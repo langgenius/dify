@@ -2,6 +2,7 @@ from collections.abc import Generator
 from typing import Any, cast, override
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
+from core.app.apps.streaming_utils import close_stream
 from core.app.entities.task_entities import (
     AppStreamResponse,
     ErrorStreamResponse,
@@ -85,9 +86,7 @@ class WorkflowAppGenerateResponseConverter(
 
                 yield response_chunk
         finally:
-            close = getattr(stream_response, "close", None)
-            if callable(close):
-                close()
+            close_stream(stream_response)
 
     @classmethod
     @override
@@ -130,6 +129,4 @@ class WorkflowAppGenerateResponseConverter(
 
                 yield response_chunk
         finally:
-            close = getattr(stream_response, "close", None)
-            if callable(close):
-                close()
+            close_stream(stream_response)

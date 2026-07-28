@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, TypedDict
+from typing import Any, Protocol, TypedDict, runtime_checkable
 
 from configs import dify_config
 from context import capture_current_context
@@ -44,6 +44,12 @@ from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+@runtime_checkable
+class _NodeRunStepsState(Protocol):
+    @property
+    def node_run_steps(self) -> object: ...
 
 
 def iter_dify_graph_engine_events(
@@ -240,8 +246,11 @@ class WorkflowEntry:
             self.graph_engine.layer(debug_layer)
 
         # Add execution limits layer
+        node_run_steps = 0
+        if isinstance(graph_runtime_state, _NodeRunStepsState) and isinstance(graph_runtime_state.node_run_steps, int):
+            node_run_steps = graph_runtime_state.node_run_steps
         remaining_steps = max(
-            dify_config.WORKFLOW_MAX_EXECUTION_STEPS - getattr(graph_runtime_state, "node_run_steps", 0),
+            dify_config.WORKFLOW_MAX_EXECUTION_STEPS - node_run_steps,
             0,
         )
         remaining_execution_seconds = max(

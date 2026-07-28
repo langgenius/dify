@@ -71,13 +71,13 @@ def priority_rag_pipeline_run_task(
     request = task.request
     dispatch_token = resolve_rag_pipeline_dispatch_token(
         explicit_token=dispatch_token,
-        request_headers=getattr(request, "headers", None),
+        request_headers=request.headers,
     )
     dispatch_lease: RagPipelineDispatchLease | None = None
     if dispatch_token is not None:
         owner = build_rag_pipeline_dispatch_owner(
-            task_id=getattr(request, "id", None),
-            hostname=getattr(request, "hostname", None),
+            task_id=request.id,
+            hostname=request.hostname,
         )
         dispatch_outcome, dispatch_lease = RagPipelineDispatchLease.acquire(
             tenant_id=tenant_id,

@@ -344,3 +344,56 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
 
     assert response.mimetype == "text/event-stream"
     assert "data" in response.get_data(as_text=True)
+
+
+def test_workflow_events_continue_on_pause_keeps_cursor_stream_open(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workflow_run = SimpleNamespace(
+        id="run-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        tenant_id="t1",
+        app_id="app-1",
+        finished_at=None,
+    )
+    app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
+
+    class _RepoStub:
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+            return workflow_run
+
+    snapshot_builder = Mock(return_value=[])
+    workflow_generator = Mock()
+    workflow_generator.convert_to_event_stream.return_value = iter(["data: continued\n\n"])
+
+    monkeypatch.setattr(
+        DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        lambda *_args, **_kwargs: _RepoStub(),
+    )
+    monkeypatch.setattr(
+        "controllers.console.human_input_form._retrieve_app_for_workflow_run",
+        lambda *_args, **_kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        "controllers.console.human_input_form.build_workflow_event_stream",
+        snapshot_builder,
+    )
+    monkeypatch.setattr(
+        "controllers.console.human_input_form.WorkflowAppGenerator",
+        lambda: workflow_generator,
+    )
+    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
+
+    api = ConsoleWorkflowEventsApi()
+    handler = unwrap(api.get)
+    with app.test_request_context(
+        "/console/api/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true&cursor=31-0",
+        method="GET",
+    ):
+        response = handler(api, "t1", SimpleNamespace(id="user-1"), workflow_run_id="run-1")
+        assert response.get_data(as_text=True) == "data: continued\n\n"
+
+    assert snapshot_builder.call_args.kwargs["cursor"] == "31-0"
+    assert snapshot_builder.call_args.kwargs["close_on_pause"] is False

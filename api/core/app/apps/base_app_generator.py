@@ -11,7 +11,7 @@ from core.app.apps.draft_variable_saver import (
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
-from core.app.apps.streaming_utils import StreamEventWithCursor
+from core.app.apps.streaming_utils import StreamEventWithCursor, close_stream
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from extensions.ext_database import db
@@ -92,9 +92,7 @@ class BaseAppGenerator:
         try:
             yield from response_stream
         finally:
-            close = getattr(response_stream, "close", None)
-            if callable(close):
-                close()
+            close_stream(response_stream)
             BaseAppGenerator._join_worker_thread(worker_thread)
 
     @staticmethod
@@ -325,9 +323,7 @@ class BaseAppGenerator:
                         else:
                             yield f"event: {message}\n\n"
                 finally:
-                    close = getattr(generator, "close", None)
-                    if callable(close):
-                        close()
+                    close_stream(generator)
 
             return gen()
 

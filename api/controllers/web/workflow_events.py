@@ -19,6 +19,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.entities.task_entities import StreamEvent
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
@@ -94,6 +95,7 @@ class WorkflowEventsApi(WebApiResource):
                     raise AssertionError("app mode was validated before event stream construction")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+            continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
 
             def _generate_stream_events():
                 if include_state_snapshot or cursor is not None:
@@ -104,10 +106,18 @@ class WorkflowEventsApi(WebApiResource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            close_on_pause=not continue_on_pause,
                             cursor=cursor,
                         )
                     )
-                return generator.convert_to_event_stream(msg_generator.retrieve_events(app_mode, workflow_run.id))
+                terminal_events = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
+                return generator.convert_to_event_stream(
+                    msg_generator.retrieve_events(
+                        app_mode,
+                        workflow_run.id,
+                        terminal_events=terminal_events,
+                    )
+                )
 
             event_generator = _generate_stream_events
 

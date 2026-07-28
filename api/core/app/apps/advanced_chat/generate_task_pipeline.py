@@ -16,6 +16,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.app.apps.streaming_utils import close_stream
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -339,9 +340,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     case _:
                         continue
         finally:
-            close = getattr(generator, "close", None)
-            if callable(close):
-                close()
+            close_stream(generator)
 
         if human_input_responses:
             return self._build_paused_blocking_response_from_human_input(human_input_responses)
@@ -394,9 +393,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     stream_response=stream_response,
                 )
         finally:
-            close = getattr(generator, "close", None)
-            if callable(close):
-                close()
+            close_stream(generator)
 
     def _listen_audio_msg(self, publisher: AppGeneratorTTSPublisher | None, task_id: str):
         if not publisher:
@@ -434,9 +431,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         break
                 yield response
         finally:
-            close = getattr(response_stream, "close", None)
-            if callable(close):
-                close()
+            close_stream(response_stream)
 
         start_listener_time = time.time()
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
@@ -1147,9 +1142,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         ):
                             yield from responses
         finally:
-            close = getattr(queue_stream, "close", None)
-            if callable(close):
-                close()
+            close_stream(queue_stream)
 
         if tts_publisher:
             tts_publisher.publish(None)

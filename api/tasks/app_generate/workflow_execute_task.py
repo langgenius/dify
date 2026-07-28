@@ -355,7 +355,7 @@ def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
 
 def _get_event_value(event: str | Mapping[str, Any] | BaseModel, field: str) -> Any:
     if isinstance(event, BaseModel):
-        return getattr(event, field, None)
+        return event.model_dump(mode="python").get(field)
     if isinstance(event, Mapping):
         return event.get(field)
     return None
@@ -508,15 +508,13 @@ def _publish_streaming_response(
             # graph producer is still alive. Close the response generator first
             # so its queue-manager finally block aborts and joins the graph
             # worker before durable state is reconciled to a terminal outcome.
-            close_response_stream = getattr(response_stream, "close", None)
-            if callable(close_response_stream):
-                try:
-                    close_response_stream()
-                except Exception:
-                    logger.exception(
-                        "Failed to close workflow stream producer before terminal reconciliation: run_id=%s",
-                        normalized_workflow_run_id,
-                    )
+            try:
+                response_stream.close()
+            except Exception:
+                logger.exception(
+                    "Failed to close workflow stream producer before terminal reconciliation: run_id=%s",
+                    normalized_workflow_run_id,
+                )
             _terminalize_stream_failure(str(exc) or exc.__class__.__name__)
         raise
 

@@ -92,6 +92,47 @@ def test_explicit_cursor_never_mixes_in_snapshot_events(monkeypatch: pytest.Monk
     repository_factory.create_api_workflow_run_repository.assert_not_called()
 
 
+def test_paused_tail_cursor_can_stay_open_until_workflow_finished(monkeypatch: pytest.MonkeyPatch) -> None:
+    topic = _ReplayTopic("12-0")
+    replayed_events = [
+        {"event": StreamEvent.HUMAN_INPUT_FORM_FILLED.value},
+        {"event": StreamEvent.WORKFLOW_FINISHED.value},
+    ]
+    stream = iter(replayed_events)
+    stream_topic_events = MagicMock(return_value=stream)
+    repository_factory = MagicMock()
+    monkeypatch.setattr(service.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service, "stream_topic_events", stream_topic_events)
+    monkeypatch.setattr(service, "DifyAPIRepositoryFactory", repository_factory)
+
+    result = service.build_workflow_event_stream(
+        app_mode=AppMode.WORKFLOW,
+        workflow_run=cast(
+            WorkflowRun,
+            SimpleNamespace(
+                id="run-1",
+                status=WorkflowExecutionStatus.PAUSED,
+                finished_at=None,
+            ),
+        ),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        session_maker=MagicMock(),
+        close_on_pause=False,
+        cursor="12-0",
+    )
+
+    assert list(result) == replayed_events
+    stream_topic_events.assert_called_once_with(
+        topic=topic,
+        idle_timeout=300,
+        ping_interval=10.0,
+        terminal_events=[StreamEvent.WORKFLOW_FINISHED],
+        cursor="12-0",
+    )
+    repository_factory.create_api_workflow_run_repository.assert_not_called()
+
+
 def test_running_run_with_expired_cursor_reconstructs_snapshot_before_future_events(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
