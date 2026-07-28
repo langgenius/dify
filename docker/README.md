@@ -126,7 +126,29 @@ The root `.env.example` file contains the essential startup settings. Optional a
    - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
    - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
 
-10. **Other Service-Specific Environment Variables**:
+10. **Workflow Execution Timeouts**:
+
+    Workflow execution can be bounded at more than one layer. The effective timeout is the lowest
+    limit that applies to the run:
+
+    - `APP_MAX_EXECUTION_TIME` limits how long the app queue waits for a run.
+    - `WORKFLOW_MAX_EXECUTION_TIME` limits execution in the workflow graph engine.
+    - `AGENT_BACKEND_RUN_TIMEOUT_SECONDS` additionally limits Agent V2 backend runs.
+
+    The defaults are 1200 seconds. To allow a workflow containing Agent V2 execution to run for up
+    to one hour, add all three overrides to the root `.env` file:
+
+    ```dotenv
+    APP_MAX_EXECUTION_TIME=3600
+    WORKFLOW_MAX_EXECUTION_TIME=3600
+    AGENT_BACKEND_RUN_TIMEOUT_SECONDS=3600
+    ```
+
+    The root `.env` is loaded after the optional split environment files, so these values override
+    the defaults in `envs/core-services/shared.env` and `envs/core-services/dify-agent.env`.
+    Recreate the affected services with `docker compose up -d` after changing them.
+
+11. **Other Service-Specific Environment Variables**:
 
     - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
 
