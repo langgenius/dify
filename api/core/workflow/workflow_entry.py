@@ -38,6 +38,7 @@ from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
@@ -199,7 +200,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-    ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance
@@ -347,7 +348,7 @@ class WorkflowEntry:
     @classmethod
     def run_free_node(
         cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
-    ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
         Run free node
 
@@ -541,7 +542,7 @@ class WorkflowEntry:
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
 
     @staticmethod
-    def _traced_node_run(node: Node) -> Generator[GraphNodeEventBase, None, None]:
+    def _traced_node_run(node: Node) -> Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]:
         """
         Wraps a node's run method with OpenTelemetry tracing and returns a generator.
         """

@@ -28,6 +28,7 @@ from graphon.variables.segments import (
     StringSegment,
     get_segment_discriminator,
 )
+from graphon.variables.template_resolution import convert_template
 from graphon.variables.types import SegmentType
 from graphon.variables.utils import (
     dumps_with_segments,
