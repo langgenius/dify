@@ -78,7 +78,7 @@ const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
       enabled: false,
       size: 50,
     },
-    query_prompt_template: '{{#sys.query#}}\n{{#sys.files#}}',
+    query_prompt_template: '{{#sys.query#}}\n{{#userinput.files#}}',
   },
   context: {
     enabled: false,
@@ -121,7 +121,7 @@ describe('llm/use-single-run-form-params', () => {
     const getInputVars = vi.fn(() => [
       createInputVar('#start.query#'),
       createInputVar('#sys.query#'),
-      createInputVar('#sys.files#'),
+      createInputVar('#userinput.files#'),
     ])
     const toVarInputs = vi.fn((_variables: Variable[]) => [
       createInputVar('#sys.workflow_id#'),

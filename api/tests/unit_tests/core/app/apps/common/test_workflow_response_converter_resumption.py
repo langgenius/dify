@@ -22,7 +22,7 @@ def _build_converter() -> WorkflowResponseConverter:
         app_config=SimpleNamespace(app_id="app-1", tenant_id="tenant-1"),
         invoke_from=InvokeFrom.EXPLORE,
         files=[],
-        inputs={},
+        inputs={"userinput.files": []},
         workflow_execution_id="run-1",
         call_depth=0,
     )
@@ -54,3 +54,17 @@ def test_workflow_start_stream_response_carries_initial_reason():
         reason=WorkflowStartReason.INITIAL,
     )
     assert resp.data.reason is WorkflowStartReason.INITIAL
+
+
+def test_workflow_start_stream_response_exposes_only_canonical_file_input():
+    converter = _build_converter()
+
+    resp = converter.workflow_start_to_stream_response(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        workflow_id="wf-1",
+        reason=WorkflowStartReason.INITIAL,
+    )
+
+    assert resp.data.inputs["userinput.files"] == []
+    assert "sys.files" not in resp.data.inputs

@@ -41,10 +41,10 @@ const useConfigVision = (
     (enabled: boolean) => {
       const newPayload = produce(payload, (draft) => {
         draft.enabled = enabled
-        if (enabled && isChatMode) {
+        if (enabled) {
           draft.configs = {
             detail: Resolution.high,
-            variable_selector: ['sys', 'files'],
+            variable_selector: isChatMode ? ['userinput', 'files'] : [],
           }
         } else if (!enabled) {
           delete draft.configs
@@ -76,11 +76,11 @@ const useConfigVision = (
         enabled: true,
         configs: {
           detail: Resolution.high,
-          variable_selector: [],
+          variable_selector: isChatMode ? ['userinput', 'files'] : [],
         },
       })
     }
-  }, [getIsVisionModel, handleVisionResolutionEnabledChange, onChange, payload.enabled])
+  }, [getIsVisionModel, handleVisionResolutionEnabledChange, isChatMode, onChange, payload.enabled])
 
   return {
     isVisionModel,

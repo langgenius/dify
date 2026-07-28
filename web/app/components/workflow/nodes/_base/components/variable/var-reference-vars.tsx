@@ -43,7 +43,7 @@ const resolveValueSelector = ({
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
-  const isSys = itemData.variable.startsWith('sys.')
+  const isSys = itemData.variable.startsWith('sys.') || itemData.variable.startsWith('userinput.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
   const isRagVariable = itemData.isRagVariable

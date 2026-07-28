@@ -9,10 +9,10 @@ import { useIsChatMode } from '../../hooks/use-workflow'
 type Params = {
   id: string
   payload: StartNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: FormProps['values']
+  runInputDataRef: RefObject<FormProps['values']>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: FormProps['onChange']
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: Params) => {
@@ -38,8 +38,8 @@ const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: 
     }
 
     inputs.push({
-      label: 'sys.files',
-      variable: '#sys.files#',
+      label: 'userinput.files',
+      variable: '#userinput.files#',
       type: InputVarType.multiFiles,
       required: false,
     })
@@ -58,7 +58,7 @@ const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: 
     const inputVars = payload.variables.map((item) => {
       return [id, item.variable]
     })
-    const vars: ValueSelector[] = [...inputVars, ['sys', 'files']]
+    const vars: ValueSelector[] = [...inputVars, ['userinput', 'files']]
 
     if (isChatMode) vars.push(['sys', 'query'])
 

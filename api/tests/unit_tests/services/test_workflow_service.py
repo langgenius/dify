@@ -50,6 +50,9 @@ from services.workflow_service import (
     _setup_variable_pool,
 )
 
+_LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+_USER_INPUT_FILE_TEMPLATE = "{{#" + ".".join(("userinput", "files")) + "#}}"
+
 
 class TestWorkflowAssociatedDataFactory:
     """
@@ -276,6 +279,31 @@ class TestWorkflowService:
         result = workflow_service.get_draft_workflow(app, session=sqlite_session)
 
         assert result is workflow
+
+    def test_get_draft_workflow_persists_legacy_system_files_migration(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        # TODO: Remove this compatibility test after the historical workflow migration is complete.
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            graph={
+                "nodes": [
+                    {"id": "start", "data": {"type": "start", "variables": []}},
+                    {"id": "answer", "data": {"type": "answer", "answer": _LEGACY_FILE_TEMPLATE}},
+                ],
+                "edges": [],
+            }
+        )
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+
+        result = workflow_service.get_draft_workflow(app, session=sqlite_session)
+
+        assert result is workflow
+        assert _LEGACY_FILE_TEMPLATE not in workflow.graph
+        assert _USER_INPUT_FILE_TEMPLATE in workflow.graph
+        sqlite_session.expire_all()
+        assert _USER_INPUT_FILE_TEMPLATE in sqlite_session.get(Workflow, workflow.id).graph
 
     def test_get_draft_workflow_returns_none(self, workflow_service: WorkflowService, sqlite_session: Session):
         """Test get_draft_workflow returns None when no draft exists."""

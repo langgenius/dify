@@ -149,7 +149,7 @@ describe('useCreateSnippetFromSelection', () => {
       createNode('variable-aggregator', {
         type: BlockEnum.VariableAggregator,
         variables: [
-          ['sys', 'files'],
+          ['userinput', 'files'],
           ['llm', 'text'],
         ],
         advanced_settings: {

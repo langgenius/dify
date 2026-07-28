@@ -178,7 +178,7 @@ workflow:
           query_prompt_template: '{{#sys.query#}}
 
 
-            {{#sys.files#}}'
+            {{#userinput.files#}}'
           role_prefix:
             assistant: ''
             user: ''

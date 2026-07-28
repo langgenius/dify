@@ -42,9 +42,9 @@ _NODE_SNIPPETS: dict[str, str] = {
     ["local_file", "remote_url"]. Only when you include "custom" must you
     also set ``allowed_file_extensions`` to a non-empty list like
     [".epub", ".rtf"]; otherwise leave it [].
-    In Advanced-Chat mode ``sys.query`` and ``sys.files`` are automatic
-    system variables — downstream nodes may reference them; do NOT add
-    them to ``variables``.""",
+    In Advanced-Chat mode ``sys.query`` is automatic. ``userinput.files`` is
+    the automatic file-upload variable in both app modes. Downstream nodes
+    may reference these variables; do NOT add them to ``variables``.""",
     "end": """\
 - end (Workflow mode only):
     {"outputs": [
@@ -168,8 +168,8 @@ _NODE_SNIPPETS: dict[str, str] = {
     Single output variable ``text``: a string when ``is_array_file`` is false,
     an array of strings (one per file) when it is true. ``variable_selector``
     MUST point at a ``start`` variable declared with type "file" / "file-list"
-    (or ``sys.files`` in Advanced-Chat mode). That start variable MUST set a
-    non-empty ``allowed_file_types`` (use ["document"] for document text).""",
+    (or the automatic ``userinput.files`` variable). A declared start variable
+    MUST set a non-empty ``allowed_file_types`` (use ["document"] for document text).""",
     "variable-aggregator": """\
 - variable-aggregator  (merge mutually-exclusive branches into one output):
     {"output_type": "string",        # VarType of the merged value — one of

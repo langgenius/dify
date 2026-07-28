@@ -115,6 +115,9 @@ describe('useWorkflowTemplate', () => {
     expect(generateNewNodeCalls[1]!.data).toMatchObject({
       type: 'llm',
       title: 'workflow.blocks.llm',
+      memory: {
+        query_prompt_template: '{{#sys.query#}}\n\n{{#userinput.files#}}',
+      },
     })
     expect(generateNewNodeCalls[2]!.data).toMatchObject({
       type: 'answer',

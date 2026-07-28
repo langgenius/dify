@@ -17,8 +17,12 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import { findVariableWhenOnLLMVision } from '../utils'
 
 const i18nPrefix = 'nodes.llm'
-const isSystemInputVar = (item: InputVar) => {
-  return typeof item.variable === 'string' && item.variable.startsWith('#sys.')
+const isBuiltInInputVar = (item: InputVar) => {
+  const { variable } = item
+  return (
+    typeof variable === 'string' &&
+    ['#sys.', '#userinput.'].some((prefix) => variable.startsWith(prefix))
+  )
 }
 
 type Params = {
@@ -119,11 +123,11 @@ const useSingleRunFormParams = ({
   })()
   const varInputs = (() => {
     const vars = getVarInputs(allVarStrArr) || []
-    const filteredVars = isSnippetFlow ? vars.filter((item) => !isSystemInputVar(item)) : vars
+    const filteredVars = isSnippetFlow ? vars.filter((item) => !isBuiltInInputVar(item)) : vars
     if (isShowVars) {
       const jinjaVars = toVarInputs ? toVarInputs(inputs.prompt_config?.jinja2_variables || []) : []
       return isSnippetFlow
-        ? [...filteredVars, ...jinjaVars.filter((item) => !isSystemInputVar(item))]
+        ? [...filteredVars, ...jinjaVars.filter((item) => !isBuiltInInputVar(item))]
         : [...filteredVars, ...jinjaVars]
     }
 

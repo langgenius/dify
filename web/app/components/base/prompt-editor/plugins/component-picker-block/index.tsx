@@ -192,6 +192,7 @@ const ComponentPicker = ({
         if (needRemove) needRemove.remove()
       })
       const isFlat = variables.length === 1
+      const builtInVariable = variables[1]
       if (isFlat) {
         const varName = variables[0]
         if (varName === 'current')
@@ -199,8 +200,8 @@ const ComponentPicker = ({
         else if (varName === 'error_message')
           editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
         else if (varName === 'last_run') editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
-      } else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
-        editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
+      } else if (builtInVariable && ['sys.query', 'userinput.files'].includes(builtInVariable)) {
+        editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [builtInVariable])
       } else {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
       }

@@ -45,7 +45,7 @@ describe('start/use-single-run-form-params', () => {
     })
   })
 
-  it('should include sys.query and sys.files dependencies for chat mode', () => {
+  it('should include sys.query and userinput.files for chat mode', () => {
     mockUseIsChatMode.mockReturnValue(true)
 
     const { result } = renderHook(() =>
@@ -66,7 +66,7 @@ describe('start/use-single-run-form-params', () => {
       expect.arrayContaining([
         expect.objectContaining({ variable: 'query' }),
         expect.objectContaining({ variable: '#sys.query#', required: true }),
-        expect.objectContaining({ variable: '#sys.files#', required: false }),
+        expect.objectContaining({ variable: '#userinput.files#', required: false }),
       ]),
     )
 
@@ -75,13 +75,13 @@ describe('start/use-single-run-form-params', () => {
     expect(setRunInputData).toHaveBeenCalledWith({ query: 'updated' })
     expect(result.current.getDependentVars()).toEqual([
       ['start-node', 'query'],
-      ['sys', 'files'],
+      ['userinput', 'files'],
       ['sys', 'query'],
     ])
     expect(result.current.getDependentVar('query')).toEqual(['start-node', 'query'])
   })
 
-  it('should omit sys.query when the workflow is not in chat mode', () => {
+  it('should keep userinput.files but omit sys.query outside chat mode', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
     const { result } = renderHook(() =>
@@ -99,9 +99,14 @@ describe('start/use-single-run-form-params', () => {
     expect(result.current.forms[0]!.inputs).toEqual(
       expect.not.arrayContaining([expect.objectContaining({ variable: '#sys.query#' })]),
     )
+    expect(result.current.forms[0]!.inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ variable: '#userinput.files#', required: false }),
+      ]),
+    )
     expect(result.current.getDependentVars()).toEqual([
       ['start-node', 'query'],
-      ['sys', 'files'],
+      ['userinput', 'files'],
     ])
   })
 })

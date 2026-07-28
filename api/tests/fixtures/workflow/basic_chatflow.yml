@@ -61,7 +61,7 @@ workflow:
           query_prompt_template: '{{#sys.query#}}
 
 
-            {{#sys.files#}}'
+            {{#userinput.files#}}'
           window:
             enabled: false
             size: 10

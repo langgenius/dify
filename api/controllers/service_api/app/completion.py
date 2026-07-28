@@ -26,6 +26,10 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
     WorkflowVersionExecutionNotAllowedError,
 )
+from controllers.service_api.app.legacy_system_files import (
+    attach_legacy_system_file_warning_for_service_api,
+    normalize_legacy_system_file_args_for_service_api,
+)
 from controllers.service_api.schema import (
     InputFileList,
     expect_user_json,
@@ -390,6 +394,7 @@ class ChatApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
+        legacy_system_file_compat = None
 
         try:
             # Eagerly validate conversation to avoid hanging on invalid conversation_id
@@ -401,6 +406,14 @@ class ChatApi(Resource):
                     session=session,
                 )
 
+            if app_mode == AppMode.ADVANCED_CHAT:
+                args, legacy_system_file_compat = normalize_legacy_system_file_args_for_service_api(
+                    session=session,
+                    app_model=app_model,
+                    args=args,
+                    raw_payload=service_api_ns.payload,
+                    workflow_id=args.get("workflow_id"),
+                )
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,
@@ -409,6 +422,7 @@ class ChatApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=streaming,
             )
+            response = attach_legacy_system_file_warning_for_service_api(response, legacy_system_file_compat)
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)

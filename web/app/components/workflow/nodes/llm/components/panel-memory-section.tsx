@@ -32,7 +32,7 @@ const DEFAULT_MEMORY: Memory = {
     enabled: false,
     size: 50,
   },
-  query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+  query_prompt_template: '{{#sys.query#}}\n\n{{#userinput.files#}}',
 }
 const SNIPPET_DEFAULT_MEMORY: Memory = {
   window: {

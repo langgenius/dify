@@ -494,7 +494,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     expect(dispatchSpy).not.toHaveBeenCalled()
   })
 
-  it('handles workflow variable selection for nested fields: sys.query, sys.files, and normal paths', async () => {
+  it('handles workflow variable selection for nested fields: built-in inputs and normal paths', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
     const user = userEvent.setup()
 
@@ -503,7 +503,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
         makeWorkflowNodeVar('sys.query', VarType.object, [
           makeWorkflowNodeVar('q', VarType.string),
         ]),
-        makeWorkflowNodeVar('sys.files', VarType.object, [
+        makeWorkflowNodeVar('userinput.files', VarType.object, [
           makeWorkflowNodeVar('f', VarType.string),
         ]),
         makeWorkflowNodeVar('output', VarType.object, [makeWorkflowNodeVar('x', VarType.string)]),
@@ -545,8 +545,10 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['sys.query'])
     await waitFor(() => expect(readEditorText(editor)).not.toContain('{'))
 
-    await openPickerAndSelectField('sys.files', 'f')
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['sys.files'])
+    await openPickerAndSelectField('userinput.files', 'f')
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
+      'userinput.files',
+    ])
     await waitFor(() => expect(readEditorText(editor)).not.toContain('{'))
 
     await openPickerAndSelectField('output', 'x')

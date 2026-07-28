@@ -3,6 +3,7 @@ CLI command modules extracted from `commands.py`.
 """
 
 from .account import create_tenant, reset_email, reset_password
+from .app_maintenance import convert_to_agent_apps, fix_app_site_missing
 from .data_migrate import data_migrate, legacy_model_types
 from .data_migration import (
     export_migration_data,
@@ -10,6 +11,7 @@ from .data_migration import (
     import_migration_data,
     migration_data_wizard,
 )
+from .database import upgrade_db
 from .plugin import (
     backfill_plugin_auto_upgrade,
     extract_plugins,
@@ -36,12 +38,6 @@ from .retention import (
     restore_workflow_runs,
 )
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
-from .system import (
-    convert_to_agent_apps,
-    fix_app_site_missing,
-    reset_encrypt_key_pair,
-    upgrade_db,
-)
 from .vector import (
     add_qdrant_index,
     migrate_annotation_vector_database,
@@ -49,6 +45,8 @@ from .vector import (
     old_metadata_migration,
     vdb_migrate,
 )
+from .workflow_migration import migrate_legacy_sys_files_workflows
+from .workspace import reset_encrypt_key_pair
 
 __all__ = [
     "add_qdrant_index",
@@ -80,6 +78,7 @@ __all__ = [
     "migrate_data_for_plugin",
     "migrate_dataset_permissions_to_rbac",
     "migrate_knowledge_vector_database",
+    "migrate_legacy_sys_files_workflows",
     "migrate_member_roles_to_rbac",
     "migrate_oss",
     "migration_data_wizard",

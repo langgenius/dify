@@ -779,7 +779,7 @@ const useOneStepRun = <T>({
           const isStartNode = data.type === BlockEnum.Start
           const postData: Record<string, any> = {}
           if (isStartNode) {
-            const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
+            const { '#sys.query#': query, '#userinput.files#': files, ...inputs } = submitData
             if (isChatMode) postData.conversation_id = ''
 
             postData.inputs = inputs
