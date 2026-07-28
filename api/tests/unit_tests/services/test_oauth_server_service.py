@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
