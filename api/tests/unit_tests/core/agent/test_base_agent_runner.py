@@ -579,9 +579,7 @@ class TestBaseAgentRunnerInit:
 
         llm = mocker.MagicMock()
         # Model supports DOCUMENT but NOT VISION
-        llm.get_model_schema.return_value = mocker.MagicMock(
-            features=[module.ModelFeature.DOCUMENT]
-        )
+        llm.get_model_schema.return_value = mocker.MagicMock(features=[module.ModelFeature.DOCUMENT])
         model_instance = mocker.MagicMock(model_type_instance=llm, model="m", credentials="c")
 
         app_config = mocker.MagicMock()
@@ -593,9 +591,7 @@ class TestBaseAgentRunnerInit:
         doc_file = File(type=FileType.DOCUMENT, transfer_method="local_file", url="http://x")
         image_file = File(type=FileType.IMAGE, transfer_method="local_file", url="http://y")
 
-        app_generate = mocker.MagicMock(
-            invoke_from="test", inputs={}, files=[doc_file, image_file]
-        )
+        app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=[doc_file, image_file])
 
         runner = BaseAgentRunner(
             session=caller_session,
