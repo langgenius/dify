@@ -13,6 +13,7 @@ import { CursorService } from '../services/cursor-service'
 
 type CollaborationViewState = {
   isConnected: boolean
+  connectionError: string | null
   onlineUsers: OnlineUser[]
   cursors: Record<string, CursorPosition>
   nodePanelPresence: NodePanelPresenceMap
@@ -23,6 +24,7 @@ type ReactFlowStore = NonNullable<Parameters<typeof collaborationManager.connect
 
 const initialState: CollaborationViewState = {
   isConnected: false,
+  connectionError: null,
   onlineUsers: [],
   cursors: {},
   nodePanelPresence: {},
@@ -76,7 +78,14 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
 
         if (newState.isConnected === undefined) return
 
-        setState((prev) => ({ ...prev, isConnected: newState.isConnected ?? prev.isConnected }))
+        setState((prev) => ({
+          ...prev,
+          isConnected: newState.isConnected ?? prev.isConnected,
+          connectionError:
+            newState.isConnected === true
+              ? null
+              : (newState.error ?? newState.disconnectReason ?? prev.connectionError),
+        }))
       },
     )
 
@@ -145,6 +154,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
 
   const result = {
     isConnected: state.isConnected || false,
+    connectionError: state.connectionError,
     onlineUsers: state.onlineUsers || [],
     cursors: state.cursors || {},
     nodePanelPresence: state.nodePanelPresence || {},
