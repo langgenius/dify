@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from models.account import (
@@ -915,43 +915,39 @@ class TestTenantService:
 
     # ==================== Tenant Switching Tests ====================
 
-    def test_switch_tenant_success(self, sqlite_session: Session):
+    def test_switch_tenant_success(self, sqlite_session_factory: sessionmaker[Session]):
         """Test successful tenant switching."""
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        tenant = Tenant(name="Target Workspace")
-        other_tenant = Tenant(name="Other Workspace")
-        sqlite_session.add_all([tenant, other_tenant])
-        sqlite_session.flush()
-        tenant_join = self._add_tenant_account_join(
-            sqlite_session, tenant, mock_account.id, TenantAccountRole.NORMAL, current=False
-        )
-        other_tenant_join = self._add_tenant_account_join(
-            sqlite_session, other_tenant, mock_account.id, TenantAccountRole.NORMAL, current=True
-        )
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            tenant = Tenant(name="Target Workspace")
+            other_tenant = Tenant(name="Other Workspace")
+            service_session.add_all([account, tenant, other_tenant])
+            service_session.flush()
+            tenant_join = self._add_tenant_account_join(
+                service_session, tenant, account.id, TenantAccountRole.NORMAL, current=False
+            )
+            other_tenant_join = self._add_tenant_account_join(
+                service_session, other_tenant, account.id, TenantAccountRole.NORMAL, current=True
+            )
+            tenant_id = tenant.id
+            tenant_join_id = tenant_join.id
+            other_tenant_join_id = other_tenant_join.id
+            service_session.commit()
 
-        with patch("services.account_service.naive_utc_now") as mock_naive_utc_now:
             mock_now = datetime(2026, 6, 5, 11, 0, 0)
-            mock_naive_utc_now.return_value = mock_now
+            with patch("services.account_service.naive_utc_now", return_value=mock_now):
+                TenantService.switch_tenant(account, tenant_id, session=service_session)
 
-            TenantService.switch_tenant(mock_account, tenant.id, session=sqlite_session)
+            assert account.current_tenant_id == tenant_id
 
-        assert tenant_join.current is True
-        assert tenant_join.last_opened_at == mock_now
-        assert other_tenant_join.current is False
-        mock_account.set_tenant_id_with_session.assert_called_once_with(tenant.id, session=sqlite_session)
-
-    def test_switch_tenant_commits_changes(self):
-        account = TestAccountAssociatedDataFactory.create_account_mock()
-        tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
-            tenant_id="tenant-456", account_id="user-123", current=False
-        )
-        session = MagicMock()
-        session.scalar.return_value = tenant_join
-
-        TenantService.switch_tenant(account, "tenant-456", session=session)
-
-        session.commit.assert_called_once_with()
+        with sqlite_session_factory() as assertion_session:
+            tenant_join = assertion_session.get(TenantAccountJoin, tenant_join_id)
+            other_tenant_join = assertion_session.get(TenantAccountJoin, other_tenant_join_id)
+            assert tenant_join is not None
+            assert tenant_join.current is True
+            assert tenant_join.last_opened_at == mock_now
+            assert other_tenant_join is not None
+            assert other_tenant_join.current is False
 
     def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):
         """Test tenant switching without providing tenant ID."""
