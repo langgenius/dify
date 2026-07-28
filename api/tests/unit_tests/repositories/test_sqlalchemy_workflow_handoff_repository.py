@@ -7,7 +7,9 @@ import sqlalchemy as sa
 from sqlalchemy import Table
 from sqlalchemy.orm import Session, sessionmaker
 
+import repositories.sqlalchemy_workflow_handoff_repository as handoff_repository_module
 from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FileTransferMethod, FileType
 from models.dataset import Document
 from models.enums import (
     AppTriggerType,
@@ -36,11 +38,13 @@ from repositories.sqlalchemy_workflow_handoff_repository import (
     WorkflowRunNotResumableForHandoffError,
 )
 from repositories.workflow_handoff_repository import (
+    WorkflowHandoffPreparationCancelledError,
     WorkflowHandoffTerminalOwnershipError,
     WorkflowHandoffTerminalScope,
 )
 
 NOW = datetime(2026, 7, 28, 12, 0, 0)
+FAR_FUTURE = datetime(2100, 1, 1)
 RUN_ID = str(uuid4())
 APP_ID = str(uuid4())
 TENANT_ID = str(uuid4())
@@ -240,6 +244,200 @@ def test_create_prepared_rejects_unknown_workflow_run(
         )
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("snapshot_size_bytes", -1, "snapshot_size_bytes must be non-negative"),
+        ("task_id", "", "task_id must not be empty"),
+        ("snapshot_object_key", "", "snapshot metadata must not be empty"),
+        ("snapshot_schema_version", "", "snapshot metadata must not be empty"),
+        ("snapshot_checksum", "", "snapshot metadata must not be empty"),
+        ("source_worker_id", "", "source_worker_id must not be empty"),
+    ],
+)
+def test_create_preparing_rejects_invalid_snapshot_identity(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    arguments: dict[str, object] = {
+        "workflow_run_id": RUN_ID,
+        "task_id": "task-1",
+        "snapshot_object_key": "workflow-handoffs/run/checkpoint.bin",
+        "snapshot_schema_version": "graph-runtime-state/v1",
+        "snapshot_checksum": "sha256:0123456789abcdef",
+        "snapshot_size_bytes": 128,
+        "resume_route": WorkflowHandoffResumeRoute.WORKFLOW,
+        "source_worker_id": "worker-old",
+    }
+    arguments[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        repository.create_preparing(**arguments)  # type: ignore[arg-type]
+
+
+def test_create_prepared_reports_stop_tombstone_as_cancelled(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    assert (
+        repository.request_cancel_by_task_id(
+            task_id="task-cancelled-before-upload",
+            requested_at=NOW,
+            expires_at=FAR_FUTURE,
+        )
+        == 0
+    )
+
+    with pytest.raises(WorkflowHandoffPreparationCancelledError, match="preparation was cancelled"):
+        repository.create_prepared(
+            workflow_run_id=RUN_ID,
+            task_id="task-cancelled-before-upload",
+            snapshot_object_key="workflow-handoffs/run/cancelled.bin",
+            snapshot_schema_version="graph-runtime-state/v1",
+            snapshot_checksum="sha256:cancelled",
+            snapshot_size_bytes=8,
+            resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+            source_worker_id="worker-old",
+        )
+
+
+def test_create_prepared_reports_finish_race_as_cancelled(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(repository, "finish_preparing", lambda **_kwargs: None)
+
+    with pytest.raises(WorkflowHandoffPreparationCancelledError, match="preparation was cancelled"):
+        _create_prepared(repository)
+
+
+def test_finish_preparing_is_idempotent_and_rejects_missing_generation(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    preparing = repository.create_preparing(
+        workflow_run_id=RUN_ID,
+        task_id="task-uploading",
+        snapshot_object_key="workflow-handoffs/run/uploading-idempotently.bin",
+        snapshot_schema_version="graph-runtime-state/v1",
+        snapshot_checksum="sha256:uploading-idempotently",
+        snapshot_size_bytes=32,
+        resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+        source_worker_id="worker-old",
+    )
+
+    assert repository.finish_preparing(handoff_id="missing", generation=1) is None
+    prepared = repository.finish_preparing(handoff_id=preparing.id, generation=preparing.generation)
+    assert prepared is not None
+    assert prepared.state == WorkflowHandoffState.PREPARED
+    replay = repository.finish_preparing(handoff_id=preparing.id, generation=preparing.generation)
+    assert replay is not None
+    assert replay.id == prepared.id
+    assert replay.state == WorkflowHandoffState.PREPARED
+
+
+def test_finish_preparing_observes_tombstone_created_during_upload(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    preparing = repository.create_preparing(
+        workflow_run_id=RUN_ID,
+        task_id="task-cancelled-during-upload",
+        snapshot_object_key="workflow-handoffs/run/cancelled-during-upload.bin",
+        snapshot_schema_version="graph-runtime-state/v1",
+        snapshot_checksum="sha256:cancelled-during-upload",
+        snapshot_size_bytes=64,
+        resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+        source_worker_id="worker-old",
+    )
+    with repository._session_factory.begin() as session:
+        session.add(
+            WorkflowHandoffCancellation(
+                task_id=preparing.task_id,
+                requested_at=NOW,
+                expires_at=FAR_FUTURE,
+                reason="stop raced checkpoint upload",
+            )
+        )
+
+    assert repository.finish_preparing(handoff_id=preparing.id, generation=preparing.generation) is None
+    cancelled = repository.get(preparing.id)
+    assert cancelled is not None
+    assert cancelled.state == WorkflowHandoffState.FAILED
+    assert cancelled.cancel_requested_at == NOW
+    assert cancelled.last_error == "stop raced checkpoint upload"
+    assert _get_workflow_run(repository).status == WorkflowExecutionStatus.STOPPED
+
+
+def test_finish_preparing_refuses_orphaned_run_after_upload(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    preparing = repository.create_preparing(
+        workflow_run_id=RUN_ID,
+        task_id="task-orphaned-during-upload",
+        snapshot_object_key="workflow-handoffs/run/orphaned-during-upload.bin",
+        snapshot_schema_version="graph-runtime-state/v1",
+        snapshot_checksum="sha256:orphaned-during-upload",
+        snapshot_size_bytes=64,
+        resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+        source_worker_id="worker-old",
+    )
+    with repository._session_factory.begin() as session:
+        session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == RUN_ID))
+
+    assert repository.finish_preparing(handoff_id=preparing.id, generation=preparing.generation) is None
+    persisted = repository.get(preparing.id)
+    assert persisted is not None
+    assert persisted.state == WorkflowHandoffState.PREPARING
+    with repository._session_factory() as session:
+        gc_record = session.scalar(
+            sa.select(WorkflowHandoffSnapshotGC).where(
+                WorkflowHandoffSnapshotGC.snapshot_object_key == preparing.snapshot_object_key
+            )
+        )
+        assert gc_record is not None
+        assert gc_record.upload_completed_at is not None
+
+
+def test_create_preparing_applies_new_tombstone_to_existing_active_intent(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    preparing = repository.create_preparing(
+        workflow_run_id=RUN_ID,
+        task_id="task-existing-upload",
+        snapshot_object_key="workflow-handoffs/run/existing-upload.bin",
+        snapshot_schema_version="graph-runtime-state/v1",
+        snapshot_checksum="sha256:existing-upload",
+        snapshot_size_bytes=64,
+        resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+        source_worker_id="worker-old",
+    )
+    with repository._session_factory.begin() as session:
+        session.add(
+            WorkflowHandoffCancellation(
+                task_id=preparing.task_id,
+                requested_at=NOW,
+                expires_at=FAR_FUTURE,
+                reason="stop raced retry",
+            )
+        )
+
+    replay = repository.create_preparing(
+        workflow_run_id=RUN_ID,
+        task_id=preparing.task_id,
+        snapshot_object_key=preparing.snapshot_object_key,
+        snapshot_schema_version=preparing.snapshot_schema_version,
+        snapshot_checksum=preparing.snapshot_checksum,
+        snapshot_size_bytes=preparing.snapshot_size_bytes,
+        resume_route=preparing.resume_route,
+        source_worker_id=preparing.source_worker_id,
+    )
+
+    assert replay.id == preparing.id
+    assert replay.state == WorkflowHandoffState.FAILED
+    assert replay.cancel_requested_at == NOW
+    assert replay.last_error == "stop raced retry"
+
+
 def test_prepared_is_not_due_or_claimable_until_activation_and_activation_is_idempotent(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
 ) -> None:
@@ -272,6 +470,85 @@ def test_prepared_is_not_due_or_claimable_until_activation_and_activation_is_ide
     assert activated.state == WorkflowHandoffState.READY
     assert repository.activate_latest_prepared_by_task_id(task_id="task-1", activated_at=NOW) is None
     assert repository.activate_latest_prepared_by_task_id(task_id="missing", activated_at=NOW) is None
+
+
+def test_public_scanner_and_lease_inputs_are_validated(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    with pytest.raises(ValueError, match="task_id must not be empty"):
+        repository.activate_latest_prepared_by_task_id(task_id="", activated_at=NOW)
+    with pytest.raises(ValueError, match="redispatch_interval must be non-negative"):
+        repository.list_due(
+            now=NOW,
+            redispatch_interval=timedelta(seconds=-1),
+            max_attempts=1,
+            limit=1,
+        )
+    with pytest.raises(ValueError, match="max_attempts must be positive"):
+        repository.list_due(now=NOW, redispatch_interval=timedelta(), max_attempts=0, limit=1)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.list_due(now=NOW, redispatch_interval=timedelta(), max_attempts=1, limit=0)
+    with pytest.raises(ValueError, match="lease_owner must not be empty"):
+        repository.claim(
+            handoff_id="missing",
+            generation=1,
+            lease_owner="",
+            lease_duration=timedelta(seconds=1),
+            max_attempts=1,
+            now=NOW,
+        )
+    with pytest.raises(ValueError, match="lease_duration must be positive"):
+        repository.claim(
+            handoff_id="missing",
+            generation=1,
+            lease_owner="worker",
+            lease_duration=timedelta(),
+            max_attempts=1,
+            now=NOW,
+        )
+    with pytest.raises(ValueError, match="lease_duration must be positive"):
+        repository.renew_lease(
+            handoff_id="missing",
+            generation=1,
+            lease_owner="worker",
+            lease_token="token",
+            lease_duration=timedelta(),
+            now=NOW,
+        )
+    with pytest.raises(ValueError, match="max_attempts must be positive"):
+        repository.record_failure(
+            handoff_id="missing",
+            generation=1,
+            lease_owner="worker",
+            lease_token="token",
+            error="failure",
+            retry_at=NOW,
+            max_attempts=0,
+            now=NOW,
+        )
+
+
+def test_public_cleanup_limits_are_validated(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    with pytest.raises(ValueError, match="max_attempts must be positive"):
+        repository.fail_exhausted(now=NOW, max_attempts=0, error="invalid")
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.fail_stale_prepared(now=NOW, stale_before=NOW, error="invalid", limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.fail_stale_ready(now=NOW, stale_before=NOW, error="invalid", limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.list_failed_pending_terminal_compensation(limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.list_pending_terminal_events(limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.list_snapshot_gc_candidates(now=NOW, limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.cleanup_expired_cancellations(now=NOW, limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.cleanup_terminal_handoffs(terminal_before=NOW, limit=0)
+    with pytest.raises(ValueError, match="limit must be positive"):
+        repository.cleanup_completed_snapshot_gc(deleted_before=NOW, limit=0)
 
 
 def test_create_and_activate_refuse_a_stopped_workflow_run(
@@ -351,6 +628,226 @@ def test_claim_reclaims_expired_lease_and_fences_stale_claim_token(
     assert resumed.state == WorkflowHandoffState.RESUMED
     assert resumed.lease_owner is None
     assert resumed.lease_token is None
+
+
+def test_missing_and_stale_claim_mutations_are_safe_noops(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    assert (
+        repository.claim(
+            handoff_id="missing",
+            generation=1,
+            lease_owner="worker-new",
+            lease_duration=timedelta(seconds=30),
+            max_attempts=3,
+            now=NOW,
+        )
+        is None
+    )
+    assert (
+        repository.record_failure(
+            handoff_id="missing",
+            generation=1,
+            lease_owner="worker-new",
+            lease_token="missing-token",
+            error="ignored",
+            retry_at=NOW,
+            max_attempts=3,
+            now=NOW,
+        )
+        is None
+    )
+    assert not repository.mark_resumed(
+        handoff_id="missing",
+        generation=1,
+        lease_owner="worker-new",
+        lease_token="missing-token",
+        resumed_at=NOW,
+    )
+    assert not repository.mark_failed(
+        handoff_id="missing",
+        generation=1,
+        error="ignored",
+        failed_at=NOW,
+    )
+
+    handoff = _create_ready(repository)
+    claim = repository.claim(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_duration=timedelta(seconds=30),
+        max_attempts=3,
+        now=NOW,
+    )
+    assert claim is not None
+    assert claim.lease_token is not None
+    assert not repository.mark_dispatched(
+        handoff_id=handoff.id,
+        generation=handoff.generation + 1,
+        dispatched_at=NOW,
+    )
+    assert not repository.renew_lease(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_token="stale-token",
+        lease_duration=timedelta(seconds=30),
+        now=NOW,
+    )
+    assert (
+        repository.record_failure(
+            handoff_id=handoff.id,
+            generation=handoff.generation,
+            lease_owner="worker-new",
+            lease_token="stale-token",
+            error="ignored",
+            retry_at=NOW,
+            max_attempts=3,
+            now=NOW,
+        )
+        is None
+    )
+    assert not repository.mark_failed(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_token="stale-token",
+        error="ignored",
+        failed_at=NOW,
+    )
+
+
+def test_claim_and_failure_are_fenced_by_attempts_and_parent_terminal_state(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        assert persisted is not None
+        persisted.attempts = 3
+
+    assert (
+        repository.claim(
+            handoff_id=handoff.id,
+            generation=handoff.generation,
+            lease_owner="worker-new",
+            lease_duration=timedelta(seconds=30),
+            max_attempts=3,
+            now=NOW,
+        )
+        is None
+    )
+
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        assert persisted is not None
+        persisted.attempts = 0
+    claim = repository.claim(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_duration=timedelta(seconds=30),
+        max_attempts=3,
+        now=NOW,
+    )
+    assert claim is not None
+    assert claim.lease_token is not None
+    with repository._session_factory.begin() as session:
+        workflow_run = session.get(WorkflowRun, RUN_ID)
+        assert workflow_run is not None
+        workflow_run.status = WorkflowExecutionStatus.SUCCEEDED
+        workflow_run.finished_at = NOW
+
+    assert not repository.mark_resumed(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_token=claim.lease_token,
+        resumed_at=NOW + timedelta(seconds=1),
+    )
+    failure = repository.record_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_token=claim.lease_token,
+        error="late worker failure",
+        retry_at=NOW + timedelta(seconds=30),
+        max_attempts=3,
+        now=NOW + timedelta(seconds=1),
+    )
+    assert failure is not None
+    assert failure.state == WorkflowHandoffState.FAILED
+    terminal_run = _get_workflow_run(repository)
+    assert terminal_run.status == WorkflowExecutionStatus.SUCCEEDED
+    assert terminal_run.finished_at == NOW
+    assert terminal_run.error is None
+
+
+def test_mark_failed_rejects_terminal_state_after_resume(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    _mark_resumed(repository, handoff)
+
+    assert not repository.mark_failed(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        error="late failure",
+        failed_at=NOW + timedelta(seconds=1),
+    )
+    assert repository.get(handoff.id).state == WorkflowHandoffState.RESUMED  # type: ignore[union-attr]
+
+
+def test_claim_failure_terminalizes_handoff_after_parent_is_deleted(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    claim = repository.claim(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_duration=timedelta(seconds=30),
+        max_attempts=3,
+        now=NOW,
+    )
+    assert claim is not None
+    assert claim.lease_token is not None
+    with repository._session_factory.begin() as session:
+        session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == RUN_ID))
+
+    failed = repository.record_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        lease_owner="worker-new",
+        lease_token=claim.lease_token,
+        error="parent was retained first",
+        retry_at=NOW + timedelta(seconds=30),
+        max_attempts=3,
+        now=NOW + timedelta(seconds=1),
+    )
+    assert failed is not None
+    assert failed.state == WorkflowHandoffState.FAILED
+    assert failed.failed_at == NOW + timedelta(seconds=1)
+
+
+def test_mark_failed_terminalizes_handoff_after_parent_is_deleted(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_prepared(repository)
+    with repository._session_factory.begin() as session:
+        session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == RUN_ID))
+
+    assert repository.mark_failed(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        error="parent was retained first",
+        failed_at=NOW,
+    )
+    failed = repository.get(handoff.id)
+    assert failed is not None
+    assert failed.state == WorkflowHandoffState.FAILED
+    assert failed.failed_at == NOW
 
 
 def test_mark_resumed_accumulates_handoff_duration_once_per_fenced_generation(
@@ -731,6 +1228,77 @@ def test_task_cancellation_rejects_partial_owner_scope(
         )
 
 
+def test_cancel_validates_identity_scope_and_expiration(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    with pytest.raises(ValueError, match="workflow_run_id must not be empty"):
+        repository.request_cancel(workflow_run_id="", requested_at=NOW)
+    assert repository.request_cancel(workflow_run_id=str(uuid4()), requested_at=NOW) == 0
+    with pytest.raises(ValueError, match="task_id must not be empty"):
+        repository.request_cancel_by_task_id(task_id="", requested_at=NOW)
+    with pytest.raises(ValueError, match="reason must not be empty"):
+        repository.request_cancel_by_task_id(task_id="task", requested_at=NOW, reason="")
+    with pytest.raises(ValueError, match="scope_created_by_role and scope_created_by must be provided together"):
+        repository.request_cancel_by_task_id(
+            task_id="task",
+            requested_at=NOW,
+            scope_created_by_role=CreatorUserRole.ACCOUNT,
+        )
+    with pytest.raises(ValueError, match="scope_created_by_role and scope_created_by must be provided together"):
+        repository.request_cancel_by_task_id(
+            task_id="task",
+            requested_at=NOW,
+            scope_created_by=str(uuid4()),
+        )
+    with pytest.raises(ValueError, match="creator scope requires tenant and app scope"):
+        repository.request_cancel_by_task_id(
+            task_id="task",
+            requested_at=NOW,
+            scope_created_by_role=CreatorUserRole.ACCOUNT,
+            scope_created_by=str(uuid4()),
+        )
+    with pytest.raises(ValueError, match="expires_at must be later than requested_at"):
+        repository.request_cancel_by_task_id(task_id="task", requested_at=NOW, expires_at=NOW)
+
+
+def test_duplicate_stop_tombstone_extends_expiration_without_duplication(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    first_expiration = FAR_FUTURE - timedelta(days=1)
+    extended_expiration = FAR_FUTURE
+    assert (
+        repository.request_cancel_by_task_id(
+            task_id="task-with-extended-stop",
+            requested_at=NOW,
+            reason="original stop",
+            expires_at=first_expiration,
+        )
+        == 0
+    )
+    assert (
+        repository.request_cancel_by_task_id(
+            task_id="task-with-extended-stop",
+            requested_at=NOW + timedelta(seconds=1),
+            reason="duplicate stop",
+            expires_at=extended_expiration,
+        )
+        == 0
+    )
+
+    with repository._session_factory() as session:
+        cancellations = list(
+            session.scalars(
+                sa.select(WorkflowHandoffCancellation).where(
+                    WorkflowHandoffCancellation.task_id == "task-with-extended-stop"
+                )
+            )
+        )
+    assert len(cancellations) == 1
+    assert cancellations[0].requested_at == NOW
+    assert cancellations[0].expires_at == extended_expiration
+    assert cancellations[0].reason == "original stop"
+
+
 def test_stop_tombstone_before_preparation_fences_upload_and_stops_owned_run(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
 ) -> None:
@@ -742,7 +1310,7 @@ def test_stop_tombstone_before_preparation_fences_upload_and_stops_owned_run(
             requested_at=NOW,
             scope_tenant_id=workflow_run.tenant_id,
             scope_app_id=workflow_run.app_id,
-            expires_at=NOW + timedelta(days=1),
+            expires_at=FAR_FUTURE,
         )
         == 0
     )
@@ -778,7 +1346,7 @@ def test_creator_scoped_tombstone_does_not_fence_another_users_future_handoff(
             scope_app_id=workflow_run.app_id,
             scope_created_by_role=workflow_run.created_by_role,
             scope_created_by=str(uuid4()),
-            expires_at=NOW + timedelta(days=1),
+            expires_at=FAR_FUTURE,
         )
         == 0
     )
@@ -1032,6 +1600,29 @@ def test_stale_prepared_failure_does_not_overwrite_a_concurrent_terminal_run(
     assert terminal_run.handoff_duration == 60 * 60 + 1
 
 
+def test_stale_prepared_scanner_terminalizes_orphaned_handoff(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_prepared(repository)
+    failed_at = handoff.created_at + timedelta(hours=1)
+    with repository._session_factory.begin() as session:
+        session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == RUN_ID))
+
+    assert (
+        repository.fail_stale_prepared(
+            now=failed_at,
+            stale_before=failed_at,
+            error="orphaned checkpoint timed out",
+            limit=10,
+        )
+        == 1
+    )
+    failed = repository.get(handoff.id)
+    assert failed is not None
+    assert failed.state == WorkflowHandoffState.FAILED
+    assert failed.last_error == "orphaned checkpoint timed out"
+
+
 def test_stale_never_claimed_ready_fails_closed_at_activation_deadline(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
 ) -> None:
@@ -1161,6 +1752,200 @@ def test_terminal_compensation_builds_stopped_workflow_event(
     assert repository.list_pending_terminal_events(limit=10) == []
 
 
+def test_failed_terminal_compensation_is_listed_fenced_and_idempotent(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_prepared(repository)
+    assert not repository.compensate_failed_terminal(
+        handoff_id="missing",
+        generation=1,
+        compensated_at=NOW,
+    )
+    assert not repository.compensate_failed_terminal(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        compensated_at=NOW,
+    )
+
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        workflow_run = session.get(WorkflowRun, RUN_ID)
+        assert persisted is not None
+        assert workflow_run is not None
+        persisted.state = WorkflowHandoffState.FAILED
+        persisted.failed_at = NOW
+        persisted.last_error = "stale handoff failure"
+        workflow_run.status = WorkflowExecutionStatus.SUCCEEDED
+        workflow_run.finished_at = NOW
+
+    pending_compensation = repository.list_failed_pending_terminal_compensation(limit=10)
+    assert [item.id for item in pending_compensation] == [handoff.id]
+    assert repository.compensate_failed_terminal(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        compensated_at=NOW + timedelta(seconds=1),
+    )
+    compensated = repository.get(handoff.id)
+    assert compensated is not None
+    assert compensated.terminal_compensated_at == NOW + timedelta(seconds=1)
+    assert compensated.terminal_event_published_at == NOW + timedelta(seconds=1)
+    assert compensated.terminal_last_error == "workflow run already completed; terminal event skipped"
+    assert repository.list_failed_pending_terminal_compensation(limit=10) == []
+    assert repository.list_pending_terminal_events(limit=10) == []
+    assert repository.compensate_failed_terminal(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        compensated_at=NOW + timedelta(seconds=2),
+    )
+
+
+@pytest.mark.parametrize(
+    "resume_route",
+    [
+        WorkflowHandoffResumeRoute.WORKFLOW,
+        WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW,
+        WorkflowHandoffResumeRoute.ADVANCED_CHAT,
+        WorkflowHandoffResumeRoute.RAG_PIPELINE,
+    ],
+)
+def test_terminal_reconciliation_completes_failed_scanner_race_for_every_route(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+    resume_route: WorkflowHandoffResumeRoute,
+) -> None:
+    handoff = _create_ready(repository, resume_route=resume_route)
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        assert persisted is not None
+        persisted.state = WorkflowHandoffState.FAILED
+        persisted.failed_at = NOW + timedelta(seconds=1)
+        persisted.last_error = "scanner won claim failure race"
+
+    event = repository.reconcile_resumed_terminal_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        scope=_terminal_scope(resume_route),
+        error="publisher observed failure",
+        failed_at=NOW + timedelta(seconds=2),
+    )
+
+    assert event is not None
+    assert event.status == WorkflowExecutionStatus.STOPPED
+    assert event.error == "scanner won claim failure race"
+    persisted = repository.get(handoff.id)
+    assert persisted is not None
+    assert persisted.terminal_compensated_at == NOW + timedelta(seconds=2)
+    assert persisted.terminal_event_published_at is None
+
+
+def test_terminal_reconciliation_accepts_failure_after_scanner_stopped_parent(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    assert repository.mark_failed(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        error="scanner stopped parent",
+        failed_at=NOW + timedelta(seconds=1),
+    )
+
+    event = repository.reconcile_resumed_terminal_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        scope=_terminal_scope(WorkflowHandoffResumeRoute.WORKFLOW),
+        error="publisher observed failure",
+        failed_at=NOW + timedelta(seconds=2),
+    )
+
+    assert event is not None
+    assert event.status == WorkflowExecutionStatus.STOPPED
+    assert event.error == "scanner stopped parent"
+
+
+def test_terminal_reconciliation_fences_identity_state_and_published_event(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    scope = _terminal_scope(WorkflowHandoffResumeRoute.WORKFLOW)
+
+    with pytest.raises(WorkflowHandoffTerminalOwnershipError, match="handoff ownership changed"):
+        repository.reconcile_resumed_terminal_failure(
+            handoff_id="missing",
+            generation=handoff.generation,
+            scope=scope,
+            error="stale worker",
+            failed_at=NOW,
+        )
+    with pytest.raises(WorkflowHandoffTerminalOwnershipError, match="no longer runtime-owned"):
+        repository.reconcile_resumed_terminal_failure(
+            handoff_id=handoff.id,
+            generation=handoff.generation,
+            scope=scope,
+            error="too early",
+            failed_at=NOW,
+        )
+
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        assert persisted is not None
+        persisted.state = WorkflowHandoffState.RESUMED
+        persisted.resumed_at = NOW
+        persisted.terminal_event_published_at = NOW
+    assert (
+        repository.reconcile_resumed_terminal_failure(
+            handoff_id=handoff.id,
+            generation=handoff.generation,
+            scope=scope,
+            error="duplicate publish failure",
+            failed_at=NOW + timedelta(seconds=1),
+        )
+        is None
+    )
+
+
+def test_terminal_outbox_records_processing_failure_until_publish_succeeds(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    _mark_resumed(repository, handoff)
+    event = repository.reconcile_resumed_terminal_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        scope=_terminal_scope(WorkflowHandoffResumeRoute.WORKFLOW),
+        error="runtime failed",
+        failed_at=NOW + timedelta(seconds=1),
+    )
+    assert event is not None
+
+    assert not repository.record_terminal_processing_failure(
+        handoff_id="missing",
+        generation=1,
+        error="ignored",
+    )
+    assert repository.record_terminal_processing_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        error="redis unavailable",
+    )
+    failed_publish = repository.get(handoff.id)
+    assert failed_publish is not None
+    assert failed_publish.terminal_attempts == 2
+    assert failed_publish.terminal_last_error == "redis unavailable"
+    assert repository.mark_terminal_event_published(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        published_at=NOW + timedelta(seconds=2),
+    )
+    published = repository.get(handoff.id)
+    assert published is not None
+    assert published.terminal_attempts == 3
+    assert published.terminal_last_error is None
+    assert not repository.record_terminal_processing_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        error="too late",
+    )
+
+
 def test_trigger_terminal_compensation_marks_log_failed_with_timing(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
 ) -> None:
@@ -1214,6 +1999,31 @@ def test_trigger_terminal_compensation_marks_log_failed_with_timing(
         assert trigger_log.finished_at == NOW
         assert trigger_log.elapsed_time == 60.0
         assert trigger_log.total_tokens == 11
+
+
+def test_rag_terminal_compensation_stops_running_parent_without_document(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_prepared(repository, resume_route=WorkflowHandoffResumeRoute.RAG_PIPELINE)
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        assert persisted is not None
+        persisted.state = WorkflowHandoffState.FAILED
+        persisted.failed_at = NOW
+        persisted.last_error = "RAG resume was exhausted"
+
+    assert repository.compensate_failed_terminal(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        compensated_at=NOW + timedelta(seconds=1),
+    )
+    workflow_run = _get_workflow_run(repository)
+    assert workflow_run.status == WorkflowExecutionStatus.STOPPED
+    assert workflow_run.error == "RAG resume was exhausted"
+    persisted = repository.get(handoff.id)
+    assert persisted is not None
+    assert persisted.terminal_compensated_at == NOW + timedelta(seconds=1)
+    assert persisted.rag_document_error_marked_at is None
 
 
 def test_advanced_chat_terminal_compensation_preserves_partial_answer(
@@ -1283,6 +2093,110 @@ def test_advanced_chat_terminal_compensation_preserves_partial_answer(
     events = repository.list_pending_terminal_events(limit=10)
     assert len(events) == 1
     assert events[0].message_id == message_id
+
+
+def test_advanced_chat_terminal_event_loads_local_upload_metadata(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    handoff = _create_prepared(repository, resume_route=WorkflowHandoffResumeRoute.ADVANCED_CHAT)
+    conversation_id = str(uuid4())
+    message_id = str(uuid4())
+    upload_file_id = str(uuid4())
+    message_file_id = str(uuid4())
+    creator_id = str(uuid4())
+    with repository._session_factory.begin() as session:
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        workflow_run = session.get(WorkflowRun, RUN_ID)
+        assert persisted is not None
+        assert workflow_run is not None
+        persisted.state = WorkflowHandoffState.FAILED
+        persisted.failed_at = NOW
+        persisted.last_error = "resume attempts exhausted"
+        workflow_run.status = WorkflowExecutionStatus.STOPPED
+        workflow_run.finished_at = NOW
+        workflow_run.error = "resume attempts exhausted"
+        session.execute(
+            CONVERSATION_TABLE.insert(),
+            {
+                "id": conversation_id,
+                "app_id": APP_ID,
+                "mode": AppMode.ADVANCED_CHAT,
+                "name": "conversation",
+                "inputs": {},
+                "status": "normal",
+                "from_source": ConversationFromSource.CONSOLE,
+                "dialogue_count": 1,
+            },
+        )
+        session.execute(
+            MESSAGE_TABLE.insert(),
+            {
+                "id": message_id,
+                "app_id": APP_ID,
+                "conversation_id": conversation_id,
+                "inputs": {},
+                "query": "summarize attachment",
+                "message": {},
+                "message_unit_price": 0,
+                "answer": "partial answer",
+                "answer_unit_price": 0,
+                "currency": "USD",
+                "status": MessageStatus.NORMAL,
+                "from_source": ConversationFromSource.CONSOLE,
+                "workflow_run_id": RUN_ID,
+                "app_mode": AppMode.ADVANCED_CHAT,
+            },
+        )
+        session.execute(
+            UPLOAD_FILE_TABLE.insert(),
+            {
+                "id": upload_file_id,
+                "tenant_id": TENANT_ID,
+                "storage_type": "local",
+                "key": "uploads/report.txt",
+                "name": "report.txt",
+                "size": 12,
+                "extension": "txt",
+                "mime_type": "text/plain",
+                "created_by_role": CreatorUserRole.ACCOUNT,
+                "created_by": creator_id,
+                "created_at": NOW,
+                "used": True,
+                "source_url": "",
+            },
+        )
+        session.execute(
+            MESSAGE_FILE_TABLE.insert(),
+            {
+                "id": message_file_id,
+                "message_id": message_id,
+                "type": FileType.DOCUMENT,
+                "transfer_method": FileTransferMethod.LOCAL_FILE,
+                "created_by_role": CreatorUserRole.ACCOUNT,
+                "created_by": creator_id,
+                "upload_file_id": upload_file_id,
+                "created_at": NOW,
+            },
+        )
+
+    observed_uploads: list[tuple[str, str]] = []
+
+    def prepare_file(message_file: MessageFile, upload_files_map: dict[str, UploadFile]) -> dict[str, str]:
+        observed_uploads.append((message_file.id, upload_files_map[upload_file_id].name))
+        return {"related_id": message_file.id, "filename": upload_files_map[upload_file_id].name}
+
+    monkeypatch.setattr(handoff_repository_module, "prepare_file_dict", prepare_file)
+    assert repository.compensate_failed_terminal(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        compensated_at=NOW,
+    )
+    events = repository.list_pending_terminal_events(limit=10)
+
+    assert len(events) == 1
+    assert observed_uploads == [(message_file_id, "report.txt")]
+    assert events[0].message_files == ({"related_id": message_file_id, "filename": "report.txt"},)
 
 
 def test_cancelled_pre_ack_advanced_chat_compensation_keeps_message_normal(
@@ -1656,6 +2570,99 @@ def test_resumed_rag_failure_atomically_marks_owned_document_error(
         assert persisted.rag_document_error_marked_at == NOW + timedelta(seconds=10)
 
 
+def test_resumed_rag_failure_does_not_overwrite_completed_document(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    dataset_id = str(uuid4())
+    document_id = str(uuid4())
+    metadata = RagPipelineHandoffGroupMetadata(
+        source_batch_id="source-batch-completed",
+        tenant_id=TENANT_ID,
+        queue_kind=RagPipelineQueueKind.REGULAR,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        tenant_isolated=True,
+    )
+    handoff = _create_ready(
+        repository,
+        resume_route=WorkflowHandoffResumeRoute.RAG_PIPELINE,
+        rag_group_metadata=metadata,
+    )
+    _mark_resumed(repository, handoff)
+    with repository._session_factory.begin() as session:
+        session.execute(
+            DOCUMENT_TABLE.insert(),
+            {
+                "id": document_id,
+                "tenant_id": TENANT_ID,
+                "dataset_id": dataset_id,
+                "position": 1,
+                "data_source_type": "upload_file",
+                "data_source_info": "{}",
+                "batch": "batch",
+                "name": "completed.txt",
+                "created_from": "rag-pipeline",
+                "created_by": str(uuid4()),
+                "doc_form": "text_model",
+                "indexing_status": IndexingStatus.COMPLETED,
+            },
+        )
+
+    event = repository.reconcile_resumed_terminal_failure(
+        handoff_id=handoff.id,
+        generation=handoff.generation,
+        scope=_terminal_scope(WorkflowHandoffResumeRoute.RAG_PIPELINE),
+        error="late RAG publisher failure",
+        failed_at=NOW + timedelta(seconds=10),
+    )
+
+    assert event is not None
+    with repository._session_factory() as session:
+        document = session.get(Document, document_id)
+        persisted = session.get(WorkflowRunHandoff, handoff.id)
+        assert document is not None
+        assert persisted is not None
+        assert document.indexing_status == IndexingStatus.COMPLETED
+        assert document.error is None
+        assert document.stopped_at is None
+        assert persisted.rag_document_error_marked_at == NOW + timedelta(seconds=10)
+
+
+def test_resumed_rag_failure_rolls_back_when_document_ownership_is_incomplete(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    metadata = RagPipelineHandoffGroupMetadata(
+        source_batch_id="source-batch-wrong-owner",
+        tenant_id=str(uuid4()),
+        queue_kind=RagPipelineQueueKind.REGULAR,
+        dataset_id=str(uuid4()),
+        document_id=str(uuid4()),
+        tenant_isolated=True,
+    )
+    handoff = _create_ready(
+        repository,
+        resume_route=WorkflowHandoffResumeRoute.RAG_PIPELINE,
+        rag_group_metadata=metadata,
+    )
+    _mark_resumed(repository, handoff)
+
+    with pytest.raises(WorkflowHandoffTerminalOwnershipError, match="metadata is incomplete"):
+        repository.reconcile_resumed_terminal_failure(
+            handoff_id=handoff.id,
+            generation=handoff.generation,
+            scope=_terminal_scope(WorkflowHandoffResumeRoute.RAG_PIPELINE),
+            error="must roll back",
+            failed_at=NOW + timedelta(seconds=10),
+        )
+
+    persisted = repository.get(handoff.id)
+    assert persisted is not None
+    assert persisted.state == WorkflowHandoffState.RESUMED
+    assert persisted.failed_at is None
+    assert persisted.terminal_compensated_at is None
+    assert _get_workflow_run(repository).status == WorkflowExecutionStatus.RUNNING
+
+
 def test_resumed_terminal_publish_failure_preserves_real_completed_status_as_outbox(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
 ) -> None:
@@ -1775,6 +2782,104 @@ def test_snapshot_gc_is_blocked_by_any_active_shared_reference(
     assert callback_calls == []
 
 
+def test_snapshot_gc_failure_is_retried_and_fenced_after_delete(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    _mark_resumed(repository, handoff)
+    retry_at = NOW + timedelta(seconds=30)
+
+    assert (
+        repository.delete_snapshot_if_unreferenced(
+            snapshot_object_key="workflow-handoffs/missing.bin",
+            deleted_at=NOW,
+            delete_object=lambda _key: True,
+        ).value
+        == "blocked"
+    )
+    assert repository.record_snapshot_gc_failure(
+        snapshot_object_key=handoff.snapshot_object_key,
+        error="object store unavailable",
+        retry_at=retry_at,
+    )
+    assert repository.list_snapshot_gc_candidates(now=NOW, limit=10) == []
+    assert [
+        record.snapshot_object_key for record in repository.list_snapshot_gc_candidates(now=retry_at, limit=10)
+    ] == [handoff.snapshot_object_key]
+    with repository._session_factory() as session:
+        gc_record = session.scalar(
+            sa.select(WorkflowHandoffSnapshotGC).where(
+                WorkflowHandoffSnapshotGC.snapshot_object_key == handoff.snapshot_object_key
+            )
+        )
+        assert gc_record is not None
+        assert gc_record.attempts == 1
+        assert gc_record.next_retry_at == retry_at
+        assert gc_record.last_error == "object store unavailable"
+
+    assert (
+        repository.delete_snapshot_if_unreferenced(
+            snapshot_object_key=handoff.snapshot_object_key,
+            deleted_at=retry_at,
+            delete_object=lambda _key: True,
+        ).value
+        == "deleted"
+    )
+    assert not repository.record_snapshot_gc_failure(
+        snapshot_object_key=handoff.snapshot_object_key,
+        error="too late",
+        retry_at=retry_at + timedelta(seconds=30),
+    )
+
+
+def test_reused_snapshot_key_rearms_completed_gc_outbox(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    object_key = "workflow-handoffs/reused-content-address.bin"
+    with repository._session_factory.begin() as session:
+        session.add(
+            WorkflowHandoffSnapshotGC(
+                snapshot_object_key=object_key,
+                upload_completed_at=NOW - timedelta(days=2),
+                deleted_at=NOW - timedelta(days=1),
+                attempts=3,
+                next_retry_at=NOW,
+                last_error="old deletion retry",
+            )
+        )
+
+    preparing = repository.create_preparing(
+        workflow_run_id=RUN_ID,
+        task_id="task-reusing-content-address",
+        snapshot_object_key=object_key,
+        snapshot_schema_version="graph-runtime-state/v1",
+        snapshot_checksum="sha256:reused-content-address",
+        snapshot_size_bytes=128,
+        resume_route=WorkflowHandoffResumeRoute.WORKFLOW,
+        source_worker_id="worker-old",
+    )
+    with repository._session_factory() as session:
+        rearmed = session.scalar(
+            sa.select(WorkflowHandoffSnapshotGC).where(WorkflowHandoffSnapshotGC.snapshot_object_key == object_key)
+        )
+        assert rearmed is not None
+        assert rearmed.deleted_at is None
+        assert rearmed.upload_completed_at is None
+        assert rearmed.attempts == 0
+        assert rearmed.next_retry_at is None
+        assert rearmed.last_error is None
+
+    prepared = repository.finish_preparing(handoff_id=preparing.id, generation=preparing.generation)
+    assert prepared is not None
+    with repository._session_factory() as session:
+        completed = session.scalar(
+            sa.select(WorkflowHandoffSnapshotGC).where(WorkflowHandoffSnapshotGC.snapshot_object_key == object_key)
+        )
+        assert completed is not None
+        assert completed.upload_completed_at is not None
+        assert completed.deleted_at is None
+
+
 def test_never_uploaded_preparing_snapshot_is_gc_missing_after_terminalization(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
 ) -> None:
@@ -1879,6 +2984,59 @@ def test_cleanup_expired_cancellation_tombstones_is_bounded(
     with repository._session_factory() as session:
         remaining = list(session.scalars(sa.select(WorkflowHandoffCancellation)))
         assert [record.task_id for record in remaining] == ["task-live"]
+
+
+def test_terminal_retention_safety_rechecks_every_terminal_and_rag_fence(
+    repository: SQLAlchemyWorkflowRunHandoffRepository,
+) -> None:
+    handoff = _create_ready(repository)
+    retention_before = NOW
+
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+
+    handoff.state = WorkflowHandoffState.RESUMED
+    handoff.resumed_at = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.resumed_at = retention_before + timedelta(microseconds=1)
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.resumed_at = retention_before
+    handoff.terminal_compensated_at = retention_before
+    handoff.terminal_event_published_at = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.terminal_event_published_at = retention_before
+    assert repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+
+    handoff.state = WorkflowHandoffState.FAILED
+    handoff.failed_at = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.failed_at = retention_before + timedelta(microseconds=1)
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.failed_at = retention_before
+    handoff.terminal_compensated_at = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.terminal_compensated_at = retention_before
+    handoff.terminal_event_published_at = retention_before
+    handoff.rag_document_id = "document-id"
+    handoff.rag_document_error_marked_at = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.rag_document_error_marked_at = retention_before
+    assert repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+
+    handoff.state = WorkflowHandoffState.RESUMED
+    handoff.resumed_at = retention_before
+    handoff.resume_route = WorkflowHandoffResumeRoute.RAG_PIPELINE
+    handoff.rag_source_batch_id = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.rag_source_batch_id = "source-batch"
+    handoff.rag_tenant_id = None
+    assert not repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
+    handoff.rag_tenant_id = TENANT_ID
+    handoff.rag_queue_kind = RagPipelineQueueKind.REGULAR
+    handoff.rag_dataset_id = str(uuid4())
+    handoff.rag_tenant_isolated = True
+    handoff.rag_group_sealed_at = retention_before
+    handoff.rag_tenant_slot_released_at = retention_before
+    assert repository._terminal_handoff_is_retention_safe(handoff, terminal_before=retention_before)
 
 
 def test_cleanup_terminal_handoffs_requires_age_nonrunning_parent_and_deleted_snapshot(

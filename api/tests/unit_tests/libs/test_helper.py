@@ -1,3 +1,4 @@
+import struct
 from datetime import datetime
 
 import pytest
@@ -5,11 +6,13 @@ import pytest
 from core.app.apps.streaming_utils import WorkflowRunIdentifiedStream
 from libs.helper import (
     OptionalTimestampField,
+    _is_workflow_maintenance_sse_chunk,
     alphanumeric,
     compact_generate_response,
     email,
     escape_like_pattern,
     extract_tenant_id,
+    length_prefixed_response,
 )
 from models.account import Account
 from models.model import EndUser
@@ -251,3 +254,70 @@ def test_compact_generate_response_maps_blocking_handoff_to_accepted():
     assert response.status_code == 202
     assert response.headers["Retry-After"] == "1"
     assert response.headers["X-Workflow-Run-ID"] == "run-1"
+
+
+@pytest.mark.parametrize(
+    ("chunk", "expected"),
+    [
+        (object(), False),
+        ('data: {"event":"ping"}\n\n', False),
+        (
+            "comment: workflow_maintenance_paused\n"
+            "data: not-json\n"
+            'data: {"event":"other","message":"workflow_maintenance_paused"}\n',
+            False,
+        ),
+        ('data: {"event":"workflow_maintenance_paused"}\n\n', True),
+    ],
+)
+def test_is_workflow_maintenance_sse_chunk_requires_matching_data_event(chunk: object, expected: bool) -> None:
+    assert _is_workflow_maintenance_sse_chunk(chunk) is expected
+
+
+def test_compact_generate_response_filters_maintenance_segment_and_closes_source(app):
+    source_closed = False
+
+    def source():
+        nonlocal source_closed
+        try:
+            yield 'data: {"event":"workflow_maintenance_paused"}\n\n'
+            yield 'data: {"event":"workflow_finished"}\n\n'
+        finally:
+            source_closed = True
+
+    with app.test_request_context("/run"):
+        response = compact_generate_response(source())
+        assert response.get_data(as_text=True) == 'data: {"event":"workflow_finished"}\n\n'
+        response.close()
+
+    assert source_closed is True
+
+
+def test_length_prefixed_stream_frames_text_and_bytes_and_closes_source(app):
+    class ClosingStream:
+        def __init__(self) -> None:
+            self._chunks = iter(["text", b"bytes"])
+            self.closed = False
+
+        def __iter__(self) -> "ClosingStream":
+            return self
+
+        def __next__(self) -> str | bytes:
+            return next(self._chunks)
+
+        def close(self) -> None:
+            self.closed = True
+
+    stream = ClosingStream()
+    with app.test_request_context("/run"):
+        response = length_prefixed_response(7, stream)
+        payload = response.get_data()
+        response.close()
+
+    first_header = struct.unpack("<BBHI", payload[:8])
+    assert first_header == (7, 0, 10, 4)
+    assert payload[14:18] == b"text"
+    second_header = struct.unpack("<BBHI", payload[18:26])
+    assert second_header == (7, 0, 10, 5)
+    assert payload[32:] == b"bytes"
+    assert stream.closed is True

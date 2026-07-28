@@ -1,7 +1,7 @@
 from collections.abc import Callable, Generator
 from types import SimpleNamespace, TracebackType
 from typing import Self, cast
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, Mock, call
 
 import pytest
 from sqlalchemy.orm import Session
@@ -11,10 +11,11 @@ from core.app.entities.app_invoke_entities import (
     RagPipelineGenerateEntity,
     WorkflowAppGenerateEntity,
 )
-from models.enums import WorkflowRunTriggeredFrom
-from models.model import App, AppMode, Conversation, Message
+from models.account import Account
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, Conversation, EndUser, Message, Tenant
 from models.snippet import CustomizedSnippet
-from models.workflow import Workflow, WorkflowKind, WorkflowRun
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services import workflow_handoff_resume_routes as routes
 from services.workflow_handoff_resume_coordinator import (
@@ -32,6 +33,7 @@ class _Session:
     def __init__(self, values: dict[type, object] | None = None, *, scalar: object | None = None) -> None:
         self._values = values or {}
         self._scalar = scalar
+        self.get_calls: list[tuple[type[object], object]] = []
 
     def __enter__(self) -> Self:
         return self
@@ -45,7 +47,7 @@ class _Session:
         del exc_type, exc_value, traceback
 
     def get(self, model: type[object], object_id: object) -> object | None:
-        del object_id
+        self.get_calls.append((model, object_id))
         return self._values.get(model)
 
     def scalar(self, statement: object) -> object | None:
@@ -213,6 +215,23 @@ def test_resumed_terminal_failure_handler_passes_full_owner_scope(monkeypatch: p
         failed_at=failed_at,
         message_answer_delta=" delta",
         message_answer_replacement="partial",
+    )
+
+
+def test_acknowledgement_layer_uses_claimed_handoff_and_lease_repository(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = Mock()
+    layer_factory = Mock(return_value=layer)
+    monkeypatch.setattr(routes, "WorkflowHandoffResumeAcknowledgementLayer", layer_factory)
+    request = _request(WorkflowHandoffResumeRoute.WORKFLOW)
+
+    result = routes._acknowledgement_layer(request)
+
+    assert result is layer
+    layer_factory.assert_called_once_with(
+        repository=request.lease.repository,
+        claimed_handoff=request.handoff,
     )
 
 
@@ -718,3 +737,303 @@ def test_rag_resume_rejects_cross_tenant_document(monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(PermanentWorkflowHandoffResumeError, match="document identity"):
         routes._resume_rag_pipeline_handoff(_request(WorkflowHandoffResumeRoute.RAG_PIPELINE))
+
+
+def test_load_context_wraps_invalid_serialized_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(routes.WorkflowResumptionContext, "loads", Mock(side_effect=ValueError("invalid json")))
+
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match="Invalid workflow handoff resumption context"):
+        routes._load_context(_request(WorkflowHandoffResumeRoute.WORKFLOW))
+
+
+@pytest.mark.parametrize(
+    ("values", "error"),
+    [
+        ({}, "Workflow run no longer exists"),
+        (
+            {
+                WorkflowRun: SimpleNamespace(
+                    status=routes.WorkflowExecutionStatus.STOPPED,
+                    workflow_id="workflow-1",
+                )
+            },
+            "Workflow run is no longer resumable",
+        ),
+        (
+            {
+                WorkflowRun: SimpleNamespace(
+                    status=routes.WorkflowExecutionStatus.RUNNING,
+                    workflow_id="workflow-1",
+                )
+            },
+            "Workflow definition no longer exists",
+        ),
+    ],
+)
+def test_load_run_dependencies_rejects_missing_or_terminal_records(
+    values: dict[type, object],
+    error: str,
+) -> None:
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match=error):
+        routes._load_run_dependencies(
+            cast(Session, _Session(values)),
+            _request(WorkflowHandoffResumeRoute.WORKFLOW),
+        )
+
+
+def test_load_run_dependencies_returns_verified_run_workflow_and_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = SimpleNamespace(
+        status=routes.WorkflowExecutionStatus.RUNNING,
+        workflow_id="workflow-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+    )
+    workflow = SimpleNamespace(id="workflow-1", tenant_id="tenant-1", app_id="app-1")
+    user = Mock()
+    monkeypatch.setattr(routes, "_resolve_user", Mock(return_value=user))
+
+    result = routes._load_run_dependencies(
+        cast(Session, _Session({WorkflowRun: workflow_run, Workflow: workflow})),
+        _request(WorkflowHandoffResumeRoute.WORKFLOW),
+    )
+
+    assert result == (workflow_run, workflow, user)
+
+
+def test_resolve_user_rejects_missing_tenant() -> None:
+    workflow_run = _model(
+        WorkflowRun,
+        tenant_id="tenant-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+    )
+
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match="tenant no longer exists"):
+        routes._resolve_user(cast(Session, _Session()), workflow_run)
+
+
+@pytest.mark.parametrize(
+    ("role", "error"),
+    [
+        (CreatorUserRole.ACCOUNT, "account no longer exists"),
+        (CreatorUserRole.END_USER, "end user no longer exists"),
+    ],
+)
+def test_resolve_user_rejects_missing_creator(role: CreatorUserRole, error: str) -> None:
+    workflow_run = _model(
+        WorkflowRun,
+        tenant_id="tenant-1",
+        created_by_role=role,
+        created_by="user-1",
+    )
+    tenant = _model(Tenant, id="tenant-1")
+
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match=error):
+        routes._resolve_user(cast(Session, _Session({Tenant: tenant})), workflow_run)
+
+
+def test_resolve_user_sets_account_tenant_context() -> None:
+    tenant = _model(Tenant, id="tenant-1")
+    set_current_tenant = Mock()
+    account = _model(Account, id="user-1", set_current_tenant_with_session=set_current_tenant)
+    session = _Session({Tenant: tenant, Account: account})
+    workflow_run = _model(
+        WorkflowRun,
+        tenant_id="tenant-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+    )
+
+    result = routes._resolve_user(cast(Session, session), workflow_run)
+
+    assert result is account
+    assert session.get_calls == [(Tenant, "tenant-1"), (Account, "user-1")]
+    set_current_tenant.assert_called_once_with(tenant, session=session)
+
+
+def test_resolve_user_returns_end_user() -> None:
+    tenant = _model(Tenant, id="tenant-1")
+    end_user = _model(EndUser, id="user-1")
+    workflow_run = _model(
+        WorkflowRun,
+        tenant_id="tenant-1",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="user-1",
+    )
+
+    session = _Session({Tenant: tenant, EndUser: end_user})
+    result = routes._resolve_user(cast(Session, session), workflow_run)
+
+    assert result is end_user
+    assert session.get_calls == [(Tenant, "tenant-1"), (EndUser, "user-1")]
+
+
+@pytest.mark.parametrize(
+    ("single_step", "triggered_from", "node_triggered_from"),
+    [
+        (True, WorkflowRunTriggeredFrom.DEBUGGING, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP),
+        (False, WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN, WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN),
+        (False, WorkflowRunTriggeredFrom.DEBUGGING, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+    ],
+)
+def test_build_repositories_preserves_run_and_node_trigger_sources(
+    monkeypatch: pytest.MonkeyPatch,
+    single_step: bool,
+    triggered_from: WorkflowRunTriggeredFrom,
+    node_triggered_from: WorkflowNodeExecutionTriggeredFrom,
+) -> None:
+    run_repository = Mock()
+    node_repository = Mock()
+    run_repository_factory = Mock(return_value=run_repository)
+    node_repository_factory = Mock(return_value=node_repository)
+    monkeypatch.setattr(
+        routes.DifyCoreRepositoryFactory,
+        "create_workflow_execution_repository",
+        run_repository_factory,
+    )
+    monkeypatch.setattr(
+        routes.DifyCoreRepositoryFactory,
+        "create_workflow_node_execution_repository",
+        node_repository_factory,
+    )
+    entity = _entity(WorkflowAppGenerateEntity, route=WorkflowHandoffResumeRoute.WORKFLOW)
+    entity.single_iteration_run = (
+        WorkflowAppGenerateEntity.SingleIterationRunEntity(node_id="iteration-1", inputs={}) if single_step else None
+    )
+    entity.single_loop_run = None
+    workflow_run = _model(
+        WorkflowRun,
+        triggered_from=triggered_from,
+        tenant_id="tenant-1",
+        app_id="app-1",
+    )
+    user = Mock()
+    session_factory = Mock()
+
+    result = routes._build_repositories(
+        session_factory=session_factory,
+        workflow_run=workflow_run,
+        user=user,
+        generate_entity=entity,
+    )
+
+    assert result == (run_repository, node_repository)
+    run_repository_factory.assert_called_once_with(
+        session_factory=session_factory,
+        tenant_id="tenant-1",
+        user=user,
+        app_id="app-1",
+        triggered_from=triggered_from,
+    )
+    node_repository_factory.assert_called_once_with(
+        session_factory=session_factory,
+        tenant_id="tenant-1",
+        user=user,
+        app_id="app-1",
+        triggered_from=node_triggered_from,
+    )
+
+
+def test_trigger_layers_returns_empty_when_run_has_no_trigger_log() -> None:
+    workflow_run = _model(
+        WorkflowRun,
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+    )
+
+    assert routes._trigger_layers(cast(Session, _Session()), workflow_run) == []
+
+
+def test_workflow_route_wrappers_select_trigger_requirement(monkeypatch: pytest.MonkeyPatch) -> None:
+    resume_route = Mock()
+    monkeypatch.setattr(routes, "_resume_workflow_route", resume_route)
+    workflow_request = _request(WorkflowHandoffResumeRoute.WORKFLOW)
+    triggered_request = _request(WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW)
+
+    routes._resume_workflow_handoff(workflow_request)
+    routes._resume_triggered_workflow_handoff(triggered_request)
+
+    assert resume_route.call_args_list == [
+        call(workflow_request, require_trigger_log=False),
+        call(triggered_request, require_trigger_log=True),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("resume", "entity_type", "route", "error"),
+    [
+        (
+            routes._resume_snippet_handoff,
+            AdvancedChatAppGenerateEntity,
+            WorkflowHandoffResumeRoute.SNIPPET,
+            "Snippet handoff contains an incompatible generate entity",
+        ),
+        (
+            lambda request: routes._resume_workflow_route(request, require_trigger_log=False),
+            AdvancedChatAppGenerateEntity,
+            WorkflowHandoffResumeRoute.WORKFLOW,
+            "Workflow handoff contains an incompatible generate entity",
+        ),
+    ],
+)
+def test_workflow_and_snippet_routes_reject_incompatible_entities(
+    monkeypatch: pytest.MonkeyPatch,
+    resume: Callable[[WorkflowHandoffResumeRequest], None],
+    entity_type: type[AdvancedChatAppGenerateEntity],
+    route: WorkflowHandoffResumeRoute,
+    error: str,
+) -> None:
+    entity = _entity(entity_type, route=route)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (Mock(), entity, Mock()))
+
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match=error):
+        resume(_request(route))
+
+
+def test_workflow_resume_rejects_missing_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    entity = _entity(WorkflowAppGenerateEntity, route=WorkflowHandoffResumeRoute.WORKFLOW)
+    workflow_run = SimpleNamespace(
+        id="run-1",
+        app_id="app-1",
+        tenant_id="tenant-1",
+        workflow_id="workflow-1",
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+    )
+    workflow = SimpleNamespace(id="workflow-1", created_by="owner-1")
+    session = _Session()
+    monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (Mock(), entity, Mock()))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, Mock()))
+    monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
+
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match="Workflow app no longer exists"):
+        routes._resume_workflow_route(_request(WorkflowHandoffResumeRoute.WORKFLOW), require_trigger_log=False)
+
+
+def test_triggered_workflow_resume_requires_trigger_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    entity = _entity(WorkflowAppGenerateEntity, route=WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW)
+    workflow_run = SimpleNamespace(
+        id="run-1",
+        app_id="app-1",
+        tenant_id="tenant-1",
+        workflow_id="workflow-1",
+        triggered_from=WorkflowRunTriggeredFrom.WEBHOOK,
+    )
+    workflow = SimpleNamespace(id="workflow-1", created_by="owner-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    session = _Session({App: app})
+    monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (Mock(), entity, Mock()))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, Mock()))
+    monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
+    monkeypatch.setattr(routes, "_trigger_layers", Mock(return_value=[]))
+
+    with pytest.raises(PermanentWorkflowHandoffResumeError, match="has no trigger log"):
+        routes._resume_workflow_route(
+            _request(WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW),
+            require_trigger_log=True,
+        )

@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from threading import Event
 from unittest.mock import Mock
 
+import pytest
+
 from models.workflow_handoff import (
     WorkflowHandoffResumeRoute,
     WorkflowHandoffState,
@@ -290,3 +292,254 @@ def test_default_heartbeat_renews_until_ack_or_lease_loss() -> None:
         lease_duration=timedelta(seconds=120),
         now=datetime(2026, 7, 28, 12, 0, 1),
     )
+
+
+@pytest.mark.parametrize(
+    ("lease_duration", "retry_delay", "max_attempts", "error"),
+    [
+        (timedelta(0), timedelta(seconds=1), 1, "lease_duration must be positive"),
+        (timedelta(seconds=1), timedelta(seconds=-1), 1, "retry_delay must be non-negative"),
+        (timedelta(seconds=1), timedelta(seconds=1), 0, "max_attempts must be positive"),
+    ],
+)
+def test_coordinator_rejects_invalid_retry_and_lease_settings(
+    lease_duration: timedelta,
+    retry_delay: timedelta,
+    max_attempts: int,
+    error: str,
+) -> None:
+    with pytest.raises(ValueError, match=error):
+        WorkflowHandoffResumeCoordinator(
+            repository=Mock(),
+            handoff_service=Mock(),
+            lease_duration=lease_duration,
+            retry_delay=retry_delay,
+            max_attempts=max_attempts,
+        )
+
+
+def test_heartbeat_rejects_non_positive_interval() -> None:
+    lease = WorkflowHandoffLease(
+        repository=Mock(),
+        handoff_id="handoff-1",
+        generation=1,
+        lease_owner="worker-a",
+        lease_token="lease-token",
+        lease_duration=timedelta(seconds=120),
+    )
+
+    with pytest.raises(ValueError, match="heartbeat interval must be positive"):
+        _WorkflowHandoffLeaseHeartbeat(
+            lease=lease,
+            clock=lambda: datetime(2026, 7, 28, 12, 0, 1),
+            interval=timedelta(0),
+        )
+
+
+def test_heartbeat_survives_transient_renewal_failure() -> None:
+    repository = Mock()
+    second_renewal = Event()
+    renewal_count = 0
+
+    def renew_lease(**_kwargs: object) -> bool:
+        nonlocal renewal_count
+        renewal_count += 1
+        if renewal_count == 1:
+            raise RuntimeError("database temporarily unavailable")
+        second_renewal.set()
+        return False
+
+    repository.renew_lease.side_effect = renew_lease
+    heartbeat = _WorkflowHandoffLeaseHeartbeat(
+        lease=WorkflowHandoffLease(
+            repository=repository,
+            handoff_id="handoff-1",
+            generation=1,
+            lease_owner="worker-a",
+            lease_token="lease-token",
+            lease_duration=timedelta(seconds=120),
+        ),
+        clock=lambda: datetime(2026, 7, 28, 12, 0, 1),
+        interval=timedelta(milliseconds=1),
+    )
+
+    with heartbeat:
+        assert second_renewal.wait(timeout=1)
+
+    assert repository.renew_lease.call_count == 2
+
+
+def test_resume_stops_before_dispatch_when_initial_lease_renewal_is_lost() -> None:
+    repository = Mock()
+    service = Mock()
+    claimed = _handoff()
+    repository.claim.return_value = claimed
+    repository.renew_lease.return_value = False
+    service.load_and_verify_state.return_value = b"state"
+    dispatcher = Mock()
+
+    result = _coordinator(repository, service).resume(
+        handoff_id=claimed.id,
+        generation=1,
+        lease_owner="worker-a",
+        now=datetime(2026, 7, 28, 12, 0, 0),
+        dispatcher=dispatcher,
+    )
+
+    assert result.outcome == WorkflowHandoffResumeOutcome.LEASE_LOST
+    assert result.error == "workflow handoff lease was lost before dispatch"
+    dispatcher.dispatch.assert_not_called()
+
+
+def test_post_ack_runtime_failure_reports_resumed_without_retry() -> None:
+    repository = Mock()
+    service = Mock()
+    claimed = _handoff()
+    repository.claim.return_value = claimed
+    repository.renew_lease.return_value = True
+    repository.get.return_value = _handoff(state=WorkflowHandoffState.RESUMED)
+    service.load_and_verify_state.return_value = b"state"
+    dispatcher = Mock()
+    dispatcher.dispatch.side_effect = RuntimeError("stream failed after acknowledgement")
+
+    result = _coordinator(repository, service).resume(
+        handoff_id=claimed.id,
+        generation=1,
+        lease_owner="worker-a",
+        now=datetime(2026, 7, 28, 12, 0, 0),
+        dispatcher=dispatcher,
+    )
+
+    assert result.outcome == WorkflowHandoffResumeOutcome.RESUMED
+    assert result.error == "stream failed after acknowledgement"
+    repository.record_failure.assert_not_called()
+
+
+def test_pre_ack_runtime_failure_schedules_retry_when_claim_still_exists() -> None:
+    repository = Mock()
+    service = Mock()
+    claimed = _handoff()
+    repository.claim.return_value = claimed
+    repository.renew_lease.return_value = True
+    repository.get.return_value = None
+    repository.record_failure.return_value = _handoff(state=WorkflowHandoffState.READY)
+    service.load_and_verify_state.return_value = b"state"
+    dispatcher = Mock()
+    dispatcher.dispatch.side_effect = RuntimeError("plugin startup failed")
+
+    result = _coordinator(repository, service).resume(
+        handoff_id=claimed.id,
+        generation=1,
+        lease_owner="worker-a",
+        now=datetime(2026, 7, 28, 12, 0, 0),
+        dispatcher=dispatcher,
+    )
+
+    assert result.outcome == WorkflowHandoffResumeOutcome.RETRY_SCHEDULED
+    assert result.error == "plugin startup failed"
+
+
+@pytest.mark.parametrize(
+    ("current", "expected", "error"),
+    [
+        (None, WorkflowHandoffResumeOutcome.LEASE_LOST, "workflow handoff disappeared after dispatch"),
+        (_handoff(state=WorkflowHandoffState.FAILED), WorkflowHandoffResumeOutcome.FAILED, None),
+    ],
+)
+def test_dispatch_result_reflects_missing_or_failed_durable_state(
+    current: WorkflowRunHandoff | None,
+    expected: WorkflowHandoffResumeOutcome,
+    error: str | None,
+) -> None:
+    repository = Mock()
+    service = Mock()
+    claimed = _handoff()
+    repository.claim.return_value = claimed
+    repository.renew_lease.return_value = True
+    repository.get.return_value = current
+    service.load_and_verify_state.return_value = b"state"
+
+    result = _coordinator(repository, service).resume(
+        handoff_id=claimed.id,
+        generation=1,
+        lease_owner="worker-a",
+        now=datetime(2026, 7, 28, 12, 0, 0),
+        dispatcher=Mock(),
+    )
+
+    assert result.outcome == expected
+    assert result.error == error
+
+
+def test_claim_with_incomplete_lease_identity_is_rejected() -> None:
+    repository = Mock()
+    service = Mock()
+    claimed = _handoff()
+    claimed.lease_token = None
+    repository.claim.return_value = claimed
+
+    with pytest.raises(RuntimeError, match="incomplete lease identity"):
+        _coordinator(repository, service).resume(
+            handoff_id=claimed.id,
+            generation=1,
+            lease_owner="worker-a",
+            now=datetime(2026, 7, 28, 12, 0, 0),
+            dispatcher=Mock(),
+        )
+
+
+def test_retry_without_lease_identity_reports_lease_lost() -> None:
+    claimed = _handoff()
+    claimed.lease_owner = None
+
+    result = _coordinator(Mock(), Mock())._schedule_retry(
+        claimed=claimed,
+        error=RuntimeError("claim disappeared"),
+        now=datetime(2026, 7, 28, 12, 0, 0),
+    )
+
+    assert result.outcome == WorkflowHandoffResumeOutcome.LEASE_LOST
+    assert result.error == "claim disappeared"
+
+
+@pytest.mark.parametrize(
+    ("updated", "expected"),
+    [
+        (None, WorkflowHandoffResumeOutcome.LEASE_LOST),
+        (_handoff(state=WorkflowHandoffState.FAILED), WorkflowHandoffResumeOutcome.FAILED),
+    ],
+)
+def test_retry_reports_repository_terminal_or_lease_outcome(
+    updated: WorkflowRunHandoff | None,
+    expected: WorkflowHandoffResumeOutcome,
+) -> None:
+    repository = Mock()
+    repository.record_failure.return_value = updated
+    claimed = _handoff()
+
+    result = _coordinator(repository, Mock())._schedule_retry(
+        claimed=claimed,
+        error=RuntimeError("resume setup failed"),
+        now=datetime(2026, 7, 28, 12, 0, 0),
+    )
+
+    assert result.outcome == expected
+
+
+def test_permanent_failure_reports_lease_lost_when_fenced_update_loses() -> None:
+    repository = Mock()
+    service = Mock()
+    claimed = _handoff()
+    repository.claim.return_value = claimed
+    repository.mark_failed.return_value = False
+    service.load_and_verify_state.side_effect = WorkflowHandoffSnapshotIntegrityError("checksum mismatch")
+
+    result = _coordinator(repository, service).resume(
+        handoff_id=claimed.id,
+        generation=1,
+        lease_owner="worker-a",
+        now=datetime(2026, 7, 28, 12, 0, 0),
+        dispatcher=Mock(),
+    )
+
+    assert result.outcome == WorkflowHandoffResumeOutcome.LEASE_LOST

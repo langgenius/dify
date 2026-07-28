@@ -1,3 +1,4 @@
+import builtins
 import logging
 import subprocess
 import sys
@@ -5,6 +6,7 @@ import textwrap
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -457,3 +459,123 @@ def test_setup_preserves_warm_shutdown_state(monkeypatch: pytest.MonkeyPatch) ->
 
     assert workflow_warm_shutdown.celery_warm_shutdown_started() is True
     assert len(commands) == 1
+
+
+def test_mark_running_runs_returns_early_when_no_run_identity_is_available() -> None:
+    assert (
+        workflow_warm_shutdown.mark_workflow_runs_stopped_if_running_without_active_handoff(
+            ["", "", ""],
+            reason="deadline expired",
+        )
+        == 0
+    )
+
+
+def test_mark_running_runs_rejects_empty_reason() -> None:
+    with pytest.raises(ValueError, match="reason must not be empty"):
+        workflow_warm_shutdown.mark_workflow_runs_stopped_if_running_without_active_handoff(
+            ["run-1"],
+            reason="",
+        )
+
+
+def test_mark_running_runs_uses_process_session_factory_when_not_injected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.db.session_factory import session_factory
+
+    session_maker, workflow_run_id = _workflow_run_session_maker()
+    monkeypatch.setattr(session_factory, "get_session_maker", lambda: session_maker)
+
+    updated_count = workflow_warm_shutdown.mark_workflow_runs_stopped_if_running_without_active_handoff(
+        [workflow_run_id],
+        reason="deadline expired",
+        now=NOW,
+    )
+
+    with session_maker() as session:
+        workflow_run = session.get(WorkflowRun, workflow_run_id)
+        assert workflow_run is not None
+        assert updated_count == 1
+        assert workflow_run.status.value == "stopped"
+        assert workflow_run.error == "deadline expired"
+
+
+def test_drain_watchdog_rejects_negative_timeout() -> None:
+    with pytest.raises(ValueError, match="timeout_seconds must be non-negative"):
+        workflow_warm_shutdown._run_workflow_drain_watchdog(timeout_seconds=-1)
+
+
+def test_start_watchdog_uses_native_thread_once_when_gevent_threading_is_not_patched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    watchdog = MagicMock()
+    thread_factory = MagicMock(return_value=watchdog)
+    gevent_monkey = SimpleNamespace(is_module_patched=lambda _module: False)
+    fake_gevent = SimpleNamespace(monkey=gevent_monkey)
+    monkeypatch.setitem(sys.modules, "gevent", fake_gevent)
+    monkeypatch.setitem(sys.modules, "gevent.monkey", gevent_monkey)
+    monkeypatch.setattr(workflow_warm_shutdown.threading, "Thread", thread_factory)
+    monkeypatch.setattr(workflow_warm_shutdown.dify_config, "WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS", 17)
+
+    workflow_warm_shutdown._start_workflow_drain_watchdog()
+    workflow_warm_shutdown._start_workflow_drain_watchdog()
+
+    thread_factory.assert_called_once_with(
+        target=workflow_warm_shutdown._run_workflow_drain_watchdog,
+        kwargs={"timeout_seconds": 17},
+        name="WorkflowDrainDeadline",
+        daemon=True,
+    )
+    watchdog.start.assert_called_once_with()
+
+
+def test_start_watchdog_defers_from_gevent_hub(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    hub = object()
+    spawn = MagicMock()
+    gevent_monkey = SimpleNamespace(is_module_patched=lambda module: module == "threading")
+    fake_gevent = SimpleNamespace(
+        monkey=gevent_monkey,
+        getcurrent=lambda: hub,
+        get_hub=lambda: hub,
+        spawn=spawn,
+    )
+    thread_factory = MagicMock()
+    monkeypatch.setitem(sys.modules, "gevent", fake_gevent)
+    monkeypatch.setitem(sys.modules, "gevent.monkey", gevent_monkey)
+    monkeypatch.setattr(workflow_warm_shutdown.threading, "Thread", thread_factory)
+
+    workflow_warm_shutdown._start_workflow_drain_watchdog()
+
+    spawn.assert_called_once_with(workflow_warm_shutdown._start_workflow_drain_watchdog)
+    thread_factory.assert_not_called()
+
+
+def test_start_watchdog_tolerates_missing_gevent(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_import = builtins.__import__
+
+    def import_without_gevent(
+        name: str,
+        globals: dict[str, object] | None = None,
+        locals: dict[str, object] | None = None,
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "gevent":
+            raise ImportError("gevent is not installed")
+        return original_import(name, globals, locals, fromlist, level)
+
+    watchdog = MagicMock()
+    monkeypatch.setattr(builtins, "__import__", import_without_gevent)
+    monkeypatch.setattr(workflow_warm_shutdown.threading, "Thread", MagicMock(return_value=watchdog))
+
+    workflow_warm_shutdown._start_workflow_drain_watchdog()
+
+    watchdog.start.assert_called_once_with()
+
+
+def test_begin_warm_shutdown_rejects_empty_source() -> None:
+    with pytest.raises(ValueError, match="source must not be empty"):
+        workflow_warm_shutdown.begin_workflow_warm_shutdown(source="")

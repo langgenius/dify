@@ -45,6 +45,7 @@ from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     AnnotationReply,
     AnnotationReplyAccount,
+    ErrorStreamResponse,
     HumanInputRequiredResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
@@ -53,6 +54,7 @@ from core.app.entities.task_entities import (
     ReasoningChunkStreamResponse,
     WorkflowMaintenancePausedBlockingResponse,
     WorkflowMaintenancePausedStreamResponse,
+    WorkflowPauseStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.nodes.human_input.entities import UserActionConfig
@@ -60,6 +62,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
+from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
@@ -122,6 +125,91 @@ def _make_pipeline():
 
 
 class TestAdvancedChatGenerateTaskPipeline:
+    def test_message_snapshot_loads_and_deduplicates_local_upload_records(self, monkeypatch: pytest.MonkeyPatch):
+        local_file = SimpleNamespace(
+            id="message-file-1",
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="upload-1",
+        )
+        duplicate_upload = SimpleNamespace(
+            id="message-file-2",
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="upload-1",
+        )
+        remote_file = SimpleNamespace(
+            id="message-file-3",
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            upload_file_id=None,
+        )
+        upload = SimpleNamespace(id="upload-1")
+
+        class _ScalarResult:
+            def __init__(self, values):
+                self._values = values
+
+            def __iter__(self):
+                return iter(self._values)
+
+            def all(self):
+                return self._values
+
+        session = SimpleNamespace(
+            scalars=lambda _statement: scalar_results.pop(0),
+        )
+        scalar_results = [
+            _ScalarResult([local_file, duplicate_upload, remote_file]),
+            _ScalarResult([upload]),
+        ]
+        prepared: list[tuple[str, dict[str, object]]] = []
+
+        def _prepare_file_dict(message_file, upload_files_map):
+            prepared.append((message_file.id, upload_files_map))
+            return {"id": message_file.id}
+
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.generate_task_pipeline.prepare_file_dict",
+            _prepare_file_dict,
+        )
+        message = SimpleNamespace(
+            id="message-id",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="persisted answer",
+            message_metadata_dict={"reasoning": {"node-1": "thought"}},
+            provider_response_latency=None,
+        )
+
+        snapshot = MessageSnapshot.from_message(message, session=session)
+
+        assert snapshot.answer == "persisted answer"
+        assert snapshot.recorded_files == (
+            {"id": "message-file-1"},
+            {"id": "message-file-2"},
+            {"id": "message-file-3"},
+        )
+        assert snapshot.provider_response_latency == 0.0
+        assert len(scalar_results) == 0
+        assert all(upload_map == {"upload-1": upload} for _, upload_map in prepared)
+
+    def test_seed_task_state_restores_persisted_answer_and_metadata(self):
+        pipeline = _make_pipeline()
+        metadata = pipeline._task_state.metadata.model_dump()
+        metadata["reasoning"] = {"node-1": "persisted thought"}
+        snapshot = MessageSnapshot(
+            id="message-id",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="persisted answer",
+            message_metadata=metadata,
+        )
+
+        pipeline._seed_task_state_from_message(snapshot)
+
+        assert pipeline._task_state.answer == "persisted answer"
+        assert pipeline._task_state.metadata.reasoning == {"node-1": "persisted thought"}
+
     def test_to_blocking_response_returns_internal_maintenance_sentinel(self):
         pipeline = _make_pipeline()
         source_closed = False
@@ -137,6 +225,64 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert response == WorkflowMaintenancePausedBlockingResponse(task_id="task", workflow_run_id="run-id")
         assert source_closed
+
+    def test_to_blocking_response_returns_public_workflow_pause(self):
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "partial answer"
+
+        def _gen():
+            yield WorkflowPauseStreamResponse(
+                task_id="task",
+                workflow_run_id="run-id",
+                data=WorkflowPauseStreamResponse.Data(
+                    workflow_run_id="run-id",
+                    paused_nodes=["approval-node"],
+                    reasons=[{"type": "human-input-required"}],
+                    status="paused",
+                    created_at=1,
+                    elapsed_time=1.5,
+                    total_tokens=12,
+                    total_steps=4,
+                    handoff_duration=0.75,
+                ),
+            )
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert isinstance(response, AdvancedChatPausedBlockingResponse)
+        assert response.data.answer == "partial answer"
+        assert response.data.workflow_run_id == "run-id"
+        assert response.data.paused_nodes == ["approval-node"]
+        assert response.data.total_tokens == 12
+        assert response.data.total_steps == 4
+        assert response.data.handoff_duration == 0.75
+
+    def test_to_blocking_response_raises_stream_error_and_closes_source(self):
+        pipeline = _make_pipeline()
+        source_closed = False
+        expected = RuntimeError("generation failed")
+
+        def _gen():
+            nonlocal source_closed
+            try:
+                yield ErrorStreamResponse(task_id="task", err=expected)
+            finally:
+                source_closed = True
+
+        with pytest.raises(RuntimeError, match="generation failed") as exc_info:
+            pipeline._to_blocking_response(_gen())
+
+        assert exc_info.value is expected
+        assert source_closed
+
+    def test_to_blocking_response_rejects_empty_stream(self):
+        pipeline = _make_pipeline()
+
+        def _gen():
+            yield from ()
+
+        with pytest.raises(ValueError, match="queue listening stopped unexpectedly"):
+            pipeline._to_blocking_response(_gen())
 
     def test_ensure_workflow_initialized_raises(self):
         pipeline = _make_pipeline()
@@ -195,6 +341,27 @@ class TestAdvancedChatGenerateTaskPipeline:
         responses.close()
 
         assert queue_listener_closed
+
+    def test_process_stream_response_dispatches_maintenance_pause_and_stops(self):
+        pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
+            [
+                SimpleNamespace(event=QueueWorkflowMaintenancePausedEvent()),
+                SimpleNamespace(event=QueuePingEvent()),
+            ]
+        )
+        handled: list[QueueWorkflowMaintenancePausedEvent] = []
+
+        def _handle(event):
+            handled.append(event)
+            yield WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")
+
+        pipeline._handle_workflow_maintenance_paused_event = _handle
+
+        responses = list(pipeline._process_stream_response())
+
+        assert responses == [WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")]
+        assert len(handled) == 1
 
     def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
