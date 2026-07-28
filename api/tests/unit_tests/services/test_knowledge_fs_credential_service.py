@@ -202,7 +202,7 @@ def test_credential_rejects_manifest_gap_before_persistence(sqlite_session: Sess
             tenant_id="tenant-1",
             actor_account_id="owner-1",
             control_space_id=space.id,
-            payload=KnowledgeFSCredentialCreatePayload(allowed_actions=["documents.create"]),
+            payload=KnowledgeFSCredentialCreatePayload(allowed_actions=["documents.unregistered"]),
         )
 
     assert sqlite_session.scalar(select(KnowledgeFSApiCredential)) is None

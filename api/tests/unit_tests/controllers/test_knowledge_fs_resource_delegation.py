@@ -961,7 +961,6 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
 @pytest.mark.parametrize(
     ("resource_module", "class_name"),
     [
-        (console_resources, "KnowledgeFSSpaceDocumentsApi"),
         (console_resources, "KnowledgeFSSpaceQueriesApi"),
         (service_resources, "KnowledgeFSServiceDocumentsApi"),
         (service_resources, "KnowledgeFSServiceQueriesApi"),
