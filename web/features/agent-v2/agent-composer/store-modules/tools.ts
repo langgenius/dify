@@ -88,6 +88,9 @@ export const addProviderTools = (
       nextTools[existingToolIndex] = {
         ...existingTool,
         displayName: existingTool.displayName ?? selectedTool.provider_show_name,
+        pluginId: existingTool.pluginId ?? selectedTool.plugin_id,
+        pluginUniqueIdentifier:
+          existingTool.pluginUniqueIdentifier ?? selectedTool.plugin_unique_identifier,
         icon: existingTool.icon ?? selectedTool.provider_icon,
         iconDark: existingTool.iconDark ?? selectedTool.provider_icon_dark,
         allowDelete: existingTool.allowDelete ?? selectedTool.allowDelete,
@@ -101,6 +104,8 @@ export const addProviderTools = (
       name: selectedTool.provider_name,
       kind: 'provider',
       displayName: selectedTool.provider_show_name,
+      pluginId: selectedTool.plugin_id,
+      pluginUniqueIdentifier: selectedTool.plugin_unique_identifier,
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       icon: selectedTool.provider_icon,
       iconDark: selectedTool.provider_icon_dark,
