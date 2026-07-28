@@ -94,6 +94,13 @@ describe("query-virtual-entries", () => {
 
     expect(queryEvidenceEntries(TRACE_ID, bundle)).toMatchObject([
       {
+        metadata: {
+          documentId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
+          documentVersion: 1,
+          sectionPath: ["Roadmap"],
+          text: "KnowledgeFS exposes evidence.",
+          title: "Roadmap",
+        },
         name: NODE_ID,
         path: `/queries/${TRACE_ID}/evidence/${NODE_ID}`,
         resourceType: "node",

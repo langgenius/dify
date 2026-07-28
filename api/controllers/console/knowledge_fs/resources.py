@@ -1963,7 +1963,10 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
             operation_id="createQuery",
         )
         admitted_request = KnowledgeFSAdmittedQueryRequest.model_validate(
-            {**payload.model_dump(mode="json", by_alias=True), "knowledgeSpaceId": issued.knowledge_space_id}
+            {
+                **payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+                "knowledgeSpaceId": issued.knowledge_space_id,
+            }
         )
         return dump_response(
             KnowledgeFSQueryAdmissionResponse,

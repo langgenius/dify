@@ -115,6 +115,10 @@ describe("answer-trace handler branch coverage", () => {
       body: { items: [{ targetId: MISSING_ID }] },
       status: 200,
     });
+    expect(fixture.getManyByIdsAcrossGenerations).toHaveBeenCalledWith({
+      ids: [NODE_ID, RELATED_NODE_ID, MISSING_ID],
+      knowledgeSpaceId: SPACE_ID,
+    });
   });
 
   it("maps invalid virtual cursors on all list routes", async () => {
@@ -168,6 +172,7 @@ function traceFixture(options: TraceFixtureOptions = {}) {
     }),
   };
   const trace = options.trace === undefined ? answerTrace() : options.trace;
+  const getManyByIdsAcrossGenerations = vi.fn(async () => options.nodes ?? []);
   registerAnswerTraceHandlers({
     access: {
       revalidatePermissionSnapshot: vi.fn(async () => ({
@@ -188,12 +193,16 @@ function traceFixture(options: TraceFixtureOptions = {}) {
         return {};
       }),
     } as never,
-    nodes: { getMany: vi.fn(async () => options.nodes ?? []) } as never,
+    nodes: {
+      getMany: vi.fn(async () => options.nodes ?? []),
+      getManyByIdsAcrossGenerations,
+    } as never,
     spaces: {
       get: vi.fn(async () => (options.space === undefined ? { id: SPACE_ID } : options.space)),
     } as never,
   });
   return {
+    getManyByIdsAcrossGenerations,
     invoke: async (route: unknown) => {
       const callback = callbacks.get(route);
       if (!callback) throw new Error("route was not registered");

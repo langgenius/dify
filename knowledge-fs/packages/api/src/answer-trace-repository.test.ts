@@ -579,6 +579,10 @@ describe("AnswerTrace repositories", () => {
       ) as DatabaseExecuteInput;
       expect(traceInsert.params).toContain(evidenceBundle.id);
       expect(traceInsert.sql).toContain("scoped_bundle");
+      if (kind === "postgres") {
+        expect(traceInsert.sql).toContain("$5::uuid IS NULL");
+        expect(traceInsert.sql).toContain('scoped_bundle."id" = $5::uuid');
+      }
       assertSqlArity(bundleInsert, kind);
       assertSqlArity(traceInsert, kind);
     },

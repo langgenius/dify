@@ -249,11 +249,11 @@ export function createDatabaseAnswerTraceRepository({
             : databasePlaceholder(database, traceParams.length + 1);
         const evidenceNullParameter =
           database.dialect === "postgres"
-            ? databasePlaceholder(database, 5)
+            ? `${databasePlaceholder(database, 5)}::uuid`
             : databasePlaceholder(database, traceParams.length + 2);
         const evidenceIdParameter =
           database.dialect === "postgres"
-            ? databasePlaceholder(database, 5)
+            ? `${databasePlaceholder(database, 5)}::uuid`
             : databasePlaceholder(database, traceParams.length + 3);
         const traceInsert = await transaction.execute({
           maxRows: database.dialect === "postgres" ? 1 : 0,

@@ -1165,9 +1165,9 @@ async function insertJob(
   const values = jobValues(job);
   const fenceParams = database.dialect === "postgres" ? [] : [job.tenantId, job.knowledgeSpaceId];
   const tenantFence =
-    database.dialect === "postgres" ? p(database, 2) : p(database, values.length + 1);
+    database.dialect === "postgres" ? `${p(database, 2)}::varchar` : p(database, values.length + 1);
   const spaceFence =
-    database.dialect === "postgres" ? p(database, 3) : p(database, values.length + 2);
+    database.dialect === "postgres" ? `${p(database, 3)}::uuid` : p(database, values.length + 2);
   const result = await executor.execute({
     maxRows: database.dialect === "postgres" ? 1 : 0,
     operation: "insert",

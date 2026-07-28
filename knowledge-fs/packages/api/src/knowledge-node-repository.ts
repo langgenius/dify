@@ -106,6 +106,11 @@ export interface KnowledgeNodeRepository {
   ): Promise<DeleteKnowledgeNodesResult>;
   get(input: KnowledgeNodeLookupInput): Promise<KnowledgeNode | null>;
   getMany(input: GetManyKnowledgeNodesInput): Promise<KnowledgeNode[]>;
+  /**
+   * Reads immutable evidence references by their globally unique ids without selecting a
+   * publication generation. Callers must still provide the owning knowledge space.
+   */
+  getManyByIdsAcrossGenerations(input: GetManyKnowledgeNodesInput): Promise<KnowledgeNode[]>;
   listByArtifact(input: ListKnowledgeNodesByArtifactInput): Promise<ListKnowledgeNodesResult>;
   listIdsByDocumentAsset(
     input: ListKnowledgeNodeIdsByDocumentAssetInput,
@@ -329,6 +334,17 @@ export function createInMemoryKnowledgeNodeRepository({
               node.knowledgeSpaceId === knowledgeSpaceId &&
               hasKnowledgeNodeGeneration(node, generation),
           ),
+        )
+        .map(cloneKnowledgeNode);
+    },
+    getManyByIdsAcrossGenerations: async ({ ids, knowledgeSpaceId }) => {
+      validateKnowledgeNodeBatchIds(ids, maxBatchSize);
+      const uniqueIds = uniqueStrings(ids);
+
+      return uniqueIds
+        .map((id) => nodes.get(id))
+        .filter((node): node is KnowledgeNode =>
+          Boolean(node && node.knowledgeSpaceId === knowledgeSpaceId),
         )
         .map(cloneKnowledgeNode);
     },
@@ -579,6 +595,16 @@ export function createDatabaseKnowledgeNodeRepository({
         knowledgeSpaceId,
         ...(publicationGenerationId !== undefined ? { publicationGenerationId } : {}),
       });
+    },
+    getManyByIdsAcrossGenerations: async ({ ids, knowledgeSpaceId }) => {
+      return databaseKnowledgeNodeGetMany(
+        database,
+        tableName,
+        maxBatchSize,
+        { ids, knowledgeSpaceId },
+        database,
+        true,
+      );
     },
     updateMetadataMany: async ({ knowledgeSpaceId, patches, publicationGenerationId }) => {
       validateKnowledgeNodeMetadataPatches(patches, maxBatchSize);
@@ -1009,6 +1035,7 @@ async function databaseKnowledgeNodeGetMany(
   maxBatchSize: number,
   { ids, knowledgeSpaceId, publicationGenerationId }: GetManyKnowledgeNodesInput,
   executor: DatabaseExecutor = database,
+  includeAllGenerations = false,
 ): Promise<KnowledgeNode[]> {
   validateKnowledgeNodeBatchIds(ids, maxBatchSize);
   const uniqueIds = uniqueStrings(ids);
@@ -1021,7 +1048,9 @@ async function databaseKnowledgeNodeGetMany(
   const idPlaceholders = uniqueIds
     .map((_, index) => databasePlaceholder(database, index + 2))
     .join(", ");
-  const generationSql = knowledgeNodeGenerationPredicate(database, params, publicationGenerationId);
+  const generationSql = includeAllGenerations
+    ? undefined
+    : knowledgeNodeGenerationPredicate(database, params, publicationGenerationId);
   const result = await executor.execute({
     maxRows: uniqueIds.length,
     operation: "select",
@@ -1032,7 +1061,7 @@ async function databaseKnowledgeNodeGetMany(
     )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
       database,
       "id",
-    )} IN (${idPlaceholders}) AND ${generationSql};`,
+    )} IN (${idPlaceholders})${generationSql ? ` AND ${generationSql}` : ""};`,
     tableName,
   });
   const byId = new Map(result.rows.map((row) => [String(row.id), mapKnowledgeNodeRow(row)]));

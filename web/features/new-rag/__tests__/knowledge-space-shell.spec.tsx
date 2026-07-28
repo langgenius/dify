@@ -118,8 +118,8 @@ describe('KnowledgeSpaceShell', () => {
       '/datasets/new/space-1/settings',
     )
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.evidence' }),
-    ).toBeInTheDocument()
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.title' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/retrieval')
     expect(screen.getByText('dataset.newKnowledge.apiAccessActive')).toBeInTheDocument()
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
@@ -152,6 +152,21 @@ describe('KnowledgeSpaceShell', () => {
       'aria-current',
       'page',
     )
+  })
+
+  it('marks the retrieval test as the current navigation item', () => {
+    pathnameMock.value = '/datasets/new/space-1/retrieval'
+    queryMock.data = {
+      control_space_id: 'space-1',
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">retrieval content</KnowledgeSpaceShell>)
+
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.title' }),
+    ).toHaveAttribute('aria-current', 'page')
   })
 
   it('lets users collapse and restore the knowledge detail sidebar', async () => {

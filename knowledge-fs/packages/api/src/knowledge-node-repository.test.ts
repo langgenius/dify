@@ -538,6 +538,37 @@ describe("KnowledgeNode repositories", () => {
     });
   });
 
+  it.each(["postgres", "tidb"] as const)(
+    "reads exact evidence node ids across publication generations with space-scoped %s SQL",
+    async (kind) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const published = knowledgeNode({ publicationGenerationId: GENERATION_A });
+      const repository = createDatabaseKnowledgeNodeRepository({
+        database: transactionalDatabase(kind, async (input) => {
+          calls.push(input);
+          return { rows: [knowledgeNodeRow(published)], rowsAffected: 1 };
+        }),
+        maxBatchSize: 2,
+        maxListLimit: 2,
+      });
+
+      await expect(
+        repository.getManyByIdsAcrossGenerations({
+          ids: [published.id],
+          knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        }),
+      ).resolves.toEqual([published]);
+      expect(calls[0]).toEqual(
+        expect.objectContaining({
+          maxRows: 1,
+          operation: "select",
+          params: [KNOWLEDGE_SPACE_ID, published.id],
+        }),
+      );
+      expect(calls[0]?.sql).not.toContain("publication_generation_id");
+    },
+  );
+
   it("adds generation predicates and generation-aware logical upserts to database SQL", async () => {
     const fake = createFakeKnowledgeNodeExecutor();
     const repository = createDatabaseKnowledgeNodeRepository({

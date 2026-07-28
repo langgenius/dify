@@ -230,6 +230,20 @@ describe("Research task direct stream", () => {
     });
     const streamUrl = `/research-tasks/${researchTaskJobId}/events?knowledgeSpaceId=${knowledgeSpaceId}&limit=10`;
 
+    const queryPreflight = await app.request("/queries", {
+      headers: {
+        origin: "https://dify.example.com",
+        "access-control-request-headers": "authorization,content-type,x-trace-id",
+        "access-control-request-method": "POST",
+      },
+      method: "OPTIONS",
+    });
+    expect(queryPreflight.status).toBe(204);
+    expect(queryPreflight.headers.get("access-control-allow-headers")).toBe(
+      "Authorization, Content-Type, X-Trace-ID",
+    );
+    expect(authenticate).not.toHaveBeenCalled();
+
     const preflight = await app.request(streamUrl, {
       headers: {
         origin: "https://dify.example.com",

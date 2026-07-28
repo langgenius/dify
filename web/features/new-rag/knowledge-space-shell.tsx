@@ -21,6 +21,7 @@ import {
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
+  newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
 } from './routes'
 
@@ -114,9 +115,12 @@ export function KnowledgeSpaceShell({
 
   const sourcesPath = newKnowledgeDetailPath(knowledgeSpaceId)
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
+  const retrievalTestPath = newKnowledgeRetrievalTestPath(knowledgeSpaceId)
   const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
   const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
+  const retrievalTestActive =
+    pathname === retrievalTestPath || pathname.startsWith(`${retrievalTestPath}/`)
   const settingsActive = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`)
   const showDeferredPage = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   const navItemClassName =
@@ -260,19 +264,21 @@ export function KnowledgeSpaceShell({
               {navIcon('i-ri-file-text-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.documentColumn'])}
             </Link>
-            <Button
-              aria-label={t(($) => $['newKnowledge.evidence'])}
-              variant="ghost"
+            <Link
+              href={retrievalTestPath}
+              aria-label={t(($) => $['newKnowledge.retrievalTest.title'])}
+              aria-current={retrievalTestActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
-                'text-text-secondary',
+                retrievalTestActive
+                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
               )}
-              onClick={showDeferredPage}
             >
               {navIcon('i-ri-search-eye-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.evidence'])}
-            </Button>
+              {sidebarExpanded && t(($) => $['newKnowledge.retrievalTest.title'])}
+            </Link>
             <Button
               aria-label={t(($) => $['newKnowledge.quality'])}
               variant="ghost"

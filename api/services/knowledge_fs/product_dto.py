@@ -1401,7 +1401,11 @@ class KnowledgeFSQueryCreatePayload(BaseModel):
         max_length=100,
         alias="activeEntityIds",
     )
-    session_id: str | None = Field(default=None, alias="sessionId")
+    session_id: str | None = Field(
+        default=None,
+        alias="sessionId",
+        exclude_if=lambda value: value is None,
+    )
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 

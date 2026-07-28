@@ -1436,7 +1436,7 @@ export function createKnowledgeGateway({
     app.use(
       "/queries",
       createDirectStreamCorsMiddleware({
-        allowedHeaders: ["Authorization", "Content-Type"],
+        allowedHeaders: ["Authorization", "Content-Type", "X-Trace-ID"],
         allowedMethods: ["POST"],
         allowedOrigins: researchTaskDirectStream.allowedOrigins,
       }),

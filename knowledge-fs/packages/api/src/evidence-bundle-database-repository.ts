@@ -190,7 +190,7 @@ export async function persistScopedEvidenceBundleWithExecutor(
       .join(", ")} FROM (SELECT ${columns
       .map(
         (column, index) =>
-          `${jsonInsertPlaceholder(database, index + 1, column)} AS ${q(database, column)}`,
+          `${evidenceBundleInsertPlaceholder(database, index + 1, column)} AS ${q(database, column)}`,
       )
       .join(", ")}) AS ${q(database, alias)} WHERE NOT EXISTS (SELECT 1 FROM ${q(
       database,
@@ -420,4 +420,27 @@ function q(database: DatabaseAdapter, identifier: string): string {
 
 function p(database: DatabaseAdapter, position: number): string {
   return databasePlaceholder(database, position);
+}
+
+function evidenceBundleInsertPlaceholder(
+  database: DatabaseAdapter,
+  position: number,
+  column: string,
+): string {
+  const placeholder = jsonInsertPlaceholder(database, position, column);
+  if (
+    database.dialect === "postgres" &&
+    (column === "id" || column === "knowledge_space_id" || column === "trace_id")
+  ) {
+    return `${placeholder}::uuid`;
+  }
+  if (column === "missing_evidence") {
+    return database.dialect === "postgres"
+      ? `${placeholder}::jsonb`
+      : `CAST(${placeholder} AS JSON)`;
+  }
+  if (database.dialect === "postgres" && (column === "created_at" || column === "updated_at")) {
+    return `${placeholder}::timestamptz`;
+  }
+  return placeholder;
 }

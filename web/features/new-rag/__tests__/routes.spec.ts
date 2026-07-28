@@ -1,5 +1,6 @@
 import {
   newKnowledgeAddSourcePath,
+  newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
   normalizeWebsiteSourceUrl,
   parseNewKnowledgeSourceDraft,
@@ -9,6 +10,10 @@ import {
 describe('New RAG routes', () => {
   it('builds the settings path from the knowledge space id', () => {
     expect(newKnowledgeSettingsPath('space-1')).toBe('/datasets/new/space-1/settings')
+  })
+
+  it('builds the retrieval test path from the knowledge space id', () => {
+    expect(newKnowledgeRetrievalTestPath('space-1')).toBe('/datasets/new/space-1/retrieval')
   })
 
   it('keeps source details out of the add-source URL', () => {

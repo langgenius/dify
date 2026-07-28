@@ -89,20 +89,33 @@ export function productionBadCaseEvidenceContext(
 }
 
 export function queryEvidenceEntries(traceId: string, bundle: EvidenceBundle): KnowledgeFsEntry[] {
-  return bundle.items.map((item) => ({
-    kind: "resource",
-    metadata: {
-      citationCount: item.citations.length,
-      conflictCount: item.conflicts.length,
-      freshness: cloneJsonObject(item.freshness),
-      score: item.score,
-      scores: cloneJsonObject(item.scores),
-    },
-    name: item.nodeId,
-    path: `/queries/${traceId}/evidence/${item.nodeId}`,
-    resourceType: "node",
-    targetId: item.nodeId,
-  }));
+  return bundle.items.map((item) => {
+    const primaryCitation = item.citations[0];
+    const sectionPath = primaryCitation ? [...primaryCitation.sectionPath] : [];
+    return {
+      kind: "resource",
+      metadata: {
+        citationCount: item.citations.length,
+        conflictCount: item.conflicts.length,
+        ...(primaryCitation
+          ? {
+              documentId: primaryCitation.documentAssetId,
+              documentVersion: primaryCitation.documentVersion,
+              sectionPath,
+            }
+          : {}),
+        freshness: cloneJsonObject(item.freshness),
+        score: item.score,
+        scores: cloneJsonObject(item.scores),
+        text: item.text,
+        ...(sectionPath.at(-1) ? { title: sectionPath.at(-1) } : {}),
+      },
+      name: item.nodeId,
+      path: `/queries/${traceId}/evidence/${item.nodeId}`,
+      resourceType: "node",
+      targetId: item.nodeId,
+    };
+  });
 }
 
 export function queryConflictEntries(traceId: string, bundle: EvidenceBundle): KnowledgeFsEntry[] {

@@ -120,7 +120,8 @@ export function registerQueryHandlers({
     try {
       if (capabilityGrant) {
         if (
-          capabilityGrant.controlSpaceId !== space.id ||
+          capabilityGrant.resource.type !== "knowledge_space" ||
+          capabilityGrant.resource.id !== space.id ||
           capabilityGrant.namespaceId !== subject.tenantId
         ) {
           throw new KnowledgeSpaceAuthorizationError(

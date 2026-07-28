@@ -165,6 +165,10 @@ describe.each(["postgres", "tidb"] as const)(
       expect(fake.calls[0]?.sql).toContain("deletion_job_id");
       expect(fake.calls[1]).toMatchObject({ operation: "insert", tableName: "research_task_jobs" });
       expect(fake.calls[1]?.params).toContain("Compare durable ACL behavior");
+      if (dialect === "postgres") {
+        expect(fake.calls[1]?.sql).toContain('"tenant_id" = $2::varchar');
+        expect(fake.calls[1]?.sql).toContain('"knowledge_space_id" = $3::uuid');
+      }
       const outboxInsert = fake.calls[2];
       expect(outboxInsert).toMatchObject({
         operation: "insert",

@@ -40,7 +40,7 @@ export interface RegisterAnswerTraceHandlersOptions {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
   readonly assets: Pick<DocumentAssetRepository, "get">;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
   readonly spaces: KnowledgeSpaceRepository;
 }
 
@@ -265,7 +265,7 @@ export function registerAnswerTraceHandlers({
 
 async function traceEvidenceIsCurrentlyVisible(
   assets: Pick<DocumentAssetRepository, "get">,
-  nodes: Pick<KnowledgeNodeRepository, "getMany">,
+  nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">,
   trace: AnswerTrace,
   candidateGrants: readonly string[],
 ): Promise<boolean> {
@@ -291,7 +291,7 @@ async function traceEvidenceIsCurrentlyVisible(
       ),
     ]),
   ];
-  const foundNodes = await nodes.getMany({
+  const foundNodes = await nodes.getManyByIdsAcrossGenerations({
     ids: nodeIds,
     knowledgeSpaceId: trace.knowledgeSpaceId,
   });

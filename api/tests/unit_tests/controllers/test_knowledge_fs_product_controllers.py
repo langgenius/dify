@@ -642,7 +642,6 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
         "knowledgeSpaceId": "space-1",
         "mode": "auto",
         "query": "What changed?",
-        "sessionId": None,
     }
     assert response["url"] == "https://kfs.test/queries"
     assert calls == [

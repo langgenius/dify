@@ -27,9 +27,10 @@ describe("query handler branch coverage", () => {
     expect((await queryFixture({ space: null }).invoke()).status).toBe(404);
   });
 
-  it("validates capability control-space and tenant bindings", async () => {
+  it("validates capability resource and tenant bindings", async () => {
     for (const capability of [
-      { ...capabilityGrant(), controlSpaceId: "other" },
+      { ...capabilityGrant(), resource: { id: "other", parent_id: null, type: "knowledge_space" } },
+      { ...capabilityGrant(), resource: { id: SPACE_ID, parent_id: null, type: "query" } },
       { ...capabilityGrant(), namespaceId: "other" },
     ]) {
       expect((await queryFixture({ capability }).invoke()).status).toBe(403);
@@ -404,9 +405,10 @@ function queryContext(options: QueryFixtureOptions) {
 function capabilityGrant() {
   return {
     contentScopeIds: [],
-    controlSpaceId: SPACE_ID,
+    controlSpaceId: "control-space-1",
     grantId: "grant-1",
     namespaceId: SUBJECT.tenantId,
+    resource: { id: SPACE_ID, parent_id: null, type: "knowledge_space" },
   };
 }
 

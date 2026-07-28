@@ -80,6 +80,14 @@ describe("database evidence bundle scoping", () => {
       expect(insert.params).toContain(knowledgeSpaceId);
       expect(insert.sql).toContain("deletion_jobs");
       expect(insert.sql).toContain("active_slot");
+      if (kind === "postgres") {
+        expect(insert.sql).toContain('$1::uuid AS "id"');
+        expect(insert.sql).toContain('$3::uuid AS "knowledge_space_id"');
+        expect(insert.sql).toContain('$4::uuid AS "trace_id"');
+        expect(insert.sql).toContain('$8::jsonb AS "missing_evidence"');
+        expect(insert.sql).toContain('$9::timestamptz AS "created_at"');
+        expect(insert.sql).toContain('$10::timestamptz AS "updated_at"');
+      }
       assertPlaceholderArity(insert, kind);
     },
   );
