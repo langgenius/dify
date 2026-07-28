@@ -49,6 +49,7 @@ from services.agent.dsl_entities import (
     make_portable_agent_package,
     portable_ref,
 )
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
@@ -224,6 +225,7 @@ class AgentDslService:
                 account_id=None,
                 draft_owner_key="",
                 base_snapshot_id=snapshot.id,
+                home_snapshot_id=snapshot.home_snapshot_id,
                 config_snapshot=soul,
                 created_by=account.id,
                 updated_by=account.id,
@@ -243,7 +245,7 @@ class AgentDslService:
         portable_graph: Mapping[str, Any],
         raw_packages: Mapping[str, Any],
         account: Account,
-    ) -> tuple[dict[str, Any], list[DslImportWarning]]:
+    ) -> tuple[dict[str, Any], list[DslImportWarning], set[str]]:
         """Materialize every packaged Agent as a node-owned inline Agent."""
 
         graph = copy.deepcopy(dict(portable_graph))
@@ -256,6 +258,11 @@ class AgentDslService:
                 WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
             )
         ).all()
+        retirement_candidates = {
+            binding.agent_id
+            for binding in previous_bindings
+            if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+        }
         for binding in previous_bindings:
             self.session.delete(binding)
         self.session.flush()
@@ -312,7 +319,7 @@ class AgentDslService:
 
         workflow.graph = json.dumps(graph)
         self.session.flush()
-        return graph, warnings
+        return graph, warnings, retirement_candidates
 
     def clone_inline_binding_for_node(
         self,
@@ -562,11 +569,17 @@ class AgentDslService:
             )
             or 0
         ) + 1
+        home_snapshot = AgentHomeSnapshotService.create_initial(
+            session=self.session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+        )
         snapshot = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=next_version,
             config_snapshot=soul,
+            home_snapshot_id=home_snapshot.id,
             created_by=account_id,
         )
         self.session.add(snapshot)
