@@ -101,7 +101,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 RUN mkdir -p /usr/local/share/nltk_data \
     && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \
-    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.data.find('tokenizers/punkt_tab'); nltk.data.find('tokenizers/averaged_perceptron_tagger_eng'); nltk.data.find('corpora/stopwords')" \
+    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.data.find('tokenizers/punkt_tab'); nltk.data.find('taggers/averaged_perceptron_tagger_eng'); nltk.data.find('corpora/stopwords')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
