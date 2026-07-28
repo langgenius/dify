@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.base import TypeBase
 from services.knowledge_fs.cutover import KnowledgeFSCutoverGateBlockedError
 from services.knowledge_fs.greenfield_initializer import KnowledgeFSWorkspaceGreenfieldInitializer
@@ -62,3 +62,20 @@ def test_greenfield_initializer_rejects_a_workspace_without_one_owner(
 
     with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="exactly one Workspace owner"):
         initializer.ensure_initialized(tenant_id=tenant_id)
+
+
+def test_greenfield_initializer_rejects_an_archived_workspace(
+    greenfield_session_maker: sessionmaker[Session],
+) -> None:
+    tenant = Tenant(name="Archived", status=TenantStatus.ARCHIVE)
+    with greenfield_session_maker.begin() as session:
+        session.add(tenant)
+        session.flush()
+        tenant_id = tenant.id
+    cutover = MagicMock()
+    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(greenfield_session_maker, cutover=cutover)
+
+    with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="not active"):
+        initializer.ensure_initialized(tenant_id=tenant_id)
+
+    cutover.initialize_greenfield.assert_not_called()
