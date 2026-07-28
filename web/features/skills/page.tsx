@@ -1,6 +1,7 @@
 'use client'
 
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { UIEvent } from 'react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -27,7 +28,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useRef, useState } from 'react'
@@ -46,6 +47,7 @@ const placeholderCardIds = Array.from(
   (_, index) => `skill-placeholder-card-${index}`,
 )
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
+const SKILLS_PAGE_SIZE = 20
 
 function skillsListQueryKey() {
   return consoleQuery.workspaces.current.skills.get.key({ type: 'query' })
@@ -533,6 +535,7 @@ function SkillGrid({
   isEmptySearch,
   isError,
   isFetching,
+  isFetchingNextPage,
   isPending,
   onCreate,
   onImport,
@@ -543,6 +546,7 @@ function SkillGrid({
   isEmptySearch: boolean
   isError: boolean
   isFetching: boolean
+  isFetchingNextPage: boolean
   isPending: boolean
   onCreate: () => void
   onImport: () => void
@@ -575,6 +579,7 @@ function SkillGrid({
         />
       )}
       {!isPending && !isError && skills.map((skill) => <SkillCard key={skill.id} skill={skill} />)}
+      {!isPending && !isError && isFetchingNextPage && <SkillCardSkeleton />}
     </section>
   )
 }
@@ -591,18 +596,22 @@ export default function SkillsPage() {
   const importMutation = useMutation(
     consoleQuery.workspaces.current.skills.import.post.mutationOptions(),
   )
-  const skillsQuery = useQuery(
-    consoleQuery.workspaces.current.skills.get.queryOptions({
-      input: {
+  const skillsQuery = useInfiniteQuery({
+    ...consoleQuery.workspaces.current.skills.get.infiniteOptions({
+      input: (pageParam) => ({
         query: {
+          limit: SKILLS_PAGE_SIZE,
+          page: Number(pageParam),
           ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}),
           ...(selectedTags.length > 0 ? { tag: selectedTags } : {}),
         },
-      },
+      }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? (lastPage.page ?? 1) + 1 : undefined),
+      initialPageParam: 1,
     }),
-  )
+  })
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
-  const skills = skillsQuery.data?.data ?? []
+  const skills = skillsQuery.data?.pages.flatMap((page) => page.data ?? []) ?? []
   const tags = (tagsQuery.data?.data ?? []).map((tag) => tag.tag)
 
   useDocumentTitle(t(($) => $['skillManagement.title']))
@@ -659,6 +668,13 @@ export default function SkillsPage() {
     )
   }
 
+  const handleListScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight
+    if (scrollBottom < 80 && skillsQuery.hasNextPage && !skillsQuery.isFetchingNextPage)
+      void skillsQuery.fetchNextPage()
+  }
+
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
@@ -687,7 +703,11 @@ export default function SkillsPage() {
 
       <div className="min-h-0 flex-1">
         <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
-          <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
+          <ScrollAreaViewport
+            tabIndex={-1}
+            className="overscroll-contain"
+            onScroll={handleListScroll}
+          >
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
               <SkillGrid
                 creating={createMutation.isPending}
@@ -696,6 +716,7 @@ export default function SkillsPage() {
                 isEmptySearch={!!debouncedKeyword || selectedTags.length > 0}
                 isError={skillsQuery.isError}
                 isFetching={skillsQuery.isFetching}
+                isFetchingNextPage={skillsQuery.isFetchingNextPage}
                 isPending={skillsQuery.isPending}
                 onCreate={handleCreate}
                 onImport={() => importInputRef.current?.click()}
