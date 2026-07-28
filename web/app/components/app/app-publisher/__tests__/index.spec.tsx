@@ -211,6 +211,13 @@ vi.mock('../sections', () => ({
             publisher-run-config
           </button>
         )}
+        {props.showMarketplaceAction && (
+          <button disabled={props.marketplaceActionDisabled} onClick={props.onPublishToMarketplace}>
+            {props.publishingToMarketplace
+              ? 'workflow.common.publishingToMarketplace'
+              : 'workflow.common.publishToMarketplace'}
+          </button>
+        )}
         <button onClick={props.onConfigureWorkflowTool}>publisher-workflow-tool</button>
       </div>
     )
@@ -606,6 +613,12 @@ describe('AppPublisher', () => {
     })
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.actions).toEqual(
+      expect.objectContaining({
+        marketplaceActionDisabled: false,
+        showMarketplaceAction: true,
+      }),
+    )
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/))
 
     await waitFor(() => {
@@ -642,6 +655,12 @@ describe('AppPublisher', () => {
     })
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.actions).toEqual(
+      expect.objectContaining({
+        marketplaceActionDisabled: true,
+        showMarketplaceAction: true,
+      }),
+    )
     const marketplaceButton = screen
       .getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/)
       .closest('a, button, div[role="button"]') as HTMLElement
@@ -655,6 +674,7 @@ describe('AppPublisher', () => {
     render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.actions?.showMarketplaceAction).toBe(false)
     expect(
       screen.queryByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/),
     ).not.toBeInTheDocument()

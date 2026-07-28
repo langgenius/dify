@@ -1,22 +1,22 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams, VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { AppModeEnum } from '@/types/app'
+import ActionTooltip from './action-tooltip'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
+import WorkflowToolAction from './workflow-tool-action'
 
 type SummarySectionProps = Pick<
   AppPublisherProps,
@@ -66,12 +66,16 @@ type ActionsSectionProps = Pick<
   disabledFunctionButton: boolean
   disabledFunctionTooltip?: string
   handleOpenRunConfig?: (url: string) => void
+  marketplaceActionDisabled?: boolean
+  publishingToMarketplace?: boolean
   showDeployAction?: boolean
+  showMarketplaceAction?: boolean
   showRunConfig?: boolean
   workflowToolIsLoading: boolean
   workflowToolMessage?: string
   workflowToolOutdated?: boolean
   onConfigureWorkflowTool: () => void
+  onPublishToMarketplace?: () => void
 }
 
 export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
@@ -241,7 +245,7 @@ export const PublisherSummarySection = ({
           </div>
         )}
       </div>
-      <div className="flex w-full flex-col items-stretch">
+      <div className="flex w-full flex-col">
         {debugWithMultipleModel ? (
           <PublishWithMultipleModel
             disabled={publishDisabled}
@@ -272,7 +276,7 @@ export const PublisherSummarySection = ({
               )}
             </Button>
             {startNodeLimitExceeded && (
-              <div className="flex flex-col items-stretch">
+              <div className="mt-3 flex flex-col items-stretch">
                 <p
                   className="text-sm/5 font-semibold text-transparent"
                   style={upgradeHighlightStyle}
@@ -372,80 +376,6 @@ export const PublisherAccessSection = ({
   )
 }
 
-const ActionTooltip = ({
-  disabled,
-  tooltip,
-  children,
-}: {
-  disabled: boolean
-  tooltip?: ReactNode
-  children: ReactNode
-}) => {
-  if (!tooltip) return <>{children}</>
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <div
-            className={cn('flex w-full', disabled && 'cursor-not-allowed *:pointer-events-none')}
-          />
-        }
-      >
-        {children}
-      </TooltipTrigger>
-      <TooltipContent role="tooltip">{tooltip}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-const WorkflowToolActionStatus = ({
-  isLoading,
-  outdated,
-  published,
-}: {
-  isLoading: boolean
-  outdated: boolean
-  published: boolean
-}) => {
-  const { t } = useTranslation()
-
-  if (!published)
-    return (
-      <span
-        role="status"
-        aria-label={t(($) => $['common.configureRequired'], { ns: 'workflow' })}
-        className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary"
-      >
-        {t(($) => $['common.configureRequired'], { ns: 'workflow' })}
-      </span>
-    )
-
-  if (isLoading)
-    return (
-      <span
-        role="status"
-        aria-label={t(($) => $.loading, { ns: 'appApi' })}
-        className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
-      />
-    )
-
-  return (
-    <span className="relative flex size-4 items-center justify-center">
-      <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
-      {outdated && (
-        <StatusDot
-          role="status"
-          aria-label={t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })}
-          className="absolute -top-1 -right-1"
-          size="small"
-          status="warning"
-        />
-      )}
-    </span>
-  )
-}
-
 export const PublisherActionsSection = ({
   appDetail,
   appURL,
@@ -454,8 +384,11 @@ export const PublisherActionsSection = ({
   handleOpenRunConfig,
   hasHumanInputNode = false,
   hasTriggerNode = false,
+  marketplaceActionDisabled = false,
   publishedAt,
+  publishingToMarketplace = false,
   showDeployAction = false,
+  showMarketplaceAction = false,
   showRunConfig = false,
   toolPublished = false,
   workflowToolAvailable = true,
@@ -463,6 +396,7 @@ export const PublisherActionsSection = ({
   workflowToolMessage,
   workflowToolOutdated = false,
   onConfigureWorkflowTool,
+  onPublishToMarketplace,
 }: ActionsSectionProps) => {
   const { t } = useTranslation()
 
@@ -475,13 +409,6 @@ export const PublisherActionsSection = ({
   const navigationDisabled = !hasPublishedVersion || !appId
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
-  const workflowToolDescription =
-    workflowToolMessage ??
-    (toolPublished && workflowToolOutdated
-      ? t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })
-      : t(($) => $['common.workflowAsToolDescription'], { ns: 'workflow' }))
-  const workflowToolTooltip =
-    workflowToolMessage ?? (workflowToolOutdated ? workflowToolDescription : undefined)
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
@@ -531,26 +458,32 @@ export const PublisherActionsSection = ({
           {t(($) => $['appMenus.deploy'], { ns: 'common' })}
         </SuggestedAction>
       )}
+      {showMarketplaceAction && (
+        <SuggestedAction
+          disabled={marketplaceActionDisabled || publishingToMarketplace || !onPublishToMarketplace}
+          description={t(($) => $['common.publishToMarketplaceDescription'], {
+            ns: 'workflow',
+          })}
+          icon={<span className="i-ri-store-2-line size-4" />}
+          onClick={onPublishToMarketplace}
+        >
+          {publishingToMarketplace
+            ? t(($) => $['common.publishingToMarketplace'], { ns: 'workflow' })
+            : t(($) => $['common.publishToMarketplace'], { ns: 'workflow' })}
+        </SuggestedAction>
+      )}
       {showWorkflowTool && (
-        <ActionTooltip disabled={workflowToolDisabled} tooltip={workflowToolTooltip}>
-          <SuggestedAction
-            className="flex-1"
+        <>
+          <div aria-hidden className="m-1 h-px bg-divider-subtle" />
+          <WorkflowToolAction
             disabled={workflowToolDisabled}
-            description={workflowToolDescription}
-            focusableWhenDisabled={Boolean(workflowToolTooltip)}
-            endIcon={
-              <WorkflowToolActionStatus
-                isLoading={workflowToolIsLoading}
-                outdated={workflowToolOutdated}
-                published={toolPublished}
-              />
-            }
-            icon={<span className="i-ri-hammer-line size-4" />}
-            onClick={onConfigureWorkflowTool}
-          >
-            {t(($) => $['common.workflowAsTool'], { ns: 'workflow' })}
-          </SuggestedAction>
-        </ActionTooltip>
+            isLoading={workflowToolIsLoading}
+            message={workflowToolMessage}
+            outdated={workflowToolOutdated}
+            published={toolPublished}
+            onConfigure={onConfigureWorkflowTool}
+          />
+        </>
       )}
     </div>
   )

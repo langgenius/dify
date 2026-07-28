@@ -364,11 +364,13 @@ describe('app-publisher sections', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should render the published workflow quick links and configure workflow tools', () => {
+  it('should render the published workflow actions with Workflow as Tool after Marketplace', async () => {
+    const user = userEvent.setup()
     const handleOpenRunConfig = vi.fn()
     const onConfigureWorkflowTool = vi.fn()
+    const onPublishToMarketplace = vi.fn()
 
-    const { rerender } = render(
+    render(
       <PublisherActionsSection
         appDetail={{
           id: 'workflow-app',
@@ -387,10 +389,11 @@ describe('app-publisher sections', () => {
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
+        showMarketplaceAction
         showRunConfig
-        workflowToolAvailable={false}
+        workflowToolAvailable
         workflowToolIsLoading={false}
-        workflowToolMessage="workflow-disabled"
+        onPublishToMarketplace={onPublishToMarketplace}
         onConfigureWorkflowTool={onConfigureWorkflowTool}
       />,
     )
@@ -410,13 +413,30 @@ describe('app-publisher sections', () => {
       '/app/workflow-app/deploy',
     )
 
+    const marketplaceAction = screen.getByRole('button', {
+      name: /common\.publishToMarketplace\b/,
+    })
     const workflowToolAction = screen.getByRole('button', {
       name: /common\.workflowAsTool\b/,
     })
-    expect(workflowToolAction).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      marketplaceAction.compareDocumentPosition(workflowToolAction) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(screen.getByRole('status', { name: /common\.configureRequired\b/ })).toBeInTheDocument()
 
-    rerender(
+    await user.click(marketplaceAction)
+    expect(onPublishToMarketplace).toHaveBeenCalledTimes(1)
+
+    await user.click(workflowToolAction)
+    expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
+  })
+
+  it('should expose Configure and Manage in Tools actions for a ready workflow tool', async () => {
+    const user = userEvent.setup()
+    const onConfigureWorkflowTool = vi.fn()
+
+    render(
       <PublisherActionsSection
         appDetail={{
           id: 'workflow-app',
@@ -438,13 +458,18 @@ describe('app-publisher sections', () => {
     )
 
     expect(
-      screen.queryByRole('status', { name: /common\.configureRequired\b/ }),
-    ).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /common\.workflowAsTool\b/ }))
+      screen.getByRole('status', { name: /common\.workflowAsToolReady\b/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.manageInTools\b/ })).toHaveAttribute(
+      'href',
+      '/integrations/tools/workflow',
+    )
+
+    await user.click(screen.getByRole('button', { name: /common\.configure\b/ }))
     expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
   })
 
-  it('should surface outdated and loading states for a configured workflow tool', () => {
+  it('should show the disabled reason below setup and configured workflow tool actions', () => {
     const commonProps = {
       appDetail: {
         id: 'workflow-app',
@@ -455,6 +480,47 @@ describe('app-publisher sections', () => {
       hasHumanInputNode: false,
       hasTriggerNode: false,
       onConfigureWorkflowTool: vi.fn(),
+      publishedAt: Date.now(),
+      workflowToolAvailable: false,
+      workflowToolIsLoading: false,
+      workflowToolMessage: 'Workflow tool unavailable',
+    }
+    const { rerender } = render(<PublisherActionsSection {...commonProps} toolPublished={false} />)
+
+    const setupAction = screen.getByRole('button', { name: /common\.workflowAsTool\b/ })
+    const setupReason = screen.getByText('Workflow tool unavailable')
+    expect(setupAction).toBeDisabled()
+    expect(setupReason).toBeVisible()
+    expect(
+      setupAction.compareDocumentPosition(setupReason) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    rerender(<PublisherActionsSection {...commonProps} toolPublished />)
+
+    const configureAction = screen.getByRole('button', { name: /common\.configure\b/ })
+    const manageAction = screen.getByRole('button', { name: /common\.manageInTools\b/ })
+    const configuredReason = screen.getByText('Workflow tool unavailable')
+    expect(configureAction).toBeDisabled()
+    expect(manageAction).toBeDisabled()
+    expect(configuredReason).toBeVisible()
+    expect(
+      manageAction.compareDocumentPosition(configuredReason) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('should surface update-needed and loading states for a configured workflow tool', async () => {
+    const user = userEvent.setup()
+    const onConfigureWorkflowTool = vi.fn()
+    const commonProps = {
+      appDetail: {
+        id: 'workflow-app',
+        mode: AppModeEnum.WORKFLOW,
+      },
+      appURL: 'https://example.com/app',
+      disabledFunctionButton: false,
+      hasHumanInputNode: false,
+      hasTriggerNode: false,
+      onConfigureWorkflowTool,
       publishedAt: Date.now(),
       toolPublished: true,
       workflowToolAvailable: true,
@@ -467,13 +533,13 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    const workflowToolAction = screen.getByRole('button', {
-      name: /common\.workflowAsTool\b/,
-    })
-    expect(workflowToolAction).toHaveAccessibleDescription(
-      expect.stringMatching(/common\.workflowAsToolTip\b/),
-    )
-    expect(screen.getByRole('status', { name: /common\.workflowAsToolTip\b/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('status', { name: /common\.workflowAsToolUpdateNeeded\b/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/common\.workflowAsToolTip\b/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /common\.workflowAsToolReconfigure\b/ }))
+    expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
 
     rerender(
       <PublisherActionsSection
@@ -485,33 +551,7 @@ describe('app-publisher sections', () => {
 
     expect(screen.getByRole('button', { name: /common\.workflowAsTool\b/ })).toBeDisabled()
     expect(screen.getByRole('status', { name: /loading\b/ })).toBeInTheDocument()
-  })
-
-  it('should show the outdated reason when hovering a configured workflow tool', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <PublisherActionsSection
-        appDetail={{
-          id: 'workflow-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
-        appURL="https://example.com/app"
-        disabledFunctionButton={false}
-        hasHumanInputNode={false}
-        hasTriggerNode={false}
-        publishedAt={Date.now()}
-        toolPublished
-        workflowToolAvailable
-        workflowToolIsLoading={false}
-        workflowToolOutdated
-        onConfigureWorkflowTool={vi.fn()}
-      />,
-    )
-
-    await user.hover(screen.getByRole('button', { name: /common\.workflowAsTool\b/ }))
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/common\.workflowAsToolTip\b/)
+    expect(screen.queryByText(/common\.workflowAsToolTip\b/)).not.toBeInTheDocument()
   })
 
   it('should keep Access Point and Deploy available for trigger workflows', () => {

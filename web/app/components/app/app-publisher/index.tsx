@@ -51,7 +51,6 @@ import {
   PublisherActionsSection,
   PublisherSummarySection,
 } from './sections'
-import SuggestedAction from './suggested-action'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
@@ -471,12 +470,15 @@ export function AppPublisher({
               handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
               hasHumanInputNode={hasHumanInputNode}
               hasTriggerNode={hasTriggerNode}
+              marketplaceActionDisabled={!currentPublishedAt}
               publishedAt={currentPublishedAt}
+              publishingToMarketplace={publishingToMarketplace}
               showDeployAction={
                 appDetail?.mode === AppModeEnum.WORKFLOW &&
                 isCurrentWorkspaceEditor &&
                 systemFeatures.enable_app_deploy
               }
+              showMarketplaceAction={systemFeatures.enable_creators_platform}
               showRunConfig={hiddenLaunchVariables.length > 0}
               toolPublished={workflowToolPublished}
               workflowToolAvailable={workflowToolAvailableForUser}
@@ -484,23 +486,8 @@ export function AppPublisher({
               workflowToolMessage={workflowToolMessage}
               workflowToolOutdated={workflowTool.outdated}
               onConfigureWorkflowTool={openWorkflowToolDrawer}
+              onPublishToMarketplace={handlePublishToMarketplace}
             />
-            {systemFeatures.enable_creators_platform && (
-              <div className="border-t border-divider-subtle p-3">
-                <SuggestedAction
-                  icon={<span className="i-ri-store-2-line size-4" />}
-                  disabled={!currentPublishedAt || publishingToMarketplace}
-                  description={t(($) => $['common.publishToMarketplaceDescription'], {
-                    ns: 'workflow',
-                  })}
-                  onClick={handlePublishToMarketplace}
-                >
-                  {publishingToMarketplace
-                    ? t(($) => $['common.publishingToMarketplace'], { ns: 'workflow' })
-                    : t(($) => $['common.publishToMarketplace'], { ns: 'workflow' })}
-                </SuggestedAction>
-              </div>
-            )}
           </div>
         </PopoverContent>
         {showAppAccessControl && (
