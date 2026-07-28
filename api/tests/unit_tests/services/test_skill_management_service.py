@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from collections.abc import Generator
 from types import SimpleNamespace
@@ -302,6 +303,105 @@ def test_create_assistant_stream_uses_default_model_and_keeps_draft_read_only() 
     assert response == ["# Draft"]
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     assert draft["files"][0]["content"] == created["files"][0]["content"]
+
+
+def test_create_assistant_action_stream_applies_file_operations_and_returns_detail_event() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="refund-sop", description="Handle refund requests."),
+    )
+    model_output = json.dumps(
+        {
+            "reply": "Created the refund policy reference.",
+            "operations": [
+                {
+                    "operation": "upsert_text",
+                    "path": "references/refund-policy.md",
+                    "mime_type": "text/markdown",
+                    "content": "# Refund Policy\n",
+                }
+            ],
+        }
+    )
+    model = SimpleNamespace(
+        invoke_llm=lambda **_kwargs: SimpleNamespace(
+            message=SimpleNamespace(get_text_content=lambda: model_output),
+        )
+    )
+    manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
+
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+        response = list(
+            service.create_assistant_action_stream(
+                tenant_id=TENANT,
+                user_id=USER,
+                skill_id=created["id"],
+                message="新建 references/refund-policy.md",
+                target_path="SKILL.md",
+            )
+        )
+
+    events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
+    assert [event["event"] for event in events] == ["message", "skill_detail_updated", "message_end"]
+    assert events[0]["answer"] == "Created the refund policy reference."
+    assert events[1]["operations"] == [{"operation": "upsert_text", "path": "references/refund-policy.md"}]
+    assert any(file["path"] == "references/refund-policy.md" for file in events[1]["detail"]["files"])
+
+    draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    reference = next(file for file in draft["files"] if file["path"] == "references/refund-policy.md")
+    assert reference["content"] == "# Refund Policy\n"
+
+
+def test_create_assistant_action_stream_strips_skill_frontmatter_from_reference_files() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="refund-sop", description="Handle refund requests."),
+    )
+    model_output = json.dumps(
+        {
+            "reply": "Created the refund policy reference.",
+            "operations": [
+                {
+                    "operation": "upsert_text",
+                    "path": "references/refund-policy.md",
+                    "mime_type": "text/markdown",
+                    "content": (
+                        "---\n"
+                        "name: refund-policy\n"
+                        "description: Refund policy reference.\n"
+                        "metadata:\n"
+                        "  display-name: Refund Policy\n"
+                        "---\n"
+                        "# Refund Policy\n"
+                    ),
+                }
+            ],
+        }
+    )
+    model = SimpleNamespace(
+        invoke_llm=lambda **_kwargs: SimpleNamespace(
+            message=SimpleNamespace(get_text_content=lambda: model_output),
+        )
+    )
+    manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
+
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+        list(
+            service.create_assistant_action_stream(
+                tenant_id=TENANT,
+                user_id=USER,
+                skill_id=created["id"],
+                message="新建 references/refund-policy.md",
+            )
+        )
+
+    draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    reference = next(file for file in draft["files"] if file["path"] == "references/refund-policy.md")
+    assert reference["content"] == "# Refund Policy\n"
 
 
 def test_sync_assistant_model_config_updates_debugger_draft() -> None:
@@ -1472,6 +1572,35 @@ def test_update_metadata_rejects_stale_baseline() -> None:
 
     assert exc_info.value.code == "skill_conflict"
     assert exc_info.value.status_code == 409
+    assert exc_info.value.details["expected_updated_at"] == 0
+    assert exc_info.value.details["current_updated_at"] == created["updated_at"]
+
+
+def test_apply_draft_file_operation_conflict_includes_current_file_version() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    skill_md = next(file for file in created["files"] if file["path"] == "SKILL.md")
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.apply_draft_file_operation(
+            tenant_id=TENANT,
+            user_id=USER,
+            skill_id=created["id"],
+            payload=SkillDraftFileOperationPayload(
+                operation="upsert_text",
+                path="SKILL.md",
+                content=skill_md["content"],
+                expected_updated_at=0,
+            ),
+        )
+
+    assert exc_info.value.code == "skill_conflict"
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.details["expected_updated_at"] == 0
+    assert exc_info.value.details["current_updated_at"] == created["updated_at"]
+    assert exc_info.value.details["current_file_path"] == "SKILL.md"
+    assert exc_info.value.details["current_file_hash"] == skill_md["hash"]
+    assert exc_info.value.details["current_file_content"] == skill_md["content"]
 
 
 def test_duplicate_skill_copies_latest_published_content_without_history() -> None:

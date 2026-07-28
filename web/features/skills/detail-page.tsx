@@ -84,7 +84,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob, sendSkillAssistMessage, uploadSkillFile } from './client'
 
@@ -149,6 +149,7 @@ type ParsedMarkdownContent = {
 type BuilderChatMessage = {
   content: string
   id: string
+  rawContent?: string
   role: 'assistant' | 'user'
 }
 
@@ -183,6 +184,9 @@ const skillBuilderAttachmentAccept = [
   '.yaml',
   '.yml',
 ].join(',')
+const defaultSkillDescription = 'Describe what this Skill does and when an Agent should use it.'
+const defaultSkillBody =
+  '# Untitled skill\n\nDescribe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.'
 
 type SkillUploadStatus = 'failed' | 'saving' | 'uploaded' | 'uploading'
 
@@ -453,6 +457,30 @@ function parseMarkdownContent(content: string): ParsedMarkdownContent {
     metadata,
     name,
   }
+}
+
+function stripSkillFrontmatterForDisplay(content: string) {
+  if (!content.startsWith('---')) return content
+
+  const lines = content.split(/\r?\n/)
+  const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
+  if (closingIndex === -1) return content
+
+  const frontmatterLines = lines.slice(1, closingIndex)
+  const hasSkillFrontmatter = frontmatterLines.some((line) => {
+    const trimmedLine = line.trim()
+    return (
+      trimmedLine.startsWith('name:') ||
+      trimmedLine.startsWith('description:') ||
+      trimmedLine === 'metadata:'
+    )
+  })
+  if (!hasSkillFrontmatter) return content
+
+  return lines
+    .slice(closingIndex + 1)
+    .join('\n')
+    .trimStart()
 }
 
 function stringifyYamlValue(value: string) {
@@ -1216,6 +1244,34 @@ function getSkillFileIconClass(file: SkillFileResponse) {
   return 'i-ri-file-line text-text-quaternary'
 }
 
+function isDefaultSkillBuilderDraft(detail: SkillDetailResponse) {
+  const skillMd = findFileByPath(detail.files ?? [], 'SKILL.md')
+  const skillMdContent =
+    skillMd && isTextFile(skillMd) && skillMd.content ? parseMarkdownContent(skillMd.content) : null
+
+  return (
+    detail.latest_published_version_id == null &&
+    detail.name.startsWith('untitled-skill') &&
+    detail.display_name === 'Untitled skill' &&
+    detail.description === defaultSkillDescription &&
+    skillMdContent?.body.trim() === defaultSkillBody
+  )
+}
+
+function deriveSkillDetailFromDraftFiles(detail: SkillDetailResponse) {
+  const skillMd = findFileByPath(detail.files ?? [], 'SKILL.md')
+  if (!skillMd || !isTextFile(skillMd) || !skillMd.content) return detail
+
+  const parsedSkillMd = parseMarkdownContent(skillMd.content)
+
+  return {
+    ...detail,
+    description: parsedSkillMd.description || detail.description,
+    display_name: parsedSkillMd.displayName || detail.display_name,
+    name: parsedSkillMd.name || detail.name,
+  }
+}
+
 function parseServerMessage(message: string) {
   const trimmedMessage = message.trim()
   if (!trimmedMessage.startsWith('{')) return trimmedMessage
@@ -1245,6 +1301,15 @@ async function readSkillResponseErrorMessage(response: Response) {
   }
 }
 
+async function readSkillResponseErrorPayload(response: Response) {
+  try {
+    const data: unknown = await response.clone().json()
+    return isRecord(data) ? data : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function getSkillErrorMessage(error: unknown, visited = new Set<unknown>()): string | undefined {
   if (error instanceof Response) return undefined
   if (!error || visited.has(error)) return undefined
@@ -1269,6 +1334,12 @@ async function getAsyncSkillErrorMessage(error: unknown) {
   if (error instanceof Response) return readSkillResponseErrorMessage(error)
 
   return getSkillErrorMessage(error)
+}
+
+async function getAsyncSkillErrorPayload(error: unknown) {
+  if (error instanceof Response) return readSkillResponseErrorPayload(error)
+
+  return isRecord(error) ? error : undefined
 }
 
 function showSkillErrorToast(error: unknown, fallbackMessage: string) {
@@ -1352,6 +1423,65 @@ function setSkillDetailCache(
     }),
     detail,
   )
+}
+
+function refetchSkillDetail(skillId: string) {
+  return consoleClient.workspaces.current.skills.bySkillId.get({
+    params: {
+      skill_id: skillId,
+    },
+  })
+}
+
+async function refreshSkillDetailAfterConflict(
+  queryClient: ReturnType<typeof useQueryClient>,
+  skillId: string,
+) {
+  const detail = await refetchSkillDetail(skillId)
+  setSkillDetailCache(queryClient, skillId, detail)
+  return detail
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (!isRecord(error)) return undefined
+
+  if (typeof error.code === 'string') return error.code
+
+  const data = error.data
+  if (isRecord(data) && typeof data.code === 'string') return data.code
+
+  const body = error.body
+  if (isRecord(body) && typeof body.code === 'string') return body.code
+
+  return undefined
+}
+
+function getErrorDetails(error: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(error)) return undefined
+
+  if (isRecord(error.details)) return error.details
+
+  const data = error.data
+  if (isRecord(data) && isRecord(data.details)) return data.details
+
+  const body = error.body
+  if (isRecord(body) && isRecord(body.details)) return body.details
+
+  return undefined
+}
+
+function getErrorDetailNumber(error: unknown, key: string): number | undefined {
+  const value = getErrorDetails(error)?.[key]
+  return typeof value === 'number' ? value : undefined
+}
+
+function getErrorDetailString(error: unknown, key: string): string | undefined {
+  const value = getErrorDetails(error)?.[key]
+  return typeof value === 'string' ? value : undefined
 }
 
 function joinSkillPath(basePath: string | undefined, name: string) {
@@ -3508,28 +3638,33 @@ function MarkdownBodyReferencePreview({
 
 function MarkdownLiveBodyEditor({
   body,
+  contentRevision,
   editorRef,
   onInput,
   onKeyDown,
   placeholder,
 }: {
   body: string
+  contentRevision: number
   editorRef: RefObject<HTMLDivElement | null>
   onInput: (event: FormEvent<HTMLDivElement>) => void
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void
   placeholder: string
 }) {
   const renderedBodyRef = useRef<string | null>(null)
+  const renderedContentRevisionRef = useRef(contentRevision)
 
   useLayoutEffect(() => {
     const root = editorRef.current
     if (!root) return
-    if (renderedBodyRef.current === body) return
-    if (root.ownerDocument.activeElement === root) return
+    const revisionChanged = renderedContentRevisionRef.current !== contentRevision
+    if (renderedBodyRef.current === body && !revisionChanged) return
+    if (root.ownerDocument.activeElement === root && !revisionChanged) return
 
     renderMarkdownLiveEditorContent(root, body)
     renderedBodyRef.current = body
-  }, [body, editorRef])
+    renderedContentRevisionRef.current = contentRevision
+  }, [body, contentRevision, editorRef])
 
   return (
     <div
@@ -3666,6 +3801,7 @@ function FileEditor({
   onRestoreVersion,
   onExitVersion,
   onCloseFile,
+  onDraftDetailChange,
   onSelectFile,
   openFiles,
   publishing,
@@ -3682,6 +3818,7 @@ function FileEditor({
   onRestoreVersion: () => void
   onExitVersion: () => void
   onCloseFile: (path: string) => void
+  onDraftDetailChange: (detail: SkillDetailResponse) => void
   onSelectFile: (path: string) => void
   openFiles: SkillFileResponse[]
   publishing: boolean
@@ -3712,8 +3849,10 @@ function FileEditor({
   const [referenceSelectedIndex, setReferenceSelectedIndex] = useState(0)
   const [saveStatus, setSaveStatus] = useState<'dirty' | 'error' | 'saved' | 'saving'>('saved')
   const [savedAt, setSavedAt] = useState<number | undefined>(initialSavedAt)
+  const [externalContentRevision, setExternalContentRevision] = useState(0)
   const draftContentRef = useRef(initialContent)
   const lastSavedContentRef = useRef(initialContent)
+  const detailRef = useRef(detail)
   const fileRef = useRef(file)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
@@ -3730,18 +3869,39 @@ function FileEditor({
   )
 
   const canEdit = !!file && isTextFile(file) && !readonly
+  const filePath = file?.path
   const codeLanguage = getSkillCodeLanguage(file)
   const isMarkdown = isMarkdownFile(file)
+  const isSkillManifestFile = filePath === 'SKILL.md'
   const isCsv = isCsvFile(file)
-  const markdownContent = useMemo(() => parseMarkdownContent(draftContent), [draftContent])
+  const markdownContent = useMemo(
+    () =>
+      isSkillManifestFile
+        ? parseMarkdownContent(draftContent)
+        : {
+            body: stripSkillFrontmatterForDisplay(draftContent),
+            description: '',
+            displayName: '',
+            metadata: [],
+            name: '',
+          },
+    [draftContent, isSkillManifestFile],
+  )
   const csvRows = useMemo(() => parseCsvRows(draftContent), [draftContent])
-  const filePath = file?.path
   const fileHash = file?.hash
   const editorInstanceKey = `${selectedVersionId ?? 'draft'}:${filePath ?? 'empty'}:${readonly ? 'readonly' : 'draft'}`
+  const editorRenderKey = `${editorInstanceKey}:${externalContentRevision}`
   const referenceTargets = useMemo(
     () => getReferenceTargets(detail?.files ?? [], filePath),
     [detail?.files, filePath],
   )
+  const showMarkdownMetadataPanel =
+    isSkillManifestFile &&
+    (markdownContent.name ||
+      markdownContent.description ||
+      markdownContent.displayName ||
+      markdownContent.metadata.length > 0 ||
+      !readonly)
   const referenceQuery = referencePicker?.query.trim().toLowerCase() ?? ''
   const filteredReferenceFiles = useMemo(() => {
     const currentDirectory = referencePicker?.currentDirectory ?? ''
@@ -3813,7 +3973,9 @@ function FileEditor({
 
   const saveDraftContent = useCallback(
     async (content: string) => {
-      if (!detail || !file || !canEdit || isSavingDraft) return false
+      const currentDetail = detailRef.current
+      const currentFile = fileRef.current
+      if (!currentDetail || !currentFile || !canEdit || isSavingDraft) return false
 
       setSaveStatus('saving')
       try {
@@ -3823,16 +3985,16 @@ function FileEditor({
           },
           body: {
             content,
-            expected_updated_at: detail.updated_at,
-            hash: file.hash,
-            mime_type: file.mime_type,
+            expected_updated_at: currentDetail.updated_at,
+            hash: currentFile.hash,
+            mime_type: currentFile.mime_type,
             operation: 'upsert_text',
-            path: file.path,
+            path: currentFile.path,
             size: content.length,
           },
         })
         const nextDisplayName =
-          file.path === 'SKILL.md' ? parseMarkdownContent(content).displayName.trim() : ''
+          currentFile.path === 'SKILL.md' ? parseMarkdownContent(content).displayName.trim() : ''
         const nextCachedDetail =
           nextDisplayName && nextDisplayName !== nextDetail.display_name
             ? {
@@ -3850,12 +4012,122 @@ function FileEditor({
               }
             : nextDetail
 
+        detailRef.current = nextCachedDetail
+        fileRef.current =
+          findFileByPath(nextCachedDetail.files ?? [], currentFile.path) ?? currentFile
         lastSavedContentRef.current = content
         setSavedAt(nextCachedDetail.updated_at * 1000)
         setSaveStatus(draftContentRef.current === content ? 'saved' : 'dirty')
         setSkillDetailCache(queryClient, skillId, nextCachedDetail)
+        onDraftDetailChange(nextCachedDetail)
         return true
-      } catch {
+      } catch (error) {
+        const errorPayload = await getAsyncSkillErrorPayload(error)
+        if (getErrorCode(errorPayload ?? error) === 'skill_conflict') {
+          try {
+            const currentUpdatedAt = getErrorDetailNumber(
+              errorPayload ?? error,
+              'current_updated_at',
+            )
+            const currentFileHash = getErrorDetailString(errorPayload ?? error, 'current_file_hash')
+            const currentFileContent = getErrorDetailString(
+              errorPayload ?? error,
+              'current_file_content',
+            )
+            let latestDetail: SkillDetailResponse | undefined
+            try {
+              latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
+            } catch {
+              latestDetail = undefined
+            }
+            const refetchedDetail =
+              latestDetail?.updated_at != null &&
+              (currentUpdatedAt == null || latestDetail.updated_at >= currentUpdatedAt)
+                ? latestDetail
+                : undefined
+            const latestUpdatedAt = refetchedDetail?.updated_at ?? currentUpdatedAt
+            if (latestUpdatedAt == null) throw error
+            const latestFile = refetchedDetail
+              ? findFileByPath(refetchedDetail.files ?? [], currentFile.path)
+              : undefined
+            if (latestFile && isTextFile(latestFile) && latestFile.content != null)
+              lastSavedContentRef.current = latestFile.content
+            else if (currentFileContent != null) lastSavedContentRef.current = currentFileContent
+            if (refetchedDetail) {
+              detailRef.current = refetchedDetail
+              fileRef.current = latestFile ?? currentFile
+            } else {
+              detailRef.current = {
+                ...currentDetail,
+                updated_at: latestUpdatedAt,
+              }
+              fileRef.current = {
+                ...currentFile,
+                hash: currentFileHash ?? currentFile.hash,
+              }
+            }
+
+            if (draftContentRef.current !== lastSavedContentRef.current) {
+              const retryDetail = await saveDraftFile({
+                params: {
+                  skill_id: skillId,
+                },
+                body: {
+                  content: draftContentRef.current,
+                  expected_updated_at: latestUpdatedAt,
+                  hash: latestFile?.hash ?? currentFileHash ?? currentFile.hash,
+                  mime_type: latestFile?.mime_type ?? currentFile.mime_type,
+                  operation: 'upsert_text',
+                  path: currentFile.path,
+                  size: draftContentRef.current.length,
+                },
+              })
+              const nextDisplayName =
+                currentFile.path === 'SKILL.md'
+                  ? parseMarkdownContent(draftContentRef.current).displayName.trim()
+                  : ''
+              const nextCachedDetail =
+                nextDisplayName && nextDisplayName !== retryDetail.display_name
+                  ? {
+                      ...retryDetail,
+                      ...(await updateSkillMetadata({
+                        params: {
+                          skill_id: skillId,
+                        },
+                        body: {
+                          display_name: nextDisplayName,
+                          expected_updated_at: retryDetail.updated_at,
+                        },
+                      })),
+                      files: retryDetail.files,
+                    }
+                  : retryDetail
+
+              detailRef.current = nextCachedDetail
+              fileRef.current =
+                findFileByPath(nextCachedDetail.files ?? [], currentFile.path) ?? fileRef.current
+              lastSavedContentRef.current = draftContentRef.current
+              setSavedAt(nextCachedDetail.updated_at * 1000)
+              setSaveStatus('saved')
+              setSkillDetailCache(queryClient, skillId, nextCachedDetail)
+              onDraftDetailChange(nextCachedDetail)
+              toast.error(t(($) => $['skillManagement.detail.saveConflict']))
+              return true
+            }
+
+            setSavedAt(latestUpdatedAt * 1000)
+            setSaveStatus(
+              draftContentRef.current === lastSavedContentRef.current ? 'saved' : 'dirty',
+            )
+            toast.error(t(($) => $['skillManagement.detail.saveConflict']))
+            return false
+          } catch {
+            setSaveStatus('error')
+            toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+            return false
+          }
+        }
+
         setSaveStatus('error')
         toast.error(t(($) => $['skillManagement.detail.saveFailed']))
         return false
@@ -3863,9 +4135,8 @@ function FileEditor({
     },
     [
       canEdit,
-      detail,
-      file,
       isSavingDraft,
+      onDraftDetailChange,
       queryClient,
       saveDraftFile,
       skillId,
@@ -3876,6 +4147,7 @@ function FileEditor({
   const canEditRef = useRef(canEdit)
   const saveDraftContentRef = useRef(saveDraftContent)
 
+  detailRef.current = detail
   fileRef.current = file
   canEditRef.current = canEdit
 
@@ -3891,7 +4163,21 @@ function FileEditor({
     setMetadataKey('')
     setMetadataValue('')
     setReferencePicker(null)
+    setExternalContentRevision(0)
   }, [editorInstanceKey])
+
+  useEffect(() => {
+    if (!file || !isTextFile(file) || file.content == null) return
+    if (draftContentRef.current !== lastSavedContentRef.current) return
+    if (file.content === lastSavedContentRef.current) return
+
+    draftContentRef.current = file.content
+    lastSavedContentRef.current = file.content
+    setDraftContent(file.content)
+    setSavedAt(detail?.updated_at ? detail.updated_at * 1000 : undefined)
+    setSaveStatus('saved')
+    setExternalContentRevision((revision) => revision + 1)
+  }, [detail?.updated_at, file, fileHash])
 
   useEffect(() => {
     if (!shouldFetchTextFileContent || textContentQuery.data == null) return
@@ -3900,6 +4186,7 @@ function FileEditor({
     lastSavedContentRef.current = textContentQuery.data
     setDraftContent(textContentQuery.data)
     setSaveStatus('saved')
+    setExternalContentRevision((revision) => revision + 1)
   }, [shouldFetchTextFileContent, textContentQuery.data])
 
   useEffect(() => {
@@ -4231,10 +4518,12 @@ function FileEditor({
 
   const trimmedMetadataKey = metadataKey.trim()
   const canAddMetadata =
-    isEditableMetadataKey(trimmedMetadataKey) && !isProtectedMarkdownMetadataKey(trimmedMetadataKey)
+    isSkillManifestFile &&
+    isEditableMetadataKey(trimmedMetadataKey) &&
+    !isProtectedMarkdownMetadataKey(trimmedMetadataKey)
 
   const handleAddMetadata = () => {
-    if (!canAddMetadata) return
+    if (!isSkillManifestFile || !canAddMetadata) return
 
     updateDraftContent(
       addMarkdownMetadata(draftContentRef.current, trimmedMetadataKey, metadataValue),
@@ -4245,12 +4534,14 @@ function FileEditor({
   }
 
   const handleDisplayNameCommit = () => {
-    if (readonly || displayNameDraft === markdownContent.displayName) return
+    if (!isSkillManifestFile || readonly || displayNameDraft === markdownContent.displayName) return
 
     updateDraftContent(setMarkdownDisplayName(draftContentRef.current, displayNameDraft))
   }
 
   const handleRemoveMetadata = (key: string) => {
+    if (!isSkillManifestFile) return
+
     updateDraftContent(removeMarkdownMetadata(draftContentRef.current, key))
   }
 
@@ -4264,7 +4555,7 @@ function FileEditor({
     if (publishing) return
 
     let contentToPublish = draftContentRef.current
-    if (canEdit && displayNameDraft !== markdownContent.displayName) {
+    if (canEdit && isSkillManifestFile && displayNameDraft !== markdownContent.displayName) {
       contentToPublish = setMarkdownDisplayName(contentToPublish, displayNameDraft)
       updateDraftContent(contentToPublish)
     }
@@ -4367,11 +4658,7 @@ function FileEditor({
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
             <div className="h-full scrollbar-none overflow-y-auto px-8 py-10">
               <div className="mx-auto max-w-[820px]">
-                {(markdownContent.name ||
-                  markdownContent.description ||
-                  markdownContent.displayName ||
-                  markdownContent.metadata.length > 0 ||
-                  !readonly) && (
+                {showMarkdownMetadataPanel && (
                   <div className="mb-8 space-y-5">
                     {(markdownContent.name || !readonly) && (
                       <div className="max-w-full space-y-1">
@@ -4544,9 +4831,7 @@ function FileEditor({
                   </div>
                 )}
                 <div
-                  className={cn(
-                    markdownContent.metadata.length > 0 && 'border-t border-divider-subtle pt-8',
-                  )}
+                  className={cn(showMarkdownMetadataPanel && 'border-t border-divider-subtle pt-8')}
                 >
                   {readonly ? (
                     <MarkdownBodyReferencePreview
@@ -4560,6 +4845,7 @@ function FileEditor({
                     <div className="relative min-h-[360px]">
                       <MarkdownLiveBodyEditor
                         body={markdownContent.body}
+                        contentRevision={externalContentRevision}
                         editorRef={liveBodyEditorRef}
                         placeholder={t(
                           ($) => $['skillManagement.detail.referenceFiles.livePlaceholder'],
@@ -4601,7 +4887,7 @@ function FileEditor({
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
             <textarea
               ref={sourceTextareaRef}
-              key={editorInstanceKey}
+              key={editorRenderKey}
               readOnly={readonly}
               value={draftContent}
               spellCheck={false}
@@ -4643,7 +4929,7 @@ function FileEditor({
         ) : codeLanguage ? (
           <div className="h-full overflow-hidden rounded-xl border border-divider-regular bg-background-default">
             <CodeEditor
-              key={editorInstanceKey}
+              key={editorRenderKey}
               language={codeLanguage}
               value={draftContent}
               readOnly={readonly}
@@ -4669,7 +4955,7 @@ function FileEditor({
           <div className="relative h-full">
             <textarea
               ref={sourceTextareaRef}
-              key={editorInstanceKey}
+              key={editorRenderKey}
               readOnly={readonly}
               value={draftContent}
               spellCheck={false}
@@ -5199,16 +5485,57 @@ function BuilderModelSelector({
   )
 }
 
-function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId: string }) {
+function SkillBuilderPanel({
+  detail,
+  onDraftDetailChange,
+  onClose,
+  selectedFile,
+  skillId,
+}: {
+  detail: SkillDetailResponse
+  onDraftDetailChange: (detail: SkillDetailResponse) => void
+  onClose: () => void
+  selectedFile: SkillFileResponse | undefined
+  skillId: string
+}) {
   const { t } = useTranslation('agentV2')
+  const queryClient = useQueryClient()
   const [prompt, setPrompt] = useState('')
-  const [messages, setMessages] = useState<BuilderChatMessage[]>([])
+  const initialBuilderModeRef = useRef({
+    isEditMode: !isDefaultSkillBuilderDraft(detail),
+    skillId,
+  })
+  if (initialBuilderModeRef.current.skillId !== skillId) {
+    initialBuilderModeRef.current = {
+      isEditMode: !isDefaultSkillBuilderDraft(detail),
+      skillId,
+    }
+  }
+  const isEditMode = initialBuilderModeRef.current.isEditMode
+  const initialMessages = useMemo<BuilderChatMessage[]>(
+    () =>
+      isEditMode
+        ? [
+            {
+              id: `assistant-${skillId}-intro`,
+              role: 'assistant',
+              content: t(($) => $['skillManagement.detail.builder.editIntro']),
+            },
+          ]
+        : [],
+    [isEditMode, skillId, t],
+  )
+  const [messages, setMessages] = useState<BuilderChatMessage[]>(initialMessages)
+  const messagesRef = useRef<BuilderChatMessage[]>(initialMessages)
+  const rawAssistantMessagesRef = useRef(new Map<string, string>())
   const [attachments, setAttachments] = useState<SkillBuilderAttachment[]>([])
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
   const [isSending, setIsSending] = useState(false)
   const isSendingRef = useRef(false)
   const isComposingRef = useRef(false)
+  const detailRef = useRef(detail)
+  const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
   const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: textGenerationModelList, isLoading: isTextGenerationModelListLoading } =
@@ -5252,6 +5579,34 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
       ? t(($) => $['skillManagement.detail.builder.modifyPlaceholder'])
       : t(($) => $['skillManagement.detail.builder.placeholder'])
 
+  const updateMessages = (
+    updater: (currentMessages: BuilderChatMessage[]) => BuilderChatMessage[],
+  ) => {
+    setMessages((currentMessages) => {
+      const nextMessages = updater(currentMessages)
+      messagesRef.current = nextMessages
+      return nextMessages
+    })
+  }
+
+  useEffect(() => {
+    detailRef.current = detail
+  }, [detail])
+
+  useEffect(() => {
+    selectedFileRef.current = selectedFile
+  }, [selectedFile])
+
+  useEffect(() => {
+    messagesRef.current = initialMessages
+    rawAssistantMessagesRef.current.clear()
+    setMessages(initialMessages)
+  }, [initialMessages])
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
   useEffect(() => {
     return () => {
       assistAbortControllerRef.current?.abort()
@@ -5262,7 +5617,9 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
     assistAbortControllerRef.current?.abort()
     assistAbortControllerRef.current = null
     setPrompt('')
-    setMessages([])
+    messagesRef.current = initialMessages
+    rawAssistantMessagesRef.current.clear()
+    setMessages(initialMessages)
     setAttachments([])
     setIsUploadingAttachment(false)
     setIsSending(false)
@@ -5328,6 +5685,17 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
     )
   }
 
+  const getBuilderTargetFile = (currentDetail: SkillDetailResponse) => {
+    const currentSelectedFile = selectedFileRef.current
+    if (currentSelectedFile && isTextFile(currentSelectedFile)) {
+      const latestSelectedFile = findFileByPath(currentDetail.files ?? [], currentSelectedFile.path)
+      if (latestSelectedFile && isTextFile(latestSelectedFile)) return latestSelectedFile
+    }
+
+    const skillMd = findFileByPath(currentDetail.files ?? [], 'SKILL.md')
+    return skillMd && isTextFile(skillMd) ? skillMd : undefined
+  }
+
   const handleSend = (messageText = prompt) => {
     const trimmedPrompt = messageText.trim()
     const attachedFiles = attachments
@@ -5353,7 +5721,7 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
       content: '',
     }
 
-    setMessages((currentMessages) => [...currentMessages, userMessage, assistantMessage])
+    updateMessages((currentMessages) => [...currentMessages, userMessage, assistantMessage])
     setPrompt('')
     setAttachments([])
     setIsSending(true)
@@ -5368,19 +5736,37 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
       })),
       message: requestMessage,
       model: activeSelectedModel,
+      targetPath: getBuilderTargetFile(detailRef.current)?.path,
       getAbortController: (abortController) => {
         assistAbortControllerRef.current = abortController
       },
       onData: (chunk) => {
         if (!chunk) return
 
-        setMessages((currentMessages) =>
+        const rawAssistantContent = `${
+          rawAssistantMessagesRef.current.get(assistantMessageId) ?? ''
+        }${chunk}`
+        rawAssistantMessagesRef.current.set(assistantMessageId, rawAssistantContent)
+
+        updateMessages((currentMessages) =>
           currentMessages.map((message) =>
             message.id === assistantMessageId
-              ? { ...message, content: `${message.content}${chunk}` }
+              ? {
+                  ...message,
+                  content: rawAssistantContent,
+                  rawContent: rawAssistantContent,
+                }
               : message,
           ),
         )
+      },
+      onUnhandledEvent: (event) => {
+        if (event.event !== 'skill_detail_updated' || !isRecord(event.detail)) return
+
+        const nextDetail = event.detail as SkillDetailResponse
+        detailRef.current = nextDetail
+        setSkillDetailCache(queryClient, skillId, nextDetail)
+        onDraftDetailChange(nextDetail)
       },
       onCompleted: (hasError, errorMessage) => {
         setIsSending(false)
@@ -5463,19 +5849,21 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
                   )}
                 </div>
               ))}
-              <div className="flex flex-col items-end gap-2 pt-2">
-                {followUpSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isSending || !canSendBuilderMessage}
-                    onClick={() => handleSend(suggestion)}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              {messages.length > initialMessages.length && (
+                <div className="flex flex-col items-end gap-2 pt-2">
+                  {followUpSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isSending || !canSendBuilderMessage}
+                      onClick={() => handleSend(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex min-h-full flex-col justify-end">
@@ -5692,6 +6080,7 @@ export default function SkillDetailPage() {
   const [rightPanelMode, setRightPanelMode] = useState<'builder' | 'hidden' | 'versions'>('builder')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
   const skillDetailQueryOptions = consoleQuery.workspaces.current.skills.bySkillId.get.queryOptions(
     {
       input: {
@@ -5742,7 +6131,8 @@ export default function SkillDetailPage() {
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
   )
-  const detail = detailQuery.data
+  const queriedDetail = detailQuery.data
+  const detail = draftDetailOverride ?? queriedDetail
   const draftFiles = detail?.files ?? []
   const readonlyFiles = versionDetailQuery.data?.files ?? []
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles
@@ -5759,6 +6149,20 @@ export default function SkillDetailPage() {
   const selectedVersion = versions.find((version) => version.id === activeVersionId)
 
   useDocumentTitle(detail?.display_name ?? t(($) => $['skillManagement.title']))
+
+  useEffect(() => {
+    setDraftDetailOverride(undefined)
+  }, [skillId])
+
+  useEffect(() => {
+    if (!draftDetailOverride || !queriedDetail) return
+    if (queriedDetail.updated_at >= draftDetailOverride.updated_at)
+      setDraftDetailOverride(undefined)
+  }, [draftDetailOverride, queriedDetail])
+
+  const handleDraftDetailChange = useCallback((nextDetail: SkillDetailResponse) => {
+    setDraftDetailOverride(deriveSkillDetailFromDraftFiles(nextDetail))
+  }, [])
 
   const handleOpenFile = (path: string) => {
     const targetFile = findFileByPath(activeFiles, path)
@@ -5913,6 +6317,7 @@ export default function SkillDetailPage() {
           detail={detail}
           file={selectedFile}
           onCloseFile={handleCloseFile}
+          onDraftDetailChange={handleDraftDetailChange}
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
           onRestoreVersion={handleRestoreSelectedVersion}
@@ -5927,7 +6332,13 @@ export default function SkillDetailPage() {
           skillId={skillId}
         />
         {rightPanelMode === 'builder' && (
-          <SkillBuilderPanel skillId={skillId} onClose={() => setRightPanelMode('hidden')} />
+          <SkillBuilderPanel
+            detail={detail}
+            selectedFile={selectedFile}
+            skillId={skillId}
+            onDraftDetailChange={handleDraftDetailChange}
+            onClose={() => setRightPanelMode('hidden')}
+          />
         )}
         {rightPanelMode === 'hidden' && (
           <SkillDetailRightPanelRail

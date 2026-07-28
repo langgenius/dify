@@ -464,6 +464,7 @@
   "operation.downloading": "Завантаження...",
   "operation.duplicate": "дублікат",
   "operation.edit": "Редагувати",
+  "operation.export": "Експортувати",
   "operation.exporting": "Експорт",
   "operation.fill": "Автозаповнення",
   "operation.format": "Формат",
