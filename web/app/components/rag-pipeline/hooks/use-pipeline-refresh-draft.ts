@@ -1,6 +1,6 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { processNodesWithoutDataSource } from '../utils'

@@ -46,6 +46,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
@@ -262,7 +263,7 @@ class AccountInitApi(Resource):
         payload = console_ns.payload or {}
         args = AccountInitPayload.model_validate(payload)
 
-        if dify_config.EDITION == "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             if not args.invitation_code:
                 raise ValueError("invitation_code is required")
 

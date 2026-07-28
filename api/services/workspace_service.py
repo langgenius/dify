@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
@@ -26,7 +27,6 @@ class WorkspaceService:
         tenant_info: dict[str, object] = {
             "id": tenant.id,
             "name": tenant.name,
-            "plan": tenant.plan,
             "status": tenant.status,
             "created_at": tenant.created_at,
             "trial_end_reason": None,
@@ -43,6 +43,7 @@ class WorkspaceService:
         tenant_info["role"] = tenant_account_join.role
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
+        tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(
@@ -60,7 +61,7 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-        if dify_config.EDITION == "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
 
             from services.credit_pool_service import CreditPoolBalance, CreditPoolService

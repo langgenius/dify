@@ -1,9 +1,9 @@
 'use client'
 
+import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FormEvent, FormEventHandler, KeyboardEvent, MouseEvent } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import {
@@ -31,11 +31,16 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
+import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
@@ -47,13 +52,11 @@ import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, updateAppInfo } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useDeleteAppMutation, useToggleAppStarMutation } from '@/service/use-apps'
-import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection, getRedirectionPath } from '@/utils/app-redirection'
-import { downloadBlob } from '@/utils/download'
 import {
   getAppACLCapabilities,
   hasOnlyAppPreviewPermission,
@@ -99,12 +102,17 @@ const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppModeEnum>([
   AppModeEnum.ADVANCED_CHAT,
   AppModeEnum.WORKFLOW,
 ])
+const OPERATIONS_MENU_POPUP_CLASS_NAME = 'min-w-[216px]'
 
 type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
   onOpenTagManagement?: () => void
+  stepByStepTourActionMenuOpen?: boolean
+  stepByStepTourCardTarget?: string
+  stepByStepTourCardHighlightPart?: string
+  stepByStepTourActionMenuHighlightPart?: string
 }
 
 type AppAccessModeIconProps = {
@@ -157,6 +165,7 @@ type AppCardOperationsMenuProps = {
   shouldShowAccessControlOption: boolean
   shouldShowAccessConfigOption: boolean
   shouldShowDeleteOption: boolean
+  isExporting: boolean
   onEdit: () => void
   onDuplicate: () => void
   onExport: () => void
@@ -176,6 +185,7 @@ function AppCardOperationsMenu({
   shouldShowAccessControlOption,
   shouldShowAccessConfigOption,
   shouldShowDeleteOption,
+  isExporting,
   onEdit,
   onDuplicate,
   onExport,
@@ -247,7 +257,11 @@ function AppCardOperationsMenu({
         </DropdownMenuItem>
       )}
       {shouldShowExportOption && (
-        <DropdownMenuItem className="gap-2 px-3" onClick={(e) => handleMenuAction(e, onExport)}>
+        <DropdownMenuItem
+          className="gap-2 px-3"
+          disabled={isExporting}
+          onClick={(e) => handleMenuAction(e, onExport)}
+        >
           <span className="system-sm-regular text-text-secondary">
             {t(($) => $.export, { ns: 'app' })}
           </span>
@@ -355,9 +369,12 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
+  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
+  const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
+  const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const setNeedRefresh = useSetNeedRefreshAppList()
   const resourceMaintainer = getAppResourceMaintainer(app)
   const maintainerPermissionOptions = useMemo(
@@ -514,37 +531,19 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   }
 
   const onExport = async (include = false) => {
-    try {
-      const { data } = await exportAppConfig({
-        appID: app.id,
-        include,
-      })
-      const file = new Blob([data], { type: 'application/yaml' })
-      downloadBlob({ data: file, fileName: `${app.name}.yml` })
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-    }
+    await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
   }
 
   const exportCheck = async () => {
+    if (isExporting) return
+
     setIsOperationsMenuOpen(false)
-    if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
-      onExport()
-      return
-    }
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(
-        (env) => env.value_type === 'secret',
-      )
-      if (list.length === 0) {
-        onExport()
-        return
-      }
-      setSecretEnvList(list)
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-    }
+    const isWorkflowApp =
+      app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT
+    const result = isWorkflowApp
+      ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
+      : await exportAppDsl({ appId: app.id, appName: app.name })
+    if (result?.status === 'confirmation-required') setSecretEnvList(result.secretEnvList)
   }
 
   const onSwitch = () => {
@@ -598,7 +597,6 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     shouldShowAccessControlOption ||
     shouldShowAccessConfigOption ||
     shouldShowDeleteOption
-  const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
   const starActionLabel = app.is_starred
     ? t(($) => $['studio.unstarApp'], { ns: 'app' })
     : t(($) => $['studio.starApp'], { ns: 'app' })
@@ -609,7 +607,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
         <div
           className={cn(
             'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
-            isOperationsMenuOpen
+            isOperationsMenuOpen || isExporting
               ? 'pointer-events-auto opacity-100'
               : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
           )}
@@ -643,12 +641,17 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
               onOpenChange={setIsOperationsMenuOpen}
             >
               <DropdownMenuTrigger
-                aria-label={t(($) => $['operation.moreActionsFor'], {
-                  ns: 'common',
-                  name: app.name,
-                })}
+                aria-label={
+                  isExporting
+                    ? t(($) => $['operation.exporting'], { ns: 'common' })
+                    : t(($) => $['operation.moreActionsFor'], {
+                        ns: 'common',
+                        name: app.name,
+                      })
+                }
+                disabled={isExporting}
                 className={cn(
-                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
                   isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
                 onClick={(e) => {
@@ -656,13 +659,20 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                   e.preventDefault()
                 }}
               >
-                <span className="sr-only">{t(($) => $['operation.more'], { ns: 'common' })}</span>
-                <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
+                <span
+                  aria-hidden
+                  className={cn(
+                    'h-[18px] w-[18px] text-text-tertiary',
+                    isExporting
+                      ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                      : 'i-ri-more-fill',
+                  )}
+                />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 placement="bottom-end"
                 sideOffset={4}
-                popupClassName={operationsMenuWidthClassName}
+                popupClassName={OPERATIONS_MENU_POPUP_CLASS_NAME}
               >
                 {systemFeatures.webapp_auth.enabled ? (
                   <AppCardOperationsMenuContent
@@ -674,6 +684,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                     shouldShowDeleteOption={shouldShowDeleteOption}
+                    isExporting={isExporting}
                     onEdit={handleShowEditModal}
                     onDuplicate={handleShowDuplicateModal}
                     onExport={exportCheck}
@@ -693,6 +704,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                     shouldShowDeleteOption={shouldShowDeleteOption}
+                    isExporting={isExporting}
                     onEdit={handleShowEditModal}
                     onDuplicate={handleShowDuplicateModal}
                     onExport={exportCheck}
@@ -816,6 +828,10 @@ export function AppCard({
   onlineUsers = [],
   onRefresh,
   onOpenTagManagement = () => {},
+  stepByStepTourActionMenuOpen = false,
+  stepByStepTourCardTarget,
+  stepByStepTourCardHighlightPart,
+  stepByStepTourActionMenuHighlightPart,
 }: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -831,10 +847,18 @@ export function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const operationsMenu = useStepByStepTourControlledDropdown({
+    allowTriggerCloseWhileControlled: false,
+    controlledOpen: stepByStepTourActionMenuOpen,
+  })
+  const isOperationsMenuOpen = operationsMenu.open
+  const setIsOperationsMenuOpen = operationsMenu.onOpenChange
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
+  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
+  const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
+  const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const setNeedRefresh = useSetNeedRefreshAppList()
   const resourceMaintainer = getAppResourceMaintainer(app)
   const maintainerPermissionOptions = useMemo(
@@ -983,37 +1007,19 @@ export function AppCard({
   }
 
   const onExport = async (include = false) => {
-    try {
-      const { data } = await exportAppConfig({
-        appID: app.id,
-        include,
-      })
-      const file = new Blob([data], { type: 'application/yaml' })
-      downloadBlob({ data: file, fileName: `${app.name}.yml` })
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-    }
+    await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
   }
 
   const exportCheck = async () => {
+    if (isExporting) return
+
     setIsOperationsMenuOpen(false)
-    if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
-      onExport()
-      return
-    }
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(
-        (env) => env.value_type === 'secret',
-      )
-      if (list.length === 0) {
-        onExport()
-        return
-      }
-      setSecretEnvList(list)
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-    }
+    const isWorkflowApp =
+      app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT
+    const result = isWorkflowApp
+      ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
+      : await exportAppDsl({ appId: app.id, appName: app.name })
+    if (result?.status === 'confirmation-required') setSecretEnvList(result.secretEnvList)
   }
 
   const onSwitch = () => {
@@ -1067,8 +1073,6 @@ export function AppCard({
     shouldShowAccessConfigOption ||
     shouldShowDeleteOption
   const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || appACLCapabilities.canEdit)
-  const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
-
   const editTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
@@ -1204,6 +1208,8 @@ export function AppCard({
             aria-disabled="true"
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
+            data-step-by-step-tour-target={stepByStepTourCardTarget}
+            data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={appCardClassName}
             onClick={showPreviewOnlyAccessWarning}
             onKeyDown={handlePreviewOnlyCardKeyDown}
@@ -1215,6 +1221,8 @@ export function AppCard({
             href={appHref}
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}
+            data-step-by-step-tour-target={stepByStepTourCardTarget}
+            data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={appCardClassName}
           >
             {appCardContent}
@@ -1240,7 +1248,7 @@ export function AppCard({
           <div
             className={cn(
               'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
-              isOperationsMenuOpen
+              isOperationsMenuOpen || isExporting
                 ? 'pointer-events-auto opacity-100'
                 : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
             )}
@@ -1274,12 +1282,17 @@ export function AppCard({
                 onOpenChange={setIsOperationsMenuOpen}
               >
                 <DropdownMenuTrigger
-                  aria-label={t(($) => $['operation.moreActionsFor'], {
-                    ns: 'common',
-                    name: app.name,
-                  })}
+                  aria-label={
+                    isExporting
+                      ? t(($) => $['operation.exporting'], { ns: 'common' })
+                      : t(($) => $['operation.moreActionsFor'], {
+                          ns: 'common',
+                          name: app.name,
+                        })
+                  }
+                  disabled={isExporting}
                   className={cn(
-                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
                     isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                   )}
                   onClick={(e) => {
@@ -1287,16 +1300,24 @@ export function AppCard({
                     e.preventDefault()
                   }}
                 >
-                  <span className="sr-only">{t(($) => $['operation.more'], { ns: 'common' })}</span>
                   <span
                     aria-hidden
-                    className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary"
+                    className={cn(
+                      'h-[18px] w-[18px] text-text-tertiary',
+                      isExporting
+                        ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                        : 'i-ri-more-fill',
+                    )}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   placement="bottom-end"
                   sideOffset={4}
-                  popupClassName={operationsMenuWidthClassName}
+                  {...getStepByStepTourDropdownMenuContentProps({
+                    highlightPart: stepByStepTourActionMenuHighlightPart,
+                    interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+                    popupClassName: OPERATIONS_MENU_POPUP_CLASS_NAME,
+                  })}
                 >
                   {systemFeatures.webapp_auth.enabled ? (
                     <AppCardOperationsMenuContent
@@ -1308,6 +1329,7 @@ export function AppCard({
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
+                      isExporting={isExporting}
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
                       onExport={exportCheck}
@@ -1327,6 +1349,7 @@ export function AppCard({
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
+                      isExporting={isExporting}
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
                       onExport={exportCheck}

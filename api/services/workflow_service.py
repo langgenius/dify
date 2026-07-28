@@ -388,6 +388,7 @@ class WorkflowService:
         preserve_environment_variables: bool = False,
         commit: bool = True,
         sync_agent_bindings: bool = True,
+        graph_only: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -397,8 +398,8 @@ class WorkflowService:
         draft workflow has received its target-workspace id.
 
         Existing drafts are row-locked before the hash check. Collaborative
-        graph-only saves preserve server environment variables, while an
-        explicit per-ID patch is merged in the same transaction as the graph.
+        graph-only saves preserve independently persisted draft fields, while
+        an explicit per-ID environment patch is merged with the graph.
 
         :raises WorkflowHashNotEqualError
         """
@@ -411,8 +412,10 @@ class WorkflowService:
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
 
-        # validate features structure
-        self.validate_features_structure(app_model=app_model, features=features)
+        # Collaboration persists features and variables through dedicated endpoints. A graph save
+        # must not overwrite those newer database values with another collaborator's stale cache.
+        if not graph_only or not workflow:
+            self.validate_features_structure(app_model=app_model, features=features)
 
         # validate graph structure
         self.validate_graph_structure(graph=graph)
@@ -443,18 +446,19 @@ class WorkflowService:
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
-            workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = naive_utc_now()
+            if not graph_only:
+                workflow.features = json.dumps(features)
+                workflow.conversation_variables = conversation_variables
             if environment_variable_upserts is not None:
                 workflow.environment_variables = _merge_environment_variable_patch(
                     workflow.environment_variables,
                     environment_variable_upserts,
                     deleted_environment_variable_ids,
                 )
-            elif not preserve_environment_variables:
+            elif not graph_only and not preserve_environment_variables:
                 workflow.environment_variables = environment_variables
-            workflow.conversation_variables = conversation_variables
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -658,7 +662,7 @@ class WorkflowService:
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
 
-        if FeatureService.get_system_features().plugin_manager.enabled:
+        if FeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure
@@ -1201,6 +1205,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1351,6 +1356,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
                 node_type=BuiltinNodeTypes.HUMAN_INPUT,

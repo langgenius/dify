@@ -1,12 +1,12 @@
 import type { ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginSource } from '../../types'
 import { OperationDropdown } from '../operation-dropdown'
 
 const render = (ui: ReactElement, enableMarketplace = true) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
 
 const openDropdown = () => {
   fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))

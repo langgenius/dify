@@ -26,7 +26,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
         onClick={() =>
           onSelect(BlockEnum.DataSource, {
             plugin_id: 'plugin-id',
-            provider_type: 'datasource',
+            provider_type: 'local_file',
             provider_name: 'file',
             datasource_name: 'local-file',
             datasource_label: 'Local File',
@@ -89,7 +89,7 @@ describe('DataSourceEmptyNode', () => {
 
       expect(handleReplaceNode).toHaveBeenCalledWith(BlockEnum.DataSource, {
         plugin_id: 'plugin-id',
-        provider_type: 'datasource',
+        provider_type: 'local_file',
         provider_name: 'file',
         datasource_name: 'local-file',
         datasource_label: 'Local File',

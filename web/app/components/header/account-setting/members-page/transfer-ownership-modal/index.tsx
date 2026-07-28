@@ -145,7 +145,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <Button className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
                 {t(($) => $['members.transferModal.sendVerifyCode'], { ns: 'common' })}
               </Button>
-              <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
+              <Button className="w-full!" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
@@ -174,7 +174,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
                 {t(($) => $['members.transferModal.codeLabel'], { ns: 'common' })}
               </div>
               <Input
-                data-testid="transfer-modal-code-input"
                 className="w-full!"
                 placeholder={t(($) => $['members.transferModal.codePlaceholder'], { ns: 'common' })}
                 value={code}
@@ -184,7 +183,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             </div>
             <div className="mt-3 space-y-2">
               <Button
-                data-testid="transfer-modal-continue"
                 disabled={code.length !== 6}
                 className="w-full!"
                 variant="primary"
@@ -192,7 +190,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               >
                 {t(($) => $['members.transferModal.continue'], { ns: 'common' })}
               </Button>
-              <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
+              <Button className="w-full!" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
@@ -239,7 +237,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             </div>
             <div className="mt-4 space-y-2">
               <Button
-                data-testid="transfer-modal-submit"
                 disabled={!newOwner || isTransfer}
                 className="w-full!"
                 variant="primary"
@@ -248,7 +245,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               >
                 {t(($) => $['members.transferModal.transfer'], { ns: 'common' })}
               </Button>
-              <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
+              <Button className="w-full!" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>

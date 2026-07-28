@@ -100,7 +100,7 @@ vi.mock('@/utils/completion-params', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
+vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),

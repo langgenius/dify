@@ -97,6 +97,7 @@
   "categorySingle.model": "نموذج",
   "categorySingle.tool": "أداة",
   "categorySingle.trigger": "مشغل",
+  "clearSearch": "مسح {{label}}",
   "debugInfo.title": "تصحيح الأخطاء",
   "debugInfo.viewDocs": "عرض المستندات",
   "deprecated": "مهمل",

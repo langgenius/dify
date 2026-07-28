@@ -14,8 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -30,6 +28,8 @@ import {
   fetchModelParameterRulesForModel,
   mergeValidCompletionParams,
 } from '@/utils/completion-params'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 

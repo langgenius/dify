@@ -97,6 +97,7 @@
   "categorySingle.model": "Pola",
   "categorySingle.tool": "Alat",
   "categorySingle.trigger": "Pemicu",
+  "clearSearch": "Hapus {{label}}",
   "debugInfo.title": "Debugging",
   "debugInfo.viewDocs": "Lihat Dokumen",
   "deprecated": "Usang",

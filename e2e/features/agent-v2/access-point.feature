@@ -81,7 +81,7 @@ Feature: Agent v2 Access Point
     When I refresh the current page
     Then Agent v2 Web app access should be in service
 
-  @core @workflow-reference
+  @core @prepared @workflow-reference
   Scenario: Workflow access shows the referencing workflow
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is available

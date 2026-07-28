@@ -2,16 +2,19 @@
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type AccountSectionProps = {
   compact?: boolean
 }
 
 const AccountSection = ({ compact = false }: AccountSectionProps) => {
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
 
   return (
     <AccountDropdown

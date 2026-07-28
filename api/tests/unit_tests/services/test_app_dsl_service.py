@@ -5,12 +5,14 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rbac import RBACPermission
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import App, AppMode
 from models.model import AppModelConfig, IconType
 from models.workflow import Workflow
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportStatus
+from services.errors.account import NoPermissionError
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -240,3 +242,61 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
     session.get.assert_called_once_with(AppModelConfig, "config-1")
     load_annotation_reply_config.assert_called_once_with(session, "app-1")
     app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+
+
+def test_ensure_agent_manage_permission_noops_when_rbac_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", False)
+    check = Mock()
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
+
+    AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
+
+    check.assert_not_called()
+
+
+def test_ensure_agent_manage_permission_allows_agent_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    check = Mock(return_value=True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
+
+    AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
+
+    check.assert_called_once_with("tenant-1", "account-1", scene=RBACPermission.AGENT_MANAGE)
+
+
+def test_ensure_agent_manage_permission_rejects_without_agent_manage(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
+
+    with pytest.raises(NoPermissionError):
+        AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
+
+
+def test_create_or_update_app_gates_agent_mode_before_creation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
+    session = Mock()
+    service = AppDslService(session=session)
+
+    with pytest.raises(NoPermissionError):
+        service._create_or_update_app(
+            app=None,
+            data={"app": {"mode": "agent", "name": "Gated agent"}},
+            account=Mock(id="account-1", current_tenant_id="tenant-1"),
+        )
+
+    session.add.assert_not_called()
+    session.flush.assert_not_called()
+
+
+def test_import_app_reraises_permission_denial_instead_of_failed_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
+    service = AppDslService(session=Mock())
+
+    with pytest.raises(NoPermissionError):
+        service.import_app(
+            account=Mock(id="account-1", current_tenant_id="tenant-1"),
+            import_mode="yaml-content",
+            yaml_content="app:\n  mode: agent\n  name: Denied agent\n",
+        )

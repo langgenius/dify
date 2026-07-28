@@ -13,8 +13,11 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
   accessControlSelectionFromSubjects,
@@ -82,14 +85,17 @@ function DeploymentAccessControlDialogBody({
   onSubmit: (kind: AccessPermissionKind, subjects: SelectableAccessSubject[]) => void
 }) {
   const { t } = useTranslation('deployments')
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [currentMenu, setCurrentMenu] = useState(() => permissionKeyToAppAccessMode(initialKind))
   const [specificSelection, setSpecificSelection] = useState<AccessSubjectSelectionValue>(() =>
     accessControlSelectionFromSubjects(initialSubjects),
   )
   const specificSelected = currentMenu === AppAccessMode.SPECIFIC_GROUPS_MEMBERS
+  const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
   const selectedSubjectCount = specificSelection.groups.length + specificSelection.members.length
   const specificEmpty = specificSelected && selectedSubjectCount === 0
-  const confirmDisabled = saving || (specificSelected && specificEmpty)
+  const publicSelectedDisabled = currentMenu === AppAccessMode.PUBLIC && publicAccessDisabled
+  const confirmDisabled = saving || (specificSelected && specificEmpty) || publicSelectedDisabled
 
   const handleConfirm = () => {
     if (confirmDisabled) return
@@ -139,12 +145,22 @@ function DeploymentAccessControlDialogBody({
             onSelectionChange={setSpecificSelection}
           />
         </AccessControlItem>
-        <AccessControlItem type={AppAccessMode.PUBLIC}>
+        <AccessControlItem type={AppAccessMode.PUBLIC} disabled={publicAccessDisabled}>
           <div className="flex items-center gap-x-2 p-3">
             <span className="i-ri-global-line size-4 text-text-primary" aria-hidden="true" />
             <p className="system-sm-medium text-text-primary">
               {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
             </p>
+            {publicAccessDisabled && (
+              <Infotip
+                aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                  ns: 'app',
+                })}
+                className="size-3.5 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+              >
+                {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
+              </Infotip>
+            )}
           </div>
         </AccessControlItem>
       </RadioGroup>
@@ -168,12 +184,15 @@ function DeploymentAccessControlDialogBody({
 function AccessControlItem({
   type,
   children,
+  disabled,
 }: PropsWithChildren<{
   type: AppAccessMode
+  disabled?: boolean
 }>) {
   return (
     <RadioItem<AppAccessMode>
       value={type}
+      disabled={disabled}
       render={<div />}
       className={cn(
         'cursor-pointer rounded-[10px] border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg shadow-xs transition-colors',

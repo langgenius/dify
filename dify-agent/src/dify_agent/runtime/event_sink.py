@@ -22,6 +22,8 @@ from dify_agent.protocol.schemas import (
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunFailedEvent,
     RunFailedEventData,
     RunStartedEvent,
@@ -159,10 +161,29 @@ async def emit_run_failed(
     )
 
 
+async def emit_run_cancelled(
+    sink: RunEventSink,
+    *,
+    run_id: str,
+    reason: str | None = None,
+    message: str | None = None,
+) -> str:
+    """Emit the terminal cancellation lifecycle event."""
+    return await emit_run_event(
+        sink,
+        event=RunCancelledEvent(
+            run_id=run_id,
+            data=RunCancelledEventData(reason=reason, message=message),
+            created_at=utc_now(),
+        ),
+    )
+
+
 __all__ = [
     "InMemoryRunEventSink",
     "RunEventSink",
     "emit_pydantic_ai_event",
+    "emit_run_cancelled",
     "emit_run_event",
     "emit_run_failed",
     "emit_run_started",

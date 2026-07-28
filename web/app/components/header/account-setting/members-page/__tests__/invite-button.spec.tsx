@@ -1,48 +1,20 @@
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen } from '@testing-library/react'
 import { vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useWorkspacePermissions } from '@/service/use-workspace'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InviteButton from '../invite-button'
 
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-id' },
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-id' },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-id' },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-id' },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-id' },
-  }))
-})
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+
 vi.mock('@/service/use-workspace')
 
 describe('InviteButton', () => {
@@ -60,15 +32,15 @@ describe('InviteButton', () => {
   }
 
   const renderInviteButton = (brandingEnabled: boolean) =>
-    renderWithSystemFeatures(<InviteButton />, {
+    renderWithConsoleQuery(<InviteButton />, {
       systemFeatures: { branding: { enabled: brandingEnabled } },
     })
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { id: 'workspace-id' } as ICurrentWorkspace,
-    } as unknown as AppContextStateMockState)
+    } as unknown as ConsoleStateFixture)
   })
 
   it('should show invite button when branding is disabled', () => {

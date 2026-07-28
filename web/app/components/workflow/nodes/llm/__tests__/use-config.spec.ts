@@ -2,30 +2,35 @@ import type { MutableRefObject } from 'react'
 import type { LLMNodeType } from '../types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum, Resolution } from '@/types/app'
 import useConfigVision from '../../../hooks/use-config-vision'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
+import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import useLLMInputManager from '../hooks/use-llm-input-manager'
 import useLLMPromptConfig from '../hooks/use-llm-prompt-config'
 import useLLMStructuredOutputConfig from '../hooks/use-llm-structured-output-config'
 import useConfig from '../use-config'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-  useIsChatMode: vi.fn(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: vi.fn(),
+    useIsChatMode: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   __esModule: true,
   default: vi.fn(),
 }))

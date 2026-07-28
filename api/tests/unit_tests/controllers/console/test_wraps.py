@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import override
 from unittest.mock import MagicMock, patch
 
@@ -5,6 +6,8 @@ import pytest
 from flask import Flask, request
 from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
@@ -34,6 +37,7 @@ from controllers.console.wraps import (
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.dataset import RateLimitLog
 from services.feature_service import LicenseStatus
 
 
@@ -197,7 +201,7 @@ class TestRbacPermissionRequired:
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_extract.assert_called_once_with("app", {"app_id": "app-123"})
+        mock_extract.assert_called_once_with(RBACResourceScope.APP, "tenant-1", {"app_id": "app-123"})
         mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123")
         mock_check.assert_called_once_with(
             "tenant-1",
@@ -303,7 +307,7 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/"):
             request.view_args = {"app_id": "view-app"}
 
-            assert _extract_resource_id("app", {"app_id": "path-app"}) == "path-app"
+            assert _extract_resource_id("app", "tenant-1", {"app_id": "path-app"}) == "path-app"
 
     def test_extract_resource_id_falls_back_to_request_view_args(self):
         app = Flask(__name__)
@@ -311,22 +315,59 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/"):
             request.view_args = {"app_id": "view-app"}
 
-            assert _extract_resource_id("app") == "view-app"
+            assert _extract_resource_id("app", "tenant-1") == "view-app"
 
     def test_extract_resource_id_supports_legacy_route_aliases(self):
         app = Flask(__name__)
 
         with app.test_request_context("/apps/app-1/api-keys"):
             request.view_args = {"resource_id": "app-1"}
-            assert _extract_resource_id(RBACResourceScope.APP) == "app-1"
-
-        with app.test_request_context("/agent/agent-1/features"):
-            request.view_args = {"agent_id": "agent-1"}
-            assert _extract_resource_id(RBACResourceScope.APP) == "agent-1"
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "app-1"
 
         with app.test_request_context("/datasets/dataset-1/api-keys"):
             request.view_args = {"resource_id": "dataset-1"}
-            assert _extract_resource_id(RBACResourceScope.DATASET) == "dataset-1"
+            assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
+
+    def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
+        app = Flask(__name__)
+
+        with (
+            app.test_request_context("/agent/agent-1/chat-messages"),
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
+        ):
+            request.view_args = {"agent_id": "agent-1"}
+            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
+
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "parent-app-1"
+
+    def test_extract_resource_id_scopes_agent_resolution_to_the_calling_tenant(self):
+        """The tenant must reach the resolver, or an Agent id from any tenant resolves."""
+        app = Flask(__name__)
+
+        with (
+            app.test_request_context("/agent/agent-1/chat-messages"),
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
+        ):
+            request.view_args = {"agent_id": "agent-1"}
+            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
+
+            _extract_resource_id(RBACResourceScope.APP, "tenant-9")
+
+            mock_service.return_value.peek_authz_app_id.assert_called_once_with(
+                tenant_id="tenant-9", agent_id="agent-1"
+            )
+
+    def test_extract_resource_id_keeps_agent_id_when_the_agent_does_not_resolve(self):
+        app = Flask(__name__)
+
+        with (
+            app.test_request_context("/agent/agent-1/chat-messages"),
+            patch("controllers.common.wraps.AgentRosterService") as mock_service,
+        ):
+            request.view_args = {"agent_id": "agent-1"}
+            mock_service.return_value.peek_authz_app_id.return_value = None
+
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
 
     def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
         @is_admin_or_owner_required
@@ -657,8 +698,7 @@ class TestRateLimiting:
     """Test rate limiting decorator"""
 
     @patch("controllers.console.wraps.redis_client")
-    @patch("controllers.console.wraps.db")
-    def test_should_allow_requests_within_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
+    def test_should_allow_requests_within_rate_limit(self, mock_redis: MagicMock):
         """Test that requests within rate limit are allowed"""
         # Arrange
         mock_rate_limit = MagicMock()
@@ -685,8 +725,13 @@ class TestRateLimiting:
         mock_redis.zremrangebyscore.assert_called_once()
 
     @patch("controllers.console.wraps.redis_client")
-    @patch("controllers.console.wraps.db")
-    def test_should_reject_requests_over_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
+    @pytest.mark.parametrize("sqlite_session", [(RateLimitLog,)], indirect=True)
+    def test_should_reject_requests_over_rate_limit(
+        self,
+        mock_redis: MagicMock,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         """Test that requests over rate limit are rejected and logged"""
         # Arrange
         app = create_app_with_login()
@@ -696,8 +741,7 @@ class TestRateLimiting:
         mock_rate_limit.subscription_plan = "pro"
         mock_redis.zcard.return_value = 11  # Over limit
 
-        mock_session = MagicMock()
-        mock_db.session = mock_session
+        monkeypatch.setattr("controllers.console.wraps.db", SimpleNamespace(session=sqlite_session))
 
         @cloud_edition_billing_rate_limit_check("knowledge")
         def knowledge_request():
@@ -719,9 +763,11 @@ class TestRateLimiting:
                     assert exc_info.value.code == 403
                     assert "rate limit" in str(exc_info.value.description)
 
-                    # Verify rate limit log was created
-                    mock_session.add.assert_called_once()
-                    mock_session.commit.assert_called_once()
+                    rate_limit_log = sqlite_session.scalar(select(RateLimitLog))
+                    assert rate_limit_log is not None
+                    assert rate_limit_log.tenant_id == "tenant123"
+                    assert rate_limit_log.subscription_plan == "pro"
+                    assert rate_limit_log.operation == "knowledge"
 
 
 class TestCloudUtmRecord:

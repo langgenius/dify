@@ -6,7 +6,7 @@ import type {
   EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { Getter } from 'jotai'
+import type { QueryClient } from '@tanstack/react-query'
 import {
   EnvVarValueSource,
   EnvVarValueType,
@@ -14,118 +14,54 @@ import {
   RuntimeInstanceStatus,
 } from '@dify/contracts/enterprise/types.gen'
 import { skipToken } from '@tanstack/react-query'
-import { atom, createStore } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-type QueryOptions = {
-  data?: unknown
-  enabled?: boolean
-  input?: unknown
-  isError?: boolean
-  isFetching?: boolean
-  isLoading?: boolean
-  queryKey?: readonly unknown[]
-  retry?: boolean
-}
-
-type QueryResult = {
-  data?: {
-    options: DeploymentOptions
-  }
-  isLoading: boolean
-  isFetching: boolean
-  isError: boolean
-}
+import { createQueryAtomTestStore } from '@/test/query-atom'
 
 type DeploymentOptions = {
   credentialSlots: CredentialSlot[]
   envVarSlots: EnvVarSlot[]
 }
 
-type MutationOptions = {
-  mutationKey?: readonly string[]
-}
-
-type MutationResult = {
-  isPending: boolean
-  mutate: ReturnType<typeof vi.fn>
-}
-
-const mockDeploymentOptionsQuery = vi.hoisted<{ current: QueryResult }>(() => ({
-  current: {
-    isLoading: false,
-    isFetching: false,
-    isError: false,
-  },
-}))
-const mockPromoteMutate = vi.hoisted(() => vi.fn())
-const mockRollbackMutate = vi.hoisted(() => vi.fn())
-const mockPromoteMutation = vi.hoisted<{ current: MutationResult }>(() => ({
-  current: {
-    isPending: false,
-    mutate: mockPromoteMutate,
-  },
-}))
-const mockRollbackMutation = vi.hoisted<{ current: MutationResult }>(() => ({
-  current: {
-    isPending: false,
-    mutate: mockRollbackMutate,
-  },
-}))
-
-vi.mock('jotai-tanstack-query', () => ({
-  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
-    atom((get) => {
-      const options = createOptions(get)
-      if (options.queryKey?.[0] === 'computeDeploymentOptions') {
-        return {
-          ...options,
-          ...mockDeploymentOptionsQuery.current,
-        }
-      }
-
-      return {
-        ...options,
-        data: undefined,
-        isLoading: false,
-        isFetching: false,
-        isError: false,
-      }
-    }),
-  atomWithMutation: (createOptions: () => MutationOptions) =>
-    atom(() => {
-      const options = createOptions()
-      return options.mutationKey?.[0] === 'rollback'
-        ? mockRollbackMutation.current
-        : mockPromoteMutation.current
-    }),
-}))
+const mockReleaseDeploymentViewQueryOptions = vi.hoisted(() => vi.fn())
+const mockPromoteMutation = vi.hoisted(() => vi.fn())
+const mockRollbackMutation = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       releaseService: {
         computeReleaseDeploymentView: {
-          queryOptions: ({ enabled, input }: { enabled: boolean; input: unknown }) => ({
-            enabled,
-            input,
-            queryKey: ['computeReleaseDeploymentView', input],
-          }),
+          queryOptions: ({ enabled, input }: { enabled: boolean; input: unknown }) => {
+            mockReleaseDeploymentViewQueryOptions({ enabled, input })
+            return {
+              enabled,
+              input,
+              queryKey: ['computeReleaseDeploymentView', input],
+              queryFn: async () => undefined,
+            }
+          },
         },
         computeDeploymentOptions: {
           queryOptions: ({ enabled, input }: { enabled: boolean; input: unknown }) => ({
             enabled,
             input,
             queryKey: ['computeDeploymentOptions', input],
+            queryFn: async () => undefined,
           }),
         },
       },
       deploymentService: {
         promote: {
-          mutationOptions: () => ({ mutationKey: ['promote'] }),
+          mutationOptions: () => ({
+            mutationKey: ['promote'],
+            mutationFn: mockPromoteMutation,
+          }),
         },
         rollback: {
-          mutationOptions: () => ({ mutationKey: ['rollback'] }),
+          mutationOptions: () => ({
+            mutationKey: ['rollback'],
+            mutationFn: mockRollbackMutation,
+          }),
         },
       },
     },
@@ -238,38 +174,36 @@ function deployConfig() {
   }
 }
 
-function setQueryOptions(options: DeploymentOptions) {
-  mockDeploymentOptionsQuery.current = {
-    data: {
+function setQueryOptions(
+  queryClient: QueryClient,
+  options: DeploymentOptions,
+  releaseId = 'release-2',
+  environmentId = 'environment-1',
+) {
+  queryClient.setQueryData(
+    [
+      'computeDeploymentOptions',
+      {
+        body: {
+          releaseId,
+          environmentId,
+        },
+      },
+    ],
+    {
       options,
     },
-    isLoading: false,
-    isFetching: false,
-    isError: false,
-  }
+  )
 }
 
 describe('deploy drawer state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDeploymentOptionsQuery.current = {
-      isLoading: false,
-      isFetching: false,
-      isError: false,
-    }
-    mockPromoteMutation.current = {
-      isPending: false,
-      mutate: mockPromoteMutate,
-    }
-    mockRollbackMutation.current = {
-      isPending: false,
-      mutate: mockRollbackMutate,
-    }
   })
 
   it('should open and close the deploy drawer with route identity', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { store } = createQueryAtomTestStore()
 
     store.set(state.openDeployDrawerAtom, {
       appInstanceId: 'app-instance-1',
@@ -292,16 +226,18 @@ describe('deploy drawer state', () => {
 
   it('should disable release deployment view query with skipToken until form app instance exists', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { store } = createQueryAtomTestStore()
 
-    expect(store.get(state.releaseDeploymentViewQueryAtom)).toMatchObject({
+    store.get(state.releaseDeploymentViewQueryAtom)
+    expect(mockReleaseDeploymentViewQueryOptions).toHaveBeenLastCalledWith({
       enabled: false,
       input: skipToken,
     })
 
     store.set(state.deployFormAppInstanceIdAtom, 'app-instance-1')
 
-    expect(store.get(state.releaseDeploymentViewQueryAtom)).toMatchObject({
+    store.get(state.releaseDeploymentViewQueryAtom)
+    expect(mockReleaseDeploymentViewQueryOptions).toHaveBeenLastCalledWith({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
@@ -309,7 +245,7 @@ describe('deploy drawer state', () => {
 
   it('should derive default environment and release selections from config', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { store } = createQueryAtomTestStore()
     store.set(state.deployReadyFormConfigAtom, {
       ...deployConfig(),
       lockedEnvId: 'environment-2',
@@ -331,10 +267,10 @@ describe('deploy drawer state', () => {
 
   it('should reset bindings, env vars, and validation state when target changes', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { queryClient, store } = createQueryAtomTestStore()
     const slot = credentialSlot()
     store.set(state.deployReadyFormConfigAtom, deployConfig())
-    setQueryOptions({
+    setQueryOptions(queryClient, {
       credentialSlots: [slot],
       envVarSlots: [envVarSlot()],
     })
@@ -374,12 +310,12 @@ describe('deploy drawer state', () => {
 
   it('should derive binding and env var readiness from deployment options', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { queryClient, store } = createQueryAtomTestStore()
     const slot = credentialSlot({
       lastCredentialId: 'credential-2',
     })
     store.set(state.deployReadyFormConfigAtom, deployConfig())
-    setQueryOptions({
+    setQueryOptions(queryClient, {
       credentialSlots: [slot],
       envVarSlots: [
         envVarSlot({
@@ -408,9 +344,9 @@ describe('deploy drawer state', () => {
 
   it('should block submit until required literal env vars are valid', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { queryClient, store } = createQueryAtomTestStore()
     store.set(state.deployReadyFormConfigAtom, deployConfig())
-    setQueryOptions({
+    setQueryOptions(queryClient, {
       credentialSlots: [
         credentialSlot({
           candidates: [credentialCandidate({ credentialId: 'credential-1' })],
@@ -442,14 +378,9 @@ describe('deploy drawer state', () => {
 
   it('should submit a promote deployment with selected credentials and env vars', async () => {
     const state = await loadState()
-    const store = createStore()
-    mockPromoteMutate.mockImplementation(
-      (_variables: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      },
-    )
+    const { queryClient, store } = createQueryAtomTestStore()
     store.set(state.deployReadyFormConfigAtom, deployConfig())
-    setQueryOptions({
+    setQueryOptions(queryClient, {
       credentialSlots: [
         credentialSlot({
           candidates: [credentialCandidate({ credentialId: 'credential-1' })],
@@ -471,38 +402,37 @@ describe('deploy drawer state', () => {
       deployFailedMessage: 'Deploy failed',
     })
 
-    expect(mockPromoteMutate).toHaveBeenCalledWith(
-      {
-        params: {
-          appInstanceId: 'app-instance-1',
-          environmentId: 'environment-1',
+    await vi.waitFor(() => {
+      expect(mockPromoteMutation).toHaveBeenCalledWith(
+        {
+          params: {
+            appInstanceId: 'app-instance-1',
+            environmentId: 'environment-1',
+          },
+          body: {
+            appInstanceId: 'app-instance-1',
+            environmentId: 'environment-1',
+            releaseId: 'release-2',
+            credentials: [
+              {
+                providerId: 'langgenius/openai',
+                category: PluginCategory.PLUGIN_CATEGORY_MODEL,
+                credentialId: 'credential-1',
+              },
+            ],
+            envVars: [
+              {
+                key: 'API_KEY',
+                value: 'secret',
+                valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+              },
+            ],
+            idempotencyKey: expect.any(String),
+          },
         },
-        body: {
-          appInstanceId: 'app-instance-1',
-          environmentId: 'environment-1',
-          releaseId: 'release-2',
-          credentials: [
-            {
-              providerId: 'langgenius/openai',
-              category: PluginCategory.PLUGIN_CATEGORY_MODEL,
-              credentialId: 'credential-1',
-            },
-          ],
-          envVars: [
-            {
-              key: 'API_KEY',
-              value: 'secret',
-              valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
-            },
-          ],
-          idempotencyKey: expect.any(String),
-        },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }),
-    )
+        expect.any(Object),
+      )
+    })
     expect(store.get(state.deployDrawerOpenAtom)).toBe(false)
   })
 })

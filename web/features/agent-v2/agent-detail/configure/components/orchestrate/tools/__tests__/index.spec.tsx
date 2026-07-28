@@ -12,8 +12,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
@@ -33,6 +32,13 @@ const pluginAuthState = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
   ToolPickerContent: () => <div>Mock tool picker</div>,
 }))
+
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    userProfileIdAtom: atom('user-1'),
+  }
+})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ toolIcon }: { toolIcon?: string | { content: string; background: string } }) => (
@@ -80,11 +86,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   }: {
     formSchemas: Array<{ label?: Record<string, string>; variable?: string }>
   }) => (
-    <div data-testid="tool-setting-form">
+    <form aria-label="tool settings">
       {formSchemas.map((schema) => (
         <div key={schema.variable}>{schema.label?.en_US}</div>
       ))}
-    </div>
+    </form>
   ),
 }))
 
@@ -104,6 +110,7 @@ const agentToolsDraft = {
       kind: 'provider',
       name: 'DuckDuckGo',
       iconClassName: 'i-simple-icons-duckduckgo',
+      providerType: 'builtin',
       credentialKey: 'agentDetail.configure.tools.credential.authOne',
       credentialVariant: 'none',
       actions: [
@@ -137,6 +144,7 @@ const reflectedAgentToolsDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialVariant: 'none',
       actions: [
         {
@@ -158,6 +166,7 @@ const reflectedUnauthorizedNoCredentialDraft = {
       kind: 'provider',
       name: 'duckduckgo',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'unauthorized',
       actions: [
@@ -180,6 +189,7 @@ const reflectedUnauthorizedOAuthCredentialTypeDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'none',
       actions: [
@@ -314,8 +324,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
   })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
-  store.set(agentComposerOriginalDraftAtom, initialDraft)
-  store.set(agentComposerPublishedDraftAtom, initialDraft)
+  store.set(agentComposerSavedDraftAtom, initialDraft)
 
   const view = render(
     <QueryClientProvider client={queryClient}>
@@ -632,7 +641,7 @@ describe('AgentTools', () => {
       )
 
       expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
       expect(screen.getByText('Search Query')).toBeInTheDocument()
     })
 
@@ -652,7 +661,7 @@ describe('AgentTools', () => {
         }),
       )
 
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
 
       act(() => {
         store.set(agentComposerDraftAtom, {
@@ -661,7 +670,7 @@ describe('AgentTools', () => {
         })
       })
 
-      expect(screen.queryByTestId('tool-setting-form')).not.toBeInTheDocument()
+      expect(screen.queryByRole('form', { name: 'tool settings' })).not.toBeInTheDocument()
     })
   })
 })
