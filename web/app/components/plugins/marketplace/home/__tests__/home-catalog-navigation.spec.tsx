@@ -76,6 +76,32 @@ describe('HomeCatalogNavigation', () => {
     expect(templatesTab).toHaveClass('cursor-pointer')
   })
 
+  it('marks Templates as active when rendering the Templates catalog', () => {
+    render(<HomeCatalogTabs activeTab="templates" isMarketplacePlatform />)
+
+    const pluginsTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
+    const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
+
+    expect(pluginsTab).not.toHaveAttribute('aria-current')
+    expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
+    expect(templatesTab).toHaveAttribute('aria-current', 'page')
+    expect(templatesTab.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+  })
+
+  it('renders a supplied catalog category navigation', () => {
+    render(
+      <HomeStickyStateProvider>
+        <HomeCatalogNavigation
+          catalogTabs={<HomeCatalogTabs activeTab="templates" isMarketplacePlatform />}
+          catalogCategories={<nav aria-label="Template categories">Template categories</nav>}
+        />
+      </HomeStickyStateProvider>,
+    )
+
+    expect(screen.getByRole('navigation', { name: 'Template categories' })).toBeInTheDocument()
+    expect(screen.queryByTestId('plugin-type-switch')).not.toBeInTheDocument()
+  })
+
   it('links Dify users to the hosted Marketplace templates page', () => {
     renderNavigation(false)
 

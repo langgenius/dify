@@ -10,12 +10,13 @@ import { homeCatalogPinnedAtom } from './home-sticky-state'
 import styles from './home-sticky.module.css'
 
 type HomeCatalogNavigationProps = {
+  catalogCategories?: ReactNode
   catalogTabs: ReactNode
 }
 
 const STICKY_TOP = 48
 
-function HomeCatalogNavigation({ catalogTabs }: HomeCatalogNavigationProps) {
+function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNavigationProps) {
   const { t } = useTranslation()
   const isPinned = useAtomValue(homeCatalogPinnedAtom)
   const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
@@ -63,10 +64,16 @@ function HomeCatalogNavigation({ catalogTabs }: HomeCatalogNavigationProps) {
       >
         <div className="w-full">
           <div className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>
-          <PluginTypeSwitch
-            className={cn('mt-4', isPinned && styles.categoriesPinned)}
-            variant="home"
-          />
+          {catalogCategories ? (
+            <div className={cn('mt-4', isPinned && styles.categoriesPinned)}>
+              {catalogCategories}
+            </div>
+          ) : (
+            <PluginTypeSwitch
+              className={cn('mt-4', isPinned && styles.categoriesPinned)}
+              variant="home"
+            />
+          )}
         </div>
       </section>
     </>

@@ -1,11 +1,14 @@
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 
 type HomeHeroProps = {
   isMarketplacePlatform: boolean
+  subtitle?: ReactNode
+  title?: ReactNode
 }
 
-const HomeHero = ({ isMarketplacePlatform }: HomeHeroProps) => {
+const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => {
   const { t } = useTranslation('plugin')
 
   return (
@@ -21,10 +24,10 @@ const HomeHero = ({ isMarketplacePlatform }: HomeHeroProps) => {
             className="text-[28px] leading-[1.2] font-medium tracking-[-0.56px] text-text-primary"
             style={{ fontFamily: "var(--font-family-brand, 'Söhne', var(--font-sans))" }}
           >
-            {t(($) => $['marketplace.home.heroTitle'])}
+            {title ?? t(($) => $['marketplace.home.heroTitle'])}
           </h1>
           <p className="text-[13px] leading-4 font-light tracking-[-0.065px] text-text-tertiary">
-            {t(($) => $['marketplace.home.heroSubtitle'])}
+            {subtitle ?? t(($) => $['marketplace.home.heroSubtitle'])}
           </p>
         </div>
       </div>

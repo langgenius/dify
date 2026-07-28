@@ -1,3 +1,4 @@
+import type { HomeCatalogTab } from './home-catalog-tabs'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
@@ -9,6 +10,7 @@ import { HomeStickyCatalogTabs } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
 
 type HomeHeaderProps = {
+  activeTab?: HomeCatalogTab
   actions?: React.ReactNode
   brandName?: React.ReactNode
   isMarketplacePlatform: boolean
@@ -27,7 +29,12 @@ function Guide() {
   )
 }
 
-const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderProps) => {
+const HomeHeader = ({
+  activeTab = 'plugins',
+  actions,
+  brandName,
+  isMarketplacePlatform,
+}: HomeHeaderProps) => {
   const { t } = useTranslation('common')
 
   return (
@@ -52,6 +59,7 @@ const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderPro
         </Link>
         <HomeStickyCatalogTabs>
           <HomeCatalogTabs
+            activeTab={activeTab}
             className={styles.headerCatalogTabs}
             compact
             isMarketplacePlatform={isMarketplacePlatform}
