@@ -854,3 +854,84 @@ class TestMessageServiceSuggestedQuestions:
                 invoke_from=InvokeFrom.WEB_APP,
                 session=sqlite_session,
             )
+
+    def test_agent_app_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+
+        sq_config = MagicMock()
+        sq_config.enabled = True
+        sq_config.prompt = None
+        sq_config.model = None
+        agent_soul = MagicMock()
+        agent_soul.app_features.suggested_questions_after_answer = sq_config
+
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = agent_soul
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=factory.create_app(mode=AppMode.AGENT),
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == ["Q1?"]
+        llm_generator.generate_suggested_questions_after_answer.assert_called_once()
+
+    def test_agent_app_disabled(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        self._chat_boundaries(monkeypatch, conversation)
+
+        sq_config = MagicMock()
+        sq_config.enabled = False
+        agent_soul = MagicMock()
+        agent_soul.app_features.suggested_questions_after_answer = sq_config
+
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = agent_soul
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
+            MessageService.get_suggested_questions_after_answer(
+                app_model=factory.create_app(mode=AppMode.AGENT),
+                user=factory.create_end_user(),
+                message_id="msg-123",
+                invoke_from=InvokeFrom.SERVICE_API,
+                session=sqlite_session,
+            )
+
+    def test_agent_app_no_soul_returns_empty(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        self._chat_boundaries(monkeypatch, conversation)
+
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = None
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=factory.create_app(mode=AppMode.AGENT),
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == []
