@@ -316,15 +316,24 @@ def _order_system_messages_first(
     prompt_messages: Sequence[PromptMessage],
     instruction_messages: Sequence[SystemPromptMessage],
 ) -> list[PromptMessage]:
-    """Keep daemon requests compatible with providers that require leading system messages."""
-    system_messages: list[PromptMessage] = []
+    """Merge system content into one leading message for strict provider templates."""
+    system_contents: list[str] = []
     non_system_messages: list[PromptMessage] = []
     for message in prompt_messages:
         if isinstance(message, SystemPromptMessage):
-            system_messages.append(message)
+            text = message.get_text_content()
+            if text.strip():
+                system_contents.append(text)
         else:
             non_system_messages.append(message)
-    return [*system_messages, *instruction_messages, *non_system_messages]
+    for instruction in instruction_messages:
+        text = instruction.get_text_content()
+        if text.strip():
+            system_contents.append(text)
+
+    if not system_contents:
+        return non_system_messages
+    return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
