@@ -7,6 +7,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 cd "$REPO_ROOT"
 
 EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
+UNIT_TESTS_CONFIG="tests/unit_tests/pyrefly.toml"
 TEST_CONTAINERS_DIR="tests/test_containers_integration_tests"
 TEST_CONTAINERS_CONFIG="$TEST_CONTAINERS_DIR/pyrefly.toml"
 
@@ -74,6 +75,19 @@ fi
 run_pyrefly "${pyrefly_command[@]}" || status=$?
 
 if (( ${#target_paths[@]} == 0 )); then
+  unit_tests_args=(
+    "--summary=none"
+    "--use-ignore-files=false"
+    "--config=$UNIT_TESTS_CONFIG"
+  )
+  if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+    unit_tests_args+=("--output-format=github")
+  fi
+  run_pyrefly \
+    uv run --directory api --dev pyrefly check \
+    "${unit_tests_args[@]}" \
+    || status=$?
+
   test_containers_args=(
     "--summary=none"
     "--use-ignore-files=false"
