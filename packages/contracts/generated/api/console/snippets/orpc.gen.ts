@@ -9,6 +9,8 @@ import {
   zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse,
   zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath,
   zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse,
+  zGetSnippetsBySnippetIdWorkflowRunsByRunIdEventsPath,
+  zGetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponse,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsPath,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath,
@@ -126,10 +128,25 @@ export const tasks = {
   byTaskId,
 }
 
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSnippetsBySnippetIdWorkflowRunsByRunIdEvents',
+    path: '/snippets/{snippet_id}/workflow-runs/{run_id}/events',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowRunsByRunIdEventsPath }))
+  .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponse)
+
+export const events = {
+  get,
+}
+
 /**
  * List node executions for a workflow run
  */
-export const get = oc
+export const get2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -142,13 +159,13 @@ export const get = oc
   .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse)
 
 export const nodeExecutions = {
-  get,
+  get: get2,
 }
 
 /**
  * Get workflow run detail for snippet
  */
-export const get2 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -161,14 +178,15 @@ export const get2 = oc
   .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdResponse)
 
 export const byRunId = {
-  get: get2,
+  get: get3,
+  events,
   nodeExecutions,
 }
 
 /**
  * List workflow runs for snippet
  */
-export const get3 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -186,7 +204,7 @@ export const get3 = oc
   .output(zGetSnippetsBySnippetIdWorkflowRunsResponse)
 
 export const workflowRuns = {
-  get: get3,
+  get: get4,
   tasks,
   byRunId,
 }
@@ -194,7 +212,7 @@ export const workflowRuns = {
 /**
  * Get default block configurations for snippet workflow
  */
-export const get4 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -207,13 +225,13 @@ export const get4 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse)
 
 export const defaultWorkflowBlockConfigs = {
-  get: get4,
+  get: get5,
 }
 
 /**
  * Get snippet draft workflow configuration limits
  */
-export const get5 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -226,13 +244,13 @@ export const get5 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse)
 
 export const config = {
-  get: get5,
+  get: get6,
 }
 
 /**
  * Conversation variables are not used in snippet workflows; returns an empty list for API parity
  */
-export const get6 = oc
+export const get7 = oc
   .route({
     description:
       'Conversation variables are not used in snippet workflows; returns an empty list for API parity',
@@ -246,13 +264,13 @@ export const get6 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse)
 
 export const conversationVariables = {
-  get: get6,
+  get: get7,
 }
 
 /**
  * Get environment variables from snippet draft workflow graph
  */
-export const get7 = oc
+export const get8 = oc
   .route({
     description: 'Get environment variables from snippet draft workflow graph',
     inputStructure: 'detailed',
@@ -265,7 +283,7 @@ export const get7 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse)
 
 export const environmentVariables = {
-  get: get7,
+  get: get8,
 }
 
 /**
@@ -352,7 +370,7 @@ export const loop = {
   nodes: nodes2,
 }
 
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -368,7 +386,7 @@ export const get8 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
 
 export const candidates = {
-  get: get8,
+  get: get9,
 }
 
 export const post4 = oc
@@ -451,7 +469,7 @@ export const validate = {
   post: post7,
 }
 
-export const get9 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -484,7 +502,7 @@ export const put = oc
   .output(zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
 
 export const agentComposer = {
-  get: get9,
+  get: get10,
   put,
   candidates,
   copyFromRoster,
@@ -500,7 +518,7 @@ export const agentComposer = {
  * Returns the most recent execution record for the given node,
  * including status, inputs, outputs, and timing information.
  */
-export const get10 = oc
+export const get11 = oc
   .route({
     description:
       'Get last run result for a node in snippet draft workflow\nReturns the most recent execution record for the given node,\nincluding status, inputs, outputs, and timing information.',
@@ -515,7 +533,7 @@ export const get10 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse)
 
 export const lastRun = {
-  get: get10,
+  get: get11,
 }
 
 /**
@@ -567,7 +585,7 @@ export const delete_ = oc
 /**
  * Get variables for a specific node (snippet draft workflow)
  */
-export const get11 = oc
+export const get12 = oc
   .route({
     description: 'Get variables for a specific node (snippet draft workflow)',
     inputStructure: 'detailed',
@@ -581,7 +599,7 @@ export const get11 = oc
 
 export const variables = {
   delete: delete_,
-  get: get11,
+  get: get12,
 }
 
 export const byNodeId3 = {
@@ -627,7 +645,7 @@ export const run4 = {
 /**
  * System variables are not used in snippet workflows; returns an empty list for API parity
  */
-export const get12 = oc
+export const get13 = oc
   .route({
     description:
       'System variables are not used in snippet workflows; returns an empty list for API parity',
@@ -641,7 +659,7 @@ export const get12 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
-  get: get12,
+  get: get13,
 }
 
 /**
@@ -682,7 +700,7 @@ export const delete2 = oc
 /**
  * Get a specific draft workflow variable (snippet scope)
  */
-export const get13 = oc
+export const get14 = oc
   .route({
     description: 'Get a specific draft workflow variable (snippet scope)',
     inputStructure: 'detailed',
@@ -716,7 +734,7 @@ export const patch = oc
 
 export const byVariableId = {
   delete: delete2,
-  get: get13,
+  get: get14,
   patch,
   reset,
 }
@@ -740,7 +758,7 @@ export const delete3 = oc
 /**
  * List draft workflow variables without values (paginated, snippet scope)
  */
-export const get14 = oc
+export const get15 = oc
   .route({
     description: 'List draft workflow variables without values (paginated, snippet scope)',
     inputStructure: 'detailed',
@@ -759,14 +777,14 @@ export const get14 = oc
 
 export const variables2 = {
   delete: delete3,
-  get: get14,
+  get: get15,
   byVariableId,
 }
 
 /**
  * Get draft workflow for snippet
  */
-export const get15 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -799,7 +817,7 @@ export const post10 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftResponse)
 
 export const draft = {
-  get: get15,
+  get: get16,
   post: post10,
   config,
   conversationVariables,
@@ -815,7 +833,7 @@ export const draft = {
 /**
  * Get published workflow for snippet
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -848,7 +866,7 @@ export const post11 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsPublishResponse)
 
 export const publish = {
-  get: get16,
+  get: get17,
   post: post11,
 }
 
@@ -907,7 +925,7 @@ export const byWorkflowId = {
  *
  * Get all published workflows for a snippet
  */
-export const get17 = oc
+export const get18 = oc
   .route({
     description: 'Get all published workflows for a snippet',
     inputStructure: 'detailed',
@@ -926,7 +944,7 @@ export const get17 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsResponse)
 
 export const workflows = {
-  get: get17,
+  get: get18,
   defaultWorkflowBlockConfigs,
   draft,
   publish,

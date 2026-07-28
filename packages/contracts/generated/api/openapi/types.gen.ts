@@ -440,6 +440,7 @@ export type WorkflowRunData = {
   elapsed_time?: number | null
   error?: string | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   outputs?: {
     [key: string]: unknown
@@ -776,6 +777,7 @@ export type GetAppsByAppIdTasksByTaskIdEventsData = {
   }
   query?: {
     continue_on_pause?: boolean
+    cursor?: string
     include_state_snapshot?: boolean
   }
   url: '/apps/{app_id}/tasks/{task_id}/events'

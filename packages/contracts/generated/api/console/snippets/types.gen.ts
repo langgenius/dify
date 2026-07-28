@@ -24,6 +24,7 @@ export type WorkflowRunDetailResponse = {
   exceptions_count?: number | null
   finished_at?: number | null
   graph: unknown
+  handoff_duration?: number
   id: string
   inputs: unknown
   outputs: unknown
@@ -290,6 +291,7 @@ export type WorkflowRunForListResponse = {
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   retry_index?: number | null
   status?: string | null
@@ -1194,6 +1196,25 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses = {
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdResponse =
   GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses]
+
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdEventsData = {
+  body?: never
+  path: {
+    run_id: string
+    snippet_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflow-runs/{run_id}/events'
+}
+
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponse =
+  GetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponses[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponses]
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsData = {
   body?: never

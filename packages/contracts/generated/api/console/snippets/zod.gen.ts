@@ -170,6 +170,7 @@ export const zWorkflowRunForListResponse = z.object({
   elapsed_time: z.number().nullish(),
   exceptions_count: z.int().nullish(),
   finished_at: z.int().nullish(),
+  handoff_duration: z.number().optional().default(0),
   id: z.string(),
   retry_index: z.int().nullish(),
   status: z.string().nullish(),
@@ -210,6 +211,7 @@ export const zWorkflowRunDetailResponse = z.object({
   exceptions_count: z.int().nullish(),
   finished_at: z.int().nullish(),
   graph: z.unknown(),
+  handoff_duration: z.number().optional().default(0),
   id: z.string(),
   inputs: z.unknown(),
   outputs: z.unknown(),
@@ -1627,6 +1629,19 @@ export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath = z.object({
  * Workflow run detail retrieved successfully
  */
 export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdResponse = zWorkflowRunDetailResponse
+
+export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdEventsPath = z.object({
+  run_id: z.uuid(),
+  snippet_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
   run_id: z.uuid(),

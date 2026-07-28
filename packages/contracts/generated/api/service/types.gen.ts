@@ -1610,6 +1610,7 @@ export type WorkflowAppLogPartialResponse = {
 
 export type WorkflowEventsQuery = {
   continue_on_pause?: boolean
+  cursor?: string | null
   include_state_snapshot?: boolean
   user: string
 }
@@ -1631,6 +1632,7 @@ export type WorkflowRunForLogResponse = {
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   status?: string | null
   total_steps?: number | null
@@ -1671,6 +1673,7 @@ export type WorkflowRunResponse = {
   elapsed_time?: number | number | null
   error?: string | null
   finished_at?: number | null
+  handoff_duration?: number
   id: string
   inputs?:
     | {
@@ -3623,6 +3626,7 @@ export type GetWorkflowByTaskIdEventsData = {
   }
   query: {
     continue_on_pause?: boolean
+    cursor?: string
     include_state_snapshot?: boolean
     user: string
   }

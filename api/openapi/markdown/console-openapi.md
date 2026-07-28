@@ -8087,6 +8087,20 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 
+### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| pipeline_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
 
@@ -8850,6 +8864,20 @@ command channel for backward compatibility.
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
+
+### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| run_id | path |  | Yes | string (uuid) |
+| snippet_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}/node-executions
 **List node executions for a workflow run**
@@ -13186,6 +13214,7 @@ Model class for AI model.
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | message_id | string |  | No |
 | retry_index | integer |  | No |
@@ -23987,6 +24016,7 @@ Lifecycle state for an asynchronous archive download request.
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
 | graph |  |  | Yes |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | inputs |  |  | Yes |
 | outputs |  |  | Yes |
@@ -24008,6 +24038,7 @@ Lifecycle state for an asynchronous archive download request.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | elapsed_time | number |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | status | string |  | No |
 | total_tokens | integer |  | No |
@@ -24022,6 +24053,7 @@ Lifecycle state for an asynchronous archive download request.
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | retry_index | integer |  | No |
 | status | string |  | No |
@@ -24038,6 +24070,7 @@ Lifecycle state for an asynchronous archive download request.
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
+| handoff_duration | number |  | No |
 | id | string |  | Yes |
 | status | string |  | No |
 | total_steps | integer |  | No |

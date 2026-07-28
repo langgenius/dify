@@ -2181,6 +2181,7 @@ export const zHitTestingPayload = z.object({
  */
 export const zWorkflowEventsQuery = z.object({
   continue_on_pause: z.boolean().optional().default(false),
+  cursor: z.string().nullish(),
   include_state_snapshot: z.boolean().optional().default(false),
   user: z.string(),
 })
@@ -2208,6 +2209,7 @@ export const zWorkflowRunForLogResponse = z.object({
   error: z.string().nullish(),
   exceptions_count: z.int().nullish(),
   finished_at: z.int().nullish(),
+  handoff_duration: z.number().optional().default(0),
   id: z.string(),
   status: z.string().nullish(),
   total_steps: z.int().nullish(),
@@ -2295,6 +2297,7 @@ export const zWorkflowRunResponse = z.object({
   elapsed_time: z.union([z.number(), z.int()]).nullish(),
   error: z.string().nullish(),
   finished_at: z.int().nullish(),
+  handoff_duration: z.number().optional().default(0),
   id: z.string(),
   inputs: z
     .union([
@@ -3289,12 +3292,13 @@ export const zGetWorkflowByTaskIdEventsPath = z.object({
 
 export const zGetWorkflowByTaskIdEventsQuery = z.object({
   continue_on_pause: z.boolean().optional().default(false),
+  cursor: z.string().optional(),
   include_state_snapshot: z.boolean().optional().default(false),
   user: z.string(),
 })
 
 /**
- * Server-Sent Events stream. Each event is delivered as `data: {JSON}\n\n`. Event payloads follow the same schemas as the original streaming response.
+ * Server-Sent Events stream. Durable events are delivered as `id: {cursor}\ndata: {JSON}\n\n`; reconnect with Last-Event-ID. Event payloads follow the same schemas as the original streaming response.
  */
 export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
 

@@ -16,6 +16,8 @@ import {
   zGetRagPipelinesByPipelineIdExportsPath,
   zGetRagPipelinesByPipelineIdExportsQuery,
   zGetRagPipelinesByPipelineIdExportsResponse,
+  zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsPath,
+  zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsResponse,
   zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath,
   zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse,
   zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath,
@@ -440,10 +442,25 @@ export const tasks = {
   byTaskId,
 }
 
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowRunsByRunIdEvents',
+    path: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/events',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdEventsResponse)
+
+export const events = {
+  get: get7,
+}
+
 /**
  * Get workflow run node execution list
  */
-export const get7 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -456,13 +473,13 @@ export const get7 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse)
 
 export const nodeExecutions = {
-  get: get7,
+  get: get8,
 }
 
 /**
  * Get workflow run detail
  */
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -475,14 +492,15 @@ export const get8 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse)
 
 export const byRunId = {
-  get: get8,
+  get: get9,
+  events,
   nodeExecutions,
 }
 
 /**
  * Get workflow run list
  */
-export const get9 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -500,7 +518,7 @@ export const get9 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsResponse)
 
 export const workflowRuns = {
-  get: get9,
+  get: get10,
   tasks,
   byRunId,
 }
@@ -508,7 +526,7 @@ export const workflowRuns = {
 /**
  * Get default block config
  */
-export const get10 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -527,13 +545,13 @@ export const get10 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
 
 export const byBlockType = {
-  get: get10,
+  get: get11,
 }
 
 /**
  * Get default block config
  */
-export const get11 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -546,7 +564,7 @@ export const get11 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse)
 
 export const defaultWorkflowBlockConfigs = {
-  get: get11,
+  get: get12,
   byBlockType,
 }
 
@@ -614,7 +632,7 @@ export const datasource = {
 /**
  * Get draft workflow
  */
-export const get12 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -627,7 +645,7 @@ export const get12 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
 
 export const environmentVariables = {
-  get: get12,
+  get: get13,
 }
 
 /**
@@ -702,7 +720,7 @@ export const loop = {
   nodes: nodes3,
 }
 
-export const get13 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -714,7 +732,7 @@ export const get13 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse)
 
 export const lastRun = {
-  get: get13,
+  get: get14,
 }
 
 /**
@@ -755,7 +773,7 @@ export const delete2 = oc
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
-export const get14 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -768,7 +786,7 @@ export const get14 = oc
 
 export const variables = {
   delete: delete2,
-  get: get14,
+  get: get15,
 }
 
 export const byNodeId4 = {
@@ -784,7 +802,7 @@ export const nodes4 = {
 /**
  * Get first step parameters of rag pipeline
  */
-export const get15 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -802,7 +820,7 @@ export const get15 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse)
 
 export const parameters = {
-  get: get15,
+  get: get16,
 }
 
 export const preProcessing = {
@@ -812,7 +830,7 @@ export const preProcessing = {
 /**
  * Get second step parameters of rag pipeline
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -830,7 +848,7 @@ export const get16 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse)
 
 export const parameters2 = {
-  get: get16,
+  get: get17,
 }
 
 export const processing = {
@@ -861,7 +879,7 @@ export const run5 = {
   post: post14,
 }
 
-export const get17 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -873,7 +891,7 @@ export const get17 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
-  get: get17,
+  get: get18,
 }
 
 export const put = oc
@@ -907,7 +925,7 @@ export const delete3 = oc
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
-export const get18 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -936,7 +954,7 @@ export const patch2 = oc
 
 export const byVariableId = {
   delete: delete3,
-  get: get18,
+  get: get19,
   patch: patch2,
   reset,
 }
@@ -956,7 +974,7 @@ export const delete4 = oc
 /**
  * Get draft workflow
  */
-export const get19 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -975,14 +993,14 @@ export const get19 = oc
 
 export const variables2 = {
   delete: delete4,
-  get: get19,
+  get: get20,
   byVariableId,
 }
 
 /**
  * Get draft rag pipeline's workflow
  */
-export const get20 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1015,7 +1033,7 @@ export const post15 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
 
 export const draft = {
-  get: get20,
+  get: get21,
   post: post15,
   datasource,
   environmentVariables,
@@ -1032,7 +1050,7 @@ export const draft = {
 /**
  * Get published pipeline
  */
-export const get21 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1060,7 +1078,7 @@ export const post16 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
 
 export const publish2 = {
-  get: get21,
+  get: get22,
   post: post16,
 }
 
@@ -1128,7 +1146,7 @@ export const datasource2 = {
 /**
  * Get first step parameters of rag pipeline
  */
-export const get22 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1146,7 +1164,7 @@ export const get22 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse)
 
 export const parameters3 = {
-  get: get22,
+  get: get23,
 }
 
 export const preProcessing2 = {
@@ -1156,7 +1174,7 @@ export const preProcessing2 = {
 /**
  * Get second step parameters of rag pipeline
  */
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1174,7 +1192,7 @@ export const get23 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse)
 
 export const parameters4 = {
-  get: get23,
+  get: get24,
 }
 
 export const processing2 = {
@@ -1272,7 +1290,7 @@ export const byWorkflowId = {
 /**
  * Get published workflows
  */
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1290,7 +1308,7 @@ export const get24 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsResponse)
 
 export const workflows = {
-  get: get24,
+  get: get25,
   defaultWorkflowBlockConfigs,
   draft,
   publish: publish2,

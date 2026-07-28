@@ -1,17 +1,8 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 // oxlint-disable-next-line no-restricted-imports
-import {
-  del,
-  get,
-  handleSseResponse,
-  patch,
-  post,
-  put,
-  sseGet,
-  ssePost,
-} from './base'
+import { del, get, handleSseResponse, patch, post, put, sseGet, ssePost } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
