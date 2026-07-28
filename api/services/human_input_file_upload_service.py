@@ -8,6 +8,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from configs import dify_config
+from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account, Tenant
@@ -79,7 +80,11 @@ class HumanInputFileUploadService:
                 .where(HumanInputFormRecipient.access_token == form_token)
                 .limit(1)
             )
-            if recipient_model is None or recipient_model.form is None:
+            if (
+                recipient_model is None
+                or recipient_model.form is None
+                or not is_recipient_type_allowed_for_surface(recipient_model.recipient_type, HumanInputSurface.WEB)
+            ):
                 raise FormNotFoundError()
 
             form = recipient_model.form

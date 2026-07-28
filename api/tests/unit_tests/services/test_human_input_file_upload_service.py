@@ -21,6 +21,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     HumanInputFormUploadFile,
     HumanInputFormUploadToken,
+    RecipientType,
 )
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
@@ -73,6 +74,7 @@ def _create_waiting_form(
     *,
     created_by_role: CreatorUserRole = CreatorUserRole.ACCOUNT,
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME,
+    recipient_type: RecipientType = RecipientType.STANDALONE_WEB_APP,
 ) -> tuple[str, str, str]:
     form_id = "00000000-0000-0000-0000-000000000001"
     recipient_id = "00000000-0000-0000-0000-000000000002"
@@ -176,8 +178,8 @@ def _create_waiting_form(
                 id=recipient_id,
                 form_id=form_id,
                 delivery_id="00000000-0000-0000-0000-000000000003",
-                recipient_type="standalone_web_app",
-                recipient_payload='{"TYPE": "standalone_web_app"}',
+                recipient_type=recipient_type.value,
+                recipient_payload=f'{{"TYPE": "{recipient_type.value}"}}',
                 access_token="form-token-1",
             )
         )
@@ -192,6 +194,13 @@ def _create_service(
         session_maker,
         workflow_run_repository=workflow_run_repository or MagicMock(),
     )
+
+
+def test_issue_upload_token_rejects_backstage_recipient(session_maker) -> None:
+    _create_waiting_form(session_maker, recipient_type=RecipientType.BACKSTAGE)
+
+    with pytest.raises(service_module.FormNotFoundError):
+        _create_service(session_maker).issue_upload_token("form-token-1")
 
 
 def test_issue_upload_token_persists_token_without_technical_end_user(
