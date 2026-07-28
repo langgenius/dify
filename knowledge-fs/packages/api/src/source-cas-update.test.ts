@@ -38,10 +38,12 @@ describe("updateSourceWithRetry", () => {
         return { ...fresh.metadata, mine: "yes" };
       },
       sources: repository,
+      status: "syncing",
     });
 
     // The retry re-read fresh metadata, so BOTH writes survive.
     expect(result?.metadata).toMatchObject({ concurrent: "yes", keep: "original", mine: "yes" });
+    expect(result?.status).toBe("syncing");
   });
 
   it("returns null for a missing source and surfaces persistent conflicts", async () => {
@@ -54,6 +56,7 @@ describe("updateSourceWithRetry", () => {
       updateSourceWithRetry({
         id: "00000000-0000-4000-8000-00000000dead",
         knowledgeSpaceId: SPACE,
+        maxAttempts: 0,
         merge: (fresh) => fresh.metadata,
         sources: repository,
       }),

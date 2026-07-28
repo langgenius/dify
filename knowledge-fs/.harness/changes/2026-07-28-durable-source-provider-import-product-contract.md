@@ -99,10 +99,10 @@ grant index supports grant-scoped audit and cleanup access patterns.
 - Targeted Ruff and Pyrefly checks passed.
 - KFS OpenAPI export was inspected to confirm the operation id, 8-255 character required `Idempotency-Key`, bounded
   discriminated bodies, and HTTP 202 response.
-- The `deploy/konwledge` KnowledgeFS CI surface passed locally: dependency/secret audits, type checks, 4,035 API tests,
+- The `deploy/konwledge` KnowledgeFS CI surface passed locally: dependency/secret audits, type checks, 4,077 API tests,
   migration registry and API migration baselines, build, full backend lint, evaluation, OpenAPI, migration, Compose,
-  Docker-context, and image-smoke contract checks. The repository-wide branch coverage result was 89.94%; per request,
-  that threshold was recorded but did not block publication.
+  Docker-context, and image-smoke contract checks. Repository-wide branch coverage was restored above the 90% hard
+  gate at 32,669 of 36,296 branches (90.007%).
 - The workflow's Dify integration surface passed Ruff, Pyrefly, Mypy, contract generation, and 999 focused unit tests.
   The Dify Agent integration passed Ruff, BasedPyright, and all 7 focused tests.
 

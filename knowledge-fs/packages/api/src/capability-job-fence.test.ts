@@ -108,6 +108,11 @@ describe.each(["postgres", "tidb"] as const)("capability job fence (%s)", (diale
       contentScopeIds: ["team:camera"],
       subjectId: "editor-a",
     });
+    for (const subject_id of [undefined, null, ""]) {
+      await expect(resolve({ subject_id })).rejects.toBeInstanceOf(
+        CapabilityPublicationFencedError,
+      );
+    }
     for (const patch of [
       { action: "source_workflows.sync.create" },
       { resource_type: "document" },

@@ -181,6 +181,33 @@ describe("in-memory source product workflow repository", () => {
     ).resolves.toEqual({ items: [] });
   });
 
+  it("validates recent-run limits and orders timestamp ties by id", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    await repository.start(runRecord("run-tie-a", { requiredPermissionScope: ["grant:visible"] }));
+    await repository.start(runRecord("run-tie-b", { requiredPermissionScope: ["grant:visible"] }));
+
+    await expect(
+      repository.listRecentRuns({
+        candidateGrants: ["grant:visible"],
+        knowledgeSpaceId,
+        limit: 10,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: "run-tie-b" }, { id: "run-tie-a" }],
+    });
+    for (const limit of [0, 1_001, 1.5]) {
+      await expect(
+        repository.listRecentRuns({
+          candidateGrants: ["grant:visible"],
+          knowledgeSpaceId,
+          limit,
+          tenantId,
+        }),
+      ).rejects.toThrow("Source workflow list limit must be 1-1000");
+    }
+  });
+
   it("atomically validates bulk starts and authorizes item pages", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     const parentRecord = runRecord("bulk-valid", {
@@ -208,6 +235,9 @@ describe("in-memory source product workflow repository", () => {
     await expect(
       repository.listBulkItems({ cursor: "item-b", limit: 2, runId: parent.id }),
     ).resolves.toEqual({ items: [expect.objectContaining({ id: "item-c" })] });
+    await expect(repository.listBulkItems({ limit: 2, runId: "missing" })).resolves.toEqual({
+      items: [],
+    });
 
     const authorized = {
       accessChannel: "interactive" as const,
@@ -575,6 +605,40 @@ describe("in-memory source product workflow repository", () => {
     }
   });
 
+  it("freezes an empty crawl selection when the preview has no staged page map", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository({
+      generateLeaseToken: () => "lease-empty-crawl",
+    });
+    const preview = await repository.start(runRecord("crawl-empty", { kind: "crawl-preview" }));
+    const claimed = requiredClaim(
+      await repository.claim({
+        leaseExpiresAt: "2026-03-01T01:00:00.000Z",
+        limit: 1,
+        now: createdAt,
+        workerId: "empty-crawl-worker",
+      }),
+      preview.id,
+    );
+    const ready = await repository.complete({
+      fence: fence(claimed, "empty-crawl-worker"),
+      now: createdAt,
+      state: "preview_ready",
+    });
+
+    await expect(
+      repository.selectCrawlPages({
+        idempotencyKey: "empty-selection",
+        now: createdAt,
+        pageIds: [],
+        runId: ready.id,
+      }),
+    ).resolves.toMatchObject({
+      payload: { selectedPageIds: [] },
+      progressTotal: 0,
+      state: "queued",
+    });
+  });
+
   it("fails, cancels, retries, and exhausts execution attempts", async () => {
     let leaseSequence = 0;
     const repository = createInMemorySourceProductWorkflowRepository({
@@ -847,6 +911,77 @@ describe("in-memory source product workflow repository", () => {
     ).resolves.toMatchObject({ child: { capabilityGrantId: "capability-bulk" } });
   });
 
+  it("fails closed on non-bulk child mutations and supports empty legacy scope", async () => {
+    let leaseSequence = 0;
+    const repository = createInMemorySourceProductWorkflowRepository({
+      generateLeaseToken: () => `lease-coverage-${++leaseSequence}`,
+    });
+    const emptyBulk = await repository.start(
+      runRecord("bulk-empty", {
+        kind: "bulk",
+        progressTotal: 0,
+        requiredPermissionScope: ["grant:empty"],
+      }),
+    );
+    await expect(
+      repository.listAuthorizedBulkItems({
+        accessChannel: emptyBulk.accessChannel as "interactive",
+        candidateGrants: ["grant:empty"],
+        knowledgeSpaceId,
+        limit: 10,
+        permissionSnapshotId: emptyBulk.permissionSnapshotId as string,
+        permissionSnapshotRevision: emptyBulk.permissionSnapshotRevision as number,
+        requestedBySubjectId: emptyBulk.requestedBySubjectId as string,
+        runId: emptyBulk.id,
+        tenantId,
+      }),
+    ).resolves.toEqual({ items: [] });
+
+    const nonBulk = await repository.start(runRecord("non-bulk-mutation"));
+    const bulk = await repository.startBulk({
+      items: [bulkItem("scope-item", "bulk-no-scope", "source-scope")],
+      run: runRecord("bulk-no-scope", {
+        kind: "bulk",
+        progressTotal: 1,
+        requiredPermissionScope: undefined,
+      }),
+    });
+    const claimed = await repository.claim({
+      leaseExpiresAt: "2026-03-01T01:00:00.000Z",
+      limit: 10,
+      now: createdAt,
+      workerId: "coverage-worker",
+    });
+    const claimedNonBulk = requiredClaim(claimed, nonBulk.id);
+    for (const mutation of [
+      repository.attachBulkRemovalJob({
+        deletionJobId: "deletion-non-bulk",
+        fence: fence(claimedNonBulk, "coverage-worker"),
+        itemId: "missing",
+        now: createdAt,
+        runId: nonBulk.id,
+      }),
+      repository.enqueueBulkSyncChild({
+        fence: fence(claimedNonBulk, "coverage-worker"),
+        itemId: "missing",
+        now: createdAt,
+        runId: nonBulk.id,
+      }),
+    ]) {
+      await expect(mutation).rejects.toMatchObject({
+        code: "SOURCE_WORKFLOW_STATE_CONFLICT",
+      });
+    }
+
+    const child = await repository.enqueueBulkSyncChild({
+      fence: fence(requiredClaim(claimed, bulk.id), "coverage-worker"),
+      itemId: "scope-item",
+      now: createdAt,
+      runId: bulk.id,
+    });
+    expect(child.child.requiredPermissionScope).toEqual([]);
+  });
+
   it("persists revision-fenced policies and atomically enqueues due runs", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     await expect(
@@ -910,19 +1045,34 @@ describe("in-memory source product workflow repository", () => {
     await expect(
       repository.listDueSyncPolicies({ cursor: "policy-interval", limit: 10, now: createdAt }),
     ).resolves.toEqual({ items: [expect.objectContaining({ id: "policy-provider" })] });
+    await repository.upsertSyncPolicy(
+      policyRecord("policy-capability", {
+        accessChannel: undefined,
+        capabilityGrantId: "capability-policy",
+        permissionSnapshotId: undefined,
+        permissionSnapshotRevision: undefined,
+        requestedBySubjectId: undefined,
+        requiredPermissionScope: undefined,
+        sourceId: "source-capability",
+      }),
+    );
 
     const queued = await repository.enqueueDueSyncRuns({
       limit: 10,
       maxExecutionAttempts: 3,
       now: createdAt,
     });
-    expect(queued).toHaveLength(3);
+    expect(queued).toHaveLength(4);
     expect(queued).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           idempotencyKey: "sync-policy:policy-provider:2026-03-01T00:00:00.000Z",
           kind: "sync",
           maxExecutionAttempts: 3,
+        }),
+        expect.objectContaining({
+          capabilityGrantId: "capability-policy",
+          idempotencyKey: "sync-policy:policy-capability:2026-03-01T00:00:00.000Z",
         }),
       ]),
     );
