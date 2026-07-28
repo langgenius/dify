@@ -18,6 +18,7 @@ from controllers.console.files import (
     FileApi,
     FilePreviewApi,
     FileSupportTypeApi,
+    upload_file_from_request,
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
@@ -180,6 +181,22 @@ class TestFileApiPost:
         assert status == 201
         assert response["id"] == "file-id-123"
         assert response["name"] == "test.txt"
+
+    def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_service):
+        upload_file = MagicMock()
+        mock_file_service.upload_file.return_value = upload_file
+
+        with app.test_request_context(
+            method="POST",
+            data={"file": (io.BytesIO(b"hello"), "test.txt")},
+        ):
+            result = upload_file_from_request(
+                current_user=mock_account_context,
+                resource_tenant_id="app-tenant-id",
+            )
+
+        assert result is upload_file
+        assert mock_file_service.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
 
     def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
         """Test that invalid source parameter gets normalized to None"""

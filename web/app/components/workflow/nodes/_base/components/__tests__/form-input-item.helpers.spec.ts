@@ -67,6 +67,17 @@ describe('form-input-item helpers', () => {
     expect(filesState.isFile).toBe(true)
     expect(filesState.showVariableSelector).toBe(true)
     expect(getTargetVarType(filesState)).toBe(VarType.arrayFile)
+
+    const multipleSelectState = getFormInputState(
+      createSchema({ multiple: true, type: FormTypeEnum.select }),
+      { type: VarKindType.variable, value: ['node', 'formats'] },
+    )
+    expect(getTargetVarType(multipleSelectState)).toBe(VarType.arrayString)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.arrayString } as Var)).toBe(true)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.array } as Var)).toBe(true)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.arrayNumber } as Var)).toBe(false)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.arrayObject } as Var)).toBe(false)
+    expect(getFilterVar(multipleSelectState)?.({ type: VarType.string } as Var)).toBe(false)
   })
 
   it('should return filter functions and var kind types by schema mode', () => {

@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "สิทธิ์ข้อยกเว้นสําหรับ {{name}}",
   "accessRule.expandSection": "ขยาย {{title}}",
   "accessRule.individualPermissionSettings": "การตั้งค่าสิทธิ์เฉพาะบุคคล",
-  "accessRule.individualPermissionSettingsTip": "ตั้งค่าข้อยกเว้นสิทธิ์สําหรับผู้ร่วมงานหรือกลุ่มที่เฉพาะเจาะจง การตั้งค่าเหล่านี้จะแทนที่ระดับการเข้าถึงเริ่มต้น",
+  "accessRule.individualPermissionSettingsTip": "ตั้งค่าข้อยกเว้นสิทธิ์สําหรับผู้ร่วมงานหรือกลุ่มที่เฉพาะเจาะจง การตั้งค่าเหล่านี้จะแทนที่สิทธิ์ตามบทบาทของพวกเขา",
   "accessRule.maintainer": "ผู้ดูแล",
   "accessRule.member": "สมาชิก",
   "accessRule.newPermissionSet": "ชุดสิทธิ์ใหม่",

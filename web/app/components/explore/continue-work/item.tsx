@@ -1,6 +1,6 @@
 'use client'
 
-import type { App } from '@/types/app'
+import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -18,7 +18,7 @@ import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 
 type ContinueWorkItemProps = {
-  app: App
+  app: RecentAppResponse
 }
 
 const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
@@ -28,7 +28,7 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const updatedAt = (app.updated_at || app.created_at) * 1000
+  const updatedAt = app.updated_at * 1000
   const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
   const href = getRedirectionPath(app, {
     currentUserId,
@@ -58,7 +58,7 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
         <AppIcon
           size="large"
           iconType={app.icon_type}
-          icon={app.icon}
+          icon={app.icon ?? undefined}
           background={app.icon_background}
           imageUrl={app.icon_url}
         />

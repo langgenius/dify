@@ -147,6 +147,10 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: (id: string, data: AgentV2NodeType) => mockUseNodeCrud(id, data),
 }))
 
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
   AgentSelectorContent: ({
     onSelect,
@@ -305,13 +309,26 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdate: mockHandleNodeDataUpdate,
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-  useWorkflowVariableType: () => vi.fn(),
-}))
+vi.mock('../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-node-data-update')>()
+
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdate: mockHandleNodeDataUpdate,
+      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariableType: () => vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: { configsMap: typeof mockConfigsMap }) => unknown) =>
@@ -425,8 +442,8 @@ describe('agent/panel', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'workflow.nodes.agent.advancedSetting' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage')).not.toBeInTheDocument()
@@ -1021,6 +1038,37 @@ describe('agent/panel', () => {
     expect(
       screen.queryByRole('region', { name: 'inline-orchestrate-panel' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows a retry action when loading the inline agent composer fails', () => {
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+
+    const { container } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'agentV2.roster.nodeSelector.createInlineFailed',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(mockWorkflowInlineAgentDetailRefetch).toHaveBeenCalledTimes(1)
   })
 
   it('recovers the inline setup panel open state from the node open marker', () => {

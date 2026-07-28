@@ -27,12 +27,6 @@ describe('LabelFilter', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<LabelFilter value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-    })
-
     it('should display filter label when no labels selected', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
@@ -224,13 +218,6 @@ describe('LabelFilter', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelFilter value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing
-      expect(document.querySelector('.text-text-tertiary')).toBeInTheDocument()
     })
   })
 

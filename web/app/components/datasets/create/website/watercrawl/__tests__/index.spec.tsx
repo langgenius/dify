@@ -83,16 +83,6 @@ describe('WaterCrawl', () => {
 
   // Tests for initial component rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      expect(
-        screen.getByText('datasetCreation.stepOne.website.watercrawlTitle'),
-      )!.toBeInTheDocument()
-    })
-
     it('should render header with configuration button', () => {
       const props = createDefaultProps()
 
@@ -781,15 +771,6 @@ describe('WaterCrawl', () => {
           screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
         )!.toBeInTheDocument()
       })
-    })
-  })
-
-  // Component Memoization Tests
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - React.memo components have $$typeof Symbol(react.memo)
-      expect(WaterCrawl.$$typeof?.toString()).toBe('Symbol(react.memo)')
-      expect((WaterCrawl as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 

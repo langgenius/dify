@@ -2,9 +2,9 @@ import type { ValueSelector } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
-import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useGetAvailableVars } from './hooks'
 import {
   addGroup,

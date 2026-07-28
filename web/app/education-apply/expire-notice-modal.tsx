@@ -2,11 +2,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { RiExternalLinkLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -25,6 +26,10 @@ const i18nPrefix = 'notice'
 
 const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const docLink = useDocLink()
   const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
@@ -103,7 +108,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
             <RiExternalLinkLine className="size-3" />
           </Link>
           <div className="flex space-x-2">
-            {expired && IS_CLOUD_EDITION ? (
+            {expired && deploymentEdition === 'CLOUD' ? (
               <Button
                 onClick={() => {
                   onClose()

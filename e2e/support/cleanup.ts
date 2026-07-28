@@ -3,6 +3,9 @@ export type CleanupTask = {
   run: () => Promise<void> | void
 }
 
+export const shouldFailForCleanupErrors = (status: string | undefined) =>
+  status === 'PASSED' || status === 'SKIPPED'
+
 export async function runCleanupTasks(tasks: CleanupTask[]): Promise<string[]> {
   const errors: string[] = []
 

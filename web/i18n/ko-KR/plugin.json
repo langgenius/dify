@@ -97,6 +97,7 @@
   "categorySingle.model": "모델",
   "categorySingle.tool": "도구",
   "categorySingle.trigger": "트리거",
+  "clearSearch": "{{label}} 지우기",
   "debugInfo.title": "디버깅",
   "debugInfo.viewDocs": "문서 보기",
   "deprecated": "사용 중단됨",

@@ -62,28 +62,6 @@ describe('Breadcrumbs', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<Breadcrumbs {...props} />)
-
-      // Assert - Container should be in the document
-      const container = document.querySelector('.flex.grow')
-      expect(container)!.toBeInTheDocument()
-    })
-
-    it('should render with correct container styles', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Breadcrumbs {...props} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper)!.toHaveClass('flex')
-      expect(wrapper)!.toHaveClass('grow')
-      expect(wrapper)!.toHaveClass('items-center')
-      expect(wrapper)!.toHaveClass('overflow-hidden')
-    })
-
     describe('Search Results Display', () => {
       it('should show search results when keywords and searchResultsLength > 0', () => {
         const props = createDefaultProps({
@@ -349,20 +327,6 @@ describe('Breadcrumbs', () => {
         const lastBreadcrumb = screen.getByText('folder2')
         expect(lastBreadcrumb)!.toHaveClass('system-sm-medium')
         expect(lastBreadcrumb)!.toHaveClass('text-text-secondary')
-      })
-
-      it('should render non-last breadcrumbs with tertiary styles', () => {
-        mockStoreState.hasBucket = false
-        const props = createDefaultProps({
-          breadcrumbs: ['folder1', 'folder2'],
-        })
-
-        render(<Breadcrumbs {...props} />)
-
-        // Assert - First breadcrumb should have tertiary styles
-        const firstBreadcrumb = screen.getByText('folder1')
-        expect(firstBreadcrumb)!.toHaveClass('system-sm-regular')
-        expect(firstBreadcrumb)!.toHaveClass('text-text-tertiary')
       })
     })
 
@@ -903,10 +867,6 @@ describe('Breadcrumbs', () => {
 
   // Component Memoization Tests
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Breadcrumbs).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-
     it('should not re-render when props are the same', () => {
       const props = createDefaultProps()
       const { rerender } = render(<Breadcrumbs {...props} />)

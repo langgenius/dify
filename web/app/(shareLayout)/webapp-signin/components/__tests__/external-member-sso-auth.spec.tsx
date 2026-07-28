@@ -1,6 +1,6 @@
 import { waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { SSOProtocol } from '@/features/system-features/constants'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ExternalMemberSSOAuth from '../external-member-sso-auth'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -34,7 +34,7 @@ describe('ExternalMemberSSOAuth redirect security', () => {
   })
 
   it('should use the login fallback without calling SSO when the redirect target is external', async () => {
-    renderWithSystemFeatures(<ExternalMemberSSOAuth />, {
+    renderWithConsoleQuery(<ExternalMemberSSOAuth />, {
       systemFeatures: {
         webapp_auth: { sso_config: { protocol: SSOProtocol.SAML } },
       },
@@ -58,7 +58,7 @@ describe('ExternalMemberSSOAuth redirect security', () => {
     })
     serviceMock.mockResolvedValue({ url: 'https://idp.example/authorize' })
 
-    renderWithSystemFeatures(<ExternalMemberSSOAuth />, {
+    renderWithConsoleQuery(<ExternalMemberSSOAuth />, {
       systemFeatures: { webapp_auth: { sso_config: { protocol } } },
     })
 

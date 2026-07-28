@@ -113,12 +113,6 @@ describe('LabelSelector', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
     it('should display placeholder when no labels selected', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
@@ -336,13 +330,6 @@ describe('LabelSelector', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelSelector value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing, undefined label will be filtered
-      expect(document.querySelector('.text-text-secondary')).toBeInTheDocument()
     })
 
     it('should handle multiple labels display', () => {

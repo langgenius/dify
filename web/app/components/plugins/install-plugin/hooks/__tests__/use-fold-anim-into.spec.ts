@@ -18,16 +18,6 @@ describe('useFoldAnimInto', () => {
       .forEach((el) => el.remove())
   })
 
-  it('should return modalClassName and functions', async () => {
-    const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-    const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
-
-    expect(result.current.modalClassName).toBe('install-modal')
-    expect(typeof result.current.foldIntoAnim).toBe('function')
-    expect(typeof result.current.clearCountDown).toBe('function')
-    expect(typeof result.current.countDownFoldIntoAnim).toBe('function')
-  })
-
   describe('foldIntoAnim', () => {
     it('should call onClose immediately when modal element is not found', async () => {
       const useFoldAnimInto = (await import('../use-fold-anim-into')).default

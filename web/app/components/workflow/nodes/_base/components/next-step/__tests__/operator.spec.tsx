@@ -3,8 +3,9 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useAvailableBlocks } from '../../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../../hooks/use-nodes-interactions'
 import Operator from '../operator'
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
@@ -96,11 +97,21 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
+vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
+
   return {
     ...actual,
     useAvailableBlocks: vi.fn(),
+  }
+})
+
+vi.mock('../../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
     useNodesInteractions: vi.fn(),
   }
 })
