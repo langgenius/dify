@@ -46,7 +46,6 @@ class TestAccountAssociatedDataFactory:
         interface_language: str = "en-US",
         interface_theme: str = "light",
         timezone: str = "UTC",
-        **kwargs,
     ) -> MagicMock:
         """Create a mock account with specified attributes."""
         account = MagicMock(spec=Account)
@@ -62,42 +61,7 @@ class TestAccountAssociatedDataFactory:
         # Set last_active_at to a datetime object that's older than 10 minutes
         account.last_active_at = datetime.now() - timedelta(minutes=15)
         account.initialized_at = None
-        for key, value in kwargs.items():
-            setattr(account, key, value)
         return account
-
-    @staticmethod
-    def create_tenant_join_mock(
-        tenant_id: str = "tenant-456",
-        account_id: str = "user-123",
-        current: bool = True,
-        role: str = "normal",
-        **kwargs,
-    ) -> MagicMock:
-        """Create a mock tenant account join record."""
-        tenant_join = MagicMock()
-        tenant_join.tenant_id = tenant_id
-        tenant_join.account_id = account_id
-        tenant_join.current = current
-        tenant_join.role = role
-        tenant_join.last_opened_at = kwargs.pop("last_opened_at", None)
-        for key, value in kwargs.items():
-            setattr(tenant_join, key, value)
-        return tenant_join
-
-    @staticmethod
-    def create_feature_service_mock(allow_register: bool = True):
-        """Create a mock feature service."""
-        mock_service = MagicMock()
-        mock_service.get_system_features.return_value.is_allow_register = allow_register
-        return mock_service
-
-    @staticmethod
-    def create_billing_service_mock(email_frozen: bool = False):
-        """Create a mock billing service."""
-        mock_service = MagicMock()
-        mock_service.is_email_in_freeze.return_value = email_frozen
-        return mock_service
 
 
 class TestAccountService:
