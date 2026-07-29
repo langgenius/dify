@@ -439,7 +439,7 @@ async function invokePreflight({
   }
 
   const result = await reasoningProviderFactory(selection).generate({
-    maxOutputTokens: 8,
+    maxOutputTokens: 512,
     messages: [{ content: "Reply OK.", role: "user" }],
     model: selection.model,
     signal,

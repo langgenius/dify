@@ -275,7 +275,11 @@ describe("createModelCapabilityPreflight", () => {
     expect(reasoningSnapshot).not.toHaveProperty("dimension");
     expect(rerank).toHaveBeenCalledOnce();
     expect(generate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: selection.model, tenantId: "tenant-1" }),
+      expect.objectContaining({
+        maxOutputTokens: 512,
+        model: selection.model,
+        tenantId: "tenant-1",
+      }),
     );
   });
 
