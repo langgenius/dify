@@ -259,7 +259,7 @@ export function createUnstructuredParserClient({
   return {
     kind: "unstructured",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "unstructured@1";
+      const parserVersion = options.parserVersion ?? "unstructured@2";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const response = await fetchWithRetries({
         buildRequest: () => {
@@ -269,6 +269,7 @@ export function createUnstructuredParserClient({
             input.body.byteOffset + input.body.byteLength,
           ) as ArrayBuffer;
           form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
+          form.set("coordinates", "true");
 
           return new Request(unstructuredPartitionEndpoint(endpoint), {
             body: form,
@@ -304,7 +305,7 @@ export function createUnstructuredParserClient({
         throw new ProviderResponseError("Unstructured parser returned an invalid response");
       }
 
-      const elements = unstructuredElementsToElements(parsed.data);
+      const elements = unstructuredElementsToElements(normalizeUnstructuredLayout(parsed.data));
 
       return createParseArtifact({
         elements,
@@ -876,6 +877,329 @@ function unstructuredElementsToElements(
   return elements;
 }
 
+type UnstructuredSourceElement = z.infer<typeof UnstructuredElementSchema>;
+
+interface UnstructuredLayoutBox {
+  readonly bottom: number;
+  readonly height: number;
+  readonly layoutHeight?: number;
+  readonly layoutWidth?: number;
+  readonly right: number;
+  readonly system?: string;
+  readonly width: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+interface UnstructuredVerticalGlyph {
+  readonly box: UnstructuredLayoutBox;
+  readonly element: UnstructuredSourceElement;
+  readonly index: number;
+  readonly pageNumber: number;
+  readonly text: string;
+}
+
+function normalizeUnstructuredLayout(
+  sourceElements: readonly UnstructuredSourceElement[],
+): UnstructuredSourceElement[] {
+  const pagesWithCjkText = new Set(
+    sourceElements
+      .filter((element) => containsCjkText(normalizeText(element.text ?? "")))
+      .map((element) => element.metadata.page_number ?? 0),
+  );
+  const verticallyNormalized = mergeUnstructuredVerticalText(sourceElements);
+
+  return verticallyNormalized.filter(
+    (element) => !isUnstructuredLayoutNoise(element, pagesWithCjkText),
+  );
+}
+
+function mergeUnstructuredVerticalText(
+  sourceElements: readonly UnstructuredSourceElement[],
+): UnstructuredSourceElement[] {
+  const glyphs = sourceElements
+    .map((element, index): UnstructuredVerticalGlyph | null => {
+      const text = normalizeText(element.text ?? "");
+      const pageNumber = element.metadata.page_number;
+      const box = unstructuredLayoutBox(element.metadata.coordinates);
+
+      if (
+        pageNumber === undefined ||
+        element.type?.toLowerCase() !== "uncategorizedtext" ||
+        !isSingleCjkCharacter(text) ||
+        !box
+      ) {
+        return null;
+      }
+
+      return { box, element, index, pageNumber, text };
+    })
+    .filter((glyph): glyph is UnstructuredVerticalGlyph => glyph !== null)
+    .sort(compareUnstructuredVerticalGlyphs);
+  const availableIndexes = new Set(glyphs.map((glyph) => glyph.index));
+  const mergedByIndex = new Map<number, UnstructuredSourceElement>();
+  const removedIndexes = new Set<number>();
+
+  for (const first of glyphs) {
+    if (!availableIndexes.delete(first.index)) {
+      continue;
+    }
+
+    const group = [first];
+    let current = first;
+
+    while (true) {
+      const next = glyphs
+        .filter(
+          (candidate) =>
+            availableIndexes.has(candidate.index) &&
+            unstructuredVerticalGlyphsAreAdjacent(current, candidate),
+        )
+        .sort(
+          (left, right) =>
+            verticalGlyphDistance(current, left) - verticalGlyphDistance(current, right),
+        )[0];
+
+      if (!next) {
+        break;
+      }
+
+      availableIndexes.delete(next.index);
+      group.push(next);
+      current = next;
+    }
+
+    const mergedBox = unionUnstructuredLayoutBoxes(group.map((glyph) => glyph.box));
+
+    if (
+      group.length < 2 ||
+      !mergedBox ||
+      mergedBox.height <= Math.max(mergedBox.width * 1.5, first.box.height * 1.5)
+    ) {
+      continue;
+    }
+
+    const anchorIndex = Math.min(...group.map((glyph) => glyph.index));
+    const topGlyph = [...group].sort(
+      (left, right) => left.box.y - right.box.y || left.box.x - right.box.x,
+    )[0];
+
+    if (!topGlyph) {
+      continue;
+    }
+
+    mergedByIndex.set(anchorIndex, {
+      ...topGlyph.element,
+      metadata: {
+        ...cloneMetadata(topGlyph.element.metadata),
+        coordinates: mergedUnstructuredCoordinates(
+          topGlyph.element.metadata.coordinates,
+          mergedBox,
+        ),
+        layout_normalization: {
+          operation: "merge_vertical_text",
+          source_element_count: group.length,
+        },
+      },
+      text: group
+        .sort((left, right) => left.box.y - right.box.y || left.box.x - right.box.x)
+        .map((glyph) => glyph.text)
+        .join(""),
+    });
+
+    for (const glyph of group) {
+      if (glyph.index !== anchorIndex) {
+        removedIndexes.add(glyph.index);
+      }
+    }
+  }
+
+  return sourceElements.flatMap((element, index) => {
+    const merged = mergedByIndex.get(index);
+
+    if (merged) {
+      return [merged];
+    }
+
+    return removedIndexes.has(index) ? [] : [element];
+  });
+}
+
+function compareUnstructuredVerticalGlyphs(
+  left: UnstructuredVerticalGlyph,
+  right: UnstructuredVerticalGlyph,
+): number {
+  return (
+    left.pageNumber - right.pageNumber ||
+    left.box.x + left.box.width / 2 - (right.box.x + right.box.width / 2) ||
+    left.box.y - right.box.y ||
+    left.index - right.index
+  );
+}
+
+function unstructuredVerticalGlyphsAreAdjacent(
+  upper: UnstructuredVerticalGlyph,
+  lower: UnstructuredVerticalGlyph,
+): boolean {
+  if (
+    upper.pageNumber !== lower.pageNumber ||
+    (upper.box.system && lower.box.system && upper.box.system !== lower.box.system)
+  ) {
+    return false;
+  }
+
+  const upperCenterX = upper.box.x + upper.box.width / 2;
+  const lowerCenterX = lower.box.x + lower.box.width / 2;
+  const horizontalTolerance = Math.max(
+    2,
+    Math.max(upper.box.width, lower.box.width) * 0.35,
+    Math.max(upper.box.layoutWidth ?? 0, lower.box.layoutWidth ?? 0) * 0.002,
+  );
+  const verticalGap = lower.box.y - upper.box.bottom;
+  const glyphHeight = Math.max(upper.box.height, lower.box.height);
+
+  return (
+    lower.box.y + lower.box.height / 2 > upper.box.y + upper.box.height / 2 &&
+    Math.abs(upperCenterX - lowerCenterX) <= horizontalTolerance &&
+    verticalGap >= -glyphHeight * 0.25 &&
+    verticalGap <= glyphHeight * 1.1
+  );
+}
+
+function verticalGlyphDistance(
+  upper: UnstructuredVerticalGlyph,
+  lower: UnstructuredVerticalGlyph,
+): number {
+  const horizontalDistance = Math.abs(
+    upper.box.x + upper.box.width / 2 - (lower.box.x + lower.box.width / 2),
+  );
+  const verticalGap = Math.max(lower.box.y - upper.box.bottom, 0);
+
+  return verticalGap * 2 + horizontalDistance;
+}
+
+function unionUnstructuredLayoutBoxes(
+  boxes: readonly UnstructuredLayoutBox[],
+): UnstructuredLayoutBox | undefined {
+  const first = boxes[0];
+
+  if (!first) {
+    return undefined;
+  }
+
+  const x = Math.min(...boxes.map((box) => box.x));
+  const y = Math.min(...boxes.map((box) => box.y));
+  const right = Math.max(...boxes.map((box) => box.right));
+  const bottom = Math.max(...boxes.map((box) => box.bottom));
+
+  return {
+    bottom,
+    height: bottom - y,
+    ...(first.layoutHeight === undefined ? {} : { layoutHeight: first.layoutHeight }),
+    ...(first.layoutWidth === undefined ? {} : { layoutWidth: first.layoutWidth }),
+    right,
+    ...(first.system === undefined ? {} : { system: first.system }),
+    width: right - x,
+    x,
+    y,
+  };
+}
+
+function mergedUnstructuredCoordinates(
+  coordinates: unknown,
+  box: UnstructuredLayoutBox,
+): Record<string, unknown> {
+  return {
+    ...(isPlainRecord(coordinates) ? cloneMetadata(coordinates) : {}),
+    points: [
+      [box.x, box.y],
+      [box.x, box.bottom],
+      [box.right, box.bottom],
+      [box.right, box.y],
+    ],
+  };
+}
+
+function isUnstructuredLayoutNoise(
+  element: UnstructuredSourceElement,
+  pagesWithCjkText: ReadonlySet<number>,
+): boolean {
+  if (element.type?.toLowerCase() !== "uncategorizedtext") {
+    return false;
+  }
+
+  const text = normalizeText(element.text ?? "");
+  const box = unstructuredLayoutBox(element.metadata.coordinates);
+
+  if (!text || !box) {
+    return false;
+  }
+
+  if (unstructuredBoxIsOutsideLayout(box)) {
+    return true;
+  }
+
+  if (!pagesWithCjkText.has(element.metadata.page_number ?? 0)) {
+    return false;
+  }
+
+  const compactText = text.replace(/\s+/gu, "");
+  const codePointCount = Array.from(compactText).length;
+  const hasSuspiciousDelimiter =
+    /[|¦]/u.test(compactText) || hasUnmatchedClosingDelimiter(compactText);
+
+  return (
+    codePointCount > 0 &&
+    codePointCount <= 6 &&
+    !containsCjkText(compactText) &&
+    !/\d/u.test(compactText) &&
+    /[A-Za-z]/u.test(compactText) &&
+    hasSuspiciousDelimiter &&
+    box.height > box.width
+  );
+}
+
+function unstructuredBoxIsOutsideLayout(box: UnstructuredLayoutBox): boolean {
+  if (
+    box.layoutWidth === undefined ||
+    box.layoutHeight === undefined ||
+    box.layoutWidth <= 0 ||
+    box.layoutHeight <= 0
+  ) {
+    return false;
+  }
+
+  const horizontalTolerance = box.layoutWidth * 0.01;
+  const verticalTolerance = box.layoutHeight * 0.01;
+
+  return (
+    box.x < -horizontalTolerance ||
+    box.y < -verticalTolerance ||
+    box.right > box.layoutWidth + horizontalTolerance ||
+    box.bottom > box.layoutHeight + verticalTolerance
+  );
+}
+
+function hasUnmatchedClosingDelimiter(text: string): boolean {
+  const delimiterPairs = [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"],
+  ] as const;
+
+  return delimiterPairs.some(
+    ([opening, closing]) => text.includes(closing) && !text.includes(opening),
+  );
+}
+
+function containsCjkText(text: string): boolean {
+  return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(text);
+}
+
+function isSingleCjkCharacter(text: string): boolean {
+  return Array.from(text).length === 1 && containsCjkText(text);
+}
+
 function hasUnstructuredVisualMetadata(
   metadata: Readonly<Record<string, unknown>>,
   type: ParseElement["type"],
@@ -951,6 +1275,21 @@ function unstructuredAssetRef(
 }
 
 function unstructuredBoundingBox(value: unknown): Record<string, number> | undefined {
+  const box = unstructuredLayoutBox(value);
+
+  if (!box) {
+    return undefined;
+  }
+
+  return {
+    height: box.height,
+    width: box.width,
+    x: box.x,
+    y: box.y,
+  };
+}
+
+function unstructuredLayoutBox(value: unknown): UnstructuredLayoutBox | undefined {
   if (!isPlainRecord(value)) {
     return undefined;
   }
@@ -984,9 +1323,17 @@ function unstructuredBoundingBox(value: unknown): Record<string, number> | undef
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
+  const layoutWidth = numericValue(value.layout_width);
+  const layoutHeight = numericValue(value.layout_height);
+  const system = metadataString(value, "system");
 
   return {
+    bottom: maxY,
     height: maxY - minY,
+    ...(layoutHeight === undefined ? {} : { layoutHeight }),
+    ...(layoutWidth === undefined ? {} : { layoutWidth }),
+    right: maxX,
+    ...(system === undefined ? {} : { system }),
     width: maxX - minX,
     x: minX,
     y: minY,

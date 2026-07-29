@@ -36,6 +36,34 @@ function createParseInput({
   };
 }
 
+function unstructuredCoordinates({
+  height,
+  layoutHeight = 1_000,
+  layoutWidth = 1_000,
+  width,
+  x,
+  y,
+}: {
+  readonly height: number;
+  readonly layoutHeight?: number;
+  readonly layoutWidth?: number;
+  readonly width: number;
+  readonly x: number;
+  readonly y: number;
+}) {
+  return {
+    layout_height: layoutHeight,
+    layout_width: layoutWidth,
+    points: [
+      [x, y],
+      [x, y + height],
+      [x + width, y + height],
+      [x + width, y],
+    ],
+    system: "PixelSpace",
+  };
+}
+
 describe("parser adapters", () => {
   it("parses Markdown into stable structured parse artifacts", async () => {
     const parser = createNativeMarkdownParser({
@@ -809,6 +837,9 @@ describe("parser adapters", () => {
         expect(parsedRequest.url).toBe("https://unstructured.example.test/general/v0/general");
         expect(parsedRequest.headers.get("authorization")).toBe("Bearer test-key");
         expect(parsedRequest.body).toBeTruthy();
+        const form = await parsedRequest.formData();
+        expect(form.get("coordinates")).toBe("true");
+        expect(form.get("files")).toBeInstanceOf(File);
 
         return new Response(
           JSON.stringify([
@@ -873,7 +904,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@1",
+        parserVersion: "unstructured@2",
       },
       parser: "unstructured",
       version: 1,
@@ -933,6 +964,254 @@ describe("parser adapters", () => {
         type: "table",
       },
     ]);
+  });
+
+  it("normalizes vertical CJK layout and removes coordinate-backed parsing noise", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 40,
+                  width: 200,
+                  x: 300,
+                  y: 20,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "电子发票",
+              type: "Title",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 100,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "购",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 200,
+                  width: 900,
+                  x: 40,
+                  y: 100,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "名称：示例公司",
+              type: "Table",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 124,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "买",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 148,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "方",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 24,
+                  width: 250,
+                  x: 600,
+                  y: 150,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "统一社会信用代码",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 172,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "信",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 196,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "息",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 30,
+                  width: 20,
+                  x: 250,
+                  y: 400,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "Q)",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 24,
+                  width: 35,
+                  x: 300,
+                  y: 400,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "A)",
+              type: "ListItem",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 500,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "备",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 20,
+                  width: 20,
+                  x: 20,
+                  y: 538,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "注",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 30,
+                  width: 100,
+                  x: 20,
+                  y: 1_100,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "重复姓名",
+              type: "UncategorizedText",
+            },
+            {
+              metadata: {
+                coordinates: unstructuredCoordinates({
+                  height: 100,
+                  width: 10,
+                  x: 980,
+                  y: 100,
+                }),
+                languages: ["zho"],
+                page_number: 1,
+              },
+              text: "gL |",
+              type: "UncategorizedText",
+            },
+          ]),
+          { status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c54",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "invoice.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+
+    expect(artifact.elements.map((element) => [element.text, element.type])).toEqual([
+      ["电子发票", "title"],
+      ["购买方信息", "paragraph"],
+      ["名称：示例公司", "table"],
+      ["统一社会信用代码", "paragraph"],
+      ["A)", "list"],
+      ["备注", "paragraph"],
+    ]);
+    expect(artifact.elements[1]).toMatchObject({
+      metadata: {
+        boundingBox: { height: 116, width: 20, x: 20, y: 100 },
+        layout_normalization: {
+          operation: "merge_vertical_text",
+          source_element_count: 5,
+        },
+      },
+      pageNumber: 1,
+      text: "购买方信息",
+    });
+    expect(artifact.elements[5]).toMatchObject({
+      metadata: {
+        boundingBox: { height: 58, width: 20, x: 20, y: 500 },
+        layout_normalization: {
+          operation: "merge_vertical_text",
+          source_element_count: 2,
+        },
+      },
+      text: "备注",
+    });
   });
 
   it("accepts a full Unstructured partition endpoint URL", async () => {
