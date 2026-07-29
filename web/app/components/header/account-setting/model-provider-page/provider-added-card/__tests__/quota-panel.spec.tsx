@@ -24,6 +24,42 @@ let mockPlugins = [
     latest_package_identifier: 'openai@1.0.0',
   },
 ]
+const mockFetchManifestFromMarketPlace = vi.fn(async (_uniqueIdentifier: string) => ({
+  data: {
+    plugin: {
+      name: 'registry-openai',
+      org: 'marketplace-cache',
+      icon: '',
+      label: { en_US: 'OpenAI' },
+      category: 'model' as const,
+      version: '1.0.0',
+      latest_version: '1.0.0',
+      brief: {},
+      introduction: '',
+      verified: true,
+      install_count: 0,
+      badges: [],
+      verification: { authorized_category: 'langgenius' as const },
+      from: 'package' as const,
+    },
+  },
+}))
+const mockFetchPluginInfoFromMarketPlace = vi.fn(async (_params: Record<string, string>) => ({
+  data: {
+    plugin: {
+      category: 'model' as const,
+      latest_package_identifier: 'openai@1.0.0',
+      latest_version: '1.0.0',
+    },
+  },
+}))
+
+vi.mock('@/service/plugins', () => ({
+  fetchManifestFromMarketPlace: (uniqueIdentifier: string) =>
+    mockFetchManifestFromMarketPlace(uniqueIdentifier),
+  fetchPluginInfoFromMarketPlace: (params: Record<string, string>) =>
+    mockFetchPluginInfoFromMarketPlace(params),
+}))
 
 vi.mock('@/app/components/base/icons/src/public/llm', () => {
   const Icon = ({ label }: { label: string }) => <span>{label}</span>
@@ -86,8 +122,23 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div>
+  default: ({
+    manifest,
+    uniqueIdentifier,
+    onClose,
+  }: {
+    manifest: { from: string; icon: string; name: string; org: string }
+    uniqueIdentifier: string
+    onClose: () => void
+  }) => (
+    <div
+      data-icon={manifest.icon}
+      data-from={manifest.from}
+      data-name={manifest.name}
+      data-org={manifest.org}
+      data-unique-identifier={uniqueIdentifier}
+      data-testid="install-modal"
+    >
       <span>install modal</span>
       <button type="button" onClick={onClose}>
         close install
@@ -115,6 +166,17 @@ describe('QuotaPanel', () => {
     mockWorkspaceIsPending = false
     mockTrialModels = ['langgenius/openai/openai']
     mockPlugins = [{ plugin_id: 'langgenius/openai', latest_package_identifier: 'openai@1.0.0' }]
+    mockFetchManifestFromMarketPlace.mockClear()
+    mockFetchPluginInfoFromMarketPlace.mockReset()
+    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
+      data: {
+        plugin: {
+          category: 'model',
+          latest_package_identifier: 'openai@1.0.0',
+          latest_version: '1.0.0',
+        },
+      },
+    })
   })
 
   it('should render loading state', () => {
@@ -167,19 +229,63 @@ describe('QuotaPanel', () => {
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 
-  it('should open install modal when clicking an unsupported trial provider', () => {
+  it('should open install modal when clicking an unsupported trial provider', async () => {
     renderQuotaPanel(<QuotaPanel providers={[]} />)
 
     fireEvent.click(screen.getByText('openai'))
 
-    expect(screen.getByText('install modal')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
+    expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith('openai@1.0.0')
+    expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledWith({
+      org: 'langgenius',
+      name: 'openai',
+    })
+    expect(screen.getByTestId('install-modal')).toHaveAttribute(
+      'data-unique-identifier',
+      'openai@1.0.0',
+    )
+    expect(screen.getByTestId('install-modal')).toHaveAttribute('data-icon', 'marketplace')
+    expect(screen.getByTestId('install-modal')).toHaveAttribute('data-from', 'marketplace')
+    expect(screen.getByTestId('install-modal')).toHaveAttribute('data-org', 'langgenius')
+    expect(screen.getByTestId('install-modal')).toHaveAttribute('data-name', 'openai')
+  })
+
+  it('should prevent duplicate marketplace requests while a provider is loading', async () => {
+    mockFetchPluginInfoFromMarketPlace.mockImplementation(() => new Promise(() => {}))
+    renderQuotaPanel(<QuotaPanel providers={[]} />)
+    const providerButton = screen.getByLabelText(/modelNotSupported/)
+
+    fireEvent.click(providerButton)
+    fireEvent.click(providerButton)
+
+    await waitFor(() => {
+      expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledTimes(1)
+    })
+    expect(providerButton).toHaveAttribute('aria-busy', 'true')
+    expect(providerButton).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('should allow retrying marketplace installation after a request failure', async () => {
+    mockFetchPluginInfoFromMarketPlace.mockRejectedValueOnce(new Error('Marketplace unavailable'))
+    renderQuotaPanel(<QuotaPanel providers={[]} />)
+    const providerButton = screen.getByLabelText(/modelNotSupported/)
+
+    fireEvent.click(providerButton)
+
+    await waitFor(() => expect(providerButton).toHaveAttribute('aria-busy', 'false'))
+    expect(screen.queryByText('install modal')).not.toBeInTheDocument()
+
+    fireEvent.click(providerButton)
+
+    await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
+    expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledTimes(2)
   })
 
   it('should close install modal when provider becomes installed', async () => {
     const { rerender } = renderQuotaPanel(<QuotaPanel providers={[]} />)
 
     fireEvent.click(screen.getByText('openai'))
-    expect(screen.getByText('install modal')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
 
     rerender(<QuotaPanel providers={mockProviders} />)
 

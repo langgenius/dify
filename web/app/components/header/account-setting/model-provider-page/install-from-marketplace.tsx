@@ -1,8 +1,8 @@
-import type { ModelProvider } from './declarations'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
@@ -12,17 +12,16 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
   onOpenMarketplace?: () => void
-  providers: ModelProvider[]
   searchText: string
   stepByStepTourTarget?: string
 }
 const InstallFromMarketplace = ({
   onOpenMarketplace,
-  providers,
   searchText,
   stepByStepTourTarget,
 }: InstallFromMarketplaceProps) => {
@@ -30,10 +29,44 @@ const InstallFromMarketplace = ({
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
-  const { plugins: allPlugins, isLoading: isAllPluginsLoading } = useMarketplaceAllPlugins(
-    providers,
-    searchText,
+  const [hasEnteredViewport, setHasEnteredViewport] = useState(
+    () => !globalThis.IntersectionObserver,
   )
+  const [hasBeenReopened, setHasBeenReopened] = useState(false)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const shouldLoadMarketplace = !collapse && (hasEnteredViewport || !!searchText || hasBeenReopened)
+  const { data: installedPluginIds, isSuccess: hasLoadedInstalledPluginIds } = useQuery({
+    ...consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
+      input: { query: { category: 'model' } },
+      enabled: shouldLoadMarketplace,
+    }),
+    select: (data) => data.plugin_ids,
+  })
+  const { plugins: allPlugins, isLoading: isAllPluginsLoading } = useMarketplaceAllPlugins(
+    searchText,
+    installedPluginIds ?? [],
+    shouldLoadMarketplace && hasLoadedInstalledPluginIds,
+  )
+
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section || hasEnteredViewport) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return
+      setHasEnteredViewport(true)
+      observer.disconnect()
+    })
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [hasEnteredViewport])
+
+  const handleToggle = () => {
+    setCollapse((previous) => {
+      if (previous) setHasBeenReopened(true)
+      return !previous
+    })
+  }
 
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle') return null
@@ -42,7 +75,11 @@ const InstallFromMarketplace = ({
   }, [])
 
   return (
-    <div id="model-provider-marketplace" className="flex scroll-mt-4 flex-col gap-2">
+    <div
+      ref={sectionRef}
+      id="model-provider-marketplace"
+      className="flex scroll-mt-4 flex-col gap-2"
+    >
       <Divider className="my-2! h-px" />
       <div className="relative flex flex-col gap-2">
         <div
@@ -54,7 +91,7 @@ const InstallFromMarketplace = ({
           <button
             type="button"
             className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
-            onClick={() => setCollapse((prev) => !prev)}
+            onClick={handleToggle}
             aria-expanded={!collapse}
           >
             <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
@@ -86,8 +123,11 @@ const InstallFromMarketplace = ({
             )}
           </div>
         </div>
-        {!collapse && isAllPluginsLoading && <Loading type="area" />}
-        {!isAllPluginsLoading && !collapse && (
+        {!collapse && shouldLoadMarketplace && !hasLoadedInstalledPluginIds && (
+          <Loading type="area" />
+        )}
+        {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <Loading type="area" />}
+        {!isAllPluginsLoading && !collapse && hasLoadedInstalledPluginIds && (
           <List
             marketplaceCollections={[]}
             marketplaceCollectionPluginsMap={{}}

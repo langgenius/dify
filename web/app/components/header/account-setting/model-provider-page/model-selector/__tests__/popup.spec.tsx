@@ -42,11 +42,6 @@ vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
 }))
 
-type MockMarketplacePlugin = {
-  plugin_id: string
-  latest_package_identifier: string
-}
-
 type MockContextProvider = Pick<
   ModelProvider,
   | 'provider'
@@ -57,12 +52,11 @@ type MockContextProvider = Pick<
   | 'system_configuration'
 >
 
-const mockMarketplacePlugins = vi.hoisted(() => ({
-  current: [] as MockMarketplacePlugin[],
-  isLoading: false,
-}))
 const mockContextModelProviders = vi.hoisted(() => ({
   current: [] as MockContextProvider[],
+}))
+const mockContextModelProviderPlugins = vi.hoisted(() => ({
+  current: {} as Record<string, { plugin_id: string }>,
 }))
 const mockTrialModels = vi.hoisted(() => ({
   current: ['test-openai', 'test-anthropic'] as string[],
@@ -72,10 +66,6 @@ vi.mock('../../hooks', async () => {
   return {
     ...actual,
     useLanguage: () => mockLanguage,
-    useMarketplaceAllPlugins: () => ({
-      plugins: mockMarketplacePlugins.current,
-      isLoading: mockMarketplacePlugins.isLoading,
-    }),
   }
 })
 
@@ -91,7 +81,10 @@ vi.mock('../popup-item', () => ({
 }))
 
 vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
+  useProviderContext: () => ({
+    modelProviders: mockContextModelProviders.current,
+    modelProviderPlugins: mockContextModelProviderPlugins.current,
+  }),
 }))
 
 type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange'>
@@ -157,6 +150,12 @@ vi.mock('next-themes', () => ({
 const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromMarketPlace: () => ({ mutateAsync: mockInstallMutateAsync }),
+}))
+
+const mockFetchPluginInfoFromMarketPlace = vi.hoisted(() => vi.fn())
+vi.mock('@/service/plugins', () => ({
+  fetchPluginInfoFromMarketPlace: (params: Record<string, string>) =>
+    mockFetchPluginInfoFromMarketPlace(params),
 }))
 
 const mockRefreshPluginList = vi.hoisted(() => vi.fn())
@@ -239,9 +238,15 @@ describe('Popup', () => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
     mockSupportFunctionCall.mockReturnValue(true)
-    mockMarketplacePlugins.current = []
-    mockMarketplacePlugins.isLoading = false
+    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
+      data: {
+        plugin: {
+          latest_package_identifier: 'langgenius/openai:1.0.0',
+        },
+      },
+    })
     mockContextModelProviders.current = []
+    mockContextModelProviderPlugins.current = {}
     mockTrialModels.current = ['test-openai', 'test-anthropic']
     mockSearchParams.current = new URLSearchParams()
     Object.assign(mockTrialCredits, {
@@ -1108,6 +1113,9 @@ describe('Popup', () => {
 
   it('should render marketplace providers that are not installed', () => {
     mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
+    mockContextModelProviderPlugins.current = {
+      'langgenius/openai': { plugin_id: 'langgenius/openai' },
+    }
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1151,6 +1159,9 @@ describe('Popup', () => {
         } as MockContextProvider['system_configuration'],
       }),
     ]
+    mockContextModelProviderPlugins.current = {
+      'langgenius/anthropic': { plugin_id: 'langgenius/anthropic' },
+    }
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1172,6 +1183,9 @@ describe('Popup', () => {
         } as MockContextProvider['system_configuration'],
       }),
     ]
+    mockContextModelProviderPlugins.current = {
+      'langgenius/anthropic': { plugin_id: 'langgenius/anthropic' },
+    }
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1194,10 +1208,18 @@ describe('Popup', () => {
     expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
 
+  it('should hide a marketplace provider when its plugin is already installed', () => {
+    mockContextModelProviderPlugins.current = {
+      'langgenius/openai': { plugin_id: 'langgenius/openai' },
+    }
+
+    renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
+
+    expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
+    expect(screen.getByText('TestAnthropic')).toBeInTheDocument()
+  })
+
   it('should install plugin when clicking install button', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
     mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
@@ -1208,13 +1230,14 @@ describe('Popup', () => {
     await waitFor(() => {
       expect(mockInstallMutateAsync).toHaveBeenCalledWith('langgenius/openai:1.0.0')
     })
+    expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledWith({
+      org: 'langgenius',
+      name: 'openai',
+    })
     expect(mockRefreshPluginList).toHaveBeenCalled()
   })
 
   it('should handle install failure gracefully', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
     mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
@@ -1232,9 +1255,6 @@ describe('Popup', () => {
   })
 
   it('should run checkTaskStatus when not all_installed', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
     mockInstallMutateAsync.mockResolvedValue({ all_installed: false, task_id: 'task-1' })
     mockCheck.mockResolvedValue(undefined)
 
@@ -1252,11 +1272,8 @@ describe('Popup', () => {
     expect(mockRefreshPluginList).toHaveBeenCalled()
   })
 
-  it('should skip install requests when marketplace plugins are still loading', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
-    mockMarketplacePlugins.isLoading = true
+  it('should skip install requests when the marketplace plugin lookup fails', async () => {
+    mockFetchPluginInfoFromMarketPlace.mockRejectedValue(new Error('Not found'))
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1267,8 +1284,10 @@ describe('Popup', () => {
     })
   })
 
-  it('should skip install requests when the marketplace plugin cannot be found', async () => {
-    mockMarketplacePlugins.current = []
+  it('should skip install requests when the marketplace plugin has no package identifier', async () => {
+    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
+      data: { plugin: { latest_package_identifier: '' } },
+    })
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
