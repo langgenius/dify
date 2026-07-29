@@ -268,13 +268,13 @@ describe('NewKnowledgeList', () => {
     const supportCard = within(list).getByRole('link', {
       name: 'Support knowledge',
     })
-    expect(supportCard).toHaveAttribute('href', '/datasets/new/space-1/sources')
+    expect(supportCard).toHaveAttribute('href', '/datasets/new/space-1')
     expect(supportCard).toBeInTheDocument()
     expect(
       within(list).getByRole('link', {
         name: 'Engineering handbook',
       }),
-    ).toHaveAttribute('href', '/datasets/new/space-2/sources')
+    ).toHaveAttribute('href', '/datasets/new/space-2')
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
     expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
