@@ -1,6 +1,6 @@
 import pytest
 
-from benchmarks.orchestrator import build_comparison
+from benchmarks.orchestrator import _render_markdown, build_comparison
 from benchmarks.schemas import (
     BlockResult,
     EnvironmentFingerprint,
@@ -148,3 +148,39 @@ def test_build_comparison_preserves_workload_and_resource_metrics() -> None:
     assert scenario.agent_cpu_seconds_per_successful_run.verdict == "possible_regression"
     assert scenario.redis_storage_bytes_per_successful_run.baseline == 60
     assert scenario.redis_command_mix["xadd"].baseline == 8
+
+
+def test_markdown_redis_section_only_expands_changed_commands() -> None:
+    environment = _environment()
+    baseline_blocks = [
+        _block(target="baseline", pair_index=0, overhead_ms=10, cpu_seconds=0.01),
+        _block(target="baseline", pair_index=1, overhead_ms=10, cpu_seconds=0.01),
+    ]
+    candidate_blocks = [
+        _block(target="candidate", pair_index=0, overhead_ms=10, cpu_seconds=0.01),
+        _block(target="candidate", pair_index=1, overhead_ms=10, cpu_seconds=0.01),
+    ]
+    for block in candidate_blocks:
+        block.resources.redis_commands_per_successful_run = 11
+        block.resources.redis_command_calls_per_successful_run["xadd"] = 9
+    report = build_comparison(
+        baseline_result=TargetResult(
+            target=_identity("baseline"),
+            environment=environment,
+            blocks=baseline_blocks,
+        ),
+        candidate_result=TargetResult(
+            target=_identity("candidate"),
+            environment=environment,
+            blocks=candidate_blocks,
+        ),
+        scenario_ids=["scenario"],
+    )
+
+    markdown = _render_markdown(report)
+    redis_section = markdown.split("## Redis command behavior", maxsplit=1)[1]
+
+    assert "| Scenario | Total commands/success | Changed commands | Verdict |" in redis_section
+    assert "`xadd` 8 → 9 (+12.50%)" in redis_section
+    assert "`set`" not in redis_section
+    assert "Full per-command data remains available in `comparison.json`." in redis_section
