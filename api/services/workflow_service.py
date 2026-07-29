@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from sqlalchemy import exists, inspect, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm.attributes import set_committed_value
@@ -295,7 +296,7 @@ class WorkflowService:
                     )
                     .values(graph=migrated_graph)
                 )
-                if getattr(result, "rowcount", None) == 0:
+                if cast(CursorResult, result).rowcount == 0:
                     logger.warning(
                         "Skipped persisting legacy sys.files workflow migration because the workflow changed "
                         "concurrently, "

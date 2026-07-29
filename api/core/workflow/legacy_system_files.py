@@ -116,9 +116,8 @@ def attach_legacy_sys_files_warning(
             yield f"data: {json.dumps({'event': 'warning', 'warning': warning})}\n\n"
             yield from response
         finally:
-            close = getattr(response, "close", None)
-            if callable(close):
-                close()
+            if hasattr(response, "close"):
+                response.close()
 
     return _with_warning()
 

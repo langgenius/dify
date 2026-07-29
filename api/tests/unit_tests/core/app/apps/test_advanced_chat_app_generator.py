@@ -122,6 +122,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(monke
     app_config = _make_app_config()
     workflow = SimpleNamespace(
         features_dict={},
+        graph_dict={},
         tenant_id="tenant-id",
         app_id="app-id",
         id="workflow-id",
