@@ -4,8 +4,8 @@ import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { isToolAuthorizationRequired } from './auth'
 import useCurrentToolCollection from './hooks/use-current-tool-collection'
 
@@ -74,6 +74,14 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                     {Number.isNaN(tool_configurations[key].value)
                       ? ''
                       : tool_configurations[key].value}
+                  </div>
+                )}
+                {Array.isArray(tool_configurations[key].value) && (
+                  <div
+                    title={tool_configurations[key].value.join(', ')}
+                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                  >
+                    {tool_configurations[key].value.join(', ')}
                   </div>
                 )}
                 {typeof tool_configurations[key] !== 'string' &&

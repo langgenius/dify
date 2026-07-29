@@ -1,28 +1,19 @@
-import type { FC } from 'react'
 import type { SnippetListItem } from '@/types/snippet'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMembers } from '@/service/use-common'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
-export type PublishedSnippetListItem = SnippetListItem
-
 type SnippetDetailCardProps = {
-  snippet: PublishedSnippetListItem
+  snippet: SnippetListItem
 }
 
-const SnippetDetailCard: FC<SnippetDetailCardProps> = ({ snippet }) => {
-  const { description, name } = snippet
+function SnippetDetailCard({ snippet }: SnippetDetailCardProps) {
+  const { author_name, description, name } = snippet
   const { t } = useTranslation('snippet')
-  const { data: membersData } = useMembers()
   const { data: workflow } = useSnippetPublishedWorkflow(snippet.id)
-
-  const creatorName = useMemo(() => {
-    const member = membersData?.accounts?.find((member) => member.id === snippet.created_by)
-    return member?.name || t(($) => $.unknownUser)
-  }, [membersData?.accounts, snippet.created_by, t])
+  const creatorName = author_name || t(($) => $.unknownUser)
 
   const blockTypes = useMemo(() => {
     const graph = workflow?.graph
@@ -52,7 +43,7 @@ const SnippetDetailCard: FC<SnippetDetailCardProps> = ({ snippet }) => {
   }, [workflow?.graph])
 
   return (
-    <div className="w-56 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pt-3 pb-4 shadow-lg backdrop-blur-[5px]">
+    <div>
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2">
           <div className="system-md-medium text-text-primary">{name}</div>

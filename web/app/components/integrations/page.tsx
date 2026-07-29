@@ -4,8 +4,9 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -17,6 +18,7 @@ import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
+import { STEP_BY_STEP_TOUR_TARGETS } from '../step-by-step-tour/target-registry'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
 import { useIntegrationSection } from './hooks/use-integration-section'
@@ -126,6 +128,7 @@ export default function IntegrationsPage({
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
   const showInstallAction = canInstallPlugin
+  const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -138,6 +141,13 @@ export default function IntegrationsPage({
   } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
+  useEffect(() => {
+    if (!isToolSection) return undefined
+
+    const animationFrame = window.requestAnimationFrame(() => setIsToolsExpanded(true))
+
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [isToolSection])
   const useFillLayout =
     section === 'provider' ||
     section === 'data-source' ||
@@ -153,7 +163,13 @@ export default function IntegrationsPage({
   const pluginSettingCategory = getPluginCategoryBySection(section)
   const pluginSettingAction =
     showPluginCategorySetting && pluginSettingCategory ? (
-      <UpdateSettingDialog category={pluginSettingCategory} />
+      <div
+        data-step-by-step-tour-target={
+          section === 'builtin' ? STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings : undefined
+        }
+      >
+        <UpdateSettingDialog category={pluginSettingCategory} />
+      </div>
     ) : undefined
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription =
@@ -191,10 +207,9 @@ export default function IntegrationsPage({
 
     router.push(buildIntegrationPath(nextSection))
   }
-  const handleToggleTools = () => {
-    const willExpand = !isToolsExpanded
-    setIsToolsExpanded(willExpand)
-    if (willExpand && section !== 'builtin') handleSelectSection('builtin')
+  const handleToolsOpenChange = (open: boolean) => {
+    setIsToolsExpanded(open)
+    if (open && section !== 'builtin') handleSelectSection('builtin')
   }
   const toolsNavItemClassName = cn(
     integrationSidebarNavItemClassName,
@@ -204,12 +219,8 @@ export default function IntegrationsPage({
   const toolsNavItemContent = (
     <>
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden" />
-        {isToolsExpanded ? (
-          <span className="i-ri-arrow-up-s-line hidden size-4 group-hover:inline-block" />
-        ) : (
-          <span className="i-ri-arrow-down-s-line hidden size-4 group-hover:inline-block" />
-        )}
+        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden group-focus-visible:hidden" />
+        <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover:inline-block group-focus-visible:inline-block group-data-panel-open:rotate-180 motion-reduce:transition-none" />
       </span>
       <span className="min-w-0 flex-1 truncate">
         {t(($) => $['menus.tools'], { ns: 'common' })}
@@ -227,12 +238,13 @@ export default function IntegrationsPage({
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
           'w-50 items-end',
         )}
+        data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
       >
         <div className="flex min-h-0 w-46 flex-1 flex-col gap-0.5 pb-4">
           <div
             className={cn(
               'flex shrink-0 items-start pr-0 pl-2.5',
-              showInstallAction ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+              reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
             )}
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
@@ -248,35 +260,36 @@ export default function IntegrationsPage({
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
           )}
-          <nav className={cn('shrink-0 space-y-px', showInstallAction ? 'mt-6' : 'py-4')}>
+          {!showInstallAction && reserveInstallActionSlot && (
+            <div aria-hidden="true" className="h-8 w-full shrink-0" />
+          )}
+          <nav className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}>
             <IntegrationSidebarNavItem
               item={providerItem}
               onSelect={onSectionChange}
               section={section}
             />
-            <div>
-              <button
-                type="button"
+            <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
+              <CollapsibleTrigger
                 aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
-                aria-expanded={isToolsExpanded}
-                className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
-                onClick={handleToggleTools}
+                className={cn(
+                  toolsNavItemClassName,
+                  'border-none bg-transparent data-panel-open:text-components-menu-item-text',
+                )}
               >
                 {toolsNavItemContent}
-              </button>
-              {isToolsExpanded && (
-                <div className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
-                  {toolItems.map((item) => (
-                    <IntegrationSidebarNavItem
-                      key={item.label}
-                      item={item}
-                      onSelect={onSectionChange}
-                      section={section}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+              </CollapsibleTrigger>
+              <CollapsiblePanel className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+                {toolItems.map((item) => (
+                  <IntegrationSidebarNavItem
+                    key={item.label}
+                    item={item}
+                    onSelect={onSectionChange}
+                    section={section}
+                  />
+                ))}
+              </CollapsiblePanel>
+            </Collapsible>
             <IntegrationSidebarNavItem
               item={dataSourceItem}
               onSelect={onSectionChange}

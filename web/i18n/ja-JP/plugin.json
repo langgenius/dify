@@ -97,6 +97,7 @@
   "categorySingle.model": "モデル",
   "categorySingle.tool": "ツール",
   "categorySingle.trigger": "トリガー",
+  "clearSearch": "{{label}}をクリア",
   "debugInfo.title": "デバッグ",
   "debugInfo.viewDocs": "ドキュメントを見る",
   "deprecated": "非推奨",

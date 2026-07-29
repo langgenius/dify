@@ -1,13 +1,12 @@
 import type { ComparisonOperator, MetadataFilteringCondition, MetadataShape } from '../types'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useRef } from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import {
-  AccountProfileQueryProvider,
-  createAccountProfileQueryClient,
-} from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
@@ -132,36 +131,18 @@ const createCondition = (
   ...overrides,
 })
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/utils/permission', () => ({
@@ -728,7 +709,7 @@ describe('knowledge-retrieval path', () => {
       const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
 
       const { container } = render(
-        <AccountProfileQueryProvider queryClient={queryClient}>
+        <QueryClientTestProvider queryClient={queryClient}>
           <div>
             <ConditionOperator
               variableType={MetadataFilteringVariableType.string}
@@ -743,7 +724,7 @@ describe('knowledge-retrieval path', () => {
               onUpdateCondition={onUpdateCondition}
             />
           </div>
-        </AccountProfileQueryProvider>,
+        </QueryClientTestProvider>,
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)

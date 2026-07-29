@@ -15,7 +15,6 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -92,18 +91,18 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
     [param.name, t],
   )
 
-  const [isShowModal, { setTrue: doShowModal, setFalse: doHideModal }] = useBoolean(!isAdd)
+  const [isShowModal, setIsShowModal] = useState(!isAdd)
 
   const hideModal = useCallback(() => {
-    doHideModal()
+    setIsShowModal(false)
     onCancel?.()
-  }, [onCancel, doHideModal])
+  }, [onCancel])
 
   const showAddModal = useCallback(() => {
     if (isAdd) setParam(DEFAULT_PARAM)
 
-    doShowModal()
-  }, [isAdd, doShowModal])
+    setIsShowModal(true)
+  }, [isAdd])
 
   const checkValid = useCallback(() => {
     let errMessage = ''
@@ -177,11 +176,12 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                   <Input
                     value={param.name}
                     onChange={(e) => handleParamChange('name')(e.target.value)}
-                    placeholder={
-                      t(($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`], {
+                    placeholder={t(
+                      ($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`],
+                      {
                         ns: 'workflow',
-                      })!
-                    }
+                      },
+                    )!}
                   />
                 </Field>
                 <Field
@@ -224,12 +224,10 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                     )}
                     value={param.description}
                     onValueChange={(value) => handleParamChange('description')(value)}
-                    placeholder={
-                      t(
-                        ($) => $[`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`],
-                        { ns: 'workflow' },
-                      )!
-                    }
+                    placeholder={t(
+                      ($) => $[`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`],
+                      { ns: 'workflow' },
+                    )!}
                   />
                 </Field>
                 <Field

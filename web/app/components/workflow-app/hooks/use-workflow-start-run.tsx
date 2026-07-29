@@ -1,12 +1,15 @@
-import type { useNodesSyncDraft, useWorkflowRun } from '.'
+import type { useNodesSyncDraft } from './use-nodes-sync-draft'
+import type { useWorkflowRun } from './use-workflow-run'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
-import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useIsChatMode, useNodesSyncDraftByCanEdit, useWorkflowRunByCanEdit } from '.'
+import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import { useWorkflowRunByCanEdit } from './use-workflow-run'
 
 type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']

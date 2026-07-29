@@ -1,6 +1,7 @@
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.schema import register_enum_models, register_schema_models
@@ -28,6 +29,7 @@ from services.app_dsl_service import (
 )
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
 
 from .. import console_ns
@@ -91,18 +93,21 @@ class AppImportApi(Resource):
             import_service = AppDslService(session)
             # Import app
             account = current_user
-            result = import_service.import_app(
-                account=account,
-                import_mode=args.mode,
-                yaml_content=args.yaml_content,
-                yaml_url=args.yaml_url,
-                name=args.name,
-                description=args.description,
-                icon_type=args.icon_type,
-                icon=args.icon,
-                icon_background=args.icon_background,
-                app_id=args.app_id,
-            )
+            try:
+                result = import_service.import_app(
+                    account=account,
+                    import_mode=args.mode,
+                    yaml_content=args.yaml_content,
+                    yaml_url=args.yaml_url,
+                    name=args.name,
+                    description=args.description,
+                    icon_type=args.icon_type,
+                    icon=args.icon,
+                    icon_background=args.icon_background,
+                    app_id=args.app_id,
+                )
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:
@@ -157,7 +162,10 @@ class AppImportConfirmApi(Resource):
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
-            result = import_service.confirm_import(import_id=import_id, account=account)
+            try:
+                result = import_service.confirm_import(import_id=import_id, account=account)
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:

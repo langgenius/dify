@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Standard-Workflow-Ausführung",
   "plansCommon.workflowExecution.tooltip": "Priorität und Geschwindigkeit der Arbeitsablauf-Ausführungswarteschlange.",
   "plansCommon.year": "Jahr",
+  "plansCommon.yearlyBilling": "Jährliche Abrechnung",
   "plansCommon.yearlyTip": "Erhalten Sie 2 Monate kostenlos durch jährliches Abonnieren!",
   "teamMembers": "Teammitglieder",
   "triggerLimitModal.description": "Sie haben das Limit der Workflow-Ereignisauslöser für diesen Plan erreicht.",

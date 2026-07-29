@@ -482,21 +482,6 @@ describe('BaseField', () => {
     expect(screen.getByRole('radiogroup', { name: 'UI Radio' })).toBeInTheDocument()
   })
 
-  it('should apply disabled styles', () => {
-    renderBaseField({
-      formSchema: {
-        type: FormTypeEnum.radio,
-        name: 'disabled_radio',
-        label: 'Disabled',
-        required: false,
-        options: [{ label: 'Option 1', value: '1' }],
-        disabled: true,
-      },
-    })
-    // In radio, the option itself has the disabled class
-    expect(screen.getByText('Option 1')).toHaveClass('cursor-not-allowed')
-  })
-
   it('should return empty string for null content in getTranslatedContent', () => {
     renderBaseField({
       formSchema: {

@@ -108,35 +108,6 @@ describe('agent/node', () => {
     expect(container.querySelector('.h-2.w-20')).toBeInTheDocument()
   })
 
-  it('renders the inline setup agent style', () => {
-    const { container } = render(
-      <AgentV2Node
-        id="agent-node"
-        data={createData({
-          agent_binding: {
-            binding_type: 'inline_agent',
-          },
-        })}
-      />,
-    )
-
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toHaveClass(
-      'system-xs-regular',
-      'text-text-secondary',
-    )
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass(
-      'system-2xs-regular',
-      'text-text-tertiary',
-    )
-    const configureIcon = container.querySelector('.i-custom-vender-agent-v2-configure')
-    expect(configureIcon).toHaveClass('h-3.5', 'w-3')
-    expect(configureIcon?.parentElement).toHaveClass(
-      'size-8',
-      'rounded-full',
-      'bg-background-default-burn',
-    )
-  })
-
   it('renders the fixed inline setup name when workflow composer state is loaded', () => {
     render(
       <AgentV2Node

@@ -1,5 +1,8 @@
 /* oxlint-disable typescript/no-explicit-any */
+import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import Logs from '../index'
@@ -11,11 +14,27 @@ vi.mock('@/context/i18n', () => ({
 const mockReplace = vi.fn()
 const mockUseChatConversations = vi.fn()
 const mockUseCompletionConversations = vi.fn()
+const mockPlanState = vi.hoisted(() => ({
+  value: 'unrestricted' as CloudSandboxPlanState,
+}))
+const mockDebouncedPeriod = vi.hoisted(() => ({
+  value: null as string | null,
+}))
 
 let mockSearchParams = new URLSearchParams()
 vi.mock('ahooks', async () => {
   return {
-    useDebounce: <T,>(value: T) => value,
+    useDebounce: <T,>(value: T) => {
+      if (
+        mockDebouncedPeriod.value === null ||
+        typeof value !== 'object' ||
+        value === null ||
+        !('period' in value)
+      )
+        return value
+
+      return { ...value, period: mockDebouncedPeriod.value }
+    },
   }
 })
 
@@ -33,28 +52,19 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/service/use-log', () => ({
   useChatConversations: (...args: unknown[]) => mockUseChatConversations(...args),
   useCompletionConversations: (...args: unknown[]) => mockUseCompletionConversations(...args),
+  useAnnotationsCount: () => ({
+    data: { count: 0 },
+    isLoading: false,
+  }),
 }))
 
-vi.mock('../filter', () => ({
-  TIME_PERIOD_MAPPING: {
-    2: { value: 7 },
-    9: { value: 0 },
-  },
-  default: ({ setQueryParams }: { setQueryParams: (next: Record<string, string>) => void }) => (
-    <button
-      onClick={() =>
-        setQueryParams({
-          period: '9',
-          annotation_status: 'all',
-          sort_by: '-created_at',
-          keyword: 'hello',
-        })
-      }
-    >
-      filter-controls
-    </button>
-  ),
-}))
+vi.mock('../cloud-sandbox-retention', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../cloud-sandbox-retention')>()
+  return {
+    ...actual,
+    useCloudSandboxPlanStatus: () => mockPlanState.value,
+  }
+})
 
 vi.mock('../list', () => ({
   default: ({ logs }: { logs: { total?: number } }) => (
@@ -67,6 +77,10 @@ vi.mock('../list', () => ({
 
 vi.mock('../empty-element', () => ({
   default: () => <div>empty-logs</div>,
+}))
+
+vi.mock('../retention-upgrade-notice', () => ({
+  RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
 vi.mock('@/app/components/base/loading', () => ({
@@ -85,6 +99,8 @@ describe('Logs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSearchParams = new URLSearchParams()
+    mockPlanState.value = 'unrestricted'
+    mockDebouncedPeriod.value = null
     mockUseChatConversations.mockReturnValue({
       data: undefined,
       refetch: vi.fn(),
@@ -117,6 +133,7 @@ describe('Logs', () => {
     expect(
       screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ }),
     ).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
+    expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
     expect(screen.getByText('loading-logs')).toBeInTheDocument()
   })
 
@@ -165,5 +182,102 @@ describe('Logs', () => {
     fireEvent.click(screen.getByText('go-to-page-2'))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
+  })
+
+  it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
+    const user = userEvent.setup()
+    mockPlanState.value = 'sandbox'
+    mockUseChatConversations.mockReturnValue({
+      data: { total: 0 },
+      refetch: vi.fn(),
+    })
+
+    render(
+      <Logs
+        appDetail={
+          {
+            id: 'app-sandbox-last-30-days',
+            mode: AppModeEnum.CHAT,
+          } as any
+        }
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /appLog\.filter\.period\.last7days/ }))
+    await user.click(await screen.findByText(/appLog\.filter\.period\.last30days/))
+
+    expect(
+      screen.getByRole('combobox', { name: /appLog\.filter\.period\.last30days/ }),
+    ).toBeInTheDocument()
+    expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          start: dayjs().subtract(30, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+        }),
+      }),
+    )
+  })
+
+  it('should use a valid period for the real Chip and request when a cached period settles to Sandbox', async () => {
+    const user = userEvent.setup()
+    const appDetail = {
+      id: 'app-period-transition',
+      mode: AppModeEnum.CHAT,
+    } as any
+    mockUseChatConversations.mockReturnValue({
+      data: { total: 0 },
+      refetch: vi.fn(),
+    })
+
+    const unrestrictedRender = render(<Logs appDetail={appDetail} />)
+
+    await user.click(screen.getByRole('combobox', { name: /appLog\.filter\.period\.last7days/ }))
+    await user.click(await screen.findByText(/appLog\.filter\.period\.allTime/))
+    expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        params: expect.not.objectContaining({
+          start: expect.anything(),
+          end: expect.anything(),
+        }),
+      }),
+    )
+    unrestrictedRender.unmount()
+
+    mockPlanState.value = 'pending'
+    mockDebouncedPeriod.value = '9'
+    const pendingRender = render(<Logs appDetail={appDetail} />)
+
+    expect(
+      screen.getByRole('combobox', { name: /appLog\.filter\.period\.today/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /common\.operation\.clear appLog\.filter\.period\.today/,
+      }),
+    ).toBeInTheDocument()
+    expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          start: dayjs().startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: expect.any(String),
+        }),
+      }),
+    )
+
+    mockPlanState.value = 'sandbox'
+    pendingRender.rerender(<Logs appDetail={appDetail} />)
+
+    expect(
+      screen.getByRole('combobox', { name: /appLog\.filter\.period\.today/ }),
+    ).toBeInTheDocument()
+    expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          start: dayjs().startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: expect.any(String),
+        }),
+      }),
+    )
   })
 })

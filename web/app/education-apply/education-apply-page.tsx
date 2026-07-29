@@ -6,24 +6,21 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
-import { BillingPermission, hasPermission } from '@/utils/permission'
-import DifyLogo from '../components/base/logo/dify-logo'
+import { DifyLogo } from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
 import SearchInput from './search-input'
@@ -46,21 +43,18 @@ const EducationApplyAgeContent = () => {
   const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
-  const queryClient = useQueryClient()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
-  const setEducationVerifying = useSetEducationVerifying()
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const appliedEducationCase = (() => {
-    if (!canManageBilling) return AppliedEducationCase.noPaymentPermission
+    if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
 
     if (plan.type === Plan.sandbox) return AppliedEducationCase.eligible
 
@@ -75,7 +69,6 @@ const EducationApplyAgeContent = () => {
       if (res.message === 'success') {
         onPlanInfoChanged()
         updateEducationStatus()
-        setEducationVerifying(null)
         setHasSubmittedEducation(true)
       } else {
         toast.error(t(($) => $.submitError, { ns: 'education' }))
@@ -118,12 +111,7 @@ const EducationApplyAgeContent = () => {
 
     try {
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() }),
-        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.get.queryKey() }),
-      ])
-      onPlanInfoChanged()
-      updateEducationStatus()
+      globalThis.location.reload()
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
@@ -188,7 +176,7 @@ const EducationApplyAgeContent = () => {
           }}
         ></div>
         <div className="mt-[-349px] box-content flex h-7 items-center justify-between p-6">
-          <DifyLogo size="large" style="monochromeWhite" />
+          <DifyLogo alt="Dify" size="large" className="brightness-0 invert" />
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
           <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
@@ -214,6 +202,7 @@ const EducationApplyAgeContent = () => {
                 currentWorkspace={currentWorkspace}
                 plan={plan.type}
                 action={renderAppliedEducationAction()}
+                isSwitchingWorkspace={switchWorkspaceMutation.isPending}
                 onSwitchWorkspace={(value) => {
                   void handleSwitchWorkspace(value)
                 }}
@@ -306,6 +295,7 @@ type AppliedEducationWorkspaceBlockProps = {
   currentWorkspace: ICurrentWorkspace
   plan: PlanType
   action: ReactNode
+  isSwitchingWorkspace: boolean
   onSwitchWorkspace: (tenantId: string) => void
 }
 
@@ -313,6 +303,7 @@ function AppliedEducationWorkspaceContent({
   currentWorkspace,
   plan,
   action,
+  isSwitchingWorkspace,
   onSwitchWorkspace,
 }: AppliedEducationWorkspaceBlockProps) {
   const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
@@ -324,6 +315,7 @@ function AppliedEducationWorkspaceContent({
       currentWorkspace={currentWorkspace}
       plan={plan}
       action={action}
+      isSwitchingWorkspace={isSwitchingWorkspace}
       onSwitchWorkspace={onSwitchWorkspace}
     />
   )
