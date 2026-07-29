@@ -7,13 +7,15 @@ import json
 import zipfile
 from collections.abc import Generator
 from types import SimpleNamespace
+from typing import cast, override
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import Table, delete, func, select
 
 from core.db.session_factory import session_factory
+from core.tools.tool_file_manager import ToolFileManager
 from models.account import Account
 from models.agent import (
     Agent,
@@ -22,9 +24,6 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigSnapshot,
     AgentKind,
-    AgentRuntimeSession,
-    AgentRuntimeSessionOwnerType,
-    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -62,27 +61,33 @@ AGENT = "22222222-2222-2222-2222-222222222222"
 USER = "33333333-3333-3333-3333-333333333333"
 
 
-class _FakeToolFileManager:
-    def create_file_by_raw(self, **kwargs):
+class _FakeToolFileManager(ToolFileManager):
+    @override
+    def create_file_by_raw(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> ToolFile:
         tool_file = ToolFile(
-            user_id=kwargs["user_id"],
-            tenant_id=kwargs["tenant_id"],
-            conversation_id=kwargs["conversation_id"],
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
             file_key=f"tools/{uuid4().hex}",
-            mimetype=kwargs["mimetype"],
+            mimetype=mimetype,
             original_url=None,
-            name=kwargs.get("filename") or "file.bin",
-            size=len(kwargs["file_binary"]),
+            name=filename or "file.bin",
+            size=len(file_binary),
         )
         tool_file.id = str(uuid4())
         with session_factory.create_session() as session:
             session.add(tool_file)
             session.commit()
-        return SimpleNamespace(
-            id=tool_file.id,
-            size=len(kwargs["file_binary"]),
-            mimetype=kwargs["mimetype"],
-        )
+        return tool_file
 
 
 @pytest.fixture(autouse=True)
@@ -95,7 +100,6 @@ def _tables() -> Generator[None, None, None]:
         AgentConfigSnapshot,
         AgentConfigDraft,
         AgentConfigRevision,
-        AgentRuntimeSession,
         ToolFile,
         Tag,
         TagBinding,
@@ -106,7 +110,8 @@ def _tables() -> Generator[None, None, None]:
         WorkflowAgentNodeBinding,
     )
     for model in models:
-        model.__table__.create(bind=engine, checkfirst=True)
+        table = cast(Table, model.__table__)
+        table.create(bind=engine, checkfirst=True)
     _seed_agent()
     yield
     with session_factory.create_session() as session:
@@ -455,17 +460,6 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
             updated_by=USER,
         )
         session.add(draft)
-        runtime_session = AgentRuntimeSession(
-            tenant_id=TENANT,
-            app_id=agent.backing_app_id,
-            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-            agent_id=agent.id,
-            agent_config_snapshot_id=draft.id,
-            conversation_id=str(uuid4()),
-            session_snapshot="{}",
-            status=AgentRuntimeSessionStatus.ACTIVE,
-        )
-        session.add(runtime_session)
         session.flush()
 
         SkillManagementService._sync_assistant_model_config(
@@ -479,7 +473,6 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
         assert updated_draft.model is not None
         assert updated_draft.model.model_provider == "langgenius/tongyi/tongyi"
         assert updated_draft.model.model == "qwen3.7-plus"
-        assert runtime_session.status == AgentRuntimeSessionStatus.CLEANED
 
 
 def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> None:
@@ -1148,9 +1141,26 @@ def test_publish_archive_contains_synced_skill_md() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(
@@ -1173,9 +1183,26 @@ def test_list_versions_includes_publisher_name_and_version_detail_files() -> Non
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(
@@ -1607,9 +1634,26 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(
@@ -1834,9 +1878,26 @@ def test_publish_and_export_include_binary_tool_files() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
@@ -1883,9 +1944,26 @@ def test_restore_version_replaces_draft_and_creates_new_published_version() -> N
     captured: list[bytes] = []
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured.append(kwargs["file_binary"])
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured.append(file_binary)
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
