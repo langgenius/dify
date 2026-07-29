@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Generator, Mapping
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -487,26 +489,23 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
 
 
 def test_publish_streaming_response_uses_stream_error_message_for_failed_terminal(mock_topic: MagicMock):
-    response_stream = iter(
-        [
-            {
-                "event": "workflow_started",
-                "task_id": "task-id",
-                "workflow_run_id": "workflow-run-id",
-                "data": {"id": "workflow-run-id", "workflow_id": "workflow-id", "inputs": {}, "created_at": 1},
-            },
-            {
-                "event": "error",
-                "workflow_run_id": "workflow-run-id",
-                "code": "invalid_workflow",
-                "message": "The workflow configuration is invalid.",
-                "status": 400,
-            },
-        ]
-    )
+    def response_stream() -> Generator[str | Mapping[str, Any] | BaseModel, None, None]:
+        yield {
+            "event": "workflow_started",
+            "task_id": "task-id",
+            "workflow_run_id": "workflow-run-id",
+            "data": {"id": "workflow-run-id", "workflow_id": "workflow-id", "inputs": {}, "created_at": 1},
+        }
+        yield {
+            "event": "error",
+            "workflow_run_id": "workflow-run-id",
+            "code": "invalid_workflow",
+            "message": "The workflow configuration is invalid.",
+            "status": 400,
+        }
 
     _publish_streaming_response(
-        response_stream,
+        response_stream(),
         "workflow-run-id",
         app_mode=AppMode.ADVANCED_CHAT,
         workflow_id="workflow-id",
@@ -515,10 +514,21 @@ def test_publish_streaming_response_uses_stream_error_message_for_failed_termina
     )
 
     payloads = _published_payloads(mock_topic)
-    assert [payload["event"] for payload in payloads] == ["workflow_started", "error", "workflow_finished"]
-    assert payloads[1]["status"] == 400
-    assert payloads[2]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert payloads[2]["data"]["error"] == "The workflow configuration is invalid."
+    assert len(payloads) == 3
+    started_payload, error_payload, finished_payload = payloads
+    assert isinstance(started_payload, dict)
+    assert isinstance(error_payload, dict)
+    assert isinstance(finished_payload, dict)
+    assert [started_payload["event"], error_payload["event"], finished_payload["event"]] == [
+        "workflow_started",
+        "error",
+        "workflow_finished",
+    ]
+    assert error_payload["status"] == 400
+    finished_data = finished_payload["data"]
+    assert isinstance(finished_data, dict)
+    assert finished_data["status"] == WorkflowExecutionStatus.FAILED
+    assert finished_data["error"] == "The workflow configuration is invalid."
 
 
 def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(mock_topic: MagicMock):
