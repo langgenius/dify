@@ -15,7 +15,7 @@ import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
-import { shouldUseDetailSidebar } from './routes'
+import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
 import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 
 type MainNavLayoutProps = {
@@ -47,7 +47,8 @@ const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const shouldHideMainNav = shouldUseDetailSidebar(pathname, {
+  const hideMainNavigation = shouldHideMainNavigation(pathname)
+  const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),
     canUseAppDeploy: isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy,
     isCurrentWorkspaceDatasetOperator,
@@ -57,7 +58,7 @@ const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
     <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
       <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
       <AppDetailStoreCleanup />
-      {shouldHideMainNav ? detailSidebar : <MainNav />}
+      {hideMainNavigation ? null : useDetailSidebar ? detailSidebar : <MainNav />}
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}

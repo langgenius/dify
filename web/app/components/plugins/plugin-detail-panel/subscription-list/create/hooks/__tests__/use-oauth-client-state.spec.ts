@@ -4,7 +4,7 @@ import type {
 } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import {
   AuthorizationStatusEnum,
   ClientTypeEnum,
@@ -52,7 +52,7 @@ function createMockSubscriptionBuilder(
     id: 'builder-123',
     name: 'Test Builder',
     provider: 'test-provider',
-    credential_type: TriggerCredentialTypeEnum.Oauth2,
+    credential_type: TriggerCredentialType.Oauth2,
     credentials: {},
     endpoint: 'https://example.com/callback',
     parameters: {},

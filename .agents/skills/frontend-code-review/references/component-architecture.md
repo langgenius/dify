@@ -46,14 +46,13 @@ When existing components already own interaction logic, prefer reusing or extend
 
 Flag:
 
-- `React.FC` / `FC`.
-- Default exports outside framework-required files.
+- Declaration or export rewrites made only for stylistic uniformity, without changing an owned behavior or contract.
 - Named `Props` types for trivial one-off props where inline typing is clearer.
 - Props named by UI implementation instead of domain/API role.
 - API data converted too early or under a generic name that breaks traceability.
 - Callers duplicating fallback checks that the lowest rendering component already handles.
 
-Prefer top-level `function` declarations for components and module helpers. Use arrow functions for callbacks and local lambdas.
+Do not flag `FC`, `React.FC`, function declarations, arrow functions, named exports, or default exports by syntax alone. Report them only when the chosen form causes a concrete type, lifecycle, export, framework, or enforced package-contract defect.
 
 ## Effects
 

@@ -40,7 +40,7 @@ type ExploreAppDetailResponse = {
   icon_background: string
   mode: string
   export_data: string
-  can_trial?: boolean | null
+  can_trial: boolean
 }
 
 type InstalledAppsResponse = {
@@ -141,7 +141,7 @@ const normalizeRecommendedApp = (app: RecommendedAppResponse): App => {
     installed: false,
     editable: false,
     is_agent: false,
-    can_trial: app.can_trial ?? false,
+    can_trial: app.can_trial,
   }
 }
 

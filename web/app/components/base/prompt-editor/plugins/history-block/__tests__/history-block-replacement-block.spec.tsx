@@ -4,14 +4,14 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readEditorStateValue,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import HistoryBlockReplacementBlock from '../history-block-replacement-block'
 import { HistoryBlockNode } from '../node'
 

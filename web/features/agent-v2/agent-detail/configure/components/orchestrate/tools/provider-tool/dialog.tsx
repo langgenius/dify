@@ -7,7 +7,6 @@ import type { AgentProviderTool } from '@/features/agent-v2/agent-composer/form-
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { CollectionType } from '@/app/components/tools/types'
 import {
   agentComposerToolsAtom,
   agentComposerToolSettingsAtom,
@@ -28,7 +27,7 @@ const createFallbackToolCollection = (tool: AgentProviderTool): ToolWithProvider
     icon: tool.icon ?? '',
     icon_dark: tool.iconDark,
     label: localize(tool.displayName ?? tool.name),
-    type: (tool.providerType as CollectionType | undefined) ?? CollectionType.builtIn,
+    type: tool.providerType,
     team_credentials: {},
     is_team_authorization: true,
     allow_delete: tool.allowDelete ?? false,

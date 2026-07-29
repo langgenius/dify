@@ -32,6 +32,7 @@ import { logout } from './logout/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
+import { onboarding } from './onboarding/orpc.gen'
 import { ping } from './ping/orpc.gen'
 import { rag } from './rag/orpc.gen'
 import { refreshToken } from './refresh-token/orpc.gen'
@@ -88,6 +89,7 @@ const communityContract = {
   notification,
   notion,
   oauth,
+  onboarding,
   ping,
   rag,
   refreshToken,

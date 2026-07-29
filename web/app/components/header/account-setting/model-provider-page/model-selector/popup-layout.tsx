@@ -94,10 +94,7 @@ export function CompatibleModelsNotice() {
   const { t } = useTranslation()
 
   return (
-    <div
-      data-testid="compatible-models-banner"
-      className="px-4 py-2 system-xs-regular text-text-tertiary"
-    >
+    <div className="px-4 py-2 system-xs-regular text-text-tertiary">
       {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'common' })}
     </div>
   )

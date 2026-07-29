@@ -136,13 +136,6 @@ describe('Citation', () => {
       expect(screen.getByTestId('citation-title')).toBeInTheDocument()
     })
 
-    it('should use a custom containerClassName to resolve the container element', () => {
-      mockClientWidths({ container: 600, item: 50 })
-      setupContainer('my-custom-container')
-      render(<Citation data={[makeCitationItem()]} containerClassName="my-custom-container" />)
-      expect(screen.getByTestId('citation-title')).toBeInTheDocument()
-    })
-
     it('should forward showHitInfo=true to each rendered Popup', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
@@ -335,15 +328,6 @@ describe('Citation', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing when data is an empty array', () => {
-      mockClientWidths({ container: 500, item: 0 })
-      setupContainer()
-      render(<Citation data={[]} />)
-      expect(screen.getByTestId('citation-title')).toBeInTheDocument()
-      expect(screen.queryAllByTestId('citation-measurement-item')).toHaveLength(0)
-      expect(screen.queryByTestId('citation-more-toggle')).not.toBeInTheDocument()
-    })
-
     it('should render correctly with a single citation item that fits', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()

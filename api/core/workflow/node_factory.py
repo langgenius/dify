@@ -487,7 +487,7 @@ class DifyNodeFactory(NodeFactory):
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
-            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
+            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
@@ -497,8 +497,12 @@ class DifyNodeFactory(NodeFactory):
                 ),
                 "agent_backend_client": create_agent_backend_run_client(
                     base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                    api_token=dify_config.AGENT_BACKEND_API_TOKEN,
                     use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                    stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
+                    stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
+                    stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 # Agent Files §4.6: reback file outputs from the ToolFile row so
@@ -508,7 +512,7 @@ class DifyNodeFactory(NodeFactory):
                 # tenant validator resolves ToolFile (canonical) + UploadFile refs.
                 "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
-                "session_store": WorkflowAgentRuntimeSessionStore(),
+                "session_store": WorkflowAgentWorkspaceStore(),
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,
