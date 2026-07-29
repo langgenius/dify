@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fetchAppDetail, fetchAppList, fetchInstalledAppMeta } from './explore'
+import {
+  fetchAppDetail,
+  fetchAppList,
+  fetchInstalledAppList,
+  fetchInstalledAppMeta,
+} from './explore'
 
 const mockExploreAppsGet = vi.hoisted(() => vi.fn())
 const mockExploreAppDetailGet = vi.hoisted(() => vi.fn())
+const mockInstalledAppsGet = vi.hoisted(() => vi.fn())
 const mockInstalledAppMetaGet = vi.hoisted(() => vi.fn())
 
 vi.mock('./client', () => ({
@@ -16,6 +22,7 @@ vi.mock('./client', () => ({
       },
     },
     installedApps: {
+      get: mockInstalledAppsGet,
       byInstalledAppId: {
         meta: {
           get: mockInstalledAppMetaGet,
@@ -90,6 +97,20 @@ describe('explore service normalizers', () => {
         builtin: '/tool.svg',
         provider: providerIcon,
       },
+    })
+  })
+
+  it('preserves installed app pagination metadata', async () => {
+    mockInstalledAppsGet.mockResolvedValue({
+      installed_apps: [],
+      has_more: true,
+      next_cursor: 'next-page',
+    })
+
+    await expect(fetchInstalledAppList()).resolves.toEqual({
+      installed_apps: [],
+      has_more: true,
+      next_cursor: 'next-page',
     })
   })
 })

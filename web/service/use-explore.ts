@@ -1,16 +1,23 @@
 import type { App, AppCategory } from '@/models/explore'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from './client'
 import {
   fetchAppList,
-  fetchInstalledAppList,
   fetchInstalledAppMeta,
   fetchInstalledAppParams,
   fetchLearnDifyAppList,
   getAppAccessModeByAppId,
+  normalizeInstalledApp,
+  normalizeInstalledAppsResponse,
   uninstallApp,
   updatePinStatus,
 } from './explore'
@@ -58,12 +65,46 @@ export const useLearnDifyAppList = () => {
   })
 }
 
-export const useGetInstalledApps = () => {
+export const useGetInstalledApps = (name = '') => {
+  const normalizedName = name.trim()
+  const query = useInfiniteQuery({
+    ...consoleQuery.installedApps.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          limit: 20,
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          ...(normalizedName ? { name: normalizedName } : {}),
+        },
+      }),
+      getNextPageParam: (lastPage) =>
+        lastPage.has_more && lastPage.next_cursor ? lastPage.next_cursor : undefined,
+      initialPageParam: null as string | null,
+    }),
+    select: (data) => ({
+      ...data,
+      pages: data.pages.map(normalizeInstalledAppsResponse),
+    }),
+  })
+
+  return {
+    installedApps: query.data?.pages.flatMap((page) => page.installed_apps) ?? [],
+    isPending: query.isPending,
+    isFetchingNextPage: query.isFetchingNextPage,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage,
+  }
+}
+
+export const useGetInstalledApp = (installedAppId: string) => {
   return useQuery({
-    queryKey: consoleQuery.installedApps.get.queryKey({ input: {} }),
-    queryFn: () => {
-      return fetchInstalledAppList()
-    },
+    ...consoleQuery.installedApps.byInstalledAppId.get.queryOptions({
+      input: {
+        params: {
+          installed_app_id: installedAppId,
+        },
+      },
+    }),
+    select: normalizeInstalledApp,
   })
 }
 
@@ -74,7 +115,10 @@ export const useUninstallApp = () => {
     mutationFn: (appId: string) => uninstallApp(appId),
     onSuccess: () => {
       client.invalidateQueries({
-        queryKey: consoleQuery.installedApps.get.queryKey({ input: {} }),
+        queryKey: consoleQuery.installedApps.get.key(),
+      })
+      client.invalidateQueries({
+        queryKey: consoleQuery.installedApps.byInstalledAppId.get.key(),
       })
     },
   })
@@ -88,7 +132,10 @@ export const useUpdateAppPinStatus = () => {
       updatePinStatus(appId, isPinned),
     onSuccess: () => {
       client.invalidateQueries({
-        queryKey: consoleQuery.installedApps.get.queryKey({ input: {} }),
+        queryKey: consoleQuery.installedApps.get.key(),
+      })
+      client.invalidateQueries({
+        queryKey: consoleQuery.installedApps.byInstalledAppId.get.key(),
       })
     },
   })

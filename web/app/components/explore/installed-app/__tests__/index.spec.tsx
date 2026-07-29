@@ -5,10 +5,10 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import {
+  useGetInstalledApp,
   useGetInstalledAppAccessModeByAppId,
   useGetInstalledAppMeta,
   useGetInstalledAppParams,
-  useGetInstalledApps,
 } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import InstalledApp from '../index'
@@ -20,10 +20,10 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: vi.fn(),
 }))
 vi.mock('@/service/use-explore', () => ({
+  useGetInstalledApp: vi.fn(),
   useGetInstalledAppAccessModeByAppId: vi.fn(),
   useGetInstalledAppParams: vi.fn(),
   useGetInstalledAppMeta: vi.fn(),
-  useGetInstalledApps: vi.fn(),
 }))
 
 vi.mock('@/app/components/share/text-generation', () => ({
@@ -104,16 +104,15 @@ describe('InstalledApp', () => {
     installedApps: InstalledAppType[] = [mockInstalledApp],
     options: {
       isPending?: boolean
-      isFetching?: boolean
     } = {},
   ) => {
-    const { isPending = false, isFetching = false } = options
+    const { isPending = false } = options
 
-    ;(useGetInstalledApps as Mock).mockReturnValue({
-      data: { installed_apps: installedApps },
+    ;(useGetInstalledApp as Mock).mockImplementation((installedAppId: string) => ({
+      data: installedApps.find((installedApp) => installedApp.id === installedAppId),
       isPending,
-      isFetching,
-    })
+      error: null,
+    }))
   }
 
   beforeEach(() => {
@@ -545,6 +544,7 @@ describe('InstalledApp', () => {
     it('should call service hooks with correct appId', () => {
       render(<InstalledApp id="installed-app-123" />)
 
+      expect(useGetInstalledApp).toHaveBeenCalledWith('installed-app-123')
       expect(useGetInstalledAppAccessModeByAppId).toHaveBeenCalledWith('installed-app-123')
       expect(useGetInstalledAppParams).toHaveBeenCalledWith('installed-app-123')
       expect(useGetInstalledAppMeta).toHaveBeenCalledWith('installed-app-123')
@@ -609,8 +609,8 @@ describe('InstalledApp', () => {
       expect(screen.queryByText(/404/)).not.toBeInTheDocument()
     })
 
-    it('should show loading before 404 while installed apps are refetching', () => {
-      setupMocks([], { isFetching: true })
+    it('should show loading before 404 while the installed app is loading', () => {
+      setupMocks([], { isPending: true })
 
       const { container } = render(<InstalledApp id="nonexistent-app" />)
       const svg = container.querySelector('svg.spin-animation')

@@ -1,5 +1,6 @@
 'use client'
 
+import type { UIEvent } from 'react'
 import type { InstalledApp } from '@/models/explore'
 import {
   AlertDialog,
@@ -20,6 +21,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,6 +38,7 @@ const appNavItemHeight = 32
 const appNavItemGap = 2
 const appNavSeparatorHeight = 17
 const virtualizationThreshold = 50
+const loadMoreThreshold = 64
 const webAppSkeletonClassName =
   'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const webAppSkeletonWidths = ['w-24', 'w-32', 'w-28']
@@ -80,26 +83,21 @@ const WebAppsSectionContent = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { data, isPending } = useGetInstalledApps()
-  const installedApps = useMemo(() => data?.installed_apps ?? [], [data?.installed_apps])
-  const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
-  const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
   const [appsExpanded, setAppsExpanded] = useState(true)
   const [searchVisible, setSearchVisible] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
   const [currentId, setCurrentId] = useState('')
+  const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
+  const { installedApps, isPending, isFetchingNextPage, fetchNextPage, hasNextPage } =
+    useGetInstalledApps(debouncedSearchText)
+  const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
+  const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
-  const filteredApps = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase()
-    if (!normalizedSearch) return installedApps
-
-    return installedApps.filter((item) => item.app.name.toLowerCase().includes(normalizedSearch))
-  }, [installedApps, searchText])
   const webAppRows = useMemo<WebAppListRow[]>(() => {
-    const pinnedAppsCount = filteredApps.filter(({ is_pinned }) => is_pinned).length
+    const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
 
-    return filteredApps.flatMap((app, index) => {
+    return installedApps.flatMap((app, index) => {
       const rows: WebAppListRow[] = [
         {
           key: app.id,
@@ -108,7 +106,7 @@ const WebAppsSectionContent = () => {
         },
       ]
 
-      if (index === pinnedAppsCount - 1 && index !== filteredApps.length - 1) {
+      if (index === pinnedAppsCount - 1 && index !== installedApps.length - 1) {
         rows.push({
           key: `${app.id}-separator`,
           kind: 'separator',
@@ -117,7 +115,7 @@ const WebAppsSectionContent = () => {
 
       return rows
     })
-  }, [filteredApps])
+  }, [installedApps])
   const shouldVirtualize = webAppRows.length > virtualizationThreshold
 
   const rowVirtualizer = useVirtualizer({
@@ -143,14 +141,20 @@ const WebAppsSectionContent = () => {
     toast.success(t(($) => $['api.success'], { ns: 'common' }))
   }
 
-  if (!isPending && installedApps.length === 0) return null
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!hasNextPage || isFetchingNextPage) return
+    const { clientHeight, scrollHeight, scrollTop } = event.currentTarget
+    if (scrollHeight - scrollTop - clientHeight <= loadMoreThreshold) void fetchNextPage()
+  }
+
+  if (!isPending && installedApps.length === 0 && !debouncedSearchText) return null
 
   const renderAppNavItem = ({
     id,
     is_pinned,
     uninstallable,
     app,
-  }: (typeof filteredApps)[number]) => (
+  }: (typeof installedApps)[number]) => (
     <AppNavItem
       key={id}
       variant="mainNav"
@@ -210,7 +214,10 @@ const WebAppsSectionContent = () => {
               )}
               onClick={() => {
                 setAppsExpanded(true)
-                setSearchVisible((value) => !value)
+                setSearchVisible((value) => {
+                  if (value) setSearchText('')
+                  return !value
+                })
               }}
             >
               <span className="flex size-5 shrink-0 items-center justify-center">
@@ -235,14 +242,15 @@ const WebAppsSectionContent = () => {
         <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden overscroll-contain">
           <ScrollAreaViewport
             ref={scrollRef}
-            aria-busy={isPending}
+            aria-busy={isPending || isFetchingNextPage}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
             className="overflow-x-hidden"
+            onScroll={handleScroll}
             role="region"
           >
             <ScrollAreaContent className="w-full max-w-full min-w-0! px-2">
               {isPending && <WebAppsSkeleton />}
-              {!isPending && filteredApps.length === 0 && (
+              {!isPending && installedApps.length === 0 && (
                 <div className="px-2 py-1 system-xs-regular">
                   {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
                 </div>

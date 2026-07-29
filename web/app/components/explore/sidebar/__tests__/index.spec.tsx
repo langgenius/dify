@@ -13,8 +13,11 @@ const mockSegments = ['apps']
 const mockPush = vi.fn()
 const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
+const mockFetchNextPage = vi.fn()
 let mockIsPending = false
 let mockIsUninstallPending = false
+let mockIsFetchingNextPage = false
+let mockHasNextPage = false
 let mockInstalledApps: InstalledApp[] = []
 
 vi.mock('@/next/navigation', () => ({
@@ -28,7 +31,10 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/service/use-explore', () => ({
   useGetInstalledApps: () => ({
     isPending: mockIsPending,
-    data: { installed_apps: mockInstalledApps },
+    installedApps: mockInstalledApps,
+    isFetchingNextPage: mockIsFetchingNextPage,
+    fetchNextPage: mockFetchNextPage,
+    hasNextPage: mockHasNextPage,
   }),
   useUninstallApp: () => ({
     mutateAsync: mockUninstall,
@@ -76,6 +82,8 @@ describe('SideBar', () => {
     vi.clearAllMocks()
     mockIsPending = false
     mockIsUninstallPending = false
+    mockIsFetchingNextPage = false
+    mockHasNextPage = false
     mockInstalledApps = []
   })
 
@@ -117,6 +125,22 @@ describe('SideBar', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
+    })
+
+    it('should fetch the next page near the end of the list', () => {
+      mockInstalledApps = [createInstalledApp()]
+      mockHasNextPage = true
+      renderSideBar()
+
+      const region = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+      Object.defineProperties(region, {
+        clientHeight: { configurable: true, value: 200 },
+        scrollHeight: { configurable: true, value: 500 },
+        scrollTop: { configurable: true, value: 260 },
+      })
+      fireEvent.scroll(region)
+
+      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
     })
 
     it('should render divider between pinned and unpinned apps', () => {

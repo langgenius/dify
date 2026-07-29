@@ -43,8 +43,10 @@ type ExploreAppDetailResponse = {
   can_trial: boolean
 }
 
-type InstalledAppsResponse = {
+export type InstalledAppsResponse = {
   installed_apps: InstalledApp[]
+  has_more: boolean
+  next_cursor?: string | null
 }
 
 type AppAccessModeResponse = {
@@ -172,7 +174,7 @@ const normalizeAppDetail = (response: RecommendedAppDetailResponse): ExploreAppD
   }
 }
 
-const normalizeInstalledApp = (installedApp: InstalledAppResponse): InstalledApp => {
+export const normalizeInstalledApp = (installedApp: InstalledAppResponse): InstalledApp => {
   return {
     app: normalizeAppBasicInfo(installedApp.app, installedApp.app.id),
     id: installedApp.id,
@@ -181,11 +183,13 @@ const normalizeInstalledApp = (installedApp: InstalledAppResponse): InstalledApp
   }
 }
 
-const normalizeInstalledAppsResponse = (
+export const normalizeInstalledAppsResponse = (
   response: InstalledAppListResponse,
 ): InstalledAppsResponse => {
   return {
     installed_apps: response.installed_apps.map(normalizeInstalledApp),
+    has_more: response.has_more,
+    next_cursor: response.next_cursor,
   }
 }
 

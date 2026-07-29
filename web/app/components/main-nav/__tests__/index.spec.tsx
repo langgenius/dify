@@ -346,9 +346,12 @@ const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
+const mockFetchNextInstalledAppsPage = vi.fn()
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledApp[] = []
 let mockInstalledAppsPending = false
+let mockInstalledAppsFetchingNextPage = false
+let mockInstalledAppsHasNextPage = false
 let mockWorkspaces: IWorkspace[] = []
 
 const ownerWorkspacePermissionKeys = [
@@ -497,6 +500,8 @@ describe('MainNav', () => {
     mockPathname = '/apps'
     mockInstalledApps = []
     mockInstalledAppsPending = false
+    mockInstalledAppsFetchingNextPage = false
+    mockInstalledAppsHasNextPage = false
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -539,9 +544,16 @@ describe('MainNav', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
-    ;(useGetInstalledApps as Mock).mockImplementation(() => ({
+    ;(useGetInstalledApps as Mock).mockImplementation((name = '') => ({
       isPending: mockInstalledAppsPending,
-      data: { installed_apps: mockInstalledApps },
+      installedApps: name
+        ? mockInstalledApps.filter((installedApp) =>
+            installedApp.app.name.toLowerCase().includes(name.toLowerCase()),
+          )
+        : mockInstalledApps,
+      isFetchingNextPage: mockInstalledAppsFetchingNextPage,
+      fetchNextPage: mockFetchNextInstalledAppsPage,
+      hasNextPage: mockInstalledAppsHasNextPage,
     }))
     ;(useUninstallApp as Mock).mockReturnValue({
       mutateAsync: mockUninstall,
@@ -1217,7 +1229,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('filters installed web apps and renders installed app navigation link', () => {
+  it('searches installed web apps and renders the matching navigation link', async () => {
     mockInstalledApps = [
       createInstalledApp({
         id: 'installed-1',
@@ -1236,8 +1248,11 @@ describe('MainNav', () => {
       target: { value: 'beta' },
     })
 
-    expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-    expect(screen.getByText('Beta Tool')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useGetInstalledApps).toHaveBeenCalledWith('beta')
+      expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
+      expect(screen.getByText('Beta Tool')).toBeInTheDocument()
+    })
     expect(
       screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
     ).toHaveAttribute('href', '/installed/installed-2')
@@ -1339,6 +1354,22 @@ describe('MainNav', () => {
       offsetHeightSpy.mockRestore()
       offsetWidthSpy.mockRestore()
     }
+  })
+
+  it('fetches the next installed web app page near the scroll end', () => {
+    mockInstalledApps = [createInstalledApp()]
+    mockInstalledAppsHasNextPage = true
+    renderMainNav()
+
+    const region = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    Object.defineProperties(region, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 500 },
+      scrollTop: { configurable: true, value: 260 },
+    })
+    fireEvent.scroll(region)
+
+    expect(mockFetchNextInstalledAppsPage).toHaveBeenCalledTimes(1)
   })
 
   it('collapses and expands installed web apps from the section arrow', async () => {

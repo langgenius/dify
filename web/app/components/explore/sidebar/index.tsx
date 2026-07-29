@@ -9,7 +9,13 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -22,14 +28,16 @@ import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/s
 import Item from './app-nav-item'
 import NoApps from './no-apps'
 
+const loadMoreThreshold = 64
+
 const SideBar = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = pathname === '/' || lastSegment === 'apps'
-  const { data, isPending } = useGetInstalledApps()
-  const installedApps = data?.installed_apps ?? []
+  const { installedApps, isPending, isFetchingNextPage, fetchNextPage, hasNextPage } =
+    useGetInstalledApps()
   const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
   const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
@@ -47,6 +55,12 @@ const SideBar = () => {
   const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
     await updatePinStatus({ appId: id, isPinned })
     toast.success(t(($) => $['api.success'], { ns: 'common' }))
+  }
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (!hasNextPage || isFetchingNextPage) return
+    const { clientHeight, scrollHeight, scrollTop } = event.currentTarget
+    if (scrollHeight - scrollTop - clientHeight <= loadMoreThreshold) void fetchNextPage()
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
@@ -134,19 +148,29 @@ const SideBar = () => {
           )}
           {!isFold ? (
             <div className="min-h-0 flex-1">
-              <ScrollArea
-                className="h-full"
-                slotClassNames={{
-                  viewport: 'overscroll-contain',
-                  content: 'space-y-0.5 pr-3',
-                }}
-                labelledBy={webAppsLabelId}
-              >
-                {installedAppItems}
-              </ScrollArea>
+              <ScrollAreaRoot className="h-full">
+                <ScrollAreaViewport
+                  aria-busy={isFetchingNextPage}
+                  aria-labelledby={webAppsLabelId}
+                  className="overscroll-contain"
+                  onScroll={handleScroll}
+                  role="region"
+                >
+                  <ScrollAreaContent className="space-y-0.5 pr-3">
+                    {installedAppItems}
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollAreaRoot>
             </div>
           ) : (
-            <div className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto">
+            <div
+              aria-busy={isFetchingNextPage}
+              className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto"
+              onScroll={handleScroll}
+            >
               {installedAppItems}
             </div>
           )}

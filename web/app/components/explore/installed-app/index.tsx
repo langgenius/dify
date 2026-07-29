@@ -9,10 +9,10 @@ import { useWebAppStore } from '@/context/web-app-context'
 import dynamic from '@/next/dynamic'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import {
+  useGetInstalledApp,
   useGetInstalledAppAccessModeByAppId,
   useGetInstalledAppMeta,
   useGetInstalledAppParams,
-  useGetInstalledApps,
 } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import AppUnavailable from '../../base/app-unavailable'
@@ -36,11 +36,10 @@ const InstalledTextGenerationSurface = ({ children }: { children: React.ReactNod
 
 const InstalledApp = ({ id }: { id: string }) => {
   const {
-    data,
-    isPending: isPendingInstalledApps,
-    isFetching: isFetchingInstalledApps,
-  } = useGetInstalledApps()
-  const installedApp = data?.installed_apps?.find((item) => item.id === id)
+    data: installedApp,
+    isPending: isPendingInstalledApp,
+    error: installedAppError,
+  } = useGetInstalledApp(id)
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateWebAppAccessMode = useWebAppStore((s) => s.updateWebAppAccessMode)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
@@ -146,6 +145,15 @@ const InstalledApp = ({ id }: { id: string }) => {
       </InstalledAppFrame>
     )
   }
+  if (installedAppError) {
+    return (
+      <InstalledAppFrame>
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable code={404} isUnknownReason />
+        </div>
+      </InstalledAppFrame>
+    )
+  }
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
       <InstalledAppFrame>
@@ -156,8 +164,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     )
   }
   if (
-    isPendingInstalledApps ||
-    (!installedApp && isFetchingInstalledApps) ||
+    isPendingInstalledApp ||
     (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
   ) {
     return (

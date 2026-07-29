@@ -5,7 +5,9 @@ export type ClientOptions = {
 }
 
 export type InstalledAppListResponse = {
+  has_more: boolean
   installed_apps: Array<InstalledAppResponse>
+  next_cursor?: string | null
 }
 
 export type InstalledAppCreatePayload = {
@@ -14,6 +16,16 @@ export type InstalledAppCreatePayload = {
 
 export type SimpleMessageResponse = {
   message: string
+}
+
+export type InstalledAppResponse = {
+  app: InstalledAppInfoResponse
+  app_owner_tenant_id: string
+  editable: boolean
+  id: string
+  is_pinned: boolean
+  last_used_at?: number | null
+  uninstallable: boolean
 }
 
 export type InstalledAppUpdatePayload = {
@@ -169,14 +181,16 @@ export type WorkflowRunPayload = {
   }
 }
 
-export type InstalledAppResponse = {
-  app: InstalledAppInfoResponse
-  app_owner_tenant_id: string
-  editable: boolean
+export type InstalledAppInfoResponse = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
   id: string
-  is_pinned: boolean
-  last_used_at?: number | null
-  uninstallable: boolean
+  mode?: string | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type JsonValue =
@@ -238,18 +252,6 @@ export type SavedMessageItem = {
   }
   message_files: Array<MessageFile>
   query: string
-}
-
-export type InstalledAppInfoResponse = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  readonly icon_url: string | null
-  id: string
-  mode?: string | null
-  name?: string | null
-  use_icon_as_answer_icon?: boolean | null
 }
 
 export type AgentThought = {
@@ -413,13 +415,9 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 export type ValueSourceType = 'constant' | 'variable'
 
 export type InstalledAppListResponseWritable = {
-  installed_apps: Array<InstalledAppResponseWritable>
-}
-
-export type ExploreMessageInfiniteScrollPaginationWritable = {
-  data: Array<ExploreMessageListItemWritable>
   has_more: boolean
-  limit: number
+  installed_apps: Array<InstalledAppResponseWritable>
+  next_cursor?: string | null
 }
 
 export type InstalledAppResponseWritable = {
@@ -430,6 +428,23 @@ export type InstalledAppResponseWritable = {
   is_pinned: boolean
   last_used_at?: number | null
   uninstallable: boolean
+}
+
+export type ExploreMessageInfiniteScrollPaginationWritable = {
+  data: Array<ExploreMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type InstalledAppInfoResponseWritable = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode?: string | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type ExploreMessageListItemWritable = {
@@ -457,22 +472,14 @@ export type ExploreMessageListItemWritable = {
   total_price?: string | null
 }
 
-export type InstalledAppInfoResponseWritable = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  id: string
-  mode?: string | null
-  name?: string | null
-  use_icon_as_answer_icon?: boolean | null
-}
-
 export type GetInstalledAppsData = {
   body?: never
   path?: never
   query?: {
     app_id?: string
+    cursor?: string
+    limit?: number
+    name?: string
   }
   url: '/installed-apps'
 }
@@ -511,6 +518,22 @@ export type DeleteInstalledAppsByInstalledAppIdResponses = {
 
 export type DeleteInstalledAppsByInstalledAppIdResponse =
   DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
+
+export type GetInstalledAppsByInstalledAppIdData = {
+  body?: never
+  path: {
+    installed_app_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}'
+}
+
+export type GetInstalledAppsByInstalledAppIdResponses = {
+  200: InstalledAppResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdResponse =
+  GetInstalledAppsByInstalledAppIdResponses[keyof GetInstalledAppsByInstalledAppIdResponses]
 
 export type PatchInstalledAppsByInstalledAppIdData = {
   body: InstalledAppUpdatePayload
