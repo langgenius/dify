@@ -1294,7 +1294,7 @@ class SkillManagementService:
             version = SkillVersion(
                 skill_id=skill.id,
                 version_number=version_number,
-                version_name=self._version_name_from_payload(payload.version_name, payload.publish_note),
+                version_name=self._version_name_from_payload(payload.version_name),
                 publish_note=payload.publish_note,
                 manifest=manifest,
                 archive_tool_file_id=tool_file.id,
@@ -1434,7 +1434,7 @@ class SkillManagementService:
         with session_factory.create_session() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=version_id)
-            version.version_name = self._version_name_from_payload(payload.version_name, payload.publish_note)
+            version.version_name = self._version_name_from_payload(payload.version_name)
             version.publish_note = payload.publish_note
             session.commit()
             session.refresh(version)
@@ -2317,12 +2317,9 @@ class SkillManagementService:
         return hashlib.sha256(payload).hexdigest()
 
     @staticmethod
-    def _version_name_from_payload(version_name: str | None, publish_note: str) -> str:
+    def _version_name_from_payload(version_name: str | None) -> str:
         explicit_name = (version_name or "").strip()
-        if explicit_name:
-            return explicit_name[:128]
-        first_note_line = publish_note.strip().splitlines()[0].strip() if publish_note.strip() else ""
-        return first_note_line[:128]
+        return explicit_name[:128]
 
     @staticmethod
     def _copy_draft_file(file: SkillDraftFile, *, skill_id: str) -> SkillDraftFile:

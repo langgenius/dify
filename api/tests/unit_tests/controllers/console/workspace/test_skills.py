@@ -1083,7 +1083,6 @@ def test_skill_file_write_methods_map_conflicts(
     payload: dict[str, object],
 ) -> None:
     api = WorkspaceSkillFilesApi()
-    method = unwrap(getattr(api, method_name))
     service = MagicMock()
     conflict = SkillManagementServiceError(
         "skill_conflict",
@@ -1091,8 +1090,10 @@ def test_skill_file_write_methods_map_conflicts(
         status_code=409,
     )
     if method_name == "patch":
+        method = unwrap(api.patch)
         service.apply_draft_file_operation.side_effect = conflict
     else:
+        method = unwrap(api.put)
         service.replace_draft_tree.side_effect = conflict
 
     with (
