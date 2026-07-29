@@ -143,7 +143,7 @@ export function WebAppAccessPointCard({
               disabled={!running}
               onClick={() => setShowCustomize(true)}
             >
-              <span aria-hidden className="i-ri-palette-line size-4" />
+              <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
               {t(($) => $['overview.appInfo.customize.entry'], {
                 ns: 'appOverview',
               })}

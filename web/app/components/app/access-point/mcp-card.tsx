@@ -162,11 +162,11 @@ export function MCPAccessPointCard({
         actions={
           <Button
             variant="secondary"
-            size="small"
             disabled={loading || unavailable || !canEdit}
             onClick={() => setShowServerModal(true)}
+            className="flex items-center gap-1 px-3"
           >
-            <span aria-hidden className="i-ri-edit-line size-4" />
+            <span aria-hidden className="i-ri-draft-line size-4" />
             {serverPublished
               ? t(($) => $['mcp.server.edit'], { ns: 'tools' })
               : t(($) => $['mcp.server.addDescription'], { ns: 'tools' })}
