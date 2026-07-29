@@ -41,10 +41,23 @@ vi.mock('reactflow', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
-  useNodesInteractions: () => mockUseNodesInteractions(),
-}))
+vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
+  }
+})
+
+vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => mockUseNodesInteractions(),
+  }
+})
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
   __esModule: true,

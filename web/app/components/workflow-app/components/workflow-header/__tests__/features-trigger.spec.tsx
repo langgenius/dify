@@ -75,12 +75,18 @@ const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
 }
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
+  useNodesReadOnly: () => mockUseNodesReadOnly(),
+  useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklist: (...args: unknown[]) => mockUseChecklist(...args),
   useChecklistBeforePublish: () => mockUseChecklistBeforePublish(),
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => mockUseNodesSyncDraft(),
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({

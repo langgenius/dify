@@ -8,7 +8,8 @@ import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useNodesInteractions, useNodesReadOnly } from '../../../hooks'
+import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 

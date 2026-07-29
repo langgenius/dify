@@ -11,10 +11,9 @@ import {
   RiExpandDiagonalLine,
   RiEyeLine,
 } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
@@ -70,10 +69,10 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
     },
   })
 
-  const [isExpandFormContent, { toggle: toggleExpandFormContent }] = useBoolean(false)
+  const [isExpandFormContent, setIsExpandFormContent] = useState(false)
   const nodePanelWidth = useStore((state) => state.nodePanelWidth)
 
-  const [isPreview, { toggle: togglePreview, setFalse: hidePreview }] = useBoolean(false)
+  const [isPreview, setIsPreview] = useState(false)
 
   const onAddUseAction = useCallback(() => {
     const index = inputs.user_actions.length + 1
@@ -131,7 +130,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
                   'flex items-center space-x-1 px-2',
                   isPreview && 'bg-state-accent-active text-text-accent',
                 )}
-                onClick={togglePreview}
+                onClick={() => setIsPreview((isPreview) => !isPreview)}
               >
                 <RiEyeLine className="size-3.5" />
                 <div className="system-xs-medium">
@@ -160,7 +159,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
                     'flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover',
                     isExpandFormContent && 'bg-state-accent-active text-text-accent',
                   )}
-                  onClick={toggleExpandFormContent}
+                  onClick={() => setIsExpandFormContent((isExpanded) => !isExpanded)}
                 >
                   {isExpandFormContent ? (
                     <RiCollapseDiagonalLine className="size-4" aria-hidden />
@@ -263,7 +262,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
           content={inputs.form_content}
           formInputs={inputs.inputs}
           userActions={inputs.user_actions}
-          onClose={hidePreview}
+          onClose={() => setIsPreview(false)}
         />
       )}
     </div>

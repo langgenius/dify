@@ -34,7 +34,6 @@ import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
-  IS_CE_EDITION,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
@@ -48,6 +47,17 @@ import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
+
+const isAbortError = (error: unknown) => {
+  if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
+
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  )
+}
+
+const shouldNotifyStreamError = (error: unknown) =>
+  !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
 
 export type IOnDataMoreInfo = {
   event?: string
@@ -618,12 +628,8 @@ export const ssePost = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (
-              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
-              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
-            )
-              toast.error(moreInfo.errorMessage)
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -664,11 +670,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (
-        errorMessage !== 'AbortError: The user aborted a request.' &&
-        !errorMessage.includes('TypeError: Cannot assign to read only property')
-      )
-        toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
       onError?.(errorMessage)
     })
 }
@@ -781,12 +783,8 @@ export const sseGet = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (
-              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
-              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
-            )
-              toast.error(moreInfo.errorMessage)
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -827,11 +825,7 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (
-        errorMessage !== 'AbortError: The user aborted a request.' &&
-        !errorMessage.includes('TypeError: Cannot assign to read only property')
-      )
-        toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
       onError?.(errorMessage)
     })
 }
@@ -980,15 +974,15 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
+      if (code === 'init_validate_failed' && !silent) {
         toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
-      if (code === 'not_init_validated' && IS_CE_EDITION) {
+      if (code === 'not_init_validated') {
         jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
-      if (code === 'not_setup' && IS_CE_EDITION) {
+      if (code === 'not_setup') {
         jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
@@ -1000,7 +994,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
-      if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      if (window.location.pathname !== `${basePath}/signin`) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }

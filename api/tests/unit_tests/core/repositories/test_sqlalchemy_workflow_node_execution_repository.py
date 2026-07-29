@@ -238,7 +238,11 @@ def test_to_db_model_requires_constructor_context(monkeypatch: pytest.MonkeyPatc
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
-    execution = _execution(inputs={"b": 1, "a": 2}, metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1})
+    execution = _execution(
+        inputs={"b": 1, "a": 2},
+        process_data={"agent_workspace_binding_id": "participant-1"},
+        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1},
+    )
 
     # Happy path: deterministic json dump should be sorted
     db_model = repo._to_db_model(execution)
@@ -247,6 +251,7 @@ def test_to_db_model_requires_constructor_context(monkeypatch: pytest.MonkeyPatc
     assert db_model.created_by_role.value == "account"
     assert json.loads(db_model.inputs or "{}") == {"a": 2, "b": 1}
     assert json.loads(db_model.execution_metadata or "{}")["total_tokens"] == 1
+    assert db_model.agent_workspace_binding_id is None
 
     repo._triggered_from = None
     with pytest.raises(ValueError, match="triggered_from is required"):
@@ -330,7 +335,7 @@ def test_persist_to_database_updates_existing_and_inserts_new(monkeypatch: pytes
     db_model.foo = "bar"  # type: ignore[attr-defined]
     db_model.__dict__["_private"] = "x"
 
-    existing = SimpleNamespace()
+    existing = SimpleNamespace(process_data=None, process_data_dict=None)
     session.get.return_value = existing
     repo._persist_to_database(db_model)
     assert existing.foo == "bar"
@@ -523,7 +528,9 @@ def test_save_execution_data_handles_existing_db_model_and_truncation(monkeypatc
         offload_data=[WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)],
         inputs=None,
         outputs=None,
-        process_data=None,
+        process_data='{"workflow_agent_binding_id": "workflow-binding-1"}',
+        process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
+        agent_workspace_binding_id="authoritative-participant",
     )
     session.merge = Mock()
     session.flush = Mock()
@@ -538,7 +545,11 @@ def test_save_execution_data_handles_existing_db_model_and_truncation(monkeypatc
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    execution = _execution(inputs={"a": 1}, outputs={"b": 2}, process_data={"c": 3})
+    execution = _execution(
+        inputs={"a": 1},
+        outputs={"b": 2},
+        process_data={"c": 3},
+    )
 
     trunc_result = SimpleNamespace(
         truncated_value={"trunc": True},
@@ -554,7 +565,11 @@ def test_save_execution_data_handles_existing_db_model_and_truncation(monkeypatc
     db_model = session.merge.call_args.args[0]
     assert json.loads(db_model.inputs) == {"trunc": True}
     assert json.loads(db_model.outputs) == {"b": 2}
-    assert json.loads(db_model.process_data) == {"c": 3}
+    assert json.loads(db_model.process_data) == {
+        "c": 3,
+        "workflow_agent_binding_id": "workflow-binding-1",
+    }
+    assert db_model.agent_workspace_binding_id == "authoritative-participant"
     assert any(off.type_ == ExecutionOffLoadType.INPUTS for off in db_model.offload_data)
     assert execution.get_truncated_inputs() == {"trunc": True}
 
@@ -570,6 +585,7 @@ def test_save_execution_data_truncates_outputs_and_process_data(monkeypatch: pyt
         inputs=None,
         outputs=None,
         process_data=None,
+        process_data_dict=None,
     )
     session = MagicMock()
     session.execute.return_value.scalars.return_value.first.return_value = existing
@@ -633,7 +649,14 @@ def test_save_execution_data_handles_missing_db_model(monkeypatch: pytest.Monkey
     )
 
     execution = _execution(inputs={"a": 1})
-    fake_db_model = SimpleNamespace(id=execution.id, offload_data=[], inputs=None, outputs=None, process_data=None)
+    fake_db_model = SimpleNamespace(
+        id=execution.id,
+        offload_data=[],
+        inputs=None,
+        outputs=None,
+        process_data=None,
+        process_data_dict=None,
+    )
     monkeypatch.setattr(repo, "_to_db_model", lambda *_: fake_db_model)
     monkeypatch.setattr(repo, "_truncate_and_upload", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(repo, "_json_encode", lambda values: json.dumps(values))

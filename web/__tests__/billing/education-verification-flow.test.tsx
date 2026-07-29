@@ -1,3 +1,5 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 /**
  * Integration test: Education Verification Flow
  *
@@ -14,24 +16,34 @@ import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { Plan } from '@/app/components/billing/type'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 
-// ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+
+const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const queryClient = createConsoleQueryClient()
+  const plan = mockProviderCtx.plan as {
+    usage: { vectorSpace: number }
+    total: { vectorSpace: number }
+  }
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: plan.usage.vectorSpace,
+    limit: plan.total.vectorSpace,
+  })
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    queryClient,
+  })
+  return renderWithConsoleState(ui, { ...options, wrapper })
+}
+
+// ─── Mock state ──────────────────────────────────────────────────────────────
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -55,10 +67,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
@@ -75,9 +83,6 @@ vi.mock('@/service/use-billing', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
-  useCurrentPlanVectorSpace: () => ({
-    data: undefined,
-  }),
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
@@ -89,10 +94,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
-}))
-
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────
@@ -236,20 +237,6 @@ describe('Education Verification Flow', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledTimes(1)
         expect(mockRouterPush).toHaveBeenCalledWith('/education-apply?token=edu-token-123')
-      })
-    })
-
-    it('should clear education verifying flag on success', async () => {
-      mockMutateAsync.mockResolvedValue({ token: 'token-xyz' })
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(mockSetEducationVerifying).toHaveBeenCalledWith(null)
       })
     })
   })

@@ -3,7 +3,6 @@
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -29,8 +28,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 
   const [pluginId] = uniqueIdentifier?.split(':') || ['']
   const [isShow, setIsShow] = useState(false)
-  const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] =
-    useBoolean(false)
+  const [isShowUpdateModal, setIsShowUpdateModal] = useState(false)
   const [target, setTarget] = useState<{
     version: string
     pluginUniqueIden: string
@@ -43,10 +41,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const pluginDetail = pluginDetails.data?.plugins.at(0)
 
   const handleUpdatedFromMarketplace = useCallback(() => {
-    hideUpdateModal()
+    setIsShowUpdateModal(false)
     pluginDetails.refetch()
     onChange?.(target!.version)
-  }, [hideUpdateModal, onChange, pluginDetails, target])
+  }, [onChange, pluginDetails, target])
   const { getIconUrl } = useGetIcon()
   const icon = pluginDetail?.declaration.icon
     ? getIconUrl(pluginDetail.declaration.icon)
@@ -77,7 +75,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     >
       {isShowUpdateModal && pluginDetail && (
         <PluginMutationModel
-          onCancel={hideUpdateModal}
+          onCancel={() => setIsShowUpdateModal(false)}
           plugin={pluginManifestToCardPluginProps({
             ...pluginDetail.declaration,
             icon: icon!,
@@ -123,7 +121,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               pluginUniqueIden: state.unique_identifier,
               version: state.version,
             })
-            showUpdateModal()
+            setIsShowUpdateModal(true)
           }}
           trigger={
             <Badge

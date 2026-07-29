@@ -4,11 +4,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NotionPageSelector from '@/app/components/base/notion-page-selector/base'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 const mockInvalidPreImportNotionPages = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockUsePreImportNotionPages = vi.fn()
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -29,16 +28,10 @@ vi.mock('@/service/knowledge/use-import', () => ({
   useInvalidPreImportNotionPages: () => mockInvalidPreImportNotionPages,
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (state: {
-      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
-    }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 const buildCredential = (
   id: string,
@@ -200,8 +193,6 @@ describe('Base Notion Page Selector Flow', () => {
     await user.click(
       screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }),
     )
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
   })
 })

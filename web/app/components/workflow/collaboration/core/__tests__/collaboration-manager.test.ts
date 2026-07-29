@@ -8,6 +8,7 @@ import { LoroDoc } from 'loro-crdt/base64'
 import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const NODE_ID = '1760342909316'
 
@@ -247,6 +248,7 @@ const setupManager = (): {
   internals: CollaborationManagerInternals
 } => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc

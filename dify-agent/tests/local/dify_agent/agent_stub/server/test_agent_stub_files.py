@@ -75,6 +75,26 @@ def test_dify_api_agent_stub_file_handler_injects_execution_context_for_upload(m
     asyncio.run(scenario())
 
 
+def test_dify_api_agent_stub_file_handler_resolves_relative_upload_url(monkeypatch) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"data": {"url": "/files/upload/for-plugin?signed=yes"}})
+
+    _patch_async_client(monkeypatch, handler)
+    file_handler = DifyApiAgentStubFileRequestHandler(
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
+    )
+
+    async def scenario() -> None:
+        response = await file_handler.create_upload_request(
+            principal=_principal(),
+            request=AgentStubFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
+        )
+        assert response.upload_url == "https://api.example.com/files/upload/for-plugin?signed=yes"
+
+    asyncio.run(scenario())
+
+
 def test_dify_api_agent_stub_file_handler_injects_execution_context_for_download(monkeypatch) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == "https://api.example.com/inner/api/download/file/request"

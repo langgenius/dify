@@ -646,7 +646,7 @@ class TestAccountGeneration:
     ):
         mock_get_account.return_value = mock_account
         mock_tenant_service.get_join_tenants.return_value = []
-        mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
+        mock_feature_service.is_workspace_creation_allowed.return_value = True
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             result, oauth_new_user = _generate_account("github", user_info)

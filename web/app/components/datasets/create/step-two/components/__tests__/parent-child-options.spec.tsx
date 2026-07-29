@@ -1,8 +1,9 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { PreProcessingRule } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ParentChildOptions } from '../parent-child-options'
 
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
@@ -22,11 +23,9 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
   ),
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: true,
-}))
-
 const ns = 'datasetCreation'
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'COMMUNITY' } })
 
 const createRules = (): PreProcessingRule[] => [
   { id: 'remove_extra_spaces', enabled: true },

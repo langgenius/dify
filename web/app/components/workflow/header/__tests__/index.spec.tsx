@@ -27,7 +27,7 @@ function DynamicHeaderRestoring(props: Record<string, unknown>) {
   )
 }
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow-mode', () => ({
   useWorkflowMode: () => mockWorkflowMode,
 }))
 

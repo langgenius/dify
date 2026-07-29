@@ -37,15 +37,28 @@ vi.mock('reactflow', () => ({
   useViewport: () => mockViewport,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-  useWorkflowReadOnly: () => ({
-    workflowReadOnly,
-    getWorkflowReadOnly: () => workflowReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
+
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useWorkflowReadOnly: () => ({
+      workflowReadOnly,
+      getWorkflowReadOnly: () => workflowReadOnly,
+    }),
+  }
+})
 
 vi.mock('../tip-popup', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,

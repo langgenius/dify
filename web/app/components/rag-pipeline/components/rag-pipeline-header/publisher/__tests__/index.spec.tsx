@@ -3,15 +3,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
+vi.mock('@/context/system-features-state', async () => {
+  const { atom } = await import('jotai')
   return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
+    deploymentEditionAtom: atom('CLOUD'),
   }
 })
 
@@ -100,10 +100,13 @@ vi.mock('@/next/link', () => ({
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
@@ -312,6 +315,7 @@ const createQueryClient = () =>
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
+  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 

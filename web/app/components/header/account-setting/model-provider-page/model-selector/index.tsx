@@ -33,7 +33,6 @@ type ModelSelectorProps = {
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
   onOpenMarketplace?: () => void
-  providerSettingsSource?: 'agent'
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -52,7 +51,6 @@ function ModelSelector({
   hideProviderSettingsFooter,
   onConfigureEmptyState,
   onOpenMarketplace,
-  providerSettingsSource,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
@@ -144,7 +142,7 @@ function ModelSelector({
       <ComboboxTrigger
         aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
         icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
         disabled={readonly}
       >
         <ModelSelectorTrigger
@@ -175,7 +173,6 @@ function ModelSelector({
           modelList={modelList}
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
-          providerSettingsSource={providerSettingsSource}
           modelPredicate={modelPredicate}
           modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}

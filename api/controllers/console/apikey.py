@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.common.session import with_session
+from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
@@ -194,6 +195,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
+    @agent_manage_required_for_agent_app
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for an app"""
@@ -210,6 +212,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @with_current_tenant_id
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for an app"""
@@ -233,6 +236,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     def delete(
         self,

@@ -1,22 +1,26 @@
 'use client'
 
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
@@ -89,6 +93,7 @@ function WorkspaceCardTrigger({
   showPlanAction,
   planActionLabel,
   creditsHref,
+  onPrefetchWorkspaces,
   onPlanClick,
 }: {
   open: boolean
@@ -99,6 +104,7 @@ function WorkspaceCardTrigger({
   showPlanAction: boolean
   planActionLabel: string
   creditsHref: string
+  onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
   const { t } = useTranslation()
@@ -111,6 +117,8 @@ function WorkspaceCardTrigger({
       <PopoverTrigger
         aria-label={t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })}
         title={name}
+        onMouseEnter={onPrefetchWorkspaces}
+        onFocus={onPrefetchWorkspaces}
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
@@ -221,65 +229,69 @@ function WorkspaceMenuHeader({
   )
 }
 
-const selectCurrentWorkspaceCardData = (workspace: {
-  id: string
-  name?: string | null
-  role?: string | null
-  trial_credits?: number | null
-  trial_credits_used?: number | null
-}) => ({
+type CurrentWorkspaceCardSource = Pick<
+  PostWorkspacesCurrentResponse,
+  'id' | 'name' | 'plan' | 'trial_credits' | 'trial_credits_used'
+>
+
+const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) => ({
   id: workspace.id,
   name: workspace.name,
-  role: workspace.role,
+  plan: workspace.plan,
   credits: getRemainingCredits(workspace.trial_credits ?? 0, workspace.trial_credits_used ?? 0),
 })
 
 export function WorkspaceCard() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const currentWorkspaceQuery = useQuery(
     consoleQuery.workspaces.current.post.queryOptions({
       select: selectCurrentWorkspaceCardData,
     }),
   )
-  const workspacesQuery = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const [open, setOpen] = useState(false)
+  const workspacesQueryOptions = consoleQuery.workspaces.get.queryOptions()
+  const workspacesQuery = useQuery({
+    ...workspacesQueryOptions,
+    enabled: open,
+  })
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
   const currentWorkspace = currentWorkspaceQuery.data
-  const workspacesData = workspacesQuery.data
-  const workspaces = workspacesData?.workspaces
-  const currentWorkspaceInList = workspaces?.find((workspace) => workspace.current)
-  const { enableBilling } = useProviderContext()
+  const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const showCloudBilling = IS_CLOUD_EDITION && enableBilling
-  const [open, setOpen] = useState(false)
+  const { setShowPricingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
+  const isCloudEdition = deploymentEdition === 'CLOUD'
+  const prefetchWorkspaces = () => {
+    void queryClient.prefetchQuery(workspacesQueryOptions)
+  }
 
-  if (
-    currentWorkspaceQuery.isPending ||
-    workspacesQuery.isPending ||
-    !currentWorkspace?.name ||
-    !currentWorkspace.role ||
-    !workspaces ||
-    !currentWorkspaceInList ||
-    !isWorkspacePlan(currentWorkspaceInList.plan)
-  ) {
+  if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
-      <WorkspaceCardSkeleton
-        showCloudBilling={showCloudBilling}
-        showPlanAction={showCloudBilling}
-      />
+      <WorkspaceCardSkeleton showCloudBilling={isCloudEdition} showPlanAction={isCloudEdition} />
     )
   }
 
-  const workspacePlan = currentWorkspaceInList.plan
+  const workspacePlan = isWorkspacePlan(currentWorkspace.plan) ? currentWorkspace.plan : null
+  const hasBillingPlan = typeof currentWorkspace.plan === 'string'
+  const showCloudBilling = isCloudEdition && hasBillingPlan
+  const showPlanAction = showCloudBilling && workspacePlan !== null
   const isFreePlan = workspacePlan === Plan.sandbox
-  const showPlanAction = showCloudBilling
   const planActionLabel = t(
     ($) => $[isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain'],
     { ns: 'billing' },
   )
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
-  const renderWorkspaceStatus = () =>
-    enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
+  const renderWorkspaceStatus = () => {
+    if (deploymentEdition === 'CLOUD')
+      return workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
+    if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
+    return null
+  }
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
@@ -305,6 +317,7 @@ export function WorkspaceCard() {
           showPlanAction={showPlanAction}
           planActionLabel={planActionLabel}
           creditsHref={buildIntegrationPath('provider')}
+          onPrefetchWorkspaces={prefetchWorkspaces}
           onPlanClick={setShowPricingModal}
         />
         <PopoverContent
@@ -321,26 +334,21 @@ export function WorkspaceCard() {
             inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
             onOpenSettings={() => {
               setOpen(false)
-              setShowAccountSettingModal({
-                payload: enableBilling ? ACCOUNT_SETTING_TAB.BILLING : ACCOUNT_SETTING_TAB.MEMBERS,
-              })
+              setSettingsDestination(hasBillingPlan ? 'billing' : 'members')
             }}
             onInviteMembers={() => {
               setOpen(false)
-              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+              setSettingsDestination('members')
             }}
           />
-          {workspaces.length > 0 && (
-            <div className="p-1 pb-2">
-              <WorkspaceSwitcher
-                workspaces={workspaces}
-                onSwitchWorkspace={(workspaceId) => {
-                  setOpen(false)
-                  void handleSwitchWorkspace(workspaceId)
-                }}
-              />
-            </div>
-          )}
+          <WorkspaceSwitcher
+            workspaces={workspaces}
+            isPending={workspacesQuery.isPending}
+            onSwitchWorkspace={(workspaceId) => {
+              setOpen(false)
+              void handleSwitchWorkspace(workspaceId)
+            }}
+          />
         </PopoverContent>
       </>
     </Popover>
