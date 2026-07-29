@@ -54,6 +54,30 @@ class TestParseTimeDuration:
         result = parse_time_duration(None)
         assert result is None
 
+    def test_parse_trailing_newline_rejected(self):
+        """Trailing newline should return None (regression for #39730).
+
+        re.match with a '$' anchor accepts "7d\\n" because Python's '$'
+        matches at end-of-string OR just before a trailing newline.
+        re.fullmatch requires the entire string to match.
+        """
+        assert parse_time_duration("7d\n") is None
+        assert parse_time_duration("30m\n") is None
+        assert parse_time_duration("4h\n") is None
+
+    def test_parse_trailing_carriage_return_rejected(self):
+        assert parse_time_duration("7d\r") is None
+
+    def test_parse_trailing_crlf_rejected(self):
+        assert parse_time_duration("7d\r\n") is None
+
+    def test_parse_leading_newline_rejected(self):
+        assert parse_time_duration("\n7d") is None
+
+    def test_parse_embedded_whitespace_rejected(self):
+        assert parse_time_duration("7 d") is None
+        assert parse_time_duration(" 7d") is None
+
 
 class TestGetTimeThreshold:
     """Test get_time_threshold function."""
