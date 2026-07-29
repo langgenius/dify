@@ -21,7 +21,6 @@ import {
   useLearnDifyHiddenValue,
   useSetLearnDifyHidden,
 } from '@/app/components/explore/learn-dify/storage'
-import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import {
   ExternalLinkIndicator,
@@ -47,6 +46,7 @@ import {
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import styles from './help-menu.module.css'
+import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
@@ -99,7 +99,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
-  const [aboutVisible, setAboutVisible] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
@@ -250,8 +250,8 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                 <DropdownMenuItem
                   className="mx-0 h-8 gap-1 px-3 py-1.5"
                   onClick={() => {
-                    setAboutVisible(true)
                     setOpen(false)
+                    setAboutOpen(true)
                   }}
                 >
                   <MenuItemContent
@@ -274,12 +274,12 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
           </>
         </DropdownMenuContent>
       </DropdownMenu>
-      {aboutVisible && (
-        <AccountAbout
-          onCancel={() => setAboutVisible(false)}
-          langGeniusVersionInfo={langGeniusVersionInfo}
-        />
-      )}
+      <AccountAboutDialog
+        open={aboutOpen}
+        onOpenChange={setAboutOpen}
+        langGeniusVersionInfo={langGeniusVersionInfo}
+        deploymentEdition={systemFeatures.deployment_edition}
+      />
     </>
   )
 }
