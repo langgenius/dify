@@ -4,7 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
-from dify_agent.runtime_backend.profile import DEFAULT_E2B_TEMPLATE, RuntimeBackendSettings
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.profile import (
+    DEFAULT_E2B_TEMPLATE,
+    RuntimeBackendSettings,
+    create_runtime_backend_profile,
+)
 
 
 def test_e2b_backend_uses_prepared_dify_template_by_default() -> None:
@@ -32,3 +37,31 @@ def test_e2b_backend_rejects_active_timeout_above_platform_limit() -> None:
 def test_local_backend_requires_shellctl_endpoint() -> None:
     with pytest.raises(ValidationError, match="local_sandbox_endpoint"):
         _ = RuntimeBackendSettings(runtime_backend="local")
+
+
+def test_local_backend_passes_configured_roots_to_drivers() -> None:
+    settings = RuntimeBackendSettings(
+        runtime_backend="local",
+        local_sandbox_endpoint="http://shellctl.example",
+        local_sandbox_materialized_home_root="/tmp/dify/homes",
+        local_sandbox_workspace_root="/tmp/dify/workspaces",
+        local_sandbox_home_snapshot_root="/tmp/dify/snapshots",
+    )
+
+    profile = create_runtime_backend_profile(settings)
+
+    assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
+    assert isinstance(profile.home_snapshots, LocalHomeSnapshotBackend)
+    assert profile.execution_bindings.materialized_home_root == "/tmp/dify/homes"
+    assert profile.execution_bindings.workspace_root == "/tmp/dify/workspaces"
+    assert profile.execution_bindings.snapshot_root == "/tmp/dify/snapshots"
+    assert profile.home_snapshots.snapshot_root == "/tmp/dify/snapshots"
+
+
+def test_local_backend_rejects_relative_roots() -> None:
+    with pytest.raises(ValidationError, match="absolute POSIX path"):
+        _ = RuntimeBackendSettings(
+            runtime_backend="local",
+            local_sandbox_endpoint="http://shellctl.example",
+            local_sandbox_workspace_root="relative/workspaces",
+        )

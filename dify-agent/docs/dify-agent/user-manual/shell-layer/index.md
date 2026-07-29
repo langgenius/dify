@@ -71,6 +71,10 @@ Equivalent standalone environment settings are:
 DIFY_AGENT_RUNTIME_BACKEND=local
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
 DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
+# Optional when shellctl runs directly on a host without /home/dify:
+# DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
+# DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
+# DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 ```
 
 The auth token may be empty when shellctl authentication is disabled. E2B uses
