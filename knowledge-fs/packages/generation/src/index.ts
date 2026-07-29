@@ -778,6 +778,11 @@ export function createDifyModelRuntimeLlmProvider(
     if (!input.model.trim()) {
       throw new ProviderInputError("Dify model runtime LLM model is required");
     }
+    if (input.model.trim() !== options.model.trim()) {
+      throw new ProviderInputError(
+        `Dify model runtime LLM provider is bound to model ${options.model.trim()}`,
+      );
+    }
 
     const tenantId = input.tenantId?.trim();
 
@@ -786,7 +791,6 @@ export function createDifyModelRuntimeLlmProvider(
     }
 
     const maxTokens = input.maxOutputTokens ?? options.maxOutputTokens;
-    let model = input.model;
     let finishReason = "stop";
     let usage: LlmUsage | undefined;
 
@@ -809,10 +813,6 @@ export function createDifyModelRuntimeLlmProvider(
 
       if (!parsed.success) {
         continue;
-      }
-
-      if (parsed.data.model) {
-        model = parsed.data.model;
       }
 
       const content = parsed.data.delta?.message?.content;
@@ -844,7 +844,10 @@ export function createDifyModelRuntimeLlmProvider(
 
     yield {
       finishReason,
-      metadata: { model, provider: "dify-model-runtime", ...(usage ? { usage } : {}) },
+      // Dify invokes the exact tenant-scoped catalog route requested above. Individual
+      // stream chunks can expose different upstream aliases (for example a terminal chunk
+      // may report a routed deployment name), so keep the logical Dify route deterministic.
+      metadata: { model: input.model, provider: "dify-model-runtime", ...(usage ? { usage } : {}) },
       type: "done",
     };
   }

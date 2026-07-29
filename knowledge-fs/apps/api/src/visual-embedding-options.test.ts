@@ -132,8 +132,8 @@ describe("createApiVisualEmbeddingOptions", () => {
       }),
     ).resolves.toMatchObject({
       dense: [[0.2, 0.8]],
-      metadata: { model: "clip-multimodal@1", provider: "dify-model-runtime" },
-      model: "clip-multimodal@1",
+      metadata: { model: "clip-multimodal", provider: "dify-model-runtime" },
+      model: "clip-multimodal",
     });
 
     const queryPayload = (await requests[1]?.json()) as Record<string, unknown>;

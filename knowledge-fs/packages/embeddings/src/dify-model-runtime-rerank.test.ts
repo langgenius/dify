@@ -87,6 +87,22 @@ describe("Dify model runtime reranker provider", () => {
     ).rejects.toBeInstanceOf(ProviderInputError);
   });
 
+  it("rejects a model outside the provider's bound Dify route", async () => {
+    const provider = createDifyModelRuntimeRerankerProvider({
+      ...BASE,
+      client: fakeClient(async () => ({ docs: [] })),
+    });
+
+    await expect(
+      provider.rerank({
+        documents: DOCS,
+        model: "other-reranker",
+        query: "q",
+        tenantId: "t",
+      }),
+    ).rejects.toThrow("is bound to model rerank-english-v3.0");
+  });
+
   it("fails closed for out-of-range indices and invalid responses", async () => {
     const outOfRange = createDifyModelRuntimeRerankerProvider({
       ...BASE,
@@ -121,10 +137,6 @@ describe("Dify model runtime reranker provider", () => {
       },
       label: "duplicate indices",
     },
-    {
-      data: { docs: [{ index: 0, score: 0.9 }], model: "different-model" },
-      label: "a mismatched model identity",
-    },
   ])("rejects $label", async ({ data }) => {
     const provider = createDifyModelRuntimeRerankerProvider({
       ...BASE,
@@ -134,6 +146,23 @@ describe("Dify model runtime reranker provider", () => {
     await expect(
       provider.rerank({ documents: DOCS, model: BASE.model, query: "q", tenantId: "t" }),
     ).rejects.toBeInstanceOf(ProviderResponseError);
+  });
+
+  it("preserves the selected route when Dify reports an upstream model alias", async () => {
+    const provider = createDifyModelRuntimeRerankerProvider({
+      ...BASE,
+      client: fakeClient(async () => ({
+        docs: [{ index: 0, score: 0.9 }],
+        model: "rerank-english-v3.0-runtime-deployment",
+      })),
+    });
+
+    await expect(
+      provider.rerank({ documents: DOCS, model: BASE.model, query: "q", tenantId: "t" }),
+    ).resolves.toMatchObject({
+      metadata: { model: BASE.model },
+      model: BASE.model,
+    });
   });
 
   it("synthesizes a model descriptor and validates constructor options", async () => {
