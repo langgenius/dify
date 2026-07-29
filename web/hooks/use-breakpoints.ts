@@ -18,11 +18,7 @@ const getViewportWidth = () => globalThis.innerWidth
 const getServerViewportWidth = () => 1024
 
 const useBreakpoints = (): MediaTypeValue => {
-  const width = useSyncExternalStore(
-    subscribeToViewport,
-    getViewportWidth,
-    getServerViewportWidth,
-  )
+  const width = useSyncExternalStore(subscribeToViewport, getViewportWidth, getServerViewportWidth)
 
   if (width <= 640) return MediaType.mobile
   if (width <= 768) return MediaType.tablet
