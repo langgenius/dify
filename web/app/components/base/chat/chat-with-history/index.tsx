@@ -1,7 +1,7 @@
 'use client'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
-import type { InstalledApp } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useState } from 'react'
 import Loading from '@/app/components/base/loading'
@@ -87,7 +87,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
 }
 
 type ChatWithHistoryWrapProps = {
-  installedAppInfo?: InstalledApp
+  installedAppInfo?: InstalledAppResponse
   className?: string
   isNewAgent?: boolean
   renderAgentContent?: ChatProps['renderAgentContent']

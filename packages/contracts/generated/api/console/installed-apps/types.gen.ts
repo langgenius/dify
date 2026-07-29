@@ -7,7 +7,7 @@ export type ClientOptions = {
 export type InstalledAppListResponse = {
   has_more: boolean
   installed_apps: Array<InstalledAppResponse>
-  next_cursor?: string | null
+  next_cursor: string | null
 }
 
 export type InstalledAppCreatePayload = {
@@ -24,7 +24,7 @@ export type InstalledAppResponse = {
   editable: boolean
   id: string
   is_pinned: boolean
-  last_used_at?: number | null
+  last_used_at: number | null
   uninstallable: boolean
 }
 
@@ -182,15 +182,15 @@ export type WorkflowRunPayload = {
 }
 
 export type InstalledAppInfoResponse = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
+  description: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
   readonly icon_url: string | null
   id: string
-  mode?: string | null
-  name?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  mode: AppMode
+  name: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type JsonValue =
@@ -253,6 +253,18 @@ export type SavedMessageItem = {
   message_files: Array<MessageFile>
   query: string
 }
+
+export type IconType = 'emoji' | 'image' | 'link'
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
 
 export type AgentThought = {
   answer?: string | null
@@ -417,7 +429,7 @@ export type ValueSourceType = 'constant' | 'variable'
 export type InstalledAppListResponseWritable = {
   has_more: boolean
   installed_apps: Array<InstalledAppResponseWritable>
-  next_cursor?: string | null
+  next_cursor: string | null
 }
 
 export type InstalledAppResponseWritable = {
@@ -426,7 +438,7 @@ export type InstalledAppResponseWritable = {
   editable: boolean
   id: string
   is_pinned: boolean
-  last_used_at?: number | null
+  last_used_at: number | null
   uninstallable: boolean
 }
 
@@ -437,14 +449,14 @@ export type ExploreMessageInfiniteScrollPaginationWritable = {
 }
 
 export type InstalledAppInfoResponseWritable = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
+  description: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
   id: string
-  mode?: string | null
-  name?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  mode: AppMode
+  name: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type ExploreMessageListItemWritable = {

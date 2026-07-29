@@ -1,7 +1,10 @@
 'use client'
 
-import type { UIEvent } from 'react'
-import type { InstalledApp } from '@/models/explore'
+import type {
+  InstalledAppListResponse,
+  InstalledAppResponse,
+} from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { InfiniteData } from '@tanstack/react-query'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -20,28 +23,32 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
+import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
+import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
+import { InfiniteScrollSentinel } from '@/app/components/explore/installed-app-navigation/infinite-scroll-sentinel'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
-import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
-import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
+import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 
 const appNavItemHeight = 32
 const appNavItemGap = 2
 const appNavSeparatorHeight = 17
 const virtualizationThreshold = 50
-const loadMoreThreshold = 64
 const webAppSkeletonClassName =
   'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const webAppSkeletonWidths = ['w-24', 'w-32', 'w-28']
+const emptyInstalledApps: InstalledAppResponse[] = []
+
+const selectInstalledApps = (data: InfiniteData<InstalledAppListResponse, string | undefined>) =>
+  data.pages.flatMap((page) => page.installed_apps)
 
 function WebAppsHeaderSkeleton() {
   return (
@@ -72,7 +79,7 @@ type WebAppListRow =
   | {
       key: string
       kind: 'app'
-      app: InstalledApp
+      app: InstalledAppResponse
     }
   | {
       key: string
@@ -86,13 +93,32 @@ const WebAppsSectionContent = () => {
   const [appsExpanded, setAppsExpanded] = useState(true)
   const [searchVisible, setSearchVisible] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [currentId, setCurrentId] = useState('')
-  const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
-  const { installedApps, isPending, isFetchingNextPage, fetchNextPage, hasNextPage } =
-    useGetInstalledApps(debouncedSearchText)
-  const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
-  const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
+  const [uninstallDialogAppId, setUninstallDialogAppId] = useState<string | null>(null)
+  const normalizedSearchText = searchText.trim()
+
+  const installedAppsQuery = useInfiniteQuery(
+    consoleQuery.installedApps.get.infiniteOptions({
+      input: (pageParam: string | undefined) => ({
+        query: {
+          limit: 20,
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          ...(normalizedSearchText ? { name: normalizedSearchText } : {}),
+        },
+      }),
+      getNextPageParam: (lastPage) =>
+        lastPage.has_more && lastPage.next_cursor ? lastPage.next_cursor : undefined,
+      initialPageParam: undefined,
+      placeholderData: keepPreviousData,
+      select: selectInstalledApps,
+    }),
+  )
+  const installedApps = installedAppsQuery.data ?? emptyInstalledApps
+  const uninstallAppMutation = useMutation(
+    consoleQuery.installedApps.byInstalledAppId.delete.mutationOptions(),
+  )
+  const updatePinStatusMutation = useMutation(
+    consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
+  )
 
   const webAppRows = useMemo<WebAppListRow[]>(() => {
     const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
@@ -130,51 +156,54 @@ const WebAppsSectionContent = () => {
   })
   const virtualRows = rowVirtualizer.getVirtualItems()
 
-  const handleDelete = async () => {
-    await uninstallApp(currentId)
-    setShowConfirm(false)
-    toast.success(t(($) => $['api.remove'], { ns: 'common' }))
+  const handleDelete = () => {
+    if (!uninstallDialogAppId) return
+
+    uninstallAppMutation.mutate(
+      {
+        params: { installed_app_id: uninstallDialogAppId },
+      },
+      {
+        onSuccess: () => {
+          setUninstallDialogAppId(null)
+          toast.success(t(($) => $['api.remove'], { ns: 'common' }))
+        },
+      },
+    )
   }
 
-  const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
-    await updatePinStatus({ appId: id, isPinned })
-    toast.success(t(($) => $['api.success'], { ns: 'common' }))
+  const handleUpdatePinStatus = (id: string, isPinned: boolean) => {
+    updatePinStatusMutation.mutate(
+      {
+        params: { installed_app_id: id },
+        body: { is_pinned: isPinned },
+      },
+      {
+        onSuccess: () => toast.success(t(($) => $['api.success'], { ns: 'common' })),
+      },
+    )
   }
 
-  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
-    if (!hasNextPage || isFetchingNextPage) return
-    const { clientHeight, scrollHeight, scrollTop } = event.currentTarget
-    if (scrollHeight - scrollTop - clientHeight <= loadMoreThreshold) void fetchNextPage()
-  }
+  if (
+    !installedAppsQuery.isPending &&
+    !installedAppsQuery.isError &&
+    installedApps.length === 0 &&
+    !normalizedSearchText
+  )
+    return null
 
-  if (!isPending && installedApps.length === 0 && !debouncedSearchText) return null
-
-  const renderAppNavItem = ({
-    id,
-    is_pinned,
-    uninstallable,
-    app,
-  }: (typeof installedApps)[number]) => (
+  const renderAppNavItem = (installedApp: (typeof installedApps)[number]) => (
     <AppNavItem
-      key={id}
+      key={installedApp.id}
       variant="mainNav"
-      name={app.name}
-      ariaLabel={t(($) => $['mainNav.webApps.openApp'], { ns: 'common', name: app.name })}
-      icon_type={app.icon_type}
-      icon={app.icon}
-      icon_background={app.icon_background}
-      icon_url={app.icon_url}
-      id={id}
-      isSelected={isInstalledAppPath(pathname, id)}
-      isPinned={is_pinned}
-      togglePin={() => {
-        void handleUpdatePinStatus(id, !is_pinned)
-      }}
-      uninstallable={uninstallable}
-      onDelete={(id) => {
-        setCurrentId(id)
-        setShowConfirm(true)
-      }}
+      app={installedApp}
+      ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
+        ns: 'common',
+        name: installedApp.app.name,
+      })}
+      isSelected={isInstalledAppPath(pathname, installedApp.id)}
+      onTogglePin={handleUpdatePinStatus}
+      onDelete={setUninstallDialogAppId}
     />
   )
   const renderRow = (row: WebAppListRow) => {
@@ -185,7 +214,7 @@ const WebAppsSectionContent = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {isPending ? (
+      {installedAppsQuery.isPending ? (
         <WebAppsHeaderSkeleton />
       ) : (
         <div className="flex items-center justify-between py-1 pr-2 pl-2">
@@ -227,7 +256,7 @@ const WebAppsSectionContent = () => {
           </div>
         </div>
       )}
-      {!isPending && appsExpanded && searchVisible && (
+      {!installedAppsQuery.isPending && appsExpanded && searchVisible && (
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
@@ -242,27 +271,47 @@ const WebAppsSectionContent = () => {
         <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden overscroll-contain">
           <ScrollAreaViewport
             ref={scrollRef}
-            aria-busy={isPending || isFetchingNextPage}
+            aria-busy={installedAppsQuery.isFetching}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
             className="overflow-x-hidden"
-            onScroll={handleScroll}
             role="region"
           >
             <ScrollAreaContent className="w-full max-w-full min-w-0! px-2">
-              {isPending && <WebAppsSkeleton />}
-              {!isPending && installedApps.length === 0 && (
-                <div className="px-2 py-1 system-xs-regular">
-                  {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
+              {installedAppsQuery.isPending && <WebAppsSkeleton />}
+              {!installedAppsQuery.isPending && installedAppsQuery.isError && (
+                <div
+                  className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
+                  role="alert"
+                >
+                  <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                  <button
+                    type="button"
+                    className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                    onClick={() => {
+                      if (installedAppsQuery.isFetchNextPageError)
+                        void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
+                      else void installedAppsQuery.refetch()
+                    }}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </button>
                 </div>
               )}
-              {!isPending && webAppRows.length > 0 && !shouldVirtualize && (
+              {!installedAppsQuery.isPending &&
+                !installedAppsQuery.isError &&
+                installedApps.length === 0 && (
+                  <div className="px-2 py-1 system-xs-regular">
+                    {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
+                  </div>
+                )}
+              {!installedAppsQuery.isPending && webAppRows.length > 0 && !shouldVirtualize && (
                 <div className="space-y-0.5 pb-2">
                   {webAppRows.map((row) => (
                     <Fragment key={row.key}>{renderRow(row)}</Fragment>
                   ))}
                 </div>
               )}
-              {!isPending && shouldVirtualize && (
+              {!installedAppsQuery.isPending && shouldVirtualize && (
                 <div
                   className="relative w-full"
                   style={{
@@ -287,6 +336,20 @@ const WebAppsSectionContent = () => {
                   })}
                 </div>
               )}
+              <InfiniteScrollSentinel
+                fetchNextPage={() =>
+                  installedAppsQuery.fetchNextPage({
+                    cancelRefetch: false,
+                  })
+                }
+                isEnabled={
+                  installedAppsQuery.hasNextPage &&
+                  !installedAppsQuery.isFetching &&
+                  !installedAppsQuery.error
+                }
+                isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
+                scrollRootRef={scrollRef}
+              />
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>
@@ -294,7 +357,12 @@ const WebAppsSectionContent = () => {
           </ScrollAreaScrollbar>
         </ScrollAreaRoot>
       )}
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+      <AlertDialog
+        open={uninstallDialogAppId !== null}
+        onOpenChange={(open) => {
+          if (!open) setUninstallDialogAppId(null)
+        }}
+      >
         <AlertDialogContent>
           <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
@@ -305,12 +373,12 @@ const WebAppsSectionContent = () => {
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton disabled={isUninstalling}>
+            <AlertDialogCancelButton disabled={uninstallAppMutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              loading={isUninstalling}
-              disabled={isUninstalling}
+              loading={uninstallAppMutation.isPending}
+              disabled={uninstallAppMutation.isPending}
               onClick={handleDelete}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

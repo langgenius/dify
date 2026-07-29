@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  fetchAppDetail,
-  fetchAppList,
-  fetchInstalledAppList,
-  fetchInstalledAppMeta,
-} from './explore'
+import { fetchAppDetail, fetchAppList, fetchInstalledAppList } from './explore'
 
 const mockExploreAppsGet = vi.hoisted(() => vi.fn())
 const mockExploreAppDetailGet = vi.hoisted(() => vi.fn())
 const mockInstalledAppsGet = vi.hoisted(() => vi.fn())
-const mockInstalledAppMetaGet = vi.hoisted(() => vi.fn())
 
 vi.mock('./client', () => ({
   consoleClient: {
@@ -23,11 +17,6 @@ vi.mock('./client', () => ({
     },
     installedApps: {
       get: mockInstalledAppsGet,
-      byInstalledAppId: {
-        meta: {
-          get: mockInstalledAppMetaGet,
-        },
-      },
     },
   },
 }))
@@ -74,29 +63,6 @@ describe('explore service normalizers', () => {
     })
     await expect(fetchAppDetail('pipeline-app')).resolves.toMatchObject({
       mode: 'rag-pipeline',
-    })
-  })
-
-  it('preserves provider-defined tool icon payload objects', async () => {
-    const providerIcon = {
-      type: 'custom',
-      value: {
-        content: 'tool',
-        background: '#fff',
-      },
-    }
-    mockInstalledAppMetaGet.mockResolvedValue({
-      tool_icons: {
-        builtin: '/tool.svg',
-        provider: providerIcon,
-      },
-    })
-
-    await expect(fetchInstalledAppMeta('installed-app-id')).resolves.toEqual({
-      tool_icons: {
-        builtin: '/tool.svg',
-        provider: providerIcon,
-      },
     })
   })
 

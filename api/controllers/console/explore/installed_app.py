@@ -1,12 +1,10 @@
 import base64
 import binascii
 import logging
-from datetime import datetime
-from typing import Any
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -27,7 +25,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, InstalledApp, RecommendedApp
-from models.model import IconType
+from models.model import AppMode, IconType
 from services.account_service import TenantService
 from services.installed_app_service import InstalledAppCursor, InstalledAppService
 
@@ -55,19 +53,12 @@ class InstalledAppsListQuery(BaseModel):
 logger = logging.getLogger(__name__)
 
 
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
+def _build_icon_url(icon_type: IconType | None, icon: str | None) -> str | None:
     if icon is None or icon_type is None:
         return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
+    if icon_type != IconType.IMAGE:
         return None
     return file_helpers.get_signed_file_url(icon)
-
-
-def _safe_primitive(value: Any) -> Any:
-    if value is None or isinstance(value, (str, int, float, bool, datetime)):
-        return value
-    return None
 
 
 def _encode_installed_app_cursor(cursor: InstalledAppCursor) -> str:
@@ -87,42 +78,15 @@ def _decode_installed_app_cursor(cursor: str | None) -> InstalledAppCursor | Non
         raise BadRequest("Invalid cursor") from None
 
 
-def _installed_app_response_data(
-    installed_app: InstalledApp,
-    app_model: App,
-    *,
-    current_tenant_id: str,
-    current_user: Account,
-) -> dict[str, Any]:
-    return {
-        "id": installed_app.id,
-        "app": app_model,
-        "app_owner_tenant_id": installed_app.app_owner_tenant_id,
-        "is_pinned": installed_app.is_pinned,
-        "last_used_at": installed_app.last_used_at,
-        "editable": current_user.role in {"owner", "admin"},
-        "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
-    }
-
-
 class InstalledAppInfoResponse(ResponseModel):
     id: str
-    name: str | None = None
-    description: str | None = None
-    mode: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    use_icon_as_answer_icon: bool | None = None
-
-    @field_validator("mode", "icon_type", mode="before")
-    @classmethod
-    def _normalize_enum_like(cls, value: Any) -> str | None:
-        if value is None:
-            return None
-        if isinstance(value, str):
-            return value
-        return str(getattr(value, "value", value))
+    name: str
+    description: str
+    mode: AppMode
+    icon_type: IconType | None
+    icon: str | None
+    icon_background: str | None
+    use_icon_as_answer_icon: bool
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
@@ -135,36 +99,33 @@ class InstalledAppResponse(ResponseModel):
     app: InstalledAppInfoResponse
     app_owner_tenant_id: str
     is_pinned: bool
-    last_used_at: int | None = None
+    last_used_at: int | None
     editable: bool
     uninstallable: bool
-
-    @field_validator("app", mode="before")
-    @classmethod
-    def _normalize_app(cls, value: Any) -> Any:
-        if isinstance(value, dict):
-            return value
-        return {
-            "id": _safe_primitive(getattr(value, "id", "")) or "",
-            "name": _safe_primitive(getattr(value, "name", None)),
-            "description": _safe_primitive(getattr(value, "description", None)),
-            "mode": _safe_primitive(getattr(value, "mode", None)),
-            "icon_type": _safe_primitive(getattr(value, "icon_type", None)),
-            "icon": _safe_primitive(getattr(value, "icon", None)),
-            "icon_background": _safe_primitive(getattr(value, "icon_background", None)),
-            "use_icon_as_answer_icon": _safe_primitive(getattr(value, "use_icon_as_answer_icon", None)),
-        }
-
-    @field_validator("last_used_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
 
 
 class InstalledAppListResponse(ResponseModel):
     installed_apps: list[InstalledAppResponse]
     has_more: bool
-    next_cursor: str | None = None
+    next_cursor: str | None
+
+
+def _installed_app_response_data(
+    installed_app: InstalledApp,
+    app_model: App,
+    *,
+    current_tenant_id: str,
+    current_user: Account,
+) -> InstalledAppResponse:
+    return InstalledAppResponse(
+        id=installed_app.id,
+        app=InstalledAppInfoResponse.model_validate(app_model),
+        app_owner_tenant_id=installed_app.app_owner_tenant_id,
+        is_pinned=installed_app.is_pinned,
+        last_used_at=to_timestamp(installed_app.last_used_at),
+        editable=current_user.role in {"owner", "admin"},
+        uninstallable=current_tenant_id == installed_app.app_owner_tenant_id,
+    )
 
 
 register_schema_models(

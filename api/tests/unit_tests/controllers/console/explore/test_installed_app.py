@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from datetime import datetime
+from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -9,12 +10,23 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
 import services.installed_app_service as service_module
+from models.model import AppMode, IconType
 
 type Payload = dict[str, object]
 type PayloadPatch = Callable[[Payload], AbstractContextManager[object]]
 
 
-from inspect import unwrap
+def make_app_model(app_id: str) -> MagicMock:
+    app_model = MagicMock()
+    app_model.id = app_id
+    app_model.name = f"App {app_id}"
+    app_model.description = "Description"
+    app_model.mode = AppMode.CHAT
+    app_model.icon_type = IconType.EMOJI
+    app_model.icon = "robot"
+    app_model.icon_background = "#FFFFFF"
+    app_model.use_icon_as_answer_icon = False
+    return app_model
 
 
 @pytest.fixture
@@ -34,7 +46,7 @@ def current_user(tenant_id: str) -> MagicMock:
 def installed_app() -> MagicMock:
     app = MagicMock()
     app.id = "ia1"
-    app.app = MagicMock(id="a1")
+    app.app = make_app_model("a1")
     app.app_owner_tenant_id = "t2"
     app.is_pinned = False
     app.last_used_at = datetime(2024, 1, 1)
@@ -57,6 +69,25 @@ def payload_patch() -> PayloadPatch:
 class TestInstalledAppsListApi:
     def test_list_query_defaults_to_20(self) -> None:
         assert module.InstalledAppsListQuery().limit == 20
+
+    def test_response_schema_preserves_installed_app_domain_types(self) -> None:
+        app_schema = module.InstalledAppInfoResponse.model_json_schema(mode="serialization")
+        list_schema = module.InstalledAppListResponse.model_json_schema(mode="serialization")
+
+        assert {
+            "id",
+            "name",
+            "description",
+            "mode",
+            "icon_type",
+            "icon",
+            "icon_background",
+            "use_icon_as_answer_icon",
+            "icon_url",
+        } <= set(app_schema["required"])
+        assert set(app_schema["$defs"]["AppMode"]["enum"]) == {mode.value for mode in AppMode}
+        assert set(app_schema["$defs"]["IconType"]["enum"]) == {icon_type.value for icon_type in IconType}
+        assert "next_cursor" in list_schema["required"]
 
     def test_published_app_filter_checks_publish_targets(self) -> None:
         compiled_filter = str(service_module._published_app_filter().compile(compile_kwargs={"literal_binds": True}))
@@ -151,7 +182,7 @@ class TestInstalledAppsListApi:
                 is_pinned=index == 0,
                 last_used_at=datetime(2024, 1, 3 - index),
             )
-            app_model = MagicMock(id=f"a{index}")
+            app_model = make_app_model(f"a{index}")
             rows.append((installed_app, app_model))
 
         session = MagicMock()
@@ -189,7 +220,7 @@ class TestInstalledAppsListApi:
                 is_pinned=False,
                 last_used_at=datetime(2024, 1, 3 - index),
             )
-            app_model = MagicMock(id=f"a{index}")
+            app_model = make_app_model(f"a{index}")
             rows.append((installed_app, app_model))
 
         session = MagicMock()
@@ -234,7 +265,7 @@ class TestInstalledAppsListApi:
                     is_pinned=False,
                     last_used_at=datetime(2024, 1, 2) if index == 0 else datetime(2023, 12, 31),
                 ),
-                MagicMock(id=f"allowed-app-{index}"),
+                make_app_model(f"allowed-app-{index}"),
             )
             for index in range(2)
         ]
@@ -246,7 +277,7 @@ class TestInstalledAppsListApi:
                     is_pinned=False,
                     last_used_at=datetime(2024, 1, 1),
                 ),
-                MagicMock(id=f"denied-app-{index:03}"),
+                make_app_model(f"denied-app-{index:03}"),
             )
             for index in range(1)
         ]
@@ -578,6 +609,9 @@ class TestInstalledAppApi:
 
         assert result["id"] == installed_app.id
         assert result["app"]["id"] == app_model.id
+        assert result["app"]["mode"] == AppMode.CHAT
+        assert result["app"]["icon_type"] == IconType.EMOJI
+        assert result["app"]["use_icon_as_answer_icon"] is False
         assert result["editable"] is True
 
     def test_get_installed_app_rejects_unpublished_app(

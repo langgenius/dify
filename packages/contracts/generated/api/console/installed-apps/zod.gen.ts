@@ -165,43 +165,6 @@ export const zWorkflowRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
 })
 
-/**
- * InstalledAppInfoResponse
- */
-export const zInstalledAppInfoResponse = z.object({
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-})
-
-/**
- * InstalledAppResponse
- */
-export const zInstalledAppResponse = z.object({
-  app: zInstalledAppInfoResponse,
-  app_owner_tenant_id: z.string(),
-  editable: z.boolean(),
-  id: z.string(),
-  is_pinned: z.boolean(),
-  last_used_at: z.int().nullish(),
-  uninstallable: z.boolean(),
-})
-
-/**
- * InstalledAppListResponse
- */
-export const zInstalledAppListResponse = z.object({
-  has_more: z.boolean(),
-  installed_apps: z.array(zInstalledAppResponse),
-  next_cursor: z.string().nullish(),
-})
-
 export const zJsonValue = z
   .union([
     z.string(),
@@ -264,6 +227,62 @@ export const zParameters = z.object({
   system_parameters: zSystemParameters,
   text_to_speech: zJsonObject,
   user_input_form: z.array(zJsonObject),
+})
+
+/**
+ * IconType
+ */
+export const zIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
+ * InstalledAppInfoResponse
+ */
+export const zInstalledAppInfoResponse = z.object({
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
+ * InstalledAppResponse
+ */
+export const zInstalledAppResponse = z.object({
+  app: zInstalledAppInfoResponse,
+  app_owner_tenant_id: z.string(),
+  editable: z.boolean(),
+  id: z.string(),
+  is_pinned: z.boolean(),
+  last_used_at: z.int().nullable(),
+  uninstallable: z.boolean(),
+})
+
+/**
+ * InstalledAppListResponse
+ */
+export const zInstalledAppListResponse = z.object({
+  has_more: z.boolean(),
+  installed_apps: z.array(zInstalledAppResponse),
+  next_cursor: z.string().nullable(),
 })
 
 /**
@@ -553,14 +572,14 @@ export const zExploreMessageInfiniteScrollPagination = z.object({
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponseWritable = z.object({
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
   id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
@@ -572,7 +591,7 @@ export const zInstalledAppResponseWritable = z.object({
   editable: z.boolean(),
   id: z.string(),
   is_pinned: z.boolean(),
-  last_used_at: z.int().nullish(),
+  last_used_at: z.int().nullable(),
   uninstallable: z.boolean(),
 })
 
@@ -582,7 +601,7 @@ export const zInstalledAppResponseWritable = z.object({
 export const zInstalledAppListResponseWritable = z.object({
   has_more: z.boolean(),
   installed_apps: z.array(zInstalledAppResponseWritable),
-  next_cursor: z.string().nullish(),
+  next_cursor: z.string().nullable(),
 })
 
 /**

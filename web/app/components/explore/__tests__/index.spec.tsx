@@ -27,22 +27,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/service/use-explore', () => ({
-  useGetInstalledApps: () => ({
-    isPending: false,
-    installedApps: [],
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-  }),
-  useUninstallApp: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useUpdateAppPinStatus: () => ({
-    mutateAsync: vi.fn(),
-  }),
-}))
-
 describe('Explore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
