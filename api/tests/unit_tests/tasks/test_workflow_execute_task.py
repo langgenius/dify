@@ -8,7 +8,6 @@ from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -489,7 +488,7 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
 
 
 def test_publish_streaming_response_uses_stream_error_message_for_failed_terminal(mock_topic: MagicMock):
-    def response_stream() -> Generator[str | Mapping[str, Any] | BaseModel, None, None]:
+    def response_stream() -> Generator[str | Mapping[str, object] | BaseModel, None, None]:
         yield {
             "event": "workflow_started",
             "task_id": "task-id",
