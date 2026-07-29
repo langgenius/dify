@@ -132,6 +132,13 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
+    // Stop retrying when the conversation no longer exists (stale id in
+    // localStorage); otherwise TanStack Query loops forever on the 404.
+    retry: (failureCount, error) => {
+      const status = (error as unknown as Response)?.status
+      if (status === 404) return false
+      return failureCount < 3
+    },
     // Always consider chat list data stale to ensure fresh data when switching
     // back to a conversation. This fixes issue where recent messages don't appear
     // until switching away and back again (GitHub issue #30378).

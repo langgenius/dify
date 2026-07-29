@@ -239,7 +239,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         refetchOnReconnect: false,
       },
     )
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
+  const {
+    data: appChatListData,
+    isLoading: appChatListDataLoading,
+    error: appChatListError,
+  } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,
       appSourceType,
@@ -251,6 +255,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       refetchOnReconnect: false,
     },
   )
+  // If the stored conversation no longer exists on the backend, drop it from
+  // localStorage so the user starts fresh instead of seeing an error loop.
+  useEffect(() => {
+    if (appChatListError && (appChatListError as unknown as Response)?.status === 404 && appId) {
+      handleConversationIdInfoChange('')
+    }
+  }, [appChatListError, appId, handleConversationIdInfoChange])
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)

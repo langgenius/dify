@@ -222,6 +222,9 @@ export const fetchChatList = async (
 ) => {
   return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), {
     params: { conversation_id: conversationId, limit: 20, last_id: '' },
+    // Silence the toast on every retry — the caller decides what to do
+    // with a 404 via the query error state.
+    silent: true,
   }) as any
 }
 
