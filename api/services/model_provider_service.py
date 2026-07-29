@@ -372,6 +372,7 @@ class ModelProviderService:
                         status=CustomConfigurationStatus.ACTIVE
                         if custom_configured
                         else CustomConfigurationStatus.NO_CONFIGURE,
+                        has_custom_models=state.has_custom_models,
                         available_credentials=state.available_credentials,
                         current_credential_id=state.current_credential_id,
                         current_credential_name=state.current_credential_name,

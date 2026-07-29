@@ -1769,6 +1769,7 @@ export type ModelProviderCustomConfigurationSummaryResponse = {
   current_credential_id?: string | null
   current_credential_name?: string | null
   current_credential_usable: boolean
+  has_custom_models: boolean
   status: CustomConfigurationStatus
 }
 

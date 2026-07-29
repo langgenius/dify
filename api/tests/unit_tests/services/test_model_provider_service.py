@@ -133,7 +133,7 @@ class TestModelProviderServiceConfiguration:
                     credential_name="Backup",
                 ),
             ],
-            has_custom_models=False,
+            has_custom_models=True,
             current_credential_id="credential-1",
             current_credential_name="Production",
             current_credential_usable=True,
@@ -175,6 +175,7 @@ class TestModelProviderServiceConfiguration:
                 credential_name="Backup",
             ),
         ]
+        assert providers[0].custom_configuration.has_custom_models is True
         assert providers[0].custom_configuration.current_credential_name == "Production"
         assert providers[0].custom_configuration.current_credential_usable is True
         assert providers[0].system_configuration.enabled is False
@@ -245,6 +246,7 @@ class TestModelProviderServiceConfiguration:
         ]
         assert providers[0].is_configured is False
         assert providers[0].custom_configuration.status.value == "no-configure"
+        assert providers[0].custom_configuration.has_custom_models is False
         assert providers[0].custom_configuration.available_credentials == []
         assert set(plugins) == {"langgenius/openai", "langgenius/embedding"}
 

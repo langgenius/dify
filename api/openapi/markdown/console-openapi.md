@@ -19347,6 +19347,7 @@ Enum class for model property key.
 | current_credential_id | string |  | No |
 | current_credential_name | string |  | No |
 | current_credential_usable | boolean |  | Yes |
+| has_custom_models | boolean | Whether custom model configuration exists, including saved model credentials. | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
 
 #### ModelProviderListResponse
