@@ -39,7 +39,7 @@ include = ["agenton*", "agenton_collections*", "dify_agent*", "shellctl*"]
 "dify_agent.layers" = ["_agent_cli_help.json"]
 
 [tool.pyright]
-include = ["src", "examples", "tests"]
+include = ["src", "examples", "tests", "benchmarks"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
@@ -53,7 +53,7 @@ markers = ["integration: requires a real external service or exercises multiple 
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
+include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py", "benchmarks/**/*.py"]
 
 [dependency-groups]
 dev = [
@@ -70,6 +70,9 @@ docs = [
     "mkdocs-glightbox>=0.4.0",
     "mkdocs-material>=9.7.0",
     "mkdocstrings-python>=2.0.0",
+]
+benchmark = [
+    "docker>=7.1.0,<8.0.0",
 ]
 
 [build-system]

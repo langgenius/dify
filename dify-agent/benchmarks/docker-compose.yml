@@ -1,0 +1,118 @@
+services:
+  redis:
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory-policy
+      - noeviction
+    cpus: 2.0
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    volumes:
+      - redis-data:/data
+    networks: [benchmark]
+
+  fake-deps:
+    image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
+    command: ["python", "-m", "benchmarks.fake_deps"]
+    cpus: 2.0
+    mem_limit: 512m
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5002/health', timeout=1)",
+        ]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+    networks: [benchmark]
+
+  agent:
+    image: ${BENCH_AGENT_IMAGE:?BENCH_AGENT_IMAGE is required}
+    command:
+      [
+        "uvicorn",
+        "dify_agent.server.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5050",
+        "--workers",
+        "1",
+        "--no-access-log",
+      ]
+    cpus: 4.0
+    mem_limit: 1g
+    environment:
+      DIFY_AGENT_REDIS_URL: redis://redis:6379/0
+      DIFY_AGENT_REDIS_PREFIX: dify-agent-bench
+      DIFY_AGENT_PLUGIN_DAEMON_URL: http://fake-deps:5002
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: benchmark-only
+      DIFY_AGENT_INNER_API_URL: http://fake-deps:5002
+      DIFY_AGENT_INNER_API_KEY: benchmark-only
+      DIFY_AGENT_STUB_API_BASE_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "3600"
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "5"
+    depends_on:
+      redis:
+        condition: service_healthy
+      fake-deps:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5050/openapi.json', timeout=1)",
+        ]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+    networks: [benchmark]
+
+  load-driver:
+    image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
+    cpus: 2.0
+    mem_limit: 1g
+    environment:
+      BENCH_AGENT_URL: http://agent:5050
+      BENCH_FAKE_DEPS_URL: http://fake-deps:5002
+      BENCH_REDIS_URL: redis://redis:6379/0
+      DIFY_AGENT_REDIS_PREFIX: dify-agent-bench
+      BENCH_RESULTS_DIR: /results
+      BENCH_TARGET: ${BENCH_TARGET:?BENCH_TARGET is required}
+      BENCH_TARGET_ID: ${BENCH_TARGET_ID:?BENCH_TARGET_ID is required}
+      BENCH_SCENARIO_ID: ${BENCH_SCENARIO_ID:?BENCH_SCENARIO_ID is required}
+      BENCH_BLOCK_ID: ${BENCH_BLOCK_ID:?BENCH_BLOCK_ID is required}
+      BENCH_PAIR_INDEX: ${BENCH_PAIR_INDEX:?BENCH_PAIR_INDEX is required}
+      BENCH_WARMUP_RUNS: ${BENCH_WARMUP_RUNS:-}
+      BENCH_TRIAL_RUNS: ${BENCH_TRIAL_RUNS:-}
+      BENCH_WARMUP_SECONDS: ${BENCH_WARMUP_SECONDS:-}
+      BENCH_DURATION_SECONDS: ${BENCH_DURATION_SECONDS:-}
+    volumes:
+      - type: bind
+        source: ${BENCH_RESULTS_DIR:?BENCH_RESULTS_DIR is required}
+        target: /results
+    depends_on:
+      agent:
+        condition: service_healthy
+    networks: [benchmark]
+
+networks:
+  benchmark:
+    internal: true
+
+volumes:
+  redis-data:
