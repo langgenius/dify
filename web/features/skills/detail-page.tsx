@@ -266,6 +266,11 @@ function isMarkdownFile(file: SkillFileResponse | undefined) {
   return lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown')
 }
 
+function getSkillVersionTitle(version: SkillVersionResponse) {
+  const versionName = version.version_name.trim()
+  return versionName || `#${version.version_number}`
+}
+
 function isCsvFile(file: SkillFileResponse | undefined) {
   if (!file || isDirectory(file)) return false
 
@@ -3768,7 +3773,7 @@ function VersionActionBar({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate system-sm-semibold text-text-primary">
-              {version.version_name}
+              {getSkillVersionTitle(version)}
             </span>
             <span className="border-state-accent-border shrink-0 rounded-[5px] border bg-state-accent-hover px-1.5 py-0.5 system-2xs-semibold-uppercase text-text-accent">
               {t(($) => $['skillManagement.detail.viewOnly'])}
@@ -5104,6 +5109,7 @@ function VersionRow({
     consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions(),
   )
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
+  const versionTitle = getSkillVersionTitle(version)
   const versionInfoLabel = version.is_latest
     ? t(($) => $['skillManagement.detail.editVersionInfo'])
     : t(($) => $['skillManagement.detail.nameThisVersion'])
@@ -5112,7 +5118,6 @@ function VersionRow({
 
   const handleRename = () => {
     const trimmedName = versionName.trim()
-    if (!trimmedName) return
 
     renameMutation.mutate(
       {
@@ -5215,7 +5220,7 @@ function VersionRow({
                     selected ? 'text-text-accent' : 'text-text-secondary',
                   )}
                 >
-                  {version.version_name}
+                  {versionTitle}
                 </span>
                 {version.is_latest && (
                   <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
@@ -5318,12 +5323,7 @@ function VersionRow({
               <Button disabled={renameMutation.isPending} onClick={() => setRenameOpen(false)}>
                 {tCommon(($) => $['operation.cancel'])}
               </Button>
-              <Button
-                variant="primary"
-                loading={renameMutation.isPending}
-                disabled={!versionName.trim()}
-                onClick={handleRename}
-              >
+              <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
                 {t(($) => $['skillManagement.detail.publish'])}
               </Button>
             </div>
@@ -5336,7 +5336,7 @@ function VersionRow({
             {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-            {version.version_name}
+            {versionTitle}
           </AlertDialogDescription>
           <AlertDialogActions className="p-0 pt-6">
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>

@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BannerItem } from '../banner-item'
 
 const mockTrackEvent = vi.fn()
+const bannerImageSrc =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
@@ -19,7 +21,7 @@ const createMockBanner = (overrides: Partial<Banner> = {}): Banner =>
       category: 'Featured',
       title: 'Test Banner Title',
       description: 'Test banner description text',
-      'img-src': 'https://example.com/image.png',
+      'img-src': bannerImageSrc,
     },
     ...overrides,
   }) as Banner
@@ -42,7 +44,7 @@ describe('BannerItem', () => {
     expect(screen.getByText('Featured')).toBeInTheDocument()
     expect(screen.getAllByText('Test Banner Title')).toHaveLength(2)
     expect(screen.getByText('Test banner description text')).toBeInTheDocument()
-    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/image.png')
+    expect(container.querySelector('img')).toHaveAttribute('src', bannerImageSrc)
     expect(container.querySelector('img')).toHaveAttribute('alt', '')
   })
 
@@ -62,7 +64,9 @@ describe('BannerItem', () => {
       accountId: 'account-123',
     })
 
-    fireEvent.click(screen.getByRole('link', { name: 'Test Banner Title' }))
+    const link = screen.getByRole('link', { name: 'Test Banner Title' })
+    link.addEventListener('click', (event) => event.preventDefault())
+    fireEvent.click(link)
 
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'explore_banner_click',

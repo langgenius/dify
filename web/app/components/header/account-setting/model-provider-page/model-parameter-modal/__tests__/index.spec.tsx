@@ -3,11 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ModelParameterModal from '../index'
 
 const mocks = vi.hoisted(() => ({
-  openIntegrationsSetting: vi.fn(),
+  setSettingsDestination: vi.fn(),
 }))
 
-vi.mock('@/app/components/header/account-setting/use-integrations-setting', () => ({
-  useIntegrationsSetting: () => mocks.openIntegrationsSetting,
+vi.mock('nuqs', () => ({
+  parseAsStringLiteral: () => ({
+    withOptions: () => ({}),
+  }),
+  useQueryState: () => [null, mocks.setSettingsDestination],
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -66,8 +69,6 @@ describe('ModelParameterModal', () => {
 
     fireEvent.click(screen.getByText('configure-empty-model'))
 
-    expect(mocks.openIntegrationsSetting).toHaveBeenCalledWith({
-      payload: 'provider',
-    })
+    expect(mocks.setSettingsDestination).toHaveBeenCalledWith('provider')
   })
 })
