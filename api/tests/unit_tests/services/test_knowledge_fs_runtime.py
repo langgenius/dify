@@ -22,9 +22,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
     monkeypatch.setattr(runtime.dify_config, "KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES", 4096)
 
     factory_names = (
-        "DifyKnowledgeFSBillingPort",
         "DifyKnowledgeFSProductRBACPort",
-        "DifyKnowledgeFSWeightedRateLimitPort",
         "HTTPKnowledgeFSProductRemoteClient",
         "KnowledgeFSAppAdmissionService",
         "KnowledgeFSAppBindingManagementService",
@@ -35,14 +33,11 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
         "KnowledgeFSControlSpaceCommandService",
         "KnowledgeFSCredentialService",
         "KnowledgeFSDataFacade",
-        "KnowledgeFSDirectOperationAdmissionService",
-        "KnowledgeFSOperationAdmissionService",
         "KnowledgeFSProductApplicationService",
         "KnowledgeFSProductService",
         "KnowledgeFSRevocationCommandProducer",
         "KnowledgeFSWorkspaceCutoverService",
         "KnowledgeFSWorkspaceGreenfieldInitializer",
-        "LoggingKnowledgeFSRateLimitAudit",
         "SQLKnowledgeFSAppCatalog",
         "SQLKnowledgeFSWorkspaceMemberPort",
         "SQLKnowledgeFSWorkspaceRuntimeGate",
@@ -67,9 +62,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
     assert result.broker is factories["KnowledgeFSCapabilityBroker"].return_value
     assert result.control_plane is factories["KnowledgeFSControlPlaneService"].return_value
     assert result.credentials is factories["KnowledgeFSCredentialService"].return_value
-    assert result.direct_operation_admission is factories["KnowledgeFSDirectOperationAdmissionService"].return_value
     assert result.facade is factories["KnowledgeFSDataFacade"].return_value
-    assert result.operation_admission is factories["KnowledgeFSOperationAdmissionService"].return_value
 
     factories["HTTPKnowledgeFSProductRemoteClient"].assert_called_once_with(
         base_url="https://knowledge-fs.test",

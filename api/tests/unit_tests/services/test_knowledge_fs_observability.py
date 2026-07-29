@@ -7,7 +7,6 @@ from services.knowledge_fs.observability import (
     KnowledgeFSCapabilityIssuanceMetric,
     KnowledgeFSControlSpaceStateMetric,
     KnowledgeFSLifecycleTaskMetric,
-    KnowledgeFSOperationAdmissionMetric,
     OpenTelemetryKnowledgeFSOperationalMetrics,
 )
 
@@ -51,15 +50,6 @@ def test_operational_metrics_use_only_bounded_labels_and_numeric_measurements() 
             status="succeeded",
         )
     )
-    metrics.record_operation_admission(
-        KnowledgeFSOperationAdmissionMetric(
-            bucket="direct",
-            operation_id="createQuery",
-            outcome="success",
-            phase="commit",
-        )
-    )
-
     capability_counter = counters["dify.knowledge_fs.capability_issuance"]
     assert capability_counter.add.call_args.args == (1,)
     assert capability_counter.add.call_args.kwargs == {

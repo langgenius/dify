@@ -33,24 +33,10 @@ class KnowledgeFSAccessDeniedHTTPError(BaseHTTPException):
     code = 403
 
 
-class KnowledgeFSRateLimitHTTPError(BaseHTTPException):
-    error_code = "knowledge_fs_rate_limit_exceeded"
-    description = "KnowledgeFS operation rate limit exceeded."
-    code = 429
-
-
-class KnowledgeFSQuotaExceededHTTPError(BaseHTTPException):
-    error_code = "knowledge_fs_quota_exceeded"
-    description = "KnowledgeFS operation quota exceeded."
-    code = 403
-
-
 __all__ = [
     "KnowledgeFSAccessDeniedHTTPError",
     "KnowledgeFSInvalidRequestHTTPError",
     "KnowledgeFSOperationUnavailableHTTPError",
-    "KnowledgeFSQuotaExceededHTTPError",
-    "KnowledgeFSRateLimitHTTPError",
     "KnowledgeFSSpaceNotFoundHTTPError",
     "KnowledgeFSUpstreamUnavailableHTTPError",
 ]

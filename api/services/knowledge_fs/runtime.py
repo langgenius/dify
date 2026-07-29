@@ -28,13 +28,6 @@ from services.knowledge_fs.cutover import KnowledgeFSWorkspaceCutoverService
 from services.knowledge_fs.cutover_runtime_gate import SQLKnowledgeFSWorkspaceRuntimeGate
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.greenfield_initializer import KnowledgeFSWorkspaceGreenfieldInitializer
-from services.knowledge_fs.operation_admission import (
-    DifyKnowledgeFSBillingPort,
-    DifyKnowledgeFSWeightedRateLimitPort,
-    KnowledgeFSDirectOperationAdmissionService,
-    KnowledgeFSOperationAdmissionService,
-    LoggingKnowledgeFSRateLimitAudit,
-)
 from services.knowledge_fs.product_application_service import KnowledgeFSProductApplicationService
 from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRBACPort
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
@@ -53,9 +46,7 @@ class KnowledgeFSRuntime(NamedTuple):
     broker: KnowledgeFSCapabilityBroker
     control_plane: KnowledgeFSControlPlaneService
     credentials: KnowledgeFSCredentialService
-    direct_operation_admission: KnowledgeFSDirectOperationAdmissionService
     facade: KnowledgeFSDataFacade
-    operation_admission: KnowledgeFSOperationAdmissionService
 
 
 def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> KnowledgeFSRuntime:
@@ -108,15 +99,7 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
         product=product,
         issuer=issuer,
     )
-    operation_admission = KnowledgeFSOperationAdmissionService(
-        rate_limit=DifyKnowledgeFSWeightedRateLimitPort(audit=LoggingKnowledgeFSRateLimitAudit()),
-        billing=DifyKnowledgeFSBillingPort(),
-    )
-    direct_operation_admission = KnowledgeFSDirectOperationAdmissionService(
-        admission=operation_admission,
-        broker=broker,
-    )
-    facade = KnowledgeFSDataFacade(admission=operation_admission, broker=broker, remote=remote)
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
     credentials = KnowledgeFSCredentialService(session_maker, product=product, revocations=revocations)
     application = KnowledgeFSProductApplicationService(
         product=product,
@@ -138,15 +121,12 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
         app_capabilities=KnowledgeFSAppExecutionCapabilityService(
             admission=app_admission,
             broker=broker,
-            operation_admission=operation_admission,
             remote=remote,
         ),
         broker=broker,
         control_plane=control_plane,
         credentials=credentials,
-        direct_operation_admission=direct_operation_admission,
         facade=facade,
-        operation_admission=operation_admission,
     )
 
 

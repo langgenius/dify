@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
 from typing import Literal
 
 from pydantic import BaseModel, JsonValue
 
 from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
-from services.knowledge_fs.operation_admission import KnowledgeFSOperationAdmissionService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSBackgroundTaskListResponse,
@@ -107,11 +105,9 @@ class KnowledgeFSDataFacade:
     def __init__(
         self,
         *,
-        admission: KnowledgeFSOperationAdmissionService,
         broker: KnowledgeFSCapabilityBroker,
         remote: KnowledgeFSProductRemotePort,
     ) -> None:
-        self._admission = admission
         self._broker = broker
         self._remote = remote
 
@@ -322,40 +318,39 @@ class KnowledgeFSDataFacade:
     ) -> KnowledgeFSDocumentUploadAcceptedResponse:
         operation_id = "createDocument"
         _assert_multipart_bff_ready(operation_id)
-        with self._admitted(tenant_id=tenant_id, operation_id=operation_id):
-            issued = self._broker.issue_interactive(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                control_space_id=control_space_id,
+        issued = self._broker.issue_interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id=operation_id,
+        )
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        upload = body_reader(operation.max_request_bytes)
+        if not upload.filename or not upload.content_type or not isinstance(upload.body, bytes) or not upload.body:
+            raise KnowledgeFSProductRequestRejectedError(status_code=422)
+        if len(upload.body) > operation.max_request_bytes:
+            raise KnowledgeFSProductRequestRejectedError(status_code=413)
+        if operation.kfs_path is None:
+            raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {operation_id}")
+        path = _resolve_product_path(
+            template=operation.kfs_path,
+            knowledge_space_id=issued.knowledge_space_id,
+            resource_id=None,
+            resource_resolver=operation.resource_resolver,
+            path_parameters=(),
+        )
+        raw = self._remote.execute_multipart(
+            KnowledgeFSRemoteMultipartRequest(
                 operation_id=operation_id,
-            )
-            operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
-            upload = body_reader(operation.max_request_bytes)
-            if not upload.filename or not upload.content_type or not isinstance(upload.body, bytes) or not upload.body:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
-            if len(upload.body) > operation.max_request_bytes:
-                raise KnowledgeFSProductRequestRejectedError(status_code=413)
-            if operation.kfs_path is None:
-                raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {operation_id}")
-            path = _resolve_product_path(
-                template=operation.kfs_path,
+                method=operation.method,
+                path=path,
+                namespace_id=tenant_id,
                 knowledge_space_id=issued.knowledge_space_id,
-                resource_id=None,
-                resource_resolver=operation.resource_resolver,
-                path_parameters=(),
+                capability_token=issued.token,
+                trace_id=issued.trace_id,
+                file=upload,
             )
-            raw = self._remote.execute_multipart(
-                KnowledgeFSRemoteMultipartRequest(
-                    operation_id=operation_id,
-                    method=operation.method,
-                    path=path,
-                    namespace_id=tenant_id,
-                    knowledge_space_id=issued.knowledge_space_id,
-                    capability_token=issued.token,
-                    trace_id=issued.trace_id,
-                    file=upload,
-                )
-            )
+        )
         return KnowledgeFSDocumentUploadAcceptedResponse.model_validate(raw)
 
     def upload_small_file(
@@ -369,42 +364,41 @@ class KnowledgeFSDataFacade:
     ) -> KnowledgeFSSmallFileUploadResponse:
         operation_id = "uploadSmallFile"
         _assert_binary_bff_ready(operation_id)
-        with self._admitted(tenant_id=tenant_id, operation_id=operation_id):
-            issued = self._broker.issue_interactive(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                control_space_id=control_space_id,
+        issued = self._broker.issue_interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id=operation_id,
+            resource_id=upload_session_id,
+        )
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        body = body_reader(operation.max_request_bytes)
+        if not isinstance(body, bytes) or not body:
+            raise KnowledgeFSProductRequestRejectedError(status_code=422)
+        if len(body) > operation.max_request_bytes:
+            raise KnowledgeFSProductRequestRejectedError(status_code=413)
+        if operation.kfs_path is None:
+            raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {operation_id}")
+        path = _resolve_product_path(
+            template=operation.kfs_path,
+            knowledge_space_id=issued.knowledge_space_id,
+            resource_id=upload_session_id,
+            resource_resolver=operation.resource_resolver,
+            path_parameters=(),
+        )
+        raw = self._remote.execute_binary(
+            KnowledgeFSRemoteBinaryRequest(
                 operation_id=operation_id,
-                resource_id=upload_session_id,
-            )
-            operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
-            body = body_reader(operation.max_request_bytes)
-            if not isinstance(body, bytes) or not body:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
-            if len(body) > operation.max_request_bytes:
-                raise KnowledgeFSProductRequestRejectedError(status_code=413)
-            if operation.kfs_path is None:
-                raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {operation_id}")
-            path = _resolve_product_path(
-                template=operation.kfs_path,
+                method=operation.method,
+                path=path,
+                namespace_id=tenant_id,
                 knowledge_space_id=issued.knowledge_space_id,
-                resource_id=upload_session_id,
-                resource_resolver=operation.resource_resolver,
-                path_parameters=(),
+                capability_token=issued.token,
+                trace_id=issued.trace_id,
+                body=body,
+                query=(("knowledgeSpaceId", issued.knowledge_space_id),),
             )
-            raw = self._remote.execute_binary(
-                KnowledgeFSRemoteBinaryRequest(
-                    operation_id=operation_id,
-                    method=operation.method,
-                    path=path,
-                    namespace_id=tenant_id,
-                    knowledge_space_id=issued.knowledge_space_id,
-                    capability_token=issued.token,
-                    trace_id=issued.trace_id,
-                    body=body,
-                    query=(("knowledgeSpaceId", issued.knowledge_space_id),),
-                )
-            )
+        )
         return KnowledgeFSSmallFileUploadResponse.model_validate(raw)
 
     def get_document(
@@ -1509,22 +1503,21 @@ class KnowledgeFSDataFacade:
         headers: tuple[tuple[str, str], ...] = (),
     ) -> JsonValue:
         _assert_json_bff_ready(operation_id)
-        with self._admitted(tenant_id=profile.tenant_id, operation_id=operation_id):
-            issued = self._broker.issue_service(profile=profile, operation_id=operation_id, resource_id=resource_id)
-            return self._execute(
-                operation_id=operation_id,
-                namespace_id=profile.tenant_id,
-                knowledge_space_id=profile.knowledge_space_id,
-                knowledge_space_revision=profile.knowledge_space_revision,
-                capability_token=issued.token,
-                trace_id=issued.trace_id,
-                payload=payload,
-                query=query,
-                bind_space_in_body=bind_space_in_body,
-                resource_id=resource_id,
-                path_parameters=path_parameters,
-                headers=headers,
-            )
+        issued = self._broker.issue_service(profile=profile, operation_id=operation_id, resource_id=resource_id)
+        return self._execute(
+            operation_id=operation_id,
+            namespace_id=profile.tenant_id,
+            knowledge_space_id=profile.knowledge_space_id,
+            knowledge_space_revision=profile.knowledge_space_revision,
+            capability_token=issued.token,
+            trace_id=issued.trace_id,
+            payload=payload,
+            query=query,
+            bind_space_in_body=bind_space_in_body,
+            resource_id=resource_id,
+            path_parameters=path_parameters,
+            headers=headers,
+        )
 
     def _interactive(
         self,
@@ -1541,39 +1534,27 @@ class KnowledgeFSDataFacade:
         headers: tuple[tuple[str, str], ...] = (),
     ) -> JsonValue:
         _assert_json_bff_ready(operation_id)
-        with self._admitted(tenant_id=tenant_id, operation_id=operation_id):
-            issued = self._broker.issue_interactive(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                control_space_id=control_space_id,
-                operation_id=operation_id,
-                resource_id=resource_id,
-            )
-            return self._execute(
-                operation_id=operation_id,
-                namespace_id=tenant_id,
-                knowledge_space_id=issued.knowledge_space_id,
-                knowledge_space_revision=issued.knowledge_space_revision,
-                capability_token=issued.token,
-                trace_id=issued.trace_id,
-                payload=payload,
-                query=query,
-                bind_space_in_body=bind_space_in_body,
-                resource_id=resource_id,
-                path_parameters=path_parameters,
-                headers=headers,
-            )
-
-    @contextmanager
-    def _admitted(self, *, tenant_id: str, operation_id: str) -> Generator[None]:
-        charge = self._admission.reserve(tenant_id=tenant_id, operation_id=operation_id)
-        try:
-            yield
-        except BaseException:
-            charge.refund()
-            raise
-        else:
-            charge.commit()
+        issued = self._broker.issue_interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id=operation_id,
+            resource_id=resource_id,
+        )
+        return self._execute(
+            operation_id=operation_id,
+            namespace_id=tenant_id,
+            knowledge_space_id=issued.knowledge_space_id,
+            knowledge_space_revision=issued.knowledge_space_revision,
+            capability_token=issued.token,
+            trace_id=issued.trace_id,
+            payload=payload,
+            query=query,
+            bind_space_in_body=bind_space_in_body,
+            resource_id=resource_id,
+            path_parameters=path_parameters,
+            headers=headers,
+        )
 
     def _interactive_child(
         self,

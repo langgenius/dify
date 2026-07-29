@@ -40,13 +40,6 @@ class KnowledgeFSLifecycleTaskMetric(NamedTuple):
     status: Literal["dispatch_error", "queued", "retry", "running", "succeeded"]
 
 
-class KnowledgeFSOperationAdmissionMetric(NamedTuple):
-    operation_id: str
-    bucket: str
-    phase: Literal["commit", "refund", "reserve"]
-    outcome: Literal["failure", "success"]
-
-
 class KnowledgeFSOperationalMetricsPort(Protocol):
     def record_batch_status(self, event: KnowledgeFSBatchStatusMetric) -> None: ...
 
@@ -55,8 +48,6 @@ class KnowledgeFSOperationalMetricsPort(Protocol):
     def record_control_space_state(self, event: KnowledgeFSControlSpaceStateMetric) -> None: ...
 
     def record_lifecycle_task(self, event: KnowledgeFSLifecycleTaskMetric) -> None: ...
-
-    def record_operation_admission(self, event: KnowledgeFSOperationAdmissionMetric) -> None: ...
 
     def register_control_space_state_gauge(self, read_counts: Callable[[], Mapping[str, int]]) -> None: ...
 
@@ -136,11 +127,6 @@ class OpenTelemetryKnowledgeFSOperationalMetrics:
             description="KnowledgeFS capability revoke enqueue-to-ack latency",
             unit="s",
         )
-        self._operation_admission = resolved_meter.create_counter(
-            "dify.knowledge_fs.operation_admission",
-            description="KnowledgeFS direct-operation reserve and finalization outcomes",
-            unit="{operation}",
-        )
 
     def record_capability_issuance(self, event: KnowledgeFSCapabilityIssuanceMetric) -> None:
         self._capability_issuance.add(
@@ -173,17 +159,6 @@ class OpenTelemetryKnowledgeFSOperationalMetrics:
         self._lifecycle_task_latency.record(event.duration_seconds, attributes=attributes)
         if event.operation == "revoke" and event.status == "succeeded":
             self._revoke_latency.record(event.duration_seconds, attributes={"operation": "revoke"})
-
-    def record_operation_admission(self, event: KnowledgeFSOperationAdmissionMetric) -> None:
-        self._operation_admission.add(
-            1,
-            attributes={
-                "bucket": event.bucket,
-                "operation_id": event.operation_id,
-                "outcome": event.outcome,
-                "phase": event.phase,
-            },
-        )
 
     def register_control_space_state_gauge(self, read_counts: Callable[[], Mapping[str, int]]) -> None:
         """Register one DB-backed current-state instrument per process."""
@@ -227,7 +202,6 @@ __all__ = [
     "KnowledgeFSCapabilityIssuanceMetric",
     "KnowledgeFSControlSpaceStateMetric",
     "KnowledgeFSLifecycleTaskMetric",
-    "KnowledgeFSOperationAdmissionMetric",
     "KnowledgeFSOperationalMetricsPort",
     "OpenTelemetryKnowledgeFSOperationalMetrics",
     "get_knowledge_fs_operational_metrics",

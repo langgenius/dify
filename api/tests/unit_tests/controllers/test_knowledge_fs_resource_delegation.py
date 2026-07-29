@@ -16,6 +16,7 @@ from werkzeug.exceptions import (
     UnprocessableEntity,
 )
 
+from controllers.console import wraps as console_wraps
 from controllers.console.knowledge_fs import resources as console_resources
 from controllers.console.knowledge_fs.error import (
     KnowledgeFSAccessDeniedHTTPError,
@@ -651,7 +652,7 @@ def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
         ),
         app_bindings=SimpleNamespace(count_active=MagicMock(return_value=7)),
     )
-    dump_response = MagicMock(side_effect=lambda schema, raw: raw)
+    dump_response = MagicMock(side_effect=lambda _schema, raw: raw)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "dump_response", dump_response)
@@ -985,7 +986,7 @@ def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: p
         expires_at=datetime(2026, 7, 21, tzinfo=UTC),
         knowledge_space_id="knowledge-space-1",
     )
-    admission = SimpleNamespace(issue_interactive=MagicMock(return_value=issued))
+    broker = SimpleNamespace(issue_interactive=MagicMock(return_value=issued))
     payloads = iter(
         [
             KnowledgeFSUploadCapabilityPayload(operation_id="completeUploadSession", upload_session_id="session-1"),
@@ -999,7 +1000,7 @@ def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: p
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(direct_operation_admission=admission),
+        lambda: SimpleNamespace(broker=broker),
     )
     monkeypatch.setattr(console_resources, "_payload", lambda _: next(payloads))
     monkeypatch.setattr(console_resources, "dump_response", lambda _, response: response)
@@ -1016,9 +1017,9 @@ def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: p
     assert query.url == "https://kfs.example/queries"
     assert task.url == "https://kfs.example//research-tasks/task%2F1/events?knowledgeSpaceId=knowledge-space-1"
     assert legacy_query.url == "https://kfs.example/queries"
-    assert admission.issue_interactive.call_args_list[0].kwargs["resource_id"] == "session-1"
-    assert admission.issue_interactive.call_args_list[1].kwargs["operation_id"] == "createQuery"
-    assert admission.issue_interactive.call_args_list[2].kwargs == {
+    assert broker.issue_interactive.call_args_list[0].kwargs["resource_id"] == "session-1"
+    assert broker.issue_interactive.call_args_list[1].kwargs["operation_id"] == "createQuery"
+    assert broker.issue_interactive.call_args_list[2].kwargs == {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
         "control_space_id": "space-2",
@@ -1033,8 +1034,8 @@ def test_service_direct_query_admission_binds_profile_space_and_payload(monkeypa
         expires_at=datetime(2026, 7, 21, tzinfo=UTC),
         knowledge_space_id="knowledge-space-1",
     )
-    admission = SimpleNamespace(issue_service=MagicMock(return_value=issued))
-    runtime = SimpleNamespace(direct_operation_admission=admission)
+    broker = SimpleNamespace(issue_service=MagicMock(return_value=issued))
+    runtime = SimpleNamespace(broker=broker)
     profile = object()
     monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.example/")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
@@ -1046,7 +1047,7 @@ def test_service_direct_query_admission_binds_profile_space_and_payload(monkeypa
     with app.test_request_context("/", method="POST"):
         response = _invoke(service_resources, "KnowledgeFSServiceQueryAdmissionApi", "post", "space-1")
 
-    admission.issue_service.assert_called_once_with(profile=profile, operation_id="createQuery")
+    broker.issue_service.assert_called_once_with(profile=profile, operation_id="createQuery")
     assert response.request.knowledge_space_id == "knowledge-space-1"
     assert response.request.query == "question"
     assert response.url == "https://kfs.example/queries"
@@ -1164,9 +1165,17 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
         service_resources._runtime()
 
 
-def test_console_request_rejections_preserve_conflict_size_and_validation_contracts() -> None:
+def test_console_request_rejections_preserve_conflict_size_and_validation_contracts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
+    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
+    monkeypatch.setattr(
+        console_wraps.FeatureService,
+        "get_knowledge_rate_limit",
+        lambda _tenant_id: SimpleNamespace(enabled=False),
+    )
     expected = {
         HTTPStatus.CONFLICT: Conflict,
         HTTPStatus.REQUEST_ENTITY_TOO_LARGE: RequestEntityTooLarge,
@@ -1205,7 +1214,9 @@ def test_jwks_resource_fails_closed_for_disabled_missing_and_misconfigured_issue
         console_resources.KnowledgeFSJWKSApi().get()
 
 
-def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_contract() -> None:
+def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from pydantic import ValidationError
 
     from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
@@ -1218,6 +1229,12 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     )
     from services.knowledge_fs_capability import KnowledgeFSCapabilityConfigurationError
 
+    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
+    monkeypatch.setattr(
+        console_wraps.FeatureService,
+        "get_knowledge_rate_limit",
+        lambda _tenant_id: SimpleNamespace(enabled=False),
+    )
     with pytest.raises(ValidationError) as raised_validation:
         KnowledgeFSQueryCreatePayload.model_validate({"query": ""})
     validation_error = raised_validation.value

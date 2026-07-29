@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
-from contextlib import contextmanager
 from typing import Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
@@ -12,7 +10,6 @@ from core.app.entities.app_invoke_entities import DifyRunContext
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionService
 from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker, KnowledgeFSIssuedProductCapability
-from services.knowledge_fs.operation_admission import KnowledgeFSOperationAdmissionService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskResponse,
@@ -48,12 +45,10 @@ class KnowledgeFSAppExecutionCapabilityService:
         *,
         admission: KnowledgeFSAppAdmissionService,
         broker: KnowledgeFSCapabilityBroker,
-        operation_admission: KnowledgeFSOperationAdmissionService,
         remote: KnowledgeFSProductRemotePort,
     ) -> None:
         self._admission = admission
         self._broker = broker
-        self._operation_admission = operation_admission
         self._remote = remote
 
     def issue(
@@ -100,45 +95,32 @@ class KnowledgeFSAppExecutionCapabilityService:
             or "{" in operation.kfs_path
         ):
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS app Research task creation is unavailable")
-        with self._admitted(tenant_id=run_context.tenant_id, operation_id=operation_id):
-            issued = self.issue(
-                tenant_id=run_context.tenant_id,
-                app_id=run_context.app_id,
-                control_space_id=resource.control_space_id,
-                caller_kind=caller_kind,
+        issued = self.issue(
+            tenant_id=run_context.tenant_id,
+            app_id=run_context.app_id,
+            control_space_id=resource.control_space_id,
+            caller_kind=caller_kind,
+            operation_id=operation_id,
+            trace_id=run_context.trace_session_id,
+        )
+        remote_payload = cast(
+            dict[str, JsonValue],
+            payload.model_dump(mode="json", exclude_none=True, by_alias=True),
+        )
+        remote_payload["knowledgeSpaceId"] = issued.knowledge_space_id
+        raw = self._remote.execute_json(
+            KnowledgeFSRemoteJSONRequest(
                 operation_id=operation_id,
-                trace_id=run_context.trace_session_id,
+                method=operation.method,
+                path=operation.kfs_path,
+                namespace_id=run_context.tenant_id,
+                knowledge_space_id=issued.knowledge_space_id,
+                capability_token=issued.token,
+                trace_id=issued.trace_id,
+                payload=remote_payload,
             )
-            remote_payload = cast(
-                dict[str, JsonValue],
-                payload.model_dump(mode="json", exclude_none=True, by_alias=True),
-            )
-            remote_payload["knowledgeSpaceId"] = issued.knowledge_space_id
-            raw = self._remote.execute_json(
-                KnowledgeFSRemoteJSONRequest(
-                    operation_id=operation_id,
-                    method=operation.method,
-                    path=operation.kfs_path,
-                    namespace_id=run_context.tenant_id,
-                    knowledge_space_id=issued.knowledge_space_id,
-                    capability_token=issued.token,
-                    trace_id=issued.trace_id,
-                    payload=remote_payload,
-                )
-            )
-            response = KnowledgeFSResearchTaskResponse.model_validate(raw)
-        return response
-
-    @contextmanager
-    def _admitted(self, *, tenant_id: str, operation_id: str) -> Generator[None, None, None]:
-        charge = self._operation_admission.reserve(tenant_id=tenant_id, operation_id=operation_id)
-        try:
-            yield
-        except BaseException:
-            charge.refund()
-            raise
-        else:
-            charge.commit()
+        )
+        return KnowledgeFSResearchTaskResponse.model_validate(raw)
 
 
 __all__ = ["KnowledgeFSAppExecutionCapabilityService", "KnowledgeResourceRef"]

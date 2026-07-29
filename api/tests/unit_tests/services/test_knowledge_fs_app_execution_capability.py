@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from services.knowledge_fs import app_execution_capability
 from services.knowledge_fs.app_execution_capability import (
     KnowledgeFSAppExecutionCapabilityService,
     KnowledgeResourceRef,
 )
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import KnowledgeFSResearchTaskCreatePayload
-from services.knowledge_fs.product_remote import KnowledgeFSRemoteJSONRequest
+from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError, KnowledgeFSRemoteJSONRequest
 
 
 class Admission:
@@ -48,7 +48,7 @@ class Remote:
     def __init__(self) -> None:
         self.calls: list[KnowledgeFSRemoteJSONRequest] = []
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, Any]:
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
         self.calls.append(request)
         return {
             "id": "research-1",
@@ -62,38 +62,10 @@ class Remote:
         }
 
 
-class Charge:
-    def __init__(self) -> None:
-        self.committed = False
-        self.refunded = False
-
-    def commit(self) -> None:
-        self.committed = True
-
-    def refund(self) -> None:
-        self.refunded = True
-
-
-class OperationAdmission:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, str]] = []
-        self.charge = Charge()
-
-    def reserve(self, *, tenant_id: str, operation_id: str) -> Charge:
-        self.calls.append({"tenant_id": tenant_id, "operation_id": operation_id})
-        return self.charge
-
-
 class FailingRemote(Remote):
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, Any]:
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
         self.calls.append(request)
         raise RuntimeError("remote failed")
-
-
-class RejectingOperationAdmission(OperationAdmission):
-    def reserve(self, *, tenant_id: str, operation_id: str) -> Charge:
-        self.calls.append({"tenant_id": tenant_id, "operation_id": operation_id})
-        raise RuntimeError("operation rejected")
 
 
 def test_app_execution_capability_always_admits_binding_before_broker_issuance() -> None:
@@ -102,7 +74,6 @@ def test_app_execution_capability_always_admits_binding_before_broker_issuance()
     service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
         admission=admission,
         broker=broker,
-        operation_admission=OperationAdmission(),
         remote=Remote(),
     )
 
@@ -154,16 +125,54 @@ def test_typed_knowledge_resource_ref_rejects_dataset_and_extra_authority_fields
             }
         )
 
+    with pytest.raises(ValidationError):
+        KnowledgeResourceRef.model_validate(
+            {
+                "kind": "knowledge_fs",
+                "control_space_id": "   ",
+            }
+        )
+
+
+def test_create_research_task_fails_closed_when_product_operation_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    admission = Admission()
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
+        admission=admission,
+        broker=broker,
+        remote=remote,
+    )
+    monkeypatch.setattr(app_execution_capability, "is_product_operation_ready", lambda _operation_id: False)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="creation is unavailable"):
+        service.create_research_task(
+            run_context=DifyRunContext(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                user_id="user-1",
+                user_from=UserFrom.END_USER,
+                invoke_from=InvokeFrom.WEB_APP,
+            ),
+            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+            resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+            payload=KnowledgeFSResearchTaskCreatePayload(query="Compare the evidence"),
+        )
+
+    assert admission.calls == []
+    assert broker.calls == []
+    assert remote.calls == []
+
 
 def test_create_research_task_uses_only_dify_run_context_identity_then_calls_kfs() -> None:
     admission = Admission()
     broker = Broker()
     remote = Remote()
-    operation_admission = OperationAdmission()
     service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
         admission=admission,
         broker=broker,
-        operation_admission=operation_admission,
         remote=remote,
     )
     run_context = DifyRunContext(
@@ -216,22 +225,12 @@ def test_create_research_task_uses_only_dify_run_context_identity_then_calls_kfs
             },
         )
     ]
-    assert operation_admission.calls == [
-        {
-            "tenant_id": "tenant-from-run-context",
-            "operation_id": "createResearchTask",
-        }
-    ]
-    assert operation_admission.charge.committed is True
-    assert operation_admission.charge.refunded is False
 
 
-def test_create_research_task_refunds_operation_charge_when_remote_io_fails() -> None:
-    operation_admission = OperationAdmission()
+def test_create_research_task_propagates_remote_io_failure() -> None:
     service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
         admission=Admission(),
         broker=Broker(),
-        operation_admission=operation_admission,
         remote=FailingRemote(),
     )
 
@@ -248,37 +247,3 @@ def test_create_research_task_refunds_operation_charge_when_remote_io_fails() ->
             resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
             payload=KnowledgeFSResearchTaskCreatePayload(query="Compare the evidence"),
         )
-
-    assert operation_admission.charge.committed is False
-    assert operation_admission.charge.refunded is True
-
-
-def test_operation_admission_rejection_prevents_app_capability_and_remote_io() -> None:
-    admission = Admission()
-    broker = Broker()
-    remote = Remote()
-    operation_admission = RejectingOperationAdmission()
-    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
-        admission=admission,
-        broker=broker,
-        operation_admission=operation_admission,
-        remote=remote,
-    )
-
-    with pytest.raises(RuntimeError, match="operation rejected"):
-        service.create_research_task(
-            run_context=DifyRunContext(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                user_id="user-1",
-                user_from=UserFrom.END_USER,
-                invoke_from=InvokeFrom.WEB_APP,
-            ),
-            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
-            resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
-            payload=KnowledgeFSResearchTaskCreatePayload(query="Compare the evidence"),
-        )
-
-    assert admission.calls == []
-    assert broker.calls == []
-    assert remote.calls == []

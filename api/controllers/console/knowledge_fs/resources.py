@@ -24,12 +24,14 @@ from controllers.console.knowledge_fs.error import (
     KnowledgeFSAccessDeniedHTTPError,
     KnowledgeFSInvalidRequestHTTPError,
     KnowledgeFSOperationUnavailableHTTPError,
-    KnowledgeFSQuotaExceededHTTPError,
-    KnowledgeFSRateLimitHTTPError,
     KnowledgeFSSpaceNotFoundHTTPError,
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
+    setup_required,
+)
 from core.db.session_factory import session_factory
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
@@ -43,10 +45,6 @@ from services.knowledge_fs.control_plane_service import (
 )
 from services.knowledge_fs.credential_service import (
     KnowledgeFSCredentialPolicyError,
-)
-from services.knowledge_fs.operation_admission import (
-    KnowledgeFSOperationQuotaExceededError,
-    KnowledgeFSOperationRateLimitExceededError,
 )
 from services.knowledge_fs.product_authorization import (
     KnowledgeFSProductNotFoundError,
@@ -306,6 +304,7 @@ def _console_services() -> KnowledgeFSRuntime:
 
 
 def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
@@ -318,10 +317,6 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise NotFound() from exc
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSUpstreamUnavailableHTTPError() from exc
-        except KnowledgeFSOperationRateLimitExceededError as exc:
-            raise KnowledgeFSRateLimitHTTPError() from exc
-        except KnowledgeFSOperationQuotaExceededError as exc:
-            raise KnowledgeFSQuotaExceededHTTPError() from exc
         except KnowledgeFSProductRequestRejectedError as exc:
             if exc.status_code == HTTPStatus.CONFLICT:
                 raise Conflict() from exc
@@ -1978,7 +1973,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct query streaming is not configured")
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSQueryCreatePayload)
-        issued = _console_services().direct_operation_admission.issue_interactive(
+        issued = _console_services().broker.issue_interactive(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
@@ -2473,7 +2468,7 @@ class KnowledgeFSSpaceUploadCapabilitiesApi(Resource):
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct upload is not configured")
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSUploadCapabilityPayload)
-        issued = _console_services().direct_operation_admission.issue_interactive(
+        issued = _console_services().broker.issue_interactive(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
@@ -2536,7 +2531,7 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
         if direct_origin is None:
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct query streaming is not configured")
         actor_id, tenant_id = _actor()
-        issued = _console_services().direct_operation_admission.issue_interactive(
+        issued = _console_services().broker.issue_interactive(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
@@ -2571,7 +2566,7 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct streaming is not configured")
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSStreamCapabilityPayload)
-        issued = _console_services().direct_operation_admission.issue_interactive(
+        issued = _console_services().broker.issue_interactive(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=payload.control_space_id,

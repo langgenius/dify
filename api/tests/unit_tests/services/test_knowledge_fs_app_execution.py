@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -65,7 +64,7 @@ class Remote:
     def __init__(self) -> None:
         self.calls: list[KnowledgeFSRemoteJSONRequest] = []
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, Any]:
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
         self.calls.append(request)
         return {
             "id": "task-1",
@@ -77,28 +76,6 @@ class Remote:
             "createdAt": 1.0,
             "updatedAt": 1.0,
         }
-
-
-class Charge:
-    def __init__(self) -> None:
-        self.committed = False
-        self.refunded = False
-
-    def commit(self) -> None:
-        self.committed = True
-
-    def refund(self) -> None:
-        self.refunded = True
-
-
-class OperationAdmission:
-    def __init__(self) -> None:
-        self.charge = Charge()
-
-    def reserve(self, *, tenant_id: str, operation_id: str) -> Charge:
-        assert tenant_id == "tenant-1"
-        assert operation_id == "createResearchTask"
-        return self.charge
 
 
 def _run_context(*, app_id: str) -> DifyRunContext:
@@ -198,11 +175,9 @@ def test_execution_fails_closed_before_capability_or_remote_io(
     )
     broker = Broker()
     remote = Remote()
-    operation_admission = OperationAdmission()
     service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
         admission=KnowledgeFSAppAdmissionService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
         broker=broker,
-        operation_admission=operation_admission,
         remote=remote,
     )
 
@@ -216,8 +191,6 @@ def test_execution_fails_closed_before_capability_or_remote_io(
 
     assert broker.calls == []
     assert remote.calls == []
-    assert operation_admission.charge.committed is False
-    assert operation_admission.charge.refunded is True
 
 
 @pytest.mark.parametrize(
@@ -231,11 +204,9 @@ def test_execution_issues_capability_then_performs_bounded_remote_io(
     space = _seed(sqlite_session, caller_kind=caller_kind)
     broker = Broker()
     remote = Remote()
-    operation_admission = OperationAdmission()
     service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
         admission=KnowledgeFSAppAdmissionService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
         broker=broker,
-        operation_admission=operation_admission,
         remote=remote,
     )
 
@@ -248,8 +219,6 @@ def test_execution_issues_capability_then_performs_bounded_remote_io(
 
     assert response.id == "task-1"
     assert len(broker.calls) == 1
-    assert operation_admission.charge.committed is True
-    assert operation_admission.charge.refunded is False
     assert remote.calls == [
         KnowledgeFSRemoteJSONRequest(
             operation_id="createResearchTask",

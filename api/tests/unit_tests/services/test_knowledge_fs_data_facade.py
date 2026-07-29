@@ -31,44 +31,6 @@ from services.knowledge_fs.product_remote import (
 )
 
 
-class NoopCharge:
-    def commit(self) -> None:
-        return
-
-    def refund(self) -> None:
-        return
-
-
-class NoopAdmission:
-    def reserve(self, **kwargs: object) -> NoopCharge:
-        _ = kwargs
-        return NoopCharge()
-
-
-class RecordingCharge:
-    def __init__(self) -> None:
-        self.commits = 0
-        self.refunds = 0
-
-    def commit(self) -> None:
-        self.commits += 1
-
-    def refund(self) -> None:
-        self.refunds += 1
-
-
-class RecordingAdmission:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-        self.charges: list[RecordingCharge] = []
-
-    def reserve(self, **kwargs: object) -> RecordingCharge:
-        self.calls.append(kwargs)
-        charge = RecordingCharge()
-        self.charges.append(charge)
-        return charge
-
-
 class FailingBroker:
     def __init__(self) -> None:
         self.calls = 0
@@ -327,10 +289,8 @@ class ActiveSettingsRemote(RecordingRemote):
         return super().execute_json(request)
 
 
-def test_facade_reserves_before_capability_and_commits_or_refunds_after_remote_io() -> None:
-    admission = RecordingAdmission()
+def test_facade_propagates_remote_io_failure() -> None:
     facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
-        admission=admission,
         broker=RecordingBroker(),
         remote=RecordingRemote(),
     )
@@ -342,12 +302,8 @@ def test_facade_reserves_before_capability_and_commits_or_refunds_after_remote_i
     )
 
     assert result.revision == 2
-    assert admission.calls == [{"tenant_id": "tenant-1", "operation_id": "getSettings"}]
-    assert (admission.charges[0].commits, admission.charges[0].refunds) == (1, 0)
 
-    failing_admission = RecordingAdmission()
     failing = KnowledgeFSDataFacade(  # type: ignore[arg-type]
-        admission=failing_admission,
         broker=RecordingBroker(),
         remote=FailingRemote(),
     )
@@ -357,13 +313,12 @@ def test_facade_reserves_before_capability_and_commits_or_refunds_after_remote_i
             account_id="account-1",
             control_space_id="control-1",
         )
-    assert (failing_admission.charges[0].commits, failing_admission.charges[0].refunds) == (0, 1)
 
 
 def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_request() -> None:
     remote = RecordingRemote()
     broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
     observed: list[str] = []
 
     def read_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
@@ -413,7 +368,7 @@ def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_requ
 def test_legacy_buffered_query_fails_before_capability_or_remote_io() -> None:
     broker = FailingBroker()
     remote = FailingRemote()
-    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="queries/admission"):
         facade.create_query(
@@ -430,7 +385,7 @@ def test_legacy_buffered_query_fails_before_capability_or_remote_io() -> None:
 def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_request() -> None:
     remote = RecordingRemote()
     broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
     observed: list[str] = []
 
     def read_body(max_bytes: int) -> bytes:
@@ -482,7 +437,8 @@ def test_small_file_fallback_denial_and_size_limit_stop_before_bytes_or_remote_i
 
     denied_remote = FailingRemote()
     denied_facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
-        admission=NoopAdmission(), broker=DenyingBroker(), remote=denied_remote
+        broker=DenyingBroker(),
+        remote=denied_remote,
     )
     reads = 0
 
@@ -504,7 +460,8 @@ def test_small_file_fallback_denial_and_size_limit_stop_before_bytes_or_remote_i
 
     remote = RecordingRemote()
     facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
-        admission=NoopAdmission(), broker=RecordingBroker(), remote=remote
+        broker=RecordingBroker(),
+        remote=remote,
     )
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as oversized:
         facade.upload_small_file(
@@ -521,7 +478,7 @@ def test_small_file_fallback_denial_and_size_limit_stop_before_bytes_or_remote_i
 def test_json_facade_uses_kfs_camel_case_body_and_authoritative_revision() -> None:
     remote = RecordingRemote()
     broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
 
     research = facade.create_research_task(
         tenant_id="tenant-1",
@@ -560,7 +517,7 @@ def test_json_facade_uses_kfs_camel_case_body_and_authoritative_revision() -> No
 def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes() -> None:
     remote = RecordingRemote()
     broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
 
     settings = facade.get_settings(
         tenant_id="tenant-1",
@@ -656,7 +613,6 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
 def test_active_settings_use_durable_profile_migration_routes() -> None:
     embedding_remote = ActiveSettingsRemote()
     embedding_facade = KnowledgeFSDataFacade(
-        admission=NoopAdmission(),
         broker=RecordingBroker(),
         remote=embedding_remote,
     )  # type: ignore[arg-type]
@@ -691,7 +647,6 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
 
     retrieval_remote = ActiveSettingsRemote()
     retrieval_facade = KnowledgeFSDataFacade(
-        admission=NoopAdmission(),
         broker=RecordingBroker(),
         remote=retrieval_remote,
     )  # type: ignore[arg-type]
@@ -749,7 +704,6 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
 def test_get_profile_migration_uses_the_durable_migration_route() -> None:
     remote = ActiveSettingsRemote()
     facade = KnowledgeFSDataFacade(
-        admission=NoopAdmission(),
         broker=RecordingBroker(),
         remote=remote,
     )  # type: ignore[arg-type]
@@ -768,7 +722,6 @@ def test_get_profile_migration_uses_the_durable_migration_route() -> None:
 def test_active_settings_reject_concurrent_profile_migrations() -> None:
     remote = ActiveSettingsRemote()
     facade = KnowledgeFSDataFacade(
-        admission=NoopAdmission(),
         broker=RecordingBroker(),
         remote=remote,
     )  # type: ignore[arg-type]
@@ -829,7 +782,7 @@ def test_settings_dto_rejects_fast_threshold_without_rerank() -> None:
 def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() -> None:
     remote = RecordingRemote()
     broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
 
     source = facade.update_source(
         tenant_id="tenant-1",
@@ -1230,7 +1183,7 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     specific_kwargs: dict[str, object],
     child_resource_id: str | None,
 ) -> None:
-    facade = KnowledgeFSDataFacade(admission=MagicMock(), broker=MagicMock(), remote=MagicMock())
+    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
     interactive = MagicMock(return_value={})
     interactive_child = MagicMock(return_value={})
     response_type = getattr(data_facade_module, response_name)

@@ -23,8 +23,6 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSInvalidCredentialHTTPError,
     KnowledgeFSServiceInvalidRequestHTTPError,
     KnowledgeFSServiceOperationUnavailableHTTPError,
-    KnowledgeFSServiceQuotaExceededHTTPError,
-    KnowledgeFSServiceRateLimitHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
 from core.db.session_factory import session_factory
@@ -32,10 +30,6 @@ from libs.helper import dump_response
 from services.knowledge_fs.credential_service import (
     KnowledgeFSCredentialValidationError,
     KnowledgeFSServiceCredentialProfile,
-)
-from services.knowledge_fs.operation_admission import (
-    KnowledgeFSOperationQuotaExceededError,
-    KnowledgeFSOperationRateLimitExceededError,
 )
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
@@ -176,10 +170,6 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise NotFound() from exc
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSServiceUpstreamUnavailableHTTPError() from exc
-        except KnowledgeFSOperationRateLimitExceededError as exc:
-            raise KnowledgeFSServiceRateLimitHTTPError() from exc
-        except KnowledgeFSOperationQuotaExceededError as exc:
-            raise KnowledgeFSServiceQuotaExceededHTTPError() from exc
         except ValidationError as exc:
             raise KnowledgeFSServiceInvalidRequestHTTPError() from exc
 
@@ -551,7 +541,7 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
         runtime = _runtime()
         profile = _profile(runtime, operation_id="createQuery", control_space_id=control_space_id)
         payload = _payload(KnowledgeFSQueryCreatePayload)
-        issued = runtime.direct_operation_admission.issue_service(profile=profile, operation_id="createQuery")
+        issued = runtime.broker.issue_service(profile=profile, operation_id="createQuery")
         admitted_request = KnowledgeFSAdmittedQueryRequest.model_validate(
             {**payload.model_dump(mode="json", by_alias=True), "knowledgeSpaceId": issued.knowledge_space_id}
         )

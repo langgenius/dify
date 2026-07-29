@@ -122,18 +122,12 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         assert product_operation.action == capability_operation.action
         assert product_operation.resource_resolver == capability_operation.resource_type
         assert product_operation.permission == product_operation.rbac_permission
-        assert product_operation.billing_cost > 0
-        assert product_operation.rate_limit_cost > 0
-        assert product_operation.rate_limit_bucket in {"direct", "import", "job", "query", "read", "write"}
         assert product_operation.max_request_bytes >= 0
         assert product_operation.max_response_bytes >= 0
         if product_operation.transport == "json":
             assert product_operation.stream_kind == "json"
             assert product_operation.max_response_bytes > 0
 
-    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["reindexDocuments"].rate_limit_bucket == "import"
-    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createResearchTask"].rate_limit_bucket == "query"
-    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["getCompilationJob"].rate_limit_bucket == "job"
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createDocument"].max_request_bytes == 15 * 1024 * 1024
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["importSourceWorkflow"].max_request_bytes == 4 * 1024 * 1024
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["uploadSmallFile"].max_request_bytes == 8 * 1024 * 1024

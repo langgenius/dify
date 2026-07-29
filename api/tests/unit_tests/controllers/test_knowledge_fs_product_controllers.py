@@ -6,25 +6,18 @@ from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import Forbidden, RequestEntityTooLarge
 
 from controllers.console import console_ns
+from controllers.console import wraps as console_wraps
 from controllers.console.knowledge_fs import resources as console_resources
-from controllers.console.knowledge_fs.error import KnowledgeFSQuotaExceededHTTPError, KnowledgeFSRateLimitHTTPError
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
-from controllers.service_api.knowledge_fs.error import (
-    KnowledgeFSServiceQuotaExceededHTTPError,
-    KnowledgeFSServiceRateLimitHTTPError,
-)
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
-from services.knowledge_fs.operation_admission import (
-    KnowledgeFSOperationQuotaExceededError,
-    KnowledgeFSOperationRateLimitExceededError,
-)
 from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSSmallFileUploadResponse,
@@ -312,7 +305,13 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
     ]
 
 
-def test_small_file_console_bff_maps_oversize_to_413() -> None:
+def test_small_file_console_bff_maps_oversize_to_413(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
+    monkeypatch.setattr(
+        console_wraps.FeatureService,
+        "get_knowledge_rate_limit",
+        lambda _tenant_id: SimpleNamespace(enabled=False),
+    )
     app = Flask(__name__)
     with app.test_request_context(
         method="POST",
@@ -331,35 +330,31 @@ def test_small_file_console_bff_maps_oversize_to_413() -> None:
         reject()
 
 
-def test_console_maps_weighted_rate_and_billing_exhaustion_to_stable_errors() -> None:
-    @console_resources._knowledge_fs_errors
-    def rate_limited():
-        raise KnowledgeFSOperationRateLimitExceededError()
+def test_console_knowledge_fs_uses_existing_knowledge_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    redis = MagicMock()
+    redis.zcard.return_value = 2
+    session = MagicMock()
+    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
+    monkeypatch.setattr(
+        console_wraps.FeatureService,
+        "get_knowledge_rate_limit",
+        lambda _tenant_id: SimpleNamespace(enabled=True, limit=1, subscription_plan="sandbox"),
+    )
+    monkeypatch.setattr(console_wraps, "redis_client", redis)
+    monkeypatch.setattr(console_wraps, "db", SimpleNamespace(session=session))
 
     @console_resources._knowledge_fs_errors
-    def quota_exhausted():
-        raise KnowledgeFSOperationQuotaExceededError()
+    def view():
+        return "should not run"
 
-    with pytest.raises(KnowledgeFSRateLimitHTTPError):
-        rate_limited()
-    with pytest.raises(KnowledgeFSQuotaExceededHTTPError):
-        quota_exhausted()
+    app = Flask(__name__)
+    with app.test_request_context(), pytest.raises(Forbidden, match="knowledge base request rate limit"):
+        view()
 
-    @service_resources._service_api_errors
-    def service_rate_limited():
-        raise KnowledgeFSOperationRateLimitExceededError()
-
-    @service_resources._service_api_errors
-    def service_quota_exhausted():
-        raise KnowledgeFSOperationQuotaExceededError()
-
-    with pytest.raises(KnowledgeFSServiceRateLimitHTTPError) as service_rate:
-        service_rate_limited()
-    with pytest.raises(KnowledgeFSServiceQuotaExceededHTTPError) as service_quota:
-        service_quota_exhausted()
-
-    assert service_rate.value.code == 429
-    assert service_quota.value.code == 403
+    redis.zadd.assert_called_once()
+    redis.zremrangebyscore.assert_called_once()
+    session.add.assert_called_once()
+    session.commit.assert_called_once()
 
 
 def test_space_update_and_delete_publish_their_actual_http_status_contracts() -> None:
@@ -571,7 +566,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
 ) -> None:
     calls: list[dict[str, object]] = []
 
-    class DirectAdmission:
+    class Broker:
         def issue_interactive(self, **kwargs):
             calls.append(kwargs)
             return SimpleNamespace(
@@ -584,7 +579,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(direct_operation_admission=DirectAdmission()),
+        lambda: SimpleNamespace(broker=Broker()),
     )
     app = Flask(__name__)
 
@@ -613,7 +608,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
 def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, object]] = []
 
-    class DirectAdmission:
+    class Broker:
         def issue_interactive(self, **kwargs):
             calls.append(kwargs)
             return SimpleNamespace(
@@ -627,7 +622,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(direct_operation_admission=DirectAdmission()),
+        lambda: SimpleNamespace(broker=Broker()),
     )
     app = Flask(__name__)
 
@@ -654,12 +649,12 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
     ]
 
 
-def test_upload_and_task_stream_capabilities_use_direct_operation_admission(
+def test_upload_and_task_stream_capabilities_use_broker(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict[str, object]] = []
 
-    class DirectAdmission:
+    class Broker:
         def issue_interactive(self, **kwargs):
             calls.append(kwargs)
             return SimpleNamespace(
@@ -668,7 +663,7 @@ def test_upload_and_task_stream_capabilities_use_direct_operation_admission(
                 knowledge_space_id="space-1",
             )
 
-    runtime = SimpleNamespace(direct_operation_admission=DirectAdmission())
+    runtime = SimpleNamespace(broker=Broker())
     monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test")
     monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", True)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
@@ -703,7 +698,7 @@ def test_upload_and_task_stream_capabilities_use_direct_operation_admission(
     ]
 
 
-def test_service_query_admission_uses_direct_operation_admission(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, object]] = []
     profile = SimpleNamespace(tenant_id="tenant-1", control_space_id="control-1")
 
@@ -712,7 +707,7 @@ def test_service_query_admission_uses_direct_operation_admission(monkeypatch: py
             _ = kwargs
             return profile
 
-    class DirectAdmission:
+    class Broker:
         def issue_service(self, **kwargs):
             calls.append(kwargs)
             return SimpleNamespace(
@@ -723,7 +718,7 @@ def test_service_query_admission_uses_direct_operation_admission(monkeypatch: py
 
     runtime = SimpleNamespace(
         credentials=Credentials(),
-        direct_operation_admission=DirectAdmission(),
+        broker=Broker(),
     )
     monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
