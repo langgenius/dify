@@ -8,8 +8,6 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
-
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
@@ -17,6 +15,9 @@ from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.runtime import DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
 from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
@@ -191,8 +192,8 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         plugin_daemon_api_key="daemon-secret",
         inner_api_url="http://dify-api",
         inner_api_key="inner-secret",
-        shellctl_entrypoint="http://shellctl",
-        shellctl_auth_token="shell-secret",
+        local_sandbox_endpoint="http://shellctl",
+        local_sandbox_auth_token="shell-secret",
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
         outbound_http_connect_timeout=1,
@@ -251,7 +252,10 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
         assert knowledge_layer.inner_api_url == "http://dify-api"
         assert knowledge_layer.inner_api_key == "inner-secret"
-        assert isinstance(shell_layer.shell_provider, ShellctlProvider)
+        runtime_provider = next(provider for provider in layer_providers if provider.type_id == "dify.runtime")
+        runtime_layer = runtime_provider.create_layer(DifyRuntimeLayerConfig(backend_binding_ref="binding-1"))
+        assert isinstance(runtime_layer, DifyRuntimeLayer)
+        assert isinstance(runtime_layer.backend, LocalExecutionBindingBackend)
         assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client

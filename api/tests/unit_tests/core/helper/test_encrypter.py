@@ -3,7 +3,9 @@ import binascii
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
+import models.engine as model_engine
 from core.helper.encrypter import (
     batch_decrypt_token,
     decrypt_token,
@@ -12,6 +14,34 @@ from core.helper.encrypter import (
     obfuscated_token,
 )
 from libs.rsa import PrivkeyNotFoundError
+from models.account import Tenant
+
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True),
+]
+
+
+class _DatabaseBinding:
+    """Expose the real SQLite session used by the legacy encryption lookup."""
+
+    session: Session
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+
+@pytest.fixture(autouse=True)
+def bind_sqlite_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(model_engine, "db", _DatabaseBinding(sqlite_session))
+
+
+def _persist_tenant(session: Session, *, public_key: str = "mock_public_key") -> Tenant:
+    tenant = Tenant(name="Test tenant", encrypt_public_key=public_key)
+    tenant.id = "tenant-123"
+    session.add(tenant)
+    session.commit()
+    return tenant
 
 
 class TestObfuscatedToken:
@@ -38,13 +68,10 @@ class TestObfuscatedToken:
 
 
 class TestEncryptToken:
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
-    def test_successful_encryption(self, mock_encrypt, mock_get):
+    def test_successful_encryption(self, mock_encrypt, sqlite_session: Session):
         """Test successful token encryption"""
-        mock_tenant = MagicMock()
-        mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session)
         mock_encrypt.return_value = b"encrypted_data"
 
         result = encrypt_token("tenant-123", "test_token")
@@ -52,11 +79,8 @@ class TestEncryptToken:
         assert result == base64.b64encode(b"encrypted_data").decode()
         mock_encrypt.assert_called_with("test_token", "mock_public_key")
 
-    @patch("extensions.ext_database.db.session.get")
-    def test_tenant_not_found(self, mock_get):
+    def test_tenant_not_found(self):
         """Test error when tenant doesn't exist"""
-        mock_get.return_value = None
-
         with pytest.raises(ValueError) as exc_info:
             encrypt_token("invalid-tenant", "test_token")
 
@@ -119,15 +143,11 @@ class TestGetDecryptDecoding:
 
 
 class TestEncryptDecryptIntegration:
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
     @patch("libs.rsa.decrypt")
-    def test_should_encrypt_and_decrypt_consistently(self, mock_decrypt, mock_encrypt, mock_get):
+    def test_should_encrypt_and_decrypt_consistently(self, mock_decrypt, mock_encrypt, sqlite_session: Session):
         """Test that encryption and decryption are consistent"""
-        # Setup mock tenant
-        mock_tenant = MagicMock()
-        mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session)
 
         # Setup mock encryption/decryption
         original_token = "test_token_123"
@@ -146,14 +166,10 @@ class TestEncryptDecryptIntegration:
 class TestSecurity:
     """Critical security tests for encryption system"""
 
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
-    def test_cross_tenant_isolation(self, mock_encrypt, mock_get):
+    def test_cross_tenant_isolation(self, mock_encrypt, sqlite_session: Session):
         """Ensure tokens encrypted for one tenant cannot be used by another"""
-        # Setup mock tenant
-        mock_tenant = MagicMock()
-        mock_tenant.encrypt_public_key = "tenant1_public_key"
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session, public_key="tenant1_public_key")
         mock_encrypt.return_value = b"encrypted_for_tenant1"
 
         # Encrypt token for tenant1
@@ -181,12 +197,10 @@ class TestSecurity:
         with pytest.raises(Exception, match="Decryption error"):
             decrypt_token("tenant-123", tampered)
 
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
-    def test_encryption_randomness(self, mock_encrypt, mock_get):
+    def test_encryption_randomness(self, mock_encrypt, sqlite_session: Session):
         """Ensure same plaintext produces different ciphertext"""
-        mock_tenant = MagicMock(encrypt_public_key="key")
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session, public_key="key")
 
         # Different outputs for same input
         mock_encrypt.side_effect = [b"enc1", b"enc2", b"enc3"]
@@ -205,13 +219,10 @@ class TestEdgeCases:
         # Test empty string (which is a valid str type)
         assert obfuscated_token("") == ""
 
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
-    def test_should_handle_empty_token_encryption(self, mock_encrypt, mock_get):
+    def test_should_handle_empty_token_encryption(self, mock_encrypt, sqlite_session: Session):
         """Test encryption of empty token"""
-        mock_tenant = MagicMock()
-        mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session)
         mock_encrypt.return_value = b"encrypted_empty"
 
         result = encrypt_token("tenant-123", "")
@@ -219,13 +230,10 @@ class TestEdgeCases:
         assert result == base64.b64encode(b"encrypted_empty").decode()
         mock_encrypt.assert_called_with("", "mock_public_key")
 
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
-    def test_should_handle_special_characters_in_token(self, mock_encrypt, mock_get):
+    def test_should_handle_special_characters_in_token(self, mock_encrypt, sqlite_session: Session):
         """Test tokens containing special/unicode characters"""
-        mock_tenant = MagicMock()
-        mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session)
         mock_encrypt.return_value = b"encrypted_special"
 
         # Test various special characters
@@ -242,13 +250,10 @@ class TestEdgeCases:
             assert result == base64.b64encode(b"encrypted_special").decode()
             mock_encrypt.assert_called_with(token, "mock_public_key")
 
-    @patch("extensions.ext_database.db.session.get")
     @patch("libs.rsa.encrypt")
-    def test_should_handle_rsa_size_limits(self, mock_encrypt, mock_get):
+    def test_should_handle_rsa_size_limits(self, mock_encrypt, sqlite_session: Session):
         """Test behavior when token exceeds RSA encryption limits"""
-        mock_tenant = MagicMock()
-        mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_get.return_value = mock_tenant
+        _persist_tenant(sqlite_session)
 
         # RSA 2048-bit can only encrypt ~245 bytes
         # The actual limit depends on padding scheme

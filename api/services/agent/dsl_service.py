@@ -224,6 +224,7 @@ class AgentDslService:
                 account_id=None,
                 draft_owner_key="",
                 base_snapshot_id=snapshot.id,
+                home_snapshot_id=snapshot.home_snapshot_id,
                 config_snapshot=soul,
                 created_by=account.id,
                 updated_by=account.id,
@@ -243,7 +244,7 @@ class AgentDslService:
         portable_graph: Mapping[str, Any],
         raw_packages: Mapping[str, Any],
         account: Account,
-    ) -> tuple[dict[str, Any], list[DslImportWarning]]:
+    ) -> tuple[dict[str, Any], list[DslImportWarning], set[str]]:
         """Materialize every packaged Agent as a node-owned inline Agent."""
 
         graph = copy.deepcopy(dict(portable_graph))
@@ -256,6 +257,11 @@ class AgentDslService:
                 WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
             )
         ).all()
+        retirement_candidates = {
+            binding.agent_id
+            for binding in previous_bindings
+            if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+        }
         for binding in previous_bindings:
             self.session.delete(binding)
         self.session.flush()
@@ -312,7 +318,7 @@ class AgentDslService:
 
         workflow.graph = json.dumps(graph)
         self.session.flush()
-        return graph, warnings
+        return graph, warnings, retirement_candidates
 
     def clone_inline_binding_for_node(
         self,
@@ -567,6 +573,7 @@ class AgentDslService:
             agent_id=agent.id,
             version=next_version,
             config_snapshot=soul,
+            home_snapshot_id=None,
             created_by=account_id,
         )
         self.session.add(snapshot)

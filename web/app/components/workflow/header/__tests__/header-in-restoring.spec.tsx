@@ -58,10 +58,13 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),

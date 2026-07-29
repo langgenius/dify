@@ -30,9 +30,8 @@ from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYP
 from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
-from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
@@ -72,6 +71,16 @@ from dify_agent.runtime.runner import (
     RunSuccessOutcome,
     _run_failed_error_payload,
 )
+from dify_agent.runtime_backend import (
+    ExecutionBindingAllocation,
+    ExecutionBindingCreateSpec,
+    ExecutionBindingDestroySpec,
+    HomeSnapshotBackend,
+    RuntimeBackendProfile,
+    RuntimeLayout,
+    RuntimeLease,
+)
+from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_shellctl_lease
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
@@ -133,6 +142,33 @@ class FakeRunnerShellctlClient:
     ) -> DeleteJobResponse:
         self.delete_calls.append((job_id, force, grace_seconds))
         return DeleteJobResponse(job_id=job_id)
+
+
+class FakeRunnerExecutionBindingBackend:
+    def __init__(self, client: FakeRunnerShellctlClient) -> None:
+        self.client = client
+
+    async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
+        return ExecutionBindingAllocation(binding_ref=spec.binding_id, workspace_ref=spec.workspace_id)
+
+    async def acquire(self, binding_ref: str) -> RuntimeLease:
+        return create_shellctl_lease(
+            handle=binding_ref,
+            layout=RuntimeLayout(
+                home_dir="/home/agent-1",
+                workspace_dir="/home/agent-1/workspace/abc12ff",
+            ),
+            entrypoint="http://shellctl",
+            token="",
+            client_factory=lambda: self.client,  # pyright: ignore[reportArgumentType]
+        )
+
+    async def release(self, lease: RuntimeLease) -> None:
+        assert isinstance(lease, ShellctlRuntimeLease)
+        await lease.close()
+
+    async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        del spec
 
 
 def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
@@ -270,44 +306,6 @@ def _request(
     return CreateRunRequest(
         composition=RunComposition(layers=layers),
         on_exit=on_exit or LayerExitSignals(),
-    )
-
-
-def _lifecycle_only_request(
-    *,
-    on_exit: LayerExitSignals | None = None,
-    session_snapshot: CompositorSessionSnapshot | None = None,
-    deferred_tool_results: DeferredToolResultsPayload | None = None,
-) -> CreateRunRequest:
-    snapshot = session_snapshot or CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(name="prompt", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
-            LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
-        ]
-    )
-    return CreateRunRequest(
-        composition=RunComposition(
-            layers=[
-                RunLayerSpec(
-                    name="prompt",
-                    type="plain.prompt",
-                    config=PromptLayerConfig(prefix="system", user="hello"),
-                ),
-                RunLayerSpec(
-                    name="execution_context",
-                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(
-                        tenant_id="tenant-1",
-                        user_from="account",
-                        agent_mode="workflow_run",
-                        invoke_from="service-api",
-                    ),
-                ),
-            ]
-        ),
-        session_snapshot=snapshot,
-        deferred_tool_results=deferred_tool_results,
-        on_exit=on_exit or LayerExitSignals(default=ExitIntent.DELETE),
     )
 
 
@@ -1655,20 +1653,11 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
     monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
 
-    shell_provider = LayerProvider.from_factory(
-        layer_type=DifyShellLayer,
-        create=lambda config: DifyShellLayer.from_config_with_settings(
-            DifyShellLayerConfig.model_validate(config),
-            shell_provider=ShellctlProvider(
-                entrypoint="http://shellctl",
-                token="",
-                client_factory=lambda: shell_client,
-            ),
-        ),
+    runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, object()),
+        execution_bindings=FakeRunnerExecutionBindingBackend(shell_client),
     )
-    layer_providers = tuple(
-        provider for provider in create_default_layer_providers() if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
-    ) + (shell_provider,)
+    layer_providers = create_default_layer_providers(runtime_backend_profile=runtime_backend_profile)
 
     request = CreateRunRequest(
         composition=RunComposition(
@@ -1684,15 +1673,21 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                     config=DifyExecutionContextLayerConfig(
                         tenant_id="tenant-1",
                         agent_id="agent-1",
+                        agent_config_version_id="config-1",
                         user_from="account",
                         agent_mode="workflow_run",
                         invoke_from="service-api",
                     ),
                 ),
                 RunLayerSpec(
+                    name="runtime",
+                    type=DIFY_RUNTIME_LAYER_TYPE_ID,
+                    config=DifyRuntimeLayerConfig(backend_binding_ref="binding-1"),
+                ),
+                RunLayerSpec(
                     name="shell",
                     type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": "execution_context"},
+                    deps={"execution_context": "execution_context", "runtime": "runtime"},
                     config=DifyShellLayerConfig(),
                 ),
                 RunLayerSpec(
@@ -1746,7 +1741,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     asyncio.run(scenario())
 
     assert create_agent_called is False
-    assert shell_client.delete_calls == [("mkdir-job", True, None)]
+    assert shell_client.delete_calls == []
     assert shell_client.closed is True
     assert [event.type for event in sink.events["run-shell-duplicate-tools"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-shell-duplicate-tools"] == "failed"
@@ -1961,110 +1956,25 @@ def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytes
     }
 
 
-def test_runner_lifecycle_only_cleanup_succeeds_without_model_and_emits_no_pydantic_ai_events() -> None:
-    request = _lifecycle_only_request()
-    sink = InMemoryRunEventSink()
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            await AgentRunRunner(
-                sink=sink,
-                request=request,
-                run_id="run-lifecycle-only",
-                plugin_daemon_http_client=client,
-                dify_api_http_client=client,
-            ).run()
-
-    asyncio.run(scenario())
-
-    events = sink.events["run-lifecycle-only"]
-    assert [event.type for event in events] == ["run_started", "run_succeeded"]
-    terminal = events[-1]
-    assert isinstance(terminal, RunSucceededEvent)
-    assert terminal.data.output is None
-    assert terminal.data.usage is None
-    assert {layer.name: layer.lifecycle_state for layer in terminal.data.session_snapshot.layers} == {
-        "prompt": LifecycleState.CLOSED,
-        "execution_context": LifecycleState.CLOSED,
-    }
-
-
-def test_runner_lifecycle_only_requires_session_snapshot() -> None:
+def test_runner_requires_model_layer() -> None:
     request = _request(llm_layer_name="not-llm")
     sink = InMemoryRunEventSink()
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="session_snapshot"):
+            with pytest.raises(AgentRunValidationError, match="Missing required"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,
-                    run_id="run-lifecycle-only-missing-snapshot",
+                    run_id="run-missing-model",
                     plugin_daemon_http_client=client,
                     dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
 
-    assert [event.type for event in sink.events["run-lifecycle-only-missing-snapshot"]] == ["run_started", "run_failed"]
-    assert sink.statuses["run-lifecycle-only-missing-snapshot"] == "failed"
-
-
-def test_runner_lifecycle_only_rejects_deferred_tool_results() -> None:
-    request = _lifecycle_only_request(
-        deferred_tool_results=DeferredToolResultsPayload.model_validate({"calls": {"tool-call-1": {"ok": True}}})
-    )
-    sink = InMemoryRunEventSink()
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="Deferred tool results"):
-                await AgentRunRunner(
-                    sink=sink,
-                    request=request,
-                    run_id="run-lifecycle-only-deferred-results",
-                    plugin_daemon_http_client=client,
-                    dify_api_http_client=client,
-                ).run()
-
-    asyncio.run(scenario())
-
-    assert [event.type for event in sink.events["run-lifecycle-only-deferred-results"]] == [
-        "run_started",
-        "run_failed",
-    ]
-    assert sink.statuses["run-lifecycle-only-deferred-results"] == "failed"
-
-
-def test_runner_lifecycle_only_exit_hook_failure_emits_run_failed_not_validation_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    request = _lifecycle_only_request()
-    sink = InMemoryRunEventSink()
-
-    def _explode(_run: object, _signals: LayerExitSignals) -> None:
-        raise RuntimeError("delete hook failed")
-
-    monkeypatch.setattr("dify_agent.runtime.runner.apply_layer_exit_signals", _explode)
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            with pytest.raises(RuntimeError, match="delete hook failed"):
-                await AgentRunRunner(
-                    sink=sink,
-                    request=request,
-                    run_id="run-lifecycle-only-exit-hook-failure",
-                    plugin_daemon_http_client=client,
-                    dify_api_http_client=client,
-                ).run()
-
-    asyncio.run(scenario())
-
-    assert [event.type for event in sink.events["run-lifecycle-only-exit-hook-failure"]] == [
-        "run_started",
-        "run_failed",
-    ]
-    assert sink.statuses["run-lifecycle-only-exit-hook-failure"] == "failed"
+    assert [event.type for event in sink.events["run-missing-model"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-missing-model"] == "failed"
 
 
 def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_result(
@@ -2757,7 +2667,7 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
     assert sink.statuses["run-closed-snapshot"] == "failed"
 
 
-def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
+def test_runner_treats_missing_runtime_dependency_as_validation_error() -> None:
     request = CreateRunRequest(
         composition=RunComposition(
             layers=[
@@ -2795,7 +2705,7 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="non-null shell provider"):
+            with pytest.raises(AgentRunValidationError, match="Dependency 'runtime' is required"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,
@@ -2880,9 +2790,7 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                     run_id="run-invalid-shell-offset",
                     plugin_daemon_http_client=client,
                     dify_api_http_client=client,
-                    layer_providers=create_default_layer_providers(
-                        shell_provider=ShellctlProvider(entrypoint="http://shellctl", token=""),
-                    ),
+                    layer_providers=create_default_layer_providers(),
                 ).run()
 
     asyncio.run(scenario())

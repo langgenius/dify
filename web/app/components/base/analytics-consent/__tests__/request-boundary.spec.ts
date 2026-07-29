@@ -2,12 +2,12 @@ import { isCloudAnalyticsPath, isCloudAnalyticsRequest } from '../request-bounda
 
 const baseRequest = {
   cookieYesSiteKey: 'site-key',
-  isCloudEdition: true,
+  deploymentEdition: 'CLOUD',
   isProd: true,
   pathname: '/signin',
   requestHost: 'cloud.dify.ai',
   webPrefix: 'https://cloud.dify.ai',
-}
+} as const
 
 describe('cloud analytics request boundary', () => {
   it('enables first-party Cloud authentication and console routes', () => {
@@ -35,7 +35,7 @@ describe('cloud analytics request boundary', () => {
 
   it.each([
     { cookieYesSiteKey: '', reason: 'missing CookieYes configuration' },
-    { isCloudEdition: false, reason: 'self-hosted edition' },
+    { deploymentEdition: 'COMMUNITY' as const, reason: 'non-Cloud edition' },
     { isProd: false, reason: 'non-production environment' },
     { requestHost: 'udify.app', reason: 'published app host' },
     { requestHost: 'customer.example.com', reason: 'custom host' },

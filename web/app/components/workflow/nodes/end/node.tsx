@@ -2,9 +2,10 @@ import type { FC } from 'react'
 import type { EndNodeType } from './types'
 import type { NodeProps, Variable } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useIsChatMode, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { VariableLabelInNode } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useIsChatMode, useWorkflow } from '../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 
 const Node: FC<NodeProps<EndNodeType>> = ({ id, data }) => {
   const { getBeforeNodesInSameBranch } = useWorkflow()

@@ -80,6 +80,7 @@ export const useWorkflowSearch = () => {
 
       return {
         id: node.id,
+        nodeId: node.id,
         title: nodeData?.title || nodeData?.type || 'Untitled',
         type: nodeData?.type || '',
         desc: nodeData?.desc || '',
@@ -95,6 +96,7 @@ export const useWorkflowSearch = () => {
   const calculateScore = useCallback(
     (
       node: {
+        nodeId: string
         title: string
         type: string
         desc: string
@@ -107,11 +109,17 @@ export const useWorkflowSearch = () => {
       const titleMatch = node.title.toLowerCase()
       const typeMatch = node.type.toLowerCase()
       const descMatch = node.desc?.toLowerCase() || ''
+      const nodeIdMatch = node.nodeId?.toLowerCase() || ''
       const modelProviderMatch = node.modelInfo?.provider?.toLowerCase() || ''
       const modelNameMatch = node.modelInfo?.name?.toLowerCase() || ''
       const modelModeMatch = node.modelInfo?.mode?.toLowerCase() || ''
 
       let score = 0
+
+      // Node ID matching (exact > partial — useful for locating nodes from server logs)
+      if (nodeIdMatch === searchTerm) score += 120
+      else if (nodeIdMatch.startsWith(searchTerm)) score += 90
+      else if (nodeIdMatch.includes(searchTerm)) score += 40
 
       // Title matching (exact prefix > partial match)
       if (titleMatch.startsWith(searchTerm)) score += 100
@@ -149,7 +157,7 @@ export const useWorkflowSearch = () => {
             ? {
                 id: node.id,
                 title: node.title,
-                description: node.desc || node.type,
+                description: [node.desc || node.type, node.nodeId].filter(Boolean).join(' · '),
                 type: 'workflow-node' as const,
                 path: `#${node.id}`,
                 icon: (

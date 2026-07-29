@@ -5,10 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import {
   ChunkingMode,
   DatasetPermission,
@@ -18,6 +16,7 @@ import {
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
@@ -50,7 +49,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 
 const mockUseModelList = vi.fn()
 const mockUseModelListAndDefaultModel = vi.fn()
@@ -81,11 +80,10 @@ vi.mock('@/service/use-common', async () => ({
   useMembers: vi.fn(),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
@@ -210,7 +208,7 @@ const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, defaultSystemFeatures)
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -396,9 +394,7 @@ describe('SettingsModal', () => {
       )
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
   })
 

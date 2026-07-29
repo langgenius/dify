@@ -27,6 +27,7 @@ import {
   waitForCondition,
   webDir,
 } from './common'
+import './env-register'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
 const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')

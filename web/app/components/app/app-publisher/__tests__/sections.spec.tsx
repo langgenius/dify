@@ -1,7 +1,8 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import {
   AccessModeDisplay,

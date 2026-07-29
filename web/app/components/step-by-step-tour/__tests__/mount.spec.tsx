@@ -12,8 +12,9 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import StepByStepTourMount from '../mount'
 import { stepByStepTourSessionAtom } from '../state'
@@ -199,14 +200,6 @@ const setViewportSize = ({ height, width }: { height: number; width: number }) =
   })
 }
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
@@ -228,6 +221,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'system-features'],
+          ...options,
+        }),
       },
     },
     onboarding: {
@@ -484,18 +481,22 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourFixtureState>) 
   }
 }
 
-const renderStepByStepTourMount = () => {
+const renderStepByStepTourMount = (searchParams = '') => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
-    ...defaultSystemFeatures,
-    enable_learn_app: mockEnableLearnApp.value,
-    enable_step_by_step_tour: mockEnableStepByStepTour.value,
-  })
+  queryClient.setQueryData(
+    systemFeaturesQueryOptions().queryKey,
+    createSystemFeaturesFixture({
+      deployment_edition: 'CLOUD',
+      enable_learn_app: mockEnableLearnApp.value,
+      enable_step_by_step_tour: mockEnableStepByStepTour.value,
+    }),
+  )
   const jotaiStore = createStore()
   seedRegisteredConsoleStateFixture(jotaiStore)
   jotaiStore.set(queryClientAtom, queryClient)
   jotaiStore.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
+  const { wrapper } = createNuqsTestWrapper({ searchParams })
 
   return render(
     <JotaiProvider store={jotaiStore}>
@@ -503,6 +504,7 @@ const renderStepByStepTourMount = () => {
         <StepByStepTourMount />
       </QueryClientProvider>
     </JotaiProvider>,
+    { wrapper },
   )
 }
 
@@ -776,6 +778,23 @@ describe('StepByStepTourMount', () => {
     })
 
     renderStepByStepTourMount()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('hides expanded tour overlays while settings is open', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount('?settings=preferences')
 
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
