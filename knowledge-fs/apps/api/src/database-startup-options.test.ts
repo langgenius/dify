@@ -1,10 +1,32 @@
+import { createSchemaDatabaseAdapter } from "@knowledge/adapters";
 import { describe, expect, it, vi } from "vitest";
 
-import { waitForApiDatabaseStartup } from "./database-startup-options";
+import {
+  assertApiDatabaseConnectionReady,
+  waitForApiDatabaseStartup,
+} from "./database-startup-options";
 
 const databaseUrl = "postgresql://knowledge-fs.example/knowledge_fs";
 
 describe("waitForApiDatabaseStartup", () => {
+  it("probes a declared base table so the schema adapter accepts the startup query", async () => {
+    const execute = vi.fn(async () => ({ rows: [], rowsAffected: 0 }));
+    const database = createSchemaDatabaseAdapter({
+      executor: execute,
+      kind: "postgres",
+    });
+
+    await assertApiDatabaseConnectionReady(database);
+
+    expect(execute).toHaveBeenCalledWith({
+      maxRows: 1,
+      operation: "select",
+      params: [],
+      sql: "SELECT id FROM knowledge_spaces LIMIT 0;",
+      tableName: "knowledge_spaces",
+    });
+  });
+
   it("retries PostgreSQL recovery errors until the database accepts connections", async () => {
     let attempts = 0;
     let now = 0;

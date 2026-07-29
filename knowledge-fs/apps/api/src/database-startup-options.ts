@@ -1,3 +1,5 @@
+import type { DatabaseAdapter } from "@knowledge/core";
+
 export interface ApiDatabaseStartupEnv {
   readonly DATABASE_URL?: string | undefined;
   readonly KNOWLEDGE_DATABASE_STARTUP_RETRY_INTERVAL_MS?: string | undefined;
@@ -39,6 +41,16 @@ const transientMessageFragments = [
   "database system is starting up",
   "the database system is not yet accepting connections",
 ];
+
+export async function assertApiDatabaseConnectionReady(database: DatabaseAdapter): Promise<void> {
+  await database.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [],
+    sql: "SELECT id FROM knowledge_spaces LIMIT 0;",
+    tableName: "knowledge_spaces",
+  });
+}
 
 export async function waitForApiDatabaseStartup({
   env = process.env,
