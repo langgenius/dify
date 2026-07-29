@@ -72,7 +72,7 @@ export function GoldenQuestionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
-        <DialogPopup className="fixed top-1/2 left-1/2 w-[560px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border-0 p-6 shadow-xl">
+        <DialogPopup className="fixed top-1/2 left-1/2 w-140 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border-0 p-6 shadow-xl">
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between">
               <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
@@ -88,7 +88,7 @@ export function GoldenQuestionDialog({
               </FieldLabel>
               <Textarea
                 aria-invalid={questionInvalid}
-                className="h-[88px] resize-y"
+                className="h-22 resize-y"
                 placeholder={t(($) => $['newKnowledge.qualityPage.questionPlaceholder'])}
                 value={question}
                 onValueChange={setQuestion}

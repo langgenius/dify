@@ -341,7 +341,7 @@ const CrawlPageList = memo(
 function EmptyPreview() {
   const { t } = useTranslation('dataset')
   return (
-    <div className="flex min-h-[155px] flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular bg-background-default-subtle px-6 text-center">
+    <div className="flex min-h-38.75 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular bg-background-default-subtle px-6 text-center">
       <span className="flex size-10 items-center justify-center rounded-[10px] bg-background-section-burn">
         <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
       </span>
@@ -1342,7 +1342,7 @@ export function WebsiteCrawlPreview({
         {showFailure && (
           <div
             role="alert"
-            className="flex min-h-[155px] flex-col items-center justify-center gap-2.5 rounded-xl border border-divider-deep bg-background-default-subtle px-6 py-7 text-center"
+            className="flex min-h-38.75 flex-col items-center justify-center gap-2.5 rounded-xl border border-divider-deep bg-background-default-subtle px-6 py-7 text-center"
           >
             <span aria-hidden className="i-ri-error-warning-fill size-6 text-text-destructive" />
             <p className="system-sm-semibold text-text-primary">
@@ -1367,10 +1367,10 @@ export function WebsiteCrawlPreview({
           <div
             role="status"
             aria-live="polite"
-            className="flex min-h-[155px] flex-col items-center justify-center gap-2.5 rounded-xl border border-divider-deep bg-background-default-subtle px-6 py-7 text-center"
+            className="flex min-h-38.75 flex-col items-center justify-center gap-2.5 rounded-xl border border-divider-deep bg-background-default-subtle px-6 py-7 text-center"
           >
             <span className="flex size-11 items-center justify-center rounded-[10px] bg-background-section-burn">
-              <span aria-hidden className="i-ri-global-line size-[22px] text-text-tertiary" />
+              <span aria-hidden className="i-ri-global-line size-5.5 text-text-tertiary" />
             </span>
             <p className="system-sm-semibold text-text-primary">
               {t(($) => $['newKnowledge.noPagesFound'], { host })}

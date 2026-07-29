@@ -477,7 +477,7 @@ function ProviderSelector({
               key={option.label}
               value={option.label}
               className={cn(
-                'relative flex h-[30px] items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
+                'relative flex h-7.5 items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
                 'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
               )}
@@ -509,7 +509,7 @@ function ProviderBrandIcon({
     return (
       <span
         aria-hidden
-        className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-[10px]"
+        className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-2xs"
         style={{ backgroundColor: icon.background }}
       >
         {icon.content}
@@ -542,7 +542,7 @@ function OAuthConnectionCard({
               provider: draft.provider,
             })}
       </h3>
-      <p className="max-w-[576px] system-xs-regular leading-[15px] text-text-tertiary">
+      <p className="max-w-xl system-xs-regular leading-3.75 text-text-tertiary">
         {draft.provider === 'Notion'
           ? t(($) => $['newKnowledge.notionNotConnectedDescription'])
           : t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
@@ -684,8 +684,8 @@ function ResourceList({
   const someSelected = selectableResources.some((item) => selected.has(item.key))
 
   return (
-    <div className="flex h-[312px] flex-col overflow-hidden rounded-xl border border-divider-regular">
-      <div className="flex h-[30px] shrink-0 items-center gap-2 border-b border-divider-subtle px-3">
+    <div className="flex h-78 flex-col overflow-hidden rounded-xl border border-divider-regular">
+      <div className="flex h-7.5 shrink-0 items-center gap-2 border-b border-divider-subtle px-3">
         <Checkbox
           aria-label={t(($) => $['newKnowledge.selectAll'])}
           aria-describedby={selectionLimitVisible && !allSelected ? selectionLimitId : undefined}
@@ -736,7 +736,7 @@ function ResourceList({
           return (
             <li
               key={resource.key}
-              className={cn('flex items-center gap-2 pe-3', expandable ? 'h-[34px]' : 'h-[30px]')}
+              className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
               style={{
                 paddingInlineStart: `${12 + resource.depth * 26}px`,
               }}
@@ -815,7 +815,7 @@ function SyncPolicyField({
         }}
       >
         <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-        <SelectTrigger className="w-[301px]">
+        <SelectTrigger className="w-75.25">
           {t(($) =>
             draft.syncPolicy === 'provider'
               ? $['newKnowledge.syncPolicyProvider']
@@ -1747,7 +1747,7 @@ function ResourceConfiguration({
           {t(($) => $['newKnowledge.addSourceFailed'])}
         </p>
       )}
-      <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-[19px]">
+      <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-4.75">
         <Button type="button" onClick={onExit}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>
@@ -2136,7 +2136,7 @@ export function ConnectedSourceSetup({
         !datasourceAuthQuery.isPending &&
         !loadingConnections && <SyncPolicyField draft={draft} onDraftChange={onDraftChange} />}
       {!connection && (
-        <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-[19px]">
+        <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={onExit}>
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Button>

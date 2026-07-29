@@ -69,7 +69,7 @@ function RowMenuTrigger({ disabled, label }: { disabled?: boolean; label: string
       disabled={disabled}
       className="ml-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
     >
-      <span aria-hidden className="i-ri-more-fill size-[18px]" />
+      <span aria-hidden className="i-ri-more-fill size-4.5" />
     </DropdownMenuTrigger>
   )
 }
@@ -362,14 +362,14 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   if (goldenQuery.isLoading || badCaseQuery.isLoading)
     return (
-      <div className="flex min-h-[420px] items-center justify-center">
+      <div className="flex min-h-105 items-center justify-center">
         <Loading />
       </div>
     )
 
   if (goldenQuery.isError || badCaseQuery.isError)
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 text-center">
+      <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
         <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
         <p role="alert" className="system-sm-medium text-text-primary">
           {t(($) => $.unknownError)}
@@ -455,7 +455,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
       {activeTab === 'golden' &&
         (goldenQuestions.length ? (
-          <div className="mt-3 min-w-[1192px]">
+          <div className="mt-3 min-w-298">
             <div className="grid h-8 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <Checkbox
                 aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
@@ -498,7 +498,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                   <TooltipTrigger className="block min-w-0 truncate text-left system-xs-regular text-text-secondary">
                     {item.annotation}
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-[268px]">{item.annotation}</TooltipContent>
+                  <TooltipContent className="max-w-67">{item.annotation}</TooltipContent>
                 </Tooltip>
                 <span className="system-xs-regular text-text-secondary">
                   {updated(item.updated_at)}
@@ -558,12 +558,12 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
+          <div className="flex min-h-105 flex-col items-center justify-center text-center">
             <span aria-hidden className="i-ri-star-line size-8 text-text-tertiary" />
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
             </h2>
-            <p className="mt-1 max-w-[420px] system-xs-regular text-text-tertiary">
+            <p className="mt-1 max-w-105 system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
             </p>
             <Button
@@ -581,7 +581,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
       {activeTab === 'bad' &&
         (badCases.length ? (
-          <div className="mt-3 min-w-[1192px]">
+          <div className="mt-3 min-w-298">
             <div className="grid h-8 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
@@ -689,12 +689,12 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
+          <div className="flex min-h-105 flex-col items-center justify-center text-center">
             <span aria-hidden className="i-ri-checkbox-circle-line size-8 text-text-tertiary" />
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
             </h2>
-            <p className="mt-1 max-w-[480px] system-xs-regular text-text-tertiary">
+            <p className="mt-1 max-w-120 system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyDescription'])}
             </p>
             {badCaseQuery.hasNextPage && (

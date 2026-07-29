@@ -359,7 +359,7 @@ function ResearchProcess({
                     <span
                       aria-hidden
                       className={cn(
-                        'absolute top-5 left-[7px] h-6 w-px',
+                        'absolute top-5 left-1.75 h-6 w-px',
                         completed ? 'bg-util-colors-blue-blue-500' : 'bg-divider-regular',
                       )}
                     />
@@ -745,7 +745,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       </header>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
-        <section className="flex min-h-0 w-full shrink-0 flex-col border-b border-divider-subtle lg:w-[468px] lg:border-r lg:border-b-0">
+        <section className="flex min-h-0 w-full shrink-0 flex-col border-b border-divider-subtle lg:w-117 lg:border-r lg:border-b-0">
           <div className="shrink-0 p-4 pr-6">
             <div className="overflow-hidden rounded-xl border border-components-input-border-active bg-components-input-bg-active shadow-xs">
               <label className="sr-only" htmlFor="retrieval-test-query">

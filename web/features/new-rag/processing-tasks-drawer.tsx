@@ -413,7 +413,7 @@ export function ProcessingTasksDrawer({
                   <DrawerCloseButton
                     ref={drawerCloseButtonRef}
                     aria-label={tCommon(($) => $['operation.close'])}
-                    className="size-[26px] rounded-md"
+                    className="size-6.5 rounded-md"
                   />
                 </div>
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
@@ -544,7 +544,7 @@ export function ProcessingTasksDrawer({
                             <p className="truncate system-sm-medium text-text-primary">
                               {t(($) => $['newKnowledge.processDocument'], { name: title })}
                             </p>
-                            <p className="mt-[3px] truncate system-xs-regular text-text-tertiary">
+                            <p className="mt-0.75 truncate system-xs-regular text-text-tertiary">
                               {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
                                 progress: task.progressPercent,
                               })}

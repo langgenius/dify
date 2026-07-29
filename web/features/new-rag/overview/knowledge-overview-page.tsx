@@ -145,7 +145,7 @@ function MetricCard({
   return (
     <Panel
       className={cn(
-        'flex h-[92px] flex-col justify-between border-0 bg-background-section p-4 shadow-none',
+        'flex h-23 flex-col justify-between border-0 bg-background-section p-4 shadow-none',
       )}
     >
       <div className="flex items-center gap-1 text-text-tertiary">
@@ -161,12 +161,12 @@ function MetricCard({
         )}
       </div>
       {loading ? (
-        <Skeleton className="h-[22px] w-24" />
+        <Skeleton className="h-5.5 w-24" />
       ) : (
         <div className="flex min-w-0 items-end gap-2">
           <span
             className={cn(
-              'truncate text-[28px] leading-[34px] font-semibold',
+              'truncate text-[28px] leading-8.5 font-semibold',
               empty ? 'text-text-quaternary' : 'text-text-primary',
             )}
           >
@@ -286,13 +286,13 @@ function QueryOutcomesChart({
 
   if (error)
     return (
-      <section className="flex h-[267px] min-w-0 flex-col gap-2 pt-6">
+      <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
           <h2 className="system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $['newKnowledge.overview.queryOutcomes'])}
           </h2>
         </div>
-        <Panel className="flex h-[211px] border border-components-panel-border p-4 shadow-none">
+        <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <OverviewErrorInline />
         </Panel>
       </section>
@@ -300,7 +300,7 @@ function QueryOutcomesChart({
 
   if (empty)
     return (
-      <section className="flex h-[267px] min-w-0 flex-col gap-2 pt-6">
+      <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
           <h2 className="system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $['newKnowledge.overview.queryOutcomes'])}
@@ -313,7 +313,7 @@ function QueryOutcomesChart({
             </Infotip>
           </h2>
         </div>
-        <Panel className="flex h-[211px] border border-components-panel-border p-4 shadow-none">
+        <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <EmptyInline
             icon="i-ri-time-line"
             title={t(($) => $['newKnowledge.overview.noQueryData'])}
@@ -324,7 +324,7 @@ function QueryOutcomesChart({
     )
 
   return (
-    <section className="flex h-[373px] min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['newKnowledge.overview.queryOutcomes'])}
@@ -337,9 +337,9 @@ function QueryOutcomesChart({
           </Infotip>
         </h2>
       </div>
-      <Panel className="flex h-[317px] flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
-          <div className="space-y-[22px] pt-2">
+          <div className="space-y-5.5 pt-2">
             {[
               ['outcome-1', 100],
               ['outcome-2', 100],
@@ -399,7 +399,7 @@ function EmptyInline({
       </span>
       <div className="flex flex-col items-center gap-1">
         <p className="system-md-medium text-text-primary">{title}</p>
-        <p className="max-w-[400px] body-xs-regular text-text-tertiary">{description}</p>
+        <p className="max-w-100 body-xs-regular text-text-tertiary">{description}</p>
       </div>
     </div>
   )
@@ -487,11 +487,11 @@ function HealthPanel({
 
   if (error)
     return (
-      <section className="flex h-[267px] min-w-0 flex-col gap-2 pt-6">
+      <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.needsAttention'])}
         </h2>
-        <Panel className="flex h-[211px] border border-components-panel-border p-4 shadow-none">
+        <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <OverviewErrorInline />
         </Panel>
       </section>
@@ -499,11 +499,11 @@ function HealthPanel({
 
   if (empty)
     return (
-      <section className="flex h-[267px] min-w-0 flex-col gap-2 pt-6">
+      <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.needsAttention'])}
         </h2>
-        <Panel className="flex h-[211px] border border-components-panel-border p-4 shadow-none">
+        <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <EmptyInline
             positive
             icon="i-ri-thumb-up-line"
@@ -515,15 +515,15 @@ function HealthPanel({
     )
 
   return (
-    <section className="flex h-[373px] min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.needsAttention'])}
         </h2>
       </div>
-      <Panel className="flex h-[317px] flex-col overflow-hidden border border-divider-subtle px-4 py-3 shadow-none">
+      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle px-4 py-3 shadow-none">
         {loading ? (
-          <div className="space-y-[27px] pt-4">
+          <div className="space-y-6.75 pt-4">
             {[
               ['attention-1', 100],
               ['attention-2', 100],
@@ -574,7 +574,7 @@ function HealthPanel({
                 </li>
               ))}
             </ul>
-            <div className="flex h-[53px] shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
+            <div className="flex h-13.25 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
               <div className="flex h-8 items-center rounded-lg border border-divider-subtle p-0.5">
                 <button
                   type="button"
@@ -676,7 +676,7 @@ function RecentActivity({
         <h2 className="system-md-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
-        <Panel className="flex h-[200px] border border-components-panel-border p-4 shadow-none">
+        <Panel className="flex h-50 border border-components-panel-border p-4 shadow-none">
           <div
             role="alert"
             className="flex min-h-0 flex-1 flex-col items-center justify-center text-center"
@@ -701,16 +701,14 @@ function RecentActivity({
 
   if (empty)
     return (
-      <section
-        className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-[267px]' : 'h-[252px]')}
-      >
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-66.75' : 'h-63')}>
         <h2 className="system-md-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
         <Panel
           className={cn(
             'flex border border-components-panel-border p-4 shadow-none',
-            indexing ? 'h-[215px]' : 'h-[200px]',
+            indexing ? 'h-53.75' : 'h-50',
           )}
         >
           <EmptyInline
@@ -740,9 +738,9 @@ function RecentActivity({
           {t(($) => $['newKnowledge.overview.allActivity'])}
         </Button>
       </header>
-      <Panel className="flex h-[254px] flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
+      <Panel className="flex h-63.5 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
         {loading ? (
-          <div className="flex flex-col gap-[25px] pt-10">
+          <div className="flex flex-col gap-6.25 pt-10">
             {[
               ['activity-1', 100],
               ['activity-2', 100],
@@ -757,7 +755,7 @@ function RecentActivity({
           <div
             role="table"
             aria-label={t(($) => $['newKnowledge.overview.recentActivity'])}
-            className="min-w-[560px]"
+            className="min-w-140"
           >
             <div
               role="row"
@@ -893,7 +891,7 @@ function ActivityDrawer({
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:w-[480px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
+          <DrawerPopup className="data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <header className="flex h-16 shrink-0 items-center px-5">
                 <div className="flex w-full items-center justify-between gap-3">
@@ -928,11 +926,11 @@ function ActivityDrawer({
                     <Skeleton className="ml-5 h-3 w-14" />
                     <div className="mt-2 space-y-0">
                       {[248, 300, 210, 280, 236, 264].map((width) => (
-                        <div key={width} className="flex h-[54px] items-center px-5">
+                        <div key={width} className="flex h-13.5 items-center px-5">
                           <Skeleton className="size-6 shrink-0 rounded-full" />
                           <div className="ml-3 min-w-0 flex-1">
                             <Skeleton className="h-3" style={{ width }} />
-                            <Skeleton className="mt-1.5 h-2.5 w-[148px]" />
+                            <Skeleton className="mt-1.5 h-2.5 w-37" />
                           </div>
                           <Skeleton className="h-2.5 w-10" />
                         </div>
@@ -950,7 +948,7 @@ function ActivityDrawer({
                           {group.map((task) => (
                             <li
                               key={task.id}
-                              className="flex min-h-[54px] items-start gap-3 px-5 py-2.5"
+                              className="flex min-h-13.5 items-start gap-3 px-5 py-2.5"
                             >
                               <span className="system-2xs-semibold flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
                                 S
@@ -990,7 +988,7 @@ function ActivityDrawer({
                     </div>
                   </>
                 ) : (
-                  <div className="flex h-[289px] flex-col items-center justify-end pb-0 text-center">
+                  <div className="flex h-72.25 flex-col items-center justify-end pb-0 text-center">
                     <span className="flex size-11 items-center justify-center rounded-xl bg-background-section text-text-tertiary">
                       <span aria-hidden className="i-ri-search-line size-5" />
                     </span>
@@ -1076,11 +1074,11 @@ function InventoryPanel({
 
   if (error)
     return (
-      <section className="flex h-[275px] min-w-0 flex-col gap-2 pt-6">
+      <section className="flex h-68.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.inventory'])}
         </h2>
-        <Panel className="flex h-[219px] border border-components-panel-border p-4 shadow-none">
+        <Panel className="flex h-54.75 border border-components-panel-border p-4 shadow-none">
           <OverviewErrorInline />
         </Panel>
       </section>
@@ -1088,16 +1086,14 @@ function InventoryPanel({
 
   if (empty)
     return (
-      <section
-        className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-[261px]' : 'h-[275px]')}
-      >
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65.25' : 'h-68.75')}>
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.inventory'])}
         </h2>
         <Panel
           className={cn(
             'flex border border-components-panel-border p-4 shadow-none',
-            indexing ? 'h-[205px]' : 'h-[219px]',
+            indexing ? 'h-51.25' : 'h-54.75',
           )}
         >
           <EmptyInline
@@ -1122,7 +1118,7 @@ function InventoryPanel({
       <h2 className="flex h-6 items-center text-[16px] leading-6 font-medium text-text-secondary">
         {t(($) => $['newKnowledge.overview.inventory'])}
       </h2>
-      <Panel className="h-[180px] overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="h-45 overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <>
             <Skeleton className="h-6 w-full" />
@@ -1190,7 +1186,7 @@ function InventoryPanel({
                   className="flex h-20 flex-col gap-1 rounded-lg bg-background-section p-3"
                 >
                   <p className="system-2xs-medium text-text-tertiary">{item.label}</p>
-                  <p className="text-[18px] leading-[20px] font-semibold text-text-primary">
+                  <p className="text-[18px] leading-5 font-semibold text-text-primary">
                     {item.value}
                   </p>
                   <p className="system-2xs-regular text-text-tertiary">{item.detail}</p>
@@ -1227,7 +1223,7 @@ function Onboarding({
 
   if (indexingTask)
     return (
-      <section className="flex h-[119px] flex-col rounded-xl bg-background-section p-4">
+      <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
         <h2 className="text-[18px] leading-6 font-semibold text-text-primary">
           {t(($) => $['newKnowledge.overview.indexing'])}
         </h2>
@@ -1255,7 +1251,7 @@ function Onboarding({
     <section
       className={cn(
         'h-auto min-w-0 rounded-xl bg-background-section p-4',
-        actionCount > 0 && 'md:h-[219px]',
+        actionCount > 0 && 'md:h-54.75',
       )}
     >
       <div aria-hidden className="flex h-4 items-center gap-1.5 text-text-tertiary">
@@ -1266,7 +1262,7 @@ function Onboarding({
         <span className="i-ri-links-line size-4" />
         <span className="i-ri-more-fill size-4" />
       </div>
-      <div className="mt-3 h-[42px]">
+      <div className="mt-3 h-10.5">
         <h2 className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['newKnowledge.overview.noSources'])}
         </h2>
@@ -1279,7 +1275,7 @@ function Onboarding({
           {canConnectSource && (
             <Link
               aria-label={t(($) => $['newKnowledge.overview.connectSource'])}
-              className="flex h-[105px] flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-26.25 flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
             >
               <span aria-hidden className="i-ri-node-tree size-6 text-text-accent" />
@@ -1294,7 +1290,7 @@ function Onboarding({
           {canUpload && (
             <Link
               aria-label={t(($) => $['newKnowledge.overview.uploadFiles'])}
-              className="flex h-[105px] flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-26.25 flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               href={`${newKnowledgeDocumentsPath(knowledgeSpaceId)}?upload=1`}
             >
               <span aria-hidden className="i-ri-file-text-line size-6 text-text-accent" />
@@ -1434,7 +1430,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
-      <div className="mx-auto w-full max-w-[1328px] px-5 py-6 sm:px-8">
+      <div className="mx-auto w-full max-w-332 px-5 py-6 sm:px-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}
@@ -1451,7 +1447,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
               {WINDOWS.map((value) => (
                 <SegmentedControlItem<OverviewWindow>
                   key={value}
-                  className="h-[26px] px-3 system-xs-medium"
+                  className="h-6.5 px-3 system-xs-medium"
                   value={value}
                 >
                   {value === '24h'
@@ -1557,7 +1553,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         <div
           className={cn(
             'grid lg:grid-cols-2',
-            showIndexing ? 'mt-[18px] gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-2 gap-3',
+            showIndexing ? 'mt-4.5 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-2 gap-3',
           )}
         >
           <HealthPanel

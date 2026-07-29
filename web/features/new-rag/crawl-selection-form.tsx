@@ -566,7 +566,7 @@ function ReadyCrawlSelectionForm({
           }}
         >
           <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-          <SelectTrigger className="sm:w-[301px]">
+          <SelectTrigger className="sm:w-75.25">
             {t(($) =>
               syncMode === 'provider'
                 ? $['newKnowledge.syncPolicyProvider']

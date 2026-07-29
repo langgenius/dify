@@ -118,7 +118,7 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         </p>
       </div>
 
-      <div className="mt-3 w-full max-w-[784px]">
+      <div className="mt-3 w-full max-w-196">
         {isPending && <KnowledgeSettingsSkeleton />}
 
         {!isPending && hasError && (

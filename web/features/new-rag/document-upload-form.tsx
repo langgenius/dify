@@ -60,7 +60,7 @@ export function DocumentUploadForm({
   return (
     <form
       aria-labelledby="new-knowledge-documents-title"
-      className="mt-4 flex w-full max-w-[640px] flex-1 flex-col"
+      className="mt-4 flex w-full max-w-160 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         if (!validFiles.length || uploading) return
@@ -95,7 +95,7 @@ export function DocumentUploadForm({
         }}
       >
         <span className="flex size-11 items-center justify-center rounded-[10px] bg-background-default-subtle">
-          <span aria-hidden className="i-ri-file-text-fill size-[22px] text-text-accent" />
+          <span aria-hidden className="i-ri-file-text-fill size-5.5 text-text-accent" />
         </span>
         <span className="system-md-medium text-text-primary">
           {t(($) => $['newKnowledge.uploadDropZoneTitle'])}
