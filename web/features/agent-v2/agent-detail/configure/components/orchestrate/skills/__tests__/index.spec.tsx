@@ -464,15 +464,49 @@ describe('AgentSkills', () => {
 
     await user.click(missingSkill)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Missing Skill"}',
+      }),
+    )
+    expect(screen.queryByText('common.operation.download')).not.toBeInTheDocument()
+    expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
   })
 
   it('should delete a configured skill by config name', async () => {
+    const user = userEvent.setup()
     const { container } = renderAgentSkills()
 
-    const removeButton = container.querySelector('[data-agent-skill-remove-button]')
-    expect(removeButton).not.toBeNull()
+    const embeddedBadge = screen.getByText(
+      'agentV2.agentDetail.configure.skills.addMenu.upload.badge',
+    )
+    expect(embeddedBadge).toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.skills.itemType'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen
+        .getByRole('button', { name: 'Tender Analyzer' })
+        .querySelector('.i-custom-vender-agent-v2-building-blocks'),
+    ).toHaveClass('text-text-secondary')
 
-    fireEvent.click(removeButton!)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
+      }),
+    )
+    expect(embeddedBadge).toHaveClass('opacity-0')
+
+    const deleteAction = screen.getByText('common.operation.delete')
+    fireEvent.mouseEnter(deleteAction.closest('[data-agent-skill-remove-button]')!)
+
+    expect(container.querySelector('[data-agent-skill-row]')).toHaveClass(
+      'border-state-destructive-border!',
+      'bg-state-destructive-hover!',
+    )
+
+    await user.click(deleteAction)
 
     await waitFor(() => {
       expect(mocks.deleteSkillMutationFn).toHaveBeenCalled()
@@ -635,12 +669,20 @@ describe('AgentSkills', () => {
     await user.click(
       screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
     )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
-    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+    const workspaceMenuItem = screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+    })
+    expect(
+      workspaceMenuItem.querySelector('.i-custom-vender-agent-v2-building-blocks'),
+    ).toHaveClass('text-text-secondary')
+    await user.click(workspaceMenuItem)
+
+    const workspaceSkillButton = await screen.findByRole('button', { name: /Refund approval/ })
+    expect(
+      workspaceSkillButton.querySelector('.i-custom-vender-agent-v2-building-blocks'),
+    ).toHaveClass('text-text-secondary')
+    expect(screen.queryByText('💳')).not.toBeInTheDocument()
+    await user.click(workspaceSkillButton)
 
     await waitFor(() => {
       expect(mocks.replaceAgentSkillBindingsMutationFn.mock.calls[0]?.[0]).toEqual({
@@ -767,6 +809,7 @@ describe('AgentSkills', () => {
           data: [
             createWorkspaceSkill(),
             createWorkspaceSkill({
+              description: 'Draft skill description.',
               id: 'draft-skill',
               name: 'draft-skill',
               display_name: 'Draft skill',
@@ -806,8 +849,16 @@ describe('AgentSkills', () => {
     const draftSkillButton = screen
       .getByText('agentV2.agentDetail.configure.skills.workspaceSelector.draft')
       .closest('button')
-    expect(addedSkillButton).toBeDisabled()
-    expect(draftSkillButton).toBeDisabled()
+    expect(addedSkillButton).not.toBeDisabled()
+    expect(addedSkillButton).toHaveAttribute('aria-disabled', 'true')
+    expect(draftSkillButton).not.toBeDisabled()
+    expect(draftSkillButton).toHaveAttribute('aria-disabled', 'true')
+
+    await user.hover(draftSkillButton!)
+    expect(await screen.findByText('Draft skill description.')).toBeInTheDocument()
+
+    await user.click(draftSkillButton!)
+    await user.click(addedSkillButton!)
 
     expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
   })
@@ -893,14 +944,26 @@ describe('AgentSkills', () => {
         }),
       }
     })
-    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+    const { container } = renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
     await user.click(
       await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
       }),
     )
-    await user.click(await screen.findByText('agentV2.agentDetail.configure.skills.removeAction'))
+    expect(screen.getByText('refund-approval')).toHaveClass('opacity-0')
+
+    const removeAction = await screen.findByText(
+      'agentV2.agentDetail.configure.skills.removeAction',
+    )
+    fireEvent.mouseEnter(removeAction.closest('[data-workspace-skill-remove-action]')!)
+
+    expect(container.querySelector('[data-workspace-skill-row]')).toHaveClass(
+      'border-state-destructive-border!',
+      'bg-state-destructive-hover!',
+    )
+
+    await user.click(removeAction)
 
     await waitFor(() => {
       expect(mocks.replaceAgentSkillBindingsMutationFn.mock.calls[0]?.[0]).toEqual({
@@ -1133,9 +1196,10 @@ describe('AgentSkills', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: /common\.operation\.download.*Tender Analyzer/,
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
       }),
     )
+    await user.click(screen.getByText('common.operation.download'))
 
     await waitFor(() => {
       expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(
@@ -1159,6 +1223,20 @@ describe('AgentSkills', () => {
     })
   })
 
+  it('should expose only download from an embedded skill row in read-only mode', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ readOnly: true })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
+      }),
+    )
+
+    expect(screen.getByText('common.operation.download')).toBeInTheDocument()
+    expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+  })
+
   it('should download a whole workflow skill package with node_id', async () => {
     const user = userEvent.setup()
     renderAgentSkills({
@@ -1175,9 +1253,10 @@ describe('AgentSkills', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: /common\.operation\.download.*Tender Analyzer/,
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
       }),
     )
+    await user.click(screen.getByText('common.operation.download'))
 
     await waitFor(() => {
       expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(
