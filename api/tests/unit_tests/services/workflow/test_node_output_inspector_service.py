@@ -149,6 +149,7 @@ class SessionFor(Protocol):
 @pytest.fixture
 def session_for(sqlite_session: Session) -> SessionFor:
     """Persist one scenario in the shared SQLite session."""
+
     def create_session(
         *,
         workflow_run: WorkflowRun | None,
