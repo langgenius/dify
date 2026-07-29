@@ -109,9 +109,11 @@ describe('TryApp (chat.tsx)', () => {
     it('renders alert with try info', () => {
       const appDetail = createMockAppDetail()
 
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
+      render(
+        <TryApp appId="test-app-id" appDetail={appDetail} trialLimit={3} className="test-class" />,
+      )
 
-      expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.tryInfo:{"trialLimit":3}')).toBeInTheDocument()
     })
   })
 
@@ -216,16 +218,20 @@ describe('TryApp (chat.tsx)', () => {
     it('hides alert when onHide is called', () => {
       const appDetail = createMockAppDetail()
 
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
+      render(
+        <TryApp appId="test-app-id" appDetail={appDetail} trialLimit={3} className="test-class" />,
+      )
 
       const alertElement = screen
-        .getByText('explore.tryApp.tryInfo')
+        .getByText('explore.tryApp.tryInfo:{"trialLimit":3}')
         .closest('[class*="alert"]')?.parentElement
       const hideButton = alertElement?.querySelector('button, [role="button"], svg')
 
       if (hideButton) {
         fireEvent.click(hideButton)
-        expect(screen.queryByText('explore.tryApp.tryInfo')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('explore.tryApp.tryInfo:{"trialLimit":3}'),
+        ).not.toBeInTheDocument()
       }
     })
   })

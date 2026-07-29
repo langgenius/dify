@@ -47,5 +47,5 @@
   "tryApp.requirements": "Gereksinimler",
   "tryApp.tabHeader.detail": "Orkestrasyon Detayları",
   "tryApp.tabHeader.try": "Deneyin",
-  "tryApp.tryInfo": "Bu bir örnek uygulamadır. 5 mesaja kadar deneyebilirsiniz. Kullanmaya devam etmek için \"Bu örnek uygulamadan oluştur\" seçeneğine tıklayın ve ayarlayın!"
+  "tryApp.tryInfo": "Bu bir örnek uygulamadır. {{trialLimit}} mesaja kadar deneyebilirsiniz. Kullanmaya devam etmek için \"Bu örnek uygulamadan oluştur\" seçeneğine tıklayın ve ayarlayın!"
 }

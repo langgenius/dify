@@ -24,8 +24,21 @@ vi.mock('@/service/use-try-app', () => ({
 }))
 
 vi.mock('../app', () => ({
-  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => (
-    <div data-testid="app-component" data-app-id={appId} data-mode={appDetail?.mode}>
+  default: ({
+    appId,
+    appDetail,
+    trialLimit,
+  }: {
+    appId: string
+    appDetail: TryAppInfo
+    trialLimit?: number | null
+  }) => (
+    <div
+      data-testid="app-component"
+      data-app-id={appId}
+      data-mode={appDetail?.mode}
+      data-trial-limit={trialLimit}
+    >
       App Component
     </div>
   ),
@@ -97,6 +110,13 @@ const createMockAppDetail = (mode: string = 'chat'): TryAppInfo =>
       user_input_form: [],
     },
   }) as unknown as TryAppInfo
+
+const createMockExploreApp = (trialLimit: number): ExploreApp =>
+  ({
+    app_id: 'test-app-id',
+    can_trial: true,
+    trial_limit: trialLimit,
+  }) as ExploreApp
 
 describe('TryApp (main index.tsx)', () => {
   beforeEach(() => {
@@ -337,6 +357,24 @@ describe('TryApp (main index.tsx)', () => {
       await waitFor(() => {
         const appComponent = document.body.querySelector('[data-testid="app-component"]')
         expect(appComponent).toHaveAttribute('data-app-id', 'my-app-id')
+      })
+    })
+
+    it('passes the list trial limit to App component', async () => {
+      render(
+        <TryApp
+          appId="test-app-id"
+          app={createMockExploreApp(3)}
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(document.body.querySelector('[data-testid="app-component"]')).toHaveAttribute(
+          'data-trial-limit',
+          '3',
+        )
       })
     })
 

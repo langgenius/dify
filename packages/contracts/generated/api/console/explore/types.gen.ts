@@ -28,6 +28,7 @@ export type RecommendedAppResponse = {
   is_listed?: boolean | null
   position?: number | null
   privacy_policy?: string | null
+  trial_limit?: number | null
 }
 
 export type RecommendedAppDetailResponse = {
@@ -79,6 +80,7 @@ export type RecommendedAppResponseWritable = {
   is_listed?: boolean | null
   position?: number | null
   privacy_policy?: string | null
+  trial_limit?: number | null
 }
 
 export type RecommendedAppInfoResponseWritable = {

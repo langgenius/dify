@@ -47,5 +47,5 @@
   "tryApp.requirements": "Persyaratan",
   "tryApp.tabHeader.detail": "Detail Orkestrasi",
   "tryApp.tabHeader.try": "Coba",
-  "tryApp.tryInfo": "Ini adalah aplikasi contoh. Anda dapat mencoba hingga 5 pesan. Untuk terus menggunakannya, klik \"Buat dari aplikasi contoh ini\" dan atur!"
+  "tryApp.tryInfo": "Ini adalah aplikasi contoh. Anda dapat mencoba hingga {{trialLimit}} pesan. Untuk terus menggunakannya, klik \"Buat dari aplikasi contoh ini\" dan atur!"
 }

@@ -245,7 +245,7 @@ describe('TextGeneration', () => {
     it('shows alert after completion', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(<TextGeneration appId="test-app-id" appData={appData} trialLimit={2} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('complete-button')).toBeInTheDocument()
@@ -254,7 +254,7 @@ describe('TextGeneration', () => {
       fireEvent.click(screen.getByTestId('complete-button'))
 
       await waitFor(() => {
-        expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tryInfo:{"trialLimit":2}')).toBeInTheDocument()
       })
     })
   })

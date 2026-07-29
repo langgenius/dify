@@ -59,6 +59,7 @@ class RecommendedAppResponse(ResponseModel):
     position: int | None = None
     is_listed: bool | None = None
     can_trial: bool
+    trial_limit: int | None = None
 
 
 class RecommendedAppListResponse(ResponseModel):

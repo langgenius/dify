@@ -64,6 +64,7 @@ export const zRecommendedAppResponse = z.object({
   is_listed: z.boolean().nullish(),
   position: z.int().nullish(),
   privacy_policy: z.string().nullish(),
+  trial_limit: z.int().nullish(),
 })
 
 /**
@@ -107,6 +108,7 @@ export const zRecommendedAppResponseWritable = z.object({
   is_listed: z.boolean().nullish(),
   position: z.int().nullish(),
   privacy_policy: z.string().nullish(),
+  trial_limit: z.int().nullish(),
 })
 
 /**

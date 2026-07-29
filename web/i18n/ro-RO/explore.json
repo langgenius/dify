@@ -47,5 +47,5 @@
   "tryApp.requirements": "Cerințe",
   "tryApp.tabHeader.detail": "Detalii orchestrare",
   "tryApp.tabHeader.try": "Încercați",
-  "tryApp.tryInfo": "Aceasta este o aplicație exemplu. Puteți încerca până la 5 mesaje. Pentru a continua să o utilizați, faceți clic pe \"Creați din această aplicație exemplu\" și configurați-o!"
+  "tryApp.tryInfo": "Aceasta este o aplicație exemplu. Puteți încerca până la {{trialLimit}} mesaje. Pentru a continua să o utilizați, faceți clic pe \"Creați din această aplicație exemplu\" și configurați-o!"
 }

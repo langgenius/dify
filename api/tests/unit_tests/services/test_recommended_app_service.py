@@ -7,7 +7,7 @@ from typing import TypedDict, Unpack, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from enums.deployment_edition import DeploymentEdition
@@ -33,6 +33,7 @@ class RecommendedAppPayload(TypedDict, total=False):
     workflows: list[str]
     tools: list[str]
     can_trial: bool
+    trial_limit: int | None
 
 
 class AppsResponse(TypedDict):
@@ -400,7 +401,7 @@ class TestRecommendedAppServiceGetLearnDifyApps:
 
         result = RecommendedAppService.get_learn_dify_apps("en-US", session=sqlite_session)
 
-        assert result == {"recommended_apps": [{**expected_app, "can_trial": False}]}
+        assert result == {"recommended_apps": [{**expected_app, "can_trial": False, "trial_limit": None}]}
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
         mock_instance.get_learn_dify_apps.assert_called_once_with("en-US", session=sqlite_session)
 
@@ -422,13 +423,15 @@ class TestRecommendedAppServiceGetLearnDifyApps:
             MagicMock(return_value=mock_retrieval_factory),
         )
         monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=True))
-        trial_app_ids = MagicMock(return_value={"app-1"})
-        monkeypatch.setattr(RecommendedAppService, "_get_trial_app_ids", trial_app_ids)
+        trial_app = TrialApp(app_id="app-1", tenant_id=str(uuid.uuid4()), trial_limit=4)
+        get_trial_apps_mock = MagicMock(return_value={"app-1": trial_app})
+        monkeypatch.setattr(RecommendedAppService, "_get_trial_apps", get_trial_apps_mock)
 
         result = RecommendedAppService.get_learn_dify_apps("en-US", session=sqlite_session)
 
         assert result["recommended_apps"][0]["can_trial"] is True
-        trial_app_ids.assert_called_once_with(sqlite_session, ["app-1"])
+        assert result["recommended_apps"][0]["trial_limit"] == 4
+        get_trial_apps_mock.assert_called_once_with(sqlite_session, ["app-1"])
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────
@@ -445,13 +448,14 @@ class TestRecommendedAppServiceTrialFeatures:
             monkeypatch, mode="remote", result=upstream_result
         )
         monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=False))
-        trial_app_ids = MagicMock(side_effect=AssertionError("disabled trial must not query TrialApp"))
-        monkeypatch.setattr(RecommendedAppService, "_get_trial_app_ids", trial_app_ids)
+        trial_apps = MagicMock(side_effect=AssertionError("disabled trial must not query TrialApp"))
+        monkeypatch.setattr(RecommendedAppService, "_get_trial_apps", trial_apps)
 
         result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=sqlite_session)
 
         assert result["recommended_apps"][0]["can_trial"] is False
-        trial_app_ids.assert_not_called()
+        assert result["recommended_apps"][0]["trial_limit"] is None
+        trial_apps.assert_not_called()
         retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US", session=sqlite_session)
         builtin_instance.fetch_recommended_apps_from_builtin.assert_not_called()
 
@@ -463,7 +467,7 @@ class TestRecommendedAppServiceTrialFeatures:
         tenant_id = str(uuid.uuid4())
 
         # app_id_1 has a TrialApp record; app_id_2 does not
-        sqlite_session.add(TrialApp(app_id=app_id_1, tenant_id=tenant_id))
+        sqlite_session.add(TrialApp(app_id=app_id_1, tenant_id=tenant_id, trial_limit=3))
         sqlite_session.commit()
 
         remote_result = AppsResponse(recommended_apps=[], categories=[])
@@ -476,11 +480,33 @@ class TestRecommendedAppServiceTrialFeatures:
         )
         monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=True))
 
-        result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=sqlite_session)
+        trial_app_query_count = 0
+
+        def count_trial_app_queries(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: bool,
+        ) -> None:
+            nonlocal trial_app_query_count
+            if "FROM trial_apps" in statement:
+                trial_app_query_count += 1
+
+        bind = sqlite_session.get_bind()
+        event.listen(bind, "before_cursor_execute", count_trial_app_queries)
+        try:
+            result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=sqlite_session)
+        finally:
+            event.remove(bind, "before_cursor_execute", count_trial_app_queries)
 
         builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
+        assert trial_app_query_count == 1
         assert result["recommended_apps"][0]["can_trial"] is True
+        assert result["recommended_apps"][0]["trial_limit"] == 3
         assert result["recommended_apps"][1]["can_trial"] is False
+        assert result["recommended_apps"][1]["trial_limit"] is None
 
     @pytest.mark.parametrize("has_trial_app", [True, False])
     def test_get_detail_should_set_can_trial_when_enabled(

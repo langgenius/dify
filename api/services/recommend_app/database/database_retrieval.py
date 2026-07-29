@@ -23,6 +23,7 @@ class RecommendedAppItemDict(TypedDict):
     position: int
     is_listed: bool
     can_trial: NotRequired[bool]
+    trial_limit: NotRequired[int | None]
 
 
 class RecommendedAppsResultDict(TypedDict):

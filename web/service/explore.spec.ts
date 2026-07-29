@@ -36,6 +36,8 @@ describe('explore service normalizers', () => {
       recommended_apps: [
         {
           app_id: 'agent-app',
+          can_trial: true,
+          trial_limit: 3,
           app: {
             id: 'agent-app',
             name: 'Agent app',
@@ -59,6 +61,8 @@ describe('explore service normalizers', () => {
     await expect(fetchAppList()).resolves.toMatchObject({
       recommended_apps: [
         {
+          can_trial: true,
+          trial_limit: 3,
           app: {
             mode: 'agent',
           },

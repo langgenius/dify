@@ -30,9 +30,10 @@ type Props = Readonly<{
   className?: string
   isWorkflow?: boolean
   appData: AppData | null
+  trialLimit?: number | null
 }>
 
-const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
+const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData, trialLimit }) => {
   const { t } = useTranslation()
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
@@ -158,10 +159,10 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const renderResWrap = (
     <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
       <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
-        {isCompleted && !isHideTryNotice && (
+        {isCompleted && !isHideTryNotice && trialLimit != null && (
           <Alert
             className="mb-3 shrink-0"
-            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
+            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore', trialLimit })}
             onHide={hideTryNotice}
           />
         )}
@@ -274,7 +275,12 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       {/* Result */}
       <div className={cn('h-full w-0 grow')}>
         {!isPC && (
-          <div
+          <button
+            type="button"
+            aria-expanded={isShowResultPanel}
+            aria-label={t(($) => $[isShowResultPanel ? 'chat.collapse' : 'chat.expand'], {
+              ns: 'share',
+            })}
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
@@ -285,8 +291,8 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
               else showResultPanel()
             }}
           >
-            <div className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
-          </div>
+            <span className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
+          </button>
         )}
         {renderResWrap}
       </div>

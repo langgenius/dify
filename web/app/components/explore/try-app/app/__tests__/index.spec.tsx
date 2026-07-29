@@ -6,11 +6,16 @@ import TryApp from '../index'
 
 vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
 vi.mock('../chat', () => ({
-  default: () => <section aria-label="Chat preview" />,
+  default: ({ trialLimit }: { trialLimit?: number | null }) => (
+    <section aria-label="Chat preview" data-trial-limit={trialLimit} />
+  ),
 }))
 vi.mock('../text-generation', () => ({
-  default: ({ isWorkflow }: { isWorkflow: boolean }) => (
-    <section aria-label={isWorkflow ? 'Workflow preview' : 'Completion preview'} />
+  default: ({ isWorkflow, trialLimit }: { isWorkflow: boolean; trialLimit?: number | null }) => (
+    <section
+      aria-label={isWorkflow ? 'Workflow preview' : 'Completion preview'}
+      data-trial-limit={trialLimit}
+    />
   ),
 }))
 
@@ -25,9 +30,12 @@ describe('TryApp', () => {
   it.each(['chat', 'advanced-chat', 'agent-chat'])(
     'uses the chat experience for %s apps',
     (mode) => {
-      render(<TryApp appId="app-id" appDetail={createApp(mode)} />)
+      render(<TryApp appId="app-id" appDetail={createApp(mode)} trialLimit={3} />)
 
-      expect(screen.getByRole('region', { name: 'Chat preview' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Chat preview' })).toHaveAttribute(
+        'data-trial-limit',
+        '3',
+      )
     },
   )
 
@@ -35,9 +43,9 @@ describe('TryApp', () => {
     ['completion', 'Completion preview'],
     ['workflow', 'Workflow preview'],
   ])('uses the text generation experience for %s apps', (mode, name) => {
-    render(<TryApp appId="app-id" appDetail={createApp(mode)} />)
+    render(<TryApp appId="app-id" appDetail={createApp(mode)} trialLimit={3} />)
 
-    expect(screen.getByRole('region', { name })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name })).toHaveAttribute('data-trial-limit', '3')
   })
 
   it('sets the document title from the shared app metadata', () => {
