@@ -664,6 +664,7 @@ describe("createApiRetriever dense and visual wiring", () => {
     expect(textVectors).toEqual([[0.1, 0.2, 0.3]]);
     expect(visualModels).toEqual(["clip"]);
     expect(visualVectors).toEqual([[0.9, 0.8]]);
+    expect(result.items[0]?.score).toBe(0.5);
     expect(result.items[0]?.sources).toEqual(["visual"]);
     expect(result.metrics?.visualEmbeddingCandidates).toBe(1);
   });

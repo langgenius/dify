@@ -55,17 +55,11 @@ export function fuseRetrievalCandidates({
   dense,
   fts,
   limit,
-  rrfK,
 }: {
   readonly dense: readonly RetrievalCandidate[];
   readonly fts: readonly RetrievalCandidate[];
   readonly limit: number;
-  readonly rrfK: number;
 }): HybridRetrievalItem[] {
-  if (!Number.isFinite(rrfK) || rrfK < 1) {
-    throw new Error("Hybrid retrieval rrfK must be at least 1");
-  }
-
   const byNodeId = new Map<
     string,
     {
@@ -78,14 +72,23 @@ export function fuseRetrievalCandidates({
       sources: RetrievalSource[];
     }
   >();
-  const addCandidate = (candidate: RetrievalCandidate, rank: number) => {
+  const denseLeg = normalizeLeg(dedupeLegByNode(dense));
+  const ftsLeg = normalizeLeg(dedupeLegByNode(fts));
+  const activeLegs = Number(denseLeg.length > 0) + Number(ftsLeg.length > 0);
+
+  if (activeLegs === 0) {
+    return [];
+  }
+
+  const legWeight = 1 / activeLegs;
+  const addCandidate = (entry: NormalizedLegEntry, contribution: number): void => {
+    const { candidate, extraProjectionIds } = entry;
     const existing = byNodeId.get(candidate.nodeId);
-    const contribution = 1 / (rrfK + rank + 1);
 
     if (existing) {
       existing.score += contribution;
       existing.metadata = mergeRetrievalMetadata(existing.metadata, candidate.metadata);
-      existing.projectionIds.push(candidate.projectionId);
+      existing.projectionIds.push(candidate.projectionId, ...extraProjectionIds);
 
       if (!existing.sources.includes(candidate.source)) {
         existing.sources.push(candidate.source);
@@ -99,28 +102,20 @@ export function fuseRetrievalCandidates({
       metadata: cloneJsonObject(candidate.metadata),
       nodeId: candidate.nodeId,
       permissionScope: [...candidate.permissionScope],
-      projectionIds: [candidate.projectionId],
+      projectionIds: [candidate.projectionId, ...extraProjectionIds],
       score: contribution,
       sources: [candidate.source],
     });
   };
 
-  const applyLeg = (leg: readonly RetrievalCandidate[]): void => {
-    // Collapse duplicate projections of the same node WITHIN a leg to one RRF contribution.
-    // A node with both a text-surrogate and a visual-asset dense projection must not be
-    // double-weighted, and its RRF rank must reflect node position, not projection position.
-    for (const [rank, entry] of dedupeLegByNode(leg).entries()) {
-      addCandidate(entry.candidate, rank);
-
-      if (entry.extraProjectionIds.length > 0) {
-        const node = byNodeId.get(entry.candidate.nodeId);
-        node?.projectionIds.push(...entry.extraProjectionIds);
-      }
+  const applyLeg = (leg: readonly NormalizedLegEntry[]): void => {
+    for (const entry of leg) {
+      addCandidate(entry, entry.normalizedScore * legWeight);
     }
   };
 
-  applyLeg(dense);
-  applyLeg(fts);
+  applyLeg(denseLeg);
+  applyLeg(ftsLeg);
 
   return finalizeFusion(byNodeId, limit);
 }
@@ -128,6 +123,10 @@ export function fuseRetrievalCandidates({
 interface DedupedLegEntry {
   readonly candidate: RetrievalCandidate;
   readonly extraProjectionIds: string[];
+}
+
+interface NormalizedLegEntry extends DedupedLegEntry {
+  readonly normalizedScore: number;
 }
 
 /**
@@ -151,6 +150,43 @@ function dedupeLegByNode(candidates: readonly RetrievalCandidate[]): DedupedLegE
   }
 
   return entries;
+}
+
+/**
+ * Relative-score fusion must compare like with like. Dense similarity and FTS rank use different
+ * score domains, so each non-empty leg is independently min-max normalized before weighting.
+ * A singleton/equal-score leg maps to 1 because every candidate in that leg is tied for best.
+ */
+function normalizeLeg(entries: readonly DedupedLegEntry[]): NormalizedLegEntry[] {
+  const normalizedScores = normalizeRetrievalScoreSeries(
+    entries.map((entry) => entry.candidate.score),
+  );
+
+  return entries.map((entry, index) => ({
+    ...entry,
+    normalizedScore: normalizedScores[index] ?? 0,
+  }));
+}
+
+export function normalizeRetrievalScoreSeries(scores: readonly number[]): number[] {
+  if (scores.length === 0) {
+    return [];
+  }
+
+  for (const score of scores) {
+    if (!Number.isFinite(score)) {
+      throw new Error("Hybrid retrieval candidate scores must contain only finite numbers");
+    }
+  }
+
+  const minimum = Math.min(...scores);
+  const maximum = Math.max(...scores);
+  if (maximum === minimum) {
+    return scores.map(() => 1);
+  }
+
+  const range = maximum - minimum;
+  return scores.map((score) => Math.min(1, Math.max(0, (score - minimum) / range)));
 }
 
 function finalizeFusion(

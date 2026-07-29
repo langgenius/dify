@@ -9983,13 +9983,13 @@ describe("createKnowledgeGateway", () => {
     );
   });
 
-  it("runs bounded dense and FTS retrieval then fuses candidates with RRF", async () => {
+  it("runs bounded dense and FTS retrieval then fuses normalized candidate scores", async () => {
     const fake = createFakeRetrievalExecutor();
     const repository = createDatabaseHybridRetrievalRepository({
       database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
       maxTopK: 10,
     });
-    const retriever = createBasicHybridRetriever({ repository, rrfK: 60 });
+    const retriever = createBasicHybridRetriever({ repository });
 
     const result = await retriever.retrieve({
       denseProjectionModel: "dense-model",
@@ -10004,6 +10004,20 @@ describe("createKnowledgeGateway", () => {
       items: [
         expect.objectContaining({
           citation: {
+            artifactHash: "d".repeat(64),
+            documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+            documentVersion: 1,
+            endOffset: 32,
+            pageNumber: 1,
+            sectionPath: ["Contracts"],
+            startOffset: 0,
+          },
+          nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80",
+          score: 0.5,
+          sources: ["dense"],
+        }),
+        expect.objectContaining({
+          citation: {
             artifactHash: "e".repeat(64),
             documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
             documentVersion: 1,
@@ -10013,16 +10027,8 @@ describe("createKnowledgeGateway", () => {
             startOffset: 40,
           },
           nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+          score: 0.5,
           sources: ["dense", "fts"],
-        }),
-        expect.objectContaining({
-          citation: expect.objectContaining({
-            artifactHash: "d".repeat(64),
-            documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
-            startOffset: 0,
-          }),
-          nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80",
-          sources: ["dense"],
         }),
       ],
     });
@@ -10073,16 +10079,6 @@ describe("createKnowledgeGateway", () => {
         topK: 2,
       }),
     ).rejects.toThrow("Hybrid retrieval queryVector must contain at least 1 number");
-    await expect(
-      createBasicHybridRetriever({ repository, rrfK: 0 }).retrieve({
-        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40",
-        limit: 1,
-        query: "Contract ABC-123",
-        queryVector: [0.1, 0.2],
-        topK: 2,
-      }),
-    ).rejects.toThrow("Hybrid retrieval rrfK must be at least 1");
-
     const tidbFake = createFakeRetrievalExecutor();
     const tidbRepository = createDatabaseHybridRetrievalRepository({
       database: createSchemaDatabaseAdapter({ executor: tidbFake.executor, kind: "tidb" }),
@@ -10166,26 +10162,8 @@ describe("createKnowledgeGateway", () => {
         candidate("node-public", "fts-public", "fts", [], 0.7),
       ],
     };
-    const rrfInputs: unknown[] = [];
     const rerankCalls: RerankDocumentsInput[] = [];
     const retriever = createBasicHybridRetriever({
-      fusion: {
-        rrfFuse(input) {
-          rrfInputs.push(JSON.parse(JSON.stringify(input)));
-          return [
-            {
-              id: "node-allowed",
-              ranks: [{ listIndex: 0, rank: 1, weight: 1 }],
-              score: 0.9,
-            },
-            {
-              id: "node-public",
-              ranks: [{ listIndex: 1, rank: 1, weight: 1 }],
-              score: 0.7,
-            },
-          ];
-        },
-      },
       planner: createRetrievalPlanner({ maxTopK: 2 }),
       repository,
       reranker: {
@@ -10220,14 +10198,6 @@ describe("createKnowledgeGateway", () => {
       topK: 2,
     });
 
-    expect(rrfInputs).toEqual([
-      expect.objectContaining({
-        rankedLists: [
-          { items: [{ id: "node-allowed" }], weight: 1 },
-          { items: [{ id: "node-public" }], weight: 1 },
-        ],
-      }),
-    ]);
     expect(rerankCalls[0]?.documents.map((document) => document.id)).toEqual([
       "node-allowed",
       "node-public",
@@ -10311,22 +10281,7 @@ describe("createKnowledgeGateway", () => {
         }),
       ],
     };
-    const rrfInputs: unknown[] = [];
-    const retriever = createBasicHybridRetriever({
-      fusion: {
-        rrfFuse(input) {
-          rrfInputs.push(JSON.parse(JSON.stringify(input)));
-          return [
-            {
-              id: "node-match",
-              ranks: [{ listIndex: 0, rank: 1, weight: 1 }],
-              score: 1,
-            },
-          ];
-        },
-      },
-      repository,
-    });
+    const retriever = createBasicHybridRetriever({ repository });
 
     const filters = {
       createdAfter: "2026-04-01T00:00:00.000Z",
@@ -10349,14 +10304,6 @@ describe("createKnowledgeGateway", () => {
       topK: 2,
     });
 
-    expect(rrfInputs).toEqual([
-      expect.objectContaining({
-        rankedLists: [
-          { items: [{ id: "node-match" }], weight: 1 },
-          { items: [], weight: 1 },
-        ],
-      }),
-    ]);
     expect(result.items.map((item) => item.nodeId)).toEqual(["node-match"]);
     expect(result.metrics).toEqual(
       expect.objectContaining({
@@ -10413,41 +10360,19 @@ describe("createKnowledgeGateway", () => {
     ).rejects.toThrow("Retrieval metadata filter tags entries must be non-empty strings");
   });
 
-  it("uses retrieval plans and injected RRF fusion for optimized hybrid recall metrics", async () => {
+  it("uses retrieval plans and normalized fusion for optimized hybrid recall metrics", async () => {
     const fake = createFakeRetrievalExecutor();
     const repository = createDatabaseHybridRetrievalRepository({
       database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
       maxTopK: 10,
     });
-    const rrfInputs: unknown[] = [];
     const retriever = createBasicHybridRetriever({
-      fusion: {
-        rrfFuse(input) {
-          rrfInputs.push(JSON.parse(JSON.stringify(input)));
-          return [
-            {
-              id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-              ranks: [
-                { listIndex: 0, rank: 2, weight: 1 },
-                { listIndex: 1, rank: 1, weight: 1 },
-              ],
-              score: 1 / 62 + 1 / 61,
-            },
-            {
-              id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80",
-              ranks: [{ listIndex: 0, rank: 1, weight: 1 }],
-              score: 1 / 61,
-            },
-          ];
-        },
-      },
       now: (() => {
         const values = [0, 1, 2, 6, 7, 11, 12, 14, 15];
         return () => values.shift() ?? 15;
       })(),
       planner: createRetrievalPlanner({ maxTopK: 10 }),
       repository,
-      rrfK: 60,
     });
 
     const result = await retriever.retrieve({
@@ -10463,40 +10388,13 @@ describe("createKnowledgeGateway", () => {
     expect(fake.calls.map((call) => call.maxRows)).toEqual([10, 10]);
     expect(fake.calls[0]?.params.at(-1)).toBe(10);
     expect(fake.calls[1]?.params.at(-1)).toBe(10);
-    expect(rrfInputs).toEqual([
-      {
-        config: {
-          k: 60,
-          limit: 6,
-          maxInputBytes: 1048576,
-          maxItemsPerList: 10,
-          maxLists: 2,
-          maxOutputItems: 6,
-        },
-        rankedLists: [
-          {
-            items: [
-              { id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80" },
-              { id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81" },
-            ],
-            weight: 1,
-          },
-          {
-            items: [
-              { id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81" },
-              { id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c82" },
-            ],
-            weight: 1,
-          },
-        ],
-      },
-    ]);
     expect(result.items.map((item) => item.nodeId)).toEqual([
-      "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
       "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
     ]);
-    expect(result.items[0]).toMatchObject({
+    expect(result.items[1]).toMatchObject({
       projectionIds: ["dense-2", "fts-1"],
+      score: 0.5,
       sources: ["dense", "fts"],
     });
     expect(result.metrics).toMatchObject({
@@ -10530,7 +10428,7 @@ describe("createKnowledgeGateway", () => {
       models: async () => [
         {
           id: "static-rerank",
-          maxDocuments: 2,
+          maxDocuments: 3,
           maxInputTokens: 8191,
           provider: "static",
           version: "static@1",
@@ -10552,7 +10450,7 @@ describe("createKnowledgeGateway", () => {
                 metadata: {},
                 text: "Policy renewal",
               },
-              index: 1,
+              index: 2,
               score: 0.99,
             },
             {
@@ -10561,7 +10459,7 @@ describe("createKnowledgeGateway", () => {
                 metadata: {},
                 text: "Contracts Renewal",
               },
-              index: 0,
+              index: 1,
               score: 0.5,
             },
           ],
@@ -10571,26 +10469,7 @@ describe("createKnowledgeGateway", () => {
       },
     };
     const retriever = createBasicHybridRetriever({
-      fusion: {
-        rrfFuse: () => [
-          {
-            id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-            ranks: [{ listIndex: 0, rank: 2, weight: 1 }],
-            score: 0.7,
-          },
-          {
-            id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c82",
-            ranks: [{ listIndex: 1, rank: 2, weight: 1 }],
-            score: 0.6,
-          },
-          {
-            id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80",
-            ranks: [{ listIndex: 0, rank: 1, weight: 1 }],
-            score: 0.4,
-          },
-        ],
-      },
-      maxRerankCandidates: 2,
+      maxRerankCandidates: 3,
       planner: createRetrievalPlanner({ maxTopK: 10 }),
       repository,
       reranker,
@@ -10610,6 +10489,14 @@ describe("createKnowledgeGateway", () => {
     expect(rerankCalls).toHaveLength(1);
     expect(rerankCalls[0]).toEqual({
       documents: [
+        {
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c80",
+          metadata: {
+            projectionIds: ["dense-1"],
+            sources: ["dense"],
+          },
+          text: "Contracts",
+        },
         {
           id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
           metadata: {
@@ -10636,7 +10523,7 @@ describe("createKnowledgeGateway", () => {
         metadata: expect.objectContaining({
           rerankModel: "static-rerank",
           rerankScore: 0.99,
-          retrievalScore: 0.6,
+          retrievalScore: 0,
         }),
         nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c82",
         score: 0.99,
@@ -10644,7 +10531,7 @@ describe("createKnowledgeGateway", () => {
     ]);
     expect(result.metrics).toEqual(
       expect.objectContaining({
-        rerankCandidates: 2,
+        rerankCandidates: 3,
       }),
     );
     expect(result.metrics?.rerankMs).toBeGreaterThanOrEqual(0);

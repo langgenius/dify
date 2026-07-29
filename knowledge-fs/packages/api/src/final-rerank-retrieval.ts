@@ -64,7 +64,7 @@ export function createFinalRerankRetrieval({
         if (input.retrievalProfile) {
           assertKnowledgeSpaceRetrievalProfileForMode(input.retrievalProfile, "research");
         }
-        return retriever.retrieve(input);
+        return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
       }
 
       const planned = resolveFinalRerankPlan(input, planner);
@@ -72,7 +72,7 @@ export function createFinalRerankRetrieval({
         assertKnowledgeSpaceRetrievalProfileForMode(input.retrievalProfile, planned.resolvedMode);
       }
       if (!shouldFinalRerank(planned)) {
-        return retriever.retrieve(input);
+        return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
       }
 
       // Resolve a knowledge-space provider only after the plan has confirmed
@@ -86,14 +86,17 @@ export function createFinalRerankRetrieval({
         rerankerModel,
       });
       if (!runtime) {
-        return retriever.retrieve(input);
+        return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
       }
 
       const candidateLimit = Math.min(
         Math.max(input.limit, planned.rerankCandidateLimit),
         maxRerankCandidates,
       );
-      const retrieval = await retriever.retrieve({ ...input, limit: candidateLimit });
+      const retrieval = normalizeRetrievalResult(
+        await retriever.retrieve({ ...input, limit: candidateLimit }),
+        candidateLimit,
+      );
       const effectivePlan = retrieval.plan ?? planned;
 
       // A custom/stateful planner could still return a different concrete plan on the inner
@@ -211,5 +214,59 @@ function limitRetrievalResult(
   return {
     ...retrieval,
     items: retrieval.items.slice(0, limit),
+  };
+}
+
+/**
+ * The retrieval stack can add mode-specific boosts after Dense/FTS fusion. Keep the public score
+ * contract bounded without changing an already normalized result. Positive out-of-range scores
+ * are max-scaled; a range containing negative values is min-max normalized.
+ */
+function normalizeRetrievalResult(
+  retrieval: HybridRetrievalResult,
+  limit: number,
+): HybridRetrievalResult {
+  const sourceItems = retrieval.items;
+  if (sourceItems.length === 0) {
+    return { ...retrieval, items: [] };
+  }
+
+  const scores = sourceItems.map((item) => item.score);
+  for (const score of scores) {
+    if (!Number.isFinite(score)) {
+      throw new Error("Final retrieval scores must contain only finite numbers");
+    }
+  }
+
+  const minimum = Math.min(...scores);
+  const maximum = Math.max(...scores);
+  const alreadyNormalized = minimum >= 0 && maximum <= 1;
+  const normalizedItems = sourceItems
+    .map((item) => {
+      let score = item.score;
+
+      if (!alreadyNormalized) {
+        if (minimum >= 0 && maximum > 0) {
+          score = item.score / maximum;
+        } else if (maximum === minimum) {
+          score = 1;
+        } else {
+          score = (item.score - minimum) / (maximum - minimum);
+        }
+      }
+
+      return {
+        ...item,
+        score: Math.min(1, Math.max(0, score)),
+      };
+    })
+    .sort(
+      (first, second) => second.score - first.score || first.nodeId.localeCompare(second.nodeId),
+    )
+    .slice(0, limit);
+
+  return {
+    ...retrieval,
+    items: normalizedItems,
   };
 }

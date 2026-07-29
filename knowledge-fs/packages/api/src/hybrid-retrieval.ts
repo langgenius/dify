@@ -25,12 +25,7 @@ import {
   normalizeRetrievalPermissionScope,
 } from "./retrieval-candidates";
 import { normalizeRetrievalMetadataFilters } from "./retrieval-filter-utils";
-import {
-  type HybridRetrievalItem,
-  type RetrievalFusionRuntime,
-  fuseRetrievalCandidates,
-  fuseRetrievalCandidatesWithRuntime,
-} from "./retrieval-fusion";
+import { type HybridRetrievalItem, fuseRetrievalCandidates } from "./retrieval-fusion";
 import { type RetrievalPlanner, defaultRetrievalPlan } from "./retrieval-planner";
 import { rerankHybridRetrievalItems } from "./retrieval-rerank";
 import { normalizeMixedLanguageFtsText } from "./retrieval-text-utils";
@@ -52,7 +47,6 @@ export interface BasicHybridRetrieverOptions {
         readonly rerankFailure?: "fail-closed" | "skip-rerank" | undefined;
       }
     | undefined;
-  readonly fusion?: RetrievalFusionRuntime | undefined;
   readonly maxRerankCandidates?: number | undefined;
   readonly now?: (() => number) | undefined;
   readonly planner?: RetrievalPlanner | undefined;
@@ -62,7 +56,6 @@ export interface BasicHybridRetrieverOptions {
   readonly reranker?: RerankerProvider | undefined;
   readonly rerankerModel?: string | undefined;
   readonly repository: HybridRetrievalRepository;
-  readonly rrfK?: number;
   /** Production retrievers fail closed before any leg runs when the query has no fixed head. */
   readonly strictPublishedReads?: boolean | undefined;
 }
@@ -494,7 +487,6 @@ export function createDatabaseHybridRetrievalRepository({
 
 export function createBasicHybridRetriever({
   degradation = {},
-  fusion,
   maxRerankCandidates = 200,
   now = Date.now,
   planner,
@@ -502,7 +494,6 @@ export function createBasicHybridRetriever({
   reranker,
   rerankerModel,
   repository,
-  rrfK = 60,
   strictPublishedReads = false,
 }: BasicHybridRetrieverOptions): BasicHybridRetriever {
   if (reranker && !rerankerModel?.trim()) {
@@ -517,10 +508,6 @@ export function createBasicHybridRetriever({
     retrieve: async (input) => {
       if (!Number.isInteger(input.limit) || input.limit < 1) {
         throw new Error("Hybrid retrieval limit must be at least 1");
-      }
-
-      if (!Number.isFinite(rrfK) || rrfK < 1) {
-        throw new Error("Hybrid retrieval rrfK must be at least 1");
       }
 
       validateHybridQueryVector(input.queryVector);
@@ -687,21 +674,11 @@ export function createBasicHybridRetriever({
           ? Math.min(Math.max(input.limit, plan.rerankCandidateLimit), maxRerankCandidates)
           : input.limit;
       const fusionResult = timedSync(now, () =>
-        fusion
-          ? fuseRetrievalCandidatesWithRuntime({
-              dense: denseProjectionCandidates,
-              fts: ftsProjectionCandidates,
-              fusion,
-              limit: preRerankLimit,
-              plan,
-              rrfK,
-            })
-          : fuseRetrievalCandidates({
-              dense: denseProjectionCandidates,
-              fts: ftsProjectionCandidates,
-              limit: preRerankLimit,
-              rrfK,
-            }),
+        fuseRetrievalCandidates({
+          dense: denseProjectionCandidates,
+          fts: ftsProjectionCandidates,
+          limit: preRerankLimit,
+        }),
       );
       let rerankResult: { readonly durationMs: number; readonly value: HybridRetrievalItem[] };
 

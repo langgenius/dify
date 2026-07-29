@@ -234,7 +234,7 @@ type RetrievalProfile = {
 
 ### 7.2 Score Threshold 语义
 
-- Fast 的 RRF score 与 reranker score 不同，禁止直接共用未归一化的 0.5。
+- Fast 的 dense/FTS 原始 score 与 reranker score 量纲不同，禁止直接比较或直接作为统一展示分数。
 - `rerank` stage 只允许 rerank 启用时使用。
 - `normalized-final` 必须对各 retrieval path 输出稳定的 `[0, 1]` 归一化分数。
 - 明确 threshold 是过滤 evidence，还是触发 no-evidence/low-confidence；生成器不得绕过过滤结果。
@@ -797,13 +797,14 @@ shadow/fail-closed 边界；历史记录保留用于说明迁移过程，当前�
 - Production query 在入口只解析一次 immutable publication snapshot；Fast、Research、Deep 全链共享同一
   publication id/fingerprint/head revision。缺 snapshot、tenant、权限范围、member 或实体闭包均 fail closed，
   不会回退 legacy 全表读取。
-- Fast 从 exact ready IndexProjection member 执行 dense + FTS，RRF 合并后只 rerank 一次。TiDB 使用
+- Fast 从 exact ready IndexProjection member 执行 dense + FTS，各 leg 原始分数归一化并等权合并后最多
+  rerank 一次。TiDB 使用
   `index_projection_fts_postings` 的 term-hash lookup index；PostgreSQL 保留 GIN `tsvector`。两种 dialect
   均在 publication/member/generation/document/ACL 条件内召回。
 - Research 直接查询 flattened published PageIndex，不再先运行 dense/FTS hybrid。exact term posting 在 SQL
   内按 outline node 聚合 normalized `[0,1]` score，完整 closure 与 ACL 在 relevance ordering/final LIMIT
   之前验证；threshold、Top K 后 bounded 打开 leaf evidence。Graph 与普通 reranker调用数为 0。
-- Deep 先运行 published dense+FTS/RRF，再从同一 publication 的 Graph entity/relation/source-node closure
+- Deep 先运行 published dense/FTS normalized score fusion，再从同一 publication 的 Graph entity/relation/source-node closure
   扩展和二次召回，合并后统一 rerank 一次。Graph capability 缺失只阻断 Deep，Fast/Research 不受影响。
 - Candidate runtime、candidate-only evaluation、publication processor 与 coordinator 已接入 durable
   compilation runtime。锁内重新验证完整 candidate/member snapshot、lease token、attempt row version 和 base
@@ -950,12 +951,11 @@ I6 已完成：
 
 检索模式最终不变量：
 
-1. Fast：published dense + indexed FTS → node 去重/RRF → 一次最终 rerank → threshold → Top K。
+1. Fast：published dense + indexed FTS → node 去重/per-leg normalized score fusion → 可选的一次最终 rerank → threshold → Top K；启用 rerank 时按 reranker score 排序，关闭时按 normalized final score 排序。
 2. Research：published Summary/Outline/PageIndex exact-term + tree navigation → threshold → Top K；普通 hybrid、Graph 和
    普通 reranker 调用均为 0。Reasoning model 用于最终回答和 ingestion-time Summary/Outline enhancer，不是 query-time
    PageIndex planner。
-3. Deep：published dense + indexed FTS/RRF → published Graph expansion + second recall → 全部候选合并 → 一次统一
-   rerank → threshold → Top K；不是只查 Graph。
+3. Deep：published dense + indexed FTS normalized score fusion → published Graph expansion + second recall → 全部候选合并 → 可选的一次统一 rerank → threshold → Top K；启用 rerank 时按 reranker score 排序，关闭时按 normalized final score 排序；不是只查 Graph。
 4. 三种模式都从同一个 frozen published content/profile tuple 读取，并在入口校验 membership/API Access、在候选层
    使用服务端 grants；Top K、Score Threshold 与模型配置分别在上述正确阶段应用。Async Research 在入队前按
    “显式请求 > 空间 default”冻结 concrete mode/Top K，production worker 不允许 legacy profile fallback。

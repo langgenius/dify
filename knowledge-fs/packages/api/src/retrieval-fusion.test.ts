@@ -32,52 +32,86 @@ function candidate(
 }
 
 describe("retrieval fusion", () => {
-  it("fuses dense and FTS candidates with deterministic RRF and clone isolation", () => {
-    const denseA = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d01", "dense", "dense-a");
-    const denseB = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d02", "dense", "dense-b");
-    const dense = [denseA, denseB];
-    const fts = [candidate(denseA.nodeId, "fts", "fts-a")];
+  it("normalizes each leg before deterministic score fusion and preserves clone isolation", () => {
+    const denseA = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d01", "dense", "dense-a", 0.9);
+    const denseB = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d02", "dense", "dense-b", 0.7);
+    const denseC = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d03", "dense", "dense-c", 0.5);
+    const dense = [denseA, denseB, denseC];
+    const fts = [
+      candidate(denseC.nodeId, "fts", "fts-c", 8),
+      candidate(denseA.nodeId, "fts", "fts-a", 6),
+      candidate(denseB.nodeId, "fts", "fts-b", 4),
+    ];
 
-    const fused = fuseRetrievalCandidates({ dense, fts, limit: 2, rrfK: 60 });
+    const fused = fuseRetrievalCandidates({ dense, fts, limit: 3 });
 
     expect(fused).toEqual([
       expect.objectContaining({
         nodeId: denseA.nodeId,
         projectionIds: ["dense-a", "fts-a"],
         sources: ["dense", "fts"],
+        score: 0.75,
+      }),
+      expect.objectContaining({
+        nodeId: denseC.nodeId,
+        projectionIds: ["dense-c", "fts-c"],
+        sources: ["dense", "fts"],
+        score: 0.5,
       }),
       expect.objectContaining({
         nodeId: denseB.nodeId,
-        projectionIds: ["dense-b"],
-        sources: ["dense"],
+        projectionIds: ["dense-b", "fts-b"],
+        sources: ["dense", "fts"],
       }),
     ]);
+    expect(fused[2]?.score).toBeCloseTo(0.25, 12);
     fused[0]?.citation.sectionPath.push("mutated");
     expect(denseA.citation.sectionPath).toEqual(["Policy"]);
-    expect(() => fuseRetrievalCandidates({ dense, fts, limit: 2, rrfK: 0 })).toThrow(
-      "Hybrid retrieval rrfK must be at least 1",
-    );
   });
 
-  it("collapses duplicate projections of the same node within a leg to one RRF contribution", () => {
+  it("collapses duplicate projections within a leg before normalizing scores", () => {
     const nodeA = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
     const nodeB = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02";
-    // nodeA has two dense projections (e.g. a text-surrogate and a visual-asset projection).
     const dense = [
-      candidate(nodeA, "dense", "dense-a-text"),
-      candidate(nodeA, "dense", "dense-a-visual"),
-      candidate(nodeB, "dense", "dense-b"),
+      candidate(nodeA, "dense", "dense-a-text", 0.9),
+      candidate(nodeA, "dense", "dense-a-visual", 0.8),
+      candidate(nodeB, "dense", "dense-b", 0.5),
     ];
 
-    const fused = fuseRetrievalCandidates({ dense, fts: [], limit: 2, rrfK: 60 });
+    const fused = fuseRetrievalCandidates({ dense, fts: [], limit: 2 });
 
-    // nodeA scores a single contribution at rank 0 (1/61), not 1/61 + 1/62; nodeB is at rank 1.
     expect(fused[0]?.nodeId).toBe(nodeA);
-    expect(fused[0]?.score).toBeCloseTo(1 / 61, 12);
+    expect(fused[0]?.score).toBe(1);
     expect(fused[0]?.projectionIds).toEqual(["dense-a-text", "dense-a-visual"]);
     expect(fused[0]?.sources).toEqual(["dense"]);
     expect(fused[1]?.nodeId).toBe(nodeB);
-    expect(fused[1]?.score).toBeCloseTo(1 / 62, 12);
+    expect(fused[1]?.score).toBe(0);
+  });
+
+  it("uses the full weight of one available leg and treats equal scores as tied best results", () => {
+    const first = candidate("node-a", "fts", "fts-a", 2);
+    const second = candidate("node-b", "fts", "fts-b", 2);
+
+    const fused = fuseRetrievalCandidates({
+      dense: [],
+      fts: [second, first],
+      limit: 2,
+    });
+
+    expect(fused.map((item) => ({ nodeId: item.nodeId, score: item.score }))).toEqual([
+      { nodeId: first.nodeId, score: 1 },
+      { nodeId: second.nodeId, score: 1 },
+    ]);
+  });
+
+  it("rejects non-finite raw retrieval scores", () => {
+    expect(() =>
+      fuseRetrievalCandidates({
+        dense: [candidate("node-a", "dense", "dense-a", Number.NaN)],
+        fts: [],
+        limit: 1,
+      }),
+    ).toThrow("Hybrid retrieval candidate scores must contain only finite numbers");
   });
 
   it("uses an injected fusion runtime with bounded compute config", () => {

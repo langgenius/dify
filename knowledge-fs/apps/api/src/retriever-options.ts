@@ -22,6 +22,7 @@ import {
   filterRetrievalCandidatesByMetadata,
   filterRetrievalCandidatesByPermission,
   filterRetrievalCandidatesByProjectionSet,
+  fuseRetrievalCandidates,
   normalizeRetrievalMetadataFilters,
   normalizeRetrievalPermissionScope,
   recordRetrievalOperationalMetric,
@@ -476,30 +477,36 @@ function mergeVisualDenseItems({
     byNodeId.set(item.nodeId, cloneHybridItem(item));
   }
 
-  for (const [rank, candidate] of visualCandidates.entries()) {
-    const contribution = visualWeight / (60 + rank + 1);
-    const existing = byNodeId.get(candidate.nodeId);
+  const normalizedVisualItems = fuseRetrievalCandidates({
+    dense: visualCandidates,
+    fts: [],
+    limit: visualCandidates.length,
+  });
+
+  for (const visualItem of normalizedVisualItems) {
+    const contribution = visualItem.score * visualWeight;
+    const existing = byNodeId.get(visualItem.nodeId);
 
     if (existing) {
-      byNodeId.set(candidate.nodeId, {
+      byNodeId.set(visualItem.nodeId, {
         ...existing,
-        metadata: { ...candidate.metadata, ...existing.metadata },
-        projectionIds: uniqueStrings([...existing.projectionIds, candidate.projectionId]),
+        metadata: { ...visualItem.metadata, ...existing.metadata },
+        projectionIds: uniqueStrings([...existing.projectionIds, ...visualItem.projectionIds]),
         score: existing.score + contribution,
         sources: uniqueStrings([...existing.sources, "visual"]) as HybridRetrievalItem["sources"],
       });
       continue;
     }
 
-    byNodeId.set(candidate.nodeId, {
+    byNodeId.set(visualItem.nodeId, {
       citation: {
-        ...candidate.citation,
-        sectionPath: [...candidate.citation.sectionPath],
+        ...visualItem.citation,
+        sectionPath: [...visualItem.citation.sectionPath],
       },
-      metadata: { ...candidate.metadata },
-      nodeId: candidate.nodeId,
-      permissionScope: [...candidate.permissionScope],
-      projectionIds: [candidate.projectionId],
+      metadata: { ...visualItem.metadata },
+      nodeId: visualItem.nodeId,
+      permissionScope: visualItem.permissionScope ? [...visualItem.permissionScope] : undefined,
+      projectionIds: [...visualItem.projectionIds],
       score: contribution,
       sources: ["visual"],
     });
