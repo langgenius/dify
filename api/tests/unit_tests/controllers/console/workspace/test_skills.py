@@ -33,7 +33,7 @@ def current_user() -> Account:
     return user
 
 
-def _skill_detail() -> dict:
+def _skill_detail() -> dict[str, object]:
     return {
         "id": "skill-1",
         "name": "finance-sop",
@@ -92,13 +92,14 @@ def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(app
     api = WorkspaceSkillsApi()
     method = unwrap(api.get)
     service = MagicMock()
-    service.list_skills.return_value = {
+    list_response: dict[str, object] = {
         "data": [],
         "has_more": False,
         "limit": 20,
         "page": 1,
         "total": 0,
     }
+    service.list_skills.return_value = list_response
 
     with (
         app.test_request_context("/?keyword=finance&tag=ops&tag=", method="GET"),
@@ -236,7 +237,7 @@ def test_get_skill_version_returns_version_detail(app: Flask) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.get)
     service = MagicMock()
-    service.get_version.return_value = {
+    version_response: dict[str, object] = {
         "id": "version-1",
         "skill_id": "skill-1",
         "version_number": 1,
@@ -262,6 +263,7 @@ def test_get_skill_version_returns_version_detail(app: Flask) -> None:
             }
         ],
     }
+    service.get_version.return_value = version_response
 
     with (
         app.test_request_context("/", method="GET"),
@@ -341,11 +343,8 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
     api = WorkspaceSkillAssistMessageApi()
     method = unwrap(api.post)
     service = MagicMock()
-    assistant_app = MagicMock()
-    assistant_app.id = "assistant-app-1"
-    service.get_or_create_assistant_app.return_value = (assistant_app, "<skill_draft>draft</skill_draft>")
-    app_model = MagicMock()
-    app_response = MagicMock()
+    action_stream = MagicMock()
+    service.create_assistant_action_stream.return_value = action_stream
     compact_response = MagicMock()
 
     with (
@@ -368,19 +367,18 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
         patch(
-            "controllers.console.workspace.skills.db.session",
-            return_value=MagicMock(get=MagicMock(return_value=app_model)),
-        ),
-        patch("controllers.console.workspace.skills.AppGenerateService.generate", return_value=app_response),
-        patch("controllers.console.workspace.skills.helper.compact_generate_response", return_value=compact_response),
+            "controllers.console.workspace.skills.helper.compact_generate_response",
+            return_value=compact_response,
+        ) as compact_generate_response,
     ):
         response = method(api, "tenant-1", current_user, "skill-1")
 
     assert response is compact_response
-    service.get_or_create_assistant_app.assert_called_once_with(
+    service.create_assistant_action_stream.assert_called_once_with(
         tenant_id="tenant-1",
         skill_id="skill-1",
         user_id="user-1",
+        message="Create an approval checklist.",
         attachments=[
             SkillAssistAttachmentPayload(
                 tool_file_id="tool-file-1",
@@ -389,6 +387,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
                 size=128,
             )
         ],
-        message="Create an approval checklist.",
         model_payload=None,
+        target_path=None,
     )
+    compact_generate_response.assert_called_once_with(action_stream)

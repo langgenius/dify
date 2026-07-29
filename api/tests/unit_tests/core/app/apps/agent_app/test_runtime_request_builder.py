@@ -34,7 +34,7 @@ from models.agent_config_entities import AgentSoulConfig
 def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
-        lambda *, tenant_id, agent_id: [],
+        lambda **_kwargs: [],
     )
 
 
@@ -523,7 +523,7 @@ class TestAgentAppConfigLayer:
     def test_config_layer_includes_bound_workspace_skills(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
-            lambda *, tenant_id, agent_id: [
+            lambda **_kwargs: [
                 DifyConfigSkillConfig(
                     name="workspace-skill",
                     description="Bound workspace skill.",
