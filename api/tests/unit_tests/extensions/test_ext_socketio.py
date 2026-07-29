@@ -19,6 +19,17 @@ def test_create_socketio_client_manager_uses_pubsub_url_and_prefixed_channel(mon
     assert manager.channel == "tenant-a:socketio"
 
 
+def test_build_redis_options_does_not_set_socket_timeout_for_pubsub_listener(monkeypatch) -> None:
+   
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SOCKET_TIMEOUT", 5.0)
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6379/0")
+
+    assert "socket_timeout" not in options
+    assert "socket_connect_timeout" in options
+    assert "health_check_interval" in options
+
+
 def test_build_redis_options_includes_tls_options_for_rediss(monkeypatch) -> None:
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CERT_REQS", "CERT_REQUIRED")
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CA_CERTS", "/ca.pem")
