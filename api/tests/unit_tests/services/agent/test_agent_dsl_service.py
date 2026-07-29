@@ -684,12 +684,10 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(mon
     }
 
 
-def test_create_snapshot_increments_version_and_records_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_snapshot_increments_version_and_records_revision() -> None:
     session = Mock()
     session.scalar.return_value = 2
     service = AgentDslService(session)
-    create_initial = Mock(return_value=SimpleNamespace(id="home-3"))
-    monkeypatch.setattr("services.agent.dsl_service.AgentHomeSnapshotService.create_initial", create_initial)
 
     snapshot = service._create_snapshot(
         tenant_id="tenant-1",
@@ -700,12 +698,7 @@ def test_create_snapshot_increments_version_and_records_revision(monkeypatch: py
     )
 
     assert snapshot.version == 3
-    assert snapshot.home_snapshot_id == "home-3"
-    create_initial.assert_called_once_with(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-    )
+    assert snapshot.home_snapshot_id is None
     assert isinstance(session.add.call_args_list[0].args[0], AgentConfigSnapshot)
     revision = session.add.call_args_list[1].args[0]
     assert isinstance(revision, AgentConfigRevision)

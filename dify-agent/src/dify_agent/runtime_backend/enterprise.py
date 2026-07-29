@@ -1,10 +1,10 @@
 """Enterprise Gateway adapter for the working-environment protocol.
 
-The existing Gateway can reconnect to and delete an already allocated sandbox,
-but it cannot materialize a Home Snapshot or create a protocol-compliant
-Binding. One physical sandbox owns both the materialized Home and Workspace, so
-their cleanup is coupled. Runtime access remains operation-local and is routed
-through the Gateway's shellctl proxy.
+The existing Gateway can allocate, reconnect to, and delete a sandbox, but it
+does not expose immutable Home Snapshot operations. One physical sandbox owns
+both the materialized Home and Workspace, so their cleanup is coupled. Runtime
+access remains operation-local and is routed through the Gateway's shellctl
+proxy.
 """
 
 from __future__ import annotations
@@ -21,8 +21,10 @@ from dify_agent.adapters.shell.protocols import ShellCommandProtocol, ShellProvi
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
+    BindingCreateError,
     BindingDestroyError,
     BindingLostError,
+    SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
 from dify_agent.runtime_backend.protocols import (
@@ -31,7 +33,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingDestroySpec,
     FileSystem,
     HomeSnapshotCreateSpec,
-    InitializeHomeSnapshotSpec,
     RuntimeLayout,
     RuntimeLease,
 )
@@ -45,20 +46,12 @@ logger = logging.getLogger(__name__)
 
 
 def _not_implemented() -> NotImplementedError:
-    return NotImplementedError("Enterprise Gateway does not implement the Execution Binding protocol")
+    return NotImplementedError("Enterprise Gateway does not implement immutable Home Snapshot operations")
 
 
 @dataclass(slots=True)
 class EnterpriseHomeSnapshotBackend:
     """Reject Home Snapshot operations until the Gateway exposes immutable snapshots."""
-
-    gateway_endpoint: str
-    auth_token: str
-    gateway_timeout: float = 30.0
-
-    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
-        del spec
-        raise _not_implemented()
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
         del spec, source
@@ -71,7 +64,7 @@ class EnterpriseHomeSnapshotBackend:
 
 @dataclass(slots=True)
 class EnterpriseExecutionBindingBackend:
-    """Access and destroy legacy Gateway sandboxes as coupled physical Bindings."""
+    """Manage Gateway sandboxes as coupled physical Bindings and Workspaces."""
 
     gateway_endpoint: str
     auth_token: str
@@ -82,8 +75,56 @@ class EnterpriseExecutionBindingBackend:
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
-        del spec
-        raise _not_implemented()
+        """Create a default Gateway sandbox and initialize its canonical layout."""
+        if spec.existing_workspace_ref is not None:
+            raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
+        if spec.home_snapshot_ref is not None:
+            raise BindingCreateError("current Enterprise backend cannot materialize an immutable Home Snapshot")
+
+        sandbox_id: str | None = None
+        data_plane: ShellctlRuntimeLease | None = None
+        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
+        try:
+            async with httpx.AsyncClient(
+                base_url=self.gateway_endpoint.rstrip("/"),
+                headers=headers,
+                timeout=httpx.Timeout(self.gateway_timeout),
+            ) as client:
+                response = await client.post("/v1/sandboxes", json={"tenantId": spec.tenant_id})
+                _ = response.raise_for_status()
+                payload = response.json()
+            sandbox_id_value = payload.get("sandboxId") if isinstance(payload, dict) else None
+            if not isinstance(sandbox_id_value, str) or not sandbox_id_value:
+                raise BindingCreateError("Enterprise Gateway returned an invalid sandbox id")
+            sandbox_id = sandbox_id_value
+
+            data_plane = await self._create_data_plane(sandbox_id)
+            result = await run_shellctl_control_command(
+                ShellctlCommands(client=data_plane.client),
+                "\n".join(
+                    [
+                        "set -eu",
+                        f"mkdir -p {shlex.quote(self.layout.home_dir)}",
+                        f"rm -rf -- {shlex.quote(self.layout.workspace_dir)}",
+                        f"mkdir -p {shlex.quote(self.layout.workspace_dir)}",
+                        f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
+                    ]
+                ),
+            )
+            if result.exit_code != 0:
+                raise BindingCreateError(result.output)
+            await data_plane.close()
+            data_plane = None
+            return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
+        except BaseException as exc:
+            await _close_best_effort(data_plane, binding_ref=sandbox_id or spec.binding_id)
+            if sandbox_id is not None:
+                await self._delete_sandbox_best_effort(sandbox_id)
+            if isinstance(exc, BindingCreateError):
+                raise
+            if isinstance(exc, Exception):
+                raise BindingCreateError(str(exc)) from exc
+            raise
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         """Reconnect to one existing Gateway sandbox without creating a replacement."""
@@ -137,20 +178,33 @@ class EnterpriseExecutionBindingBackend:
         if spec.workspace_ref != spec.binding_ref:
             raise BindingDestroyError("Enterprise Workspace ref must equal its Binding ref")
 
-        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
-        encoded_binding_ref = quote(spec.binding_ref, safe="")
         try:
-            async with httpx.AsyncClient(
-                base_url=self.gateway_endpoint.rstrip("/"),
-                headers=headers,
-                timeout=httpx.Timeout(self.gateway_timeout),
-            ) as client:
-                response = await client.delete(f"/v1/sandboxes/{encoded_binding_ref}")
-                if response.status_code == 404:
-                    return
-                _ = response.raise_for_status()
+            await self._delete_sandbox(spec.binding_ref)
         except (httpx.TimeoutException, httpx.RequestError, httpx.HTTPStatusError) as exc:
             raise BindingDestroyError(str(exc)) from exc
+
+    async def _delete_sandbox(self, sandbox_id: str) -> None:
+        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
+        encoded_sandbox_id = quote(sandbox_id, safe="")
+        async with httpx.AsyncClient(
+            base_url=self.gateway_endpoint.rstrip("/"),
+            headers=headers,
+            timeout=httpx.Timeout(self.gateway_timeout),
+        ) as client:
+            response = await client.delete(f"/v1/sandboxes/{encoded_sandbox_id}")
+            if response.status_code == 404:
+                return
+            _ = response.raise_for_status()
+
+    async def _delete_sandbox_best_effort(self, sandbox_id: str) -> None:
+        try:
+            await self._delete_sandbox(sandbox_id)
+        except BaseException:
+            logger.warning(
+                "failed to delete Enterprise sandbox after Binding creation failed",
+                exc_info=True,
+                extra={"binding_ref": sandbox_id},
+            )
 
     async def _create_data_plane(self, binding_ref: str) -> ShellctlRuntimeLease:
         proxy_base_url = f"{self.gateway_endpoint.rstrip('/')}/proxy/"

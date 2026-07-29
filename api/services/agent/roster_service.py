@@ -350,17 +350,12 @@ class AgentRosterService:
         self._session.add(agent)
         self._session.flush()
 
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=self._session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
             config_snapshot=payload.agent_soul,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
             version_note=payload.version_note,
             created_by=account_id,
         )
@@ -429,17 +424,12 @@ class AgentRosterService:
         self._session.add(agent)
         self._session.flush()
 
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=self._session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
             config_snapshot=soul,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
             created_by=account_id,
         )
         self._session.add(version)

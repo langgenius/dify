@@ -510,11 +510,6 @@ class AgentComposerService:
             )
             session.add(agent)
             session.flush()
-            home_snapshot = AgentHomeSnapshotService.create_initial(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=agent.id,
-            )
             initial_version = cls._create_config_version(
                 session=session,
                 tenant_id=tenant_id,
@@ -523,7 +518,7 @@ class AgentComposerService:
                 agent_soul=AgentSoulConfig(),
                 operation=AgentConfigRevisionOperation.CREATE_VERSION,
                 version_note=None,
-                home_snapshot_id=home_snapshot.id,
+                home_snapshot_id=None,
             )
             agent.active_config_snapshot_id = initial_version.id
             agent.active_config_has_model = False
@@ -601,7 +596,7 @@ class AgentComposerService:
         tenant_id: str,
         agent: Agent,
         agent_soul: AgentSoulConfig,
-        home_snapshot_id: str,
+        home_snapshot_id: str | None,
     ) -> bool:
         if not agent.active_config_snapshot_id:
             return False
@@ -1767,11 +1762,6 @@ class AgentComposerService:
         )
         session.add(agent)
         session.flush()
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         version = cls._create_config_version(
             session=session,
             tenant_id=tenant_id,
@@ -1780,7 +1770,7 @@ class AgentComposerService:
             agent_soul=agent_soul,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
             version_note=None,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -1951,7 +1941,7 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
-        home_snapshot_id: str,
+        home_snapshot_id: str | None,
         previous_snapshot_id: str | None = None,
     ) -> AgentConfigSnapshot:
         next_version = (

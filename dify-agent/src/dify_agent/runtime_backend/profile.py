@@ -99,11 +99,7 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
             endpoint = settings.enterprise_sandbox_gateway_endpoint or ""
             token = settings.enterprise_sandbox_gateway_auth_token or ""
             return RuntimeBackendProfile(
-                home_snapshots=EnterpriseHomeSnapshotBackend(
-                    gateway_endpoint=endpoint,
-                    auth_token=token,
-                    gateway_timeout=settings.enterprise_sandbox_gateway_timeout,
-                ),
+                home_snapshots=EnterpriseHomeSnapshotBackend(),
                 execution_bindings=EnterpriseExecutionBindingBackend(
                     gateway_endpoint=endpoint,
                     auth_token=token,
@@ -116,11 +112,10 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
             return RuntimeBackendProfile(
                 home_snapshots=E2BHomeSnapshotBackend(
                     control_plane=control_plane,
-                    template=settings.e2b_template,
-                    active_timeout_seconds=settings.e2b_active_timeout_seconds,
                 ),
                 execution_bindings=E2BExecutionBindingBackend(
                     control_plane=control_plane,
+                    template=settings.e2b_template,
                     active_timeout_seconds=settings.e2b_active_timeout_seconds,
                     shellctl_auth_token=settings.e2b_shellctl_auth_token,
                     shellctl_port=settings.e2b_shellctl_port,
