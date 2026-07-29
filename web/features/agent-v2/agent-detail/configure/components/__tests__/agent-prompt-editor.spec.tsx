@@ -31,6 +31,16 @@ const mockConfigFiles = vi.hoisted(() => ({
     }>
   }>,
 }))
+const mockWorkspaceSkillBindings = vi.hoisted(() => ({
+  current: [
+    {
+      id: 'library-skill-id',
+      name: 'library-skill',
+      display_name: 'Library Skill',
+      description: 'A Skill imported from the workspace library.',
+    },
+  ],
+}))
 const mockLexical = vi.hoisted(() => ({
   selection: null as null | {
     __range: true
@@ -184,6 +194,11 @@ vi.mock('../orchestrate/config-context', () => ({
     ],
   }),
   useAgentConfigFiles: () => ({ files: mockConfigFiles.current }),
+  useAgentWorkspaceSkillBindings: () => ({
+    data: {
+      data: mockWorkspaceSkillBindings.current,
+    },
+  }),
 }))
 
 const duckDuckGoSearchAction = {
@@ -547,6 +562,24 @@ describe('AgentPromptEditor', () => {
       })
     })
 
+    it('should list and insert workspace Library Skills', async () => {
+      const { store, setPromptValue } = renderAgentPromptEditor('Use')
+
+      setPromptValue('Use/')
+      await openSlashMenuFromEditor()
+      fireEvent.click(
+        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
+      )
+      expect(
+        screen
+          .getAllByRole('button', { name: /Library Skill|Playwright/ })
+          .map((button) => button.textContent),
+      ).toEqual(['Library Skill', 'Playwright'])
+      fireEvent.click(screen.getByRole('button', { name: 'Library Skill' }))
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Use [§skill:library-skill:Library Skill§]')
+    })
+
     it('should support keyboard navigation and selection in the slash menu', async () => {
       const user = userEvent.setup()
       const { store } = renderAgentPromptEditor('Review these tenders /')
@@ -609,6 +642,13 @@ describe('AgentPromptEditor', () => {
         ).toHaveAttribute('data-agent-prompt-menu-active')
       })
 
+      await user.keyboard('{ArrowDown}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /Library Skill/i })).toHaveAttribute(
+          'data-agent-prompt-menu-active',
+        )
+      })
       await user.keyboard('{ArrowDown}')
       await waitFor(() => {
         expect(textbox).toHaveFocus()
