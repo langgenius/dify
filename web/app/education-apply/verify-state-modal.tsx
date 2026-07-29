@@ -51,7 +51,7 @@ function Confirm({
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
           <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-            {content && (
+            {content != null && (
               <DialogDescription className="w-full system-md-regular text-text-tertiary">
                 {content}
               </DialogDescription>
