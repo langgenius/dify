@@ -18,6 +18,10 @@ class RagPipelineManageService:
         manager = PluginDatasourceManager()
         datasources = manager.fetch_datasource_providers(tenant_id)
         for datasource in datasources:
+            if not datasource.declaration.credentials_schema and not datasource.declaration.oauth_schema:
+                # built-in providers that declare no credentials never require authorization
+                datasource.is_authorized = True
+                continue
             datasource_provider_service = DatasourceProviderService()
             try:
                 credentials = datasource_provider_service.get_datasource_credentials(
