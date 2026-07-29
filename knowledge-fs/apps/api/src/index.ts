@@ -558,8 +558,8 @@ const retrievalTestExecutor = retriever
       retriever,
     })
   : undefined;
-// Resolves multimodal citations (manifest item id, asset route, page/bbox) and is shared by both
-// query generators. Available in database-repository mode, which is also when the retriever exists.
+// Resolves multimodal citations (manifest item id, asset route, page/bbox) without invoking a
+// model. Available in database-repository mode, which is also when the retriever exists.
 const multimodalCandidateResolver =
   repositoryOptions.documentAssets && repositoryOptions.parseArtifacts
     ? createDocumentMultimodalCandidateResolver({
@@ -570,21 +570,26 @@ const multimodalCandidateResolver =
         parseArtifacts: repositoryOptions.parseArtifacts,
       })
     : undefined;
-const multimodalGeneratorOptions = {
-  ...multimodalAnswerOptions,
+const multimodalCitationOptions = {
   ...(multimodalCandidateResolver ? { multimodalCandidateResolver } : {}),
 };
-const extractiveQueryGenerator = retriever
+const researchAnswerMultimodalOptions = {
+  ...multimodalAnswerOptions,
+  ...multimodalCitationOptions,
+};
+// Interactive query-stream is a retrieval surface: it returns bounded evidence and citations,
+// never an LLM/VLM-synthesized answer. Answer synthesis remains a separate Research capability.
+const retrievalEvidenceQueryGenerator = retriever
   ? createHybridQueryGenerator({
       limit: 5,
       maxAnswerChars: 2_000,
       retriever,
       topK: 10,
       ...embeddingGeneratorOptions,
-      ...multimodalGeneratorOptions,
+      ...multimodalCitationOptions,
     })
   : undefined;
-const llmAnswerQueryGenerator = retriever
+const profileLlmAnswerQueryGenerator = retriever
   ? createLlmAnswerQueryGenerator({
       limit: 5,
       maxAnswerChars: 2_000,
@@ -594,14 +599,14 @@ const llmAnswerQueryGenerator = retriever
       temperature: 0,
       topK: 10,
       ...embeddingGeneratorOptions,
-      ...multimodalGeneratorOptions,
+      ...researchAnswerMultimodalOptions,
     })
   : undefined;
-const queryGenerator =
-  extractiveQueryGenerator && llmAnswerQueryGenerator
+const researchAnswerQueryGenerator =
+  retrievalEvidenceQueryGenerator && profileLlmAnswerQueryGenerator
     ? createProfileAwareQueryGenerator({
-        extractiveGenerator: extractiveQueryGenerator,
-        profileLlmGenerator: llmAnswerQueryGenerator,
+        extractiveGenerator: retrievalEvidenceQueryGenerator,
+        profileLlmGenerator: profileLlmAnswerQueryGenerator,
       })
     : undefined;
 const researchProjectionSnapshotResolver = repositoryOptions.projectionSetPublications
@@ -646,7 +651,7 @@ const researchTaskRuntime =
   databaseRepositories.researchTaskPartialResults &&
   databaseRepositories.researchTaskProgressEvents &&
   repositoryOptions.knowledgeSpaceAccess &&
-  queryGenerator
+  researchAnswerQueryGenerator
     ? createApiResearchTaskRuntime({
         access: repositoryOptions.knowledgeSpaceAccess,
         adapter,
@@ -654,7 +659,7 @@ const researchTaskRuntime =
           ? { capabilityGrants: databaseRepositories.capabilityGrantProvenance }
           : {}),
         ...(deletionLifecycleFence ? { deletionFence: deletionLifecycleFence } : {}),
-        generator: queryGenerator,
+        generator: researchAnswerQueryGenerator,
         manifests: knowledgeSpaceManifests,
         metrics: operationalMetrics.durableTasks,
         partials: databaseRepositories.researchTaskPartialResults,
@@ -768,7 +773,7 @@ const app = createKnowledgeGateway({
         },
       }
     : {}),
-  ...(queryGenerator ? { queryGenerator } : {}),
+  ...(retrievalEvidenceQueryGenerator ? { queryGenerator: retrievalEvidenceQueryGenerator } : {}),
   ...(retrievalTestExecutor ? { retrievalTestExecutor } : {}),
   ...(publishedGraph ? { publishedGraph } : {}),
   ...(researchTaskRuntime

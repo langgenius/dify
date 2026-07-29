@@ -113,6 +113,42 @@ describe("createApiAnswerGenerationOptions", () => {
     expect(indexSource).not.toContain("model: answerGenerationOptions.model");
   });
 
+  it("keeps interactive retrieval evidence-only and reserves LLM synthesis for Research", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const indexSource = await readFile(new URL("./index.ts", import.meta.url), "utf8");
+    const citationOptionsStart = indexSource.indexOf("const multimodalCitationOptions =");
+    const researchMultimodalOptionsStart = indexSource.indexOf(
+      "const researchAnswerMultimodalOptions =",
+    );
+    const retrievalAssemblyStart = indexSource.indexOf(
+      "const retrievalEvidenceQueryGenerator = retriever",
+    );
+    const researchAnswerAssemblyStart = indexSource.indexOf(
+      "const profileLlmAnswerQueryGenerator = retriever",
+    );
+    const retrievalAssembly = indexSource.slice(
+      retrievalAssemblyStart,
+      researchAnswerAssemblyStart,
+    );
+    const citationOptionsAssembly = indexSource.slice(
+      citationOptionsStart,
+      researchMultimodalOptionsStart,
+    );
+
+    expect(citationOptionsStart).toBeGreaterThanOrEqual(0);
+    expect(researchMultimodalOptionsStart).toBeGreaterThan(citationOptionsStart);
+    expect(retrievalAssemblyStart).toBeGreaterThanOrEqual(0);
+    expect(researchAnswerAssemblyStart).toBeGreaterThan(retrievalAssemblyStart);
+    expect(citationOptionsAssembly).toContain("multimodalCandidateResolver");
+    expect(citationOptionsAssembly).not.toContain("multimodalAnswerOptions");
+    expect(retrievalAssembly).toContain("createHybridQueryGenerator");
+    expect(retrievalAssembly).toContain("...multimodalCitationOptions");
+    expect(retrievalAssembly).not.toContain("multimodalAnswerOptions");
+    expect(indexSource).toContain("generator: researchAnswerQueryGenerator");
+    expect(indexSource).toContain("{ queryGenerator: retrievalEvidenceQueryGenerator }");
+    expect(indexSource).not.toContain("{ queryGenerator: researchAnswerQueryGenerator }");
+  });
+
   it("honors explicit output-token overrides", () => {
     const options = createApiAnswerGenerationOptions({
       KNOWLEDGE_ANSWER_MAX_OUTPUT_TOKENS: "2048",
