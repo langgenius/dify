@@ -1,9 +1,12 @@
 import type { PluginPayload } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQueryState } from 'nuqs'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from './authorize'
 import Authorized from './authorized'
@@ -17,7 +20,7 @@ type PluginAuthProps = {
 }
 const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => {
   const { t } = useTranslation()
-  const { setShowAccountSettingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { canCreateCredential } = useCredentialPermissions()
   const {
     isAuthorized,
@@ -66,9 +69,7 @@ const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => 
                     <button
                       type="button"
                       className="-ml-1.5 rounded-md px-1.5 py-0.5 system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={() =>
-                        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
-                      }
+                      onClick={() => setSettingsDestination('members')}
                     >
                       {t(($) => $['auth.permissionHint.action'], { ns: 'plugin' })}
                     </button>

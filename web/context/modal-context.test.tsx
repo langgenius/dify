@@ -1,16 +1,19 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -36,8 +39,28 @@ vi.mock('@/app/components/header/account-setting', () => ({
   ),
 }))
 
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
+vi.mock('@/app/components/integrations/modal', () => ({
+  default: ({
+    section,
+    onCancel,
+    onSectionChange,
+  }: {
+    section: string
+    onCancel: () => void
+    onSectionChange: (section: 'data-source') => void
+  }) => (
+    <>
+      <div role="status" aria-label="active integration setting section">
+        {section}
+      </div>
+      <button type="button" onClick={() => onSectionChange('data-source')}>
+        switch integration section
+      </button>
+      <button type="button" onClick={onCancel}>
+        cancel integration setting
+      </button>
+    </>
+  ),
 }))
 
 const mockUseProviderContext = vi.fn()
@@ -83,45 +106,29 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
 
 const renderProvider = (
   children: React.ReactNode = <div data-testid="modal-context-test-child" />,
+  searchParams = '',
 ) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
   const wrapper = ({ children: wrapperChildren }: { children: React.ReactNode }) => (
     <QueryWrapper>
       <NuqsWrapper>{wrapperChildren}</NuqsWrapper>
     </QueryWrapper>
   )
 
-  return render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper })
-}
-
-const AccountSettingOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
-
-  return (
-    <button
-      type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
-    >
-      open account setting
-    </button>
-  )
+  return {
+    ...render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper }),
+    onUrlUpdate,
+  }
 }
 
 const PreferencesOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   return (
-    <button
-      type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
-    >
+    <button type="button" onClick={() => setSettingsDestination(ACCOUNT_SETTING_TAB.PREFERENCES)}>
       open preferences
     </button>
   )
@@ -137,7 +144,6 @@ describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
     mockConsoleStateReader.mockReset()
     mockUseProviderContext.mockReset()
-    mockSetEducationVerifying.mockReset()
     window.localStorage.clear()
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: {
@@ -182,34 +188,14 @@ describe('ModalContextProvider trigger events limit modal', () => {
     expect(value).toBe('1')
   })
 
-  it('clears the education verifying flag when account settings are canceled', async () => {
+  it('opens settings with push and closes them with replace', async () => {
     mockUseProviderContext.mockReturnValue({
       plan: createPlan(),
       isFetchedPlan: true,
     })
     const user = userEvent.setup()
 
-    renderProvider(<AccountSettingOpener />)
-
-    await user.click(screen.getByRole('button', { name: 'open account setting' }))
-    await user.click(await screen.findByRole('button', { name: 'cancel account setting' }))
-
-    expect(mockSetEducationVerifying).toHaveBeenCalledWith(expect.any(Function))
-    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (
-      educationVerifying: string,
-    ) => string | null
-    expect(updater('yes')).toBeNull()
-    expect(updater('no')).toBe('no')
-  })
-
-  it('opens preferences in the account settings shell', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: createPlan(),
-      isFetchedPlan: true,
-    })
-    const user = userEvent.setup()
-
-    renderProvider(
+    const { onUrlUpdate } = renderProvider(
       <>
         <BlockingModalProbe />
         <PreferencesOpener />
@@ -223,6 +209,9 @@ describe('ModalContextProvider trigger events limit modal', () => {
     expect(
       await screen.findByRole('status', { name: 'active account setting tab' }),
     ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('settings')).toBe('preferences')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('push')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.shallow).toBe(false)
     expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('true')
 
     await user.click(screen.getByRole('button', { name: 'cancel account setting' }))
@@ -230,6 +219,42 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
     })
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('settings')).toBe(false)
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('replace')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.shallow).toBe(true)
+  })
+
+  it('renders an integration destination and replaces history when switching sections', async () => {
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: true,
+    })
+    const user = userEvent.setup()
+
+    const { onUrlUpdate } = renderProvider(<BlockingModalProbe />, '?settings=provider')
+
+    expect(
+      await screen.findByRole('status', { name: 'active integration setting section' }),
+    ).toHaveTextContent('provider')
+    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('true')
+
+    await user.click(screen.getByRole('button', { name: 'switch integration section' }))
+
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('settings')).toBe('data-source')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('replace')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.shallow).toBe(true)
+  })
+
+  it('ignores invalid settings destinations', () => {
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: true,
+    })
+
+    renderProvider(<BlockingModalProbe />, '?settings=unknown')
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

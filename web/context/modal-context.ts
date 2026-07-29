@@ -4,7 +4,6 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { SettingsTab } from '@/app/components/header/account-setting/constants'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -24,7 +23,6 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 
 export type ModalState<T> = {
   payload: T
-  source?: 'agent'
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
   onRemoveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
@@ -46,7 +44,6 @@ export type ModelModalType = {
 
 export type ModalContextState = {
   hasBlockingModalOpen: boolean
-  setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<SettingsTab> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: () => void
@@ -76,7 +73,6 @@ export type ModalContextState = {
 
 export const ModalContext = createContext<ModalContextState>({
   hasBlockingModalOpen: false,
-  setShowAccountSettingModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
   setShowPricingModal: noop,

@@ -41,7 +41,6 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 }
 
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -64,10 +63,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 vi.mock('@/context/i18n', () => ({

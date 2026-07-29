@@ -1,12 +1,11 @@
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { render } from '@/test/console/render'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory } from '../types'
 
 const mockUsePluginAuth = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
@@ -31,11 +30,10 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 const defaultPayload = {
   category: AuthCategory.tool,
@@ -155,9 +153,7 @@ describe('PluginAuth', () => {
     render(<PluginAuth pluginPayload={defaultPayload} />)
     fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.MEMBERS,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('members')
   })
 
   it('does not render permission hint for datasource authorization', () => {
