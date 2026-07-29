@@ -18,15 +18,11 @@ export type SettingsDestination = inferParserType<typeof settingsQueryParser>
 export const isAccountSettingDestination = (
   destination: SettingsDestination | null,
 ): destination is (typeof ACCOUNT_SETTING_TAB_VALUES)[number] => {
-  return ACCOUNT_SETTING_TAB_VALUES.includes(
-    destination as (typeof ACCOUNT_SETTING_TAB_VALUES)[number],
-  )
+  return ACCOUNT_SETTING_TAB_VALUES.some((value) => value === destination)
 }
 
 export const isIntegrationSettingDestination = (
   destination: SettingsDestination | null,
 ): destination is (typeof INTEGRATION_SECTION_VALUES)[number] => {
-  return INTEGRATION_SECTION_VALUES.includes(
-    destination as (typeof INTEGRATION_SECTION_VALUES)[number],
-  )
+  return INTEGRATION_SECTION_VALUES.some((value) => value === destination)
 }
