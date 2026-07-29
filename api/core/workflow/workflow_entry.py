@@ -214,6 +214,8 @@ class WorkflowEntry:
 
         # Get node type
         node_type = node_config_data.type
+        if node_type in {BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION}:
+            raise ValueError("Loop and Iteration nodes must use their engine-backed debug endpoints")
         node_version = str(node_config_data.version)
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 

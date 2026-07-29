@@ -223,6 +223,21 @@ class TestWorkflowEntryRun:
 
 
 class TestWorkflowEntrySingleStepRun:
+    @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION])
+    def test_rejects_container_nodes(self, node_type):
+        workflow = SimpleNamespace(
+            get_node_config_by_id=lambda _node_id: _build_typed_node_config(node_type),
+        )
+
+        with pytest.raises(ValueError, match="engine-backed debug endpoints"):
+            workflow_entry.WorkflowEntry.single_step_run(
+                workflow=workflow,
+                node_id="node-id",
+                user_id="user-id",
+                user_inputs={},
+                variable_pool=sentinel.variable_pool,
+            )
+
     def test_preloads_constructor_variables_before_creating_memory_node(self):
         class FakeLLMNode:
             id = "node-id"

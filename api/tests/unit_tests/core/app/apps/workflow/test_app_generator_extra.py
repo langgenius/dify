@@ -543,6 +543,8 @@ class TestWorkflowAppGeneratorWorker:
             lambda self, *, session, workflow: workflow,
         )
         monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppRunner", _Runner)
+        restore_workflow_run_graph = Mock()
+        monkeypatch.setattr(generator, "_restore_workflow_run_graph", restore_workflow_run_graph)
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -574,6 +576,12 @@ class TestWorkflowAppGeneratorWorker:
             variable_loader=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
         )
 
         assert runner_kwargs["system_user_id"] == "session-id"
+        restore_workflow_run_graph.assert_called_once_with(
+            session=session,
+            workflow=workflow,
+            workflow_run_id="run-id",
+        )

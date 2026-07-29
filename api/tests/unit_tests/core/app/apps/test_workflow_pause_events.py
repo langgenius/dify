@@ -59,9 +59,6 @@ class _RecordingWorkflowAppRunner(WorkflowAppRunner):
 class _FakeRuntimeState:
     variable_pool = object()
 
-    def get_paused_nodes(self):
-        return ["node-pause-1"]
-
 
 def _build_runner():
     app_entity = SimpleNamespace(
@@ -119,6 +116,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
         "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
         lambda **_: [enriched_reason],
     )
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
 
     runner._handle_event(workflow_entry, event)
 
@@ -127,7 +125,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     assert isinstance(queue_event, QueueWorkflowPausedEvent)
     assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
-    assert queue_event.paused_nodes == ["node-pause-1"]
+    assert queue_event.paused_nodes == ["node-human"]
 
 
 def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
