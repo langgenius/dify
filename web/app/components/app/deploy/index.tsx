@@ -51,6 +51,7 @@ export default function AppDeploy() {
                 kind: 'changeVersion',
               })
             }
+            onUndeploy={() => {}}
           />
         </div>
       </main>

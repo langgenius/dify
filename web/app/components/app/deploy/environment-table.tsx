@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessPointIcon } from './access-point-icon'
@@ -21,6 +22,7 @@ import {
   MOCK_ENVIRONMENT_CAPACITY,
   MOCK_ENVIRONMENT_DEPLOYMENTS,
 } from './mock-data'
+import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 import { VersionLabel } from './version-label'
 
 function activityLabel(
@@ -88,83 +90,101 @@ const ROW_ACTION_ICON_CLASS_NAMES: Record<MockRowAction['kind'], string> = {
 function RowActions({
   row,
   onChangeVersion,
+  onUndeploy,
 }: {
   row: MockEnvironmentDeployment
   onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+  onUndeploy?: (deployment: MockEnvironmentDeployment) => void
 }) {
   const { t } = useTranslation('deployments')
+  const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const label = rowActionLabel(row.action, t)
 
+  const handleUndeploy = useCallback(() => {
+    onUndeploy?.(row)
+    setShowUndeployConfirm(false)
+  }, [onUndeploy, row])
+
   return (
-    <div className="flex items-center justify-end gap-1">
-      <Button
-        size="small"
-        variant="secondary"
-        disabled={row.action.kind === 'changeVersion' && row.action.disabled}
-        onClick={() => row.action.kind === 'changeVersion' && onChangeVersion?.(row)}
-        className="min-w-0 grow gap-1 px-2"
-      >
-        <span
-          aria-hidden
-          className={cn(ROW_ACTION_ICON_CLASS_NAMES[row.action.kind], 'size-3.5 shrink-0')}
-        />
-        <span className="truncate">{label}</span>
-      </Button>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              size="small"
-              variant="secondary"
-              aria-label={`${row.name} · ${t(($) => $['deployTab.moreActions'])}`}
-              className="w-6 shrink-0 px-0"
+    <>
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          size="small"
+          variant="secondary"
+          disabled={row.action.kind === 'changeVersion' && row.action.disabled}
+          onClick={() => row.action.kind === 'changeVersion' && onChangeVersion?.(row)}
+          className="min-w-0 grow gap-1 px-2"
+        >
+          <span
+            aria-hidden
+            className={cn(ROW_ACTION_ICON_CLASS_NAMES[row.action.kind], 'size-3.5 shrink-0')}
+          />
+          <span className="truncate">{label}</span>
+        </Button>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="small"
+                variant="secondary"
+                aria-label={`${row.name} · ${t(($) => $['deployTab.moreActions'])}`}
+                className="w-6 shrink-0 px-0"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-50">
+            <DropdownMenuItem
+              disabled={row.action.kind === 'changeVersion' && row.action.disabled}
+              className="gap-2 px-2"
+              onClick={() => onChangeVersion?.(row)}
             >
-              <span aria-hidden className="i-ri-more-fill size-4" />
-            </Button>
-          }
-        />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-50">
-          <DropdownMenuItem
-            disabled={row.action.kind === 'changeVersion' && row.action.disabled}
-            className="gap-2 px-2"
-            onClick={() => onChangeVersion?.(row)}
-          >
-            <span aria-hidden className="i-ri-repeat-line size-4 shrink-0 text-text-secondary" />
-            <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-              {t(($) => $['studio.changeVersion'])}
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 px-2">
-            <span
-              aria-hidden
-              className="i-custom-vender-other-replay-line size-4 shrink-0 text-text-secondary"
-            />
-            <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-              {t(($) => $['deployTab.redeploy'])}
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2 px-2">
-            <span
-              aria-hidden
-              className="i-ri-logout-circle-r-line size-4 shrink-0 text-text-secondary"
-            />
-            <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-              {t(($) => $['deployTab.undeploy'])}
-            </span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+              <span aria-hidden className="i-ri-repeat-line size-4 shrink-0 text-text-secondary" />
+              <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                {t(($) => $['studio.changeVersion'])}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 px-2">
+              <span
+                aria-hidden
+                className="i-custom-vender-other-replay-line size-4 shrink-0 text-text-secondary"
+              />
+              <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                {t(($) => $['deployTab.redeploy'])}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2 px-2" onClick={() => setShowUndeployConfirm(true)}>
+              <span
+                aria-hidden
+                className="i-ri-logout-circle-r-line size-4 shrink-0 text-text-secondary"
+              />
+              <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                {t(($) => $['deployTab.undeploy'])}
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <UndeployConfirmDialog
+        environmentName={row.name}
+        open={showUndeployConfirm}
+        onConfirm={handleUndeploy}
+        onOpenChange={setShowUndeployConfirm}
+      />
+    </>
   )
 }
 
 function EnvironmentRow({
   row,
   onChangeVersion,
+  onUndeploy,
 }: {
   row: MockEnvironmentDeployment
   onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+  onUndeploy?: (deployment: MockEnvironmentDeployment) => void
 }) {
   return (
     <tr className="h-14 border-b border-divider-subtle hover:bg-state-base-hover">
@@ -197,7 +217,7 @@ function EnvironmentRow({
         </div>
       </td>
       <td className="border-b border-divider-subtle pr-2 pl-3">
-        <RowActions row={row} onChangeVersion={onChangeVersion} />
+        <RowActions row={row} onChangeVersion={onChangeVersion} onUndeploy={onUndeploy} />
       </td>
     </tr>
   )
@@ -207,12 +227,14 @@ type EnvironmentTableProps = {
   deployments?: MockEnvironmentDeployment[]
   onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
   onDeployToEnvironment?: (environment: string) => void
+  onUndeploy?: (deployment: MockEnvironmentDeployment) => void
 }
 
 export function EnvironmentTable({
   deployments = MOCK_ENVIRONMENT_DEPLOYMENTS,
   onChangeVersion,
   onDeployToEnvironment,
+  onUndeploy,
 }: EnvironmentTableProps) {
   const { t } = useTranslation('deployments')
   const used = deployments.length
@@ -285,7 +307,12 @@ export function EnvironmentTable({
             </thead>
             <tbody>
               {deployments.map((row) => (
-                <EnvironmentRow key={row.id} row={row} onChangeVersion={onChangeVersion} />
+                <EnvironmentRow
+                  key={row.id}
+                  row={row}
+                  onChangeVersion={onChangeVersion}
+                  onUndeploy={onUndeploy}
+                />
               ))}
             </tbody>
           </table>

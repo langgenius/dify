@@ -7,6 +7,13 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
 
   return createReactI18nextMock({
+    'common.operation.cancel': 'Cancel',
+    'deployments.deployTab.confirmUndeploy': 'Undeploy',
+    'deployments.deployTab.undeployConfirmDesc':
+      'The environment endpoint will become unavailable, but the version will not be deleted.',
+    'deployments.deployTab.undeployConfirmTitle': 'Undeploy {{name}}?',
+    'deployments.deployTab.undeployConfirmWarning':
+      'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
 })
@@ -181,6 +188,67 @@ describe('AppDeploy', () => {
         name: 'deployments.deployTab.deployOtherVersion',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('asks for confirmation before undeploying an environment', async () => {
+    const user = userEvent.setup()
+    const onUndeploy = vi.fn()
+    render(<EnvironmentTable onUndeploy={onUndeploy} />)
+
+    const canaryRow = screen.getByRole('row', { name: /Canary/ })
+    await user.click(
+      within(canaryRow).getByRole('button', {
+        name: 'Canary · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(
+      within(screen.getByRole('menu')).getByRole('menuitem', {
+        name: 'deployments.deployTab.undeploy',
+      }),
+    )
+
+    const dialog = await screen.findByRole('alertdialog', { name: 'Undeploy Canary?' })
+    expect(
+      within(dialog).getByText(
+        'The environment endpoint will become unavailable, but the version will not be deleted.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(
+        'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
+      ),
+    ).toBeInTheDocument()
+    expect(onUndeploy).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(onUndeploy).not.toHaveBeenCalled()
+  })
+
+  it('undeploys the selected environment after confirmation', async () => {
+    const user = userEvent.setup()
+    const onUndeploy = vi.fn()
+    render(<EnvironmentTable onUndeploy={onUndeploy} />)
+
+    const canaryRow = screen.getByRole('row', { name: /Canary/ })
+    await user.click(
+      within(canaryRow).getByRole('button', {
+        name: 'Canary · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(
+      within(screen.getByRole('menu')).getByRole('menuitem', {
+        name: 'deployments.deployTab.undeploy',
+      }),
+    )
+    const dialog = await screen.findByRole('alertdialog', { name: 'Undeploy Canary?' })
+
+    await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }))
+
+    expect(onUndeploy).toHaveBeenCalledOnce()
+    expect(onUndeploy).toHaveBeenCalledWith(expect.objectContaining({ id: 'canary' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('shows publication details and the version description on hover', async () => {
