@@ -558,6 +558,51 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
+      installedApps: {
+        byInstalledAppId: {
+          get: {
+            queryOptions: {
+              retry: (failureCount, error) => {
+                if (error instanceof Response && error.status === 404) return false
+
+                return failureCount < 3
+              },
+            },
+          },
+          delete: {
+            mutationOptions: {
+              onSuccess: (_response, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
+                    input: {
+                      params: variables.params,
+                    },
+                  }),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.installedApps.get.key(),
+                })
+              },
+            },
+          },
+          patch: {
+            mutationOptions: {
+              onSuccess: (_response, variables, _onMutateResult, context) => {
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.installedApps.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
+                    input: {
+                      params: variables.params,
+                    },
+                  }),
+                })
+              },
+            },
+          },
+        },
+      },
       agent: {
         post: {
           mutationOptions: {

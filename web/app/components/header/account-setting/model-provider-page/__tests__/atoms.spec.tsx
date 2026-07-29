@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   useExpandModelProviderList,
   useModelProviderListExpanded,
-  useResetModelProviderListExpanded,
   useSetModelProviderListExpanded,
 } from '../atoms'
 
@@ -169,73 +168,6 @@ describe('atoms', () => {
     })
   })
 
-  // Reset hook: clears all expanded state back to empty
-  describe('useResetModelProviderListExpanded', () => {
-    it('should reset all expanded providers to false', () => {
-      const { result } = renderHook(
-        () => ({
-          openaiExpanded: useModelProviderListExpanded('openai'),
-          anthropicExpanded: useModelProviderListExpanded('anthropic'),
-          expand: useExpandModelProviderList(),
-          reset: useResetModelProviderListExpanded(),
-        }),
-        { wrapper },
-      )
-
-      act(() => {
-        result.current.expand('openai')
-      })
-      act(() => {
-        result.current.expand('anthropic')
-      })
-      act(() => {
-        result.current.reset()
-      })
-
-      expect(result.current.openaiExpanded).toBe(false)
-      expect(result.current.anthropicExpanded).toBe(false)
-    })
-
-    it('should be safe to call when no providers are expanded', () => {
-      const { result } = renderHook(
-        () => ({
-          expanded: useModelProviderListExpanded('openai'),
-          reset: useResetModelProviderListExpanded(),
-        }),
-        { wrapper },
-      )
-
-      act(() => {
-        result.current.reset()
-      })
-
-      expect(result.current.expanded).toBe(false)
-    })
-
-    it('should allow re-expanding providers after reset', () => {
-      const { result } = renderHook(
-        () => ({
-          expanded: useModelProviderListExpanded('openai'),
-          expand: useExpandModelProviderList(),
-          reset: useResetModelProviderListExpanded(),
-        }),
-        { wrapper },
-      )
-
-      act(() => {
-        result.current.expand('openai')
-      })
-      act(() => {
-        result.current.reset()
-      })
-      act(() => {
-        result.current.expand('openai')
-      })
-
-      expect(result.current.expanded).toBe(true)
-    })
-  })
-
   // Cross-hook interaction: verify hooks cooperate through the shared atom
   describe('Cross-hook interaction', () => {
     it('should reflect state set by useSetModelProviderListExpanded in useModelProviderListExpanded', () => {
@@ -288,26 +220,6 @@ describe('atoms', () => {
       act(() => {
         result.current.setExpanded(false)
       })
-      expect(result.current.expanded).toBe(false)
-    })
-
-    it('should reset state set by useSetModelProviderListExpanded via useResetModelProviderListExpanded', () => {
-      const { result } = renderHook(
-        () => ({
-          expanded: useModelProviderListExpanded('openai'),
-          setExpanded: useSetModelProviderListExpanded('openai'),
-          reset: useResetModelProviderListExpanded(),
-        }),
-        { wrapper },
-      )
-
-      act(() => {
-        result.current.setExpanded(true)
-      })
-      act(() => {
-        result.current.reset()
-      })
-
       expect(result.current.expanded).toBe(false)
     })
   })

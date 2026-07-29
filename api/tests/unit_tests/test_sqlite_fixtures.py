@@ -5,6 +5,7 @@ from threading import Barrier
 import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import URL, Engine
+from sqlalchemy.exc import UnboundExecutionError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -56,6 +57,25 @@ def test_core_session_factory_uses_the_shared_sqlite_session_factory(
 
     with session_factory_module.session_factory.create_session() as session:
         assert session.scalar(text("SELECT value FROM global_factory_probe")) == 42
+
+
+def test_unbound_session_factory_disables_explicit_and_global_database_access(
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
+    assert session_factory_module.session_factory.get_session_maker() is unbound_session_factory
+
+    with unbound_session_factory() as session:
+        with pytest.raises(UnboundExecutionError):
+            session.get_bind()
+
+    with session_factory_module.session_factory.create_session() as session:
+        with pytest.raises(UnboundExecutionError):
+            session.execute(text("SELECT 1"))
+
+
+def test_unbound_session_rejects_database_access(unbound_session: Session) -> None:
+    with pytest.raises(UnboundExecutionError):
+        unbound_session.scalar(text("SELECT 1"))
 
 
 def test_sqlite_session_factory_shares_one_database_across_worker_sessions(
