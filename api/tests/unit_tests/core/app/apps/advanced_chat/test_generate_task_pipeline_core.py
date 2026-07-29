@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
@@ -60,7 +58,6 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.file import FileTransferMethod, FileType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
-from models.base import TypeBase
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser, Message, MessageFile
 from tests.workflow_test_utils import build_test_variable_pool
@@ -115,29 +112,7 @@ def _make_pipeline():
     return pipeline
 
 
-@pytest.fixture
-def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield SQLite state for message updates owned by the task pipeline."""
-    tables = [TypeBase.metadata.tables[model.__tablename__] for model in (Message, MessageFile)]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
-
-
-def _bind_database_session(pipeline: AdvancedChatAppGenerateTaskPipeline, session: Session) -> None:
-    @contextmanager
-    def _database_session():
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-
-    pipeline._database_session = _database_session
-
-
-def _persist_message(session: Session) -> Message:
+def _persist_message(session: Session, *, message_id: str = "message-id") -> Message:
     message = Message(
         app_id="app",
         model_provider="provider",
@@ -165,7 +140,7 @@ def _persist_message(session: Session) -> Message:
         app_mode=AppMode.ADVANCED_CHAT,
         status=MessageStatus.PAUSED,
     )
-    message.id = "message-id"
+    message.id = message_id
     session.add(message)
     session.commit()
     return message
@@ -311,35 +286,34 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert isinstance(responses[0], PingStreamResponse)
 
-    def test_handle_error_event(self, orm_session: Session):
+    def test_handle_error_event(self):
         pipeline = _make_pipeline()
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
-
-        _bind_database_session(pipeline, orm_session)
 
         responses = list(pipeline._handle_error_event(QueueErrorEvent(error=ValueError("boom"))))
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, orm_session: Session):
+    def test_handle_workflow_started_event_sets_run_id(self, sqlite_session: Session):
         pipeline = _make_pipeline()
-        message = _persist_message(orm_session)
+        message = _persist_message(sqlite_session)
+        other_message = _persist_message(sqlite_session, message_id="other-message-id")
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
-        _bind_database_session(pipeline, orm_session)
-
         responses = list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
 
         assert pipeline._workflow_run_id == "run-id"
         assert responses == ["started"]
 
-        orm_session.refresh(message)
+        sqlite_session.refresh(message)
+        sqlite_session.refresh(other_message)
         assert message.workflow_run_id == "run-id"
+        assert other_message.workflow_run_id is None
 
     def test_message_end_to_stream_response_strips_annotation_reply(self):
         pipeline = _make_pipeline()
@@ -502,7 +476,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_loop_next_event(loop_next)) == ["loop_next"]
         assert list(pipeline._handle_loop_completed_event(loop_done)) == ["loop_done"]
 
-    def test_workflow_finish_handlers(self, orm_session: Session):
+    def test_workflow_finish_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
@@ -519,8 +493,6 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
         pipeline._get_message = lambda **kwargs: SimpleNamespace(id="message-id")
-
-        _bind_database_session(pipeline, orm_session)
 
         succeeded_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
         assert len(succeeded_responses) == 2
@@ -678,7 +650,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert persisted == ["saved"]
 
-    def test_save_message_preserves_full_answer_and_sets_usage(self, orm_session: Session):
+    def test_save_message_preserves_full_answer_and_sets_usage(self, sqlite_session: Session):
         pipeline = _make_pipeline()
         pipeline._recorded_files = [
             {
@@ -694,7 +666,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._task_state.first_token_time = pipeline._base_task_pipeline.start_at + 0.1
         pipeline._task_state.last_token_time = pipeline._base_task_pipeline.start_at + 0.2
 
-        message = _persist_message(orm_session)
+        message = _persist_message(sqlite_session)
 
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
@@ -703,15 +675,15 @@ class TestAdvancedChatGenerateTaskPipeline:
             start_at=0.0,
         )
 
-        pipeline._save_message(session=orm_session, graph_runtime_state=graph_runtime_state)
-        orm_session.commit()
+        pipeline._save_message(session=sqlite_session, graph_runtime_state=graph_runtime_state)
+        sqlite_session.commit()
 
         assert message.status == MessageStatus.NORMAL
         assert message.answer == "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         assert message.message_metadata
-        assert orm_session.query(MessageFile).filter_by(message_id=message.id).count() == 1
+        assert sqlite_session.query(MessageFile).filter_by(message_id=message.id).count() == 1
 
-    def test_handle_stop_event_saves_message_for_moderation(self, orm_session: Session):
+    def test_handle_stop_event_saves_message_for_moderation(self):
         pipeline = _make_pipeline()
         pipeline._message_end_to_stream_response = lambda: "end"
         saved: list[str] = []
@@ -721,14 +693,12 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         pipeline._save_message = _save_message
 
-        _bind_database_session(pipeline, orm_session)
-
         responses = list(pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION)))
 
         assert responses == ["end"]
         assert saved == ["saved"]
 
-    def test_handle_message_end_event_applies_output_moderation(self, orm_session: Session):
+    def test_handle_message_end_event_applies_output_moderation(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
@@ -746,8 +716,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             saved.append("saved")
 
         pipeline._save_message = _save_message
-
-        _bind_database_session(pipeline, orm_session)
 
         responses = list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
 
