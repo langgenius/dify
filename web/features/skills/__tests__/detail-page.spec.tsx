@@ -838,6 +838,63 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('does not send the Skill Builder prompt while an attachment is uploading', async () => {
+    const user = userEvent.setup()
+    mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    await waitFor(() => {
+      expect(mocks.uploadSkillFile).toHaveBeenCalledOnce()
+    })
+
+    const promptInput = screen.getByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    await user.type(promptInput, 'Use the attached guide{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+    expect(promptInput).toHaveValue('Use the attached guide')
+  })
+
+  it('disables Skill Builder suggestions while an attachment is uploading', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    await waitFor(() => {
+      expect(mocks.uploadSkillFile).toHaveBeenCalledOnce()
+    })
+
+    const suggestion = screen.getByRole('button', {
+      name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+    })
+    expect(suggestion).toBeDisabled()
+
+    await user.click(suggestion)
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+  })
+
   it('does not send the Skill Builder prompt when Enter confirms IME composition', async () => {
     renderSkillDetailPage()
 

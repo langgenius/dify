@@ -5686,6 +5686,7 @@ function SkillBuilderPanel({
     if (
       !canSendBuilderMessage ||
       (!trimmedPrompt && attachedFiles.length === 0) ||
+      isUploadingAttachment ||
       isSendingRef.current
     )
       return
@@ -5840,7 +5841,7 @@ function SkillBuilderPanel({
                       key={suggestion}
                       type="button"
                       className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isSending || !canSendBuilderMessage}
+                      disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
                       {suggestion}
@@ -5872,7 +5873,7 @@ function SkillBuilderPanel({
                       key={suggestion}
                       type="button"
                       className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isSending || !canSendBuilderMessage}
+                      disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
                       {suggestion}
