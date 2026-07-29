@@ -1,4 +1,4 @@
-"""Typed KnowledgeFS BFF facade over operation capabilities and bounded transports."""
+"""Typed KnowledgeFS BFF facade over operation capabilities and internal transports."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pydantic import BaseModel, JsonValue
 from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
@@ -47,6 +48,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
+    KnowledgeFSPresignedUploadResponse,
     KnowledgeFSProfileMigrationResponse,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSQualityReplayResponse,
@@ -88,6 +90,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSTraceListResponse,
+    KnowledgeFSUploadPartPresignPayload,
+    KnowledgeFSUploadSessionAbortPayload,
+    KnowledgeFSUploadSessionCompletePayload,
+    KnowledgeFSUploadSessionCreatePayload,
+    KnowledgeFSUploadSessionCreateRemotePayload,
+    KnowledgeFSUploadSessionCreateResponse,
+    KnowledgeFSUploadSessionMutationResponse,
 )
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.product_remote import (
@@ -98,6 +107,8 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteJSONRequest,
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteMultipartRequest,
+    KnowledgeFSRemoteSSERequest,
+    KnowledgeFSRemoteSSEResponse,
 )
 
 
@@ -110,6 +121,66 @@ class KnowledgeFSDataFacade:
     ) -> None:
         self._broker = broker
         self._remote = remote
+
+    def stream_query(
+        self,
+        *,
+        capability_token: str,
+        trace_id: str,
+        payload: KnowledgeFSAdmittedQueryRequest,
+    ) -> KnowledgeFSRemoteSSEResponse:
+        operation_id = "createQuery"
+        _assert_sse_bff_ready(operation_id)
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        if operation.kfs_path is None:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS query stream path is unavailable")
+        return self._remote.execute_sse(
+            KnowledgeFSRemoteSSERequest(
+                operation_id=operation_id,
+                method=operation.method,
+                path=operation.kfs_path,
+                capability_token=capability_token,
+                trace_id=trace_id,
+                payload=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+            )
+        )
+
+    def stream_research_task(
+        self,
+        *,
+        capability_token: str,
+        trace_id: str,
+        task_id: str,
+        knowledge_space_id: str,
+        cursor: str | None,
+        limit: int,
+    ) -> KnowledgeFSRemoteSSEResponse:
+        operation_id = "streamResearchTask"
+        _assert_sse_bff_ready(operation_id)
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        if operation.kfs_path is None:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS research stream path is unavailable")
+        path = _resolve_product_path(
+            template=operation.kfs_path,
+            knowledge_space_id=knowledge_space_id,
+            resource_id=task_id,
+            resource_resolver=operation.resource_resolver,
+            path_parameters=(),
+        )
+        query: tuple[tuple[str, str], ...] = (("knowledgeSpaceId", knowledge_space_id), ("limit", str(limit)))
+        if cursor is not None:
+            query = (*query, ("cursor", cursor))
+        return self._remote.execute_sse(
+            KnowledgeFSRemoteSSERequest(
+                operation_id=operation_id,
+                method=operation.method,
+                path=path,
+                capability_token=capability_token,
+                trace_id=trace_id,
+                payload=None,
+                query=query,
+            )
+        )
 
     def get_settings(self, *, tenant_id: str, account_id: str, control_space_id: str) -> KnowledgeFSSettingsResponse:
         raw = self._interactive(
@@ -352,6 +423,90 @@ class KnowledgeFSDataFacade:
             )
         )
         return KnowledgeFSDocumentUploadAcceptedResponse.model_validate(raw)
+
+    def create_upload_session(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSUploadSessionCreatePayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSUploadSessionCreateResponse:
+        remote_payload = KnowledgeFSUploadSessionCreateRemotePayload(
+            **payload.model_dump(mode="python"),
+            idempotencyKey=idempotency_key,
+        )
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="createUploadSession",
+            payload=remote_payload,
+        )
+        return KnowledgeFSUploadSessionCreateResponse.model_validate(raw)
+
+    def presign_upload_session_part(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        upload_session_id: str,
+        part_number: int,
+        payload: KnowledgeFSUploadPartPresignPayload,
+    ) -> KnowledgeFSPresignedUploadResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="presignUploadSessionPart",
+            resource_id=upload_session_id,
+            payload=payload,
+            bind_space_in_body=True,
+            path_parameters=(("partNumber", str(part_number)),),
+        )
+        return KnowledgeFSPresignedUploadResponse.model_validate(raw)
+
+    def complete_upload_session(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        upload_session_id: str,
+        payload: KnowledgeFSUploadSessionCompletePayload,
+    ) -> KnowledgeFSUploadSessionMutationResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="completeUploadSession",
+            resource_id=upload_session_id,
+            payload=payload,
+            bind_space_in_body=True,
+        )
+        return KnowledgeFSUploadSessionMutationResponse.model_validate(raw)
+
+    def abort_upload_session(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        upload_session_id: str,
+        payload: KnowledgeFSUploadSessionAbortPayload,
+    ) -> KnowledgeFSUploadSessionMutationResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="abortUploadSession",
+            resource_id=upload_session_id,
+            payload=payload,
+            bind_space_in_body=True,
+        )
+        return KnowledgeFSUploadSessionMutationResponse.model_validate(raw)
 
     def upload_small_file(
         self,
@@ -1566,6 +1721,7 @@ class KnowledgeFSDataFacade:
         resource_id: str,
         payload: BaseModel | None = None,
         query: tuple[tuple[str, str], ...] = (),
+        bind_space_in_body: bool = False,
         path_parameters: tuple[tuple[str, str], ...] = (),
         headers: tuple[tuple[str, str], ...] = (),
     ) -> JsonValue:
@@ -1577,6 +1733,7 @@ class KnowledgeFSDataFacade:
             resource_id=resource_id,
             payload=payload,
             query=query,
+            bind_space_in_body=bind_space_in_body,
             path_parameters=path_parameters,
             headers=headers,
         )
@@ -1688,7 +1845,7 @@ def _assert_json_bff_ready(operation_id: str) -> None:
     _assert_ready(operation_id)
     if KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id].transport != "json":
         raise KnowledgeFSOperationUnavailableError(
-            f"KnowledgeFS operation requires a direct transport and cannot use the buffered BFF: {operation_id}"
+            f"KnowledgeFS operation does not allow the buffered JSON BFF: {operation_id}"
         )
 
 
@@ -1705,6 +1862,14 @@ def _assert_multipart_bff_ready(operation_id: str) -> None:
     if KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id].transport != "multipart":
         raise KnowledgeFSOperationUnavailableError(
             f"KnowledgeFS operation does not allow the bounded multipart BFF: {operation_id}"
+        )
+
+
+def _assert_sse_bff_ready(operation_id: str) -> None:
+    _assert_ready(operation_id)
+    if KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id].transport != "sse":
+        raise KnowledgeFSOperationUnavailableError(
+            f"KnowledgeFS operation does not allow the streaming BFF: {operation_id}"
         )
 
 

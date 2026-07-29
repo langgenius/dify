@@ -8,6 +8,15 @@ export type KnowledgeFsjwksResponse = {
   keys: Array<KnowledgeFsjwkResponse>
 }
 
+export type KnowledgeFsAdmittedQueryRequest = {
+  activeDocumentIds?: Array<string>
+  activeEntityIds?: Array<string>
+  knowledgeSpaceId: string
+  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
+  query: string
+  sessionId?: string | null
+}
+
 export type KnowledgeFsSpaceListResponse = {
   data: Array<KnowledgeFsSpaceListItemResponse>
   has_more: boolean
@@ -782,24 +791,42 @@ export type KnowledgeFsTraceEntryListResponse = {
   truncated: boolean
 }
 
-export type KnowledgeFsUploadCapabilityPayload = {
-  operation_id:
-    | 'abortUploadSession'
-    | 'completeUploadSession'
-    | 'createUploadSession'
-    | 'presignUploadSessionPart'
-  upload_session_id?: string | null
+export type KnowledgeFsUploadSessionCreatePayload = {
+  checksumSha256Base64: string
+  contentType: string
+  expectedSizeBytes: number
+  fileName: string
 }
 
-export type KnowledgeFsCapabilityResponse = {
-  direct_origin: string
-  expires_at: string
-  operation_id:
-    | 'abortUploadSession'
-    | 'completeUploadSession'
-    | 'createUploadSession'
-    | 'presignUploadSessionPart'
-  token: string
+export type KnowledgeFsUploadSessionCreateResponse = {
+  session: KnowledgeFsUploadSessionResponse
+  upload?: KnowledgeFsPresignedUploadResponse | null
+}
+
+export type KnowledgeFsUploadSessionAbortPayload = {
+  [key: string]: never
+}
+
+export type KnowledgeFsUploadSessionMutationResponse = {
+  session: KnowledgeFsUploadSessionResponse
+}
+
+export type KnowledgeFsUploadSessionCompletePayload = {
+  parts?: Array<KnowledgeFsUploadSessionPartPayload> | null
+}
+
+export type KnowledgeFsUploadPartPresignPayload = {
+  checksumSha256Base64: string
+  contentLength: number
+}
+
+export type KnowledgeFsPresignedUploadResponse = {
+  expires_at: number
+  headers: {
+    [key: string]: string
+  }
+  method: 'PUT'
+  url: string
 }
 
 export type KnowledgeFsSmallFileUploadResponse = {
@@ -1071,15 +1098,6 @@ export type KnowledgeFsOverviewCountComparisonResponse = {
   value: number
 }
 
-export type KnowledgeFsAdmittedQueryRequest = {
-  activeDocumentIds?: Array<string>
-  activeEntityIds?: Array<string>
-  knowledgeSpaceId: string
-  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
-  sessionId?: string | null
-}
-
 export type KnowledgeFsResearchTaskLimits = {
   maxRetrievalSteps?: number | null
   maxScannedResources?: number | null
@@ -1271,6 +1289,12 @@ export type KnowledgeFsUploadSessionResponse = {
     | 'ready'
 }
 
+export type KnowledgeFsUploadSessionPartPayload = {
+  checksumSha256Base64?: string | null
+  etag: string
+  partNumber: number
+}
+
 export type KnowledgeFsRerankIntent = {
   enabled: boolean
   model?: KnowledgeFsModelIntent | null
@@ -1390,6 +1414,44 @@ export type GetKnowledgeFsWellKnownJwksJsonResponses = {
 
 export type GetKnowledgeFsWellKnownJwksJsonResponse =
   GetKnowledgeFsWellKnownJwksJsonResponses[keyof GetKnowledgeFsWellKnownJwksJsonResponses]
+
+export type PostKnowledgeFsQueryStreamData = {
+  body: KnowledgeFsAdmittedQueryRequest
+  path?: never
+  query?: never
+  url: '/knowledge-fs/query-stream'
+}
+
+export type PostKnowledgeFsQueryStreamResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostKnowledgeFsQueryStreamResponse =
+  PostKnowledgeFsQueryStreamResponses[keyof PostKnowledgeFsQueryStreamResponses]
+
+export type GetKnowledgeFsResearchTasksByTaskIdEventsData = {
+  body?: never
+  path: {
+    task_id: string
+  }
+  query: {
+    cursor?: string
+    knowledgeSpaceId: string
+    limit?: number
+  }
+  url: '/knowledge-fs/research-tasks/{task_id}/events'
+}
+
+export type GetKnowledgeFsResearchTasksByTaskIdEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetKnowledgeFsResearchTasksByTaskIdEventsResponse =
+  GetKnowledgeFsResearchTasksByTaskIdEventsResponses[keyof GetKnowledgeFsResearchTasksByTaskIdEventsResponses]
 
 export type GetKnowledgeFsSpacesData = {
   body?: never
@@ -2973,21 +3035,79 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse =
   GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses]
 
-export type PostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesData = {
-  body: KnowledgeFsUploadCapabilityPayload
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsData = {
+  body: KnowledgeFsUploadSessionCreatePayload
+  headers: {
+    'Idempotency-Key': string
+  }
   path: {
     control_space_id: string
   }
   query?: never
-  url: '/knowledge-fs/spaces/{control_space_id}/upload-capabilities'
+  url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions'
 }
 
-export type PostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesResponses = {
-  200: KnowledgeFsCapabilityResponse
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponses = {
+  201: KnowledgeFsUploadSessionCreateResponse
 }
 
-export type PostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesResponse =
-  PostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesResponses]
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortData = {
+  body: KnowledgeFsUploadSessionAbortPayload
+  path: {
+    control_space_id: string
+    upload_session_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/abort'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponses = {
+  200: KnowledgeFsUploadSessionMutationResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteData = {
+  body: KnowledgeFsUploadSessionCompletePayload
+  path: {
+    control_space_id: string
+    upload_session_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/complete'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponses =
+  {
+    200: KnowledgeFsUploadSessionMutationResponse
+  }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignData =
+  {
+    body: KnowledgeFsUploadPartPresignPayload
+    path: {
+      control_space_id: string
+      part_number: number
+      upload_session_id: string
+    }
+    query?: never
+    url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/parts/{part_number}/presign'
+  }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponses =
+  {
+    200: KnowledgeFsPresignedUploadResponse
+  }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileData = {
   body: {

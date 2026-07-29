@@ -7493,6 +7493,35 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS Capability v2 public keys | **application/json**: [KnowledgeFSJWKSResponse](#knowledgefsjwksresponse)<br> |
 
+### [POST] /knowledge-fs/query-stream
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | KnowledgeFS query event stream |
+
+### [GET] /knowledge-fs/research-tasks/{task_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| knowledgeSpaceId | query |  | Yes | string |
+| limit | query |  | No | integer, <br>**Default:** 25 |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | KnowledgeFS research task event stream |
+
 ### [GET] /knowledge-fs/spaces
 #### Parameters
 
@@ -7938,6 +7967,74 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS external access updated | **application/json**: [KnowledgeFSExternalAccessResponse](#knowledgefsexternalaccessresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/golden-questions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS golden questions | **application/json**: [KnowledgeFSGoldenQuestionListResponse](#knowledgefsgoldenquestionlistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/golden-questions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSGoldenQuestionPayload](#knowledgefsgoldenquestionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS golden question created | **application/json**: [KnowledgeFSGoldenQuestionResponse](#knowledgefsgoldenquestionresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| question_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | KnowledgeFS golden question deleted |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| question_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSGoldenQuestionPayload](#knowledgefsgoldenquestionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS golden question updated | **application/json**: [KnowledgeFSGoldenQuestionResponse](#knowledgefsgoldenquestionresponse)<br> |
+
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
 #### Parameters
 
@@ -8094,6 +8191,108 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS space permissions | **application/json**: [KnowledgeFSPermissionListResponse](#knowledgefspermissionlistresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS bad cases | **application/json**: [KnowledgeFSBadCaseListResponse](#knowledgefsbadcaselistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBadCaseCreatePayload](#knowledgefsbadcasecreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS bad case created | **application/json**: [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| bad_case_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS bad case | **application/json**: [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| bad_case_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBadCaseUpdatePayload](#knowledgefsbadcaseupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS bad case updated | **application/json**: [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}/trace-reference
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| bad_case_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS bad case trace reference | **application/json**: [KnowledgeFSBadCaseTraceReferenceResponse](#knowledgefsbadcasetracereferenceresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSQualityReplayPayload](#knowledgefsqualityreplaypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS quality replay queued | **application/json**: [KnowledgeFSQualityReplayResponse](#knowledgefsqualityreplayresponse)<br> |
+
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/queries~~
 
 ***DEPRECATED***
@@ -8133,7 +8332,7 @@ Get instruction generation template
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | KnowledgeFS direct query admitted | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+| 200 | KnowledgeFS streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/query-stream-capability~~
 
@@ -8149,7 +8348,7 @@ Get instruction generation template
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | KnowledgeFS query stream capability | **application/json**: [KnowledgeFSQueryStreamCapabilityResponse](#knowledgefsquerystreamcapabilityresponse)<br> |
+| 200 | KnowledgeFS Dify API query stream capability | **application/json**: [KnowledgeFSQueryStreamCapabilityResponse](#knowledgefsquerystreamcapabilityresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters
@@ -8277,7 +8476,21 @@ Get instruction generation template
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | KnowledgeFS settings updated | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+| 200 | KnowledgeFS settings updated | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| migration_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS settings migration | **application/json**: [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
 #### Parameters
@@ -8770,24 +8983,86 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS trace missing evidence | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
 
-### [POST] /knowledge-fs/spaces/{control_space_id}/upload-capabilities
+### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
 | control_space_id | path |  | Yes | string |
 
 #### Request Body
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSUploadCapabilityPayload](#knowledgefsuploadcapabilitypayload)<br> |
+|  Yes | **application/json**: [KnowledgeFSUploadSessionCreatePayload](#knowledgefsuploadsessioncreatepayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | KnowledgeFS upload capability | **application/json**: [KnowledgeFSCapabilityResponse](#knowledgefscapabilityresponse)<br> |
+| 201 | KnowledgeFS upload session created | **application/json**: [KnowledgeFSUploadSessionCreateResponse](#knowledgefsuploadsessioncreateresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/abort
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| upload_session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUploadSessionAbortPayload](#knowledgefsuploadsessionabortpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS upload session aborted | **application/json**: [KnowledgeFSUploadSessionMutationResponse](#knowledgefsuploadsessionmutationresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/complete
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| upload_session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUploadSessionCompletePayload](#knowledgefsuploadsessioncompletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS upload session completed | **application/json**: [KnowledgeFSUploadSessionMutationResponse](#knowledgefsuploadsessionmutationresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/parts/{part_number}/presign
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| part_number | path |  | Yes | integer |
+| upload_session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUploadPartPresignPayload](#knowledgefsuploadpartpresignpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS upload part URL created | **application/json**: [KnowledgeFSPresignedUploadResponse](#knowledgefspresigneduploadresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/small-file
 #### Parameters
@@ -20218,6 +20493,51 @@ Input field definition for snippet parameters.
 | task_kind | string, <br>**Available values:** "document", "document_bulk", "source" | *Enum:* `"document"`, `"document_bulk"`, `"source"` | Yes |
 | updated_at | dateTime |  | Yes |
 
+#### KnowledgeFSBadCaseCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | string |  | Yes |
+| tags | [ string ] |  | No |
+| trace_id | string |  | Yes |
+
+#### KnowledgeFSBadCaseListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSBadCaseResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| id | string |  | Yes |
+| question | string |  | No |
+| reason | string |  | Yes |
+| replay_run_id | string |  | No |
+| revision | integer |  | Yes |
+| status | string, <br>**Available values:** "dismissed", "fixed", "open", "replaying" | *Enum:* `"dismissed"`, `"fixed"`, `"open"`, `"replaying"` | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSBadCaseTraceReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| trace_id | string |  | Yes |
+
+#### KnowledgeFSBadCaseUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_revision | integer |  | Yes |
+| reason | string |  | No |
+| replay_run_id | string |  | No |
+| status | string, <br>**Available values:** "dismissed", "fixed", "open", "replaying" | *Enum:* `"dismissed"`, `"fixed"`, `"open"`, `"replaying"` | Yes |
+| tags | [ string ] |  | No |
+
 #### KnowledgeFSBulkDeletionAcceptedItemResponse
 
 | Name | Type | Description | Required |
@@ -20261,15 +20581,6 @@ Input field definition for snippet parameters.
 | total_items | integer |  | Yes |
 | type | string, <br>**Available values:** "document_delete", "document_reindex", "document_upload" | *Enum:* `"document_delete"`, `"document_reindex"`, `"document_upload"` | Yes |
 | updated_at | dateTime |  | Yes |
-
-#### KnowledgeFSCapabilityResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| direct_origin | string |  | Yes |
-| expires_at | dateTime |  | Yes |
-| operation_id | string, <br>**Available values:** "abortUploadSession", "completeUploadSession", "createUploadSession", "presignUploadSessionPart" | *Enum:* `"abortUploadSession"`, `"completeUploadSession"`, `"createUploadSession"`, `"presignUploadSessionPart"` | Yes |
-| token | string |  | Yes |
 
 #### KnowledgeFSControlSpacePermissionRole
 
@@ -20644,6 +20955,33 @@ Input field definition for snippet parameters.
 | service_api_enabled | boolean |  | Yes |
 | workflow_enabled | boolean |  | Yes |
 
+#### KnowledgeFSGoldenQuestionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSGoldenQuestionResponse](#knowledgefsgoldenquestionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSGoldenQuestionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation | string |  | Yes |
+| question | string |  | Yes |
+| source_bad_case_id | string |  | No |
+| tags | [ string ] |  | No |
+
+#### KnowledgeFSGoldenQuestionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| id | string |  | Yes |
+| question | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | dateTime |  | Yes |
+
 #### KnowledgeFSJWKResponse
 
 | Name | Type | Description | Required |
@@ -20893,6 +21231,15 @@ Input field definition for snippet parameters.
 | role | [KnowledgeFSControlSpacePermissionRole](#knowledgefscontrolspacepermissionrole) |  | Yes |
 | status | string |  | Yes |
 
+#### KnowledgeFSPresignedUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| headers | object |  | Yes |
+| method | string |  | Yes |
+| url | string |  | Yes |
+
 #### KnowledgeFSProductPermission
 
 | Name | Type | Description | Required |
@@ -20924,6 +21271,23 @@ Input field definition for snippet parameters.
 | stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
 | value | number |  | No |
 
+#### KnowledgeFSProfileMigrationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_publication_fingerprint | string |  | No |
+| changed_kind | string, <br>**Available values:** "embedding", "retrieval" | *Enum:* `"embedding"`, `"retrieval"` | Yes |
+| checkpoint | string, <br>**Available values:** "activated", "candidate-built", "evaluated", "queued" | *Enum:* `"activated"`, `"candidate-built"`, `"evaluated"`, `"queued"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| evaluation_summary | object |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| rebuild_scope | string, <br>**Available values:** "clone-publication", "full-page-index-summary-outline", "full-vector-space" | *Enum:* `"clone-publication"`, `"full-page-index-summary-outline"`, `"full-vector-space"` | Yes |
+| run_state | string, <br>**Available values:** "canceled", "failed", "queued", "running", "succeeded" | *Enum:* `"canceled"`, `"failed"`, `"queued"`, `"running"`, `"succeeded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
 #### KnowledgeFSProfileModelSelection
 
 | Name | Type | Description | Required |
@@ -20931,6 +21295,28 @@ Input field definition for snippet parameters.
 | model | string |  | Yes |
 | pluginId | string |  | Yes |
 | provider | string |  | Yes |
+
+#### KnowledgeFSQualityListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSQualityReplayPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| golden_question_ids | [ string ] |  | Yes |
+| mode | string |  | No |
+
+#### KnowledgeFSQualityReplayResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| revision | integer |  | Yes |
+| state | string, <br>**Available values:** "canceled", "failed", "passed", "queued", "running" | *Enum:* `"canceled"`, `"failed"`, `"passed"`, `"queued"`, `"running"` | Yes |
 
 #### KnowledgeFSQueryAdmissionResponse
 
@@ -21089,6 +21475,14 @@ Input field definition for snippet parameters.
 | strategy_version | string |  | Yes |
 | top_k | integer |  | Yes |
 
+#### KnowledgeFSResearchTaskStreamQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| knowledgeSpaceId | string |  | Yes |
+| limit | integer, <br>**Default:** 25 |  | No |
+
 #### KnowledgeFSRetrievalProfileIntent
 
 | Name | Type | Description | Required |
@@ -21134,6 +21528,13 @@ Input field definition for snippet parameters.
 | embedding | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
 | retrieval | [KnowledgeFSRetrievalSettingsResponse](#knowledgefsretrievalsettingsresponse) |  | Yes |
 | revision | integer |  | Yes |
+
+#### KnowledgeFSSettingsUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| migration | [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse) |  | No |
+| settings | [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse) |  | Yes |
 
 #### KnowledgeFSSmallFileUploadResponse
 
@@ -21484,11 +21885,11 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
-| embedding | [KnowledgeFSModelIntent](#knowledgefsmodelintent) |  | Yes |
+| embedding | [KnowledgeFSModelIntent](#knowledgefsmodelintent) |  | No |
 | icon | string |  | No |
 | idempotency_key | string |  | No |
 | name | string |  | Yes |
-| retrieval | [KnowledgeFSRetrievalProfileIntent](#knowledgefsretrievalprofileintent) |  | Yes |
+| retrieval | [KnowledgeFSRetrievalProfileIntent](#knowledgefsretrievalprofileintent) |  | No |
 | slug | string |  | Yes |
 | visibility | [KnowledgeFSControlSpaceVisibility](#knowledgefscontrolspacevisibility) |  | No |
 
@@ -21497,6 +21898,7 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | control_space_id | string |  | Yes |
+| model_setup_required | boolean |  | Yes |
 | operation_id | string |  | Yes |
 | state | [KnowledgeFSControlSpaceState](#knowledgefscontrolspacestate) |  | Yes |
 
@@ -21668,12 +22070,53 @@ Input field definition for snippet parameters.
 | name | string |  | Yes |
 | status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
 
-#### KnowledgeFSUploadCapabilityPayload
+#### KnowledgeFSUploadPartPresignPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| operation_id | string, <br>**Available values:** "abortUploadSession", "completeUploadSession", "createUploadSession", "presignUploadSessionPart" | *Enum:* `"abortUploadSession"`, `"completeUploadSession"`, `"createUploadSession"`, `"presignUploadSessionPart"` | Yes |
-| upload_session_id | string |  | No |
+| checksumSha256Base64 | string |  | Yes |
+| contentLength | integer |  | Yes |
+
+#### KnowledgeFSUploadSessionAbortPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### KnowledgeFSUploadSessionCompletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| parts | [ [KnowledgeFSUploadSessionPartPayload](#knowledgefsuploadsessionpartpayload) ] |  | No |
+
+#### KnowledgeFSUploadSessionCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checksumSha256Base64 | string |  | Yes |
+| contentType | string |  | Yes |
+| expectedSizeBytes | integer |  | Yes |
+| fileName | string |  | Yes |
+
+#### KnowledgeFSUploadSessionCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| session | [KnowledgeFSUploadSessionResponse](#knowledgefsuploadsessionresponse) |  | Yes |
+| upload | [KnowledgeFSPresignedUploadResponse](#knowledgefspresigneduploadresponse) |  | No |
+
+#### KnowledgeFSUploadSessionMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| session | [KnowledgeFSUploadSessionResponse](#knowledgefsuploadsessionresponse) |  | Yes |
+
+#### KnowledgeFSUploadSessionPartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checksumSha256Base64 | string |  | No |
+| etag | string |  | Yes |
+| partNumber | integer |  | Yes |
 
 #### KnowledgeFSUploadSessionResponse
 

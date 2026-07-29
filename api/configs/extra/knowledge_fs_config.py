@@ -30,14 +30,6 @@ class KnowledgeFSConfig(BaseSettings):
     KNOWLEDGE_FS_LIFECYCLE_LEASE_SECONDS: PositiveInt = Field(default=60, le=600)
     KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE: PositiveInt = Field(default=25, le=1_000)
     KNOWLEDGE_FS_BASE_URL: str | None = Field(default=None, description="KnowledgeFS gateway base URL.")
-    KNOWLEDGE_FS_DIRECT_ORIGIN: str | None = Field(
-        default=None,
-        description="Public KnowledgeFS origin returned with direct upload capabilities.",
-    )
-    KNOWLEDGE_FS_DIRECT_UPLOAD_READY: bool = Field(
-        default=False,
-        description="Confirm that KnowledgeFS direct upload and its browser origin policy are deployed and verified.",
-    )
     KNOWLEDGE_FS_CAPABILITY_V2_ENABLED: bool = Field(
         default=False,
         description="Prepare resource-scoped Capability v2 issuance; disabled until rollout approval.",
@@ -63,7 +55,6 @@ class KnowledgeFSConfig(BaseSettings):
 
     @field_validator(
         "KNOWLEDGE_FS_BASE_URL",
-        "KNOWLEDGE_FS_DIRECT_ORIGIN",
         "KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID",
         "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM",
         "KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS",
@@ -84,11 +75,6 @@ class KnowledgeFSConfig(BaseSettings):
     def validate_base_url(cls, value: str | None) -> str | None:
         return cls._validate_origin(value, name="KNOWLEDGE_FS_BASE_URL")
 
-    @field_validator("KNOWLEDGE_FS_DIRECT_ORIGIN")
-    @classmethod
-    def validate_direct_origin(cls, value: str | None) -> str | None:
-        return cls._validate_origin(value, name="KNOWLEDGE_FS_DIRECT_ORIGIN")
-
     @classmethod
     def _validate_origin(cls, value: str | None, *, name: str) -> str | None:
         if value is None:
@@ -107,12 +93,8 @@ class KnowledgeFSConfig(BaseSettings):
     @model_validator(mode="after")
     def validate_enabled_connection(self) -> "KnowledgeFSConfig":
         if str(getattr(self, "DEPLOY_ENV", "")).strip().upper() == "PRODUCTION":
-            for name, value in (
-                ("KNOWLEDGE_FS_BASE_URL", self.KNOWLEDGE_FS_BASE_URL),
-                ("KNOWLEDGE_FS_DIRECT_ORIGIN", self.KNOWLEDGE_FS_DIRECT_ORIGIN),
-            ):
-                if value and not self._is_secure_or_loopback_origin(value):
-                    raise ValueError(f"{name} must use HTTPS in production unless it targets loopback")
+            if self.KNOWLEDGE_FS_BASE_URL and not self._is_secure_or_loopback_origin(self.KNOWLEDGE_FS_BASE_URL):
+                raise ValueError("KNOWLEDGE_FS_BASE_URL must use HTTPS in production unless it targets loopback")
         if self.KNOWLEDGE_FS_ENABLED:
             if not self.KNOWLEDGE_FS_BASE_URL:
                 raise ValueError("KnowledgeFS base URL is required when the integration is enabled")

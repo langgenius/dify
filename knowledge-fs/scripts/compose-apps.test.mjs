@@ -174,7 +174,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
     "KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS",
     "KNOWLEDGE_DIRECT_UPLOAD_ENABLED",
-    "KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS",
+    "KNOWLEDGE_DIRECT_STREAM_ENABLED",
     "UNSTRUCTURED_API_URL",
     "UNSTRUCTURED_API_KEY",
   ]);
@@ -194,7 +194,6 @@ test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", 
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "off"$/m);
-  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: ""$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_STREAM_ENABLED: "off"$/m);
 });
 

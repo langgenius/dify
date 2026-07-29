@@ -3,10 +3,7 @@ import type {
   ResearchTaskDirectStreamOptions,
 } from "@knowledge/api";
 
-import { parseDirectAllowedOrigins } from "./direct-transport-security";
-
 export interface ApiResearchTaskDirectStreamEnv {
-  readonly KNOWLEDGE_DIRECT_STREAM_ALLOWED_ORIGINS?: string | undefined;
   readonly KNOWLEDGE_DIRECT_STREAM_ENABLED?: string | undefined;
   readonly KNOWLEDGE_DIRECT_STREAM_MAX_CONNECTION_MS?: string | undefined;
   readonly NODE_ENV?: string | undefined;
@@ -55,11 +52,6 @@ export function createApiResearchTaskDirectStreamAssembly({
 }): ApiResearchTaskDirectStreamAssembly | undefined {
   if (!enabled(env.KNOWLEDGE_DIRECT_STREAM_ENABLED)) return undefined;
 
-  const allowedOrigins = parseDirectAllowedOrigins({
-    environment: env.NODE_ENV,
-    name: "KNOWLEDGE_DIRECT_STREAM_ALLOWED_ORIGINS",
-    value: env.KNOWLEDGE_DIRECT_STREAM_ALLOWED_ORIGINS,
-  });
   const maxConnectionMs = boundedInteger(
     env.KNOWLEDGE_DIRECT_STREAM_MAX_CONNECTION_MS,
     5 * 60_000,
@@ -78,7 +70,6 @@ export function createApiResearchTaskDirectStreamAssembly({
 
   return {
     options: {
-      allowedOrigins,
       maxConnectionMs,
       observer: {
         onClose(scope) {

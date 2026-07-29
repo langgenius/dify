@@ -176,7 +176,7 @@ describe("Research task direct stream", () => {
     expect(missingSpace.status).toBe(404);
   });
 
-  it("binds CORS, cursor resume, terminal closure, and the exact Capability grant", async () => {
+  it("rejects browser transport and binds cursor resume, terminal closure, and the exact Capability grant", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const grants = createInMemoryCapabilityGrantProvenanceRepository();
     const progress = createInMemoryResearchTaskProgressRepository({
@@ -221,7 +221,6 @@ describe("Research task direct stream", () => {
       capabilityGrantProvenance: grants,
       difyCapabilityV2Auth: { authenticate },
       researchTaskDirectStream: {
-        allowedOrigins: ["https://dify.example.com"],
         maxConnectionMs: 60_000,
         observer: { onClose, onOpen },
       },
@@ -238,10 +237,8 @@ describe("Research task direct stream", () => {
       },
       method: "OPTIONS",
     });
-    expect(queryPreflight.status).toBe(204);
-    expect(queryPreflight.headers.get("access-control-allow-headers")).toBe(
-      "Authorization, Content-Type, X-Trace-ID",
-    );
+    expect(queryPreflight.status).toBe(403);
+    expect(queryPreflight.headers.has("access-control-allow-origin")).toBe(false);
     expect(authenticate).not.toHaveBeenCalled();
 
     const preflight = await app.request(streamUrl, {
@@ -252,8 +249,8 @@ describe("Research task direct stream", () => {
       },
       method: "OPTIONS",
     });
-    expect(preflight.status).toBe(204);
-    expect(preflight.headers.get("access-control-allow-origin")).toBe("https://dify.example.com");
+    expect(preflight.status).toBe(403);
+    expect(preflight.headers.has("access-control-allow-origin")).toBe(false);
     expect(preflight.headers.has("access-control-allow-credentials")).toBe(false);
     expect(authenticate).not.toHaveBeenCalled();
 
@@ -267,11 +264,10 @@ describe("Research task direct stream", () => {
       headers: {
         authorization: "Bearer stream-token",
         "last-event-id": "1",
-        origin: "https://dify.example.com",
       },
     });
     expect(resumed.status).toBe(200);
-    expect(resumed.headers.get("access-control-allow-origin")).toBe("https://dify.example.com");
+    expect(resumed.headers.has("access-control-allow-origin")).toBe(false);
     expect(resumed.headers.has("access-control-allow-credentials")).toBe(false);
     const body = await resumed.text();
     expect(body).toContain("id: 2\nevent: completed");

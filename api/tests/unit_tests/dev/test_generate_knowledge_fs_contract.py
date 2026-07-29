@@ -440,8 +440,8 @@ def fixture_product_operations() -> tuple[ProductOperationRuntimeContract, ...]:
             product_operation_id="createUploadSession",
             ready=True,
             resource="knowledge_space",
-            stream_kind="direct-upload",
-            transport="direct",
+            stream_kind="json",
+            transport="json",
         ),
         ProductOperationRuntimeContract(
             action="documents.create",
@@ -530,8 +530,8 @@ def fixture_product_manifest() -> dict[str, object]:
                 "path": "/knowledge-spaces/{id}/upload-sessions",
                 "action": "upload_sessions.create",
                 "resource": "knowledge_space",
-                "transport": "direct",
-                "stream": {"productKind": "direct-upload", "kfsResponseKind": "buffered"},
+                "transport": "json",
+                "stream": {"productKind": "json", "kfsResponseKind": "buffered"},
                 "limits": {
                     "productMaxRequestBytes": 65_536,
                     "productMaxResponseBytes": 65_536,

@@ -29,7 +29,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceListItemResponse,
-    KnowledgeFSUploadCapabilityPayload,
+    KnowledgeFSUploadPartPresignPayload,
+    KnowledgeFSUploadSessionCompletePayload,
+    KnowledgeFSUploadSessionCreatePayload,
 )
 
 
@@ -103,11 +105,6 @@ def test_space_list_item_converts_aware_database_timestamps_to_utc() -> None:
             },
         ),
         (KnowledgeFSSourceUpdatePayload, {}),
-        (
-            KnowledgeFSUploadCapabilityPayload,
-            {"operation_id": "createUploadSession", "upload_session_id": "session-1"},
-        ),
-        (KnowledgeFSUploadCapabilityPayload, {"operation_id": "completeUploadSession"}),
     ],
 )
 def test_product_dto_cross_field_validators_reject_ambiguous_payloads(
@@ -120,10 +117,73 @@ def test_product_dto_cross_field_validators_reject_ambiguous_payloads(
 
 def test_product_dto_cross_field_validators_accept_unambiguous_payloads() -> None:
     assert KnowledgeFSDocumentReindexPayload.model_validate({"all": True}).all is True
-    upload = KnowledgeFSUploadCapabilityPayload.model_validate(
-        {"operation_id": "completeUploadSession", "upload_session_id": "session-1"}
+
+
+def test_upload_session_dtos_validate_and_serialize_the_kfs_wire_shape() -> None:
+    create = KnowledgeFSUploadSessionCreatePayload.model_validate(
+        {
+            "checksumSha256Base64": "whole-checksum",
+            "contentType": "application/pdf",
+            "expectedSizeBytes": 12,
+            "fileName": "guide.pdf",
+        }
     )
-    assert upload.upload_session_id == "session-1"
+    presign = KnowledgeFSUploadPartPresignPayload.model_validate(
+        {
+            "checksumSha256Base64": "part-checksum",
+            "contentLength": 12,
+        }
+    )
+    complete = KnowledgeFSUploadSessionCompletePayload.model_validate(
+        {
+            "parts": [
+                {
+                    "checksumSha256Base64": "part-checksum",
+                    "etag": "etag-1",
+                    "partNumber": 1,
+                }
+            ]
+        }
+    )
+
+    assert create.model_dump(mode="json", by_alias=True) == {
+        "checksumSha256Base64": "whole-checksum",
+        "contentType": "application/pdf",
+        "expectedSizeBytes": 12,
+        "fileName": "guide.pdf",
+    }
+    assert presign.model_dump(mode="json", by_alias=True)["contentLength"] == 12
+    assert complete.model_dump(mode="json", by_alias=True)["parts"][0]["partNumber"] == 1
+
+
+@pytest.mark.parametrize(
+    ("model", "payload"),
+    [
+        (
+            KnowledgeFSUploadSessionCreatePayload,
+            {
+                "checksumSha256Base64": "checksum",
+                "contentType": "application/pdf",
+                "expectedSizeBytes": 0,
+                "fileName": "guide.pdf",
+            },
+        ),
+        (
+            KnowledgeFSUploadPartPresignPayload,
+            {"checksumSha256Base64": "checksum", "contentLength": 0},
+        ),
+        (
+            KnowledgeFSUploadSessionCompletePayload,
+            {"parts": [{"etag": "etag", "partNumber": 0}]},
+        ),
+    ],
+)
+def test_upload_session_dtos_reject_invalid_sizes_and_part_numbers(
+    model: type[object],
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        model.model_validate(payload)  # type: ignore[attr-defined]
 
 
 def test_quality_dtos_normalize_tags_and_read_annotation_metadata() -> None:

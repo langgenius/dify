@@ -134,7 +134,6 @@ export type ResearchTaskDirectStreamCloseReason =
   | "timeout";
 
 export interface ResearchTaskDirectStreamOptions {
-  readonly allowedOrigins: readonly string[];
   readonly maxConnectionMs: number;
   readonly observer?:
     | {
@@ -183,8 +182,6 @@ export interface KnowledgeGatewayOptions {
   denseEmbeddingProvider?: EmbeddingProvider;
   deletionLifecycleFence?: DeletionLifecycleFenceGuard;
   deletionObjectWriteAdmission?: DeletionObjectWriteAdmission;
-  /** Exact browser origins admitted to Capability-only upload control routes. */
-  directUploadAllowedOrigins?: readonly string[];
   documentAssets?: DocumentAssetRepository;
   durableDeletions?: DurableDeletionService;
   /** Builds the deletion service with this gateway's exact access service and authorization guard. */

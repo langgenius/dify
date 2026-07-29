@@ -74,6 +74,7 @@ export * from "./integrated-knowledge-space-deletion-handlers";
 export * from "./integrated-knowledge-space-deletion-routes";
 export * from "./integrated-knowledge-space-provisioning-handlers";
 export * from "./integrated-knowledge-space-provisioning-routes";
+export * from "./internal-transport-guard";
 export * from "./database-row-utils";
 export * from "./database-sql-utils";
 export * from "./document-compilation-handlers";
@@ -127,7 +128,6 @@ export * from "./database-deletion-lifecycle-fence-reader";
 export * from "./database-deletion-object-write-admission";
 export * from "./database-durable-deletion-target-capabilities";
 export * from "./deletion-lifecycle-fence";
-export * from "./direct-stream-cors";
 export * from "./deletion-object-write-admission";
 export * from "./deletion-object-write-storage";
 export * from "./deletion-residue-cleanup";
@@ -400,7 +400,6 @@ import {
   qualifiedDatabaseIdentifier,
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
-import { createDirectStreamCorsMiddleware } from "./direct-stream-cors";
 import { createEmbeddingProfileFreezingDocumentAssetRepository } from "./document-asset-embedding-profile-guard";
 import {
   type DocumentAssetRepository,
@@ -465,6 +464,7 @@ import {
 import { createIncrementalReindexer } from "./index-reindexer";
 import { registerIntegratedKnowledgeSpaceDeletionHandlers } from "./integrated-knowledge-space-deletion-handlers";
 import { registerIntegratedKnowledgeSpaceProvisioningHandlers } from "./integrated-knowledge-space-provisioning-handlers";
+import { createInternalTransportGuardMiddleware } from "./internal-transport-guard";
 import { cloneJsonObject, jsonArrayColumn, jsonObjectColumn } from "./json-utils";
 import { createKnowledgeFsCommandRegistry } from "./knowledge-fs-command-registry";
 import { registerKnowledgeFsHandlers } from "./knowledge-fs-handlers";
@@ -667,7 +667,6 @@ export function createKnowledgeGateway({
   denseEmbeddingProvider,
   deletionLifecycleFence,
   deletionObjectWriteAdmission,
-  directUploadAllowedOrigins,
   documentAssets,
   durableDeletionRepository,
   durableDeletions,
@@ -844,13 +843,6 @@ export function createKnowledgeGateway({
   }
   if (uploadSessions && (!difyCapabilityV2Auth || !capabilityGrantProvenance)) {
     throw new Error("Direct upload sessions require Capability v2 and durable grant provenance");
-  }
-  if (
-    uploadSessions &&
-    process.env.NODE_ENV === "production" &&
-    !directUploadAllowedOrigins?.length
-  ) {
-    throw new Error("Direct upload sessions require exact browser CORS origins in production");
   }
   if (researchTaskDirectStream && (!difyCapabilityV2Auth || !capabilityGrantProvenance)) {
     throw new Error("Direct Research streams require Capability v2 and durable grant provenance");
@@ -1426,30 +1418,12 @@ export function createKnowledgeGateway({
         )
     : legacyAuthMiddleware;
   app.use("*", createTraceMiddleware(traces));
-  if (researchTaskDirectStream) {
-    app.use(
-      "/research-tasks/:id/events",
-      createDirectStreamCorsMiddleware({
-        allowedOrigins: researchTaskDirectStream.allowedOrigins,
-      }),
-    );
-    app.use(
-      "/queries",
-      createDirectStreamCorsMiddleware({
-        allowedHeaders: ["Authorization", "Content-Type", "X-Trace-ID"],
-        allowedMethods: ["POST"],
-        allowedOrigins: researchTaskDirectStream.allowedOrigins,
-      }),
-    );
-  }
-  if (uploadSessions && directUploadAllowedOrigins?.length) {
-    const uploadCors = createDirectStreamCorsMiddleware({
-      allowedHeaders: ["Authorization", "Content-Type"],
-      allowedMethods: ["POST"],
-      allowedOrigins: directUploadAllowedOrigins,
-    });
-    app.use("/knowledge-spaces/:id/upload-sessions", uploadCors);
-    app.use("/upload-sessions/:id/*", uploadCors);
+  const internalTransportGuard = createInternalTransportGuardMiddleware();
+  app.use("/queries", internalTransportGuard);
+  app.use("/research-tasks/:id/events", internalTransportGuard);
+  if (uploadSessions) {
+    app.use("/knowledge-spaces/:id/upload-sessions", internalTransportGuard);
+    app.use("/upload-sessions/:id/*", internalTransportGuard);
   }
   app.use("/knowledge-spaces/*", authMiddleware);
   app.use("/internal/knowledge-spaces/*", authMiddleware);

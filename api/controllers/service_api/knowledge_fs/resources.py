@@ -7,10 +7,10 @@ from functools import wraps
 from http import HTTPStatus
 from typing import Literal
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, JsonValue, ValidationError
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from configs import dify_config
 from controllers.common.schema import (
@@ -89,13 +89,20 @@ from services.knowledge_fs.product_operations import product_operation_action
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
     KnowledgeFSProductResourceNotFoundError,
+    KnowledgeFSRemoteSSEResponse,
 )
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
+
+_MAX_STREAM_CAPABILITY_BYTES = 16 * 1024
+_MAX_STREAM_TRACE_ID_BYTES = 255
+_QUERY_STREAM_PROXY_PATH = "/knowledge-fs/query-stream"
 
 register_schema_models(
     service_api_ns,
     KnowledgeFSBulkDocumentDeletePayload,
+    KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSCursorQuery,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentCreatePayload,
@@ -170,6 +177,10 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise NotFound() from exc
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSServiceUpstreamUnavailableHTTPError() from exc
+        except KnowledgeFSProductRequestRejectedError as exc:
+            if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
+                raise RequestEntityTooLarge() from exc
+            raise KnowledgeFSServiceInvalidRequestHTTPError() from exc
         except ValidationError as exc:
             raise KnowledgeFSServiceInvalidRequestHTTPError() from exc
 
@@ -198,6 +209,57 @@ def _raw_bearer_credential() -> str:
     if separator != " " or scheme.lower() != "bearer" or not credential.strip():
         raise KnowledgeFSInvalidCredentialHTTPError()
     return credential.strip()
+
+
+def _stream_capability() -> tuple[str, str]:
+    scheme, separator, credential = request.headers.get("Authorization", "").partition(" ")
+    token = credential.strip()
+    trace_id = request.headers.get("X-Trace-ID", "").strip()
+    if (
+        separator != " "
+        or scheme.lower() != "bearer"
+        or not token
+        or len(token.encode("utf-8")) > _MAX_STREAM_CAPABILITY_BYTES
+        or any(character.isspace() for character in token)
+    ):
+        raise KnowledgeFSInvalidCredentialHTTPError()
+    if (
+        not trace_id
+        or len(trace_id.encode("utf-8")) > _MAX_STREAM_TRACE_ID_BYTES
+        or any(character in trace_id for character in ("\0", "\r", "\n"))
+    ):
+        raise KnowledgeFSServiceInvalidRequestHTTPError()
+    return token, trace_id
+
+
+def _stream_response(upstream: KnowledgeFSRemoteSSEResponse) -> Response:
+    headers = dict(upstream.headers)
+    if HTTPStatus.OK <= upstream.status_code < HTTPStatus.MULTIPLE_CHOICES:
+        headers.setdefault("cache-control", "no-cache")
+        headers.setdefault("content-type", "text/event-stream")
+        headers.setdefault("x-accel-buffering", "no")
+
+    def generate():
+        try:
+            yield from upstream.chunks
+        finally:
+            upstream.close()
+
+    return Response(
+        generate(),
+        status=upstream.status_code,
+        headers=headers,
+        direct_passthrough=True,
+    )
+
+
+def _service_api_url(path: str) -> str:
+    base_url = str(dify_config.SERVICE_API_URL or "").strip().rstrip("/")
+    if not base_url:
+        return f"/v1{path}"
+    if base_url.endswith("/v1"):
+        return f"{base_url}{path}"
+    return f"{base_url}/v1{path}"
 
 
 def _profile(
@@ -275,7 +337,7 @@ class KnowledgeFSServiceDocumentsApi(Resource):
     def post(self, control_space_id: str):
         _ = control_space_id
         raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS document creation is deprecated; use the P6 direct-upload capability flow"
+            "Buffered KnowledgeFS document creation is deprecated; use a Dify API upload BFF"
         )
 
 
@@ -521,7 +583,7 @@ class KnowledgeFSServiceQueriesApi(Resource):
     def post(self, control_space_id: str):
         _ = control_space_id
         raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS query creation is deprecated; use the queries/admission direct flow"
+            "Buffered KnowledgeFS query creation is deprecated; use the queries/admission streaming BFF flow"
         )
 
 
@@ -530,14 +592,11 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS direct query admitted",
+        "KnowledgeFS streaming query admitted through Dify API",
         service_api_ns.models[KnowledgeFSQueryAdmissionResponse.__name__],
     )
     @_service_api_errors
     def post(self, control_space_id: str):
-        direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-        if direct_origin is None:
-            raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct query streaming is not configured")
         runtime = _runtime()
         profile = _profile(runtime, operation_id="createQuery", control_space_id=control_space_id)
         payload = _payload(KnowledgeFSQueryCreatePayload)
@@ -552,9 +611,26 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
                 expires_at=issued.expires_at,
                 operation_id="createQuery",
                 request=admitted_request,
-                url=f"{direct_origin.rstrip('/')}/queries",
+                url=_service_api_url(_QUERY_STREAM_PROXY_PATH),
             ),
         )
+
+
+@service_api_ns.route(_QUERY_STREAM_PROXY_PATH)
+class KnowledgeFSServiceQueryStreamProxyApi(Resource):
+    @service_api_ns.expect(service_api_ns.models[KnowledgeFSAdmittedQueryRequest.__name__])
+    @service_api_ns.doc(produces=["text/event-stream"])
+    @service_api_ns.response(HTTPStatus.OK, "KnowledgeFS query event stream")
+    @_service_api_errors
+    def post(self):
+        capability_token, trace_id = _stream_capability()
+        payload = _payload(KnowledgeFSAdmittedQueryRequest)
+        upstream = _runtime().facade.stream_query(
+            capability_token=capability_token,
+            trace_id=trace_id,
+            payload=payload,
+        )
+        return _stream_response(upstream)
 
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/settings")

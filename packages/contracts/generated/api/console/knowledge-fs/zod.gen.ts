@@ -3,6 +3,18 @@
 import * as z from 'zod'
 
 /**
+ * KnowledgeFSAdmittedQueryRequest
+ */
+export const zKnowledgeFsAdmittedQueryRequest = z.object({
+  activeDocumentIds: z.array(z.string()).max(100).optional(),
+  activeEntityIds: z.array(z.string()).max(100).optional(),
+  knowledgeSpaceId: z.string().min(1),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().min(1).max(16000),
+  sessionId: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSBackgroundTaskResponse
  */
 export const zKnowledgeFsBackgroundTaskResponse = z.object({
@@ -330,6 +342,17 @@ export const zKnowledgeFsQueryResponse = z.object({
 })
 
 /**
+ * KnowledgeFSQueryAdmissionResponse
+ */
+export const zKnowledgeFsQueryAdmissionResponse = z.object({
+  expires_at: z.iso.datetime(),
+  operation_id: z.literal('createQuery'),
+  request: zKnowledgeFsAdmittedQueryRequest,
+  token: z.string(),
+  url: z.string(),
+})
+
+/**
  * KnowledgeFSQueryStreamCapabilityResponse
  */
 export const zKnowledgeFsQueryStreamCapabilityResponse = z.object({
@@ -552,31 +575,36 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
 })
 
 /**
- * KnowledgeFSUploadCapabilityPayload
+ * KnowledgeFSUploadSessionCreatePayload
  */
-export const zKnowledgeFsUploadCapabilityPayload = z.object({
-  operation_id: z.enum([
-    'abortUploadSession',
-    'completeUploadSession',
-    'createUploadSession',
-    'presignUploadSessionPart',
-  ]),
-  upload_session_id: z.string().min(1).max(255).nullish(),
+export const zKnowledgeFsUploadSessionCreatePayload = z.object({
+  checksumSha256Base64: z.string().min(1).max(255),
+  contentType: z.string().min(1).max(255),
+  expectedSizeBytes: z.int().gt(0),
+  fileName: z.string().min(1).max(512),
 })
 
 /**
- * KnowledgeFSCapabilityResponse
+ * KnowledgeFSUploadSessionAbortPayload
  */
-export const zKnowledgeFsCapabilityResponse = z.object({
-  direct_origin: z.string(),
-  expires_at: z.iso.datetime(),
-  operation_id: z.enum([
-    'abortUploadSession',
-    'completeUploadSession',
-    'createUploadSession',
-    'presignUploadSessionPart',
-  ]),
-  token: z.string(),
+export const zKnowledgeFsUploadSessionAbortPayload = z.record(z.string(), z.never())
+
+/**
+ * KnowledgeFSUploadPartPresignPayload
+ */
+export const zKnowledgeFsUploadPartPresignPayload = z.object({
+  checksumSha256Base64: z.string().min(1).max(255),
+  contentLength: z.int().gt(0),
+})
+
+/**
+ * KnowledgeFSPresignedUploadResponse
+ */
+export const zKnowledgeFsPresignedUploadResponse = z.object({
+  expires_at: z.int().gte(0),
+  headers: z.record(z.string(), z.string()),
+  method: z.literal('PUT'),
+  url: z.string().min(1).max(8192),
 })
 
 /**
@@ -1064,29 +1092,6 @@ export const zKnowledgeFsOverviewStatsResponse = z.object({
 })
 
 /**
- * KnowledgeFSAdmittedQueryRequest
- */
-export const zKnowledgeFsAdmittedQueryRequest = z.object({
-  activeDocumentIds: z.array(z.string()).max(100).optional(),
-  activeEntityIds: z.array(z.string()).max(100).optional(),
-  knowledgeSpaceId: z.string().min(1),
-  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
-  sessionId: z.string().nullish(),
-})
-
-/**
- * KnowledgeFSQueryAdmissionResponse
- */
-export const zKnowledgeFsQueryAdmissionResponse = z.object({
-  expires_at: z.iso.datetime(),
-  operation_id: z.literal('createQuery'),
-  request: zKnowledgeFsAdmittedQueryRequest,
-  token: z.string(),
-  url: z.string(),
-})
-
-/**
  * KnowledgeFSResearchTaskLimits
  */
 export const zKnowledgeFsResearchTaskLimits = z.object({
@@ -1377,10 +1382,41 @@ export const zKnowledgeFsUploadSessionResponse = z.object({
 })
 
 /**
+ * KnowledgeFSUploadSessionCreateResponse
+ */
+export const zKnowledgeFsUploadSessionCreateResponse = z.object({
+  session: zKnowledgeFsUploadSessionResponse,
+  upload: zKnowledgeFsPresignedUploadResponse.nullish(),
+})
+
+/**
+ * KnowledgeFSUploadSessionMutationResponse
+ */
+export const zKnowledgeFsUploadSessionMutationResponse = z.object({
+  session: zKnowledgeFsUploadSessionResponse,
+})
+
+/**
  * KnowledgeFSSmallFileUploadResponse
  */
 export const zKnowledgeFsSmallFileUploadResponse = z.object({
   session: zKnowledgeFsUploadSessionResponse,
+})
+
+/**
+ * KnowledgeFSUploadSessionPartPayload
+ */
+export const zKnowledgeFsUploadSessionPartPayload = z.object({
+  checksumSha256Base64: z.string().min(1).max(255).nullish(),
+  etag: z.string().min(1).max(255),
+  partNumber: z.int().gte(1).lte(10000),
+})
+
+/**
+ * KnowledgeFSUploadSessionCompletePayload
+ */
+export const zKnowledgeFsUploadSessionCompletePayload = z.object({
+  parts: z.array(zKnowledgeFsUploadSessionPartPayload).max(10000).nullish(),
 })
 
 /**
@@ -1844,6 +1880,28 @@ export const zKnowledgeFsTraceListResponse = z.object({
  * KnowledgeFS Capability v2 public keys
  */
 export const zGetKnowledgeFsWellKnownJwksJsonResponse = zKnowledgeFsjwksResponse
+
+export const zPostKnowledgeFsQueryStreamBody = zKnowledgeFsAdmittedQueryRequest
+
+/**
+ * KnowledgeFS query event stream
+ */
+export const zPostKnowledgeFsQueryStreamResponse = z.record(z.string(), z.unknown())
+
+export const zGetKnowledgeFsResearchTasksByTaskIdEventsPath = z.object({
+  task_id: z.string(),
+})
+
+export const zGetKnowledgeFsResearchTasksByTaskIdEventsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  knowledgeSpaceId: z.string().min(1).max(255),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * KnowledgeFS research task event stream
+ */
+export const zGetKnowledgeFsResearchTasksByTaskIdEventsResponse = z.record(z.string(), z.unknown())
 
 export const zGetKnowledgeFsSpacesQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
@@ -2474,7 +2532,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionPath = z.obje
 })
 
 /**
- * KnowledgeFS direct query admitted
+ * KnowledgeFS streaming query admitted through Dify API
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse =
   zKnowledgeFsQueryAdmissionResponse
@@ -2484,7 +2542,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityPath = z
 })
 
 /**
- * KnowledgeFS query stream capability
+ * KnowledgeFS Dify API query stream capability
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityResponse =
   zKnowledgeFsQueryStreamCapabilityResponse
@@ -3014,18 +3072,68 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingQuery = 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse =
   zKnowledgeFsTraceEntryListResponse
 
-export const zPostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesBody =
-  zKnowledgeFsUploadCapabilityPayload
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsBody =
+  zKnowledgeFsUploadSessionCreatePayload
 
-export const zPostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesPath = z.object({
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsPath = z.object({
   control_space_id: z.string(),
 })
 
 /**
- * KnowledgeFS upload capability
+ * KnowledgeFS upload session created
  */
-export const zPostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesResponse =
-  zKnowledgeFsCapabilityResponse
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponse =
+  zKnowledgeFsUploadSessionCreateResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortBody =
+  zKnowledgeFsUploadSessionAbortPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortPath =
+  z.object({
+    control_space_id: z.string(),
+    upload_session_id: z.string(),
+  })
+
+/**
+ * KnowledgeFS upload session aborted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponse =
+  zKnowledgeFsUploadSessionMutationResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteBody =
+  zKnowledgeFsUploadSessionCompletePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompletePath =
+  z.object({
+    control_space_id: z.string(),
+    upload_session_id: z.string(),
+  })
+
+/**
+ * KnowledgeFS upload session completed
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponse =
+  zKnowledgeFsUploadSessionMutationResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignBody =
+  zKnowledgeFsUploadPartPresignPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignPath =
+  z.object({
+    control_space_id: z.string(),
+    part_number: z.int(),
+    upload_session_id: z.string(),
+  })
+
+/**
+ * KnowledgeFS upload part URL created
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponse =
+  zKnowledgeFsPresignedUploadResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileBody =
   z.object({

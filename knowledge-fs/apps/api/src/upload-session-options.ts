@@ -18,10 +18,7 @@ import {
   createUploadSessionService,
 } from "@knowledge/api";
 
-import { parseDirectAllowedOrigins } from "./direct-transport-security";
-
 export interface ApiUploadSessionEnv {
-  readonly KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS?: string | undefined;
   readonly KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_BATCH_SIZE?: string | undefined;
   readonly KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_INTERVAL_MS?: string | undefined;
   readonly KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_STALE_MS?: string | undefined;
@@ -37,7 +34,6 @@ export interface ApiUploadSessionEnv {
 }
 
 export interface ApiUploadSessionOptions {
-  readonly allowedOrigins: readonly string[];
   readonly cleanupBatchSize: number;
   readonly cleanupIntervalMs: number;
   readonly cleanupStaleMs: number;
@@ -88,11 +84,6 @@ export function createApiUploadSessionOptions(
 ): ApiUploadSessionOptions | undefined {
   if (!enabled(env.KNOWLEDGE_DIRECT_UPLOAD_ENABLED)) return undefined;
 
-  const allowedOrigins = parseDirectAllowedOrigins({
-    environment: env.NODE_ENV,
-    name: "KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS",
-    value: env.KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS,
-  });
   const maxFileBytes = positiveInteger(
     env.KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES,
     100 * 1024 * mebibyte,
@@ -132,7 +123,6 @@ export function createApiUploadSessionOptions(
   }
 
   return {
-    allowedOrigins,
     cleanupBatchSize: boundedInteger(
       env.KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_BATCH_SIZE,
       100,

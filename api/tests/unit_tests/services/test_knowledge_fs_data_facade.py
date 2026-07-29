@@ -9,6 +9,7 @@ from services.knowledge_fs import data_facade as data_facade_module
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSProductRerankProfile,
     KnowledgeFSProductRetrievalProfile,
@@ -20,6 +21,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSpaceUpdatePayload,
+    KnowledgeFSUploadPartPresignPayload,
+    KnowledgeFSUploadSessionAbortPayload,
+    KnowledgeFSUploadSessionCompletePayload,
+    KnowledgeFSUploadSessionCreatePayload,
+    KnowledgeFSUploadSessionPartPayload,
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
@@ -28,6 +34,8 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteJSONRequest,
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteMultipartRequest,
+    KnowledgeFSRemoteSSERequest,
+    KnowledgeFSRemoteSSEResponse,
 )
 
 
@@ -65,6 +73,11 @@ class FailingRemote:
         self.calls += 1
         raise AssertionError("must not perform multipart I/O")
 
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest):
+        _ = request
+        self.calls += 1
+        raise AssertionError("must not perform SSE I/O")
+
 
 class RecordingBroker:
     def __init__(self) -> None:
@@ -88,6 +101,7 @@ class RecordingRemote:
         self.requests: list[KnowledgeFSRemoteJSONRequest] = []
         self.binary_requests: list[KnowledgeFSRemoteBinaryRequest] = []
         self.multipart_requests: list[KnowledgeFSRemoteMultipartRequest] = []
+        self.sse_requests: list[KnowledgeFSRemoteSSERequest] = []
 
     def batch_space_summaries(self, **kwargs):
         _ = kwargs
@@ -189,6 +203,36 @@ class RecordingRemote:
                 "createdAt": 1.0,
                 "updatedAt": 1.0,
             }
+        if request.operation_id == "createUploadSession":
+            return {
+                "session": {
+                    "expectedSizeBytes": 12,
+                    "expiresAt": 2_060_000,
+                    "id": "session-1",
+                    "mode": "multipart",
+                    "multipartPartCount": 1,
+                    "multipartPartSizeBytes": 12,
+                    "status": "ready",
+                },
+                "upload": None,
+            }
+        if request.operation_id == "presignUploadSessionPart":
+            return {
+                "expiresAt": 2_030_000,
+                "headers": {"x-amz-checksum-sha256": "part-checksum"},
+                "method": "PUT",
+                "url": "https://storage.example/upload-part",
+            }
+        if request.operation_id in {"completeUploadSession", "abortUploadSession"}:
+            return {
+                "session": {
+                    "expectedSizeBytes": 12,
+                    "expiresAt": 2_060_000,
+                    "id": "session-1",
+                    "mode": "multipart",
+                    "status": "completed" if request.operation_id == "completeUploadSession" else "aborted",
+                }
+            }
         return {"id": "space-1"}
 
     def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest):
@@ -231,6 +275,15 @@ class RecordingRemote:
             "logicalDocumentId": "document-1",
             "statusUrl": "/knowledge-spaces/space-1/logical-documents/document-1/tasks/job-1",
         }
+
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest):
+        self.sse_requests.append(request)
+        return KnowledgeFSRemoteSSEResponse(
+            status_code=200,
+            headers=(("content-type", "text/event-stream"),),
+            chunks=iter((b"data: ok\n\n",)),
+            close=lambda: None,
+        )
 
 
 class ActiveSettingsRemote(RecordingRemote):
@@ -380,6 +433,185 @@ def test_legacy_buffered_query_fails_before_capability_or_remote_io() -> None:
 
     assert broker.calls == 0
     assert remote.calls == 0
+
+
+def test_query_and_research_streams_use_the_internal_sse_transport() -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)  # type: ignore[arg-type]
+
+    query_response = facade.stream_query(
+        capability_token="query-capability",
+        trace_id="trace-1",
+        payload=KnowledgeFSAdmittedQueryRequest(
+            knowledgeSpaceId="space-1",
+            query="What changed?",
+            mode="fast",
+        ),
+    )
+    research_response = facade.stream_research_task(
+        capability_token="research-capability",
+        trace_id="trace-2",
+        task_id="task-1",
+        knowledge_space_id="space-1",
+        cursor="cursor-1",
+        limit=25,
+    )
+
+    assert query_response.status_code == 200
+    assert research_response.status_code == 200
+    assert remote.sse_requests == [
+        KnowledgeFSRemoteSSERequest(
+            operation_id="createQuery",
+            method="POST",
+            path="/queries",
+            capability_token="query-capability",
+            trace_id="trace-1",
+            payload={
+                "activeDocumentIds": [],
+                "activeEntityIds": [],
+                "knowledgeSpaceId": "space-1",
+                "mode": "fast",
+                "query": "What changed?",
+            },
+        ),
+        KnowledgeFSRemoteSSERequest(
+            operation_id="streamResearchTask",
+            method="GET",
+            path="/research-tasks/task-1/events",
+            capability_token="research-capability",
+            trace_id="trace-2",
+            payload=None,
+            query=(
+                ("knowledgeSpaceId", "space-1"),
+                ("limit", "25"),
+                ("cursor", "cursor-1"),
+            ),
+        ),
+    ]
+
+
+def test_upload_session_control_plane_uses_only_json_bff_calls_bound_to_the_space() -> None:
+    remote = RecordingRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
+
+    created = facade.create_upload_session(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSUploadSessionCreatePayload(
+            checksum_sha256_base64="whole-checksum",
+            content_type="application/pdf",
+            expected_size_bytes=12,
+            file_name="guide.pdf",
+        ),
+        idempotency_key="upload-session-1",
+    )
+    presigned = facade.presign_upload_session_part(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        upload_session_id="session-1",
+        part_number=1,
+        payload=KnowledgeFSUploadPartPresignPayload(
+            checksum_sha256_base64="part-checksum",
+            content_length=12,
+        ),
+    )
+    completed = facade.complete_upload_session(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        upload_session_id="session-1",
+        payload=KnowledgeFSUploadSessionCompletePayload(
+            parts=[
+                KnowledgeFSUploadSessionPartPayload(
+                    checksum_sha256_base64="part-checksum",
+                    etag="etag-1",
+                    part_number=1,
+                )
+            ]
+        ),
+    )
+    aborted = facade.abort_upload_session(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        upload_session_id="session-1",
+        payload=KnowledgeFSUploadSessionAbortPayload(),
+    )
+
+    assert created.session.status == "ready"
+    assert presigned.url == "https://storage.example/upload-part"
+    assert completed.session.status == "completed"
+    assert aborted.session.status == "aborted"
+    assert [call["operation_id"] for call in broker.calls] == [
+        "createUploadSession",
+        "presignUploadSessionPart",
+        "completeUploadSession",
+        "abortUploadSession",
+    ]
+    assert remote.requests == [
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="createUploadSession",
+            method="POST",
+            path="/knowledge-spaces/space-1/upload-sessions",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload={
+                "checksumSha256Base64": "whole-checksum",
+                "contentType": "application/pdf",
+                "expectedSizeBytes": 12,
+                "fileName": "guide.pdf",
+                "idempotencyKey": "upload-session-1",
+            },
+        ),
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="presignUploadSessionPart",
+            method="POST",
+            path="/upload-sessions/session-1/parts/1/presign",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload={
+                "checksumSha256Base64": "part-checksum",
+                "contentLength": 12,
+                "knowledgeSpaceId": "space-1",
+            },
+        ),
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="completeUploadSession",
+            method="POST",
+            path="/upload-sessions/session-1/complete",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload={
+                "parts": [
+                    {
+                        "checksumSha256Base64": "part-checksum",
+                        "etag": "etag-1",
+                        "partNumber": 1,
+                    }
+                ],
+                "knowledgeSpaceId": "space-1",
+            },
+        ),
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="abortUploadSession",
+            method="POST",
+            path="/upload-sessions/session-1/abort",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload={"knowledgeSpaceId": "space-1"},
+        ),
+    ]
 
 
 def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_request() -> None:

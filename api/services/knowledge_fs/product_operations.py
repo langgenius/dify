@@ -31,14 +31,14 @@ class KnowledgeFSProductOperation(NamedTuple):
     capability_operation_id: str | None
     permission: KnowledgeFSProductPermission
     kfs_path: str | None
-    transport: Literal["binary", "direct", "json", "multipart", "sse", "unavailable"]
+    transport: Literal["binary", "json", "multipart", "sse", "unavailable"]
     resource_resolver: Literal[
         "document", "job", "knowledge_space", "namespace", "query", "research_task", "source", "upload_session"
     ]
     rbac_permission: KnowledgeFSProductPermission
     max_request_bytes: int
     max_response_bytes: int
-    stream_kind: Literal["buffered-multipart", "direct-upload", "json", "sse"]
+    stream_kind: Literal["buffered-multipart", "json", "sse"]
 
     @property
     def action(self) -> str | None:
@@ -53,14 +53,14 @@ def _operation(
     capability_operation_id: str | None,
     permission: KnowledgeFSProductPermission,
     kfs_path: str | None,
-    transport: Literal["binary", "direct", "json", "multipart", "sse", "unavailable"],
+    transport: Literal["binary", "json", "multipart", "sse", "unavailable"],
     *,
     resource_resolver: Literal[
         "document", "job", "knowledge_space", "namespace", "query", "research_task", "source", "upload_session"
     ],
     max_request_bytes: int,
     max_response_bytes: int,
-    stream_kind: Literal["buffered-multipart", "direct-upload", "json", "sse"],
+    stream_kind: Literal["buffered-multipart", "json", "sse"],
 ) -> KnowledgeFSProductOperation:
     return KnowledgeFSProductOperation(
         method=method,
@@ -710,7 +710,7 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             "createQuery",
             KnowledgeFSProductPermission.QUERY,
             "/queries",
-            "direct",
+            "sse",
             resource_resolver="knowledge_space",
             max_request_bytes=64 * 1024,
             max_response_bytes=0,
@@ -952,22 +952,22 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             "createUploadSession",
             KnowledgeFSProductPermission.DOCUMENT_WRITE,
             "/knowledge-spaces/{id}/upload-sessions",
-            "direct",
+            "json",
             resource_resolver="knowledge_space",
             max_request_bytes=64 * 1024,
             max_response_bytes=64 * 1024,
-            stream_kind="direct-upload",
+            stream_kind="json",
         ),
         "presignUploadSessionPart": _operation(
             "POST",
             "presignUploadSessionPart",
             KnowledgeFSProductPermission.DOCUMENT_WRITE,
             "/upload-sessions/{id}/parts/{partNumber}/presign",
-            "direct",
+            "json",
             resource_resolver="upload_session",
             max_request_bytes=32 * 1024,
             max_response_bytes=64 * 1024,
-            stream_kind="direct-upload",
+            stream_kind="json",
         ),
         "uploadSmallFile": _operation(
             "POST",
@@ -985,31 +985,31 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             "completeUploadSession",
             KnowledgeFSProductPermission.DOCUMENT_WRITE,
             "/upload-sessions/{id}/complete",
-            "direct",
+            "json",
             resource_resolver="upload_session",
             max_request_bytes=128 * 1024,
             max_response_bytes=128 * 1024,
-            stream_kind="direct-upload",
+            stream_kind="json",
         ),
         "abortUploadSession": _operation(
             "POST",
             "abortUploadSession",
             KnowledgeFSProductPermission.DOCUMENT_WRITE,
             "/upload-sessions/{id}/abort",
-            "direct",
+            "json",
             resource_resolver="upload_session",
             max_request_bytes=32 * 1024,
             max_response_bytes=64 * 1024,
-            stream_kind="direct-upload",
+            stream_kind="json",
         ),
         "streamResearchTask": _operation(
             "GET",
             "streamResearchTaskProgress",
             KnowledgeFSProductPermission.READ,
             "/research-tasks/{id}/events",
-            "direct",
+            "sse",
             resource_resolver="research_task",
-            max_request_bytes=0,
+            max_request_bytes=16 * 1024,
             max_response_bytes=0,
             stream_kind="sse",
         ),
@@ -1036,7 +1036,7 @@ def is_product_operation_ready(operation_id: str) -> bool:
     operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS.get(operation_id)
     return bool(
         operation
-        and operation.transport in {"binary", "direct", "json", "multipart"}
+        and operation.transport in {"binary", "json", "multipart", "sse"}
         and is_product_operation_registered(operation_id)
     )
 

@@ -506,8 +506,7 @@ function researchFixture(options: ResearchFixtureOptions = {}) {
         ? undefined
         : { assertPublicationAllowed: vi.fn(async () => undefined) },
     deletionVisibility: visibility as never,
-    directStream:
-      options.directStream === false ? undefined : { allowedOrigins: [], maxConnectionMs: 10 },
+    directStream: options.directStream === false ? undefined : { maxConnectionMs: 10 },
     dryRunResearchPlanner: {
       plan: vi.fn((input: Record<string, unknown>) => {
         if (options.planError !== undefined) throw options.planError;

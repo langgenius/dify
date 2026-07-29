@@ -37,7 +37,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSStreamCapabilityPayload,
-    KnowledgeFSUploadCapabilityPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 
@@ -520,6 +519,38 @@ _CONSOLE_DELEGATION_CASES = (
         {"control_space_id": "space-1", "trace_id": "trace-1", "kind": "missing"},
     ),
     (
+        "KnowledgeFSSpaceUploadSessionsApi",
+        "post",
+        ("space-1",),
+        "facade",
+        "create_upload_session",
+        {"control_space_id": "space-1"},
+    ),
+    (
+        "KnowledgeFSSpaceUploadSessionPartPresignApi",
+        "post",
+        ("space-1", "session-1", 3),
+        "facade",
+        "presign_upload_session_part",
+        {"control_space_id": "space-1", "upload_session_id": "session-1", "part_number": 3},
+    ),
+    (
+        "KnowledgeFSSpaceUploadSessionCompleteApi",
+        "post",
+        ("space-1", "session-1"),
+        "facade",
+        "complete_upload_session",
+        {"control_space_id": "space-1", "upload_session_id": "session-1"},
+    ),
+    (
+        "KnowledgeFSSpaceUploadSessionAbortApi",
+        "post",
+        ("space-1", "session-1"),
+        "facade",
+        "abort_upload_session",
+        {"control_space_id": "space-1", "upload_session_id": "session-1"},
+    ),
+    (
         "KnowledgeFSSpaceSmallFileUploadApi",
         "post",
         ("space-1", "session-1"),
@@ -979,7 +1010,7 @@ def test_deprecated_buffered_routes_fail_closed(resource_module: object, class_n
         _invoke(resource_module, class_name, "post", "space-1")
 
 
-def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: pytest.MonkeyPatch) -> None:
     issued = SimpleNamespace(
         token="capability-token",
         expires_at=datetime(2026, 7, 21, tzinfo=UTC),
@@ -988,13 +1019,11 @@ def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: p
     broker = SimpleNamespace(issue_interactive=MagicMock(return_value=issued))
     payloads = iter(
         [
-            KnowledgeFSUploadCapabilityPayload(operation_id="completeUploadSession", upload_session_id="session-1"),
             KnowledgeFSQueryCreatePayload(query="question", mode="deep"),
             KnowledgeFSStreamCapabilityPayload(control_space_id="space-2"),
         ]
     )
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.example/")
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", True)
+    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.example")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -1006,28 +1035,29 @@ def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: p
     app = Flask(__name__)
 
     with app.test_request_context("/", method="POST"):
-        upload = _invoke(console_resources, "KnowledgeFSSpaceUploadCapabilitiesApi", "post", "space-1")
         query = _invoke(console_resources, "KnowledgeFSSpaceQueryAdmissionApi", "post", "space-1")
         task = _invoke(console_resources, "KnowledgeFSTaskStreamCapabilityApi", "post", "task/1")
         legacy_query = _invoke(console_resources, "KnowledgeFSSpaceQueryStreamCapabilityApi", "post", "space-1")
 
-    assert upload.operation_id == "completeUploadSession"
     assert query.request.knowledge_space_id == "knowledge-space-1"
-    assert query.url == "https://kfs.example/queries"
-    assert task.url == "https://kfs.example//research-tasks/task%2F1/events?knowledgeSpaceId=knowledge-space-1"
-    assert legacy_query.url == "https://kfs.example/queries"
-    assert broker.issue_interactive.call_args_list[0].kwargs["resource_id"] == "session-1"
-    assert broker.issue_interactive.call_args_list[1].kwargs["operation_id"] == "createQuery"
-    assert broker.issue_interactive.call_args_list[2].kwargs == {
+    assert query.url == "https://dify.example/console/api/knowledge-fs/query-stream"
+    assert (
+        task.url == "https://dify.example/console/api/knowledge-fs/research-tasks/task%2F1/events"
+        "?knowledgeSpaceId=knowledge-space-1"
+    )
+    assert legacy_query.url == "https://dify.example/console/api/knowledge-fs/query-stream"
+    assert broker.issue_interactive.call_args_list[0].kwargs["operation_id"] == "createQuery"
+    assert broker.issue_interactive.call_args_list[1].kwargs == {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
         "control_space_id": "space-2",
         "operation_id": "streamResearchTask",
         "resource_id": "task/1",
     }
+    assert broker.issue_interactive.call_args_list[2].kwargs["operation_id"] == "createQuery"
 
 
-def test_service_direct_query_admission_binds_profile_space_and_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     issued = SimpleNamespace(
         token="capability-token",
         expires_at=datetime(2026, 7, 21, tzinfo=UTC),
@@ -1036,7 +1066,7 @@ def test_service_direct_query_admission_binds_profile_space_and_payload(monkeypa
     broker = SimpleNamespace(issue_service=MagicMock(return_value=issued))
     runtime = SimpleNamespace(broker=broker)
     profile = object()
-    monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.example/")
+    monkeypatch.setattr(service_resources.dify_config, "SERVICE_API_URL", "https://api.dify.example")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
     monkeypatch.setattr(service_resources, "_profile", lambda *_args, **_kwargs: profile)
     monkeypatch.setattr(service_resources, "_payload", lambda _: KnowledgeFSQueryCreatePayload(query="question"))
@@ -1049,39 +1079,7 @@ def test_service_direct_query_admission_binds_profile_space_and_payload(monkeypa
     broker.issue_service.assert_called_once_with(profile=profile, operation_id="createQuery")
     assert response.request.knowledge_space_id == "knowledge-space-1"
     assert response.request.query == "question"
-    assert response.url == "https://kfs.example/queries"
-
-
-@pytest.mark.parametrize(
-    ("resource_module", "class_name", "message"),
-    [
-        (console_resources, "KnowledgeFSSpaceUploadCapabilitiesApi", "direct upload"),
-        (console_resources, "KnowledgeFSSpaceQueryAdmissionApi", "direct query"),
-        (console_resources, "KnowledgeFSSpaceQueryStreamCapabilityApi", "direct query"),
-        (console_resources, "KnowledgeFSTaskStreamCapabilityApi", "direct streaming"),
-        (service_resources, "KnowledgeFSServiceQueryAdmissionApi", "direct query"),
-    ],
-)
-def test_direct_routes_fail_before_admission_when_origin_is_unconfigured(
-    monkeypatch: pytest.MonkeyPatch,
-    resource_module: object,
-    class_name: str,
-    message: str,
-) -> None:
-    monkeypatch.setattr(resource_module.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", None)
-
-    with pytest.raises(KnowledgeFSOperationUnavailableError, match=message):
-        _invoke(resource_module, class_name, "post", "resource-1")
-
-
-def test_console_upload_capability_fails_before_admission_until_upload_is_verified(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.example")
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", False)
-
-    with pytest.raises(KnowledgeFSOperationUnavailableError, match="direct upload"):
-        _invoke(console_resources, "KnowledgeFSSpaceUploadCapabilitiesApi", "post", "space-1")
+    assert response.url == "https://api.dify.example/v1/knowledge-fs/query-stream"
 
 
 def test_console_resource_helpers_validate_feature_payload_headers_and_query_pairs(

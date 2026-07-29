@@ -85,7 +85,6 @@ describe("knowledge gateway assembly coverage", () => {
       difyCapabilityV2Auth: uninvokedPort<"difyCapabilityV2Auth">(),
       difyIntegrationFreezes: uninvokedPort<"difyIntegrationFreezes">(),
       difyIntegrationStates: uninvokedPort<"difyIntegrationStates">(),
-      directUploadAllowedOrigins: ["https://app.example.com"],
       documentChunkState: uninvokedPort<"documentChunkState">(),
       documentChunks: uninvokedPort<"documentChunks">(),
       documentCompilationJobs: uninvokedPort<"documentCompilationJobs">(),
@@ -134,7 +133,6 @@ describe("knowledge gateway assembly coverage", () => {
       relevanceTriageSignals: uninvokedPort<"relevanceTriageSignals">(),
       researchTaskDeletionVisibility: uninvokedPort<"researchTaskDeletionVisibility">(),
       researchTaskDirectStream: {
-        allowedOrigins: ["https://app.example.com"],
         maxConnectionMs: 60_000,
       },
       retrievalExecutionLeases: uninvokedPort<"retrievalExecutionLeases">(),
@@ -345,7 +343,7 @@ describe("knowledge gateway assembly coverage", () => {
     expect(() =>
       createKnowledgeGateway({
         adapter: adapter(),
-        researchTaskDirectStream: { allowedOrigins: [], maxConnectionMs: 1_000 },
+        researchTaskDirectStream: { maxConnectionMs: 1_000 },
       }),
     ).toThrow("Direct Research streams require Capability v2 and durable grant provenance");
 
@@ -391,7 +389,7 @@ describe("knowledge gateway assembly coverage", () => {
     );
   });
 
-  it("requires production-only provenance and browser origin dependencies", () => {
+  it("requires production provenance without introducing a browser-origin dependency", () => {
     vi.stubEnv("NODE_ENV", "production");
     const provisioning = uninvokedPort<"knowledgeSpaceProvisioning">();
 
@@ -413,6 +411,6 @@ describe("knowledge gateway assembly coverage", () => {
         knowledgeSpaceProvisioning: provisioning,
         uploadSessions: uninvokedPort<"uploadSessions">(),
       }),
-    ).toThrow("Direct upload sessions require exact browser CORS origins in production");
+    ).not.toThrow();
   });
 });

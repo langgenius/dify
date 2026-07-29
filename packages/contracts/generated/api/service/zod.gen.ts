@@ -4172,6 +4172,13 @@ export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitRespo
  */
 export const zGetInfoResponse = zAppInfoResponse
 
+export const zPostKnowledgeFsQueryStreamBody = zKnowledgeFsAdmittedQueryRequest
+
+/**
+ * KnowledgeFS query event stream
+ */
+export const zPostKnowledgeFsQueryStreamResponse = z.record(z.string(), z.unknown())
+
 export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath = z.object({
   control_space_id: z.string(),
   job_id: z.string(),
@@ -4384,7 +4391,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionPath = z.obje
 })
 
 /**
- * KnowledgeFS direct query admitted
+ * KnowledgeFS streaming query admitted through Dify API
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse =
   zKnowledgeFsQueryAdmissionResponse

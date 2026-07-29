@@ -4194,6 +4194,22 @@ export type GetInfoResponses = {
 
 export type GetInfoResponse = GetInfoResponses[keyof GetInfoResponses]
 
+export type PostKnowledgeFsQueryStreamData = {
+  body: KnowledgeFsAdmittedQueryRequest
+  path?: never
+  query?: never
+  url: '/knowledge-fs/query-stream'
+}
+
+export type PostKnowledgeFsQueryStreamResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostKnowledgeFsQueryStreamResponse =
+  PostKnowledgeFsQueryStreamResponses[keyof PostKnowledgeFsQueryStreamResponses]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdData = {
   body?: never
   path: {

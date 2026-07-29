@@ -782,9 +782,6 @@ const app = createKnowledgeGateway({
     ? { researchTaskDirectStream: researchTaskDirectStream.options }
     : {}),
   ...(uploadSessions?.sessions ? { uploadSessions: uploadSessions.sessions } : {}),
-  ...(uploadSessions?.sessions && uploadSessionOptions
-    ? { directUploadAllowedOrigins: uploadSessionOptions.allowedOrigins }
-    : {}),
   ...(uploadSessions?.storageQuotas ? { storageQuotas: uploadSessions.storageQuotas } : {}),
   ...repositoryOptions,
   ...(integratedProvisioningReady && databaseRepositories.integratedKnowledgeSpaceProvisioning

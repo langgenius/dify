@@ -66,7 +66,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
-    KnowledgeFSCapabilityResponse,
     KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSCrawlPreviewPageListResponse,
     KnowledgeFSCrawlPreviewSelectionPayload,
@@ -107,6 +106,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewStatsResponse,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSPermissionListResponse,
+    KnowledgeFSPresignedUploadResponse,
     KnowledgeFSProfileMigrationResponse,
     KnowledgeFSQualityListQuery,
     KnowledgeFSQualityReplayPayload,
@@ -122,6 +122,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskPlanPayload,
     KnowledgeFSResearchTaskPlanResponse,
     KnowledgeFSResearchTaskResponse,
+    KnowledgeFSResearchTaskStreamQuery,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
     KnowledgeFSSettingsUpdateResponse,
@@ -164,7 +165,12 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSTraceEntriesQuery,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSTraceListResponse,
-    KnowledgeFSUploadCapabilityPayload,
+    KnowledgeFSUploadPartPresignPayload,
+    KnowledgeFSUploadSessionAbortPayload,
+    KnowledgeFSUploadSessionCompletePayload,
+    KnowledgeFSUploadSessionCreatePayload,
+    KnowledgeFSUploadSessionCreateResponse,
+    KnowledgeFSUploadSessionMutationResponse,
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
@@ -172,6 +178,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteMultipartFile,
+    KnowledgeFSRemoteSSEResponse,
 )
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
 from services.knowledge_fs_capability import (
@@ -197,10 +204,12 @@ register_schema_models(
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSMembersReplacePayload,
+    KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQualityListQuery,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSResearchTaskPartialsQuery,
+    KnowledgeFSResearchTaskStreamQuery,
     KnowledgeFSResearchTaskPlanPayload,
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSSettingsPayload,
@@ -224,11 +233,13 @@ register_schema_models(
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSStreamCapabilityPayload,
     KnowledgeFSTraceEntriesQuery,
-    KnowledgeFSUploadCapabilityPayload,
+    KnowledgeFSUploadPartPresignPayload,
+    KnowledgeFSUploadSessionAbortPayload,
+    KnowledgeFSUploadSessionCompletePayload,
+    KnowledgeFSUploadSessionCreatePayload,
 )
 register_response_schema_models(
     console_ns,
-    KnowledgeFSCapabilityResponse,
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingResponse,
@@ -293,6 +304,9 @@ register_response_schema_models(
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewStatsResponse,
+    KnowledgeFSPresignedUploadResponse,
+    KnowledgeFSUploadSessionCreateResponse,
+    KnowledgeFSUploadSessionMutationResponse,
 )
 
 
@@ -364,6 +378,9 @@ _IDEMPOTENCY_HEADER_PARAMS = {
     }
 }
 _SMALL_FILE_MULTIPART_OVERHEAD_MAX_BYTES = 64 * 1024
+_MAX_STREAM_CAPABILITY_BYTES = 16 * 1024
+_MAX_STREAM_TRACE_ID_BYTES = 255
+_QUERY_STREAM_PROXY_PATH = "/knowledge-fs/query-stream"
 _BACKGROUND_TASK_KIND_ADAPTER: TypeAdapter[Literal["document", "document_bulk", "source"]] = TypeAdapter(
     Literal["document", "document_bulk", "source"]
 )
@@ -385,6 +402,57 @@ def _read_small_file_body(max_bytes: int) -> bytes:
     if not body:
         raise KnowledgeFSProductRequestRejectedError(status_code=422)
     return body
+
+
+def _stream_capability() -> tuple[str, str]:
+    scheme, separator, credential = request.headers.get("Authorization", "").partition(" ")
+    token = credential.strip()
+    trace_id = request.headers.get("X-Trace-ID", "").strip()
+    if (
+        separator != " "
+        or scheme.lower() != "bearer"
+        or not token
+        or len(token.encode("utf-8")) > _MAX_STREAM_CAPABILITY_BYTES
+        or any(character.isspace() for character in token)
+    ):
+        raise PermissionError("KnowledgeFS stream capability is invalid")
+    if (
+        not trace_id
+        or len(trace_id.encode("utf-8")) > _MAX_STREAM_TRACE_ID_BYTES
+        or any(character in trace_id for character in ("\0", "\r", "\n"))
+    ):
+        raise KnowledgeFSProductRequestRejectedError(status_code=422)
+    return token, trace_id
+
+
+def _stream_response(upstream: KnowledgeFSRemoteSSEResponse) -> Response:
+    headers = dict(upstream.headers)
+    if HTTPStatus.OK <= upstream.status_code < HTTPStatus.MULTIPLE_CHOICES:
+        headers.setdefault("cache-control", "no-cache")
+        headers.setdefault("content-type", "text/event-stream")
+        headers.setdefault("x-accel-buffering", "no")
+
+    def generate():
+        try:
+            yield from upstream.chunks
+        finally:
+            upstream.close()
+
+    return Response(
+        generate(),
+        status=upstream.status_code,
+        headers=headers,
+        direct_passthrough=True,
+    )
+
+
+def _console_api_url(path: str) -> str:
+    base_url = str(dify_config.CONSOLE_API_URL or "").strip().rstrip("/")
+    if not base_url:
+        return f"/console/api{path}"
+    if base_url.endswith("/console/api"):
+        return f"{base_url}{path}"
+    return f"{base_url}/console/api{path}"
 
 
 def _read_document_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
@@ -1951,7 +2019,7 @@ class KnowledgeFSSpaceQueriesApi(Resource):
     def post(self, control_space_id: str):
         _ = control_space_id
         raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS query creation is deprecated; use the queries/admission direct flow"
+            "Buffered KnowledgeFS query creation is deprecated; use the queries/admission streaming BFF flow"
         )
 
 
@@ -1960,7 +2028,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS direct query admitted",
+        "KnowledgeFS streaming query admitted through Dify API",
         console_ns.models[KnowledgeFSQueryAdmissionResponse.__name__],
     )
     @setup_required
@@ -1969,9 +2037,6 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
-        direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-        if direct_origin is None:
-            raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct query streaming is not configured")
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSQueryCreatePayload)
         issued = _console_services().broker.issue_interactive(
@@ -1993,9 +2058,29 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
                 expires_at=issued.expires_at,
                 operation_id="createQuery",
                 request=admitted_request,
-                url=_query_stream_url(direct_origin),
+                url=_console_api_url(_QUERY_STREAM_PROXY_PATH),
             ),
         )
+
+
+@console_ns.route(_QUERY_STREAM_PROXY_PATH)
+class KnowledgeFSQueryStreamProxyApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSAdmittedQueryRequest.__name__])
+    @console_ns.doc(produces=["text/event-stream"])
+    @console_ns.response(HTTPStatus.OK, "KnowledgeFS query event stream")
+    @_knowledge_fs_errors
+    def post(self):
+        # This endpoint intentionally authenticates with the short-lived, resource-scoped
+        # Capability v2 token issued by /queries/admission. Browser session cookies are
+        # neither required nor forwarded to KnowledgeFS.
+        capability_token, trace_id = _stream_capability()
+        payload = _payload(KnowledgeFSAdmittedQueryRequest)
+        upstream = _console_services().facade.stream_query(
+            capability_token=capability_token,
+            trace_id=trace_id,
+            payload=payload,
+        )
+        return _stream_response(upstream)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks")
@@ -2451,13 +2536,16 @@ class KnowledgeFSSpaceTraceMissingApi(Resource):
         return _trace_entries(control_space_id=control_space_id, trace_id=trace_id, kind="missing")
 
 
-@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/upload-capabilities")
-class KnowledgeFSSpaceUploadCapabilitiesApi(Resource):
-    @console_ns.expect(console_ns.models[KnowledgeFSUploadCapabilityPayload.__name__])
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions",
+)
+class KnowledgeFSSpaceUploadSessionsApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionCreatePayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
-        HTTPStatus.OK,
-        "KnowledgeFS upload capability",
-        console_ns.models[KnowledgeFSCapabilityResponse.__name__],
+        HTTPStatus.CREATED,
+        "KnowledgeFS upload session created",
+        console_ns.models[KnowledgeFSUploadSessionCreateResponse.__name__],
     )
     @setup_required
     @login_required
@@ -2465,27 +2553,98 @@ class KnowledgeFSSpaceUploadCapabilitiesApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
-        direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-        if direct_origin is None or not dify_config.KNOWLEDGE_FS_DIRECT_UPLOAD_READY:
-            raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct upload is not configured")
         actor_id, tenant_id = _actor()
-        payload = _payload(KnowledgeFSUploadCapabilityPayload)
-        issued = _console_services().broker.issue_interactive(
+        result = _console_services().facade.create_upload_session(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
-            operation_id=payload.operation_id,
-            resource_id=payload.upload_session_id,
+            payload=_payload(KnowledgeFSUploadSessionCreatePayload),
+            idempotency_key=_idempotency_key(),
         )
-        return dump_response(
-            KnowledgeFSCapabilityResponse,
-            KnowledgeFSCapabilityResponse(
-                token=issued.token,
-                expires_at=issued.expires_at,
-                direct_origin=direct_origin,
-                operation_id=payload.operation_id,
-            ),
+        return dump_response(KnowledgeFSUploadSessionCreateResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/"
+    "<string:upload_session_id>/parts/<int:part_number>/presign",
+)
+class KnowledgeFSSpaceUploadSessionPartPresignApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSUploadPartPresignPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS upload part URL created",
+        console_ns.models[KnowledgeFSPresignedUploadResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, upload_session_id: str, part_number: int):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.presign_upload_session_part(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            upload_session_id=upload_session_id,
+            part_number=part_number,
+            payload=_payload(KnowledgeFSUploadPartPresignPayload),
         )
+        return dump_response(KnowledgeFSPresignedUploadResponse, result)
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/complete",
+)
+class KnowledgeFSSpaceUploadSessionCompleteApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionCompletePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS upload session completed",
+        console_ns.models[KnowledgeFSUploadSessionMutationResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, upload_session_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.complete_upload_session(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            upload_session_id=upload_session_id,
+            payload=_payload(KnowledgeFSUploadSessionCompletePayload),
+        )
+        return dump_response(KnowledgeFSUploadSessionMutationResponse, result)
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/abort",
+)
+class KnowledgeFSSpaceUploadSessionAbortApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionAbortPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS upload session aborted",
+        console_ns.models[KnowledgeFSUploadSessionMutationResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, upload_session_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.abort_upload_session(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            upload_session_id=upload_session_id,
+            payload=_payload(KnowledgeFSUploadSessionAbortPayload),
+        )
+        return dump_response(KnowledgeFSUploadSessionMutationResponse, result)
 
 
 @console_ns.route(
@@ -2522,7 +2681,7 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
     @console_ns.doc(deprecated=True)
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS query stream capability",
+        "KnowledgeFS Dify API query stream capability",
         console_ns.models[KnowledgeFSQueryStreamCapabilityResponse.__name__],
     )
     @setup_required
@@ -2531,9 +2690,6 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
-        direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-        if direct_origin is None:
-            raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct query streaming is not configured")
         actor_id, tenant_id = _actor()
         issued = _console_services().broker.issue_interactive(
             tenant_id=tenant_id,
@@ -2547,7 +2703,7 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
                 token=issued.token,
                 expires_at=issued.expires_at,
                 operation_id="createQuery",
-                url=_query_stream_url(direct_origin),
+                url=_console_api_url(_QUERY_STREAM_PROXY_PATH),
             ),
         )
 
@@ -2565,9 +2721,6 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def post(self, task_id: str):
-        direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-        if direct_origin is None:
-            raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct streaming is not configured")
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSStreamCapabilityPayload)
         issued = _console_services().broker.issue_interactive(
@@ -2578,7 +2731,6 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
             resource_id=task_id,
         )
         stream_url = _research_task_events_url(
-            direct_origin=direct_origin,
             task_id=task_id,
             knowledge_space_id=issued.knowledge_space_id,
         )
@@ -2593,14 +2745,32 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
         )
 
 
-def _research_task_events_url(*, direct_origin: str, task_id: str, knowledge_space_id: str) -> str:
-    path = f"/research-tasks/{quote(task_id, safe='')}/events"
+@console_ns.route("/knowledge-fs/research-tasks/<string:task_id>/events")
+class KnowledgeFSResearchTaskStreamProxyApi(Resource):
+    @console_ns.doc(
+        params=query_params_from_model(KnowledgeFSResearchTaskStreamQuery),
+        produces=["text/event-stream"],
+    )
+    @console_ns.response(HTTPStatus.OK, "KnowledgeFS research task event stream")
+    @_knowledge_fs_errors
+    def get(self, task_id: str):
+        capability_token, trace_id = _stream_capability()
+        stream_query = KnowledgeFSResearchTaskStreamQuery.model_validate(request.args.to_dict(flat=True))
+        upstream = _console_services().facade.stream_research_task(
+            capability_token=capability_token,
+            trace_id=trace_id,
+            task_id=task_id,
+            knowledge_space_id=stream_query.knowledge_space_id,
+            cursor=stream_query.cursor,
+            limit=stream_query.limit,
+        )
+        return _stream_response(upstream)
+
+
+def _research_task_events_url(*, task_id: str, knowledge_space_id: str) -> str:
+    path = f"/knowledge-fs/research-tasks/{quote(task_id, safe='')}/events"
     query = urlencode({"knowledgeSpaceId": knowledge_space_id})
-    return f"{direct_origin}{path}?{query}"
-
-
-def _query_stream_url(direct_origin: str) -> str:
-    return f"{direct_origin.rstrip('/')}/queries"
+    return f"{_console_api_url(path)}?{query}"
 
 
 @console_ns.route("/knowledge-fs/.well-known/jwks.json")

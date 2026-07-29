@@ -18,8 +18,8 @@
 - Dify 向前端提供独立 KnowledgeFS 产品 API，并在每次操作前完成资源级授权。
 - KnowledgeFS 不管理 Tenant 生命周期、成员、角色、可见范围，也不保存一套与 Dify 平行的产品权限事实。
 - KnowledgeFS 保留知识空间技术配置、模型配置、文档与索引、检索、异步任务和内部运行状态。
-- 普通 CRUD、设置和列表通过 Dify BFF；大文件上传和长连接 SSE 使用 Dify 签发的短期资源 Capability 直连数据面。
-- 即使前端直连 KnowledgeFS，KnowledgeFS 也只验证 Dify 签发的资源权限，不把浏览器会话或 Dify 登录 JWT 当作自身登录体系。
+- 所有产品接口（包括上传和长连接 SSE）都经过 Dify API/BFF；KnowledgeFS 只接受 Dify API 通过内网发起的请求。
+- Dify API 使用短期、资源级 Capability 调用 KnowledgeFS，不把浏览器会话或 Dify 登录 JWT 传给 KnowledgeFS。
 
 目标架构如下：
 
@@ -28,9 +28,9 @@ flowchart LR
     Browser["Dify 前端"] -->|"Cookie / Dify 会话"| DifyAPI["Dify 产品 API / BFF"]
     DifyAPI --> Authz["Dify 身份、Workspace、成员、KnowledgeFS 产品权限"]
     DifyAPI --> Registry["独立 KnowledgeFS 控制面资源表"]
-    DifyAPI -->|"普通 JSON + 资源级 Capability"| KFS["KnowledgeFS 数据与检索 API"]
-    Browser -->|"一次性上传 Capability"| Upload["KFS 管理的上传会话 / 对象存储"]
-    Browser -->|"短期任务级 Capability"| Stream["KnowledgeFS Research / SSE"]
+    DifyAPI -->|"JSON / multipart / SSE + 资源级 Capability"| KFS["KnowledgeFS 数据与检索 API"]
+    DifyAPI -->|"受限上传 BFF"| Upload["KFS 管理的上传会话 / 对象存储"]
+    DifyAPI -->|"流式 BFF"| Stream["KnowledgeFS Research / SSE"]
     KFS --> Technical["文档、Chunk、Embedding、PageIndex、Graph、Trace、任务"]
     Upload --> Technical
     Stream --> Technical
@@ -41,7 +41,7 @@ flowchart LR
 - 不在 KnowledgeFS 中迁移或复制 Dify 的账号、Workspace 成员和角色管理逻辑。
 - 不复用或关联 Dify 现有 `datasets`、`documents`、`dataset_permissions`、Dataset API、Dataset Token、索引或检索管线。Dify 现有知识库与 KnowledgeFS 是两个独立产品。
 - 不在当前迭代迁移现有 Dataset 知识库的数据、用户、权限、凭据或在途任务，不把任何现有知识库路由切换到 KnowledgeFS，也不下架现有知识库功能。
-- 不让 Dify 前端直接调用任意 KnowledgeFS OpenAPI；直连只允许显式登记的上传和流式接口。
+- 不让 Dify 前端直接调用任意 KnowledgeFS OpenAPI；所有产品接口（包括上传控制面和流式接口）都必须先进入 Dify API。
 - 不让 KnowledgeFS 读取 Dify 数据库来完成成员授权。
 - 不把 Dify 登录 JWT、Cookie 或浏览器提供的 `Authorization` 原样转发给 KnowledgeFS。
 - 不在本轮实现或修改 Dify Web 前端；页面、导航、i18n、前端环境开关以及浏览器 upload/stream client 均由独立前端迭代负责。本计划只实现产品 API、后端能力和调用边界。
@@ -122,12 +122,12 @@ flowchart LR
 | Rerank、Top K、Threshold、检索模式配置 | Dify BFF | Dify | KFS profile revision | 普通 BFF |
 | KFS Document 列表、详情、Outline、Chunk | Dify BFF | Dify | KFS | 普通 BFF |
 | 小文件上传 | Dify BFF | Dify | KFS/object storage | 普通 BFF，保留小体积上限 |
-| 大文件上传 | Dify 先授权 | Dify | KFS upload session/object storage | 一次性 Capability 直连 |
+| 大文件上传 | Dify BFF | Dify | KFS upload session/object storage | session create/presign/complete/abort 先进入 Dify API；对象字节只写入受限 presigned storage URL |
 | Source 配置和同步 | Dify BFF | Dify | KFS | 普通 BFF；凭据用 Dify/KMS 引用 |
 | Fast/Deep 普通查询 | Dify BFF | Dify | KFS Trace、Evidence | 普通 BFF；需要流式时另行登记 |
 | Research 计划和创建 | Dify BFF | Dify | KFS task | 普通 BFF |
-| Research SSE | Dify 签发连接能力 | Dify | KFS event log | 任务级短期 Capability 直连 |
-| 任务状态、结果、取消 | Dify BFF；必要时重新签发直连能力 | Dify | KFS | 默认普通 BFF |
+| Research SSE | Dify 流式 BFF | Dify | KFS event log | Dify API 使用任务级短期 Capability 连接 KFS |
+| 任务状态、结果、取消 | Dify BFF | Dify | KFS | 普通 BFF |
 | AnswerTrace、Evidence、冲突和缺失项 | Dify BFF | Dify | KFS | 普通 BFF |
 | FSCK、GC、lease、staged commit、内部索引状态 | Dify 运维入口或服务间调用 | Dify 运维权限 | KFS | 不对普通前端暴露 |
 | 健康检查、OpenAPI、指标 | 基础设施 | 服务身份 | KFS | 内部网络 |
@@ -350,7 +350,7 @@ KnowledgeFS 不做以下验证：
 - `/spaces/{controlSpaceId}/permissions`、`/members`、`/external-access`、`/credentials`：Dify 控制面。
 - `/spaces/{controlSpaceId}/settings`：模型、Embedding/vector-space、Rerank、retrieval profile BFF。
 - `/spaces/{controlSpaceId}/documents|sources|queries|research-tasks|traces`：KFS 数据 BFF；其中 document ID 是不透明的 KFS Document ID。
-- `/spaces/{controlSpaceId}/upload-capabilities`、`/tasks/{taskId}/stream-capability`：直连能力签发。
+- `/spaces/{controlSpaceId}/queries/admission`、`/knowledge-fs/query-stream`、`/tasks/{taskId}/stream-capability`：Dify API 流式 BFF admission 与代理。
 - `/v1/knowledge-fs/...`：KnowledgeFS 专属 Service API 和 credential validator，不复用 Dataset Service API。
 - Agent/Workflow 使用独立 `app_knowledge_fs_space_joins` 或类型化 `KnowledgeResourceRef{kind: "knowledge_fs"}`，不得把 control-space ID 塞入 `dataset_ids` 或 `AppDatasetJoin`。
 
@@ -376,15 +376,11 @@ KnowledgeFS 不做以下验证：
 - 支持部分缺失的稳定结果，不泄露资源是否存在给未授权主体。
 - product metadata/technical summary response schema 必须纳入 Dify contract lock 和跨服务 schema test；KFS 不可用时 Dify 不从 outbox 或旧缓存伪造权威名称，只返回 control-space 最小状态和 unavailable 占位语义。
 
-### 8.3 允许直连的最小集合
+### 8.3 浏览器与 KnowledgeFS 的网络边界
 
-首轮只开放：
-
-- KFS 管理的 upload session 数据面或其对象存储预签名 URL。
-- `GET /research-tasks/{id}/events`。
-- 只有实际需要逐 token 流式输出时才开放 Query SSE。
-
-其余 JSON 接口继续通过 Dify BFF。直连接口必须要求 Capability v2，不能接受 legacy broad Token。
+浏览器不直接访问 KnowledgeFS。普通 JSON、multipart 和 SSE 都先进入 Dify API，再由 Dify API 使用
+Capability v2 通过内网访问 KnowledgeFS。对象存储预签名 URL 如未来启用，仍只能由 Dify API 授权和签发，
+且不能演变成浏览器直接调用 KnowledgeFS API。
 
 ### 8.4 不对普通前端开放
 
@@ -470,16 +466,16 @@ Dify 在 query admission 时检查 control-space visibility/role、KnowledgeFS R
 
 1. Research plan/create 通过 Dify BFF。
 2. Dify 返回产品 task ID 映射和一个可单独申请的 stream capability endpoint。
-3. 前端用 `fetch + ReadableStream` 携带 `Authorization: Bearer` 直连 KFS；不使用 URL query Token。
+3. 前端用 `fetch + ReadableStream` 携带 `Authorization: Bearer` 连接 Dify API 的 SSE proxy；Dify API 再通过内网调用 KFS，且不使用 URL query Token。
 4. Token 绑定 task ID、父 Space、events action 和过期时间。
-5. KFS CORS 只允许配置的 Dify origin，不使用 Cookie。
+5. KFS 不暴露浏览器 CORS 入口；Dify API 不向 KFS 转发 Cookie 或浏览器身份头。
 6. 断线通过 cursor 重连；每次重连重新向 Dify 获取 Capability。
 7. terminal event 保证至多一个逻辑终态，代理或服务异常需转成稳定 terminal/error 语义。
 
 ### 9.8 任务状态、结果和取消
 
 - 默认通过 Dify BFF 查询，Dify 每次重新做资源授权。
-- 如果前端需要高频直查，必须每次先从 Dify 获取短期 task capability。
+- 高频状态读取和事件流也必须经过 Dify API；短期 task capability 只用于约束 Dify API 到 KFS 的单次内部调用。
 - cancel 必须是单独 action，read capability 不能取消任务。
 - 用户失去权限后不能再读取结果；若业务要求同时停止执行，由 Dify outbox 发出 revoke/cancel。
 
@@ -798,13 +794,13 @@ P5 本地证据：`api/services/knowledge_fs/product_dto.py` 为模型/profile�
 
 ### P6：大文件直传
 
-目标：上传正文不经过 Dify API，也不在 KFS Node 进程完整缓冲。
+目标：上传入口由 Dify API 统一授权和代理；浏览器不接触 KnowledgeFS API。
 
 任务：
 
 - [x] `P6-01` 扩展 KFS object storage adapter 支持 presigned PUT/multipart、HEAD、abort。
 - [x] `P6-02` 只在 KFS 新增 upload session repository，以及 Postgres/TiDB 对称 migration；Dify 只保存 Capability issuance audit 和 control-space registration，不复制 session 状态。
-- [x] `P6-03` Dify 新增 KnowledgeFS control-space-scoped upload capability endpoint。
+- [x] `P6-03` Dify 提供受限 multipart BFF；旧 control-space-scoped browser upload capability endpoint 已移除。
 - [x] `P6-04` KFS 实现 create/complete/abort、配额预留、固定 object key、checksum 和幂等。
 - [x] `P6-05` 后端定义可供独立前端迭代消费的 multipart/retry/progress/abort 协议，所有授权只允许 header 携带且 Token 不进入 URL；本轮不实现浏览器 client。
 - [x] `P6-06` 增加过期 session cleanup 和 bucket lifecycle。
@@ -813,12 +809,12 @@ P5 本地证据：`api/services/knowledge_fs/product_dto.py` 为模型/profile�
 P6 本地证据：`knowledge-fs/packages/adapters/src/object-storage.ts` 实现 bounded presign、multipart create/part/complete/abort、HEAD 与 S3 incomplete-multipart lifecycle；
 KFS `upload-session.ts`、database repository、handlers、completion publisher 和 Postgres/TiDB `0027_upload_sessions` migration 完成 session、quota、固定 namespace/Space object key、checksum、幂等 publication 与过期清理。
 `knowledge-fs/apps/api/src/upload-session-options.ts` 只在 durable dependencies 和 bucket lifecycle 就绪后开放 route，并运行 bounded cleanup。
-Dify `capability_broker.py` 与 Console `/upload-capabilities` endpoint 绑定 control-space/Space/session；Dify schema 中不存在 upload-session 状态表。
-OpenAPI、Capability 与 KFS handler 测试覆盖 multipart 重新签发/重试、abort、模糊 complete 重放、URL Token 拒绝和显式小文件 fallback；大文件在无 presign 时 fail closed。
-生产环境下 direct upload origin 和 presigned object URL 必须使用 HTTPS（loopback 例外），development/test 仍可使用 HTTP；拒绝发生在 API fetch/object PUT 之前且错误不包含 token。Dify 生产配置同样在启动校验阶段拒绝非 loopback 的明文 `KNOWLEDGE_FS_BASE_URL`/`KNOWLEDGE_FS_DIRECT_ORIGIN`。
+Dify `capability_broker.py` 在 BFF 内部绑定 control-space/Space/session；Dify schema 中不存在 upload-session 状态表。
+OpenAPI、Capability 与 KFS handler 测试覆盖 multipart、abort、模糊 complete 重放、URL Token 拒绝和显式小文件 fallback；Dify API 已为 session create、part presign、complete、abort 和 small-file 提供受限 BFF，浏览器不会访问 KFS API。
+Dify 生产配置在启动校验阶段拒绝非 loopback 的明文 `KNOWLEDGE_FS_BASE_URL`。
 KFS 不把 S3 multipart complete 返回的 composite checksum 当作 whole-object digest，而是流式读取完成对象并核验 size + SHA-256。metadata size 不匹配时也会 cancel/release `GetObject` reader，避免连接泄漏；部署文档明确记录这部分额外对象读取、带宽与延迟容量成本。
 S3 body 包装流在正常 EOF、超限、底层读取异常和外部 cancel 时均幂等执行 iterator `return()` 或 reader `cancel()`/`releaseLock()`；cleanup 失败不会覆盖原始超限/读取异常。
-whole-object 校验在实际流超过声明大小时也执行 best-effort cancel；即使底层 cleanup 失败，仍稳定返回校验失败并释放 reader。KFS API 在 `NODE_ENV=production` 时还会拒绝 direct upload/stream 的远程 HTTP allowed origin，仅允许 HTTPS 或显式 loopback。
+whole-object 校验在实际流超过声明大小时也执行 best-effort cancel；即使底层 cleanup 失败，仍稳定返回校验失败并释放 reader。KFS API 的上传与流式路由仅供 Dify API 内网调用，不配置或暴露浏览器 allowed origin。
 
 产出：可恢复、可校验、低内存的大文件上传链路。
 
@@ -832,40 +828,37 @@ whole-object 校验在实际流超过声明大小时也执行 best-effort cancel
 
 回滚：停止创建新 session；已签发 session 在 TTL 内只允许 complete/abort。小文件继续 BFF，大文件显示功能暂不可用。
 
-### P7：Research 与 SSE 直连
+### P7：Research 与 SSE 流式 BFF
 
-目标：避免 Dify 长连接压力，同时保持 Dify 权限控制面。
+目标：由 Dify API 统一承接浏览器连接，并通过内网把 KnowledgeFS SSE 流透传给调用方。
 
 任务：
 
-- [x] `P7-01` Dify 新增 task/query stream capability endpoint。
-- [x] `P7-02` KFS direct stream 只接受 Capability v2，绑定 task/query 和父 Space。
-- [x] `P7-03` 配置精确 Dify origin CORS、允许 header/method、禁止 credential cookie。
-- [x] `P7-04` 后端 stream 契约只允许 Authorization header 与 `Last-Event-ID`，禁止 query-string Token；本轮不实现 Dify Web 的 `fetch + ReadableStream` client。
-- [x] `P7-05` 后端实现 cursor/reconnect 协议、最大连接寿命和重新签发 endpoint；浏览器重连状态机由独立前端迭代实现。
+- [x] `P7-01` Dify 新增 task/query stream admission 和 Dify API SSE proxy endpoint。
+- [x] `P7-02` Dify API 到 KFS 的 stream 只接受 Capability v2，绑定 task/query 和父 Space。
+- [x] `P7-03` 浏览器只连接 Dify API；Dify 不向 KFS 转发 Cookie 或浏览器身份头。
+- [x] `P7-04` 后端 stream 契约只允许 Authorization header 与 `X-Trace-ID`，禁止 query-string Token。
+- [x] `P7-05` 后端实现 cursor/reconnect 协议、无读取超时的流式代理和资源释放。
 - [x] `P7-06` 统一 `completed`、`failed`、`cancelled`、`permission_revoked`、`timeout` terminal event。
 - [x] `P7-07` 补齐代理/服务断流指标、终态 exactly-once 语义和资源释放。
 
-P7 本地证据：Dify Console resources 与 `capability_broker.py` 提供 task/query stream capability，返回无 Token 的绑定 URL；
-KFS `research-task-handlers.ts`/`gateway-sse-responses.ts` 在连接前校验 exact Capability grant、task/query、parent Space 与 tombstone，并周期复验授权。
-`direct-stream-cors.ts` 只允许配置的精确 origin、Authorization/Last-Event-ID 和指定 method，拒绝 Cookie 且不返回 credential header。
-stream URL 不包含 Token，KFS 只消费 Authorization header/`Last-Event-ID`，并以 cursor、最大连接寿命和短期 Capability endpoint 支持未来消费方安全重连。
+P7 本地证据：Dify Console resources 与 `capability_broker.py` 提供 task/query admission，返回 Dify API 自身的流式 URL；
+`HTTPKnowledgeFSProductRemoteClient.execute_sse` 通过 `KNOWLEDGE_FS_BASE_URL` 访问内网 KFS，并只转发 Capability、trace、受限请求体和响应头。
+stream URL 不包含 Token，浏览器 Cookie 不进入 KFS；KFS 继续校验 exact Capability grant、task/query、parent Space 与 tombstone。
 `gateway-sse-responses.test.ts`/`research-task-direct-stream.test.ts` 覆盖五类终态、最大连接寿命、终态只发一次、revoke/timeout、iterator release；
 `knowledge-fs/apps/api/src/direct-stream-options.ts` 记录 open/close、active connections 及 disconnect/error/limit/revoke/terminal/timeout 原因指标，server iterator 测试断言 cancel/release。
-direct stream 与 direct upload 共用同一生产 transport guard，远程 HTTP origin 在路由装配阶段失败关闭。
-
-产出：任务级授权的直连 Research/SSE。
+产出：任务级授权的 Dify API Research/SSE 流式 BFF。
 
 依赖：P2、P3、P4；Research JSON admission 来自 P5。
 
 验收：
 
-- 任意 origin、错误 task、错误 Space、错误 action、过期/未知 key 连接前即拒绝。
+- 错误 task、错误 Space、错误 action、过期/未知 key 在 KFS 建立流前即拒绝。
 - URL、access log 和 telemetry 中不存在 Token。
 - 重连不丢 cursor，不产生重复逻辑终态。
 - 权限撤销后的新连接无法获取 Token；主动 revoke 可按约定终止现有任务。
 
-回滚：关闭 direct stream，新连接回 Dify BFF 或暂时禁用流式功能；已有连接自然结束或收到统一重连信号。
+回滚：关闭 Dify API stream proxy 并暂时禁用流式功能；已有连接自然结束。
 
 ### P8：数据迁移、影子校验和原子切换（当前推进）
 
@@ -1160,7 +1153,7 @@ Compose 和 Docker/local smoke 全部通过。隔离临时 Git index 更新后�
 - 各检索模式候选数、过滤数、Rerank 延迟和零结果率。
 - durable task queued/running/retry/terminal 和 revoke latency。
 
-本地实现证据：Dify OpenTelemetry 已记录 Capability issuance/deny/failure、batch latency/missing/degraded、control-space transition/dwell、lifecycle task/revoke latency，以及直连 operation reserve/commit/refund；数据库聚合的 `dify.knowledge_fs.control_spaces` observable gauge 在应用启动时注册，按 `provisioning/deleting/error` 三个固定 state 汇总当前数量，并由 state-leading 索引支持。该 gauge 是每个 API process 都会报告的同一全局数据库快照，dashboard 必须以 `max` 聚合 process/replica series，禁止 `sum`；注册、查询或 exporter 失败均不影响应用启动或产品路径。KFS 结构化指标已记录 Capability verify/guard/audit、upload lifecycle/bytes/checksum failure、SSE active/reconnect/close reason、`knowledge_fs.retrieval.metric` 的 requested/resolved mode、candidate/filter/result、rerank latency 与 zero-result，以及 `knowledge_fs.durable_task.metric` 的 Research/compilation queued/running/retry/terminal；删除任务以 `deletion_jobs` ledger 为权威，并由 Dify `lifecycle_tasks(operation=delete)` 辅助告警。所有 label 只使用登记 operation/action、caller、stable reason、state、mode、status 等有限集合，未知 action 归一为 `unknown`；exporter 同步/异步失败均与授权、事务、检索、上传和任务生命周期隔离。collector、dashboard、告警阈值、SLO 与生产基线仍属于外部部署工作，不能以本地测试代替。
+本地实现证据：Dify OpenTelemetry 已记录 Capability issuance/deny/failure、batch latency/missing/degraded、control-space transition/dwell、lifecycle task/revoke latency，以及 operation admission reserve/commit/refund；数据库聚合的 `dify.knowledge_fs.control_spaces` observable gauge 在应用启动时注册，按 `provisioning/deleting/error` 三个固定 state 汇总当前数量，并由 state-leading 索引支持。该 gauge 是每个 API process 都会报告的同一全局数据库快照，dashboard 必须以 `max` 聚合 process/replica series，禁止 `sum`；注册、查询或 exporter 失败均不影响应用启动或产品路径。KFS 结构化指标已记录 Capability verify/guard/audit、upload lifecycle/bytes/checksum failure、SSE active/reconnect/close reason、`knowledge_fs.retrieval.metric` 的 requested/resolved mode、candidate/filter/result、rerank latency 与 zero-result，以及 `knowledge_fs.durable_task.metric` 的 Research/compilation queued/running/retry/terminal；删除任务以 `deletion_jobs` ledger 为权威，并由 Dify `lifecycle_tasks(operation=delete)` 辅助告警。所有 label 只使用登记 operation/action、caller、stable reason、state、mode、status 等有限集合，未知 action 归一为 `unknown`；exporter 同步/异步失败均与授权、事务、检索、上传和任务生命周期隔离。collector、dashboard、告警阈值、SLO 与生产基线仍属于外部部署工作，不能以本地测试代替。
 
 ### 14.3 告警与 SLO 初稿
 
@@ -1284,7 +1277,7 @@ Dify Web 页面和浏览器 client 明确排除在本迭代外；现有 Dataset 
 - [x] 后端已提供知识库列表/详情/创建/删除/权限/API Access 的独立 Dify 产品 API；Dify Web 消费方另行实现。
 - [x] Dify 在调用 KFS 前按 principal 类型完成账号可见性、resource credential、app binding 或 internal grant 的相应判断，并统一应用 caller channel policy。
 - [x] 新建 KnowledgeFS control-space 与 KFS Space 使用唯一、可修复、可审计且不关联 Dataset/Document 的 registration。
-- [x] 普通 CRUD/设置/列表的后端入口为 Dify BFF；大文件和 SSE 的后端契约只签发窄权限 Capability。
+- [x] 普通 CRUD、设置、列表、上传和 SSE 的产品入口均为 Dify BFF；Dify API 使用窄权限 Capability 调用内网 KFS。
 - [x] Capability verifier、JWKS 轮换及 resource/action/namespace guard 的后端实现、readiness 和自动化测试已完成；生产启用由独立发布流程决定。
 - [x] KFS 严格执行 namespace + Space 数据隔离；子资源权限只消费 Dify 已解析的 opaque scopes，不查询本地成员。
 - [x] 模型/vector-space 标识、动态维度和首次文档异步 preflight 正确工作。

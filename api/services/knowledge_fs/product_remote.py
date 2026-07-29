@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import Literal, NamedTuple, Protocol
 
 from pydantic import JsonValue
@@ -72,6 +74,24 @@ class KnowledgeFSRemoteMultipartRequest(NamedTuple):
     query: tuple[tuple[str, str], ...] = ()
 
 
+class KnowledgeFSRemoteSSERequest(NamedTuple):
+    operation_id: str
+    method: str
+    path: str
+    capability_token: str
+    trace_id: str
+    payload: JsonValue | None
+    query: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class KnowledgeFSRemoteSSEResponse:
+    status_code: int
+    headers: tuple[tuple[str, str], ...]
+    chunks: Iterator[bytes]
+    close: Callable[[], None]
+
+
 class KnowledgeFSProductRemotePort(Protocol):
     def batch_space_summaries(
         self,
@@ -91,6 +111,9 @@ class KnowledgeFSProductRemotePort(Protocol):
 
     def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> JsonValue:
         """Execute one strictly bounded multipart request using only its operation capability."""
+
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest) -> KnowledgeFSRemoteSSEResponse:
+        """Open one manifest-approved SSE request through the internal KnowledgeFS endpoint."""
 
 
 class UnavailableKnowledgeFSProductRemote:
@@ -119,6 +142,10 @@ class UnavailableKnowledgeFSProductRemote:
         _ = request
         raise KnowledgeFSOperationUnavailableError("KnowledgeFS product remote is not configured")
 
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest) -> KnowledgeFSRemoteSSEResponse:
+        _ = request
+        raise KnowledgeFSOperationUnavailableError("KnowledgeFS product remote is not configured")
+
 
 __all__ = [
     "KnowledgeFSOperationUnavailableError",
@@ -130,5 +157,7 @@ __all__ = [
     "KnowledgeFSRemoteJSONRequest",
     "KnowledgeFSRemoteMultipartFile",
     "KnowledgeFSRemoteMultipartRequest",
+    "KnowledgeFSRemoteSSERequest",
+    "KnowledgeFSRemoteSSEResponse",
     "UnavailableKnowledgeFSProductRemote",
 ]

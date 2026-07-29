@@ -1,4 +1,4 @@
-"""Capability-only HTTP transport for manifest-approved JSON and bounded binary calls."""
+"""Capability-only HTTP transport for manifest-approved buffered and SSE calls."""
 
 from __future__ import annotations
 
@@ -24,10 +24,21 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
     KnowledgeFSRemoteMultipartRequest,
+    KnowledgeFSRemoteSSERequest,
+    KnowledgeFSRemoteSSEResponse,
 )
 
 _JSON_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 _MAX_BATCH_SUMMARIES = 100
+_SSE_RESPONSE_HEADERS = (
+    "cache-control",
+    "content-type",
+    "retry-after",
+    "x-accel-buffering",
+    "x-query-run-id",
+    "x-session-id",
+    "x-trace-id",
+)
 
 
 class HTTPKnowledgeFSProductRemoteClient:
@@ -260,6 +271,89 @@ class HTTPKnowledgeFSProductRemoteClient:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned invalid JSON") from exc
         finally:
             response.close()
+
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest) -> KnowledgeFSRemoteSSEResponse:
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS.get(request.operation_id)
+        if operation is None or operation.transport != "sse" or not is_product_operation_ready(request.operation_id):
+            raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {request.operation_id}")
+        if (
+            request.method != operation.method
+            or operation.kfs_path is None
+            or not _matches_path(operation.kfs_path, request.path)
+        ):
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS request does not match its operation manifest")
+        if not request.capability_token or not request.trace_id:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS SSE request binding is incomplete")
+        try:
+            encoded_payload = (
+                None
+                if request.payload is None
+                else json.dumps(
+                    request.payload,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            )
+        except (TypeError, ValueError) as exc:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS request payload is invalid") from exc
+        request_size = len(urlencode(request.query).encode("utf-8"))
+        if encoded_payload is not None:
+            request_size += len(encoded_payload)
+        if request_size > operation.max_request_bytes:
+            raise KnowledgeFSProductRequestRejectedError(status_code=413)
+        headers = {
+            "Accept": "text/event-stream",
+            "Accept-Encoding": "identity",
+            "Authorization": f"Bearer {request.capability_token}",
+            "X-Trace-Id": request.trace_id,
+        }
+        request_kwargs: dict[str, object] = {
+            "headers": headers,
+            "params": request.query,
+            "timeout": httpx.Timeout(
+                connect=self._timeout_seconds,
+                read=None,
+                write=self._timeout_seconds,
+                pool=self._timeout_seconds,
+            ),
+            "follow_redirects": False,
+        }
+        if encoded_payload is not None:
+            headers["Content-Type"] = "application/json"
+            request_kwargs["content"] = encoded_payload
+        try:
+            upstream_url = httpx.URL(f"{self._base_url.rstrip('/')}/").join(request.path.lstrip("/"))
+            response = ssrf_proxy.make_request(
+                method=request.method,
+                url=str(upstream_url),
+                max_retries=0,
+                stream_response=True,
+                **request_kwargs,
+            )
+        except (httpx.RequestError, ToolSSRFError) as exc:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS SSE request failed") from exc
+        content_encoding = response.headers.get("content-encoding", "identity").strip().lower()
+        if content_encoding not in {"", "identity"}:
+            response.close()
+            raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported SSE encoding")
+        content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
+        if HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
+            if content_type != "text/event-stream":
+                response.close()
+                raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported SSE media type")
+        elif content_type != "application/json" and not content_type.endswith("+json"):
+            response.close()
+            raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported error media type")
+        response_headers = tuple(
+            (name, value) for name in _SSE_RESPONSE_HEADERS if (value := response.headers.get(name)) is not None
+        )
+        return KnowledgeFSRemoteSSEResponse(
+            status_code=response.status_code,
+            headers=response_headers,
+            chunks=response.iter_bytes(),
+            close=response.close,
+        )
 
     def _request_json(
         self,

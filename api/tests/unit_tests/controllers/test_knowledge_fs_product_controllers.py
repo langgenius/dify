@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -24,6 +25,7 @@ from services.knowledge_fs.product_dto import (
 from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSRemoteMultipartFile,
+    KnowledgeFSRemoteSSEResponse,
 )
 
 _API_ROOT = Path(__file__).resolve().parents[3]
@@ -62,10 +64,18 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
         "/knowledge-fs/spaces/<string:control_space_id>/traces",
-        "/knowledge-fs/spaces/<string:control_space_id>/upload-capabilities",
+        "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions",
+        (
+            "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/"
+            "<string:upload_session_id>/parts/<int:part_number>/presign"
+        ),
+        ("/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/complete"),
+        ("/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/abort"),
         ("/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/small-file"),
         "/knowledge-fs/spaces/<string:control_space_id>/query-stream-capability",
         "/knowledge-fs/tasks/<string:task_id>/stream-capability",
+        "/knowledge-fs/query-stream",
+        "/knowledge-fs/research-tasks/<string:task_id>/events",
         "/knowledge-fs/.well-known/jwks.json",
     }.issubset(console_urls)
     assert service_urls == {
@@ -82,6 +92,7 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>/retry",
         "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/queries/admission",
+        "/knowledge-fs/query-stream",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>/partials",
@@ -118,7 +129,6 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSQueryStreamCapabilityResponse",
         "KnowledgeFSResearchTaskCreatePayload",
         "KnowledgeFSStreamCapabilityPayload",
-        "KnowledgeFSUploadCapabilityPayload",
         "KnowledgeFSSpaceListResponse",
         "KnowledgeFSSpaceDetailResponse",
         "KnowledgeFSCredentialCreateResponse",
@@ -138,6 +148,13 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSSourceWorkflowImportPayload",
         "KnowledgeFSSourceWorkflowCancelPayload",
         "KnowledgeFSSourceWorkflowResponse",
+        "KnowledgeFSUploadPartPresignPayload",
+        "KnowledgeFSUploadSessionAbortPayload",
+        "KnowledgeFSUploadSessionCompletePayload",
+        "KnowledgeFSUploadSessionCreatePayload",
+        "KnowledgeFSPresignedUploadResponse",
+        "KnowledgeFSUploadSessionCreateResponse",
+        "KnowledgeFSUploadSessionMutationResponse",
     }.issubset(console_ns.models)
     assert {
         "KnowledgeFSDocumentCreatePayload",
@@ -153,19 +170,6 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSTraceListResponse",
     }.issubset(service_api_ns.models)
     assert console_ns.models["KnowledgeFSSpaceCreatePayload"].__schema__["additionalProperties"] is False
-    upload_capability_schema = console_ns.models["KnowledgeFSCapabilityResponse"].__schema__
-    assert set(upload_capability_schema["required"]) == {
-        "direct_origin",
-        "expires_at",
-        "operation_id",
-        "token",
-    }
-    assert upload_capability_schema["properties"]["operation_id"]["enum"] == [
-        "createUploadSession",
-        "presignUploadSessionPart",
-        "completeUploadSession",
-        "abortUploadSession",
-    ]
     query_capability_schema = console_ns.models["KnowledgeFSQueryStreamCapabilityResponse"].__schema__
     assert set(query_capability_schema["required"]) == {"expires_at", "operation_id", "token", "url"}
     assert query_capability_schema["properties"]["operation_id"]["const"] == "createQuery"
@@ -351,7 +355,10 @@ def test_console_knowledge_rate_limit_is_scoped_to_upload_and_query_entrypoints(
         ("KnowledgeFSSpaceQueryAdmissionApi", "post"),
         ("KnowledgeFSSpaceQueryStreamCapabilityApi", "post"),
         ("KnowledgeFSSpaceSmallFileUploadApi", "post"),
-        ("KnowledgeFSSpaceUploadCapabilitiesApi", "post"),
+        ("KnowledgeFSSpaceUploadSessionAbortApi", "post"),
+        ("KnowledgeFSSpaceUploadSessionCompleteApi", "post"),
+        ("KnowledgeFSSpaceUploadSessionPartPresignApi", "post"),
+        ("KnowledgeFSSpaceUploadSessionsApi", "post"),
     }
 
 
@@ -548,14 +555,18 @@ def test_product_modules_do_not_import_dify_dataset_or_document_services() -> No
         ), path
 
 
-def test_research_task_stream_url_binds_task_and_parent_space_without_token() -> None:
+def test_research_task_stream_url_binds_task_and_parent_space_without_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
     url = console_resources._research_task_events_url(
-        direct_origin="https://knowledge-fs.test",
         task_id="task/one",
         knowledge_space_id="space one",
     )
 
-    assert url == "https://knowledge-fs.test/research-tasks/task%2Fone/events?knowledgeSpaceId=space+one"
+    assert (
+        url == "https://dify.test/console/api/knowledge-fs/research-tasks/task%2Fone/events?knowledgeSpaceId=space+one"
+    )
     assert "token" not in url.lower()
 
 
@@ -572,7 +583,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
                 expires_at=datetime(2030, 1, 1, tzinfo=UTC),
             )
 
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test/")
+    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -589,7 +600,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
         "expires_at": "2030-01-01T00:00:00Z",
         "operation_id": "createQuery",
         "token": "query-capability",
-        "url": "https://kfs.test/queries",
+        "url": "https://dify.test/console/api/knowledge-fs/query-stream",
     }
     assert calls == [
         {
@@ -615,7 +626,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
                 knowledge_space_id="space-1",
             )
 
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test/")
+    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -636,7 +647,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
         "mode": "auto",
         "query": "What changed?",
     }
-    assert response["url"] == "https://kfs.test/queries"
+    assert response["url"] == "https://dify.test/console/api/knowledge-fs/query-stream"
     assert calls == [
         {
             "account_id": "account-1",
@@ -647,7 +658,56 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
     ]
 
 
-def test_upload_and_task_stream_capabilities_use_broker(
+def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    close = MagicMock()
+    facade = SimpleNamespace(
+        stream_query=MagicMock(
+            return_value=KnowledgeFSRemoteSSEResponse(
+                status_code=200,
+                headers=(
+                    ("content-type", "text/event-stream"),
+                    ("x-query-run-id", "query-1"),
+                ),
+                chunks=iter((b"event: answer\n", b'data: {"answer":"ok"}\n\n')),
+                close=close,
+            )
+        )
+    )
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        json={
+            "activeDocumentIds": [],
+            "activeEntityIds": [],
+            "knowledgeSpaceId": "space-1",
+            "mode": "fast",
+            "query": "hello",
+        },
+        headers={
+            "Authorization": "Bearer capability-token",
+            "Cookie": "session=must-not-forward",
+            "X-Trace-ID": "trace-1",
+        },
+    ):
+        post = inspect.unwrap(console_resources.KnowledgeFSQueryStreamProxyApi.post)
+        response = post(console_resources.KnowledgeFSQueryStreamProxyApi())
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/event-stream"
+    assert response.headers["X-Accel-Buffering"] == "no"
+    assert b"".join(response.response) == b'event: answer\ndata: {"answer":"ok"}\n\n'
+    close.assert_called_once_with()
+    call = facade.stream_query.call_args.kwargs
+    assert call["capability_token"] == "capability-token"
+    assert call["trace_id"] == "trace-1"
+    assert call["payload"].knowledge_space_id == "space-1"
+    assert set(call) == {"capability_token", "trace_id", "payload"}
+
+
+def test_task_stream_capability_uses_broker(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict[str, object]] = []
@@ -662,30 +722,17 @@ def test_upload_and_task_stream_capabilities_use_broker(
             )
 
     runtime = SimpleNamespace(broker=Broker())
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test")
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", True)
+    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     app = Flask(__name__)
-
-    with app.test_request_context(json={"operation_id": "completeUploadSession", "upload_session_id": "session-1"}):
-        upload_post = inspect.unwrap(console_resources.KnowledgeFSSpaceUploadCapabilitiesApi.post)
-        upload_response = upload_post(console_resources.KnowledgeFSSpaceUploadCapabilitiesApi(), "control-1")
 
     with app.test_request_context(json={"control_space_id": "control-1"}):
         stream_post = inspect.unwrap(console_resources.KnowledgeFSTaskStreamCapabilityApi.post)
         stream_response = stream_post(console_resources.KnowledgeFSTaskStreamCapabilityApi(), "task-1")
 
-    assert upload_response["operation_id"] == "completeUploadSession"
     assert stream_response["operation_id"] == "streamResearchTask"
     assert calls == [
-        {
-            "tenant_id": "tenant-1",
-            "account_id": "account-1",
-            "control_space_id": "control-1",
-            "operation_id": "completeUploadSession",
-            "resource_id": "session-1",
-        },
         {
             "tenant_id": "tenant-1",
             "account_id": "account-1",
@@ -718,7 +765,7 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
         credentials=Credentials(),
         broker=Broker(),
     )
-    monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test")
+    monkeypatch.setattr(service_resources.dify_config, "SERVICE_API_URL", "https://api.dify.test")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
     app = Flask(__name__)
 
@@ -731,4 +778,5 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
 
     assert response["operation_id"] == "createQuery"
     assert response["request"]["knowledgeSpaceId"] == "space-1"
+    assert response["url"] == "https://api.dify.test/v1/knowledge-fs/query-stream"
     assert calls == [{"profile": profile, "operation_id": "createQuery"}]

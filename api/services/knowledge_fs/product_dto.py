@@ -1528,6 +1528,14 @@ class KnowledgeFSResearchTaskPartialsQuery(KnowledgeFSCursorQuery):
     limit: int = Field(default=25, ge=1, le=100)
 
 
+class KnowledgeFSResearchTaskStreamQuery(BaseModel):
+    knowledge_space_id: str = Field(min_length=1, max_length=255, alias="knowledgeSpaceId")
+    cursor: str | None = Field(default=None, min_length=1, max_length=1_000)
+    limit: int = Field(default=25, ge=1, le=100)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
 class KnowledgeFSResearchTaskPartialResponse(ResponseModel):
     evidence_bundle: dict[str, object] = Field(validation_alias=AliasChoices("evidence_bundle", "evidenceBundle"))
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
@@ -1812,20 +1820,75 @@ class KnowledgeFSUploadSessionResponse(ResponseModel):
     ]
 
 
-class KnowledgeFSSmallFileUploadResponse(ResponseModel):
+class KnowledgeFSUploadSessionCreatePayload(BaseModel):
+    checksum_sha256_base64: str = Field(
+        min_length=1,
+        max_length=255,
+        alias="checksumSha256Base64",
+    )
+    content_type: str = Field(min_length=1, max_length=255, alias="contentType")
+    expected_size_bytes: int = Field(gt=0, alias="expectedSizeBytes")
+    file_name: str = Field(min_length=1, max_length=512, alias="fileName")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSUploadSessionCreateRemotePayload(KnowledgeFSUploadSessionCreatePayload):
+    idempotency_key: str = Field(min_length=8, max_length=255, alias="idempotencyKey")
+
+
+class KnowledgeFSPresignedUploadResponse(ResponseModel):
+    expires_at: int = Field(ge=0, validation_alias=AliasChoices("expires_at", "expiresAt"))
+    headers: dict[str, str]
+    method: Literal["PUT"]
+    url: str = Field(min_length=1, max_length=8_192)
+
+
+class KnowledgeFSUploadSessionCreateResponse(ResponseModel):
+    session: KnowledgeFSUploadSessionResponse
+    upload: KnowledgeFSPresignedUploadResponse | None = None
+
+
+class KnowledgeFSUploadPartPresignPayload(BaseModel):
+    checksum_sha256_base64: str = Field(
+        min_length=1,
+        max_length=255,
+        alias="checksumSha256Base64",
+    )
+    content_length: int = Field(gt=0, alias="contentLength")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSUploadSessionPartPayload(BaseModel):
+    checksum_sha256_base64: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        alias="checksumSha256Base64",
+    )
+    etag: str = Field(min_length=1, max_length=255)
+    part_number: int = Field(ge=1, le=10_000, alias="partNumber")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSUploadSessionCompletePayload(BaseModel):
+    parts: list[KnowledgeFSUploadSessionPartPayload] | None = Field(default=None, max_length=10_000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSUploadSessionAbortPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSUploadSessionMutationResponse(ResponseModel):
     session: KnowledgeFSUploadSessionResponse
 
 
-class KnowledgeFSCapabilityResponse(ResponseModel):
-    token: str
-    expires_at: datetime
-    direct_origin: str
-    operation_id: Literal[
-        "createUploadSession",
-        "presignUploadSessionPart",
-        "completeUploadSession",
-        "abortUploadSession",
-    ]
+class KnowledgeFSSmallFileUploadResponse(ResponseModel):
+    session: KnowledgeFSUploadSessionResponse
 
 
 class KnowledgeFSStreamCapabilityPayload(BaseModel):
@@ -1867,26 +1930,6 @@ class KnowledgeFSQueryAdmissionResponse(ResponseModel):
     url: str
 
 
-class KnowledgeFSUploadCapabilityPayload(BaseModel):
-    operation_id: Literal[
-        "createUploadSession",
-        "presignUploadSessionPart",
-        "completeUploadSession",
-        "abortUploadSession",
-    ]
-    upload_session_id: str | None = Field(default=None, min_length=1, max_length=255)
-
-    model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="after")
-    def validate_resource_binding(self) -> KnowledgeFSUploadCapabilityPayload:
-        if self.operation_id == "createUploadSession" and self.upload_session_id is not None:
-            raise ValueError("createUploadSession must not include upload_session_id")
-        if self.operation_id != "createUploadSession" and self.upload_session_id is None:
-            raise ValueError("upload_session_id is required for this operation")
-        return self
-
-
 class KnowledgeFSJWKResponse(ResponseModel):
     alg: Literal["RS256"]
     e: str
@@ -1912,7 +1955,6 @@ __all__ = [
     "KnowledgeFSBulkDeletionAcceptedResponse",
     "KnowledgeFSBulkDocumentDeletePayload",
     "KnowledgeFSBulkJobResponse",
-    "KnowledgeFSCapabilityResponse",
     "KnowledgeFSCrawlPreviewPageListQuery",
     "KnowledgeFSCrawlPreviewPageListResponse",
     "KnowledgeFSCrawlPreviewSelectionPayload",
@@ -1967,6 +2009,7 @@ __all__ = [
     "KnowledgeFSOverviewWindowQuery",
     "KnowledgeFSPermissionListResponse",
     "KnowledgeFSPermissionResponse",
+    "KnowledgeFSPresignedUploadResponse",
     "KnowledgeFSQualityListQuery",
     "KnowledgeFSQueryAdmissionResponse",
     "KnowledgeFSQueryCreatePayload",
@@ -2027,6 +2070,13 @@ __all__ = [
     "KnowledgeFSTraceEntryListResponse",
     "KnowledgeFSTraceListResponse",
     "KnowledgeFSTraceResponse",
-    "KnowledgeFSUploadCapabilityPayload",
+    "KnowledgeFSUploadPartPresignPayload",
+    "KnowledgeFSUploadSessionAbortPayload",
+    "KnowledgeFSUploadSessionCompletePayload",
+    "KnowledgeFSUploadSessionCreatePayload",
+    "KnowledgeFSUploadSessionCreateRemotePayload",
+    "KnowledgeFSUploadSessionCreateResponse",
+    "KnowledgeFSUploadSessionMutationResponse",
+    "KnowledgeFSUploadSessionPartPayload",
     "KnowledgeFSUploadSessionResponse",
 ]

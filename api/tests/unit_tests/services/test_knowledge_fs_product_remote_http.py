@@ -14,6 +14,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteJSONRequest,
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteMultipartRequest,
+    KnowledgeFSRemoteSSERequest,
 )
 from services.knowledge_fs.product_remote_http import HTTPKnowledgeFSProductRemoteClient
 
@@ -54,6 +55,60 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
     assert headers["X-Trace-Id"] == "trace-1"
     assert not any(name.lower() == "cookie" for name in headers)
     assert captured["follow_redirects"] is False
+
+
+def test_remote_client_streams_sse_through_internal_capability_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    response = httpx.Response(
+        200,
+        content=b'event: answer\ndata: {"answer":"ok"}\n\n',
+        headers={
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "X-Query-Run-Id": "query-1",
+        },
+    )
+
+    def fake_make_request(**kwargs):
+        captured.update(kwargs)
+        return response
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fake_make_request)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="http://knowledge-fs:8787", timeout_seconds=3)
+
+    result = client.execute_sse(
+        KnowledgeFSRemoteSSERequest(
+            operation_id="createQuery",
+            method="POST",
+            path="/queries",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload={
+                "activeDocumentIds": [],
+                "activeEntityIds": [],
+                "knowledgeSpaceId": "space-1",
+                "mode": "fast",
+                "query": "hello",
+            },
+        )
+    )
+
+    assert result.status_code == 200
+    assert dict(result.headers)["x-query-run-id"] == "query-1"
+    assert b"".join(result.chunks) == b'event: answer\ndata: {"answer":"ok"}\n\n'
+    headers = captured["headers"]
+    assert isinstance(headers, dict)
+    assert headers["Authorization"] == "Bearer capability-token"
+    assert headers["X-Trace-Id"] == "trace-1"
+    assert not any(name.lower() == "cookie" for name in headers)
+    assert captured["url"] == "http://knowledge-fs:8787/queries"
+    assert captured["follow_redirects"] is False
+    assert captured["stream_response"] is True
+    timeout = captured["timeout"]
+    assert isinstance(timeout, httpx.Timeout)
+    assert timeout.as_dict()["read"] is None
+    result.close()
 
 
 def test_remote_client_accepts_no_content_json_operation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -409,7 +464,7 @@ def test_batch_summary_rejects_out_of_scope_response_and_invalid_input_before_io
 ) -> None:
     calls = 0
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**_kwargs):
         nonlocal calls
         calls += 1
         return httpx.Response(

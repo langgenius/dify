@@ -74,6 +74,19 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
+### [POST] /knowledge-fs/query-stream
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | KnowledgeFS query event stream |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
 #### Parameters
 
@@ -359,7 +372,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | KnowledgeFS direct query admitted | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+| 200 | KnowledgeFS streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters

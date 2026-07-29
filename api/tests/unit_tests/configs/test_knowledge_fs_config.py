@@ -16,8 +16,6 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_ENABLED",
     "KNOWLEDGE_FS_BASE_URL",
-    "KNOWLEDGE_FS_DIRECT_ORIGIN",
-    "KNOWLEDGE_FS_DIRECT_UPLOAD_READY",
     "KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED",
     "KNOWLEDGE_FS_INTEGRATED_PROVISION_READY",
     "KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY",
@@ -69,7 +67,6 @@ def test_knowledge_fs_lifecycle_worker_is_disabled_by_default() -> None:
     assert config.KNOWLEDGE_FS_INTEGRATED_PROVISION_READY is False
     assert config.KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY is False
     assert config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED is False
-    assert config.KNOWLEDGE_FS_DIRECT_UPLOAD_READY is False
 
 
 def test_capability_v2_requires_private_signing_configuration_when_enabled() -> None:
@@ -173,27 +170,17 @@ def test_knowledge_fs_config_rejects_unbounded_timeouts(timeout_seconds: float) 
         KnowledgeFSConfig(KNOWLEDGE_FS_TIMEOUT_SECONDS=timeout_seconds)
 
 
-def test_knowledge_fs_direct_origin_is_normalized_and_rejects_paths() -> None:
-    config = KnowledgeFSConfig(KNOWLEDGE_FS_DIRECT_ORIGIN=" https://uploads.knowledge-fs.test/ ")
-
-    assert config.KNOWLEDGE_FS_DIRECT_ORIGIN == "https://uploads.knowledge-fs.test"
-    with pytest.raises(ValidationError, match="origin without"):
-        KnowledgeFSConfig(KNOWLEDGE_FS_DIRECT_ORIGIN="https://uploads.knowledge-fs.test/api")
-
-
-@pytest.mark.parametrize("field", ["KNOWLEDGE_FS_BASE_URL", "KNOWLEDGE_FS_DIRECT_ORIGIN"])
-def test_production_knowledge_fs_transport_requires_https(field: str) -> None:
+def test_production_knowledge_fs_transport_requires_https() -> None:
     with pytest.raises(ValidationError, match="HTTPS in production"):
-        _DeployedKnowledgeFSConfig(**{field: "http://knowledge-fs.test"})
+        _DeployedKnowledgeFSConfig(KNOWLEDGE_FS_BASE_URL="http://knowledge-fs.test")
 
 
-@pytest.mark.parametrize("field", ["KNOWLEDGE_FS_BASE_URL", "KNOWLEDGE_FS_DIRECT_ORIGIN"])
-def test_nonproduction_or_loopback_knowledge_fs_transport_allows_http(field: str) -> None:
+def test_nonproduction_or_loopback_knowledge_fs_transport_allows_http() -> None:
     development = _DeployedKnowledgeFSConfig(
         DEPLOY_ENV="DEVELOPMENT",
-        **{field: "http://knowledge-fs.test"},
+        KNOWLEDGE_FS_BASE_URL="http://knowledge-fs.test",
     )
-    loopback = _DeployedKnowledgeFSConfig(**{field: "http://127.0.0.1:8788"})
+    loopback = _DeployedKnowledgeFSConfig(KNOWLEDGE_FS_BASE_URL="http://127.0.0.1:8788")
 
-    assert getattr(development, field) == "http://knowledge-fs.test"
-    assert getattr(loopback, field) == "http://127.0.0.1:8788"
+    assert development.KNOWLEDGE_FS_BASE_URL == "http://knowledge-fs.test"
+    assert loopback.KNOWLEDGE_FS_BASE_URL == "http://127.0.0.1:8788"

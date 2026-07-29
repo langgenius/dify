@@ -18,8 +18,6 @@ describe("API upload-session options", () => {
   it("parses a bounded direct-upload and cleanup profile", () => {
     expect(
       createApiUploadSessionOptions({
-        KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS:
-          "https://console.example.com,http://localhost:3000,https://console.example.com",
         KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_BATCH_SIZE: "25",
         KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_INTERVAL_MS: "30000",
         KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_STALE_MS: "120000",
@@ -33,7 +31,6 @@ describe("API upload-session options", () => {
         KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES: "4194304",
       }),
     ).toEqual({
-      allowedOrigins: ["https://console.example.com", "http://localhost:3000"],
       cleanupBatchSize: 25,
       cleanupIntervalMs: 30_000,
       cleanupStaleMs: 120_000,
@@ -47,63 +44,24 @@ describe("API upload-session options", () => {
     });
   });
 
-  it("rejects remote HTTP origins in production while allowing HTTPS and loopback", () => {
-    expect(() =>
-      createApiUploadSessionOptions({
-        KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: "http://console.example.com",
-        KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
-        NODE_ENV: "production",
-      }),
-    ).toThrow("HTTPS");
-
-    for (const origin of [
-      "https://console.example.com",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://[::1]:3000",
-    ]) {
-      expect(
-        createApiUploadSessionOptions({
-          KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: origin,
-          KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
-          NODE_ENV: "production",
-        })?.allowedOrigins,
-      ).toEqual([origin]);
-    }
-  });
-
   it("fails fast on ambiguous rollout and unsafe bounds", () => {
     expect(() =>
       createApiUploadSessionOptions({ KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "maybe" }),
     ).toThrow("KNOWLEDGE_DIRECT_UPLOAD_ENABLED");
-    expect(() => createApiUploadSessionOptions({ KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on" })).toThrow(
-      "KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS",
-    );
-    for (const origin of ["*", "https://dify.example.com/app", "https://user@dify.example.com"]) {
-      expect(() =>
-        createApiUploadSessionOptions({
-          KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: origin,
-          KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
-        }),
-      ).toThrow("absolute HTTP(S) origins");
-    }
     expect(() =>
       createApiUploadSessionOptions({
-        KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: "https://console.example.com",
         KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
         KNOWLEDGE_DIRECT_UPLOAD_INCOMPLETE_MULTIPART_DAYS: "0",
       }),
     ).toThrow("KNOWLEDGE_DIRECT_UPLOAD_INCOMPLETE_MULTIPART_DAYS");
     expect(() =>
       createApiUploadSessionOptions({
-        KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: "https://console.example.com",
         KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
         KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_PART_BYTES: "1048576",
       }),
     ).toThrow("KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_PART_BYTES");
     expect(() =>
       createApiUploadSessionOptions({
-        KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: "https://console.example.com",
         KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
         KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES: "4194304",
         KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES: "4194304",
@@ -241,7 +199,6 @@ describe("API upload-session assembly", () => {
 
 function requiredConfig() {
   return {
-    allowedOrigins: ["https://console.example.com"],
     cleanupBatchSize: 25,
     cleanupIntervalMs: 30_000,
     cleanupStaleMs: 120_000,
