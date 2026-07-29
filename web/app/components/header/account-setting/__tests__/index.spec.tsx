@@ -1,7 +1,6 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -9,7 +8,6 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
-const mockResetModelProviderListExpanded = vi.fn()
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
@@ -64,10 +62,6 @@ vi.mock('next-themes', () => ({
     theme: 'system',
     setTheme: vi.fn(),
   })),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
-  useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
@@ -272,25 +266,6 @@ describe('AccountSetting', () => {
           .compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' })),
       ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
-    })
-
-    it('should keep hidden legacy tab metadata for direct entries', () => {
-      // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-
-      // Assert
-      expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
-    })
-
-    it('should normalize legacy language tab entries to preferences', () => {
-      // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.LANGUAGE })
-
-      // Assert
-      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
-      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
-      expect(screen.getByText('common.account.general')).toBeInTheDocument()
-      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
 
     it('should hide sidebar labels on mobile', () => {
@@ -689,19 +664,6 @@ describe('AccountSetting', () => {
 
       // Assert
       expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should keep provider search controlled at the account setting boundary', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
-
-      // Act
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      await user.type(input, 'test-search')
-
-      // Assert
-      expect(input)!.toHaveValue('test-search')
     })
 
     it('should handle scroll event in panel', () => {

@@ -5,7 +5,7 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useBoolean } from 'ahooks'
+import { useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -81,7 +81,7 @@ const ToolFormItem: FC<Props> = ({
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-  const [isShowSchema, { setTrue: showSchema, setFalse: hideSchema }] = useBoolean(false)
+  const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
@@ -107,7 +107,7 @@ const ToolFormItem: FC<Props> = ({
               <Button
                 variant="ghost"
                 size="small"
-                onClick={showSchema}
+                onClick={() => setIsShowSchema(true)}
                 className="px-1 system-xs-regular text-text-tertiary"
               >
                 <span aria-hidden className="mr-1 i-ri-braces-line size-3.5" />
@@ -138,7 +138,12 @@ const ToolFormItem: FC<Props> = ({
       />
 
       {isShowSchema && (
-        <SchemaModal isShow onClose={hideSchema} rootName={name} schema={input_schema!} />
+        <SchemaModal
+          isShow
+          onClose={() => setIsShowSchema(false)}
+          rootName={name}
+          schema={input_schema!}
+        />
       )}
     </div>
   )

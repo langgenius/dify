@@ -13,7 +13,6 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
@@ -51,7 +50,6 @@ const EducationApplyAgeContent = () => {
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
-  const setEducationVerifying = useSetEducationVerifying()
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -71,7 +69,6 @@ const EducationApplyAgeContent = () => {
       if (res.message === 'success') {
         onPlanInfoChanged()
         updateEducationStatus()
-        setEducationVerifying(null)
         setHasSubmittedEducation(true)
       } else {
         toast.error(t(($) => $.submitError, { ns: 'education' }))
