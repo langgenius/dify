@@ -37,6 +37,7 @@ from tasks.app_generate.workflow_execute_task import (
 class _StreamEventModel(BaseModel):
     event: object | None = None
     task_id: object | None = None
+    message: object | None = None
 
 
 def _build_advanced_chat_generate_entity(conversation_id: str | None) -> AdvancedChatAppGenerateEntity:
@@ -247,6 +248,21 @@ def test_get_event_name(event: object, expected: str | None):
 )
 def test_get_task_id(event: object, expected: str | None):
     assert workflow_execute_task_module._get_task_id(event) == expected
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        ({"message": "workflow error"}, "workflow error"),
+        (_StreamEventModel(message="workflow error"), "workflow error"),
+        ({"message": ""}, None),
+        ({"message": 123}, None),
+        ({}, None),
+        ("workflow error", None),
+    ],
+)
+def test_get_error_message(event: str | Mapping[str, object] | BaseModel, expected: str | None):
+    assert workflow_execute_task_module._get_error_message(event) == expected
 
 
 @pytest.fixture
@@ -502,6 +518,13 @@ def test_publish_streaming_response_uses_stream_error_message_for_failed_termina
             "message": "The workflow configuration is invalid.",
             "status": 400,
         }
+        yield {
+            "event": "error",
+            "workflow_run_id": "workflow-run-id",
+            "code": "invalid_workflow",
+            "message": "",
+            "status": 400,
+        }
 
     _publish_streaming_response(
         response_stream(),
@@ -513,13 +536,20 @@ def test_publish_streaming_response_uses_stream_error_message_for_failed_termina
     )
 
     payloads = _published_payloads(mock_topic)
-    assert len(payloads) == 3
-    started_payload, error_payload, finished_payload = payloads
+    assert len(payloads) == 4
+    started_payload, error_payload, empty_error_payload, finished_payload = payloads
     assert isinstance(started_payload, dict)
     assert isinstance(error_payload, dict)
+    assert isinstance(empty_error_payload, dict)
     assert isinstance(finished_payload, dict)
-    assert [started_payload["event"], error_payload["event"], finished_payload["event"]] == [
+    assert [
+        started_payload["event"],
+        error_payload["event"],
+        empty_error_payload["event"],
+        finished_payload["event"],
+    ] == [
         "workflow_started",
+        "error",
         "error",
         "workflow_finished",
     ]

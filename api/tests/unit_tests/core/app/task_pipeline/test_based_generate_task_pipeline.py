@@ -118,6 +118,15 @@ class TestBasedGenerateTaskPipeline:
         assert type(err) is Exception
         assert str(err) == "Sensitive internal workflow details."
 
+    def test_handle_error_wraps_unexpected_error(self, pipeline):
+        event = QueueErrorEvent(error=RuntimeError("unexpected error"))
+
+        err = pipeline.handle_error(event=event)
+
+        assert err is not event.error
+        assert type(err) is Exception
+        assert str(err) == "unexpected error"
+
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
     def test_handle_error_updates_message_when_found(self, pipeline, sqlite_session: Session):
         event = QueueErrorEvent(error=ValueError("oops"))
