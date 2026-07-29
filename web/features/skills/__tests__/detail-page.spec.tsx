@@ -521,7 +521,7 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('refreshes the skill detail timestamp before retrying autosave after a conflict', async () => {
+  it('refreshes the skill detail timestamp without retrying autosave after a conflict', async () => {
     const user = userEvent.setup()
     const latestDetail = createSkillDetail({
       updated_at: 1784638499,
@@ -541,41 +541,24 @@ describe('SkillDetailPage', () => {
       ],
     })
 
-    mocks.saveDraftFileMutationFn
-      .mockImplementationOnce(async () => {
-        mocks.skillDetail = latestDetail
-        const error = new Error('skill has been modified by another user') as Error & {
-          code: string
-          details: {
-            current_file_hash: string
-            current_updated_at: number
-            expected_updated_at: number
-          }
+    mocks.saveDraftFileMutationFn.mockImplementationOnce(async () => {
+      mocks.skillDetail = latestDetail
+      const error = new Error('skill has been modified by another user') as Error & {
+        code: string
+        details: {
+          current_file_hash: string
+          current_updated_at: number
+          expected_updated_at: number
         }
-        error.code = 'skill_conflict'
-        error.details = {
-          current_file_hash: 'hash-2',
-          current_updated_at: 1784638499,
-          expected_updated_at: 1784638487,
-        }
-        throw error
-      })
-      .mockImplementationOnce(
-        async (input: { body: { content?: string; operation: string; path: string } }) => {
-          const nextDetail = createSkillDetail({
-            updated_at: 1784638500,
-          })
-          const nextFiles = nextDetail.files ?? []
-          nextFiles[0] = {
-            ...nextFiles[0]!,
-            content: input.body.content ?? '',
-            hash: 'hash-3',
-          }
-          nextDetail.files = nextFiles
-          mocks.skillDetail = nextDetail
-          return nextDetail
-        },
-      )
+      }
+      error.code = 'skill_conflict'
+      error.details = {
+        current_file_hash: 'hash-2',
+        current_updated_at: 1784638499,
+        expected_updated_at: 1784638487,
+      }
+      throw error
+    })
     renderSkillDetailPage()
 
     await user.click(
@@ -587,61 +570,47 @@ describe('SkillDetailPage', () => {
 
     await waitFor(
       () => {
-        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+        expect(toast.error).toHaveBeenCalledWith('agentV2.skillManagement.detail.saveConflict')
       },
       { timeout: 4000 },
     )
-    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          content: expect.stringContaining('My tab changes'),
-          hash: 'hash-2',
-          expected_updated_at: 1784638499,
-          operation: 'upsert_text',
-          path: 'SKILL.md',
-        }),
-      }),
-    )
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     expect(mocks.skillDetailGetFn).toHaveBeenCalledTimes(1)
-    expect(toast.error).toHaveBeenCalledWith('agentV2.skillManagement.detail.saveConflict')
+    await waitFor(() => {
+      expect(
+        screen.getByText(/agentV2\.skillManagement\.detail\.saveConflictStatus/),
+      ).toBeInTheDocument()
+    })
+
+    try {
+      await waitFor(() => expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2), {
+        timeout: 1500,
+      })
+    } catch {
+      // Expected: conflict blocks autosave until the user edits again.
+    }
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
   }, 10000)
 
-  it('uses conflict details from response errors when retrying autosave', async () => {
+  it('uses conflict details from response errors without retrying autosave', async () => {
     const user = userEvent.setup()
-    mocks.saveDraftFileMutationFn
-      .mockRejectedValueOnce(
-        new Response(
-          JSON.stringify({
-            code: 'skill_conflict',
-            message: 'skill has been modified by another user',
-            details: {
-              current_file_hash: 'hash-2',
-              current_updated_at: 1784638499,
-              expected_updated_at: 1784638487,
-            },
-          }),
-          {
-            status: 409,
-            headers: { 'Content-Type': 'application/json' },
+    mocks.saveDraftFileMutationFn.mockRejectedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: 'skill_conflict',
+          message: 'skill has been modified by another user',
+          details: {
+            current_file_hash: 'hash-2',
+            current_updated_at: 1784638499,
+            expected_updated_at: 1784638487,
           },
-        ),
-      )
-      .mockImplementationOnce(
-        async (input: { body: { content?: string; operation: string; path: string } }) => {
-          const nextDetail = createSkillDetail({
-            updated_at: 1784638500,
-          })
-          const nextFiles = nextDetail.files ?? []
-          nextFiles[0] = {
-            ...nextFiles[0]!,
-            content: input.body.content ?? '',
-            hash: 'hash-3',
-          }
-          nextDetail.files = nextFiles
-          mocks.skillDetail = nextDetail
-          return nextDetail
+        }),
+        {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
         },
-      )
+      ),
+    )
     renderSkillDetailPage()
 
     await user.click(
@@ -653,21 +622,25 @@ describe('SkillDetailPage', () => {
 
     await waitFor(
       () => {
-        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+        expect(toast.error).toHaveBeenCalledWith('agentV2.skillManagement.detail.saveConflict')
       },
       { timeout: 4000 },
     )
-    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          content: expect.stringContaining('My response error changes'),
-          hash: 'hash-2',
-          expected_updated_at: 1784638499,
-          operation: 'upsert_text',
-          path: 'SKILL.md',
-        }),
-      }),
-    )
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(
+        screen.getByText(/agentV2\.skillManagement\.detail\.saveConflictStatus/),
+      ).toBeInTheDocument()
+    })
+
+    try {
+      await waitFor(() => expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2), {
+        timeout: 1500,
+      })
+    } catch {
+      // Expected: conflict blocks autosave until the user edits again.
+    }
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
   }, 10000)
 
   it('saves the live display name into SKILL.md before publishing', async () => {
