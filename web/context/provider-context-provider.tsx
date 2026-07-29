@@ -2,31 +2,27 @@
 
 import type { ReactNode } from 'react'
 import type { ProviderContextState } from './provider-context'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
-import dayjs from 'dayjs'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import {
-  CurrentSystemQuotaTypeEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { deploymentEditionAtom } from '@/context/system-features-state'
 import { fetchCurrentPlanInfo } from '@/service/billing'
+import { consoleQuery } from '@/service/client'
 import {
+  commonQueryKeys,
   useModelListByType,
-  useModelProviders,
   useSupportRetrievalMethods,
 } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
 import { ProviderContext } from './provider-context'
-import { useAnthropicQuotaNotice } from './provider-storage'
 
 type ProviderContextProviderProps = {
   children: ReactNode
@@ -71,7 +67,7 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
     data: providersData,
     isLoading: isLoadingModelProviders,
     isSuccess: isSuccessModelProviders,
-  } = useModelProviders()
+  } = useQuery(consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions())
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
   const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
@@ -106,7 +102,10 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
   const refreshModelProviders = () => {
-    queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    })
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
   }
 
   const fetchPlan = async () => {
@@ -169,40 +168,11 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   }, [deploymentEdition, plan.type])
   // #endregion Zendesk conversation fields
 
-  const { t } = useTranslation()
-  const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useAnthropicQuotaNotice()
-
-  useEffect(() => {
-    if (anthropicQuotaNotice === 'true') return
-
-    if (dayjs().isAfter(dayjs('2025-03-17'))) return
-
-    if (providersData?.data && providersData.data.length > 0) {
-      const anthropic = providersData.data.find((provider) => provider.provider === 'anthropic')
-      if (
-        anthropic &&
-        anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial
-      ) {
-        const quota = anthropic.system_configuration.quota_configurations.find(
-          (item) => item.quota_type === anthropic.system_configuration.current_quota_type,
-        )
-        if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
-          setAnthropicQuotaNotice('true')
-          toast.info(
-            t(($) => $['provider.anthropicHosted.trialQuotaTip'], { ns: 'common' }),
-            {
-              timeout: 60000,
-            },
-          )
-        }
-      }
-    }
-  }, [anthropicQuotaNotice, providersData, setAnthropicQuotaNotice, t])
-
   return (
     <ProviderContext.Provider
       value={{
         modelProviders: providersData?.data || [],
+        modelProviderPlugins: providersData?.plugins || {},
         isLoadingModelProviders,
         isSuccessModelProviders,
         refreshModelProviders,

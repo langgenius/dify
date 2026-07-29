@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -23,7 +24,7 @@ import ModelName from '../model-name'
 
 type ModelListItemProps = {
   model: ModelItem
-  provider: ModelProvider
+  provider: ModelProvider | ModelProviderSummaryResponse
   isConfigurable: boolean
   onChange?: (provider: string) => void
   onModifyLoadBalancing?: (model: ModelItem) => void

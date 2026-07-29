@@ -1,5 +1,5 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
@@ -9,13 +9,16 @@ import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
-  provider: ModelProvider
+  provider: Pick<
+    ModelProviderSummaryResponse,
+    'provider' | 'icon_small' | 'icon_small_dark' | 'label'
+  >
   className?: string
 }
 const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
   const { theme } = useTheme()
   const language = useLanguage()
-  const lightIconUrl = renderI18nObject(provider.icon_small, language)
+  const lightIconUrl = provider.icon_small ? renderI18nObject(provider.icon_small, language) : ''
   const darkIconUrl = provider.icon_small_dark
     ? renderI18nObject(provider.icon_small_dark, language)
     : ''

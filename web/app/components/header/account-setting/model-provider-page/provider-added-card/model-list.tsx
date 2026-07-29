@@ -1,21 +1,21 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { Credential, ModelItem, ModelProvider } from '../declarations'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  AddCustomModel,
-  ManageCustomModelCredentials,
-} from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import { ConfigurationMethodEnum } from '../declarations'
+import LazyAddCustomModel from './lazy-add-custom-model'
 // import Tab from './tab'
 import ModelListItem from './model-list-item'
 
 type ModelListProps = {
-  provider: ModelProvider
+  provider: ModelProvider | ModelProviderSummaryResponse
   models: ModelItem[]
   onCollapse: () => void
   onChange?: (provider: string) => void
@@ -31,10 +31,23 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
   const setShowModelLoadBalancingModal = useModalContextSelector(
     (state) => state.setShowModelLoadBalancingModal,
   )
+  const queryClient = useQueryClient()
   const onModifyLoadBalancing = useCallback(
-    (model: ModelItem, credential?: Credential) => {
+    async (model: ModelItem, credential?: Credential) => {
+      let providerDetail: ModelProvider | undefined
+      if ('is_configured' in provider) {
+        try {
+          const response = await queryClient.ensureQueryData(modelProviderDetailsQueryOptions())
+          providerDetail = response.data.find((item) => item.provider === provider.provider)
+        } catch {
+          return
+        }
+      } else {
+        providerDetail = provider
+      }
+      if (!providerDetail) return
       setShowModelLoadBalancingModal({
-        provider,
+        provider: providerDetail,
         credential,
         configurateMethod: model.fetch_from,
         model: model!,
@@ -43,7 +56,7 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
         onSave: onChange,
       })
     },
-    [onChange, provider, setShowModelLoadBalancingModal],
+    [onChange, provider, queryClient, setShowModelLoadBalancingModal],
   )
 
   return (
@@ -57,7 +70,7 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
             </span>
             <button
               type="button"
-              className="hidden h-6 cursor-pointer items-center rounded-lg border-none bg-state-base-hover pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:inline-flex"
+              className="hidden h-6 cursor-pointer items-center rounded-lg border-none bg-state-base-hover pr-1.5 pl-1 system-xs-medium text-text-tertiary outline-hidden group-hover:inline-flex focus-visible:inline-flex focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={() => onCollapse()}
             >
               {t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: models.length })}
@@ -66,15 +79,7 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
           </span>
           {isConfigurable && canConfigureModels && (
             <div className="flex grow justify-end">
-              <ManageCustomModelCredentials
-                provider={provider}
-                currentCustomConfigurationModelFixedFields={undefined}
-              />
-              <AddCustomModel
-                provider={provider}
-                configurationMethod={ConfigurationMethodEnum.customizableModel}
-                currentCustomConfigurationModelFixedFields={undefined}
-              />
+              <LazyAddCustomModel provider={provider} />
             </div>
           )}
         </div>

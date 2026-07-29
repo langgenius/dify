@@ -1,7 +1,10 @@
 import type { ReactElement, ReactNode } from 'react'
+import type { ModelProviderPluginSummary } from '../../index'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { PluginSource } from '@/app/components/plugins/types'
+import { consoleQuery } from '@/service/client'
+import { commonQueryKeys } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ProviderCardActions from '../provider-card-actions'
 
@@ -13,6 +16,14 @@ const mockShowPluginInfo = vi.fn()
 const mockShowDeleteConfirm = vi.fn()
 const mockSetTargetVersion = vi.fn()
 const mockSetVersionPickerOpen = vi.fn()
+const { mockNormalizeInstalledPluginDetail, mockUninstallPlugin } = vi.hoisted(() => ({
+  mockNormalizeInstalledPluginDetail: vi.fn(),
+  mockUninstallPlugin: vi.fn(),
+}))
+const mockPluginSettingsAccess = vi.hoisted(() => ({
+  canDeletePlugin: true,
+  canUpdatePlugin: true,
+}))
 
 let mockHeaderState = {
   modalStates: {
@@ -68,10 +79,7 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components',
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  usePluginSettingsAccess: () => ({
-    canDeletePlugin: true,
-    canUpdatePlugin: true,
-  }),
+  usePluginSettingsAccess: () => mockPluginSettingsAccess,
   default: () => ({
     canUpdate: true,
   }),
@@ -108,6 +116,14 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (...args: unknown[]) => mockGetMarketplaceUrl(...args),
 }))
 
+vi.mock('@/service/plugins', () => ({
+  uninstallPlugin: mockUninstallPlugin,
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  normalizeInstalledPluginDetail: mockNormalizeInstalledPluginDetail,
+}))
+
 const createDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail =>
   ({
     plugin_id: 'plugin-id',
@@ -124,6 +140,18 @@ const createDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail =>
     meta: undefined,
     ...overrides,
   }) as PluginDetail
+
+const createSummary = (
+  overrides: Partial<ModelProviderPluginSummary> = {},
+): ModelProviderPluginSummary => ({
+  installation_id: 'installation-id',
+  plugin_id: 'langgenius/provider-plugin',
+  plugin_unique_identifier: 'langgenius/provider-plugin@1.0.0',
+  runtime_type: 'local',
+  source: 'github',
+  version: '1.0.0',
+  ...overrides,
+})
 
 describe('ProviderCardActions', () => {
   beforeEach(() => {
@@ -148,6 +176,133 @@ describe('ProviderCardActions', () => {
     mockGetMarketplaceUrl.mockReturnValue(
       'https://marketplace.example.com/plugins/langgenius/provider-plugin',
     )
+    mockNormalizeInstalledPluginDetail.mockReturnValue(
+      createDetail({
+        source: PluginSource.github,
+        meta: {
+          repo: 'langgenius/provider-plugin',
+          version: '1.0.0',
+          package: 'provider-plugin.difypkg',
+        },
+      }),
+    )
+    mockUninstallPlugin.mockResolvedValue({ success: true })
+    mockPluginSettingsAccess.canDeletePlugin = true
+    mockPluginSettingsAccess.canUpdatePlugin = true
+  })
+
+  it('should load plugin detail and continue the requested info action', async () => {
+    mockHeaderState = {
+      ...mockHeaderState,
+      hasNewVersion: false,
+      isFromMarketplace: false,
+      isFromGitHub: true,
+    }
+    const rendered = render(
+      <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
+    )
+    const fetchQuery = vi
+      .spyOn(rendered.queryClient, 'fetchQuery')
+      .mockResolvedValue({ plugins: [{}] })
+
+    openActionsMenu()
+    fireEvent.click(screen.getByText('plugin.detailPanel.operation.info'))
+
+    await waitFor(() => {
+      expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
+    })
+    expect(fetchQuery).toHaveBeenCalledTimes(1)
+    expect(mockNormalizeInstalledPluginDetail).toHaveBeenCalledTimes(1)
+  })
+
+  it('should remove from summary without loading plugin detail', async () => {
+    const rendered = render(
+      <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
+    )
+    const fetchQuery = vi.spyOn(rendered.queryClient, 'fetchQuery')
+    const invalidateQueries = vi.spyOn(rendered.queryClient, 'invalidateQueries')
+
+    openActionsMenu()
+    fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() => {
+      expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id')
+    })
+    expect(fetchQuery).not.toHaveBeenCalled()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.plugin.list.latestVersions.post.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: commonQueryKeys.modelProviderDetails,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['marketplacePlugins'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['marketplaceCollectionPlugins'] })
+  })
+
+  it('should only render an interactive summary version when marketplace updates are allowed', () => {
+    const { rerender } = render(
+      <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
+    )
+
+    expect(screen.queryByRole('button', { name: '1.0.0' })).not.toBeInTheDocument()
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+
+    rerender(
+      <ProviderCardActions
+        summary={createSummary({ source: 'marketplace' })}
+        providerLabel="Provider Plugin"
+      />,
+    )
+    expect(screen.getByRole('button', { name: '1.0.0' })).toBeInTheDocument()
+
+    mockPluginSettingsAccess.canUpdatePlugin = false
+    rerender(
+      <ProviderCardActions
+        summary={createSummary({ source: 'marketplace' })}
+        providerLabel="Provider Plugin"
+      />,
+    )
+    expect(screen.queryByRole('button', { name: '1.0.0' })).not.toBeInTheDocument()
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+  })
+
+  it('should use the summary latest version when updating a marketplace plugin', async () => {
+    mockNormalizeInstalledPluginDetail.mockReturnValue(
+      createDetail({
+        latest_version: '1.0.0',
+        latest_unique_identifier: 'plugin-id@1.0.0',
+      }),
+    )
+    const rendered = render(
+      <ProviderCardActions
+        summary={createSummary({
+          source: 'marketplace',
+          latestVersion: '2.0.0',
+          latestUniqueIdentifier: 'plugin-id@2.0.0',
+        })}
+        providerLabel="Provider Plugin"
+      />,
+    )
+    vi.spyOn(rendered.queryClient, 'fetchQuery').mockResolvedValue({ plugins: [{}] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+
+    await waitFor(() => {
+      expect(mockSetTargetVersion).toHaveBeenCalledWith({
+        version: '2.0.0',
+        unique_identifier: 'plugin-id@2.0.0',
+      })
+    })
   })
 
   it('should render version controls for marketplace plugins and handle manual version selection', () => {
@@ -187,6 +342,15 @@ describe('ProviderCardActions', () => {
       unique_identifier: 'plugin-id@2.0.0',
     })
     expect(mockHandleUpdate).toHaveBeenCalledWith()
+  })
+
+  it('should not update a marketplace plugin without a latest package identifier', () => {
+    render(<ProviderCardActions detail={createDetail({ latest_unique_identifier: '' })} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+
+    expect(mockSetTargetVersion).not.toHaveBeenCalled()
+    expect(mockHandleUpdate).not.toHaveBeenCalled()
   })
 
   it('should pass the marketplace detail url to the operation dropdown', () => {

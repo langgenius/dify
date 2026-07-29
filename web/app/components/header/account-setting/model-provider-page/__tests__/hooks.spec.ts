@@ -21,7 +21,7 @@ import {
   PreferredProviderTypeEnum,
 } from '../declarations'
 import {
-  useCurrentProviderAndModel,
+  getCurrentProviderAndModel,
   useDefaultModel,
   useInvalidateDefaultModel,
   useLanguage,
@@ -58,6 +58,7 @@ vi.mock('@/service/use-common', () => ({
   commonQueryKeys: {
     modelList: (type: string) => ['model-list', type],
     modelProviders: ['model-providers'],
+    modelProviderDetails: ['model-provider-details'],
     defaultModel: (type: string) => ['default-model', type],
   },
 }))
@@ -428,7 +429,7 @@ describe('hooks', () => {
     })
   })
 
-  describe('useCurrentProviderAndModel', () => {
+  describe('getCurrentProviderAndModel', () => {
     const createModelList = (): Model[] => [
       {
         provider: 'openai',
@@ -462,7 +463,7 @@ describe('hooks', () => {
       const modelList = createModelList()
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
 
-      const { result } = renderHook(() => useCurrentProviderAndModel(modelList, defaultModel))
+      const { result } = renderHook(() => getCurrentProviderAndModel(modelList, defaultModel))
 
       expect(result.current.currentProvider?.provider).toBe('openai')
       expect(result.current.currentModel?.model).toBe('gpt-4')
@@ -472,7 +473,7 @@ describe('hooks', () => {
       const modelList = createModelList()
       const defaultModel = { provider: 'anthropic', model: 'claude-3' }
 
-      const { result } = renderHook(() => useCurrentProviderAndModel(modelList, defaultModel))
+      const { result } = renderHook(() => getCurrentProviderAndModel(modelList, defaultModel))
 
       expect(result.current.currentProvider).toBeUndefined()
       expect(result.current.currentModel).toBeUndefined()
@@ -482,7 +483,7 @@ describe('hooks', () => {
       const modelList = createModelList()
       const defaultModel = { provider: 'openai', model: 'gpt-5' }
 
-      const { result } = renderHook(() => useCurrentProviderAndModel(modelList, defaultModel))
+      const { result } = renderHook(() => getCurrentProviderAndModel(modelList, defaultModel))
 
       expect(result.current.currentProvider?.provider).toBe('openai')
       expect(result.current.currentModel).toBeUndefined()
@@ -491,7 +492,7 @@ describe('hooks', () => {
     it('should handle undefined default model', () => {
       const modelList = createModelList()
 
-      const { result } = renderHook(() => useCurrentProviderAndModel(modelList, undefined))
+      const { result } = renderHook(() => getCurrentProviderAndModel(modelList, undefined))
 
       expect(result.current.currentProvider).toBeUndefined()
       expect(result.current.currentModel).toBeUndefined()
@@ -500,7 +501,7 @@ describe('hooks', () => {
     it('should handle empty model list', () => {
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
 
-      const { result } = renderHook(() => useCurrentProviderAndModel([], defaultModel))
+      const { result } = renderHook(() => getCurrentProviderAndModel([], defaultModel))
 
       expect(result.current.currentProvider).toBeUndefined()
       expect(result.current.currentModel).toBeUndefined()
@@ -771,7 +772,10 @@ describe('hooks', () => {
       })
 
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-providers'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['model-provider-details'],
       })
     })
 
@@ -787,55 +791,17 @@ describe('hooks', () => {
         result.current()
       })
 
-      expect(invalidateQueries).toHaveBeenCalledTimes(3)
+      expect(invalidateQueries).toHaveBeenCalledTimes(6)
     })
   })
 
   describe('useMarketplaceAllPlugins', () => {
-    const createMockProviders = (): ModelProvider[] => [
-      {
-        provider: 'openai',
-        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-        icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-        supported_model_types: [ModelTypeEnum.textGeneration],
-        configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-        provider_credential_schema: { credential_form_schemas: [] },
-        model_credential_schema: {
-          model: {
-            label: { en_US: 'Model', zh_Hans: '模型' },
-            placeholder: { en_US: 'Select model', zh_Hans: '选择模型' },
-          },
-          credential_form_schemas: [],
-        },
-        preferred_provider_type: PreferredProviderTypeEnum.system,
-        custom_configuration: {
-          status: CustomConfigurationStatusEnum.noConfigure,
-        },
-        system_configuration: {
-          enabled: true,
-          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
-          quota_configurations: [],
-        },
-        help: {
-          title: {
-            en_US: '',
-            zh_Hans: '',
-          },
-          url: {
-            en_US: '',
-            zh_Hans: '',
-          },
-        },
-      },
-    ]
-
     const createMockPlugins = () => [
       { plugin_id: 'plugin1', type: 'plugin' },
       { plugin_id: 'plugin2', type: 'plugin' },
     ]
 
     it('should combine collection and regular plugins', () => {
-      const providers = createMockProviders()
       const collectionPlugins = [{ plugin_id: 'collection1', type: 'plugin' }]
       const regularPlugins = createMockPlugins()
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
@@ -849,14 +815,13 @@ describe('hooks', () => {
         isLoading: false,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins(providers, ''))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
       expect(result.current.plugins).toHaveLength(3)
       expect(result.current.isLoading).toBe(false)
     })
 
     it('should exclude installed providers', () => {
-      const providers = createMockProviders()
       const collectionPlugins = [
         { plugin_id: 'openai', type: 'plugin' },
         { plugin_id: 'other', type: 'plugin' },
@@ -866,16 +831,22 @@ describe('hooks', () => {
         isLoading: false,
       })
       ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [],
+        plugins: [
+          { plugin_id: 'openai', type: 'plugin' },
+          { plugin_id: 'regular-only', type: 'plugin' },
+        ],
         queryPlugins: vi.fn(),
         queryPluginsWithDebounced: vi.fn(),
         isLoading: false,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins(providers, ''))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', ['openai']))
 
-      expect(result.current.plugins!).toHaveLength(1)
-      expect(result.current.plugins![0]!.plugin_id).toBe('other')
+      expect(result.current.plugins!).toHaveLength(2)
+      expect(result.current.plugins!.map((plugin) => plugin.plugin_id)).toEqual([
+        'other',
+        'regular-only',
+      ])
     })
 
     it('should use search when searchText is provided', () => {
@@ -891,7 +862,7 @@ describe('hooks', () => {
         isLoading: false,
       })
 
-      renderHook(() => useMarketplaceAllPlugins([], 'test search'))
+      renderHook(() => useMarketplaceAllPlugins('test search', []))
 
       expect(queryPluginsWithDebounced).toHaveBeenCalled()
     })
@@ -912,7 +883,7 @@ describe('hooks', () => {
         isLoading: false,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
       expect(result.current.plugins!).toHaveLength(1)
       expect(result.current.plugins![0]!.plugin_id).toBe('plugin1')
@@ -931,7 +902,7 @@ describe('hooks', () => {
         isLoading: false,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
       expect(result.current.plugins).toHaveLength(2)
       expect(result.current.plugins!.filter((p) => p.plugin_id === 'shared-plugin')).toHaveLength(1)
@@ -949,7 +920,7 @@ describe('hooks', () => {
         isLoading: true,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
       expect(result.current.isLoading).toBe(true)
     })
@@ -966,7 +937,7 @@ describe('hooks', () => {
         isLoading: false,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
       expect(result.current.plugins).toBeDefined()
       expect(result.current.isLoading).toBe(false)
@@ -986,10 +957,30 @@ describe('hooks', () => {
         isLoading: false,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], 'openai'))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('openai', []))
 
       expect(result.current.plugins).toEqual(searchPlugins)
       expect(result.current.plugins?.some((p) => p.plugin_id === 'collection-only')).toBe(false)
+    })
+
+    it('should hide installed plugins when a search response is stale', () => {
+      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        plugins: [],
+        isLoading: false,
+      })
+      ;(useMarketplacePlugins as Mock).mockReturnValue({
+        plugins: [
+          { plugin_id: 'langgenius/openai', type: 'plugin' },
+          { plugin_id: 'langgenius/other', type: 'plugin' },
+        ],
+        queryPlugins: vi.fn(),
+        queryPluginsWithDebounced: vi.fn(),
+        isLoading: false,
+      })
+
+      const { result } = renderHook(() => useMarketplaceAllPlugins('openai', ['langgenius/openai']))
+
+      expect(result.current.plugins).toEqual([{ plugin_id: 'langgenius/other', type: 'plugin' }])
     })
 
     it('should skip marketplace queries when disabled', () => {
@@ -1010,7 +1001,7 @@ describe('hooks', () => {
         isLoading: true,
       })
 
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], '', false))
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', [], false))
 
       expect(useMarketplacePluginsByCollectionId).toHaveBeenCalledWith(undefined)
       expect(queryPlugins).not.toHaveBeenCalled()
@@ -1082,7 +1073,12 @@ describe('hooks', () => {
         exact: true,
         refetchType: 'none',
       })
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-providers'] })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['model-provider-details'],
+      })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['model-list', ModelTypeEnum.textGeneration],
       })
@@ -1225,7 +1221,12 @@ describe('hooks', () => {
         result.current.handleRefreshModel(provider)
       })
 
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-providers'] })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['model-provider-details'],
+      })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['model-list', ModelTypeEnum.textGeneration],
       })

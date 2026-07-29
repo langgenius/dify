@@ -2,9 +2,10 @@ import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -149,7 +150,11 @@ const createComboboxNode = (node: ReactElement, onValueChange = vi.fn()) => (
 )
 
 const renderWithCombobox = (node: ReactElement, onValueChange = vi.fn()) => {
-  return render(createComboboxNode(node, onValueChange))
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [makeProvider()],
+  })
+  return renderWithConsoleQuery(createComboboxNode(node, onValueChange), { queryClient })
 }
 
 describe('PopupItem', () => {
@@ -294,7 +299,7 @@ describe('PopupItem', () => {
     ).toBeInTheDocument()
   })
 
-  it('should open model modal when clicking add on unconfigured model', () => {
+  it('should open model modal when clicking add on unconfigured model', async () => {
     const onValueChange = vi.fn()
     const { rerender } = renderWithCombobox(
       <PopupItem
@@ -309,7 +314,9 @@ describe('PopupItem', () => {
     fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
 
     expect(onValueChange).not.toHaveBeenCalled()
-    expect(mockSetShowModelModal).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockSetShowModelModal).toHaveBeenCalled()
+    })
 
     const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
     call.onSaveCallback?.()
@@ -335,6 +342,9 @@ describe('PopupItem', () => {
     )
 
     fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
+    await waitFor(() => {
+      expect(mockSetShowModelModal).toHaveBeenCalledTimes(2)
+    })
     const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as
       | { onSaveCallback?: () => void }
       | undefined
@@ -492,18 +502,18 @@ describe('PopupItem', () => {
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
 
-  it('should close the dropdown through dropdown content callbacks', () => {
+  it('should close the dropdown through dropdown content callbacks', async () => {
     const onHide = vi.fn()
 
     renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={onHide} />)
 
     fireEvent.click(screen.getByRole('button', { name: /my-api-key/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'close dropdown' }))
 
     expect(onHide).toHaveBeenCalled()
   })
 
-  it('should keep the credential dropdown enabled for manage-only users', () => {
+  it('should keep the credential dropdown enabled for manage-only users', async () => {
     mockWorkspacePermissionKeys.value = ['credential.manage']
 
     renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
@@ -514,6 +524,6 @@ describe('PopupItem', () => {
 
     fireEvent.click(trigger)
 
-    expect(screen.getByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
   })
 })

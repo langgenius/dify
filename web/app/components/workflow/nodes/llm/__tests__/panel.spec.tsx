@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LLMNodeType } from '../types'
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PanelProps } from '@/types/workflow'
@@ -148,7 +149,13 @@ const renderPanel = (data?: Partial<LLMNodeType>) => {
   return renderWorkflowFlowComponent(
     <ProviderContext.Provider
       value={createMockProviderContextValue({
-        modelProviders: [createMockModelProvider('openai')],
+        modelProviders: [
+          {
+            ...createMockModelProvider('openai'),
+            is_configured: true,
+            plugin_id: 'langgenius/openai',
+          } as unknown as ModelProviderSummaryResponse,
+        ],
         isFetchedPlan: true,
       })}
     >

@@ -15,7 +15,7 @@ import { CustomConfigurationStatusEnum } from '@/app/components/header/account-s
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
-import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
+import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 
@@ -60,7 +60,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
     data: modelProviders,
     isPending: isLoading,
     refetch: refetchModelProviders,
-  } = useModelProviders()
+  } = useModelProviderDetails()
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const openIntegrationsSetting = useIntegrationsSetting()

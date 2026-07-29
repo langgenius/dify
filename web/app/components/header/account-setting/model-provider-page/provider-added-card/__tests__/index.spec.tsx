@@ -282,14 +282,18 @@ describe('ProviderAddedCard', () => {
     } as unknown as ModelProvider
     const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
-    expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
-    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
+    expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+    ).toBeInTheDocument()
 
     unmount()
     mockIsCurrentWorkspaceManager = false
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
-    expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.modelProvider.addModel' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should render custom model actions when user can configure models without credential permissions', () => {
@@ -301,7 +305,9 @@ describe('ProviderAddedCard', () => {
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
-    expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
-    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
+    expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+    ).toBeInTheDocument()
   })
 })

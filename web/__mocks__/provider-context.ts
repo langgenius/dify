@@ -7,6 +7,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 // Avoid being mocked in tests
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
+  modelProviderPlugins: {},
   refreshModelProviders: noop,
   isLoadingModelProviders: false,
   isSuccessModelProviders: false,

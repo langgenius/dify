@@ -1,21 +1,20 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
-import { ConfigurationMethodEnum } from '../declarations'
-
 type ConfigurationButtonProps = {
-  modelProvider: any
-  handleOpenModal: any
+  loading: boolean
+  onConfigure: () => void
 }
 
-const ConfigurationButton = ({ modelProvider, handleOpenModal }: ConfigurationButtonProps) => {
+const ConfigurationButton = ({ loading, onConfigure }: ConfigurationButtonProps) => {
   const { t } = useTranslation()
   return (
     <Button
       size="small"
+      loading={loading}
       onClick={(e) => {
         e.stopPropagation()
-        handleOpenModal(modelProvider, ConfigurationMethodEnum.predefinedModel, undefined)
+        onConfigure()
       }}
     >
       <div className="flex items-center justify-center gap-1 px-[3px]">

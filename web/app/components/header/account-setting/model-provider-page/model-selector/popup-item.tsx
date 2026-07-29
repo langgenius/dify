@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
-import type { DefaultModel, Model, ModelItem } from '../declarations'
-import type { ModelSelectorModelPredicate } from './types'
+import type { DefaultModel, ModelItem } from '../declarations'
+import type { ModelSelectorModelPredicate, ModelSelectorProvider } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -9,20 +9,25 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { renderI18nObject } from '@/i18n-config'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
-import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
+import {
+  useLanguage,
+  useLazyModelProviderDetail,
+  useUpdateModelList,
+  useUpdateModelProviders,
+} from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
 import { useChangeProviderPriority } from '../provider-added-card/use-change-provider-priority'
-import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
+import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 export type ModelSelectorPreviewPayload = {
-  provider: Model
+  provider: ModelSelectorProvider
   modelItem: ModelItem
 }
 
@@ -30,7 +35,7 @@ type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['
 
 type PopupItemProps = {
   defaultModel?: DefaultModel
-  model: Model
+  model: ModelSelectorProvider
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
   previewCardHandle: PreviewCardHandle
@@ -56,15 +61,18 @@ function PopupItem({
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const currentProvider = modelProviders.find((provider) => provider.provider === model.provider)
+  const { providerDetail, loadProviderDetail } = useLazyModelProviderDetail(model.provider)
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialDropdown = canUseCredential || canCreateCredential || canManageCredential
-  const handleOpenModelModal = () => {
+  const handleOpenModelModal = async () => {
     if (!canCreateCredential) return
 
     if (!currentProvider) return
+    const detail = await loadProviderDetail()
+    if (!detail) return
     setShowModelModal({
       payload: {
-        currentProvider,
+        currentProvider: detail,
         currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
       },
       onSaveCallback: () => {
@@ -77,7 +85,7 @@ function PopupItem({
     })
   }
 
-  const state = useCredentialPanelState(currentProvider)
+  const state = useCredentialPanelInfo(currentProvider)
   const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(currentProvider)
   const groupItems = useMemo(
     () =>
@@ -99,6 +107,14 @@ function PopupItem({
     setDropdownOpen(false)
     onHide()
   }, [onHide])
+  const handleDropdownOpenChange = async (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setDropdownOpen(false)
+      return
+    }
+    const detail = await loadProviderDetail()
+    if (detail) setDropdownOpen(true)
+  }
 
   if (!currentProvider) return null
 
@@ -107,10 +123,10 @@ function PopupItem({
       <div className="sticky top-0 z-1 flex h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <button
           type="button"
-          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left"
+          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => setCollapsed((prev) => !prev)}
         >
-          <span className="truncate">{model.label[language] || model.label.en_US}</span>
+          <span className="truncate">{renderI18nObject(model.label, language)}</span>
           <span
             className={cn(
               'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary',
@@ -118,18 +134,18 @@ function PopupItem({
             )}
           />
         </button>
-        <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        <Popover open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
           <PopoverTrigger
             disabled={!canOpenCredentialDropdown}
             render={
               <button
                 type="button"
-                className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover"
+                className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               >
                 {isUsingCredits ? (
                   hasCredits ? (
                     <>
-                      <CreditsCoin className="size-3" />
+                      <span className="i-custom-vender-line-financeandecommerce-credits-coin size-3" />
                       <span className="ml-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
                       </span>
@@ -162,13 +178,15 @@ function PopupItem({
             }
           />
           <PopoverContent placement="bottom-end">
-            <DropdownContent
-              provider={currentProvider}
-              state={state}
-              isChangingPriority={isChangingPriority}
-              onChangePriority={handleChangePriority}
-              onClose={handleCloseDropdown}
-            />
+            {providerDetail && (
+              <DropdownContent
+                provider={providerDetail}
+                state={state}
+                isChangingPriority={isChangingPriority}
+                onChangePriority={handleChangePriority}
+                onClose={handleCloseDropdown}
+              />
+            )}
           </PopoverContent>
         </Popover>
       </div>
