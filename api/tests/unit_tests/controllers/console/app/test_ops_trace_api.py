@@ -131,7 +131,6 @@ def test_trace_config_mutations_require_edit_permission(
         ),
     ],
 )
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_trace_config_mutations_require_rbac_permission(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,

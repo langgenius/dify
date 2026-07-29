@@ -73,23 +73,20 @@ def test_parser_models_validate():
 
 def test_workflow_trigger_response_serializes_datetime():
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
-    trigger = AppTrigger(
-        tenant_id=str(uuid.uuid4()),
-        app_id=str(uuid.uuid4()),
+    response = workflow_trigger_module.WorkflowTriggerResponse(
+        id=str(uuid.uuid4()),
         trigger_type=AppTriggerType.TRIGGER_PLUGIN,
         title="Trigger",
         node_id="node-1",
         provider_name="provider",
+        icon="https://example.com/icon",
         status=AppTriggerStatus.ENABLED,
+        created_at=created_at,
+        updated_at=created_at,
     )
-    trigger.icon = "https://example.com/icon"
-    trigger.created_at = created_at
-    trigger.updated_at = created_at
 
-    payload = workflow_trigger_module.WorkflowTriggerResponse.model_validate(trigger, from_attributes=True).model_dump(
-        mode="json"
-    )
-    assert payload["id"] == trigger.id
+    payload = response.model_dump(mode="json")
+    assert payload["id"] == response.id
     assert payload["created_at"] == "2026-01-02T03:04:05Z"
     assert payload["updated_at"] == "2026-01-02T03:04:05Z"
 
