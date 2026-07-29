@@ -7053,6 +7053,9 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | query | App ID to filter by | No | string |
+| cursor | query | Opaque cursor returned by the previous page | No | string |
+| limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
+| name | query | App name to search for | No | string |
 
 #### Responses
 
@@ -7085,6 +7088,19 @@ Request body:
 | Code | Description |
 | ---- | ----------- |
 | 204 | App uninstalled successfully |
+
+### [GET] /installed-apps/{installed_app_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [InstalledAppResponse](#installedappresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}
 #### Parameters
@@ -18685,7 +18701,9 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
 | installed_apps | [ [InstalledAppResponse](#installedappresponse) ] |  | Yes |
+| next_cursor | string |  | No |
 
 #### InstalledAppResponse
 
@@ -18710,6 +18728,9 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string | App ID to filter by | No |
+| cursor | string | Opaque cursor returned by the previous page | No |
+| limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
+| name | string | App name to search for | No |
 
 #### InstructionGeneratePayload
 
