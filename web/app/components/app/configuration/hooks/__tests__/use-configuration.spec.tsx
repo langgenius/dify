@@ -6,7 +6,7 @@ import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
 const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
@@ -73,11 +73,10 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -493,7 +492,7 @@ describe('useConfiguration', () => {
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',

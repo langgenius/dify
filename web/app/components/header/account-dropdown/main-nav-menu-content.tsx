@@ -18,10 +18,13 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
@@ -107,7 +110,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
     select: (data) => data.profile,
   })
   const { isEducationAccount } = useProviderContext()
-  const { setShowAccountSettingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   return (
     <>
@@ -156,7 +159,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         </DropdownMenuLinkItem>
         <DropdownMenuItem
           className="mx-0 h-8 gap-1 px-3 py-1"
-          onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
+          onClick={() => setSettingsDestination('preferences')}
         >
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"

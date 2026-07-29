@@ -110,7 +110,11 @@ const currentWorkspaceValue: PostWorkspacesCurrentResponse = {
 }
 
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 let mockCurrentWorkspace: PostWorkspacesCurrentResponse | undefined = currentWorkspaceValue
 let mockWorkspaces: IWorkspace[] = []
 
@@ -182,7 +186,6 @@ describe('WorkspaceCard', () => {
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
   })
 
@@ -448,9 +451,7 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('opens members settings from workspace menu when billing is disabled', async () => {
@@ -466,12 +467,8 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.MEMBERS,
-    })
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
+    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('switches workspace from the workspace switcher item', async () => {

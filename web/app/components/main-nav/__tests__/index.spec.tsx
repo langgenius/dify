@@ -343,7 +343,11 @@ vi.mock('@/config', async (importOriginal) => {
 
 const mockPush = vi.fn()
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockPathname = '/apps'
@@ -537,7 +541,6 @@ describe('MainNav', () => {
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
     ;(useGetInstalledApps as Mock).mockImplementation(() => ({
       isPending: mockInstalledAppsPending,
@@ -1113,24 +1116,18 @@ describe('MainNav', () => {
     expect(
       screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }),
     ).toHaveAttribute('href', '/integrations/model-provider')
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.PROVIDER,
-    })
+    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith('provider')
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     expect(mockSetShowPricingModal).toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.settings'))
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.inviteMembers'))
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.MEMBERS,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('Evan Workspace'))
@@ -1168,9 +1165,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     expect(mockSetShowPricingModal).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('limits invite members by member management permission', async () => {

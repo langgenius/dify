@@ -8,7 +8,6 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 import AutoUpdateSetting from '../index'
@@ -34,17 +33,11 @@ dayjs.extend(timezone)
 // Mock app context
 const mockTimezone = 'America/New_York'
 
-// Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (
-    selector: (s: {
-      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
-    }) => typeof mockSetShowAccountSettingModal,
-  ) => {
-    return selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal })
-  },
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock i18n context
 
@@ -1396,9 +1389,7 @@ describe('auto-update-setting', () => {
         fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
         // Assert
-        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-          payload: ACCOUNT_SETTING_TAB.PREFERENCES,
-        })
+        expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
       })
     })
 

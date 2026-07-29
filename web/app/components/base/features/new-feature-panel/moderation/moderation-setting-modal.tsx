@@ -6,13 +6,16 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
@@ -56,14 +59,10 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const { t } = useTranslation()
   const docLink = useDocLink()
   const locale = useLocale()
-  const {
-    data: modelProviders,
-    isPending: isLoading,
-    refetch: refetchModelProviders,
-  } = useModelProviders()
+  const { data: modelProviders, isPending: isLoading } = useModelProviders()
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const updateLocaleData = useCallback(
     (
       update: ModerationConfig | ((current: ModerationConfig) => ModerationConfig),
@@ -78,10 +77,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
     [],
   )
   const handleOpenSettingsModal = () => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      onCancelCallback: refetchModelProviders,
-    })
+    setSettingsDestination('provider')
   }
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
   const openaiProvider = modelProviders?.data.find(
