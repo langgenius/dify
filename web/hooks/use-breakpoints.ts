@@ -1,5 +1,5 @@
 'use client'
-import * as React from 'react'
+import { useSyncExternalStore } from 'react'
 
 export const MediaType = {
   mobile: 'mobile',
@@ -9,21 +9,24 @@ export const MediaType = {
 
 type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
+const subscribeToViewport = (onStoreChange: () => void) => {
+  window.addEventListener('resize', onStoreChange)
+  return () => window.removeEventListener('resize', onStoreChange)
+}
+
+const getViewportWidth = () => globalThis.innerWidth
+const getServerViewportWidth = () => 1024
+
 const useBreakpoints = (): MediaTypeValue => {
-  const [width, setWidth] = React.useState(globalThis.innerWidth)
-  const media = (() => {
-    if (width <= 640) return MediaType.mobile
-    if (width <= 768) return MediaType.tablet
-    return MediaType.pc
-  })()
+  const width = useSyncExternalStore(
+    subscribeToViewport,
+    getViewportWidth,
+    getServerViewportWidth,
+  )
 
-  React.useEffect(() => {
-    const handleWindowResize = () => setWidth(window.innerWidth)
-    window.addEventListener('resize', handleWindowResize)
-    return () => window.removeEventListener('resize', handleWindowResize)
-  }, [])
-
-  return media
+  if (width <= 640) return MediaType.mobile
+  if (width <= 768) return MediaType.tablet
+  return MediaType.pc
 }
 
 export default useBreakpoints
