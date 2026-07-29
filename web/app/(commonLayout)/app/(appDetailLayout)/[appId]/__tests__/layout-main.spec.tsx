@@ -189,6 +189,22 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
+  it('should allow access point pages without app deploy or app ACL permissions', async () => {
+    mockPathname = '/app/app-1/access-point'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
   it('should allow users with layout access to open workflow pages directly', async () => {
     mockPathname = '/app/app-1/workflow'
 
