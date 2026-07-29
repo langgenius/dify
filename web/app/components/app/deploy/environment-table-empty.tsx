@@ -311,7 +311,11 @@ function EmptyTableSkeleton() {
   )
 }
 
-export function EnvironmentTableEmpty() {
+export function EnvironmentTableEmpty({
+  onSelectEnvironment,
+}: {
+  onSelectEnvironment?: (environment: string) => void
+}) {
   const { t } = useTranslation('deployments')
 
   return (
@@ -332,7 +336,7 @@ export function EnvironmentTableEmpty() {
               {t(($) => $['studio.emptyDescription'])}
             </p>
           </div>
-          <EnvironmentDeployMenu appearance="empty" />
+          <EnvironmentDeployMenu appearance="empty" onSelectEnvironment={onSelectEnvironment} />
         </div>
       </div>
     </div>

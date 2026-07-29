@@ -85,7 +85,13 @@ const ROW_ACTION_ICON_CLASS_NAMES: Record<MockRowAction['kind'], string> = {
   retry: 'i-ri-reset-left-line',
 }
 
-function RowActions({ row }: { row: MockEnvironmentDeployment }) {
+function RowActions({
+  row,
+  onChangeVersion,
+}: {
+  row: MockEnvironmentDeployment
+  onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+}) {
   const { t } = useTranslation('deployments')
   const label = rowActionLabel(row.action, t)
 
@@ -95,6 +101,7 @@ function RowActions({ row }: { row: MockEnvironmentDeployment }) {
         size="small"
         variant="secondary"
         disabled={row.action.kind === 'changeVersion' && row.action.disabled}
+        onClick={() => row.action.kind === 'changeVersion' && onChangeVersion?.(row)}
         className="min-w-0 grow gap-1 px-2"
       >
         <span
@@ -117,7 +124,11 @@ function RowActions({ row }: { row: MockEnvironmentDeployment }) {
           }
         />
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-50">
-          <DropdownMenuItem className="gap-2 px-2">
+          <DropdownMenuItem
+            disabled={row.action.kind === 'changeVersion' && row.action.disabled}
+            className="gap-2 px-2"
+            onClick={() => onChangeVersion?.(row)}
+          >
             <span aria-hidden className="i-ri-repeat-line size-4 shrink-0 text-text-secondary" />
             <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
               {t(($) => $['studio.changeVersion'])}
@@ -148,7 +159,13 @@ function RowActions({ row }: { row: MockEnvironmentDeployment }) {
   )
 }
 
-function EnvironmentRow({ row }: { row: MockEnvironmentDeployment }) {
+function EnvironmentRow({
+  row,
+  onChangeVersion,
+}: {
+  row: MockEnvironmentDeployment
+  onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+}) {
   return (
     <tr className="h-14 border-b border-divider-subtle hover:bg-state-base-hover">
       <td className="border-b border-divider-subtle pr-2 pl-3">
@@ -180,7 +197,7 @@ function EnvironmentRow({ row }: { row: MockEnvironmentDeployment }) {
         </div>
       </td>
       <td className="border-b border-divider-subtle pr-2 pl-3">
-        <RowActions row={row} />
+        <RowActions row={row} onChangeVersion={onChangeVersion} />
       </td>
     </tr>
   )
@@ -188,10 +205,14 @@ function EnvironmentRow({ row }: { row: MockEnvironmentDeployment }) {
 
 type EnvironmentTableProps = {
   deployments?: MockEnvironmentDeployment[]
+  onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+  onDeployToEnvironment?: (environment: string) => void
 }
 
 export function EnvironmentTable({
   deployments = MOCK_ENVIRONMENT_DEPLOYMENTS,
+  onChangeVersion,
+  onDeployToEnvironment,
 }: EnvironmentTableProps) {
   const { t } = useTranslation('deployments')
   const used = deployments.length
@@ -219,7 +240,7 @@ export function EnvironmentTable({
             })}
           </span>
         </div>
-        <EnvironmentDeployMenu />
+        <EnvironmentDeployMenu onSelectEnvironment={onDeployToEnvironment} />
       </div>
 
       <div
@@ -229,7 +250,7 @@ export function EnvironmentTable({
         )}
       >
         {deployments.length === 0 ? (
-          <EnvironmentTableEmpty />
+          <EnvironmentTableEmpty onSelectEnvironment={onDeployToEnvironment} />
         ) : (
           <table className="w-full min-w-260 table-fixed border-separate border-spacing-0">
             <colgroup>
@@ -264,7 +285,7 @@ export function EnvironmentTable({
             </thead>
             <tbody>
               {deployments.map((row) => (
-                <EnvironmentRow key={row.id} row={row} />
+                <EnvironmentRow key={row.id} row={row} onChangeVersion={onChangeVersion} />
               ))}
             </tbody>
           </table>

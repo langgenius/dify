@@ -44,6 +44,99 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('menuitem', { name: /US-Prod/ })).toBeInTheDocument()
   })
 
+  it('opens the selected environment version picker from the deploy menu', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    expect(within(dialog).getByText('deployments.studio.chooseVersionToDeploy')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: /#6/ })).toBeEnabled()
+    expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
+  })
+
+  it('continues from version selection to deployment configuration', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /#5/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    expect(within(configurationDialog).getByText('#5')).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('Dev')).toBeInTheDocument()
+    expect(
+      within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }),
+    ).toHaveTextContent('Enterprise key')
+
+    const portSource = within(configurationDialog).getByRole('combobox', { name: /PORT/ })
+    expect(portSource).toHaveTextContent('deployments.studio.configureValue')
+    expect(within(configurationDialog).getByRole('textbox', { name: 'PORT' })).toBeDisabled()
+
+    await user.click(portSource)
+    expect(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: 'deployments.studio.configureValue' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.lastDeployment',
+      }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    )
+
+    const customPortInput = within(configurationDialog).getByRole('spinbutton', { name: 'PORT' })
+    expect(customPortInput).toBeEnabled()
+    await user.clear(customPortInput)
+    await user.type(customPortInput, '3000')
+    expect(customPortInput).toHaveValue(3000)
+
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.operation.back' }),
+    )
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'deployments.versions.deployTo:{"name":"Dev"}',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens change version for the selected deployed environment', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const canaryRow = screen.getByRole('row', { name: /Canary/ })
+    await user.click(
+      within(canaryRow).getByRole('button', {
+        name: 'deployments.studio.changeVersion',
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.changeVersion · Canary',
+    })
+    expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
+    expect(within(dialog).getByText('deployments.studio.current')).toBeInTheDocument()
+  })
+
   it('shows the empty deployment state when there are no environments in use', async () => {
     const user = userEvent.setup()
     render(<EnvironmentTable deployments={[]} />)
