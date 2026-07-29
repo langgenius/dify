@@ -305,16 +305,8 @@ def _stats_coverage(
     return StatsCoverage(
         sample_count=len(samples),
         in_window_sample_count=len(_samples_in_window(samples, start_ns, end_ns)),
-        start_gap_ms=(
-            abs(start_ns - start_sample.sampled_at_ns) / 1_000_000
-            if start_sample is not None
-            else None
-        ),
-        end_gap_ms=(
-            abs(end_sample.sampled_at_ns - end_ns) / 1_000_000
-            if end_sample is not None
-            else None
-        ),
+        start_gap_ms=(abs(start_ns - start_sample.sampled_at_ns) / 1_000_000 if start_sample is not None else None),
+        end_gap_ms=(abs(end_sample.sampled_at_ns - end_ns) / 1_000_000 if end_sample is not None else None),
         window_covered=(
             start_sample is not None
             and end_sample is not None
