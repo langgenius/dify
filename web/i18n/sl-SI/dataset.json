@@ -11,6 +11,8 @@
   "batchAction.enable": "Omogočiti",
   "batchAction.reIndex": "Ponovno indeksiraj",
   "batchAction.selected": "Izbrane",
+  "batchAction.sync": "Sinhroniziraj",
+  "batchAction.syncAll": "Sinhroniziraj vse",
   "chunkingMode.general": "Splošno",
   "chunkingMode.graph": "Graf",
   "chunkingMode.parentChild": "Starš-otrok",

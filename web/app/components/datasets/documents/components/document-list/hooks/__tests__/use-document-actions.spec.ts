@@ -15,6 +15,8 @@ const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 const mockRetryIndex = vi.fn()
 const mockDownloadZip = vi.fn()
+const mockBatchSyncNotion = vi.fn()
+const mockBatchSyncWebsite = vi.fn()
 let mockIsDownloadingZip = false
 
 vi.mock('@/service/knowledge/use-document', () => ({
@@ -25,6 +27,8 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDelete: () => ({ mutateAsync: mockDelete }),
   useDocumentBatchRetryIndex: () => ({ mutateAsync: mockRetryIndex }),
   useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
+  useBatchSyncNotion: () => ({ mutateAsync: mockBatchSyncNotion }),
+  useBatchSyncWebsite: () => ({ mutateAsync: mockBatchSyncWebsite }),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -44,6 +48,7 @@ describe('useDocumentActions', () => {
     datasetId: 'ds-1',
     selectedIds: ['doc-1', 'doc-2'],
     downloadableSelectedIds: ['doc-1'],
+    syncableSelectedDocs: [],
     onUpdate: vi.fn(),
     onClearSelection: vi.fn(),
   }
