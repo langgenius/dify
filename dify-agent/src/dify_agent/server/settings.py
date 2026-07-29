@@ -25,7 +25,13 @@ from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bin
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
-from dify_agent.runtime_backend.profile import RuntimeBackendSettings, create_runtime_backend_profile
+from dify_agent.runtime_backend.profile import (
+    DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT,
+    DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT,
+    DEFAULT_LOCAL_WORKSPACE_ROOT,
+    RuntimeBackendSettings,
+    create_runtime_backend_profile,
+)
 
 DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
 
@@ -50,6 +56,9 @@ class ServerSettings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN", "DIFY_AGENT_SHELLCTL_AUTH_TOKEN"),
     )
+    local_sandbox_materialized_home_root: str = DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT
+    local_sandbox_workspace_root: str = DEFAULT_LOCAL_WORKSPACE_ROOT
+    local_sandbox_home_snapshot_root: str = DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT
     enterprise_sandbox_gateway_endpoint: str | None = None
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
@@ -178,6 +187,9 @@ class ServerSettings(BaseSettings):
                 runtime_backend=self.runtime_backend,
                 local_sandbox_endpoint=self.local_sandbox_endpoint,
                 local_sandbox_auth_token=self.local_sandbox_auth_token,
+                local_sandbox_materialized_home_root=self.local_sandbox_materialized_home_root,
+                local_sandbox_workspace_root=self.local_sandbox_workspace_root,
+                local_sandbox_home_snapshot_root=self.local_sandbox_home_snapshot_root,
                 enterprise_sandbox_gateway_endpoint=self.enterprise_sandbox_gateway_endpoint,
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
