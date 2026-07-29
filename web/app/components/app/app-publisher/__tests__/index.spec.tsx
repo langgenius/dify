@@ -186,12 +186,29 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
+  const dropdownMenuMock = await import('@/__mocks__/base-ui-dropdown-menu')
+  return {
+    ...dropdownMenuMock,
+    DropdownMenuGroup: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+      <div {...props}>{children}</div>
+    ),
+    DropdownMenuLabel: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+      <div {...props}>{children}</div>
+    ),
+    DropdownMenuSeparator: (props: React.HTMLAttributes<HTMLDivElement>) => (
+      <div role="separator" {...props} />
+    ),
+  }
+})
 
 vi.mock('../sections', () => ({
+  PublisherTimelineMarker: () => <span data-testid="publisher-timeline-marker" />,
   PublisherSummarySection: (props: Record<string, any>) => {
     sectionProps.summary = props
     return (
       <div>
+        {props.environmentTabs}
         <button onClick={() => void props.handlePublish()}>publisher-summary-publish</button>
         <button onClick={() => void props.handleRestore()}>publisher-summary-restore</button>
         <button onClick={props.onEditVersion}>publisher-summary-edit-version</button>
@@ -361,6 +378,46 @@ describe('AppPublisher', () => {
 
     expect(sectionProps.actions?.showDeployAction).toBe(true)
     expect(sectionProps.actions?.appURL).toContain('/workflow/token-1')
+    expect(
+      screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('should keep the single-environment publisher for unsupported app types', () => {
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
+    })
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(sectionProps.summary?.environmentTabs).toBeUndefined()
+  })
+
+  it('should switch between the built-in publisher and an overflow environment', async () => {
+    const user = userEvent.setup()
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
+    })
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(
+      screen.getByRole('button', {
+        name: /(?:studio\.moreEnvironments|operation\.more)/,
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'Pre-release' }))
+
+    expect(screen.getByRole('button', { name: /studio\.deployLatest/ })).toBeInTheDocument()
+    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }))
+
+    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
   })
 
   it('should collect hidden inputs before opening the web app from its config action', async () => {

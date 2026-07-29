@@ -25,7 +25,7 @@ function VersionTag({ children }: { children: ReactNode }) {
   )
 }
 
-function VersionChoice({
+export function VersionChoice({
   version,
   current,
   onSelect,

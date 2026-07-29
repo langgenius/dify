@@ -15,6 +15,11 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  MOCK_ENVIRONMENT_DEPLOYMENTS,
+  MOCK_PUBLISHED_VERSIONS,
+  MOCK_UNDEPLOYED_ENVIRONMENTS,
+} from '@/app/components/app/deploy/mock-data'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
 import {
   buildWorkflowLaunchUrl,
@@ -45,6 +50,8 @@ import {
 } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
+import { PublisherEnvironmentFlow } from './environment-deployment-flow'
+import { BUILT_IN_ENVIRONMENT_ID, PublisherEnvironmentTabs } from './environment-tabs'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import {
   PublisherAccessSection,
@@ -57,6 +64,19 @@ import {
   isPublisherAccessConfigured,
 } from './utils'
 import VersionInfoModal from './version-info-modal'
+
+// TODO: Replace the studio deployment fixtures after the app-scoped environment API is connected.
+const PUBLISHER_ENVIRONMENTS = [
+  ...MOCK_ENVIRONMENT_DEPLOYMENTS.map(({ id, name }) => ({ id, name })),
+  ...MOCK_UNDEPLOYED_ENVIRONMENTS.map((name, index) => ({
+    id: `available-${index}`,
+    name,
+  })),
+]
+
+const INITIAL_JOINED_ENVIRONMENT_IDS = MOCK_ENVIRONMENT_DEPLOYMENTS.map(
+  (environment) => environment.id,
+)
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -129,6 +149,10 @@ export function AppPublisher({
   >({})
   const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
   const [editVersionInfoOpen, setEditVersionInfoOpen] = useState(false)
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(BUILT_IN_ENVIRONMENT_ID)
+  const [joinedEnvironmentIds, setJoinedEnvironmentIds] = useState<string[]>(() => [
+    ...INITIAL_JOINED_ENVIRONMENT_IDS,
+  ])
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore((state) => state.appDetail)
@@ -143,6 +167,8 @@ export function AppPublisher({
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const appMode = appDetail?.mode
   const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
+  const supportsMultiEnvironment =
+    appMode === AppModeEnum.WORKFLOW && systemFeatures.enable_app_deploy
   const isChatApp =
     appMode === AppModeEnum.CHAT ||
     appMode === AppModeEnum.AGENT_CHAT ||
@@ -317,6 +343,14 @@ export function AppPublisher({
     setEditVersionInfoOpen(true)
   }
 
+  function handleAddEnvironment(environmentId: string) {
+    setJoinedEnvironmentIds((currentEnvironmentIds) => {
+      if (currentEnvironmentIds.includes(environmentId)) return currentEnvironmentIds
+      return [...currentEnvironmentIds, environmentId]
+    })
+    setSelectedEnvironmentId(environmentId)
+  }
+
   function handleUpdateVersionInfo(params: { id?: string; title: string; releaseNotes: string }) {
     if (!appDetail?.id || !params.id) return
 
@@ -413,6 +447,21 @@ export function AppPublisher({
     backgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   }
+  const selectedEnvironmentDeployment = MOCK_ENVIRONMENT_DEPLOYMENTS.find(
+    (deployment) => deployment.id === selectedEnvironmentId,
+  )
+  const latestPublishedVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)
+  const environmentTabs = supportsMultiEnvironment ? (
+    <PublisherEnvironmentTabs
+      environments={PUBLISHER_ENVIRONMENTS}
+      joinedEnvironmentIds={joinedEnvironmentIds}
+      selectedEnvironmentId={selectedEnvironmentId}
+      onAddEnvironment={handleAddEnvironment}
+      onSelectEnvironment={setSelectedEnvironmentId}
+    />
+  ) : undefined
+  const showBuiltInPublisher =
+    !supportsMultiEnvironment || selectedEnvironmentId === BUILT_IN_ENVIRONMENT_ID
 
   return (
     <>
@@ -431,63 +480,74 @@ export function AppPublisher({
           alignOffset={crossAxisOffset}
           popupClassName="border-none bg-transparent shadow-none"
         >
-          <div className="w-98 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
-            <PublisherSummarySection
-              debugWithMultipleModel={debugWithMultipleModel}
-              draftUpdatedAt={draftUpdatedAt}
-              formatTimeFromNow={formatTimeFromNow}
-              handlePublish={handlePublish}
-              handleRestore={handleRestore}
-              hasUnpublishedChanges={resolvedHasUnpublishedChanges}
-              isChatApp={isChatApp}
-              isWorkflowApp={isWorkflowApp}
-              multipleModelConfigs={multipleModelConfigs}
-              onEditVersion={handleOpenVersionInfo}
-              publishDisabled={publishDisabled}
-              publishedAt={currentPublishedAt}
-              startNodeLimitExceeded={startNodeLimitExceeded}
-              upgradeHighlightStyle={upgradeHighlightStyle}
-              versionInfo={publishedWorkflow}
-            />
-            <PublisherAccessSection
-              enabled={systemFeatures.webapp_auth.enabled}
-              isAppAccessSet={isAppAccessSet}
-              isLoading={Boolean(
-                systemFeatures.webapp_auth.enabled &&
-                (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects),
-              )}
-              accessMode={appDetail?.access_mode}
-              onClick={() => {
-                handleOpenChange(false)
-                setShowAppAccessControl(true)
-              }}
-            />
-            <PublisherActionsSection
-              appDetail={appDetail}
-              appURL={appURL}
-              disabledFunctionButton={disabledFunctionButton}
-              disabledFunctionTooltip={disabledFunctionTooltip}
-              handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
-              hasHumanInputNode={hasHumanInputNode}
-              hasTriggerNode={hasTriggerNode}
-              marketplaceActionDisabled={!currentPublishedAt}
-              publishedAt={currentPublishedAt}
-              publishingToMarketplace={publishingToMarketplace}
-              showDeployAction={
-                appDetail?.mode === AppModeEnum.WORKFLOW &&
-                isCurrentWorkspaceEditor &&
-                systemFeatures.enable_app_deploy
-              }
-              showMarketplaceAction={systemFeatures.enable_creators_platform}
-              showRunConfig={hiddenLaunchVariables.length > 0}
-              toolPublished={workflowToolPublished}
-              workflowToolAvailable={workflowToolAvailableForUser}
-              workflowToolIsLoading={workflowTool.isLoading}
-              workflowToolMessage={workflowToolMessage}
-              workflowToolOutdated={workflowTool.outdated}
-              onConfigureWorkflowTool={openWorkflowToolDrawer}
-              onPublishToMarketplace={handlePublishToMarketplace}
-            />
+          <div className="flex max-h-[calc(100dvh-32px)] w-98 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+            {showBuiltInPublisher ? (
+              <>
+                <PublisherSummarySection
+                  debugWithMultipleModel={debugWithMultipleModel}
+                  draftUpdatedAt={draftUpdatedAt}
+                  environmentTabs={environmentTabs}
+                  formatTimeFromNow={formatTimeFromNow}
+                  handlePublish={handlePublish}
+                  handleRestore={handleRestore}
+                  hasUnpublishedChanges={resolvedHasUnpublishedChanges}
+                  isChatApp={isChatApp}
+                  isWorkflowApp={isWorkflowApp}
+                  multipleModelConfigs={multipleModelConfigs}
+                  onEditVersion={handleOpenVersionInfo}
+                  publishDisabled={publishDisabled}
+                  publishedAt={currentPublishedAt}
+                  startNodeLimitExceeded={startNodeLimitExceeded}
+                  upgradeHighlightStyle={upgradeHighlightStyle}
+                  versionInfo={publishedWorkflow}
+                />
+                <PublisherAccessSection
+                  enabled={systemFeatures.webapp_auth.enabled}
+                  isAppAccessSet={isAppAccessSet}
+                  isLoading={Boolean(
+                    systemFeatures.webapp_auth.enabled &&
+                    (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects),
+                  )}
+                  accessMode={appDetail?.access_mode}
+                  onClick={() => {
+                    handleOpenChange(false)
+                    setShowAppAccessControl(true)
+                  }}
+                />
+                <PublisherActionsSection
+                  appDetail={appDetail}
+                  appURL={appURL}
+                  disabledFunctionButton={disabledFunctionButton}
+                  disabledFunctionTooltip={disabledFunctionTooltip}
+                  handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
+                  hasHumanInputNode={hasHumanInputNode}
+                  hasTriggerNode={hasTriggerNode}
+                  marketplaceActionDisabled={!currentPublishedAt}
+                  publishedAt={currentPublishedAt}
+                  publishingToMarketplace={publishingToMarketplace}
+                  showDeployAction={supportsMultiEnvironment && isCurrentWorkspaceEditor}
+                  showMarketplaceAction={systemFeatures.enable_creators_platform}
+                  showRunConfig={hiddenLaunchVariables.length > 0}
+                  toolPublished={workflowToolPublished}
+                  workflowToolAvailable={workflowToolAvailableForUser}
+                  workflowToolIsLoading={workflowTool.isLoading}
+                  workflowToolMessage={workflowToolMessage}
+                  workflowToolOutdated={workflowTool.outdated}
+                  onConfigureWorkflowTool={openWorkflowToolDrawer}
+                  onPublishToMarketplace={handlePublishToMarketplace}
+                />
+              </>
+            ) : (
+              <PublisherEnvironmentFlow
+                key={selectedEnvironmentId}
+                appId={appDetail?.id}
+                deployment={selectedEnvironmentDeployment}
+                environmentId={selectedEnvironmentId}
+                environmentTabs={environmentTabs}
+                latestVersion={latestPublishedVersion}
+                onGoToPublish={() => setSelectedEnvironmentId(BUILT_IN_ENVIRONMENT_ID)}
+              />
+            )}
           </div>
         </PopoverContent>
         {showAppAccessControl && (

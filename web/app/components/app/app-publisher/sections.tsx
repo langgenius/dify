@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams, VersionHistory } from '@/types/workflow'
@@ -30,6 +30,7 @@ type SummarySectionProps = Pick<
   formatTimeFromNow: (value: number) => string
   handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
   handleRestore: () => Promise<void>
+  environmentTabs?: ReactNode
   hasUnpublishedChanges?: boolean
   isChatApp: boolean
   isWorkflowApp?: boolean
@@ -97,7 +98,7 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
   )
 }
 
-const PublisherTimelineMarker = ({ position }: { position: 'top' | 'bottom' }) => (
+export const PublisherTimelineMarker = ({ position }: { position: 'top' | 'bottom' }) => (
   <span
     className={cn(
       'relative flex w-4 shrink-0 items-start p-1',
@@ -121,6 +122,7 @@ const PublisherTimelineMarker = ({ position }: { position: 'top' | 'bottom' }) =
 export const PublisherSummarySection = ({
   debugWithMultipleModel = false,
   draftUpdatedAt,
+  environmentTabs,
   formatTimeFromNow,
   handlePublish,
   handleRestore,
@@ -153,6 +155,7 @@ export const PublisherSummarySection = ({
 
   return (
     <div className="flex flex-col gap-3 p-4">
+      {environmentTabs}
       <div className="flex items-start gap-1 px-1 py-0.5">
         <PublisherTimelineMarker position="top" />
         {!hasPublishedVersion ? (
