@@ -3,19 +3,85 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope
 from core.app.workflow import file_runtime
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime, bind_dify_workflow_file_runtime
 from core.workflow.file_reference import build_file_reference
+from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile, UploadFile
+from models.base import TypeBase
+from models.enums import CreatorUserRole
+
+
+@pytest.fixture
+def file_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Bind runtime-owned sessions to SQLite with only the two file tables present."""
+    tables = [TypeBase.metadata.tables[model.__tablename__] for model in (UploadFile, ToolFile)]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(file_runtime.session_factory, "create_session", session_maker)
+    with session_maker() as session:
+        yield session
+
+
+def _persist_upload_file(
+    session: Session,
+    *,
+    file_id: str = "upload-file-id",
+    key: str = "canonical-storage-key",
+    tenant_id: str = "tenant-id",
+    created_by: str = "end-user-id",
+) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name="diagram.png",
+        size=128,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=created_by,
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        used=False,
+    )
+    upload_file.id = file_id
+    session.add(upload_file)
+    session.commit()
+    return upload_file
+
+
+def _persist_tool_file(
+    session: Session,
+    *,
+    file_id: str = "tool-file-id",
+    key: str = "tool-storage-key",
+) -> ToolFile:
+    tool_file = ToolFile(
+        user_id="end-user-id",
+        tenant_id="tenant-id",
+        conversation_id=None,
+        file_key=key,
+        mimetype="image/png",
+        name="diagram.png",
+        size=128,
+    )
+    tool_file.id = file_id
+    session.add(tool_file)
+    session.commit()
+    return tool_file
 
 
 def _build_file(
@@ -164,56 +230,37 @@ def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch
     )
 
 
-def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(
+    monkeypatch: pytest.MonkeyPatch, file_session: Session
+) -> None:
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id"),
     )
-    session = MagicMock()
-    session.get.return_value = SimpleNamespace(key="canonical-storage-key")
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+    _persist_upload_file(file_session)
     monkeypatch.setattr(file_runtime.storage, "load", lambda *args, **kwargs: b"image-bytes")
 
     assert runtime.load_file_bytes(file=file) == b"image-bytes"
-    session.get.assert_called_with(UploadFile, "upload-file-id")
 
     monkeypatch.setattr(file_runtime.storage, "load", lambda *args, **kwargs: "not-bytes")
     with pytest.raises(ValueError, match="is not a bytes object"):
         runtime.load_file_bytes(file=file)
 
 
-def test_resolve_storage_key_ignores_encoded_reference_when_unscoped(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_storage_key_ignores_encoded_reference_when_unscoped(file_session: Session) -> None:
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
     )
-    session = MagicMock()
-    session.get.return_value = SimpleNamespace(key="canonical-storage-key")
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+    _persist_upload_file(file_session)
 
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
-    session.get.assert_called_once_with(UploadFile, "upload-file-id")
 
 
-def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(file_session: Session) -> None:
+    upload_file = _persist_upload_file(file_session)
     controller = MagicMock()
     controller.current_scope.return_value = FileAccessScope(
         tenant_id="tenant-id",
@@ -221,28 +268,19 @@ def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(monkeypat
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    controller.get_upload_file.return_value = SimpleNamespace(key="canonical-storage-key")
+    controller.get_upload_file.return_value = upload_file
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
     )
-    session = MagicMock()
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
-
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
-    controller.get_upload_file.assert_called_once_with(session=session, file_id="upload-file-id")
+    controller.get_upload_file.assert_called_once()
+    assert isinstance(controller.get_upload_file.call_args.kwargs["session"], Session)
+    assert controller.get_upload_file.call_args.kwargs["file_id"] == "upload-file-id"
 
 
-def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(file_session: Session) -> None:
     controller = MagicMock()
     controller.current_scope.return_value = FileAccessScope(
         tenant_id="tenant-id",
@@ -252,17 +290,6 @@ def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(monkeypatch:
     )
     controller.get_upload_file.return_value = None
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
-    session = MagicMock()
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
-
     with pytest.raises(ValueError, match="Upload file upload-file-id not found"):
         runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
 
@@ -276,7 +303,7 @@ def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(monkeypatch:
     ],
 )
 def test_resolve_storage_key_loads_database_records(
-    monkeypatch: pytest.MonkeyPatch,
+    file_session: Session,
     transfer_method: FileTransferMethod,
     record_id: str,
     expected_storage_key: str,
@@ -287,25 +314,10 @@ def test_resolve_storage_key_loads_database_records(
         reference=build_file_reference(record_id=record_id),
         extension=".png",
     )
-    session = MagicMock()
-
-    def get(model_class, value):
-        if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
-            assert model_class is UploadFile
-            return SimpleNamespace(key="upload-storage-key")
-        assert model_class is ToolFile
-        return SimpleNamespace(file_key="tool-storage-key")
-
-    session.get.side_effect = get
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+    if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
+        _persist_upload_file(file_session, key="upload-storage-key")
+    else:
+        _persist_tool_file(file_session)
 
     assert runtime._resolve_storage_key(file=file) == expected_storage_key
 
@@ -318,7 +330,7 @@ def test_resolve_storage_key_loads_database_records(
     ],
 )
 def test_resolve_storage_key_raises_when_records_are_missing(
-    monkeypatch: pytest.MonkeyPatch,
+    file_session: Session,
     transfer_method: FileTransferMethod,
     expected_message: str,
 ) -> None:
@@ -329,18 +341,6 @@ def test_resolve_storage_key_raises_when_records_are_missing(
         reference=build_file_reference(record_id=record_id),
         extension=".png",
     )
-    session = MagicMock()
-    session.get.return_value = None
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
-
     with pytest.raises(ValueError, match=expected_message):
         runtime._resolve_storage_key(file=file)
 
