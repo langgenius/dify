@@ -45,7 +45,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
     <div tabIndex={-1} className={cn('absolute top-14 right-0 bottom-2 z-10 flex outline-hidden')}>
       <div
         className={cn(
-          'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+          'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
         )}
       >
         <div className="flex items-start self-stretch p-4 pb-0">

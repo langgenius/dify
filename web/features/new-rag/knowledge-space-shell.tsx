@@ -133,7 +133,7 @@ export function KnowledgeSpaceShell({
     'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
   const navIcon = (className: string) => (
     <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-      <span className={cn('size-[18px]', className)} />
+      <span className={cn('size-4.5', className)} />
     </span>
   )
 

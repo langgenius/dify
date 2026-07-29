@@ -278,7 +278,7 @@ const OutsideScrollingContentDemo = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>Review long release notes</DialogTrigger>
       <DialogPortal>
-        <DialogBackdrop className="duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
+        <DialogBackdrop className="duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
         <DialogViewport className="group/dialog">
           <ScrollAreaRoot className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
             <ScrollAreaViewport
@@ -290,7 +290,7 @@ const OutsideScrollingContentDemo = () => {
                 <DialogPopup
                   ref={popupRef}
                   initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-700 ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
                 >
                   <DialogCloseButton />
                   <ReleaseNoteHeader
@@ -323,12 +323,12 @@ export const OutsidePopupElements: Story = {
       <DialogPortal>
         <DialogBackdrop className="min-h-dvh" />
         <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
-          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
+          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-280 justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
             <DialogCloseButton
               aria-label="Close"
               className="pointer-events-auto absolute -top-10 right-0 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
             ></DialogCloseButton>
-            <div className="pointer-events-auto flex h-full w-full max-w-[70rem] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
+            <div className="pointer-events-auto flex h-full w-full max-w-280 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
               <div className="grid gap-2">
                 <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
                   Knowledge review

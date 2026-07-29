@@ -279,7 +279,7 @@ export default function IntegrationsPage({
               >
                 {toolsNavItemContent}
               </CollapsibleTrigger>
-              <CollapsiblePanel className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+              <CollapsiblePanel className="relative space-y-px before:absolute before:-top-px before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
                 {toolItems.map((item) => (
                   <IntegrationSidebarNavItem
                     key={item.label}

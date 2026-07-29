@@ -38,7 +38,7 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({ data }) => {
           return (
             <div
               key={id}
-              className="flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1"
+              className="flex h-6.5 items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1"
             >
               <AppIcon
                 size="xs"

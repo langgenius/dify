@@ -1089,7 +1089,7 @@ export function AgentPromptEditor() {
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
         >
-          <div ref={promptEditorHostRef} className="min-h-[104px] overflow-y-auto px-3 pt-0.5">
+          <div ref={promptEditorHostRef} className="min-h-26 overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               aria-controls={isSlashMenuOpen ? agentPromptSlashMenuId : undefined}
@@ -1097,7 +1097,7 @@ export function AgentPromptEditor() {
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
-              className="min-h-[104px] text-text-primary"
+              className="min-h-26 text-text-primary"
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}

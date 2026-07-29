@@ -109,7 +109,7 @@ function ToolSelector({
   }
 
   const renderErrorTip = () => (
-    <div className="max-w-[240px] space-y-1 text-xs">
+    <div className="max-w-60 space-y-1 text-xs">
       <h3 className="font-semibold text-text-primary">
         {currentTool
           ? t(($) => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })
@@ -177,7 +177,7 @@ function ToolSelector({
       >
         <div
           className={cn(
-            'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
+            'relative max-h-160.5 min-h-20 w-90.25 rounded-xl',
             'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
             'overflow-y-auto pb-4 shadow-lg backdrop-blur-xs',
           )}

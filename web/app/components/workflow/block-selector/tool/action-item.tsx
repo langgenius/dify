@@ -80,7 +80,7 @@ const ToolItem: FC<Props> = ({
       size="medium"
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
-      className="w-full justify-between pr-1 pl-[21px] text-left focus-visible:ring-inset disabled:cursor-default"
+      className="w-full justify-between pr-1 pl-5.25 text-left focus-visible:ring-inset disabled:cursor-default"
       onClick={() => {
         if (disabled) return
         const params: Record<string, string> = {}
@@ -159,7 +159,7 @@ export function ToolActionPreviewCard({ payload }: ToolActionPreviewCardProps) {
       <div className="mb-1 text-sm/5 wrap-break-word text-text-primary">
         {payload.payload.label[payload.language]}
       </div>
-      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+      <div className="text-xs leading-4.5 wrap-break-word text-text-secondary">
         {payload.payload.description[payload.language]}
       </div>
     </BlockSelectorPreviewCardContent>

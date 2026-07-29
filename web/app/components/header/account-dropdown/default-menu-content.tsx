@@ -178,7 +178,7 @@ export function DefaultMenuContent({
               iconClassName="i-ri-github-line"
               label={t(($) => $['userProfile.github'], { ns: 'common' })}
               trailing={
-                <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
+                <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75">
                   <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
                   <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
                 </div>

@@ -111,10 +111,7 @@ export const OAuthClientSettingsModal = ({
                     {oauthConfig?.redirect_uri}
                   </div>
                   <Button variant="secondary" size="small" onClick={handleCopyRedirectUri}>
-                    <span
-                      aria-hidden="true"
-                      className="mr-1 i-ri-clipboard-line h-[14px] w-[14px]"
-                    />
+                    <span aria-hidden="true" className="mr-1 i-ri-clipboard-line h-3.5 w-3.5" />
                     {t(($) => $['operation.copy'], { ns: 'common' })}
                   </Button>
                 </div>

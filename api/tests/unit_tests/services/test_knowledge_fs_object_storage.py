@@ -43,6 +43,7 @@ class FakeStorage:
         self.objects.pop(filename, None)
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        del files, directories
         if not self.scan_supported:
             raise NotImplementedError("scan unsupported")
         return sorted(key for key in self.objects if key.startswith(path))

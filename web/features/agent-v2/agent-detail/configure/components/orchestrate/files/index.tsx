@@ -239,7 +239,7 @@ function AgentFileItem({
   return (
     <li
       data-selected={selected || undefined}
-      className="group/file-row relative flex h-6 min-w-0 items-center rounded-md focus-within:bg-state-base-hover hover:bg-state-base-hover data-[selected]:bg-state-base-active"
+      className="group/file-row relative flex h-6 min-w-0 items-center rounded-md focus-within:bg-state-base-hover hover:bg-state-base-hover data-selected:bg-state-base-active"
     >
       <Dialog open={isPreviewOpen} onOpenChange={handlePreviewOpenChange}>
         <DialogTrigger

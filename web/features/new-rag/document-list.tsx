@@ -147,11 +147,11 @@ const DocumentRow = memo(
           <div className="flex min-w-0 items-center gap-2.5">
             <span
               aria-hidden
-              className="i-ri-file-text-line size-[18px] shrink-0 text-text-tertiary"
+              className="i-ri-file-text-line size-4.5 shrink-0 text-text-tertiary"
             />
             <Link
               id={titleId}
-              className="truncate rounded text-[13px] leading-[17px] font-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              className="truncate rounded text-[13px] leading-4.25 font-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               href={documentHref}
             >
               {document.title}
@@ -163,7 +163,7 @@ const DocumentRow = memo(
             )}
           </div>
         </td>
-        <td className="hidden w-[210px] pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
+        <td className="hidden w-52.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
           {sourcePending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -178,7 +178,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="w-24 pr-2 align-middle sm:w-[240px] sm:pr-6">
+        <td className="w-24 pr-2 align-middle sm:w-60 sm:pr-6">
           {statusPending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -205,7 +205,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="hidden w-[150px] pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
+        <td className="hidden w-37.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
         <td className="w-10 align-middle">
@@ -250,7 +250,7 @@ export function DocumentsEmpty({
       <h2 className="text-base leading-normal font-semibold text-text-primary">
         {t(($) => $['newKnowledge.documentsEmptyTitle'])}
       </h2>
-      <p className="max-w-[460px] text-[13px] leading-normal font-normal text-text-tertiary">
+      <p className="max-w-115 text-[13px] leading-normal font-normal text-text-tertiary">
         {t(($) => $['newKnowledge.documentsEmptyDescription'])}
       </p>
       <Button
@@ -470,10 +470,10 @@ export function DocumentsList({
         role="region"
         tabIndex={-1}
       >
-        <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
-          <thead className="text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary">
-            <tr className="h-9">
-              <th className="w-10 py-2.5 font-medium">
+        <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
+          <thead className="system-2xs-medium text-text-tertiary uppercase">
+            <tr>
+              <th className="pb-2 font-medium">
                 <Checkbox
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
@@ -492,13 +492,13 @@ export function DocumentsList({
               <th className="py-2.5 pr-6 font-medium">
                 {t(($) => $['newKnowledge.documentColumn'])}
               </th>
-              <th className="hidden w-[210px] py-2.5 pr-6 font-medium lg:table-cell">
+              <th className="hidden w-52.5 py-2.5 pr-6 font-medium lg:table-cell">
                 {t(($) => $['newKnowledge.sourceColumn'])}
               </th>
-              <th className="w-24 py-2.5 pr-2 font-medium sm:w-[240px] sm:pr-6">
+              <th className="w-24 py-2.5 pr-2 font-medium sm:w-60 sm:pr-6">
                 {t(($) => $['newKnowledge.statusColumn'])}
               </th>
-              <th className="hidden w-[150px] py-2.5 pr-6 font-medium lg:table-cell">
+              <th className="hidden w-37.5 py-2.5 pr-6 font-medium lg:table-cell">
                 {t(($) => $['newKnowledge.updatedColumn'])}
               </th>
               <th className="w-10 py-2.5" aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
@@ -651,7 +651,7 @@ export function DocumentBulkActions({
 }) {
   const { t } = useTranslation('dataset')
   return (
-    <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-[var(--new-rag-sidebar-width,0px)]">
+    <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
       <div
         aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
         className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
@@ -704,7 +704,7 @@ export function DocumentBulkActions({
           variant="ghost"
           size="small"
           aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-          className="size-[26px] shrink-0 px-0"
+          className="size-6.5 shrink-0 px-0"
           onClick={onClear}
         >
           <span aria-hidden className="i-ri-close-line size-3.5" />
@@ -722,7 +722,7 @@ export function DocumentDropOverlay() {
       className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-divider-regular bg-[rgba(255,255,255,0.5)] text-center backdrop-blur-[5px]"
       role="status"
     >
-      <div className="flex w-[228px] items-center justify-center gap-5 rounded-xl border border-dashed border-divider-regular bg-components-panel-bg px-8 py-7 shadow-xs">
+      <div className="flex w-57 items-center justify-center gap-5 rounded-xl border border-dashed border-divider-regular bg-components-panel-bg px-8 py-7 shadow-xs">
         <span aria-hidden className="i-ri-file-word-2-fill size-6 text-text-accent" />
         <span aria-hidden className="i-ri-file-pdf-2-fill size-6 text-text-destructive" />
         <span aria-hidden className="i-ri-file-excel-fill size-6 text-text-success" />

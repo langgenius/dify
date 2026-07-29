@@ -366,17 +366,17 @@ function SourceRow({
       </td>
       <td className="min-w-0 py-2 pr-3 sm:min-w-64">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span aria-hidden className={cn('size-[18px] shrink-0 text-text-tertiary', sourceIcon)} />
+          <span aria-hidden className={cn('size-4.5 shrink-0 text-text-tertiary', sourceIcon)} />
           <div className="min-w-0">
             <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
           </div>
         </div>
       </td>
-      <td className="hidden w-[180px] py-2 pr-3 sm:table-cell">
+      <td className="hidden w-45 py-2 pr-3 sm:table-cell">
         <p className="system-xs-regular text-text-secondary">{providerName ?? typeLabel}</p>
         {providerName && <p className="system-2xs-regular text-text-tertiary">{typeLabel}</p>}
       </td>
-      <td className="w-24 py-2 pr-3 sm:w-[140px]">
+      <td className="w-24 py-2 pr-3 sm:w-35">
         <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-primary">
           <StatusDot
             status={statusDotStatus[source.status]}
@@ -632,7 +632,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               <SelectLabel className="sr-only">
                 {t(($) => $['newKnowledge.sourceFilterLabel'])}
               </SelectLabel>
-              <SelectTrigger className="sm:w-[140px]">
+              <SelectTrigger className="sm:w-35">
                 {filter === 'all'
                   ? t(($) => $['newKnowledge.allSources'])
                   : t(($) => $[`newKnowledge.sourceStatus.${filter}`])}
@@ -673,7 +673,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
+            <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
               <thead className="system-2xs-medium text-text-tertiary uppercase">
                 <tr>
                   <th className="w-7 pr-3 pb-2">

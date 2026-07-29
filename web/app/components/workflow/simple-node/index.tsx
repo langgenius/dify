@@ -50,7 +50,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
         className={cn(
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
-          'w-[240px] bg-workflow-block-bg',
+          'w-60 bg-workflow-block-bg',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && 'border-state-accent-solid!',
           showSuccessBorder && 'border-state-success-solid!',

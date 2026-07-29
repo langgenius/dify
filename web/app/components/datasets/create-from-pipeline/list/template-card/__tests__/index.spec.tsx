@@ -686,7 +686,7 @@ describe('TemplateCard', () => {
     it('should have fixed height', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {

@@ -32,7 +32,7 @@ export function KnowledgeSpaceCard({
       <Link
         href={newKnowledgeOverviewPath(knowledgeSpace.control_space_id)}
         aria-label={name}
-        className="relative flex h-[166px] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
+        className="relative flex h-41.5 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
       >
         <div className="flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
           <div

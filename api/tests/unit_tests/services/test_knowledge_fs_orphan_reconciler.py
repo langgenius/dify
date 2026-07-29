@@ -21,9 +21,11 @@ class FakeRemote:
         self.list_requests: list[tuple[str, str]] = []
 
     def provision_integrated_space(self, request: KnowledgeFSIntegratedProvisionRequest) -> KnowledgeFSRemoteSpace:
+        del request
         raise AssertionError("not used")
 
     def request_integrated_deletion(self, request: KnowledgeFSIntegratedDeletionRequest) -> KnowledgeFSDeletionProgress:
+        del request
         raise AssertionError("not used")
 
     def revoke_capability_grant(

@@ -108,7 +108,7 @@ const ChatUserInput = ({ inputs }: Props) => {
                 )}
                 {type === 'paragraph' && (
                   <Textarea
-                    className="h-[120px] grow"
+                    className="h-30 grow"
                     aria-label={name || key}
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}

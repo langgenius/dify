@@ -815,7 +815,10 @@ class TestMemberRoles:
 class TestKnowledgeFSRoleMutations:
     def test_replace_member_roles_invalidates_target_after_remote_success(self, mock_send: MagicMock):
         events: list[str] = []
-        mock_send.side_effect = lambda *args, **kwargs: events.append("remote") or {"account_id": "acct-2", "roles": []}
+        mock_send.side_effect = lambda *_args, **_kwargs: events.append("remote") or {
+            "account_id": "acct-2",
+            "roles": [],
+        }
         session = MagicMock()
         session.commit.side_effect = lambda: events.append("commit")
 
@@ -823,7 +826,7 @@ class TestKnowledgeFSRoleMutations:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.knowledge_fs.membership_changes.apply_workspace_membership_change",
-                side_effect=lambda **kwargs: events.append("invalidate"),
+                side_effect=lambda **_kwargs: events.append("invalidate"),
             ) as invalidate,
         ):
             out = svc.RBACService.KnowledgeFSRoleMutations.replace_member_roles(
@@ -846,7 +849,7 @@ class TestKnowledgeFSRoleMutations:
 
     def test_update_role_invalidates_workspace_after_remote_success(self, mock_send: MagicMock):
         events: list[str] = []
-        mock_send.side_effect = lambda *args, **kwargs: (
+        mock_send.side_effect = lambda *_args, **_kwargs: (
             events.append("remote") or {"id": "role-1", "type": "workspace", "name": "Editors"}
         )
         session = MagicMock()
@@ -855,7 +858,7 @@ class TestKnowledgeFSRoleMutations:
 
         with patch(
             "services.knowledge_fs.membership_changes.apply_workspace_rbac_role_change",
-            side_effect=lambda **kwargs: events.append("invalidate"),
+            side_effect=lambda **_kwargs: events.append("invalidate"),
         ) as invalidate:
             role = svc.RBACService.KnowledgeFSRoleMutations.update_role(
                 "tenant-1",
@@ -871,13 +874,13 @@ class TestKnowledgeFSRoleMutations:
 
     def test_delete_role_invalidates_workspace_after_remote_success(self, mock_send: MagicMock):
         events: list[str] = []
-        mock_send.side_effect = lambda *args, **kwargs: events.append("remote") or {"message": "success"}
+        mock_send.side_effect = lambda *_args, **_kwargs: events.append("remote") or {"message": "success"}
         session = MagicMock()
         session.commit.side_effect = lambda: events.append("commit")
 
         with patch(
             "services.knowledge_fs.membership_changes.apply_workspace_rbac_role_change",
-            side_effect=lambda **kwargs: events.append("invalidate"),
+            side_effect=lambda **_kwargs: events.append("invalidate"),
         ) as invalidate:
             svc.RBACService.KnowledgeFSRoleMutations.delete_role(
                 "tenant-1",

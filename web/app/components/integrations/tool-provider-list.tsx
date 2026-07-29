@@ -233,11 +233,11 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
                   <Empty
                     lightCard
                     text={t(($) => $.noTools, { ns: 'tools' })}
-                    className={cn('h-[224px] shrink-0', toolListFrameClassName)}
+                    className={cn('h-56 shrink-0', toolListFrameClassName)}
                   />
                 )}
               {isCollectionSearchEmpty && activeTab === 'builtin' && (
-                <div className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
+                <div className={cn('h-56 shrink-0', toolListFrameClassName)} />
               )}
               {enable_marketplace && activeTab === 'builtin' && (
                 <BuiltinMarketplacePanel

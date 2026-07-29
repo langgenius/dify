@@ -34,7 +34,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className }) => 
       .map((str, index) => {
         if (!vars[index])
           return (
-            <span className="relative top-[-3px] leading-[16px]" key={index}>
+            <span className="relative -top-0.75 leading-4" key={index}>
               {str}
             </span>
           )
@@ -46,7 +46,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({ nodeId, value, className }) => 
 
         return (
           <span key={index}>
-            <span className="relative top-[-3px] leading-[16px]">{str}</span>
+            <span className="relative -top-0.75 leading-4">{str}</span>
             <VariableLabelInText
               nodeTitle={node?.title}
               nodeType={node?.type}

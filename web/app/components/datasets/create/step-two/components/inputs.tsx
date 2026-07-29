@@ -151,7 +151,7 @@ function CompoundNumberInput({
           // min-w-[64px] overrides the component's default min-w-0 so the input
           // can never collapse to an unusable sliver, even in an unforeseen
           // container; belt to the row's flex-wrap braces.
-          className={cn('min-w-[64px]', className)}
+          className={cn('min-w-16', className)}
           onBlur={onBlur}
         />
         {Boolean(unit) && <NumberFieldUnit size={size}>{unit}</NumberFieldUnit>}

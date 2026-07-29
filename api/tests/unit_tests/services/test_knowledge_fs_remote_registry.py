@@ -59,7 +59,7 @@ def test_lifecycle_remote_assembly_fails_closed_without_endpoint_or_capability_i
     monkeypatch.setattr(
         knowledge_fs_capability,
         "create_configured_knowledge_fs_capability_issuer",
-        lambda *, audit: None,
+        lambda **_kwargs: None,
     )
     with pytest.raises(RuntimeError, match="Capability v2"):
         remote_registry.create_configured_knowledge_fs_lifecycle_remote()

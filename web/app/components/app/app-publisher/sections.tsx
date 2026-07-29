@@ -184,7 +184,7 @@ export const PublisherSummarySection = ({
               <p className="mt-1 text-xs/4 text-text-secondary">
                 {t(($) => $['publishLimit.startNodeDesc'], { ns: 'workflow' })}
               </p>
-              <UpgradeBtn isShort className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start" />
+              <UpgradeBtn isShort className="mt-2.25 mb-3 h-8 w-23.25 self-start" />
             </div>
           )}
         </>

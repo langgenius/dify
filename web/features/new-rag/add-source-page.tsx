@@ -174,7 +174,7 @@ function SourceTypeSelector({
 
   return (
     <Fieldset>
-      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium leading-[15px]">
+      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium leading-3.75">
         {t(($) => $['newKnowledge.sourceTypeLabel'])}
       </FieldsetLegend>
       <RadioGroup<SourceType>
@@ -239,7 +239,7 @@ function ProviderSelector({
             key={option.value}
             value={option.value}
             className={cn(
-              'relative flex h-[34px] items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-2.5 system-xs-medium text-text-secondary outline-hidden',
+              'relative flex h-8.5 items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-2.5 system-xs-medium text-text-secondary outline-hidden',
               'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
             )}
@@ -533,7 +533,7 @@ function UnconfiguredProvider({
   return (
     <div className="flex flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span aria-hidden className="i-custom-public-common-firecrawl size-[18px]" />
+        <span aria-hidden className="i-custom-public-common-firecrawl size-4.5" />
       </span>
       <h3 className="system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {
@@ -1059,7 +1059,7 @@ export function AddSourcePage({
             {t(($) => $['newKnowledge.addSourceDescription'])}
           </p>
         </header>
-        <div className="mt-[18px] flex w-full max-w-[608px] flex-col gap-4">
+        <div className="mt-4.5 flex w-full max-w-152 flex-col gap-4">
           <SourceTypeSelector
             value={sourceType}
             onChange={(value) => {

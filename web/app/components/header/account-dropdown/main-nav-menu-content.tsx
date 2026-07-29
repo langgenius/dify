@@ -115,7 +115,7 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
   return (
     <>
       <DropdownMenuGroup className="p-1">
-        <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-background-section-burn to-background-section p-3">
+        <div className="flex items-center gap-3 rounded-xl bg-linear-to-b from-background-section-burn to-background-section p-3">
           <div className="flex min-w-0 grow flex-col gap-1">
             <div className="flex min-w-0 items-center gap-1">
               <div

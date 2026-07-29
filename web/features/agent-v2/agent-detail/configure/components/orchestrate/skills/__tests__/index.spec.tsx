@@ -715,8 +715,8 @@ describe('AgentSkills', () => {
 
     const skillMdCode = await screen.findByText('# Skill')
     expect(skillMdCode.tagName).toBe('CODE')
-    expect(skillMdCode).toHaveClass('[overflow-wrap:anywhere]')
-    expect(skillMdCode).toHaveClass('break-words')
+    expect(skillMdCode).toHaveClass('wrap-anywhere')
+    expect(skillMdCode).toHaveClass('wrap-break-word')
     expect(skillMdCode).toHaveClass('whitespace-pre-wrap')
     expect(skillMdCode).not.toHaveClass('whitespace-pre')
     expect(skillMdCode).not.toHaveClass('min-w-max')

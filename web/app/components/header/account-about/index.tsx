@@ -30,7 +30,7 @@ export default function AccountAbout({ langGeniusVersionInfo, onCancel }: IAccou
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-[calc(100vw-2rem)]! max-w-[480px]! overflow-hidden! border-none px-6! py-4! text-left align-middle">
+      <DialogContent className="w-[calc(100vw-2rem)]! max-w-120! overflow-hidden! border-none px-6! py-4! text-left align-middle">
         <div className="relative">
           <button
             type="button"
