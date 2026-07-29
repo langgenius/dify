@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { TextGenerationTranslate } from '../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
@@ -15,6 +15,7 @@ import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning'; message: string }) => void
 type CreateWorkflowStreamHandlersParams = {
+  abortControllerRef?: MutableRefObject<AbortController | null>
   getCompletionRes: () => string
   getWorkflowProcessData: () => WorkflowProcess | undefined
   isPublicAPI: boolean
@@ -262,6 +263,7 @@ const serializeWorkflowOutputs = (outputs: WorkflowFinishedResponse['data']['out
 }
 
 export const createWorkflowStreamHandlers = ({
+  abortControllerRef,
   getCompletionRes,
   getWorkflowProcessData,
   isPublicAPI,
@@ -280,6 +282,20 @@ export const createWorkflowStreamHandlers = ({
   taskId,
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
+  let workflowEventsAbortController: AbortController | null = null
+  let isResumeStreamActive = false
+
+  const setActiveAbortController = (abortController: AbortController) => {
+    workflowEventsAbortController = abortController
+    if (abortControllerRef) abortControllerRef.current = abortController
+  }
+
+  const abortActiveWorkflowStream = () => {
+    const activeController = workflowEventsAbortController ?? abortControllerRef?.current ?? null
+    activeController?.abort()
+    workflowEventsAbortController = null
+    if (abortControllerRef) abortControllerRef.current = null
+  }
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -298,6 +314,7 @@ export const createWorkflowStreamHandlers = ({
 
   const otherOptions: IOtherOptions = {
     isPublicAPI,
+    getAbortController: setActiveAbortController,
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
       if (workflowProcessData?.tracing.length) {
@@ -342,6 +359,13 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowFinished: ({ data }) => {
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
+      if (
+        isResumeStreamActive &&
+        workflowStatus === WorkflowRunningStatus.Stopped &&
+        getWorkflowProcessData()?.status === WorkflowRunningStatus.Paused
+      )
+        return
+
       if (isTimedOut()) {
         const finishedStatus =
           workflowStatus === WorkflowRunningStatus.Stopped
@@ -420,6 +444,8 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
+      isResumeStreamActive = true
+      abortActiveWorkflowStream()
       // WebApp workflows must keep using the public API namespace after pause/resume.
       void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))

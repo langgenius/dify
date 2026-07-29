@@ -119,6 +119,7 @@ export const useResultSender = ({
 
     if (isWorkflow) {
       const otherOptions = createWorkflowStreamHandlers({
+        abortControllerRef: runState.abortControllerRef,
         getCompletionRes: runState.getCompletionRes,
         getWorkflowProcessData: runState.getWorkflowProcessData,
         isPublicAPI: appSourceType === AppSourceType.webApp,
