@@ -3848,10 +3848,12 @@ function FileEditor({
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
   const [referenceSelectedIndex, setReferenceSelectedIndex] = useState(0)
   const [saveStatus, setSaveStatus] = useState<'dirty' | 'error' | 'saved' | 'saving'>('saved')
+  const [hasSaveConflict, setHasSaveConflict] = useState(false)
   const [savedAt, setSavedAt] = useState<number | undefined>(initialSavedAt)
   const [externalContentRevision, setExternalContentRevision] = useState(0)
   const draftContentRef = useRef(initialContent)
   const lastSavedContentRef = useRef(initialContent)
+  const saveConflictContentRef = useRef<string | null>(null)
   const detailRef = useRef(detail)
   const fileRef = useRef(file)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -3976,7 +3978,13 @@ function FileEditor({
       const currentDetail = detailRef.current
       const currentFile = fileRef.current
       if (!currentDetail || !currentFile || !canEdit || isSavingDraft) return false
+      if (saveConflictContentRef.current === content) {
+        setHasSaveConflict(true)
+        toast.error(t(($) => $['skillManagement.detail.saveConflict']))
+        return false
+      }
 
+      setHasSaveConflict(false)
       setSaveStatus('saving')
       try {
         const nextDetail = await saveDraftFile({
@@ -4016,6 +4024,8 @@ function FileEditor({
         fileRef.current =
           findFileByPath(nextCachedDetail.files ?? [], currentFile.path) ?? currentFile
         lastSavedContentRef.current = content
+        saveConflictContentRef.current = null
+        setHasSaveConflict(false)
         setSavedAt(nextCachedDetail.updated_at * 1000)
         setSaveStatus(draftContentRef.current === content ? 'saved' : 'dirty')
         setSkillDetailCache(queryClient, skillId, nextCachedDetail)
@@ -4056,6 +4066,8 @@ function FileEditor({
             if (refetchedDetail) {
               detailRef.current = refetchedDetail
               fileRef.current = latestFile ?? currentFile
+              setSkillDetailCache(queryClient, skillId, refetchedDetail)
+              onDraftDetailChange(refetchedDetail)
             } else {
               detailRef.current = {
                 ...currentDetail,
@@ -4067,54 +4079,12 @@ function FileEditor({
               }
             }
 
-            if (draftContentRef.current !== lastSavedContentRef.current) {
-              const retryDetail = await saveDraftFile({
-                params: {
-                  skill_id: skillId,
-                },
-                body: {
-                  content: draftContentRef.current,
-                  expected_updated_at: latestUpdatedAt,
-                  hash: latestFile?.hash ?? currentFileHash ?? currentFile.hash,
-                  mime_type: latestFile?.mime_type ?? currentFile.mime_type,
-                  operation: 'upsert_text',
-                  path: currentFile.path,
-                  size: draftContentRef.current.length,
-                },
-              })
-              const nextDisplayName =
-                currentFile.path === 'SKILL.md'
-                  ? parseMarkdownContent(draftContentRef.current).displayName.trim()
-                  : ''
-              const nextCachedDetail =
-                nextDisplayName && nextDisplayName !== retryDetail.display_name
-                  ? {
-                      ...retryDetail,
-                      ...(await updateSkillMetadata({
-                        params: {
-                          skill_id: skillId,
-                        },
-                        body: {
-                          display_name: nextDisplayName,
-                          expected_updated_at: retryDetail.updated_at,
-                        },
-                      })),
-                      files: retryDetail.files,
-                    }
-                  : retryDetail
+            saveConflictContentRef.current =
+              draftContentRef.current === lastSavedContentRef.current
+                ? null
+                : draftContentRef.current
 
-              detailRef.current = nextCachedDetail
-              fileRef.current =
-                findFileByPath(nextCachedDetail.files ?? [], currentFile.path) ?? fileRef.current
-              lastSavedContentRef.current = draftContentRef.current
-              setSavedAt(nextCachedDetail.updated_at * 1000)
-              setSaveStatus('saved')
-              setSkillDetailCache(queryClient, skillId, nextCachedDetail)
-              onDraftDetailChange(nextCachedDetail)
-              toast.error(t(($) => $['skillManagement.detail.saveConflict']))
-              return true
-            }
-
+            setHasSaveConflict(saveConflictContentRef.current != null)
             setSavedAt(latestUpdatedAt * 1000)
             setSaveStatus(
               draftContentRef.current === lastSavedContentRef.current ? 'saved' : 'dirty',
@@ -4157,6 +4127,8 @@ function FileEditor({
 
     draftContentRef.current = nextContent
     lastSavedContentRef.current = nextContent
+    saveConflictContentRef.current = null
+    setHasSaveConflict(false)
     setDraftContent(nextContent)
     setSaveStatus('saved')
     setMetadataAdding(false)
@@ -4173,6 +4145,8 @@ function FileEditor({
 
     draftContentRef.current = file.content
     lastSavedContentRef.current = file.content
+    saveConflictContentRef.current = null
+    setHasSaveConflict(false)
     setDraftContent(file.content)
     setSavedAt(detail?.updated_at ? detail.updated_at * 1000 : undefined)
     setSaveStatus('saved')
@@ -4184,6 +4158,8 @@ function FileEditor({
 
     draftContentRef.current = textContentQuery.data
     lastSavedContentRef.current = textContentQuery.data
+    saveConflictContentRef.current = null
+    setHasSaveConflict(false)
     setDraftContent(textContentQuery.data)
     setSaveStatus('saved')
     setExternalContentRevision((revision) => revision + 1)
@@ -4192,6 +4168,7 @@ function FileEditor({
   useEffect(() => {
     if (!canEdit) return
     if (draftContent === lastSavedContentRef.current) return
+    if (draftContent === saveConflictContentRef.current) return
     if (saveStatus === 'saving') return
 
     const timer = window.setTimeout(() => {
@@ -4232,6 +4209,11 @@ function FileEditor({
 
   const updateDraftContent = (nextContent: string) => {
     draftContentRef.current = nextContent
+    const isConflictContent = nextContent === saveConflictContentRef.current
+    if (!isConflictContent) {
+      saveConflictContentRef.current = null
+      setHasSaveConflict(false)
+    }
     setDraftContent(nextContent)
     setSaveStatus(nextContent === lastSavedContentRef.current ? 'saved' : 'dirty')
   }
@@ -4576,13 +4558,15 @@ function FileEditor({
   const saveStateText =
     saveStatus === 'saving'
       ? t(($) => $['skillManagement.detail.saving'])
-      : saveStatus === 'dirty'
-        ? t(($) => $['skillManagement.detail.unsavedChanges'])
-        : saveStatus === 'error'
-          ? t(($) => $['skillManagement.detail.saveFailed'])
-          : savedAt
-            ? t(($) => $['skillManagement.detail.savedAt'], { time: formatTimeFromNow(savedAt) })
-            : t(($) => $['skillManagement.detail.saved'])
+      : hasSaveConflict
+        ? t(($) => $['skillManagement.detail.saveConflictStatus'])
+        : saveStatus === 'dirty'
+          ? t(($) => $['skillManagement.detail.unsavedChanges'])
+          : saveStatus === 'error'
+            ? t(($) => $['skillManagement.detail.saveFailed'])
+            : savedAt
+              ? t(($) => $['skillManagement.detail.savedAt'], { time: formatTimeFromNow(savedAt) })
+              : t(($) => $['skillManagement.detail.saved'])
 
   if (!selectedPath) {
     return (
