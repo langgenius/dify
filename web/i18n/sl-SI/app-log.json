@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Leto do danes",
   "filter.sortBy": "Razvrsti po:",
   "monitoring.description": "Spremljanje beleži stanje delovanja aplikacije, vključno z zmogljivostjo, dejavnostjo uporabnikov in stroški.",
+  "retention.upgradeTip.description": "Nadgradite paket, da se bodo vsi dnevniki, ustvarjeni po nadgradnji, hranili brez časovne omejitve. Dnevnikov, ki jim je pred nadgradnjo potekel rok hrambe, ni mogoče obnoviti.",
   "runDetail.fileListDetail": "Podrobnosti",
   "runDetail.fileListLabel": "Podrobnosti o datoteki",
   "runDetail.testWithParams": "Preizkus s parametri",

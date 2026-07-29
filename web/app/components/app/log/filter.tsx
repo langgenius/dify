@@ -11,6 +11,13 @@ import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
 import { useAnnotationsCount } from '@/service/use-log'
+import {
+  CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
+  CLOUD_SANDBOX_TIME_PERIOD_KEYS,
+  isLogTimePeriodRestricted,
+  resolveLogTimePeriodOption,
+  useCloudSandboxPlanStatus,
+} from './cloud-sandbox-retention'
 
 dayjs.extend(quarterOfYear)
 
@@ -45,6 +52,12 @@ const Filter: FC<IFilterProps> = ({
 }: IFilterProps) => {
   const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
+  const planState = useCloudSandboxPlanStatus()
+  const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
+  const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
+    .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
+    .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
+
   if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
@@ -56,8 +69,13 @@ const Filter: FC<IFilterProps> = ({
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({
+        onClear={() =>
+          setQueryParams({
+            ...queryParams,
+            period: isTimePeriodRestricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
+          })
+        }
+        items={timePeriodEntries.map(([k, v]) => ({
           value: k,
           name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
         }))}

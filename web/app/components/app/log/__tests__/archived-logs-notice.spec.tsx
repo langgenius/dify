@@ -1,4 +1,5 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
@@ -67,11 +68,16 @@ describe('ArchivedLogsNotice', () => {
     )
   })
 
-  it('should show notice for paid workspace managers', () => {
+  it('should show an accessible notice for paid workspace managers', async () => {
+    const user = userEvent.setup()
     renderNotice()
 
-    expect(screen.getByText('appLog.archives.notice.description')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'appLog.archives.notice.action' }))
+    const notice = screen.getByRole('status')
+    expect(notice).toHaveAttribute('aria-live', 'polite')
+    expect(notice).toHaveAttribute('aria-atomic', 'true')
+    expect(within(notice).getByText('appLog.archives.notice.description')).toBeInTheDocument()
+
+    await user.click(within(notice).getByRole('button', { name: 'appLog.archives.notice.action' }))
     expect(setShowAccountSettingModal).toHaveBeenCalledWith({
       payload: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
     })

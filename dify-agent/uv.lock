@@ -581,7 +581,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "1.16.0"
+version = "1.16.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

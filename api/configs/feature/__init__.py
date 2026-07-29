@@ -266,6 +266,12 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED: bool = Field(
+        description="Whether tenant plugin model providers are cached in Redis. Disable when plugins are installed "
+        "by a system other than this one, which cannot invalidate the cache when a tenant's plugins change.",
+        default=True,
+    )
+
     PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
         description="TTL in seconds for caching tenant plugin model providers in Redis",
         default=60 * 60 * 24,
