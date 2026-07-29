@@ -217,11 +217,9 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                         onChange={(e) =>
                           setTempCredential({ ...tempCredential, api_key_header: e.target.value })
                         }
-                        placeholder={
-                          t(($) => $['createTool.authMethod.types.apiKeyPlaceholder'], {
-                            ns: 'tools',
-                          })!
-                        }
+                        placeholder={t(($) => $['createTool.authMethod.types.apiKeyPlaceholder'], {
+                          ns: 'tools',
+                        })!}
                       />
                     </div>
                     <div>
@@ -233,11 +231,12 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                         onChange={(e) =>
                           setTempCredential({ ...tempCredential, api_key_value: e.target.value })
                         }
-                        placeholder={
-                          t(($) => $['createTool.authMethod.types.apiValuePlaceholder'], {
+                        placeholder={t(
+                          ($) => $['createTool.authMethod.types.apiValuePlaceholder'],
+                          {
                             ns: 'tools',
-                          })!
-                        }
+                          },
+                        )!}
                       />
                     </div>
                   </>
@@ -265,11 +264,12 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                             api_key_query_param: e.target.value,
                           })
                         }
-                        placeholder={
-                          t(($) => $['createTool.authMethod.types.queryParamPlaceholder'], {
+                        placeholder={t(
+                          ($) => $['createTool.authMethod.types.queryParamPlaceholder'],
+                          {
                             ns: 'tools',
-                          })!
-                        }
+                          },
+                        )!}
                       />
                     </div>
                     <div>
@@ -281,11 +281,12 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                         onChange={(e) =>
                           setTempCredential({ ...tempCredential, api_key_value: e.target.value })
                         }
-                        placeholder={
-                          t(($) => $['createTool.authMethod.types.apiValuePlaceholder'], {
+                        placeholder={t(
+                          ($) => $['createTool.authMethod.types.apiValuePlaceholder'],
+                          {
                             ns: 'tools',
-                          })!
-                        }
+                          },
+                        )!}
                       />
                     </div>
                   </>

@@ -6,7 +6,7 @@ import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-[disabled]:cursor-not-allowed',
   {
     variants: {

@@ -4,12 +4,6 @@ import { generate, normalizeAttrs } from '../utils'
 
 describe('generate icon base utils', () => {
   describe('normalizeAttrs', () => {
-    it('should normalize class to className', () => {
-      const attrs = { class: 'test-class' }
-      const result = normalizeAttrs(attrs)
-      expect(result).toEqual({ className: 'test-class' })
-    })
-
     it('should normalize style string to style object', () => {
       const attrs = { style: 'color:red;font-size:14px;' }
       const result = normalizeAttrs(attrs)

@@ -442,6 +442,13 @@ class TestAdvancedChatAppGeneratorInternals:
             def start(self):
                 thread_data["started"] = True
 
+            def join(self, timeout):
+                thread_data["joined"] = True
+                thread_data["join_timeout"] = timeout
+
+            def is_alive(self):
+                return False
+
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object(), session=db_session)
@@ -475,6 +482,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert response["response"] == {"raw": True}
         assert thread_data["started"] is True
+        assert thread_data["joined"] is True
+        assert thread_data["join_timeout"] == 300
         assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
         assert generator._dialogue_count == 3
         assert init_records.call_args.kwargs["session"] is db_session
@@ -542,6 +551,13 @@ class TestAdvancedChatAppGeneratorInternals:
             def start(self):
                 thread_data["started"] = True
 
+            def join(self, timeout):
+                thread_data["joined"] = True
+                thread_data["join_timeout"] = timeout
+
+            def is_alive(self):
+                return False
+
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object(), session=db_session)
@@ -574,6 +590,8 @@ class TestAdvancedChatAppGeneratorInternals:
         init_records.assert_not_called()
         get_thread_messages_length.assert_called_once_with(conversation.id, session=db_session)
         assert thread_data["started"] is True
+        assert thread_data["joined"] is True
+        assert thread_data["join_timeout"] == 300
         db_session.commit.assert_not_called()
         db_session.refresh.assert_not_called()
         db_session.close.assert_called_once()

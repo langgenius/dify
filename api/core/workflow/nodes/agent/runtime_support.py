@@ -198,8 +198,23 @@ class AgentRuntimeSupport:
                     if model_schema:
                         model_schema = self._remove_unsupported_model_features_for_old_version(model_schema)
                         value["entity"] = model_schema.model_dump(mode="json")
+                        # The model selector value from the workflow frontend only
+                        # carries provider/model/mode — it does NOT include
+                        # completion_params.  AgentStrategy plugins (cot_agent,
+                        # function_calling) read completion_params to build the
+                        # LLMModelConfig that is backwards-invoked, and some model
+                        # providers raise KeyError('required') when
+                        # completion_params is empty because their parameter_rules
+                        # declare required fields with no default.  Populate
+                        # completion_params with the defaults declared in the model
+                        # schema so the plugin daemon always receives a valid set
+                        # of model parameters.
+                        if "completion_params" not in value:
+                            value["completion_params"] = self._extract_default_completion_params(model_schema)
                     else:
                         value["entity"] = None
+                        if "completion_params" not in value:
+                            value["completion_params"] = {}
             result[parameter_name] = value
 
         return result
@@ -274,6 +289,24 @@ class AgentRuntimeSupport:
                 except ValueError:
                     model_schema.features.remove(feature)
         return model_schema
+
+    @staticmethod
+    def _extract_default_completion_params(model_schema: AIModelEntity) -> dict[str, Any]:
+        """Build a completion_params dict from the model schema's parameter_rules.
+
+        The workflow Agent node's model-selector parameter only stores
+        provider/model/mode — it never carries completion_params.  When the
+        value is forwarded to the plugin daemon, AgentModelConfig defaults
+        completion_params to ``{}``, which causes some model providers to fail
+        because their parameter_rules declare required fields.  This helper
+        collects the ``default`` value of every parameter_rule that has one so
+        the plugin daemon receives a valid, non-empty set of model parameters.
+        """
+        completion_params: dict[str, Any] = {}
+        for rule in model_schema.parameter_rules:
+            if rule.default is not None:
+                completion_params[rule.name] = rule.default
+        return completion_params
 
     @staticmethod
     def _filter_mcp_type_tool(

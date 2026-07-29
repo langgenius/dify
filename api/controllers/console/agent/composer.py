@@ -230,6 +230,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -439,6 +440,7 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -478,6 +480,7 @@ class AgentComposerApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user_id
     @with_current_tenant_id
     @with_session

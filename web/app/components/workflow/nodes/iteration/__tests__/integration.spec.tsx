@@ -70,13 +70,19 @@ vi.mock('../use-interactions', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-available-blocks', () => ({
   useAvailableBlocks: () => ({
     availableNextBlocks: [BlockEnum.Code],
   }),
+}))
+
+vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeAdd: mockHandleNodeAdd,
   }),
+}))
+
+vi.mock('../../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: mockNodesReadOnly,
   }),

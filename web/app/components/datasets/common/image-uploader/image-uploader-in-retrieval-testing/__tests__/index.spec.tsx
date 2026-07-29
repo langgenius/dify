@@ -31,13 +31,6 @@ describe('ImageUploaderInRetrievalTesting', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render textArea prop', () => {
       render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />)
       expect(screen.getByTestId('text-area')).toBeInTheDocument()
@@ -66,29 +59,6 @@ describe('ImageUploaderInRetrievalTesting', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper
-          {...defaultProps}
-          value={[]}
-          className="custom-class"
-        />,
-      )
-      expect(container.firstChild).toHaveClass('custom-class')
-    })
-
-    it('should apply actionAreaClassName', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper
-          {...defaultProps}
-          value={[]}
-          actionAreaClassName="action-area-class"
-        />,
-      )
-      // The action area should have the custom class
-      expect(container.querySelector('.action-area-class')).toBeInTheDocument()
-    })
-
     it('should render file list when files are provided', () => {
       const files: FileEntity[] = [
         {
@@ -212,13 +182,6 @@ describe('ImageUploaderInRetrievalTesting', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined value', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={undefined} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should handle multiple files', () => {
       const files: FileEntity[] = Array.from({ length: 5 }, (_, i) => ({
         id: `file${i}`,

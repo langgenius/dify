@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "{{name}} için istisna izni",
   "accessRule.expandSection": "{{title}} genişlet",
   "accessRule.individualPermissionSettings": "Bireysel izin ayarları",
-  "accessRule.individualPermissionSettingsTip": "Belirli işbirlikçiler veya gruplar için izin istisnaları ayarlayın. Bu ayarlar varsayılan erişim düzeyini geçersiz kılar.",
+  "accessRule.individualPermissionSettingsTip": "Belirli işbirlikçiler veya gruplar için izin istisnaları ayarlayın. Bu ayarlar onların rol izinlerini geçersiz kılar.",
   "accessRule.maintainer": "Bakımcı",
   "accessRule.member": "Üye",
   "accessRule.newPermissionSet": "Yeni izin kümesi",

@@ -33,18 +33,14 @@ type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
   textGenerationModelList: Model[]
-  draftSavedAt?: number
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  workflowReferencesEnabled?: boolean
   isBuildDraftActive?: boolean
   buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
   showHeader?: boolean
@@ -55,24 +51,21 @@ type AgentOrchestratePanelProps = {
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
 }
 
 export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  activeConfigIsPublished,
-  activeConfigSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,
-  draftSavedAt,
   isPublishing,
   className,
   readOnly = false,
   selectedVersionSnapshot,
-  workflowReferencesEnabled,
   isBuildDraftActive = false,
   buildDraftChangedKeys = [],
   showHeader = true,
@@ -83,6 +76,7 @@ export function AgentOrchestratePanel({
   onPublish,
   onExitVersions,
   onOpenVersions,
+  onVersionRestored,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
@@ -92,16 +86,13 @@ export function AgentOrchestratePanel({
     (showPublishBar ? (
       <AgentConfigurePublishBar
         agentId={agentId}
-        activeConfigIsPublished={activeConfigIsPublished}
-        activeConfigSnapshot={activeConfigSnapshot}
         agentName={agentName}
-        draftSavedAt={draftSavedAt}
         isPublishing={isPublishing}
         selectedVersionSnapshot={selectedVersionSnapshot}
-        workflowReferencesEnabled={workflowReferencesEnabled}
         onPublish={onPublish}
         onExitVersions={onExitVersions}
         onOpenVersions={onOpenVersions}
+        onVersionRestored={onVersionRestored}
       />
     ) : null)
   const hasBottomAction = !!orchestrateBottomAction

@@ -1,7 +1,8 @@
-from unittest.mock import MagicMock
-
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
+from models.tools import MCPToolProvider
 from services.data_migration.dependency_discovery_service import DiscoveredDependency
 from services.data_migration.entities import (
     ConflictStrategy,
@@ -11,6 +12,10 @@ from services.data_migration.entities import (
     ResourceType,
 )
 from services.data_migration.export_service import ExportConfigParser, MigrationExportService
+
+_TENANT_ID = "11111111-1111-1111-1111-111111111111"
+_OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+_USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
 def test_export_config_parser_accepts_new_scripted_shape():
@@ -121,7 +126,8 @@ def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypa
     assert report_items[0].resource_type == ResourceType.API_TOOL
 
 
-def test_secret_free_mcp_dependencies_are_dependency_only():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Session):
     service = MigrationExportService()
     dependencies: list[dict] = []
     mcp_tools: list[dict] = []
@@ -134,9 +140,10 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
         exported_mcp_tools=mcp_tools,
         dependencies=dependencies,
         report_items=report_items,
-        session=MagicMock(),
+        session=sqlite_session,
     )
 
+    assert not sqlite_session.in_transaction()
     assert mcp_tools == []
     assert dependencies == [
         {
@@ -150,17 +157,36 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
     assert report_items[0].name == "mcp_tool mcp-1"
 
 
-def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id():
+@pytest.mark.parametrize("sqlite_session", [(MCPToolProvider,)], indirect=True)
+def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite_session: Session):
+    sqlite_session.add(
+        MCPToolProvider(
+            name="Other tenant provider",
+            server_identifier="my-test-mcp",
+            server_url="https://example.com/mcp",
+            server_url_hash="other-tenant-provider",
+            icon=None,
+            tenant_id=_OTHER_TENANT_ID,
+            user_id=_USER_ID,
+            authed=False,
+            tools="[]",
+        )
+    )
+    sqlite_session.commit()
+
     statements = []
 
-    def capture_scalar(statement):
-        statements.append(str(statement))
+    def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
 
-    session = MagicMock()
-    session.scalar.side_effect = capture_scalar
+    bind = sqlite_session.get_bind()
+    event.listen(bind, "before_cursor_execute", capture_statement)
 
-    with pytest.raises(MigrationDataError, match="MCP provider not found"):
-        MigrationExportService()._get_mcp_provider("tenant-1", "my-test-mcp", session=session)
+    try:
+        with pytest.raises(MigrationDataError, match="MCP provider not found"):
+            MigrationExportService()._get_mcp_provider(_TENANT_ID, "my-test-mcp", session=sqlite_session)
+    finally:
+        event.remove(bind, "before_cursor_execute", capture_statement)
 
     assert len(statements) == 1
     assert "tool_mcp_providers.id =" not in statements[0]

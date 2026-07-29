@@ -11,13 +11,21 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { getPluginLinkInMarketplace } from '../utils'
+import Link from '@/next/link'
+import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
+  isInstalled?: boolean
+  linkToMarketplaceDetail?: boolean
 }
-const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) => {
+const CardWrapperComponent = ({
+  plugin,
+  showInstallButton,
+  isInstalled = false,
+  linkToMarketplaceDetail = false,
+}: CardWrapperProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const [
@@ -68,11 +76,14 @@ const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) =
         />
         <div className="pointer-events-none absolute right-[-0.5px] bottom-[-0.5px] left-[-0.5px] z-10 flex items-center gap-2 rounded-b-xl bg-linear-to-t from-components-panel-on-panel-item-bg-hover from-[60%] to-background-gradient-mask-transparent px-4 pt-8 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <Button
-            variant="primary"
+            variant={isInstalled ? 'secondary' : 'primary'}
             className="min-w-0 flex-1 shadow-md"
-            onClick={showInstallFromMarketplace}
+            disabled={isInstalled}
+            onClick={isInstalled ? undefined : showInstallFromMarketplace}
           >
-            {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
+            {isInstalled
+              ? t(($) => $['task.installed'], { ns: 'plugin' })
+              : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
           <Button
             className="min-w-0 flex-1 gap-0.5 shadow-xs backdrop-blur-[5px]"
@@ -94,7 +105,7 @@ const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) =
     )
   }
 
-  return (
+  const card = (
     <div className="group relative rounded-xl">
       <Card
         key={plugin.name}
@@ -109,6 +120,17 @@ const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) =
         }
       />
     </div>
+  )
+
+  if (!linkToMarketplaceDetail) return card
+
+  return (
+    <Link
+      href={getPluginDetailLinkInMarketplace(plugin)}
+      className="block rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+    >
+      {card}
+    </Link>
   )
 }
 

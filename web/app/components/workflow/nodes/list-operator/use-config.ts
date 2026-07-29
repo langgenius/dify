@@ -2,13 +2,9 @@ import type { ValueSelector, Var } from '../../types'
 import type { Condition, Limit, ListFilterNodeType, OrderBy } from './types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import {
   canFilterVariable,
   getItemVarType,

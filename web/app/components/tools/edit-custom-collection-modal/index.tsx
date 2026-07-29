@@ -256,9 +256,9 @@ const EditCustomCollectionModal: FC<Props> = ({
                           />
                           <Input
                             className="h-10 grow"
-                            placeholder={
-                              t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!
-                            }
+                            placeholder={t(($) => $['createTool.toolNamePlaceHolder'], {
+                              ns: 'tools',
+                            })!}
                             value={customCollection.provider}
                             onChange={(e) => {
                               const newCollection = produce(customCollection, (draft) => {
@@ -298,9 +298,9 @@ const EditCustomCollectionModal: FC<Props> = ({
                           className="h-[240px] resize-none"
                           value={schema}
                           onValueChange={(value) => setSchema(value)}
-                          placeholder={
-                            t(($) => $['createTool.schemaPlaceHolder'], { ns: 'tools' })!
-                          }
+                          placeholder={t(($) => $['createTool.schemaPlaceHolder'], {
+                            ns: 'tools',
+                          })!}
                         />
                       </div>
 
