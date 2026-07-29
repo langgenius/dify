@@ -48,9 +48,6 @@ from models.agent import (
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentKind,
-    AgentRuntimeSession,
-    AgentRuntimeSessionOwnerType,
-    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -1062,7 +1059,6 @@ class SkillManagementService:
         model_config: AgentSoulModelConfig,
     ) -> None:
         model_changed = False
-        cleaned_runtime_session_count = 0
         if assistant.active_config_snapshot_id:
             snapshot = session.get(AgentConfigSnapshot, assistant.active_config_snapshot_id)
             if snapshot is not None:
@@ -1094,24 +1090,11 @@ class SkillManagementService:
             draft_config.model = model_config
             draft.config_snapshot = draft_config
         if model_changed:
-            for runtime_session in session.scalars(
-                select(AgentRuntimeSession).where(
-                    AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
-                    AgentRuntimeSession.tenant_id == assistant.tenant_id,
-                    AgentRuntimeSession.app_id == assistant.backing_app_id,
-                    AgentRuntimeSession.agent_id == assistant.id,
-                    AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
-                )
-            ):
-                runtime_session.status = AgentRuntimeSessionStatus.CLEANED
-                runtime_session.cleaned_at = naive_utc_now()
-                cleaned_runtime_session_count += 1
             logger.info(
-                "skill_assistant_model_synced assistant_id=%s provider=%s model=%s cleaned_runtime_sessions=%s",
+                "skill_assistant_model_synced assistant_id=%s provider=%s model=%s",
                 assistant.id,
                 model_config.model_provider,
                 model_config.model,
-                cleaned_runtime_session_count,
             )
 
     def update_metadata(
