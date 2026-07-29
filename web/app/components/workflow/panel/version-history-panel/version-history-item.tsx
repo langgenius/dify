@@ -127,7 +127,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
               : item.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}
           </div>
           {isLatest && (
-            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] system-2xs-medium-uppercase text-text-accent-secondary">
+            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $['versionHistory.latest'], { ns: 'workflow' })}
             </div>
           )}

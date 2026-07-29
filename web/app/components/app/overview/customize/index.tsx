@@ -67,7 +67,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
         </DialogTitle>

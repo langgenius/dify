@@ -283,7 +283,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                               href="https://swagger.io/specification/"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex h-[18px] items-center space-x-1 text-text-accent"
+                              className="flex h-4.5 items-center space-x-1 text-text-accent"
                             >
                               <div className="text-xs font-normal">
                                 {t(($) => $['createTool.viewSchemaSpec'], { ns: 'tools' })}
@@ -295,7 +295,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </div>
                         <Textarea
                           aria-label={t(($) => $['createTool.schema'], { ns: 'tools' })}
-                          className="h-[240px] resize-none"
+                          className="h-60 resize-none"
                           value={schema}
                           onValueChange={(value) => setSchema(value)}
                           placeholder={t(($) => $['createTool.schemaPlaceHolder'], {
@@ -321,7 +321,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                                 <th className="p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.name'], { ns: 'tools' })}
                                 </th>
-                                <th className="w-[236px] p-2 pl-3 font-medium">
+                                <th className="w-59 p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.description'], {
                                     ns: 'tools',
                                   })}
@@ -332,7 +332,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                                 <th className="p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.path'], { ns: 'tools' })}
                                 </th>
-                                <th className="w-[54px] p-2 pl-3 font-medium">
+                                <th className="w-13.5 p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.action'], { ns: 'tools' })}
                                 </th>
                               </tr>
@@ -344,10 +344,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                                   className="border-b border-divider-regular last:border-0"
                                 >
                                   <td className="p-2 pl-3">{item.operation_id}</td>
-                                  <td className="w-[236px] p-2 pl-3">{item.summary}</td>
+                                  <td className="w-59 p-2 pl-3">{item.summary}</td>
                                   <td className="p-2 pl-3">{item.method}</td>
                                   <td className="p-2 pl-3">{getPath(item.server_url)}</td>
-                                  <td className="w-[62px] p-2 pl-3">
+                                  <td className="w-15.5 p-2 pl-3">
                                     <Button
                                       size="small"
                                       onClick={() => {

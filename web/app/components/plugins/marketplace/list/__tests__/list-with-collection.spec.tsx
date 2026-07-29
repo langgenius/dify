@@ -206,7 +206,7 @@ describe('ListWithCollection', () => {
     const carouselViewport = carousel.querySelector('.overflow-hidden')
     const carouselContent = carouselViewport?.firstElementChild
     expect(carousel).not.toHaveClass('overflow-hidden')
-    expect(carouselViewport).toHaveClass('overflow-hidden', '[border-radius:inherit]')
+    expect(carouselViewport).toHaveClass('overflow-hidden', 'rounded-[inherit]')
     expect(carouselContent).toHaveStyle({ columnGap: '12px' })
   })
 })

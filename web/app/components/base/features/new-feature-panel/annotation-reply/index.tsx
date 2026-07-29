@@ -105,7 +105,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                       {annotationReply.score_threshold ?? '-'}
                     </div>
                   </div>
-                  <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                  <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
                     <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
@@ -119,7 +119,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
               {isHovering && (
                 <div className="flex items-center justify-between">
                   <Button
-                    className="w-[178px]"
+                    className="w-44.5"
                     onClick={() => setIsShowAnnotationConfigInit(true)}
                     disabled={disabled}
                   >
@@ -127,7 +127,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                     {t(($) => $['operation.params'], { ns: 'common' })}
                   </Button>
                   <Button
-                    className="w-[178px]"
+                    className="w-44.5"
                     onClick={() => {
                       router.push(`/app/${appId}/annotations`)
                     }}

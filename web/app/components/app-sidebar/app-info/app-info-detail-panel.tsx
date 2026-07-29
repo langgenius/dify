@@ -159,7 +159,7 @@ const AppInfoDetailPanel = ({
           </div>
         </div>
         {appDetail.description && (
-          <p className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
+          <p className="overflow-wrap-anywhere max-h-26.25 w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
             {appDetail.description}
           </p>
         )}

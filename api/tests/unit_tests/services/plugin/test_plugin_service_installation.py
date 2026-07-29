@@ -452,3 +452,78 @@ class TestUninstall:
             )
         ).all()
         assert len(remaining_prefs) == 0
+
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_preserves_credentials_when_replacing_plugin(
+        self, mock_installer_cls: MagicMock, plugin_db: Session
+    ) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        provider_name = f"{plugin_id}/model-provider"
+
+        credential = ProviderCredential(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_name="default",
+            encrypted_config="{}",
+        )
+        plugin_db.add(credential)
+        plugin_db.flush()
+
+        provider = Provider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_id=credential.id,
+        )
+        plugin_db.add(provider)
+
+        preferred_provider = TenantPreferredModelProvider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        plugin_db.add(preferred_provider)
+        plugin_db.commit()
+
+        plugin = MagicMock(installation_id="install-1", plugin_id=plugin_id)
+        installer = mock_installer_cls.return_value
+        installer.list_plugins.return_value = [plugin]
+        installer.uninstall.return_value = True
+
+        with patch("core.plugin.plugin_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = False
+            result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
+
+        assert result is True
+        plugin_db.expire_all()
+        assert plugin_db.get(ProviderCredential, credential.id) is not None
+        assert plugin_db.get(Provider, provider.id).credential_id == credential.id
+        assert plugin_db.get(TenantPreferredModelProvider, preferred_provider.id) is not None
+
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_preserves_credentials_when_daemon_uninstall_fails(
+        self, mock_installer_cls: MagicMock, plugin_db: Session
+    ) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        credential = ProviderCredential(
+            tenant_id=tenant_id,
+            provider_name=f"{plugin_id}/model-provider",
+            credential_name="default",
+            encrypted_config="{}",
+        )
+        plugin_db.add(credential)
+        plugin_db.commit()
+
+        plugin = MagicMock(installation_id="install-1", plugin_id=plugin_id)
+        installer = mock_installer_cls.return_value
+        installer.list_plugins.return_value = [plugin]
+        installer.uninstall.return_value = False
+
+        with patch("core.plugin.plugin_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = False
+            result = PluginService.uninstall(tenant_id, "install-1")
+
+        assert result is False
+        plugin_db.expire_all()
+        assert plugin_db.get(ProviderCredential, credential.id) is not None

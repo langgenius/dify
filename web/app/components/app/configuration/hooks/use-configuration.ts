@@ -30,6 +30,7 @@ import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -41,7 +42,6 @@ import {
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useSetDetailSidebarMode } from '@/app/components/detail-sidebar/storage'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   ModelFeatureEnum,
   ModelTypeEnum,
@@ -50,7 +50,10 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import {
   ANNOTATION_DEFAULT,
   DATASET_DEFAULT,
@@ -127,7 +130,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   const { appDetail, showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal } =
     useAppStore(
@@ -917,7 +920,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onCloseSelectDataSet: hideSelectDataSet,
     onCompletionParamsChange: setCompletionParams,
     onConfirmUseGPT4: () => {
-      openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      setSettingsDestination('provider')
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: handleDebugWithMultipleModelChange,
@@ -926,7 +929,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,
     onMultipleModelConfigsChange: handleMultipleModelConfigsChange,
-    onOpenAccountSettings: () => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
+    onOpenAccountSettings: () => setSettingsDestination('provider'),
     onOpenDebugPanel: showDebugPanel,
     onSaveHistory: (data) => {
       setConversationHistoriesRole(data)

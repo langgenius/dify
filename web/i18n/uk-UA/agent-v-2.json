@@ -157,7 +157,7 @@
   "agentDetail.configure.preview.empty.title": "Перегляд {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Автентифікація кінцевого користувача",
   "agentDetail.configure.preview.inputPlaceholder": "Надіслати повідомлення {{name}}",
-  "agentDetail.configure.preview.restart": "Перезапустити перегляд",
+  "agentDetail.configure.preview.restart": "Почати заново",
   "agentDetail.configure.preview.sandboxNotice": "Agent працює в пісочниці Linux.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "У Dify Community Edition кожен ваш Agent працює в середовищі пісочниці Linux 7.0.0-10060-aws у вашому Docker. Зміни середовища через Build Chats зберігаються.",
   "agentDetail.configure.preview.title": "Перегляд",

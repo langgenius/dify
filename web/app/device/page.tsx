@@ -191,8 +191,8 @@ export default function DevicePage() {
 
       {view.kind === 'success' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-success-hover">
-            <span className="i-ri-checkbox-circle-line h-[18px] w-[18px] text-util-colors-green-green-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-success-hover">
+            <span className="i-ri-checkbox-circle-line h-4.5 w-4.5 text-util-colors-green-green-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['success.title'])}
@@ -207,8 +207,8 @@ export default function DevicePage() {
 
       {view.kind === 'error_expired' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
-            <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-warning-hover">
+            <span className="i-ri-error-warning-line h-4.5 w-4.5 text-util-colors-yellow-yellow-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['errorExpired.title'])}
@@ -238,8 +238,8 @@ export default function DevicePage() {
 
       {view.kind === 'error_rate_limited' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
-            <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-warning-hover">
+            <span className="i-ri-error-warning-line h-4.5 w-4.5 text-util-colors-yellow-yellow-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['errorRateLimited.title'])}
@@ -261,8 +261,8 @@ export default function DevicePage() {
 
       {view.kind === 'error_lookup_failed' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-destructive-hover">
-            <span className="i-ri-close-circle-line h-[18px] w-[18px] text-util-colors-red-red-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-destructive-hover">
+            <span className="i-ri-close-circle-line h-4.5 w-4.5 text-util-colors-red-red-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['errorLookupFailed.title'])}
@@ -284,10 +284,10 @@ export default function DevicePage() {
 
       {view.kind === 'error_sso' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-warning-hover">
             <span
               aria-hidden="true"
-              className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600"
+              className="i-ri-error-warning-line h-4.5 w-4.5 text-util-colors-yellow-yellow-600"
             />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">

@@ -158,7 +158,7 @@ function AgentRosterDrawer({
                   isSetup
                     ? 'h-16 px-4 py-3'
                     : showDetailActions
-                      ? 'h-[108px] gap-3 py-3 pr-4 pl-3'
+                      ? 'h-27 gap-3 py-3 pr-4 pl-3'
                       : 'py-3 pr-4 pl-3',
                 )}
               >

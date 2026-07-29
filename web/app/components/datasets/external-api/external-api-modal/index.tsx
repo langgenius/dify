@@ -129,7 +129,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[480px]! max-w-none! flex-col overflow-hidden! rounded-2xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! shadow-xl!">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-120! max-w-none! flex-col overflow-hidden! rounded-2xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! shadow-xl!">
         <div className="relative flex min-h-0 w-full flex-1 flex-col items-start">
           <div className="flex shrink-0 flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="grow self-stretch title-2xl-semi-bold text-text-primary">
@@ -185,7 +185,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             )}
           </div>
           <ActionButton className="absolute top-5 right-5" onClick={onCancel}>
-            <RiCloseLine className="h-[18px] w-[18px] shrink-0 text-text-tertiary" />
+            <RiCloseLine className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
           </ActionButton>
           <Form
             value={formData}

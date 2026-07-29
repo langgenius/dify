@@ -150,7 +150,7 @@ const ClassList: FC<Props> = ({
                 <div
                   key={item.id}
                   className={cn(
-                    'group relative -ml-3 min-h-[40px] rounded-[10px] bg-components-panel-bg px-0 py-0',
+                    'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
                   )}
                   style={{
                     // Performance hint for browser
