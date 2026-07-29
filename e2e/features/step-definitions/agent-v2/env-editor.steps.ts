@@ -1,12 +1,14 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
 import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
+  expectAgentEnvVariableAbsent,
   expectAgentEnvVariableHidden,
+  expectAgentEnvVariableRows,
   expectAgentEnvVariableVisible,
+  getAgentEnvVariableRow,
   getAgentEnvVariables,
   getAgentEnvVariableValue,
   getCurrentAgentId,
@@ -48,13 +50,16 @@ When(
     const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
 
     await advancedSettings.getByRole('button', { name: 'Add environment variable' }).click()
-    await advancedSettings
+    const newVariableRow = await getAgentEnvVariableRow(advancedSettings, '')
+    await newVariableRow
       .getByRole('textbox', { name: 'Key' })
-      .last()
       .fill(agentBuilderFixedInputs.envModeKey)
-    await advancedSettings
+    const savedVariableRow = await getAgentEnvVariableRow(
+      advancedSettings,
+      agentBuilderFixedInputs.envModeKey,
+    )
+    await savedVariableRow
       .getByRole('textbox', { name: 'Value' })
-      .last()
       .fill(agentBuilderFixedInputs.envModeValue)
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
@@ -91,7 +96,10 @@ Then(
     await expect
       .poll(
         async () => {
-          const env = (await getAgentComposerDraft(agentId)).agent_soul?.env
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const env = draft.agent_soul?.env
           const variable = env?.variables?.find(
             (item) => getEnvVariableKey(item) === agentBuilderFixedInputs.envPlainKey,
           )
@@ -120,7 +128,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
@@ -146,7 +154,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
@@ -172,7 +180,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
@@ -205,7 +213,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             importedValue: getAgentEnvVariableValue(
@@ -231,22 +239,16 @@ Then(
   async function (this: DifyWorld) {
     const advancedSettings = await openAgentAdvancedSettings(this.getPage())
 
-    await expect
-      .poll(
-        async () =>
-          advancedSettings
-            .getByRole('textbox')
-            .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
-        { timeout: 30_000 },
-      )
-      .toEqual(
-        expect.arrayContaining([
-          agentBuilderFixedInputs.envPlainKey,
-          agentBuilderFixedInputs.envPlainValue,
-          agentBuilderFixedInputs.envModeKey,
-          agentBuilderFixedInputs.envModeValue,
-        ]),
-      )
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+    )
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envModeKey,
+      agentBuilderFixedInputs.envModeValue,
+    )
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
@@ -256,29 +258,12 @@ Then(
   async function (this: DifyWorld) {
     const advancedSettings = await openAgentAdvancedSettings(this.getPage())
 
-    await expect
-      .poll(
-        async () =>
-          advancedSettings
-            .getByRole('textbox')
-            .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
-        { timeout: 30_000 },
-      )
-      .toEqual(
-        expect.arrayContaining([
-          agentBuilderFixedInputs.envModeKey,
-          agentBuilderFixedInputs.envModeValue,
-        ]),
-      )
-    await expect
-      .poll(
-        async () =>
-          advancedSettings
-            .getByRole('textbox')
-            .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
-        { timeout: 30_000 },
-      )
-      .not.toContain(agentBuilderFixedInputs.envPlainKey)
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envModeKey,
+      agentBuilderFixedInputs.envModeValue,
+    )
+    await expectAgentEnvVariableAbsent(advancedSettings, agentBuilderFixedInputs.envPlainKey)
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(1)
   },
 )
@@ -288,14 +273,18 @@ Then(
   async function (this: DifyWorld) {
     const page = this.getPage()
     const advancedSettings = await openAgentAdvancedSettings(page)
-
-    await expect(advancedSettings.getByRole('textbox', { name: 'Key' })).toHaveValue(
+    const variableRow = await getAgentEnvVariableRow(
+      advancedSettings,
       agentBuilderFixedInputs.envPlainKey,
     )
-    await expect(advancedSettings.getByRole('textbox', { name: 'Value' })).toHaveValue(
+
+    await expect(variableRow.getByRole('textbox', { name: 'Key' })).toHaveValue(
+      agentBuilderFixedInputs.envPlainKey,
+    )
+    await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(
       agentBuilderFixedInputs.envPlainValue,
     )
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
   },
 )
@@ -324,22 +313,16 @@ Then(
     const page = this.getPage()
     const advancedSettings = await openAgentAdvancedSettings(page)
 
-    await expect
-      .poll(
-        async () =>
-          advancedSettings
-            .getByRole('textbox')
-            .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
-        { timeout: 30_000 },
-      )
-      .toEqual(
-        expect.arrayContaining([
-          agentBuilderFixedInputs.envPlainKey,
-          agentBuilderFixedInputs.envPlainValue,
-          agentBuilderFixedInputs.envAfterInvalidImportKey,
-          agentBuilderFixedInputs.envAfterInvalidImportValue,
-        ]),
-      )
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+    )
+    await expectAgentEnvVariableRows(
+      advancedSettings,
+      agentBuilderFixedInputs.envAfterInvalidImportKey,
+      agentBuilderFixedInputs.envAfterInvalidImportValue,
+    )
     await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
   },
 )

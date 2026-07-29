@@ -53,11 +53,6 @@ describe('MCPServerModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
-    })
-
     it('should render add title when no data is provided', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()

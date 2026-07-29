@@ -107,6 +107,8 @@ class MCPTool(Tool):
         if self.entity.output_schema and result.structuredContent:
             for k, v in result.structuredContent.items():
                 yield self.create_variable_message(k, v)
+        elif result.structuredContent:
+            yield self.create_json_message(result.structuredContent)
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""

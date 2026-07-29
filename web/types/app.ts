@@ -1,5 +1,5 @@
+import type { ToolProviderType } from '@dify/contracts/api/console/agent/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import type { AccessMode } from '@/models/access-control'
@@ -172,7 +172,7 @@ export type UserInputFormItem =
 
 export type AgentTool = {
   provider_id: string
-  provider_type: CollectionType
+  provider_type: ToolProviderType
   provider_name: string
   tool_name: string
   tool_label: string

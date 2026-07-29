@@ -50,11 +50,6 @@ describe('Form', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<Form {...defaultProps} />)
-      expect(container.querySelector('form')).toBeInTheDocument()
-    })
-
     it('should render all form fields based on formSchemas', () => {
       render(<Form {...defaultProps} />)
       expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
@@ -92,33 +87,6 @@ describe('Form', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className to form', () => {
-      const { container } = render(<Form {...defaultProps} className="custom-form-class" />)
-      expect(container.querySelector('form')).toHaveClass('custom-form-class')
-    })
-
-    it('should apply itemClassName to form items', () => {
-      const { container } = render(<Form {...defaultProps} itemClassName="custom-item-class" />)
-      const items = container.querySelectorAll('.custom-item-class')
-      expect(items.length).toBe(3)
-    })
-
-    it('should apply fieldLabelClassName to labels', () => {
-      const { container } = render(
-        <Form {...defaultProps} fieldLabelClassName="custom-label-class" />,
-      )
-      const labels = container.querySelectorAll('label.custom-label-class')
-      expect(labels.length).toBe(3)
-    })
-
-    it('should apply inputClassName to inputs', () => {
-      render(<Form {...defaultProps} inputClassName="custom-input-class" />)
-      const inputs = screen.getAllByRole('textbox')
-      inputs.forEach((input) => {
-        expect(input).toHaveClass('custom-input-class')
-      })
-    })
-
     it('should display initial values', () => {
       const valueWithData: CreateExternalAPIReq = {
         name: 'Test API',

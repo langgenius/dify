@@ -708,6 +708,121 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
+def test_recent_app_list_api_returns_only_home_card_fields(app, app_module):
+    method = app_module.RecentAppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    recent_app = SimpleNamespace(
+        id="app-1",
+        name="Recent App",
+        icon_type="emoji",
+        icon="🚀",
+        icon_background="#FFFFFF",
+        mode="chat",
+        author_name="Recent Author",
+        updated_at=_ts(15),
+        maintainer="acct-1",
+    )
+    get_recent_apps = MagicMock(return_value=[recent_app])
+
+    with app.test_request_context("/apps/recent?limit=8"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+            monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-1",
+                                permission_keys=["app.acl.monitor"],
+                            )
+                        ]
+                    )
+                ),
+            )
+
+            resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", MagicMock())
+
+    assert status == 200
+    assert resp == {
+        "data": [
+            {
+                "id": "app-1",
+                "name": "Recent App",
+                "icon_type": "emoji",
+                "icon": "🚀",
+                "icon_background": "#FFFFFF",
+                "mode": "chat",
+                "author_name": "Recent Author",
+                "updated_at": int(_ts(15).timestamp()),
+                "permission_keys": ["app.acl.monitor"],
+                "maintainer": "acct-1",
+                "icon_url": None,
+            }
+        ]
+    }
+    params = get_recent_apps.call_args.args[2]
+    assert params.limit == 8
+    assert "total" not in resp
+    assert "description" not in resp["data"][0]
+    assert "tags" not in resp["data"][0]
+    assert "workflow" not in resp["data"][0]
+
+
+@pytest.mark.parametrize("mode", ["channel", "rag-pipeline", "agent"])
+def test_recent_app_response_rejects_non_home_app_modes(app_module, mode: str) -> None:
+    with pytest.raises(ValidationError):
+        app_module.RecentAppResponse.model_validate(
+            {
+                "id": "app-1",
+                "name": "Recent App",
+                "mode": mode,
+                "updated_at": _ts(),
+            }
+        )
+
+
+def test_recent_app_list_api_applies_rbac_visibility_filter(app, app_module):
+    method = app_module.RecentAppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    get_recent_apps = MagicMock(return_value=[])
+    with app.test_request_context("/apps/recent"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
+                        permission_keys=["app.create_and_management"]
+                    )
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "whitelist_resources",
+                lambda tenant_id, account_id: SimpleNamespace(
+                    unrestricted=False,
+                    resource_ids=["app-shared"],
+                ),
+            )
+
+            resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", MagicMock())
+
+    assert status == 200
+    assert resp == {"data": []}
+    params = get_recent_apps.call_args.args[2]
+    assert params.accessible_app_ids == ["app-shared"]
+    assert params.include_own_apps is True
+
+
 def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permission(app, app_module):
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useId } from 'react'
 import CornerLabel from '@/app/components/base/corner-label'
 import Link from '@/next/link'
 
@@ -8,23 +9,40 @@ type VisualStyle = 'default' | 'compact' | 'list'
 type BaseProps = {
   badge?: string
   badgeVariant?: 'basic' | 'advanced'
+  stepByStepTourTarget?: string
   description: string
   icon: ReactNode
   title: string
   visualStyle?: VisualStyle
+  className?: string
 }
 
 type ButtonActionCardProps = BaseProps & {
+  disabled?: false
+  disabledReason?: never
   href?: never
   onClick: () => void
 }
 
+type DisabledActionCardProps = BaseProps & {
+  disabled: true
+  disabledReason: string
+  href?: never
+  onClick?: never
+  visualStyle: 'list'
+}
+
 type LinkActionCardProps = BaseProps & {
+  disabled?: never
+  disabledReason?: never
   href: string
   onClick?: never
 }
 
-type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
+type FirstEmptyActionCardProps =
+  | ButtonActionCardProps
+  | DisabledActionCardProps
+  | LinkActionCardProps
 
 const baseCardClassName =
   'relative flex rounded-xl bg-components-button-secondary-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
@@ -66,7 +84,9 @@ function ActionCardContent({
   icon,
   title,
   visualStyle = 'default',
-}: BaseProps) {
+  disabled = false,
+  disabledReason,
+}: BaseProps & { disabled?: boolean; disabledReason?: string }) {
   if (visualStyle === 'list') {
     return (
       <>
@@ -79,17 +99,39 @@ function ActionCardContent({
             textClassName="text-util-colors-indigo-indigo-700"
           />
         )}
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section text-text-tertiary">
+        <span
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section text-text-tertiary',
+            disabled && 'text-text-disabled',
+          )}
+        >
           {icon}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate system-md-medium text-text-secondary" title={title}>
+          <span
+            className={cn(
+              'truncate system-md-medium text-text-secondary',
+              disabled && 'text-text-disabled',
+            )}
+            title={title}
+          >
             {title}
           </span>
-          <span className="truncate system-xs-regular text-text-tertiary" title={description}>
+          <span
+            className={cn(
+              'truncate system-xs-regular text-text-tertiary',
+              disabled && 'text-text-disabled',
+            )}
+            title={description}
+          >
             {description}
           </span>
         </span>
+        {disabledReason && (
+          <span className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+            {disabledReason}
+          </span>
+        )}
       </>
     )
   }
@@ -130,6 +172,8 @@ function ActionCardContent({
 }
 
 function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
+  const descriptionId = useId()
+  const isDisabled = props.disabled === true
   const className = cn(
     baseCardClassName,
     props.visualStyle === 'list'
@@ -140,11 +184,18 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
       : props.visualStyle === 'list'
         ? undefined
         : 'min-h-[204px] p-6',
+    isDisabled &&
+      'cursor-not-allowed text-text-disabled shadow-none hover:bg-components-button-secondary-bg',
+    props.className,
   )
 
   if (props.href) {
     return (
-      <Link href={props.href} className={className}>
+      <Link
+        href={props.href}
+        className={className}
+        data-step-by-step-tour-target={props.stepByStepTourTarget}
+      >
         <ActionCardContent
           badge={props.badge}
           badgeVariant={props.badgeVariant}
@@ -158,7 +209,15 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
   }
 
   return (
-    <button type="button" className={className} onClick={props.onClick}>
+    <button
+      type="button"
+      disabled={isDisabled}
+      aria-label={isDisabled ? props.title : undefined}
+      aria-describedby={isDisabled ? descriptionId : undefined}
+      className={className}
+      data-step-by-step-tour-target={props.stepByStepTourTarget}
+      onClick={isDisabled ? undefined : props.onClick}
+    >
       <ActionCardContent
         badge={props.badge}
         badgeVariant={props.badgeVariant}
@@ -166,7 +225,14 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
         icon={props.icon}
         title={props.title}
         visualStyle={props.visualStyle}
+        disabled={isDisabled}
+        disabledReason={isDisabled ? props.disabledReason : undefined}
       />
+      {isDisabled && (
+        <span id={descriptionId} className="sr-only">
+          {props.description} {props.disabledReason} {props.badge}
+        </span>
+      )}
     </button>
   )
 }

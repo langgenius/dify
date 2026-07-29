@@ -5,7 +5,7 @@ import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 const mockUseIsChatMode = vi.fn()
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('@/app/components/workflow-app/hooks/use-is-chat-mode', () => ({
+vi.mock('../use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
@@ -38,6 +38,18 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toContain(
       '/docs/use-dify/nodes/',
     )
+  })
+
+  it('should expose legacy Agent instead of Agent v2 in chat mode when Agent v2 is enabled', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.Agent)
+    expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeUndefined()
   })
 
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {

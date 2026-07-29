@@ -1,22 +1,15 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { App } from '@/models/explore'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import LearnDifyItem from '../item'
 
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
+let deploymentEdition: DeploymentEdition = 'CLOUD'
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -53,7 +46,7 @@ describe('LearnDifyItem', () => {
   const mockTrackEvent = vi.mocked(trackEvent)
 
   beforeEach(() => {
-    mockConfig.isCloudEdition = true
+    deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
   })
 
@@ -65,7 +58,7 @@ describe('LearnDifyItem', () => {
   })
 
   it('should create app when card is clicked outside cloud edition', () => {
-    mockConfig.isCloudEdition = false
+    deploymentEdition = 'COMMUNITY'
     const app = createApp()
     const onCreate = vi.fn()
 
@@ -78,7 +71,7 @@ describe('LearnDifyItem', () => {
   })
 
   it('should not make the card clickable outside cloud edition when create is unavailable', () => {
-    mockConfig.isCloudEdition = false
+    deploymentEdition = 'COMMUNITY'
 
     render(<LearnDifyItem canCreate={false} item={createApp()} onTry={vi.fn()} />)
 

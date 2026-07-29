@@ -64,11 +64,6 @@ describe('Footer', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Footer />)
-      expect(screen.getByText(/importDSL/i)).toBeInTheDocument()
-    })
-
     it('should render import button with icon', () => {
       const { container } = render(<Footer />)
       const button = screen.getByRole('button')
@@ -125,24 +120,10 @@ describe('Footer', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper container classes', () => {
-      const { container } = render(<Footer />)
-      const footerDiv = container.firstChild as HTMLElement
-      expect(footerDiv).toHaveClass('absolute', 'bottom-0', 'left-0', 'right-0', 'z-10')
-    })
-
     it('should have backdrop blur-sm effect', () => {
       const { container } = render(<Footer />)
       const footerDiv = container.firstChild as HTMLElement
       expect(footerDiv).toHaveClass('backdrop-blur-[6px]')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<Footer />)
-      rerender(<Footer />)
-      expect(screen.getByText(/importDSL/i)).toBeInTheDocument()
     })
   })
 

@@ -9,17 +9,15 @@ import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import {
-  useAvailableNodesMetaData,
-  useDSLByCanEdit,
-  useGetRunAndTraceUrl,
-  useNodesSyncDraftByCanEdit,
-  usePipelineRefreshDraft,
-  usePipelineRunByCanEdit,
-  usePipelineStartRunByCanEdit,
-} from '../hooks'
+import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
 import { useConfigsMap } from '../hooks/use-configs-map'
+import { useDSLByCanEdit } from '../hooks/use-DSL'
+import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
+import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
+import { usePipelineRefreshDraft } from '../hooks/use-pipeline-refresh-draft'
+import { usePipelineRunByCanEdit } from '../hooks/use-pipeline-run'
+import { usePipelineStartRunByCanEdit } from '../hooks/use-pipeline-start-run'
 import RagPipelineChildren from './rag-pipeline-children'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>

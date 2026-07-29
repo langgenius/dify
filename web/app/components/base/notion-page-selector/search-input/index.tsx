@@ -21,7 +21,6 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
   return (
     <div
       className={cn('flex h-8 w-[200px] items-center rounded-lg bg-components-input-bg-normal p-2')}
-      data-testid="notion-search-input-container"
     >
       <div className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
       <input
@@ -29,7 +28,6 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         placeholder={safePlaceholderText}
-        data-testid="notion-search-input"
       />
       {value ? (
         <button

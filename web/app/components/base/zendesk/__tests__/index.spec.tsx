@@ -1,13 +1,18 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Zendesk from '../index'
 
 // Shared state for mocks
-let mockIsCeEdition = false
+let mockDeploymentEdition: DeploymentEdition = 'CLOUD'
 let mockZendeskWidgetKey: string | undefined = 'test-key'
 let mockIsProd = false
 let mockNonce: string | null = 'test-nonce'
+let queryClient: QueryClient
+const systemFeaturesQueryKey = ['console', 'system-features']
+const getSystemFeatures = vi.fn()
 
 // Mock react's memo to just return the function
 vi.mock('react', async (importOriginal) => {
@@ -18,16 +23,30 @@ vi.mock('react', async (importOriginal) => {
   }
 })
 
-// Mock config
 vi.mock('@/config', () => ({
-  get IS_CE_EDITION() {
-    return mockIsCeEdition
-  },
   get ZENDESK_WIDGET_KEY() {
     return mockZendeskWidgetKey
   },
   get IS_PROD() {
     return mockIsProd
+  },
+}))
+
+vi.mock('@/context/query-client-server', () => ({
+  getQueryClientServer: () => queryClient,
+}))
+
+vi.mock('@/service/server', () => ({
+  serverConsoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: vi.fn(() => ({
+          queryKey: systemFeaturesQueryKey,
+          queryFn: getSystemFeatures,
+          retry: false,
+        })),
+      },
+    },
   },
 }))
 
@@ -61,10 +80,14 @@ vi.mock('@/next/script', () => ({
 describe('Zendesk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCeEdition = false
+    mockDeploymentEdition = 'CLOUD'
     mockZendeskWidgetKey = 'test-key'
     mockIsProd = false
     mockNonce = 'test-nonce'
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    getSystemFeatures.mockImplementation(async () => ({
+      deployment_edition: mockDeploymentEdition,
+    }))
   })
 
   // Helper to call the async component
@@ -73,15 +96,27 @@ describe('Zendesk', () => {
     return await Component()
   }
 
-  it('should render nothing when IS_CE_EDITION is true', async () => {
-    mockIsCeEdition = true
-    const result = await renderZendesk()
-    expect(result).toBeNull()
-  })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'should render nothing when deployment edition is %s',
+    async (deploymentEdition) => {
+      mockDeploymentEdition = deploymentEdition
+      const result = await renderZendesk()
+      expect(result).toBeNull()
+    },
+  )
 
   it('should render nothing when ZENDESK_WIDGET_KEY is missing', async () => {
     mockZendeskWidgetKey = undefined
     const result = await renderZendesk()
+    expect(result).toBeNull()
+    expect(getSystemFeatures).not.toHaveBeenCalled()
+  })
+
+  it('should render nothing when System Features is unavailable', async () => {
+    getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
+
+    const result = await renderZendesk()
+
     expect(result).toBeNull()
   })
 

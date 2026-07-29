@@ -1,11 +1,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiMailSendFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { UpgradeModal as BaseUpgradeModal } from '@/app/components/base/upgrade-modal'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContextSelector } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type UpgradeModalProps = {
   open: boolean
@@ -14,6 +15,10 @@ type UpgradeModalProps = {
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
   const handleUpgrade = () => {
     setShowPricingModal()
@@ -36,7 +41,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           <Button className="w-[72px]" onClick={() => onOpenChange(false)}>
             {t(($) => $['nodes.humanInput.deliveryMethod.upgradeTipHide'], { ns: 'workflow' })}
           </Button>
-          {IS_CLOUD_EDITION && (
+          {deploymentEdition === 'CLOUD' && (
             <PremiumBadgeButton
               size="custom"
               color="blue"

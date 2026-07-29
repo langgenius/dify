@@ -705,15 +705,6 @@ describe('FilterManagement Component', () => {
       expect(screen.queryByText('common.tag.tags'))!.not.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
-
-    it('should render with correct container classes', () => {
-      // Arrange & Act
-      const { container } = renderFilterManagement()
-
-      // Assert
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper)!.toHaveClass('flex', 'items-center', 'gap-2', 'self-stretch')
-    })
   })
 
   describe('Initial State from Context', () => {

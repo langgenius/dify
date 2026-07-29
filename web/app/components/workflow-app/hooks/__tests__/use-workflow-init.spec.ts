@@ -1,6 +1,7 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderHook } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -45,52 +46,19 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('../use-workflow-template', () => ({

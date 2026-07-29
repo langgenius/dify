@@ -2,10 +2,7 @@ import type { CustomActionsProps } from '@/app/components/base/form/components/f
 import * as React from 'react'
 import { useCallback } from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import {
-  useConfigurations,
-  useInitialData,
-} from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { useConfigurations, useInitialData } from '../../../../../hooks/use-input-fields'
 import Actions from './actions'
 import { useInputVariables } from './hooks'
 import Options from './options'

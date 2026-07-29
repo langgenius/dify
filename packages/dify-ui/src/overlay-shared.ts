@@ -11,7 +11,7 @@ export const floatingSeparatorClassName = 'my-1 h-px bg-divider-subtle'
 export const menuPopupClassName =
   'max-h-(--available-height) overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 text-sm text-text-secondary shadow-lg outline-hidden focus:outline-hidden focus-visible:outline-hidden backdrop-blur-[5px]'
 export const floatingPopupAnimationClassName =
-  'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none'
+  'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:transition-none motion-reduce:transition-none'
 export const modalBackdropClassName =
   'absolute inset-0 z-50 bg-background-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none'
 export const modalPopupAnimationClassName =

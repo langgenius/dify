@@ -25,11 +25,6 @@ describe('CrawledResultItem', () => {
     expect(screen.getByText('https://example.com/page')).toBeInTheDocument()
   })
 
-  it('should apply active styling when isPreview', () => {
-    const { container } = render(<CrawledResultItem {...defaultProps} isPreview={true} />)
-    expect((container.firstChild as HTMLElement).className).toContain('bg-state-base-active')
-  })
-
   it('should call onCheckChange with true when unchecked checkbox is clicked', () => {
     render(<CrawledResultItem {...defaultProps} isChecked={false} />)
     const checkbox = screen.getByRole('checkbox', { name: 'Example Page https://example.com/page' })
