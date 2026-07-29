@@ -21,7 +21,7 @@
   "archives.empty.title": "कोई आर्काइव लॉग नहीं",
   "archives.error.description": "पेज रीफ्रेश करें या बाद में फिर से प्रयास करें।",
   "archives.error.title": "आर्काइव लॉग लोड नहीं हो सके",
-  "archives.notice.action": "आर्काइव लॉग देखें",
+  "archives.notice.action": "आर्काइव लॉग खोलें",
   "archives.notice.description": "इस समय सीमा के कुछ लॉग आर्काइव किए गए हो सकते हैं।",
   "archives.summary.latest": "नवीनतम आर्काइव",
   "archives.summary.months": "आर्काइव किए गए महीने",

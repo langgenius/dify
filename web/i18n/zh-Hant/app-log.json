@@ -21,7 +21,7 @@
   "archives.empty.title": "沒有封存記錄",
   "archives.error.description": "請重新整理頁面或稍後再試。",
   "archives.error.title": "無法載入封存記錄",
-  "archives.notice.action": "查看封存記錄",
+  "archives.notice.action": "開啟封存記錄",
   "archives.notice.description": "此時間範圍內的部分記錄可能已被封存。",
   "archives.summary.latest": "最新封存",
   "archives.summary.months": "封存月份",

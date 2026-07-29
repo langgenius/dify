@@ -21,7 +21,7 @@
   "archives.empty.title": "Nu există jurnale arhivate",
   "archives.error.description": "Reîmprospătează pagina sau încearcă din nou mai târziu.",
   "archives.error.title": "Jurnalele arhivate nu au putut fi încărcate",
-  "archives.notice.action": "Vezi jurnalele arhivate",
+  "archives.notice.action": "Deschide jurnalele arhivate",
   "archives.notice.description": "Este posibil ca unele jurnale din acest interval de timp să fi fost arhivate.",
   "archives.summary.latest": "Cea mai recentă arhivă",
   "archives.summary.months": "Luni arhivate",
