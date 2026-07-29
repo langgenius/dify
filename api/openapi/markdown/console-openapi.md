@@ -15577,6 +15577,12 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
 
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
+
 #### AppModelConfigResponse
 
 | Name | Type | Description | Required |
@@ -18679,15 +18685,15 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| mode | string |  | No |
-| name | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
+| name | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### InstalledAppListResponse
 
@@ -18695,7 +18701,7 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | has_more | boolean |  | Yes |
 | installed_apps | [ [InstalledAppResponse](#installedappresponse) ] |  | Yes |
-| next_cursor | string |  | No |
+| next_cursor | string |  | Yes |
 
 #### InstalledAppResponse
 
@@ -18706,7 +18712,7 @@ Input field definition for snippet parameters.
 | editable | boolean |  | Yes |
 | id | string |  | Yes |
 | is_pinned | boolean |  | Yes |
-| last_used_at | integer |  | No |
+| last_used_at | integer |  | Yes |
 | uninstallable | boolean |  | Yes |
 
 #### InstalledAppUpdatePayload
