@@ -325,6 +325,8 @@ class HTTPKnowledgeFSProductRemoteClient:
                 raise KnowledgeFSProductRequestRejectedError(status_code=413)
             if response.status_code == 422:
                 raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            if response.status_code == HTTPStatus.NO_CONTENT:
+                return None
             content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
             if content_type != "application/json" and not content_type.endswith("+json"):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")

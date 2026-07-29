@@ -181,6 +181,23 @@
       "resourceType": "source"
     },
     {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createGoldenQuestion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "sources.create",
       "allowedCallerKinds": [
         "interactive",
@@ -192,6 +209,40 @@
       "operationId": "createKnowledgeSpaceSource",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/sources",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createQualityBadCase",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createQualityReplay",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/replay-runs",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -317,6 +368,23 @@
       "operationId": "createUploadSession",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/upload-sessions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "deleteGoldenQuestion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/{questionId}",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -637,6 +705,40 @@
       "resourceType": "document"
     },
     {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getQualityBadCase",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getQualityBadCaseTraceReference",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}/trace-reference",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "research_tasks.read",
       "allowedCallerKinds": [
         "interactive",
@@ -823,6 +925,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "golden-questions.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listGoldenQuestions",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "quality.traces.list",
       "allowedCallerKinds": [
         "interactive",
@@ -939,6 +1058,23 @@
       "operationId": "listLogicalDocuments",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/logical-documents",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQualityBadCases",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -1345,6 +1481,23 @@
       "resourceType": "source"
     },
     {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateGoldenQuestion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/{questionId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_spaces.update",
       "allowedCallerKinds": [
         "interactive",
@@ -1430,6 +1583,23 @@
         "pathParameter": "sourceId"
       },
       "resourceType": "source"
+    },
+    {
+      "action": "quality.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateQualityBadCase",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
     },
     {
       "action": "documents.create",

@@ -222,6 +222,15 @@ export function registerGoldenQuestionHandlers({
         now,
       });
       const body = context.req.valid("json");
+      const existing = await questions.get({
+        candidateGrants: permission.candidateGrants,
+        id: params.questionId,
+        knowledgeSpaceId: params.id,
+        tenantId: permission.tenantId,
+      });
+      if (!existing) {
+        return context.json({ error: "Golden question not found" }, 404);
+      }
       const requiredPermissionScope = body.expectedEvidenceIds
         ? await goldenQuestionEvidencePermissionScope({
             assets,
@@ -238,6 +247,7 @@ export function registerGoldenQuestionHandlers({
         ...body,
         id: params.questionId,
         knowledgeSpaceId: params.id,
+        ...(body.metadata ? { metadata: { ...existing.metadata, ...body.metadata } } : {}),
         permission,
         ...(requiredPermissionScope === undefined ? {} : { requiredPermissionScope }),
       });
@@ -462,11 +472,13 @@ function goldenQuestionReadScope(
   ) {
     return null;
   }
-  const candidateGrants = currentCandidateGrants({
-    decision: context.get("authorizationDecision"),
-    knowledgeSpaceId,
-    subject,
-  });
+  const candidateGrants =
+    context.get("capabilityV2Grant")?.contentScopeIds ??
+    currentCandidateGrants({
+      decision: context.get("authorizationDecision"),
+      knowledgeSpaceId,
+      subject,
+    });
   return candidateGrants ? { candidateGrants, tenantId: subject.tenantId } : null;
 }
 
@@ -478,6 +490,15 @@ async function issueGoldenQuestionWritePermission(input: {
   readonly now: () => string;
 }) {
   const subject = input.context.get("subject");
+  const capabilityGrant = input.context.get("capabilityV2Grant");
+  if (capabilityGrant) {
+    return {
+      candidateGrants: capabilityGrant.contentScopeIds,
+      capabilityGrantId: capabilityGrant.grantId,
+      requestedBySubjectId: capabilityGrant.subject,
+      tenantId: subject.tenantId,
+    };
+  }
   const callerKind = input.context.get("callerKind") ?? "interactive";
   const apiKey = input.context.get("authenticatedApiKey");
   const currentTime = Date.parse(input.now());

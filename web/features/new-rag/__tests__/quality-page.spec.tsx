@@ -1,0 +1,493 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
+import { QualityPage } from '../quality/quality-page'
+
+const serviceMock = vi.hoisted(() => ({
+  createGolden: vi.fn(),
+  createReplay: vi.fn(),
+  deleteGolden: vi.fn(),
+  getBadCase: vi.fn(),
+  getBadCases: vi.fn(),
+  getGolden: vi.fn(),
+  getTraceReference: vi.fn(),
+  updateBadCase: vi.fn(),
+  updateGolden: vi.fn(),
+}))
+
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}))
+
+const navigationMock = vi.hoisted(() => ({
+  tab: undefined as string | undefined,
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => routerMock,
+  useSearchParams: () => ({
+    get: (key: string) => (key === 'tab' ? navigationMock.tab : undefined),
+  }),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          quality: {
+            badCases: {
+              byBadCaseId: {
+                get: serviceMock.getBadCase,
+                patch: serviceMock.updateBadCase,
+                traceReference: { get: serviceMock.getTraceReference },
+              },
+            },
+            replayRuns: { post: serviceMock.createReplay },
+          },
+        },
+      },
+    },
+  },
+  consoleQuery: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          goldenQuestions: {
+            byQuestionId: {
+              delete: {
+                mutationOptions: () => ({ mutationFn: serviceMock.deleteGolden }),
+              },
+              patch: {
+                mutationOptions: () => ({ mutationFn: serviceMock.updateGolden }),
+              },
+            },
+            get: {
+              infiniteOptions: (options: {
+                getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
+                initialPageParam: string | null
+                input: (pageParam: string | null) => unknown
+              }) => ({
+                getNextPageParam: options.getNextPageParam,
+                initialPageParam: options.initialPageParam,
+                queryFn: ({ pageParam }: { pageParam: string | null }) =>
+                  serviceMock.getGolden(options.input(pageParam)),
+                queryKey: ['quality', 'golden'],
+              }),
+            },
+            post: {
+              mutationOptions: () => ({ mutationFn: serviceMock.createGolden }),
+            },
+          },
+          quality: {
+            badCases: {
+              get: {
+                infiniteOptions: (options: {
+                  getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
+                  initialPageParam: string | null
+                  input: (pageParam: string | null) => unknown
+                }) => ({
+                  getNextPageParam: options.getNextPageParam,
+                  initialPageParam: options.initialPageParam,
+                  queryFn: ({ pageParam }: { pageParam: string | null }) =>
+                    serviceMock.getBadCases(options.input(pageParam)),
+                  queryKey: ['quality', 'bad-cases'],
+                }),
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
+
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return render(<QualityPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper })
+}
+
+describe('QualityPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    navigationMock.tab = undefined
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite the refund clause.',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-1',
+          question: 'What is the refund policy?',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.getBadCases.mockResolvedValue({
+      data: [
+        {
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'bad-1',
+          question: 'Refund after activation',
+          reason: 'coverage gap',
+          revision: 1,
+          status: 'open',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.createGolden.mockResolvedValue({
+      annotation: 'Expected answer',
+      created_at: '2026-07-29T00:00:00Z',
+      id: 'golden-2',
+      question: 'New question',
+      tags: ['billing'],
+      updated_at: '2026-07-29T00:00:00Z',
+    })
+    serviceMock.getTraceReference.mockResolvedValue({ trace_id: 'trace-42' })
+    serviceMock.getBadCase.mockResolvedValue({
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'bad-1',
+      question: 'Refund after activation',
+      reason: 'coverage gap',
+      replay_run_id: null,
+      revision: 1,
+      status: 'open',
+      tags: ['billing'],
+      updated_at: '2026-07-28T00:00:00Z',
+    })
+  })
+
+  it('renders persisted quality data and creates a golden question through the API', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByText('What is the refund policy?')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
+      'New question',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'Expected answer',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+
+    await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalled())
+    expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+      body: {
+        annotation: 'Expected answer',
+        question: 'New question',
+        tags: [],
+      },
+      params: { control_space_id: 'space-1' },
+    })
+  })
+
+  it('resolves the protected trace reference before navigating', async () => {
+    const user = userEvent.setup()
+    navigationMock.tab = 'bad-cases'
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      await screen.findByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.openTrace',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
+  })
+
+  it('loads the next page of golden questions through the cursor contract', async () => {
+    serviceMock.getGolden.mockImplementation(
+      async (input: { query?: { cursor?: string } } | undefined) =>
+        input?.query?.cursor === 'golden-cursor-2'
+          ? {
+              data: [
+                {
+                  annotation: 'Second-page answer',
+                  created_at: '2026-07-27T00:00:00Z',
+                  id: 'golden-2',
+                  question: 'Second-page question',
+                  tags: [],
+                  updated_at: '2026-07-27T00:00:00Z',
+                },
+              ],
+              next_cursor: null,
+            }
+          : {
+              data: [
+                {
+                  annotation: 'Must cite the refund clause.',
+                  created_at: '2026-07-28T00:00:00Z',
+                  id: 'golden-1',
+                  question: 'What is the refund policy?',
+                  tags: ['billing'],
+                  updated_at: '2026-07-28T00:00:00Z',
+                },
+              ],
+              next_cursor: 'golden-cursor-2',
+            },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+
+    expect(await screen.findByText('Second-page question')).toBeInTheDocument()
+    expect(serviceMock.getGolden).toHaveBeenLastCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'golden-cursor-2', limit: 50 },
+    })
+  })
+
+  it('keeps loading bad cases when a page only contains dismissed rows', async () => {
+    serviceMock.getBadCases.mockImplementation(
+      async (input: { query?: { cursor?: string } } | undefined) =>
+        input?.query?.cursor === 'bad-case-cursor-2'
+          ? {
+              data: [
+                {
+                  created_at: '2026-07-27T00:00:00Z',
+                  id: 'bad-2',
+                  question: 'Visible second-page case',
+                  reason: 'retrieval miss',
+                  revision: 1,
+                  status: 'open',
+                  tags: [],
+                  updated_at: '2026-07-27T00:00:00Z',
+                },
+              ],
+              next_cursor: null,
+            }
+          : {
+              data: [
+                {
+                  created_at: '2026-07-28T00:00:00Z',
+                  id: 'bad-dismissed',
+                  question: 'Dismissed first-page case',
+                  reason: 'resolved',
+                  revision: 2,
+                  status: 'dismissed',
+                  tags: [],
+                  updated_at: '2026-07-28T00:00:00Z',
+                },
+              ],
+              next_cursor: 'bad-case-cursor-2',
+            },
+    )
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.qualityPage.badCasesEmptyTitle'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+
+    expect(await screen.findByText('Visible second-page case')).toBeInTheDocument()
+    expect(serviceMock.getBadCases).toHaveBeenLastCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'bad-case-cursor-2', limit: 50 },
+    })
+  })
+
+  it('requires confirmation and clears hidden selections when switching tabs', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: /dataset\.newKnowledge\.qualityPage\.selectQuestion/,
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.deleteEllipsis' }),
+    )
+
+    expect(serviceMock.deleteGolden).not.toHaveBeenCalled()
+    expect(screen.getByText('common.operation.deleteConfirmTitle')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(
+      screen.getByRole('tab', { name: /dataset\.newKnowledge\.qualityPage\.badCasesTab/ }),
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.qualityPage.deleteEllipsis' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('reuses the replay idempotency key after a partial failure', async () => {
+    let linked = false
+    let rejectReplayPatch = true
+    serviceMock.getBadCase.mockImplementation(async () => ({
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'bad-1',
+      question: 'Refund after activation',
+      reason: 'coverage gap',
+      replay_run_id: null,
+      revision: linked ? 2 : 1,
+      status: 'open',
+      tags: linked ? ['billing', 'golden-question:golden-2'] : ['billing'],
+      updated_at: '2026-07-28T00:00:00Z',
+    }))
+    serviceMock.updateBadCase.mockImplementation(
+      async (input: { body: { status: string; tags?: string[] } }) => {
+        if (input.body.status === 'open') {
+          linked = true
+          return {
+            ...(await serviceMock.getBadCase()),
+            revision: 2,
+            tags: input.body.tags,
+          }
+        }
+        if (rejectReplayPatch) {
+          rejectReplayPatch = false
+          throw new Error('response lost')
+        }
+        return {
+          ...(await serviceMock.getBadCase()),
+          replay_run_id: 'replay-1',
+          revision: 3,
+          status: 'replaying',
+        }
+      },
+    )
+    serviceMock.createReplay.mockResolvedValue({ id: 'replay-1', revision: 1, state: 'queued' })
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    const replay = async () => {
+      await user.click(
+        screen.getByRole('button', {
+          name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+        }),
+      )
+      await user.click(
+        await screen.findByRole('menuitem', {
+          name: 'dataset.newKnowledge.qualityPage.replay',
+        }),
+      )
+    }
+    await replay()
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+    await replay()
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(2))
+
+    expect(serviceMock.createGolden).toHaveBeenCalledTimes(2)
+    const firstHeaders = serviceMock.createReplay.mock.calls[0]?.[0].headers
+    expect(serviceMock.createReplay.mock.calls[1]?.[0].headers).toEqual(firstHeaders)
+  })
+
+  it('replaces a stale golden-question link before replaying a bad case', async () => {
+    serviceMock.getBadCase.mockResolvedValue({
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'bad-1',
+      question: 'Refund after activation',
+      reason: 'coverage gap',
+      replay_run_id: null,
+      revision: 1,
+      status: 'open',
+      tags: ['billing', 'golden-question:deleted-golden'],
+      updated_at: '2026-07-28T00:00:00Z',
+    })
+    serviceMock.createGolden.mockResolvedValue({
+      annotation: 'coverage gap',
+      created_at: '2026-07-29T00:00:00Z',
+      id: 'replacement-golden',
+      question: 'Refund after activation',
+      tags: ['billing'],
+      updated_at: '2026-07-29T00:00:00Z',
+    })
+    serviceMock.updateBadCase
+      .mockResolvedValueOnce({
+        ...(await serviceMock.getBadCase()),
+        revision: 2,
+        tags: ['billing', 'golden-question:replacement-golden'],
+      })
+      .mockResolvedValueOnce({
+        ...(await serviceMock.getBadCase()),
+        replay_run_id: 'replay-1',
+        revision: 3,
+        status: 'replaying',
+        tags: ['billing', 'golden-question:replacement-golden'],
+      })
+    serviceMock.createReplay.mockResolvedValue({ id: 'replay-1', revision: 1, state: 'queued' })
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.replay',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.createReplay).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: { golden_question_ids: ['replacement-golden'] },
+        }),
+      ),
+    )
+    expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+      body: {
+        annotation: 'coverage gap',
+        question: 'Refund after activation',
+        source_bad_case_id: 'bad-1',
+        tags: ['billing'],
+      },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(serviceMock.updateBadCase.mock.calls[0]?.[0]).toEqual({
+      body: {
+        expected_revision: 1,
+        status: 'open',
+        tags: ['billing', 'golden-question:replacement-golden'],
+      },
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
+  })
+})

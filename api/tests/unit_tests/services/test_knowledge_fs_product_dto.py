@@ -8,12 +8,16 @@ from pydantic import ValidationError
 from services.knowledge_fs.product_dto import (
     KnowledgeFSBackgroundTaskListQuery,
     KnowledgeFSBackgroundTaskListResponse,
+    KnowledgeFSBadCaseCreatePayload,
+    KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewWindowQuery,
+    KnowledgeFSQualityListQuery,
     KnowledgeFSSourceListQuery,
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceListItemResponse,
@@ -95,6 +99,36 @@ def test_source_list_query_matches_the_knowledge_fs_pagination_contract(
 
     with pytest.raises(ValidationError):
         KnowledgeFSSourceListQuery.model_validate(payload)
+
+
+@pytest.mark.parametrize("payload", [{"limit": 0}, {"limit": 101}, {"cursor": ""}])
+def test_quality_list_query_matches_the_knowledge_fs_pagination_contract(
+    payload: dict[str, object],
+) -> None:
+    assert KnowledgeFSQualityListQuery().limit == 50
+
+    with pytest.raises(ValidationError):
+        KnowledgeFSQualityListQuery.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("model", "payload"),
+    [
+        (KnowledgeFSGoldenQuestionPayload, {"annotation": "   ", "question": "Question"}),
+        (KnowledgeFSGoldenQuestionPayload, {"annotation": "Annotation", "question": "   "}),
+        (KnowledgeFSBadCaseCreatePayload, {"reason": "   ", "trace_id": "trace-1"}),
+        (
+            KnowledgeFSBadCaseUpdatePayload,
+            {"expected_revision": 1, "reason": "   ", "status": "open"},
+        ),
+    ],
+)
+def test_quality_payloads_reject_whitespace_only_required_text(
+    model: type[object],
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        model.model_validate(payload)  # type: ignore[attr-defined]
 
 
 def test_source_workflow_import_payload_preserves_each_provider_item_contract() -> None:

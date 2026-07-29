@@ -13,10 +13,11 @@ import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
+import { useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import {
   extractRetrievalEvidence,
@@ -26,7 +27,7 @@ import {
   researchTaskIsActive,
   retrievalTestRecords,
 } from './retrieval-test-model'
-import { newKnowledgeDocumentDetailPath } from './routes'
+import { newKnowledgeDocumentDetailPath, newKnowledgeQualityPath } from './routes'
 import { streamKnowledgeQuery } from './services/knowledge-query-events'
 
 type LocalQueryRun = {
@@ -200,10 +201,14 @@ function QualityActions({
   decision,
   noResults,
   onDecision,
+  pending,
+  qualityHref,
 }: {
   decision?: QualityDecision
   noResults?: boolean
-  onDecision: (decision: QualityDecision) => void
+  onDecision: (decision: QualityDecision) => Promise<void>
+  pending?: boolean
+  qualityHref: string
 }) {
   const { t } = useTranslation('dataset')
   if (decision) {
@@ -220,23 +225,32 @@ function QualityActions({
               : $['newKnowledge.retrievalTest.savedBadCase'],
           )}
         </span>
-        <button
-          type="button"
+        <Link
+          href={qualityHref}
           className="rounded-md px-1 py-0.5 system-sm-semibold text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={() => toast.info(t(($) => $['cornerLabel.unavailable']))}
         >
           {t(($) => $['newKnowledge.retrievalTest.viewInQuality'])}
-        </button>
+        </Link>
       </div>
     )
   }
   return (
     <div className="flex min-h-16 items-center justify-end gap-2 border-t border-divider-subtle px-5">
-      <Button variant={noResults ? 'primary' : 'ghost'} onClick={() => onDecision('bad-case')}>
+      <Button
+        disabled={pending}
+        loading={pending}
+        variant={noResults ? 'primary' : 'ghost'}
+        onClick={() => void onDecision('bad-case')}
+      >
         {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
       </Button>
       {!noResults && (
-        <Button variant="primary" onClick={() => onDecision('golden')}>
+        <Button
+          disabled={pending}
+          loading={pending}
+          variant="primary"
+          onClick={() => void onDecision('golden')}
+        >
           {t(($) => $['newKnowledge.retrievalTest.keepGoldenQuestion'])}
         </Button>
       )}
@@ -422,15 +436,20 @@ function RecordButton({
 
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
+  const searchParams = useSearchParams()
+  const linkedTraceId = searchParams?.get('trace')
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<RetrievalTestMode>('fast')
   const [localRun, setLocalRun] = useState<LocalQueryRun>()
-  const [selected, setSelected] = useState<SelectedRun>()
+  const [selected, setSelected] = useState<SelectedRun | undefined>(() =>
+    linkedTraceId ? { id: linkedTraceId, kind: 'trace' } : undefined,
+  )
   const [researchPlans, setResearchPlans] = useState<
     Record<string, KnowledgeFsResearchTaskPlanResponse>
   >({})
   const [researchExpanded, setResearchExpanded] = useState<Record<string, boolean>>({})
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
+  const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [showAll, setShowAll] = useState(false)
   const queryAbortControllerRef = useRef<AbortController>(undefined)
 
@@ -475,17 +494,30 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         ? localRun?.traceId
         : undefined
 
+  const traceDetailQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.get.queryOptions({
+      input: selectedTraceId
+        ? {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              trace_id: selectedTraceId,
+            },
+          }
+        : skipToken,
+    }),
+  )
   const traceEvidenceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get.queryOptions({
-      input: {
-        params: {
-          control_space_id: knowledgeSpaceId,
-          trace_id: selectedTraceId ?? '',
-        },
-        query: { limit: 100 },
-      },
+      input: selectedTraceId
+        ? {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              trace_id: selectedTraceId,
+            },
+            query: { limit: 100 },
+          }
+        : skipToken,
     }),
-    enabled: Boolean(selectedTraceId),
   })
   const researchPartialsQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.partials.get.queryOptions(
@@ -514,11 +546,18 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         ? researchEvidence
         : historicalEvidence
   const resultKey = selected ? `${selected.kind}:${selected.id}` : undefined
-  const selectedQuery = selected?.kind === 'local' ? localRun?.query : selectedRecord?.query
-  const selectedMode = selected?.kind === 'local' ? localRun?.mode : selectedRecord?.mode
+  const selectedQuery =
+    selected?.kind === 'local'
+      ? localRun?.query
+      : (selectedRecord?.query ?? traceDetailQuery.data?.query)
+  const selectedMode =
+    selected?.kind === 'local'
+      ? localRun?.mode
+      : (selectedRecord?.mode ?? traceDetailQuery.data?.mode)
   const selectedIsLoading =
     (selected?.kind === 'local' && localRun?.status === 'running') ||
     (selected?.kind === 'trace' && selectedRecord?.status === 'running') ||
+    (selected?.kind === 'trace' && !selectedRecord && traceDetailQuery.isPending) ||
     (selected?.kind === 'trace' && traceEvidenceQuery.isPending)
   const selectedFailed = selected?.kind === 'local' && localRun?.status === 'failed'
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, 3)
@@ -533,6 +572,41 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         ...current,
         [record.id]: record.status === 'running',
       }))
+  }
+
+  const saveQualityDecision = async (decision: QualityDecision) => {
+    if (!resultKey || !selectedQuery) return
+    setQualityPendingKey(resultKey)
+    try {
+      if (decision === 'bad-case') {
+        if (!selectedTraceId) {
+          toast.error(t(($) => $.unknownError))
+          return
+        }
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
+          body: {
+            reason: selectedQuery,
+            tags: ['retrieval-test'],
+            trace_id: selectedTraceId,
+          },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+      } else {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post({
+          body: {
+            annotation: selectedQuery,
+            question: selectedQuery,
+            tags: ['retrieval-test'],
+          },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+      }
+      setQualityDecisions((current) => ({ ...current, [resultKey]: decision }))
+    } catch {
+      toast.error(t(($) => $.unknownError))
+    } finally {
+      setQualityPendingKey(undefined)
+    }
   }
 
   const runFastQuery = async () => {
@@ -873,9 +947,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   <QualityActions
                     noResults={currentEvidence.length === 0}
                     decision={qualityDecisions[resultKey]}
-                    onDecision={(decision) =>
-                      setQualityDecisions((current) => ({ ...current, [resultKey]: decision }))
-                    }
+                    onDecision={saveQualityDecision}
+                    pending={qualityPendingKey === resultKey}
+                    qualityHref={newKnowledgeQualityPath(knowledgeSpaceId)}
                   />
                 )}
             </div>

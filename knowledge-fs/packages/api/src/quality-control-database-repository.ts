@@ -256,14 +256,30 @@ export function createDatabaseQualityControlRepository({
       database.transaction(async (transaction) => {
         const timestamp = now();
         await lockActiveSpace(database, transaction, input.tenantId, input.knowledgeSpaceId);
-        const candidateGrants = await assertQualityWritePermissionFence(database, transaction, {
-          actorSubjectId: input.actorSubjectId,
-          candidateGrants: input.candidateGrants,
-          knowledgeSpaceId: input.knowledgeSpaceId,
-          permission: input.permission,
-          tenantId: input.tenantId,
+        const authorization = await resolveReplayAdmissionAuthorization(
+          database,
+          transaction,
+          {
+            ...(input.capabilityGrantId
+              ? { capabilityGrantId: input.capabilityGrantId }
+              : input.permission
+                ? { permission: input.permission }
+                : {}),
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            tenantId: input.tenantId,
+          },
           timestamp,
-        });
+        );
+        if (
+          authorization.subjectId !== input.actorSubjectId ||
+          !sameStringSet(authorization.candidateGrants, input.candidateGrants)
+        ) {
+          throw new KnowledgeSpaceAccessError(
+            "space_access_permission_snapshot_invalid",
+            "Quality bad case authorization does not match the current actor and candidate grants",
+          );
+        }
+        const candidateGrants = authorization.candidateGrants;
         await assertTraceCandidateVisible(database, transaction, {
           ...input,
           candidateGrants,
@@ -345,7 +361,7 @@ export function createDatabaseQualityControlRepository({
           input.subjectId,
           JSON.stringify(input.candidateGrants),
         ],
-        sql: `SELECT bad_case.* FROM ${q(database, "quality_bad_cases")} bad_case WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 5))} LIMIT 1;`,
+        sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 5))} LIMIT 1;`,
         tableName: "quality_bad_cases",
       });
       return result.rows[0] ? mapBadCase(result.rows[0]) : null;
@@ -374,7 +390,7 @@ export function createDatabaseQualityControlRepository({
         maxRows: input.limit + 1,
         operation: "select",
         params,
-        sql: `SELECT bad_case.* FROM ${q(database, "quality_bad_cases")} bad_case WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 4))}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY bad_case.${q(database, "created_at")} DESC, bad_case.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
+        sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 4))}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY bad_case.${q(database, "created_at")} DESC, bad_case.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
         tableName: "quality_bad_cases",
       });
       const items = result.rows.slice(0, input.limit).map(mapBadCase);
@@ -390,14 +406,30 @@ export function createDatabaseQualityControlRepository({
       database.transaction(async (transaction) => {
         const timestamp = now();
         await lockActiveSpace(database, transaction, input.tenantId, input.knowledgeSpaceId);
-        const candidateGrants = await assertQualityWritePermissionFence(database, transaction, {
-          actorSubjectId: input.actorSubjectId,
-          candidateGrants: input.candidateGrants,
-          knowledgeSpaceId: input.knowledgeSpaceId,
-          permission: input.permission,
-          tenantId: input.tenantId,
+        const authorization = await resolveReplayAdmissionAuthorization(
+          database,
+          transaction,
+          {
+            ...(input.capabilityGrantId
+              ? { capabilityGrantId: input.capabilityGrantId }
+              : input.permission
+                ? { permission: input.permission }
+                : {}),
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            tenantId: input.tenantId,
+          },
           timestamp,
-        });
+        );
+        if (
+          authorization.subjectId !== input.actorSubjectId ||
+          !sameStringSet(authorization.candidateGrants, input.candidateGrants)
+        ) {
+          throw new KnowledgeSpaceAccessError(
+            "space_access_permission_snapshot_invalid",
+            "Quality bad case authorization does not match the current actor and candidate grants",
+          );
+        }
+        const candidateGrants = authorization.candidateGrants;
         const row = await selectBadCase(
           database,
           transaction,
@@ -418,6 +450,7 @@ export function createDatabaseQualityControlRepository({
         if (input.status === "replaying" && !linkedReplayId) {
           throw new Error("A replaying bad case requires a replay run");
         }
+        let nextStatus = input.status;
         if (input.replayRunId) {
           const replay = await transaction.execute({
             maxRows: 1,
@@ -429,17 +462,22 @@ export function createDatabaseQualityControlRepository({
               input.actorSubjectId,
               JSON.stringify(candidateGrants),
             ],
-            sql: `SELECT ${q(database, "id")} FROM ${q(database, "quality_replay_runs")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "id")} = ${p(database, 3)} AND ${q(database, "requested_by_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, q(database, "required_permission_scope"), p(database, 5))} LIMIT 1 FOR UPDATE;`,
+            sql: `SELECT run.${q(database, "id")}, run.${q(database, "state")} FROM ${q(database, "quality_replay_runs")} run LEFT JOIN ${q(database, "capability_grants")} capability ON capability.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND capability.${q(database, "knowledge_space_id")} = run.${q(database, "knowledge_space_id")} AND capability.${q(database, "grant_id")} = run.${q(database, "capability_grant_id")} WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND run.${q(database, "id")} = ${p(database, 3)} AND ((run.${q(database, "requested_by_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `run.${q(database, "required_permission_scope")}`, p(database, 5))}) OR (capability.${q(database, "subject_id")} = ${p(database, 4)} AND capability.${q(database, "state")} = 'active' AND ${permissionScopeSql(database, `capability.${q(database, "content_scope_ids")}`, p(database, 5))})) LIMIT 1 FOR UPDATE OF run;`,
             tableName: "quality_replay_runs",
           });
           if (!replay.rows[0]) throw new Error("Linked replay run is not visible");
+          if (input.status === "replaying") {
+            const replayState = stringColumn(replay.rows[0], "state");
+            if (replayState === "passed") nextStatus = "fixed";
+            if (replayState === "failed" || replayState === "canceled") nextStatus = "open";
+          }
         }
         const revision = current.revision + 1;
         const result = await transaction.execute({
           maxRows: 0,
           operation: "update",
           params: [
-            input.status,
+            nextStatus,
             input.reason ?? current.reason,
             JSON.stringify(input.tags ?? current.tags),
             linkedReplayId ?? null,
@@ -454,7 +492,7 @@ export function createDatabaseQualityControlRepository({
         });
         if (result.rowsAffected !== 1) throw new QualityControlRevisionConflictError();
         await appendHistory(database, transaction, {
-          action: input.status,
+          action: nextStatus,
           actorSubjectId: input.actorSubjectId,
           aggregateId: input.id,
           aggregateType: "bad-case",
@@ -465,7 +503,7 @@ export function createDatabaseQualityControlRepository({
           revision,
           tenantId: input.tenantId,
           timestamp,
-          toStatus: input.status,
+          toStatus: nextStatus,
         });
         return {
           ...current,
@@ -473,7 +511,7 @@ export function createDatabaseQualityControlRepository({
           ...(input.replayRunId ? { replayRunId: input.replayRunId } : {}),
           reason: input.reason ?? current.reason,
           revision,
-          status: input.status,
+          status: nextStatus,
           tags: [...(input.tags ?? current.tags)],
           updatedAt: timestamp,
         };
@@ -819,6 +857,12 @@ export function createDatabaseQualityControlRepository({
           tableName: "quality_replay_runs",
         });
         if (completed.rowsAffected !== 1) return null;
+        await completeLinkedBadCases(database, transaction, {
+          generateId,
+          run,
+          state,
+          timestamp: input.now,
+        });
         await transaction.execute({
           maxRows: 0,
           operation: "update",
@@ -868,6 +912,12 @@ export function createDatabaseQualityControlRepository({
           tableName: "quality_replay_runs",
         });
         if (canceled.rowsAffected !== 1) throw new QualityControlRevisionConflictError();
+        await completeLinkedBadCases(database, transaction, {
+          generateId,
+          run: current,
+          state: "canceled",
+          timestamp,
+        });
         await transaction.execute({
           maxRows: 0,
           operation: "update",
@@ -1559,10 +1609,64 @@ async function selectBadCase(
     maxRows: 1,
     operation: "select",
     params: [tenantId, knowledgeSpaceId, id, actorSubjectId, JSON.stringify(candidateGrants)],
-    sql: `SELECT * FROM ${q(database, "quality_bad_cases")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "id")} = ${p(database, 3)} AND ${q(database, "actor_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, q(database, "required_permission_scope"), p(database, 5))} LIMIT 1${forUpdate ? " FOR UPDATE" : ""};`,
+    sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 5))} LIMIT 1${forUpdate ? " FOR UPDATE" : ""};`,
     tableName: "quality_bad_cases",
   });
   return result.rows[0];
+}
+
+async function completeLinkedBadCases(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: {
+    readonly generateId: () => string;
+    readonly run: QualityReplayRun;
+    readonly state: "canceled" | "failed" | "passed";
+    readonly timestamp: string;
+  },
+) {
+  const linked = await executor.execute({
+    maxRows: 10_000,
+    operation: "select",
+    params: [input.run.tenantId, input.run.knowledgeSpaceId, input.run.id],
+    sql: `SELECT * FROM ${q(database, "quality_bad_cases")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "replay_run_id")} = ${p(database, 3)} AND ${q(database, "status")} = 'replaying' FOR UPDATE;`,
+    tableName: "quality_bad_cases",
+  });
+  const targetStatus = input.state === "passed" ? "fixed" : "open";
+  for (const row of linked.rows) {
+    const current = mapBadCase(row);
+    const revision = current.revision + 1;
+    const result = await executor.execute({
+      maxRows: 0,
+      operation: "update",
+      params: [
+        targetStatus,
+        revision,
+        input.timestamp,
+        input.run.tenantId,
+        input.run.knowledgeSpaceId,
+        current.id,
+        current.revision,
+        input.run.id,
+      ],
+      sql: `UPDATE ${q(database, "quality_bad_cases")} SET ${q(database, "status")} = ${p(database, 1)}, ${q(database, "revision")} = ${p(database, 2)}, ${q(database, "updated_at")} = ${p(database, 3)} WHERE ${q(database, "tenant_id")} = ${p(database, 4)} AND ${q(database, "knowledge_space_id")} = ${p(database, 5)} AND ${q(database, "id")} = ${p(database, 6)} AND ${q(database, "revision")} = ${p(database, 7)} AND ${q(database, "replay_run_id")} = ${p(database, 8)} AND ${q(database, "status")} = 'replaying';`,
+      tableName: "quality_bad_cases",
+    });
+    if (result.rowsAffected !== 1) throw new QualityControlRevisionConflictError();
+    await appendHistory(database, executor, {
+      action: targetStatus,
+      actorSubjectId: current.actorSubjectId,
+      aggregateId: current.id,
+      aggregateType: "bad-case",
+      fromStatus: current.status,
+      generateId: input.generateId,
+      knowledgeSpaceId: input.run.knowledgeSpaceId,
+      revision,
+      tenantId: input.run.tenantId,
+      timestamp: input.timestamp,
+      toStatus: targetStatus,
+    });
+  }
 }
 
 async function assertTraceCandidateVisible(
@@ -1588,7 +1692,7 @@ async function assertTraceCandidateVisible(
       JSON.stringify(input.candidateGrants),
       input.timestamp,
     ],
-    sql: `SELECT trace.${q(database, "id")} FROM ${q(database, "answer_traces")} trace INNER JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} AND permission.${q(database, "subject_id")} = trace.${q(database, "subject_id")} AND permission.${q(database, "access_channel")} = trace.${q(database, "access_channel")} AND permission.${q(database, "revision")} = trace.${q(database, "permission_snapshot_revision")} WHERE trace.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND trace.${q(database, "id")} = ${p(database, 3)} AND trace.${q(database, "subject_id")} = ${p(database, 4)} AND permission.${q(database, "status")} = 'active' AND permission.${q(database, "revoked_at")} IS NULL AND permission.${q(database, "expires_at")} > ${p(database, 6)} AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 5))} LIMIT 1 FOR UPDATE;`,
+    sql: `SELECT trace.${q(database, "id")} FROM ${q(database, "answer_traces")} trace LEFT JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} AND permission.${q(database, "subject_id")} = trace.${q(database, "subject_id")} AND permission.${q(database, "access_channel")} = trace.${q(database, "access_channel")} AND permission.${q(database, "revision")} = trace.${q(database, "permission_snapshot_revision")} LEFT JOIN ${q(database, "capability_grants")} capability ON capability.${q(database, "tenant_id")} = ${p(database, 1)} AND capability.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND capability.${q(database, "grant_id")} = trace.${q(database, "capability_grant_id")} WHERE trace.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND trace.${q(database, "id")} = ${p(database, 3)} AND ((trace.${q(database, "subject_id")} = ${p(database, 4)} AND permission.${q(database, "status")} = 'active' AND permission.${q(database, "revoked_at")} IS NULL AND permission.${q(database, "expires_at")} > ${p(database, 6)} AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 5))}) OR (capability.${q(database, "subject_id")} = ${p(database, 4)} AND capability.${q(database, "state")} = 'active' AND ${permissionScopeSql(database, `capability.${q(database, "content_scope_ids")}`, p(database, 5))})) LIMIT 1 FOR UPDATE OF trace;`,
     tableName: "answer_traces",
   });
   if (!result.rows[0]) throw new Error("Answer trace is not visible");
@@ -1868,6 +1972,7 @@ function mapBadCase(row: DatabaseRow): ProductionBadCase {
     createdAt: stringColumn(row, "created_at"),
     id: stringColumn(row, "id"),
     knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
+    ...(optionalStringColumn(row, "query") ? { query: optionalStringColumn(row, "query") } : {}),
     reason: stringColumn(row, "reason"),
     ...(optionalStringColumn(row, "replay_run_id")
       ? { replayRunId: optionalStringColumn(row, "replay_run_id") }

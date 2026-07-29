@@ -193,6 +193,9 @@ export const newKnowledgeDocumentsPath = (knowledgeSpaceId: string) =>
 export const newKnowledgeRetrievalTestPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/retrieval`
 
+export const newKnowledgeQualityPath = (knowledgeSpaceId: string) =>
+  `/datasets/new/${knowledgeSpaceId}/quality`
+
 export const newKnowledgeSettingsPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/settings`
 

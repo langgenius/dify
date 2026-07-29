@@ -84,6 +84,7 @@ export const BadCaseSchema = z
     createdAt: DateTime,
     id: z.string().uuid(),
     knowledgeSpaceId: z.string().uuid(),
+    query: z.string().optional(),
     reason: z.string(),
     replayRunId: z.string().uuid().optional(),
     revision: z.number().int().positive(),
@@ -293,6 +294,7 @@ export const missingEvidenceHistoryRoute = createRoute({
 
 export const createQualityBadCaseRoute = createRoute({
   method: "post",
+  operationId: "createQualityBadCase",
   path: "/knowledge-spaces/{id}/quality/bad-cases",
   request: {
     body: {
@@ -327,6 +329,7 @@ export const createQualityBadCaseRoute = createRoute({
 
 export const listQualityBadCasesRoute = createRoute({
   method: "get",
+  operationId: "listQualityBadCases",
   path: "/knowledge-spaces/{id}/quality/bad-cases",
   request: {
     params: SpaceParams,
@@ -358,6 +361,7 @@ export const listQualityBadCasesRoute = createRoute({
 
 export const getQualityBadCaseRoute = createRoute({
   method: "get",
+  operationId: "getQualityBadCase",
   path: "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
   request: { params: BadCaseParams },
   responses: {
@@ -374,8 +378,28 @@ export const getQualityBadCaseRoute = createRoute({
   },
 });
 
+export const getQualityBadCaseTraceReferenceRoute = createRoute({
+  method: "get",
+  operationId: "getQualityBadCaseTraceReference",
+  path: "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}/trace-reference",
+  request: { params: BadCaseParams },
+  responses: {
+    200: {
+      content: { "application/json": { schema: z.object({ traceId: z.string().uuid() }) } },
+      description: "Authorized trace reference for a production bad case",
+    },
+    400: commonErrors[400],
+    401: commonErrors[401],
+    403: commonErrors[403],
+    404: commonErrors[404],
+    409: commonErrors[409],
+    503: commonErrors[503],
+  },
+});
+
 export const updateQualityBadCaseRoute = createRoute({
   method: "patch",
+  operationId: "updateQualityBadCase",
   path: "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
   request: {
     body: {
@@ -432,6 +456,7 @@ export const badCaseHistoryRoute = createRoute({
 
 export const createQualityReplayRoute = createRoute({
   method: "post",
+  operationId: "createQualityReplay",
   path: "/knowledge-spaces/{id}/quality/replay-runs",
   request: {
     body: {

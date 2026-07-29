@@ -181,6 +181,36 @@ export const zKnowledgeFsExternalAccessPayload = z.object({
 })
 
 /**
+ * KnowledgeFSGoldenQuestionPayload
+ */
+export const zKnowledgeFsGoldenQuestionPayload = z.object({
+  annotation: z.string().min(1).max(2000),
+  question: z.string().min(1).max(4000),
+  source_bad_case_id: z.string().max(255).nullish(),
+  tags: z.array(z.string()).max(50).optional(),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionResponse
+ */
+export const zKnowledgeFsGoldenQuestionResponse = z.object({
+  annotation: z.string(),
+  created_at: z.iso.datetime(),
+  id: z.string(),
+  question: z.string(),
+  tags: z.array(z.string()),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionListResponse
+ */
+export const zKnowledgeFsGoldenQuestionListResponse = z.object({
+  data: z.array(zKnowledgeFsGoldenQuestionResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSDocumentCompilationJobResponse
  */
 export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
@@ -209,6 +239,73 @@ export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
   ]),
   updated_at: z.number(),
   version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSBadCaseCreatePayload
+ */
+export const zKnowledgeFsBadCaseCreatePayload = z.object({
+  reason: z.string().min(1).max(4000),
+  tags: z.array(z.string()).max(50).optional(),
+  trace_id: z.string().min(1),
+})
+
+/**
+ * KnowledgeFSBadCaseResponse
+ */
+export const zKnowledgeFsBadCaseResponse = z.object({
+  created_at: z.iso.datetime(),
+  id: z.string(),
+  question: z.string().optional().default(''),
+  reason: z.string(),
+  replay_run_id: z.string().nullish(),
+  revision: z.int().gte(1),
+  status: z.enum(['dismissed', 'fixed', 'open', 'replaying']),
+  tags: z.array(z.string()),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSBadCaseListResponse
+ */
+export const zKnowledgeFsBadCaseListResponse = z.object({
+  data: z.array(zKnowledgeFsBadCaseResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBadCaseUpdatePayload
+ */
+export const zKnowledgeFsBadCaseUpdatePayload = z.object({
+  expected_revision: z.int().gte(1),
+  reason: z.string().min(1).max(4000).nullish(),
+  replay_run_id: z.string().nullish(),
+  status: z.enum(['dismissed', 'fixed', 'open', 'replaying']),
+  tags: z.array(z.string()).max(50).nullish(),
+})
+
+/**
+ * KnowledgeFSBadCaseTraceReferenceResponse
+ */
+export const zKnowledgeFsBadCaseTraceReferenceResponse = z.object({
+  trace_id: z.string(),
+})
+
+/**
+ * KnowledgeFSQualityReplayPayload
+ */
+export const zKnowledgeFsQualityReplayPayload = z.object({
+  golden_question_ids: z.array(z.string()).min(1).max(100),
+  mode: z.enum(['deep', 'fast', 'research']).nullish(),
+})
+
+/**
+ * KnowledgeFSQualityReplayResponse
+ */
+export const zKnowledgeFsQualityReplayResponse = z.object({
+  id: z.string(),
+  revision: z.int().gte(1),
+  state: z.enum(['canceled', 'failed', 'passed', 'queued', 'running']),
 })
 
 /**
@@ -2096,6 +2193,58 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessPath = z.object(
 export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   zKnowledgeFsExternalAccessResponse
 
+export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * KnowledgeFS golden questions
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
+  zKnowledgeFsGoldenQuestionListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBody =
+  zKnowledgeFsGoldenQuestionPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS golden question created
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
+  zKnowledgeFsGoldenQuestionResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdPath = z.object({
+  control_space_id: z.string(),
+  question_id: z.string(),
+})
+
+/**
+ * KnowledgeFS golden question deleted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse = z.void()
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdBody =
+  zKnowledgeFsGoldenQuestionPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdPath = z.object({
+  control_space_id: z.string(),
+  question_id: z.string(),
+})
+
+/**
+ * KnowledgeFS golden question updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse =
+  zKnowledgeFsGoldenQuestionResponse
+
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath = z.object({
   control_space_id: z.string(),
   job_id: z.string(),
@@ -2223,6 +2372,88 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdPermissionsPath = z.object({
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdPermissionsResponse =
   zKnowledgeFsPermissionListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * KnowledgeFS bad cases
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse =
+  zKnowledgeFsBadCaseListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesBody =
+  zKnowledgeFsBadCaseCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS bad case created
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse =
+  zKnowledgeFsBadCaseResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdPath = z.object({
+  bad_case_id: z.string(),
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS bad case
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse =
+  zKnowledgeFsBadCaseResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdBody =
+  zKnowledgeFsBadCaseUpdatePayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdPath = z.object({
+  bad_case_id: z.string(),
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS bad case updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse =
+  zKnowledgeFsBadCaseResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferencePath =
+  z.object({
+    bad_case_id: z.string(),
+    control_space_id: z.string(),
+  })
+
+/**
+ * KnowledgeFS bad case trace reference
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse =
+  zKnowledgeFsBadCaseTraceReferenceResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsBody =
+  zKnowledgeFsQualityReplayPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS quality replay queued
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
+  zKnowledgeFsQualityReplayResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesBody = zKnowledgeFsQueryCreatePayload
 

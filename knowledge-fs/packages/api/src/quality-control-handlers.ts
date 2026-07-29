@@ -10,6 +10,7 @@ import {
   candidatePermissionAllowsNode,
   currentCandidateGrants,
 } from "./candidate-content-authorization";
+import type { CapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import type { DocumentAssetRepository } from "./document-asset-repository";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { GoldenQuestionRepository } from "./golden-question-repository";
@@ -40,6 +41,7 @@ import {
   decodeQualityCursor,
   encodeQualityCursor,
   getQualityBadCaseRoute,
+  getQualityBadCaseTraceReferenceRoute,
   getQualityReplayRoute,
   listQualityBadCasesRoute,
   listQualityReplaysRoute,
@@ -60,8 +62,11 @@ export interface RegisterQualityControlHandlersOptions {
   readonly answerTraces: AnswerTraceRepository;
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined;
   readonly goldenQuestions: GoldenQuestionRepository;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getMany" | "getManyByIdsAcrossGenerations">;
   readonly repository?: QualityControlRepository | undefined;
   readonly runtimeSnapshots?: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
   readonly spaces: Pick<KnowledgeSpaceRepository, "get">;
@@ -73,6 +78,7 @@ export function registerQualityControlHandlers({
   answerTraces,
   app,
   assets,
+  capabilityGrants,
   goldenQuestions,
   nodes,
   repository,
@@ -125,6 +131,7 @@ export function registerQualityControlHandlers({
       access,
       answerTraces,
       assets,
+      capabilityGrants,
       candidateGrants: scope.candidateGrants,
       context,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -171,6 +178,7 @@ export function registerQualityControlHandlers({
       access,
       answerTraces,
       assets,
+      capabilityGrants,
       candidateGrants: scope.candidateGrants,
       context,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -216,6 +224,7 @@ export function registerQualityControlHandlers({
       access,
       answerTraces,
       assets,
+      capabilityGrants,
       candidateGrants: scope.candidateGrants,
       context,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -224,12 +233,18 @@ export function registerQualityControlHandlers({
     });
     if (!trace) return context.json({ error: "Answer trace not found" }, 404);
     try {
-      const permission = await issueReplayPermission(context, access, scope, now);
+      const permission = scope.capabilityGrantId
+        ? undefined
+        : await issueReplayPermission(context, access, scope, now);
       const badCase = await repository.createBadCase({
         actorSubjectId: scope.subject.subjectId,
+        ...(scope.capabilityGrantId
+          ? { capabilityGrantId: scope.capabilityGrantId }
+          : permission
+            ? { permission }
+            : {}),
         candidateGrants: scope.candidateGrants,
         knowledgeSpaceId: scope.knowledgeSpaceId,
-        permission,
         reason: body.reason,
         tags: body.tags ?? [],
         tenantId: scope.subject.tenantId,
@@ -287,6 +302,34 @@ export function registerQualityControlHandlers({
       : context.json({ error: "Production bad case not found" }, 404);
   });
 
+  app.openapi(getQualityBadCaseTraceReferenceRoute, async (context) => {
+    const scope = await requestScope(context, spaces);
+    if (!scope) return context.json({ error: "Knowledge space not found" }, 404);
+    if (!repository) return context.json({ error: "Quality runtime unavailable" }, 503);
+    const badCase = await repository.getBadCase({
+      candidateGrants: scope.candidateGrants,
+      id: context.req.valid("param").badCaseId,
+      knowledgeSpaceId: scope.knowledgeSpaceId,
+      subjectId: scope.subject.subjectId,
+      tenantId: scope.subject.tenantId,
+    });
+    if (!badCase) return context.json({ error: "Production bad case not found" }, 404);
+    const trace = await subjectOwnedVisibleTrace({
+      access,
+      answerTraces,
+      assets,
+      capabilityGrants,
+      candidateGrants: scope.candidateGrants,
+      context,
+      knowledgeSpaceId: scope.knowledgeSpaceId,
+      nodes,
+      traceId: badCase.traceId,
+    });
+    return trace
+      ? context.json({ traceId: trace.id }, 200)
+      : context.json({ error: "Production bad case trace not found" }, 404);
+  });
+
   app.openapi(updateQualityBadCaseRoute, async (context) => {
     const scope = await requestScope(context, spaces);
     if (!scope) return context.json({ error: "Knowledge space not found" }, 404);
@@ -302,14 +345,20 @@ export function registerQualityControlHandlers({
     if (!existing) return context.json({ error: "Production bad case not found" }, 404);
     const body = context.req.valid("json");
     try {
-      const permission = await issueReplayPermission(context, access, scope, now);
+      const permission = scope.capabilityGrantId
+        ? undefined
+        : await issueReplayPermission(context, access, scope, now);
       const updated = await repository.updateBadCase({
         actorSubjectId: scope.subject.subjectId,
+        ...(scope.capabilityGrantId
+          ? { capabilityGrantId: scope.capabilityGrantId }
+          : permission
+            ? { permission }
+            : {}),
         candidateGrants: scope.candidateGrants,
         expectedRevision: body.expectedRevision,
         id: params.badCaseId,
         knowledgeSpaceId: scope.knowledgeSpaceId,
-        permission,
         ...(body.reason ? { reason: body.reason } : {}),
         ...(body.replayRunId ? { replayRunId: body.replayRunId } : {}),
         status: body.status,
@@ -656,10 +705,13 @@ async function subjectOwnedVisibleTrace(input: {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   readonly answerTraces: AnswerTraceRepository;
   readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined;
   readonly candidateGrants: readonly string[];
   readonly context: Parameters<Parameters<OpenAPIHono<KnowledgeGatewayEnv>["openapi"]>[1]>[0];
   readonly knowledgeSpaceId: string;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
   readonly traceId: string;
 }): Promise<AnswerTrace | null> {
   const trace = await input.answerTraces.get({
@@ -667,18 +719,35 @@ async function subjectOwnedVisibleTrace(input: {
     knowledgeSpaceId: input.knowledgeSpaceId,
   });
   const subject = input.context.get("subject");
-  if (!trace || trace.subjectId !== subject.subjectId || !trace.permissionSnapshot) return null;
-  try {
-    const permission = await input.access.revalidatePermissionSnapshot({
-      expectedAccessChannel: trace.permissionSnapshot.accessChannel,
-      id: trace.permissionSnapshot.id,
+  if (!trace) return null;
+  if (trace.capabilityGrantId) {
+    if (!input.capabilityGrants) return null;
+    const grantScope = {
+      grantId: trace.capabilityGrantId,
       knowledgeSpaceId: input.knowledgeSpaceId,
-      subjectId: subject.subjectId,
       tenantId: subject.tenantId,
-    });
-    if (permission.revision !== trace.permissionSnapshot.revision) return null;
-  } catch {
-    return null;
+    };
+    try {
+      await input.capabilityGrants.assertPublicationAllowed(grantScope);
+      const grant = await input.capabilityGrants.get(grantScope);
+      if (!grant || grant.state !== "active" || grant.subjectId !== subject.subjectId) return null;
+    } catch {
+      return null;
+    }
+  } else {
+    if (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot) return null;
+    try {
+      const permission = await input.access.revalidatePermissionSnapshot({
+        expectedAccessChannel: trace.permissionSnapshot.accessChannel,
+        id: trace.permissionSnapshot.id,
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        subjectId: subject.subjectId,
+        tenantId: subject.tenantId,
+      });
+      if (permission.revision !== trace.permissionSnapshot.revision) return null;
+    } catch {
+      return null;
+    }
   }
   return (await traceEvidenceVisible(input.assets, input.nodes, trace, input.candidateGrants))
     ? trace
@@ -687,7 +756,7 @@ async function subjectOwnedVisibleTrace(input: {
 
 async function traceEvidenceVisible(
   assets: Pick<DocumentAssetRepository, "get">,
-  nodes: Pick<KnowledgeNodeRepository, "getMany">,
+  nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">,
   trace: AnswerTrace,
   candidateGrants: readonly string[],
 ) {
@@ -704,7 +773,7 @@ async function traceEvidenceVisible(
       ),
     ]),
   ];
-  const foundNodes = await nodes.getMany({
+  const foundNodes = await nodes.getManyByIdsAcrossGenerations({
     ids: nodeIds,
     knowledgeSpaceId: trace.knowledgeSpaceId,
   });

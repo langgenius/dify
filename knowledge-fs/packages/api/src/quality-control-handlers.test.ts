@@ -329,7 +329,10 @@ describe("quality-control handlers", () => {
             updatedAt: NOW,
           })),
         } as never,
-        nodes: { getMany: vi.fn(async () => []) } as never,
+        nodes: {
+          getMany: vi.fn(async () => []),
+          getManyByIdsAcrossGenerations: vi.fn(async () => []),
+        } as never,
         runtimeSnapshots: {
           assertReady: vi.fn(async () => undefined),
           resolve: vi.fn(async () => frozen),
@@ -455,7 +458,10 @@ describe("quality-control handlers", () => {
             get: vi.fn(async () => ({ metadata: { permissionScope: ["private"] } })),
           } as never,
           goldenQuestions: { get: vi.fn(async () => question) } as never,
-          nodes: { getMany: vi.fn(async () => []) } as never,
+          nodes: {
+            getMany: vi.fn(async () => []),
+            getManyByIdsAcrossGenerations: vi.fn(async () => []),
+          } as never,
         })
       ).status,
     ).toBe(404);
@@ -593,7 +599,10 @@ describe("quality-control handlers", () => {
       access: { createPermissionSnapshot } as never,
       assets: { get: vi.fn(async () => null) } as never,
       goldenQuestions: { get: getQuestion } as never,
-      nodes: { getMany: vi.fn(async () => []) } as never,
+      nodes: {
+        getMany: vi.fn(async () => []),
+        getManyByIdsAcrossGenerations: vi.fn(async () => []),
+      } as never,
       runtimeSnapshots: { assertReady, resolve },
     });
 
@@ -674,7 +683,10 @@ describe("quality-control handlers", () => {
         access: { createPermissionSnapshot, revalidatePermissionSnapshot } as never,
         answerTraces: { get: vi.fn(async () => trace) } as never,
         assets: { get: vi.fn(async () => null) } as never,
-        nodes: { getMany: vi.fn(async () => []) } as never,
+        nodes: {
+          getMany: vi.fn(async () => []),
+          getManyByIdsAcrossGenerations: vi.fn(async () => []),
+        } as never,
       },
     );
 
@@ -715,6 +727,60 @@ describe("quality-control handlers", () => {
       expect.objectContaining({ reason: "Regression", tags: ["camera"], traceId: TRACE_ID }),
     );
     expect(revalidatePermissionSnapshot).toHaveBeenCalledTimes(3);
+  });
+
+  it("captures a capability-created trace after revalidating its durable grant provenance", async () => {
+    const createBadCase = vi.fn(async () => badCase());
+    const assertPublicationAllowed = vi.fn(async () => undefined);
+    const get = vi.fn(async () => ({
+      state: "active",
+      subjectId: "editor-1",
+    }));
+    const app = qualityApp({ createBadCase } as unknown as QualityControlRepository, {
+      access: {
+        createPermissionSnapshot: vi.fn(async () => {
+          throw new Error("legacy permission issuance must not run");
+        }),
+      } as never,
+      answerTraces: {
+        get: vi.fn(async () => ({
+          ...visibleTrace(),
+          capabilityGrantId: CAPABILITY_GRANT_ID,
+          permissionSnapshot: undefined,
+          subjectId: undefined,
+        })),
+      } as never,
+      assets: { get: vi.fn(async () => null) } as never,
+      capabilityGrant: {
+        contentScopeIds: ["tenant:tenant-1", "source:camera"],
+        grantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c49",
+        subject: "editor-1",
+      },
+      capabilityGrants: { assertPublicationAllowed, get } as never,
+      nodes: {
+        getMany: vi.fn(async () => []),
+        getManyByIdsAcrossGenerations: vi.fn(async () => []),
+      } as never,
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/quality/bad-cases`, {
+      body: JSON.stringify({ reason: "Regression", traceId: TRACE_ID }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status, await response.clone().text()).toBe(201);
+    expect(assertPublicationAllowed).toHaveBeenCalledWith({
+      grantId: CAPABILITY_GRANT_ID,
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: "tenant-1",
+    });
+    expect(createBadCase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c49",
+        traceId: TRACE_ID,
+      }),
+    );
   });
 
   it("fails every quality endpoint closed for a missing space or unavailable runtime", async () => {
@@ -904,7 +970,10 @@ describe("quality-control handlers", () => {
         access,
         answerTraces: { get: vi.fn(async () => trace) } as never,
         assets: { get: vi.fn(async () => null) } as never,
-        nodes: { getMany: vi.fn(async () => []) } as never,
+        nodes: {
+          getMany: vi.fn(async () => []),
+          getManyByIdsAcrossGenerations: vi.fn(async () => []),
+        } as never,
       },
     );
 
@@ -1139,7 +1208,10 @@ describe("quality-control handlers", () => {
             updatedAt: NOW,
           })),
         } as never,
-        nodes: { getMany: vi.fn(async () => []) } as never,
+        nodes: {
+          getMany: vi.fn(async () => []),
+          getManyByIdsAcrossGenerations: vi.fn(async () => []),
+        } as never,
         runtimeSnapshots: {
           assertReady: vi.fn(async () => undefined),
           resolve: vi.fn(async () => frozen),
@@ -1322,7 +1394,10 @@ describe("quality-control handlers", () => {
             updatedAt: NOW,
           })),
         } as never,
-        nodes: { getMany: vi.fn(async () => []) } as never,
+        nodes: {
+          getMany: vi.fn(async () => []),
+          getManyByIdsAcrossGenerations: vi.fn(async () => []),
+        } as never,
         runtimeSnapshots: {
           assertReady: vi.fn(async () => undefined),
           resolve: vi.fn(async () => frozen),
@@ -1366,7 +1441,10 @@ describe("quality-control handlers", () => {
         } as never,
         answerTraces: { get: vi.fn(async () => trace) } as never,
         assets: { get: vi.fn(async () => null) } as never,
-        nodes: { getMany: vi.fn(async () => []) } as never,
+        nodes: {
+          getMany: vi.fn(async () => []),
+          getManyByIdsAcrossGenerations: vi.fn(async () => []),
+        } as never,
       });
       const response = await app.request(`/knowledge-spaces/${SPACE_ID}/quality/bad-cases`, {
         body: JSON.stringify({ reason: "Visibility recheck", traceId: TRACE_ID }),
@@ -1418,6 +1496,9 @@ function qualityApp(
     readonly access?: Parameters<typeof registerQualityControlHandlers>[0]["access"];
     readonly answerTraces?: Parameters<typeof registerQualityControlHandlers>[0]["answerTraces"];
     readonly assets?: Parameters<typeof registerQualityControlHandlers>[0]["assets"];
+    readonly capabilityGrants?: Parameters<
+      typeof registerQualityControlHandlers
+    >[0]["capabilityGrants"];
     readonly goldenQuestions?: Parameters<
       typeof registerQualityControlHandlers
     >[0]["goldenQuestions"];
@@ -1489,6 +1570,7 @@ function qualityApp(
     answerTraces: overrides.answerTraces ?? ({} as never),
     app,
     assets: overrides.assets ?? ({} as never),
+    ...(overrides.capabilityGrants ? { capabilityGrants: overrides.capabilityGrants } : {}),
     goldenQuestions: overrides.goldenQuestions ?? ({} as never),
     nodes: overrides.nodes ?? ({} as never),
     repository,

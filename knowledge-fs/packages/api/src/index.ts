@@ -1663,6 +1663,7 @@ export function createKnowledgeGateway({
     answerTraces: answerTraceRepository,
     app,
     assets,
+    ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
     goldenQuestions: questions,
     nodes,
     ...(qualityControl ? { repository: qualityControl.repository } : {}),

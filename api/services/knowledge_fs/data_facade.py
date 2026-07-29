@@ -15,6 +15,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
+    KnowledgeFSBadCaseCreatePayload,
+    KnowledgeFSBadCaseListResponse,
+    KnowledgeFSBadCaseResponse,
+    KnowledgeFSBadCaseTraceReferenceResponse,
+    KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
@@ -33,6 +38,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSGoldenQuestionListResponse,
+    KnowledgeFSGoldenQuestionPayload,
+    KnowledgeFSGoldenQuestionRemotePayload,
+    KnowledgeFSGoldenQuestionResponse,
+    KnowledgeFSGoldenQuestionUpdateRemotePayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewBaseStatsResponse,
@@ -40,6 +50,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSProfileMigrationResponse,
+    KnowledgeFSQualityReplayPayload,
+    KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQueryResponse,
     KnowledgeFSResearchTaskCreatePayload,
@@ -1242,6 +1254,206 @@ class KnowledgeFSDataFacade:
             query=(("cursor", cursor),) if cursor else (),
         )
         return KnowledgeFSTraceListResponse.model_validate(raw)
+
+    def list_golden_questions(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> KnowledgeFSGoldenQuestionListResponse:
+        query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listGoldenQuestions",
+            query=query,
+        )
+        return KnowledgeFSGoldenQuestionListResponse.model_validate(raw)
+
+    def create_golden_question(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSGoldenQuestionPayload,
+    ) -> KnowledgeFSGoldenQuestionResponse:
+        metadata: dict[str, object] = {"annotation": payload.annotation}
+        if payload.source_bad_case_id is not None:
+            metadata["sourceBadCaseId"] = payload.source_bad_case_id
+        remote_payload = KnowledgeFSGoldenQuestionRemotePayload(
+            metadata=metadata,
+            question=payload.question,
+            tags=payload.tags,
+        )
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="createGoldenQuestion",
+            payload=remote_payload,
+        )
+        return KnowledgeFSGoldenQuestionResponse.model_validate(raw)
+
+    def update_golden_question(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        question_id: str,
+        payload: KnowledgeFSGoldenQuestionPayload,
+    ) -> KnowledgeFSGoldenQuestionResponse:
+        metadata: dict[str, object] = {"annotation": payload.annotation}
+        if payload.source_bad_case_id is not None:
+            metadata["sourceBadCaseId"] = payload.source_bad_case_id
+        remote_payload = KnowledgeFSGoldenQuestionUpdateRemotePayload(
+            metadata=metadata,
+            question=payload.question,
+            tags=payload.tags,
+        )
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="updateGoldenQuestion",
+            resource_id=question_id,
+            path_parameters=(("questionId", question_id),),
+            payload=remote_payload,
+        )
+        return KnowledgeFSGoldenQuestionResponse.model_validate(raw)
+
+    def delete_golden_question(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        question_id: str,
+    ) -> None:
+        self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="deleteGoldenQuestion",
+            resource_id=question_id,
+            path_parameters=(("questionId", question_id),),
+        )
+
+    def list_bad_cases(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> KnowledgeFSBadCaseListResponse:
+        query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listQualityBadCases",
+            query=query,
+        )
+        return KnowledgeFSBadCaseListResponse.model_validate(raw)
+
+    def create_bad_case(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSBadCaseCreatePayload,
+    ) -> KnowledgeFSBadCaseResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="createQualityBadCase",
+            payload=payload,
+        )
+        return KnowledgeFSBadCaseResponse.model_validate(raw)
+
+    def get_bad_case(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        bad_case_id: str,
+    ) -> KnowledgeFSBadCaseResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getQualityBadCase",
+            resource_id=bad_case_id,
+            path_parameters=(("badCaseId", bad_case_id),),
+        )
+        return KnowledgeFSBadCaseResponse.model_validate(raw)
+
+    def update_bad_case(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        bad_case_id: str,
+        payload: KnowledgeFSBadCaseUpdatePayload,
+    ) -> KnowledgeFSBadCaseResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="updateQualityBadCase",
+            resource_id=bad_case_id,
+            path_parameters=(("badCaseId", bad_case_id),),
+            payload=payload,
+        )
+        return KnowledgeFSBadCaseResponse.model_validate(raw)
+
+    def get_bad_case_trace_reference(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        bad_case_id: str,
+    ) -> KnowledgeFSBadCaseTraceReferenceResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getQualityBadCaseTraceReference",
+            resource_id=bad_case_id,
+            path_parameters=(("badCaseId", bad_case_id),),
+        )
+        return KnowledgeFSBadCaseTraceReferenceResponse.model_validate(raw)
+
+    def create_quality_replay(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSQualityReplayPayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSQualityReplayResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="createQualityReplay",
+            payload=payload,
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSQualityReplayResponse.model_validate(raw)
 
     def get_trace(
         self, *, tenant_id: str, account_id: str, control_space_id: str, trace_id: str

@@ -5,12 +5,26 @@ import { RetrievalTestPage } from '../retrieval-test-page'
 
 const apiMock = vi.hoisted(() => ({
   cancelResearch: vi.fn(),
+  createBadCase: vi.fn(),
+  createGolden: vi.fn(),
   createResearch: vi.fn(),
   planResearch: vi.fn(),
   queryAdmission: vi.fn(),
   refetchPartials: vi.fn(),
   refetchTasks: vi.fn(),
   refetchTraces: vi.fn(),
+  traceDetail: undefined as Record<string, unknown> | undefined,
+  traces: [] as Array<Record<string, unknown>>,
+}))
+
+const navigationMock = vi.hoisted(() => ({
+  trace: undefined as string | undefined,
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: () => ({
+    get: (key: string) => (key === 'trace' ? navigationMock.trace : undefined),
+  }),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -21,9 +35,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       const resource = options.queryKey?.[0]
       if (resource === 'traces')
         return {
-          data: { data: [] },
+          data: { data: apiMock.traces },
           isPending: false,
           refetch: apiMock.refetchTraces,
+        }
+      if (resource === 'trace-detail')
+        return {
+          data: apiMock.traceDetail,
+          isPending: false,
         }
       if (resource === 'tasks')
         return {
@@ -46,6 +65,8 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           queries: { admission: { post: apiMock.queryAdmission } },
+          goldenQuestions: { post: apiMock.createGolden },
+          quality: { badCases: { post: apiMock.createBadCase } },
           researchTasks: {
             byTaskId: { delete: apiMock.cancelResearch },
             plan: { post: apiMock.planResearch },
@@ -73,6 +94,9 @@ vi.mock('@/service/client', () => ({
           },
           traces: {
             byTraceId: {
+              get: {
+                queryOptions: () => ({ queryKey: ['trace-detail'] }),
+              },
               evidence: {
                 get: {
                   queryOptions: () => ({ queryKey: ['evidence'] }),
@@ -112,6 +136,10 @@ describe('RetrievalTestPage', () => {
       updated_at: 1_800_000_000,
     })
     apiMock.refetchTasks.mockResolvedValue(undefined)
+    apiMock.createBadCase.mockResolvedValue({ id: 'bad-case-1' })
+    apiMock.traceDetail = undefined
+    apiMock.traces = []
+    navigationMock.trace = undefined
   })
 
   it('starts research from the segmented composer with the planned budget', async () => {
@@ -151,5 +179,80 @@ describe('RetrievalTestPage', () => {
       },
       params: { control_space_id: 'space-1' },
     })
+  })
+
+  it('persists a selected trace as a production bad case', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'Why did retrieval miss the refund exception?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    const user = userEvent.setup()
+    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByText('Why did retrieval miss the refund exception?'))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(apiMock.createBadCase).toHaveBeenCalledWith({
+        body: {
+          reason: 'Why did retrieval miss the refund exception?',
+          tags: ['retrieval-test'],
+          trace_id: 'trace-1',
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(screen.getByText('dataset.newKnowledge.retrievalTest.savedBadCase')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.viewInQuality' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/quality')
+  })
+
+  it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
+    navigationMock.trace = 'trace-old'
+    apiMock.traceDetail = {
+      completed: true,
+      created_at: '2026-07-01T00:00:00.000Z',
+      id: 'trace-old',
+      mode: 'deep',
+      profile: {},
+      query: 'An older production question',
+      scores: {},
+      stages: [],
+    }
+    const user = userEvent.setup()
+    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('heading', { name: 'An older production question' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(apiMock.createBadCase).toHaveBeenCalledWith({
+        body: {
+          reason: 'An older production question',
+          tags: ['retrieval-test'],
+          trace_id: 'trace-old',
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
   })
 })

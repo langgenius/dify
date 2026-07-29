@@ -1002,6 +1002,34 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
             None,
         ),
         (
+            "list_golden_questions",
+            "KnowledgeFSGoldenQuestionListResponse",
+            "listGoldenQuestions",
+            {"cursor": "cursor-1", "limit": 25},
+            None,
+        ),
+        (
+            "list_bad_cases",
+            "KnowledgeFSBadCaseListResponse",
+            "listQualityBadCases",
+            {"cursor": "cursor-1", "limit": 25},
+            None,
+        ),
+        (
+            "get_bad_case",
+            "KnowledgeFSBadCaseResponse",
+            "getQualityBadCase",
+            {"bad_case_id": "bad-case-1"},
+            "bad-case-1",
+        ),
+        (
+            "create_quality_replay",
+            "KnowledgeFSQualityReplayResponse",
+            "createQualityReplay",
+            {"payload": MagicMock(), "idempotency_key": "quality-replay-once"},
+            None,
+        ),
+        (
             "cancel_background_task",
             "KnowledgeFSBackgroundTaskResponse",
             "cancelBackgroundTask",
@@ -1229,6 +1257,10 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
         assert delegated.call_args.kwargs["resource_id"] == child_resource_id
     if operation_id == "listBackgroundTasks":
         assert delegated.call_args.kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
+    if operation_id in {"listGoldenQuestions", "listQualityBadCases"}:
+        assert delegated.call_args.kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
+    if operation_id == "createQualityReplay":
+        assert delegated.call_args.kwargs["headers"] == (("Idempotency-Key", "quality-replay-once"),)
     if operation_id == "getOverviewQueryOutcomes":
         assert delegated.call_args.kwargs["query"] == (("window", "7d"),)
     if operation_id == "cancelBackgroundTask":

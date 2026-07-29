@@ -21,6 +21,7 @@ import {
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
+  newKnowledgeQualityPath,
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
 } from './routes'
@@ -116,11 +117,13 @@ export function KnowledgeSpaceShell({
   const sourcesPath = newKnowledgeDetailPath(knowledgeSpaceId)
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const retrievalTestPath = newKnowledgeRetrievalTestPath(knowledgeSpaceId)
+  const qualityPath = newKnowledgeQualityPath(knowledgeSpaceId)
   const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
   const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
   const retrievalTestActive =
     pathname === retrievalTestPath || pathname.startsWith(`${retrievalTestPath}/`)
+  const qualityActive = pathname === qualityPath || pathname.startsWith(`${qualityPath}/`)
   const settingsActive = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`)
   const showDeferredPage = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   const navItemClassName =
@@ -279,19 +282,21 @@ export function KnowledgeSpaceShell({
               {navIcon('i-ri-search-eye-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.retrievalTest.title'])}
             </Link>
-            <Button
+            <Link
+              href={qualityPath}
               aria-label={t(($) => $['newKnowledge.quality'])}
-              variant="ghost"
+              aria-current={qualityActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
-                'text-text-secondary',
+                qualityActive
+                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
               )}
-              onClick={showDeferredPage}
             >
               {navIcon('i-ri-shield-check-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.quality'])}
-            </Button>
+            </Link>
             <Link
               href={settingsPath}
               aria-label={tCommon(($) => $['datasetMenus.settings'])}

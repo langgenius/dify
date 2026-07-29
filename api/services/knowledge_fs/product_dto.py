@@ -129,6 +129,10 @@ class KnowledgeFSCursorQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class KnowledgeFSQualityListQuery(KnowledgeFSCursorQuery):
+    limit: int = Field(default=50, ge=1, le=100)
+
+
 class KnowledgeFSSourceListQuery(KnowledgeFSCursorQuery):
     limit: int = Field(default=50, ge=1, le=200)
 
@@ -1640,6 +1644,142 @@ class KnowledgeFSTraceListResponse(ResponseModel):
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
+class KnowledgeFSGoldenQuestionPayload(BaseModel):
+    annotation: str = Field(min_length=1, max_length=2_000)
+    question: str = Field(min_length=1, max_length=4_000)
+    source_bad_case_id: str | None = Field(default=None, max_length=255)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("annotation", "question", mode="before")
+    @classmethod
+    def strip_required_text(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(tag.strip() for tag in value if tag.strip()))
+
+
+class KnowledgeFSGoldenQuestionRemotePayload(BaseModel):
+    expected_evidence_ids: list[str] = Field(
+        default_factory=list,
+        serialization_alias="expectedEvidenceIds",
+    )
+    metadata: dict[str, object]
+    question: str
+    tags: list[str]
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+
+class KnowledgeFSGoldenQuestionUpdateRemotePayload(BaseModel):
+    metadata: dict[str, object]
+    question: str
+    tags: list[str]
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+
+class KnowledgeFSGoldenQuestionResponse(ResponseModel):
+    id: str
+    question: str
+    annotation: str
+    tags: list[str]
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+    @model_validator(mode="before")
+    @classmethod
+    def read_annotation_metadata(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        metadata = value.get("metadata")
+        annotation = metadata.get("annotation") if isinstance(metadata, dict) else None
+        return {**value, "annotation": annotation if isinstance(annotation, str) else ""}
+
+
+class KnowledgeFSGoldenQuestionListResponse(ResponseModel):
+    data: list[KnowledgeFSGoldenQuestionResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSBadCaseUpdatePayload(BaseModel):
+    expected_revision: int = Field(ge=1, serialization_alias="expectedRevision")
+    reason: str | None = Field(default=None, min_length=1, max_length=4_000)
+    replay_run_id: str | None = Field(default=None, serialization_alias="replayRunId")
+    status: Literal["open", "replaying", "fixed", "dismissed"]
+    tags: list[str] | None = Field(default=None, max_length=50)
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def strip_optional_reason(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class KnowledgeFSBadCaseCreatePayload(BaseModel):
+    reason: str = Field(min_length=1, max_length=4_000)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    trace_id: str = Field(min_length=1, serialization_alias="traceId")
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def strip_reason(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(tag.strip() for tag in value if tag.strip()))
+
+
+class KnowledgeFSBadCaseResponse(ResponseModel):
+    id: str
+    question: str = Field(default="", validation_alias=AliasChoices("question", "query"))
+    reason: str
+    replay_run_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("replay_run_id", "replayRunId"),
+    )
+    revision: int = Field(ge=1)
+    status: Literal["open", "replaying", "fixed", "dismissed"]
+    tags: list[str]
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSBadCaseListResponse(ResponseModel):
+    data: list[KnowledgeFSBadCaseResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSBadCaseTraceReferenceResponse(ResponseModel):
+    trace_id: str = Field(validation_alias=AliasChoices("trace_id", "traceId"))
+
+
+class KnowledgeFSQualityReplayPayload(BaseModel):
+    golden_question_ids: list[str] = Field(
+        min_length=1,
+        max_length=100,
+        serialization_alias="goldenQuestionIds",
+    )
+    mode: Literal["deep", "fast", "research"] | None = None
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+
+class KnowledgeFSQualityReplayResponse(ResponseModel):
+    id: str
+    revision: int = Field(ge=1)
+    state: Literal["queued", "running", "passed", "failed", "canceled"]
+
+
 class KnowledgeFSUploadSessionResponse(ResponseModel):
     compilation_job_id: str | None = Field(
         default=None, validation_alias=AliasChoices("compilation_job_id", "compilationJobId")
@@ -1827,6 +1967,7 @@ __all__ = [
     "KnowledgeFSOverviewWindowQuery",
     "KnowledgeFSPermissionListResponse",
     "KnowledgeFSPermissionResponse",
+    "KnowledgeFSQualityListQuery",
     "KnowledgeFSQueryAdmissionResponse",
     "KnowledgeFSQueryCreatePayload",
     "KnowledgeFSQueryResponse",

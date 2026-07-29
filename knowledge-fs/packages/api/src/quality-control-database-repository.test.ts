@@ -867,6 +867,54 @@ describe("database quality-control repository", () => {
     expect(replayFence?.sql).toContain("FOR UPDATE");
   });
 
+  it.each([
+    ["passed", "fixed"],
+    ["failed", "open"],
+    ["canceled", "open"],
+  ] as const)(
+    "collapses a late bad-case link to the terminal %s replay into %s",
+    async (replayState, expectedStatus) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase("postgres", async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [{ id: SPACE_ID }], rowsAffected: 1 };
+        }
+        if (input.tableName === "quality_bad_cases" && input.operation === "select") {
+          return { rows: [badCaseRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "quality_replay_runs" && input.operation === "select") {
+          return { rows: [replayRow({ state: replayState })], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseQualityControlRepository({
+        database,
+        generateId: fixedQualityId(950),
+        maxListLimit: 100,
+        now: () => NOW,
+      });
+
+      await expect(
+        repository.updateBadCase({
+          actorSubjectId: "editor-1",
+          candidateGrants: ["tenant:tenant-1", "subject:editor-1"],
+          expectedRevision: 1,
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
+          knowledgeSpaceId: SPACE_ID,
+          permission: permissionBinding(),
+          replayRunId: RUN_ID,
+          status: "replaying",
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toMatchObject({ replayRunId: RUN_ID, status: expectedStatus });
+      const update = calls.find(
+        (call) => call.tableName === "quality_bad_cases" && call.operation === "update",
+      );
+      expect(update?.params[0]).toBe(expectedStatus);
+    },
+  );
+
   it("retries with a fresh permission and frozen publication snapshot", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const database = testDatabase(
@@ -1046,6 +1094,84 @@ describe("database quality-control repository", () => {
       )?.sql,
     ).toContain("<> 'passed'");
   });
+
+  it.each([
+    ["passed", "fixed"],
+    ["failed", "open"],
+  ] as const)(
+    "moves linked replaying bad cases to %s terminal state",
+    async (state, badCaseStatus) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase("postgres", async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [{ id: SPACE_ID }], rowsAffected: 1 };
+        }
+        if (input.tableName === "quality_replay_runs" && input.operation === "select") {
+          return {
+            rows: [
+              replayRow({
+                leaseExpiresAt: "2026-07-14T16:00:00.000Z",
+                leaseOwner: "worker-1",
+                leaseToken: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52",
+                state: "running",
+              }),
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "quality_replay_items" && input.sql.includes("not_passed_count")) {
+          return { rows: [{ not_passed_count: 0 }], rowsAffected: 1 };
+        }
+        if (input.tableName === "quality_bad_cases" && input.operation === "select") {
+          return {
+            rows: [
+              {
+                ...badCaseRow(),
+                replay_run_id: RUN_ID,
+                status: "replaying",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+      });
+      const repository = createDatabaseQualityControlRepository({
+        database,
+        generateId: fixedQualityId(950),
+        maxListLimit: 100,
+      });
+
+      await repository.completeReplay({
+        expectedLeaseToken: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52",
+        id: RUN_ID,
+        now: NOW,
+        state,
+      });
+
+      const badCaseUpdate = calls.find(
+        (call) => call.tableName === "quality_bad_cases" && call.operation === "update",
+      );
+      expect(badCaseUpdate?.params).toEqual([
+        badCaseStatus,
+        2,
+        NOW,
+        "tenant-1",
+        SPACE_ID,
+        badCaseRow().id,
+        1,
+        RUN_ID,
+      ]);
+      expect(
+        calls.find(
+          (call) => call.tableName === "quality_resource_history" && call.operation === "insert",
+        )?.params,
+      ).toEqual(
+        expect.arrayContaining(["bad-case", badCaseRow().id, "replaying", badCaseStatus, 2]),
+      );
+    },
+  );
 
   it.each(["postgres", "tidb"] as const)(
     "claims a replay/outbox lease transactionally and reconstructs the frozen run on %s",
@@ -1736,7 +1862,11 @@ describe("database quality-control repository", () => {
       if (input.tableName === "quality_bad_cases") {
         return {
           rows: [
-            { ...badCaseRow(), replay_run_id: RUN_ID },
+            {
+              ...badCaseRow(),
+              query: "Why was the refund exception missed?",
+              replay_run_id: RUN_ID,
+            },
             {
               ...badCaseRow(),
               created_at: "2026-07-14T14:00:00.000Z",
@@ -1815,6 +1945,7 @@ describe("database quality-control repository", () => {
       expect.not.objectContaining({ fromStatus: expect.anything(), reason: expect.anything() }),
     ]);
     await expect(repository.getBadCase({ ...scope, id: badCaseRow().id })).resolves.toMatchObject({
+      query: "Why was the refund exception missed?",
       replayRunId: RUN_ID,
     });
     const badCases = await repository.listBadCases({
@@ -1824,6 +1955,11 @@ describe("database quality-control repository", () => {
       status: "open",
     });
     expect(badCases.nextCursor).toEqual({ createdAt: NOW, id: badCaseRow().id });
+    const badCaseReads = calls.filter(
+      (call) => call.tableName === "quality_bad_cases" && call.operation === "select",
+    );
+    expect(badCaseReads[0]?.sql).toContain("answer_traces");
+    expect(badCaseReads[0]?.sql).toContain("query");
 
     await expect(repository.getReplay({ ...scope, id: RUN_ID })).resolves.toMatchObject({
       error: "provider failure",
@@ -1896,7 +2032,7 @@ describe("database quality-control repository", () => {
         }
         if (input.tableName === "quality_replay_runs" && input.operation === "select") {
           return {
-            rows: replayVisible ? [{ id: RUN_ID }] : [],
+            rows: replayVisible ? [{ id: RUN_ID, state: "queued" }] : [],
             rowsAffected: replayVisible ? 1 : 0,
           };
         }

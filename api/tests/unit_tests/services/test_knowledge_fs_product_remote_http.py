@@ -56,6 +56,28 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
     assert captured["follow_redirects"] is False
 
 
+def test_remote_client_accepts_no_content_json_operation(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = httpx.Response(204)
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    result = client.execute_json(
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="deleteGoldenQuestion",
+            method="DELETE",
+            path="/knowledge-spaces/space-1/golden-questions/question-1",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload=None,
+        )
+    )
+
+    assert result is None
+
+
 def test_remote_client_posts_bounded_multipart_with_capability_only_headers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

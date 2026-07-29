@@ -98,6 +98,32 @@ describe("golden question repositories", () => {
     ).rejects.toThrow("Golden question list limit exceeds maxListLimit=1");
   });
 
+  it("deduplicates in-memory promotion retries by source bad case", async () => {
+    const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f72aa";
+    const repository = createInMemoryGoldenQuestionRepository({
+      generateId: nextId([
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f7001",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f7002",
+      ]),
+      maxListLimit: 10,
+      maxQuestions: 10,
+    });
+    const input = {
+      knowledgeSpaceId,
+      metadata: { sourceBadCaseId: "bad-case-1" },
+      permission: guardedPermission(),
+      requiredPermissionScope: [],
+    } as const;
+
+    const first = await repository.create({ ...input, question: "Original question" });
+    const retried = await repository.create({ ...input, question: "Changed retry payload" });
+
+    expect(retried).toEqual(first);
+    await expect(
+      repository.list({ ...goldenReadScope(), knowledgeSpaceId, limit: 10 }),
+    ).resolves.toMatchObject({ items: [{ id: first.id }] });
+  });
+
   it("fails closed for legacy and narrowed-grant in-memory reads before pagination", async () => {
     const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f72aa";
     const repository = createInMemoryGoldenQuestionRepository({
@@ -284,6 +310,48 @@ describe("golden question repositories", () => {
       expect(call.sql).toContain("active_slot");
     }
   });
+
+  it.each(["postgres", "tidb"] as const)(
+    "deduplicates database promotion retries under the space lock on %s",
+    async (dialect) => {
+      const fake = createFakeGoldenQuestionExecutor();
+      const repository = createDatabaseGoldenQuestionRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: fake.executor,
+          kind: dialect,
+          transaction: async (callback) => callback({ execute: fake.executor }),
+        }),
+        generateId: nextId([
+          "018f0d60-7a49-7cc2-9c1b-5b36f18f7101",
+          "018f0d60-7a49-7cc2-9c1b-5b36f18f7102",
+        ]),
+        maxListLimit: 10,
+        now: () => "2026-05-12T16:18:00.000Z",
+      });
+      const input = {
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f72aa",
+        metadata: { sourceBadCaseId: "bad-case-1" },
+        permission: guardedPermission(),
+        requiredPermissionScope: [],
+      } as const;
+
+      const first = await repository.create({ ...input, question: "Original question" });
+      const retried = await repository.create({ ...input, question: "Changed retry payload" });
+
+      expect(retried).toEqual(first);
+      expect(fake.calls.filter((call) => call.operation === "insert")).toHaveLength(1);
+      const idempotencyLookup = fake.calls.find(
+        (call) =>
+          call.operation === "select" &&
+          call.tableName === "golden_questions" &&
+          call.sql.includes("sourceBadCaseId"),
+      );
+      expect(idempotencyLookup?.params.at(-1)).toBe("bad-case-1");
+      expect(idempotencyLookup?.sql).toContain(
+        dialect === "postgres" ? "->> 'sourceBadCaseId'" : "JSON_EXTRACT",
+      );
+    },
+  );
 
   it.each(["postgres", "tidb"] as const)(
     "atomically rejects create when a deletion is active (%s)",
@@ -619,6 +687,15 @@ function createFakeGoldenQuestionExecutor() {
     }
 
     if (input.operation === "select") {
+      if (input.sql.includes("sourceBadCaseId")) {
+        const [, knowledgeSpaceId, , sourceBadCaseId] = input.params;
+        const row = [...rows.values()].find(
+          (candidate) =>
+            candidate.knowledge_space_id === String(knowledgeSpaceId) &&
+            (candidate.metadata as Record<string, unknown>).sourceBadCaseId === sourceBadCaseId,
+        );
+        return { rows: row ? [{ ...row }] : [], rowsAffected: row ? 1 : 0 };
+      }
       if (input.sql.includes("ORDER BY")) {
         const [, knowledgeSpaceId, , cursorCreatedAt, cursorId, possibleLimit] = input.params;
         const hasCursor = typeof possibleLimit === "number";

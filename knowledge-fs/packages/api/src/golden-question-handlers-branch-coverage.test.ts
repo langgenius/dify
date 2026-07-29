@@ -137,6 +137,26 @@ describe("golden-question handler branch coverage", () => {
     const missing = goldenFixture({ asset: null, body: { expectedEvidenceIds: [ASSET_ID] } });
     expect((await missing.invoke(updateGoldenQuestionRoute)).status).toBe(404);
 
+    const metadata = goldenFixture({
+      body: { metadata: { annotation: "Updated annotation" }, question: "Updated?" },
+      existing: question({
+        metadata: { annotation: "Old annotation", sourceBadCaseId: "bad-case-1" },
+      }),
+    });
+    expect((await metadata.invoke(updateGoldenQuestionRoute)).status).toBe(200);
+    expect(metadata.questions.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          annotation: "Updated annotation",
+          sourceBadCaseId: "bad-case-1",
+        },
+      }),
+    );
+
+    const absent = goldenFixture({ existing: null });
+    expect((await absent.invoke(updateGoldenQuestionRoute)).status).toBe(404);
+    expect(absent.questions.update).not.toHaveBeenCalled();
+
     const lost = goldenFixture({ updated: null });
     expect((await lost.invoke(updateGoldenQuestionRoute)).status).toBe(404);
   });

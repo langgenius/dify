@@ -60,6 +60,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBackgroundTaskListQuery,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
+    KnowledgeFSBadCaseCreatePayload,
+    KnowledgeFSBadCaseListResponse,
+    KnowledgeFSBadCaseResponse,
+    KnowledgeFSBadCaseTraceReferenceResponse,
+    KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
@@ -87,6 +92,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSExternalAccessResponse,
+    KnowledgeFSGoldenQuestionListResponse,
+    KnowledgeFSGoldenQuestionPayload,
+    KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSIdempotencyHeader,
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentListResponse,
@@ -102,6 +110,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSPermissionListResponse,
     KnowledgeFSProfileMigrationResponse,
+    KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayPayload,
+    KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQueryResponse,
@@ -174,6 +185,8 @@ register_schema_models(
     console_ns,
     KnowledgeFSAppBindingPayload,
     KnowledgeFSBackgroundTaskListQuery,
+    KnowledgeFSBadCaseCreatePayload,
+    KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSCredentialCreatePayload,
     KnowledgeFSCursorQuery,
@@ -182,10 +195,13 @@ register_schema_models(
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
+    KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSMembersReplacePayload,
     KnowledgeFSQueryCreatePayload,
+    KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayPayload,
     KnowledgeFSResearchTaskPartialsQuery,
     KnowledgeFSResearchTaskPlanPayload,
     KnowledgeFSResearchTaskCreatePayload,
@@ -220,6 +236,9 @@ register_response_schema_models(
     KnowledgeFSAppBindingResponse,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
+    KnowledgeFSBadCaseListResponse,
+    KnowledgeFSBadCaseResponse,
+    KnowledgeFSBadCaseTraceReferenceResponse,
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCredentialCreateResponse,
@@ -234,11 +253,14 @@ register_response_schema_models(
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSGoldenQuestionListResponse,
+    KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSExternalAccessResponse,
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSPermissionListResponse,
     KnowledgeFSQueryResponse,
+    KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryStreamCapabilityResponse,
     KnowledgeFSResearchTaskResponse,
@@ -2130,6 +2152,227 @@ class KnowledgeFSSpaceTracesApi(Resource):
             cursor=query.cursor,
         )
         return dump_response(KnowledgeFSTraceListResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions")
+class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS golden questions",
+        console_ns.models[KnowledgeFSGoldenQuestionListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSQualityListQuery.model_validate(request.args.to_dict(flat=True))
+        result = _console_services().facade.list_golden_questions(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSGoldenQuestionListResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED,
+        "KnowledgeFS golden question created",
+        console_ns.models[KnowledgeFSGoldenQuestionResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.create_golden_question(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSGoldenQuestionPayload),
+        )
+        return dump_response(KnowledgeFSGoldenQuestionResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/<string:question_id>")
+class KnowledgeFSSpaceGoldenQuestionApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS golden question updated",
+        console_ns.models[KnowledgeFSGoldenQuestionResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def patch(self, control_space_id: str, question_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.update_golden_question(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            question_id=question_id,
+            payload=_payload(KnowledgeFSGoldenQuestionPayload),
+        )
+        return dump_response(KnowledgeFSGoldenQuestionResponse, result)
+
+    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS golden question deleted")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def delete(self, control_space_id: str, question_id: str):
+        actor_id, tenant_id = _actor()
+        _console_services().facade.delete_golden_question(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            question_id=question_id,
+        )
+        return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/bad-cases")
+class KnowledgeFSSpaceBadCasesApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS bad cases",
+        console_ns.models[KnowledgeFSBadCaseListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSQualityListQuery.model_validate(request.args.to_dict(flat=True))
+        result = _console_services().facade.list_bad_cases(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSBadCaseListResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSBadCaseCreatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED,
+        "KnowledgeFS bad case created",
+        console_ns.models[KnowledgeFSBadCaseResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.create_bad_case(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSBadCaseCreatePayload),
+        )
+        return dump_response(KnowledgeFSBadCaseResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/replay-runs")
+class KnowledgeFSSpaceQualityReplayApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSQualityReplayPayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS quality replay queued",
+        console_ns.models[KnowledgeFSQualityReplayResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.create_quality_replay(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSQualityReplayPayload),
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSQualityReplayResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/quality/bad-cases/<string:bad_case_id>/trace-reference"
+)
+class KnowledgeFSSpaceBadCaseTraceReferenceApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS bad case trace reference",
+        console_ns.models[KnowledgeFSBadCaseTraceReferenceResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, bad_case_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_bad_case_trace_reference(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            bad_case_id=bad_case_id,
+        )
+        return dump_response(KnowledgeFSBadCaseTraceReferenceResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/bad-cases/<string:bad_case_id>")
+class KnowledgeFSSpaceBadCaseApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS bad case",
+        console_ns.models[KnowledgeFSBadCaseResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, bad_case_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_bad_case(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            bad_case_id=bad_case_id,
+        )
+        return dump_response(KnowledgeFSBadCaseResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSBadCaseUpdatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS bad case updated",
+        console_ns.models[KnowledgeFSBadCaseResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def patch(self, control_space_id: str, bad_case_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.update_bad_case(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            bad_case_id=bad_case_id,
+            payload=_payload(KnowledgeFSBadCaseUpdatePayload),
+        )
+        return dump_response(KnowledgeFSBadCaseResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>")

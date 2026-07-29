@@ -129,6 +129,7 @@ export interface ProductionBadCase {
   readonly createdAt: string;
   readonly id: string;
   readonly knowledgeSpaceId: string;
+  readonly query?: string | undefined;
   readonly reason: string;
   readonly replayRunId?: string | undefined;
   readonly revision: number;
@@ -227,9 +228,10 @@ export interface QualityControlRepository {
   }): Promise<QualityReplayRun | null>;
   createBadCase(input: {
     readonly actorSubjectId: string;
+    readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
-    readonly permission: QualityPermissionBinding;
+    readonly permission?: QualityPermissionBinding | undefined;
     readonly reason: string;
     readonly tags: readonly string[];
     readonly tenantId: string;
@@ -337,11 +339,12 @@ export interface QualityControlRepository {
   }): Promise<QualityTrendReport>;
   updateBadCase(input: {
     readonly actorSubjectId: string;
+    readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
     readonly expectedRevision: number;
     readonly id: string;
     readonly knowledgeSpaceId: string;
-    readonly permission: QualityPermissionBinding;
+    readonly permission?: QualityPermissionBinding | undefined;
     readonly reason?: string | undefined;
     readonly replayRunId?: string | undefined;
     readonly status: QualityBadCaseState;

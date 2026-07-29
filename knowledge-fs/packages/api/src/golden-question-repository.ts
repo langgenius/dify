@@ -9,6 +9,7 @@ import {
   GoldenQuestionSchema,
 } from "@knowledge/core";
 
+import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
 import { stringColumn } from "./database-row-utils";
 import {
   databasePlaceholder,
@@ -22,7 +23,7 @@ import {
 } from "./knowledge-space-access-control";
 import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
 
-export interface GoldenQuestionPermissionBinding {
+interface LegacyGoldenQuestionPermissionBinding {
   readonly accessChannel: "interactive" | "service_api" | "mcp" | "agent";
   readonly candidateGrants: readonly string[];
   readonly permissionSnapshotId: string;
@@ -30,6 +31,17 @@ export interface GoldenQuestionPermissionBinding {
   readonly requestedBySubjectId: string;
   readonly tenantId: string;
 }
+
+interface CapabilityGoldenQuestionPermissionBinding {
+  readonly candidateGrants: readonly string[];
+  readonly capabilityGrantId: string;
+  readonly requestedBySubjectId: string;
+  readonly tenantId: string;
+}
+
+export type GoldenQuestionPermissionBinding =
+  | LegacyGoldenQuestionPermissionBinding
+  | CapabilityGoldenQuestionPermissionBinding;
 
 export interface GoldenQuestionReadScope {
   readonly candidateGrants: readonly string[];
@@ -284,6 +296,16 @@ export function createInMemoryGoldenQuestionRepository({
         input.requiredPermissionScope,
         input.permission.candidateGrants,
       );
+      const sourceBadCaseId = goldenQuestionSourceBadCaseId(input.metadata);
+      if (sourceBadCaseId) {
+        const existing = [...questions.values()].find(
+          (question) =>
+            question.knowledgeSpaceId === input.knowledgeSpaceId &&
+            goldenQuestionSourceBadCaseId(question.metadata) === sourceBadCaseId &&
+            inMemoryGoldenQuestionVisible(provenance.get(question.id), input.permission),
+        );
+        if (existing) return cloneGoldenQuestion(existing);
+      }
       return createStored(input);
     },
     createTrusted: createStored,
@@ -410,7 +432,7 @@ export function createDatabaseGoldenQuestionRepository({
         "created_at",
         "updated_at",
       ];
-      const result = await database.transaction(async (transaction) => {
+      const question = await database.transaction(async (transaction) => {
         assertGoldenQuestionPermissionBinding(input.permission);
         assertGoldenQuestionRequiredPermissionScope(
           input.requiredPermissionScope,
@@ -423,7 +445,7 @@ export function createDatabaseGoldenQuestionRepository({
             tenantId,
           }))
         ) {
-          return { rows: [], rowsAffected: 0 } as const;
+          return null;
         }
         await assertGoldenQuestionDatabasePermission(
           database,
@@ -432,7 +454,17 @@ export function createDatabaseGoldenQuestionRepository({
           input.permission,
           timestamp,
         );
-        return transaction.execute({
+        const sourceBadCaseId = goldenQuestionSourceBadCaseId(input.metadata);
+        if (sourceBadCaseId) {
+          const existing = await databaseGoldenQuestionGetBySourceBadCaseId(database, transaction, {
+            candidateGrants: input.permission.candidateGrants,
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            sourceBadCaseId,
+            tenantId,
+          });
+          if (existing) return existing;
+        }
+        const result = await transaction.execute({
           maxRows: 1,
           operation: "insert",
           params,
@@ -443,24 +475,23 @@ export function createDatabaseGoldenQuestionRepository({
             .join(", ")}${database.dialect === "postgres" ? " RETURNING *" : ""};`,
           tableName,
         });
+        if (result.rowsAffected !== 1 && result.rows.length !== 1) return null;
+        return result.rows[0]
+          ? mapGoldenQuestionRow(result.rows[0])
+          : GoldenQuestionSchema.parse({
+              createdAt: timestamp,
+              expectedEvidenceIds: JSON.parse(expectedEvidenceIds),
+              id,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              metadata: JSON.parse(metadata),
+              question: input.question,
+              tags: JSON.parse(tags),
+              updatedAt: timestamp,
+            });
       });
 
-      if (result.rowsAffected !== 1 && result.rows.length !== 1) {
-        throw new GoldenQuestionDeletionFenceActiveError();
-      }
-
-      return result.rows[0]
-        ? mapGoldenQuestionRow(result.rows[0])
-        : GoldenQuestionSchema.parse({
-            createdAt: timestamp,
-            expectedEvidenceIds: JSON.parse(expectedEvidenceIds),
-            id,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            metadata: JSON.parse(metadata),
-            question: input.question,
-            tags: JSON.parse(tags),
-            updatedAt: timestamp,
-          });
+      if (!question) throw new GoldenQuestionDeletionFenceActiveError();
+      return question;
     },
     delete: async ({ id, knowledgeSpaceId, permission }) =>
       database.transaction(async (transaction) => {
@@ -594,6 +625,41 @@ export function createDatabaseGoldenQuestionRepository({
       });
     },
   };
+}
+
+function goldenQuestionSourceBadCaseId(
+  metadata: Readonly<Record<string, unknown>> | undefined,
+): string | undefined {
+  const value = metadata?.sourceBadCaseId;
+  return typeof value === "string" && value ? value : undefined;
+}
+
+async function databaseGoldenQuestionGetBySourceBadCaseId(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: GoldenQuestionReadScope & {
+    readonly knowledgeSpaceId: string;
+    readonly sourceBadCaseId: string;
+  },
+): Promise<GoldenQuestion | null> {
+  const metadata = `golden.${quoteDatabaseIdentifier(database, "metadata")}`;
+  const sourceBadCaseId =
+    database.dialect === "postgres"
+      ? `${metadata} ->> 'sourceBadCaseId'`
+      : `JSON_UNQUOTE(JSON_EXTRACT(${metadata}, '$.sourceBadCaseId'))`;
+  const result = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [
+      input.tenantId,
+      input.knowledgeSpaceId,
+      JSON.stringify(input.candidateGrants),
+      input.sourceBadCaseId,
+    ],
+    sql: `SELECT golden.* FROM ${quoteDatabaseIdentifier(database, "golden_questions")} golden WHERE golden.${quoteDatabaseIdentifier(database, "tenant_id")} = ${databasePlaceholder(database, 1)} AND golden.${quoteDatabaseIdentifier(database, "knowledge_space_id")} = ${databasePlaceholder(database, 2)} AND ${goldenQuestionPermissionScopeSql(database, `golden.${quoteDatabaseIdentifier(database, "required_permission_scope")}`, databasePlaceholder(database, 3))} AND ${sourceBadCaseId} = ${databasePlaceholder(database, 4)} AND ${goldenQuestionSpaceReadableSql(database, "golden")} LIMIT 1 FOR UPDATE;`,
+    tableName: "golden_questions",
+  });
+  return result.rows[0] ? mapGoldenQuestionRow(result.rows[0]) : null;
 }
 
 async function databaseGoldenQuestionGet(
@@ -801,6 +867,23 @@ async function assertGoldenQuestionDatabasePermission(
   permission: GoldenQuestionPermissionBinding,
   now: string,
 ) {
+  if ("capabilityGrantId" in permission) {
+    const grant = await resolveCapabilityJobPublicationGrant(database, executor, {
+      capabilityGrantId: permission.capabilityGrantId,
+      knowledgeSpaceId,
+      tenantId: permission.tenantId,
+    });
+    if (
+      grant.subjectId !== permission.requestedBySubjectId ||
+      !sameStringSet(grant.contentScopeIds, permission.candidateGrants)
+    ) {
+      throw new KnowledgeSpaceAccessError(
+        "space_access_permission_snapshot_invalid",
+        "Golden-question capability binding does not match the active grant",
+      );
+    }
+    return { permissionScopes: grant.contentScopeIds };
+  }
   const validated = await assertDatabaseKnowledgeSpacePermissionFence({
     database,
     executor,
@@ -825,6 +908,19 @@ async function assertGoldenQuestionDatabasePermission(
 }
 
 function assertGoldenQuestionPermissionBinding(permission: GoldenQuestionPermissionBinding): void {
+  if ("capabilityGrantId" in permission) {
+    if (
+      !permission.tenantId ||
+      !permission.requestedBySubjectId ||
+      new Set(permission.candidateGrants).size !== permission.candidateGrants.length
+    ) {
+      throw new KnowledgeSpaceAccessError(
+        "space_access_permission_snapshot_invalid",
+        "Golden-question capability binding is invalid",
+      );
+    }
+    return;
+  }
   if (
     !permission.tenantId ||
     !permission.requestedBySubjectId ||
@@ -841,11 +937,7 @@ function assertGoldenQuestionPermissionBinding(permission: GoldenQuestionPermiss
 }
 
 function assertGoldenQuestionReadScope(scope: GoldenQuestionReadScope): void {
-  if (
-    !scope.tenantId ||
-    scope.candidateGrants.length === 0 ||
-    new Set(scope.candidateGrants).size !== scope.candidateGrants.length
-  ) {
+  if (!scope.tenantId || new Set(scope.candidateGrants).size !== scope.candidateGrants.length) {
     throw new KnowledgeSpaceAccessError(
       "space_access_permission_snapshot_invalid",
       "Golden-question read scope is invalid",

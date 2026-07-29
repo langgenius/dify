@@ -14,6 +14,7 @@ import {
 
 export const createGoldenQuestionRoute = createRoute({
   method: "post",
+  operationId: "createGoldenQuestion",
   path: "/knowledge-spaces/{id}/golden-questions",
   request: {
     body: {
@@ -58,6 +59,7 @@ export const createGoldenQuestionRoute = createRoute({
 
 export const listGoldenQuestionsRoute = createRoute({
   method: "get",
+  operationId: "listGoldenQuestions",
   path: "/knowledge-spaces/{id}/golden-questions",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -126,6 +128,7 @@ export const getGoldenQuestionRoute = createRoute({
 
 export const updateGoldenQuestionRoute = createRoute({
   method: "patch",
+  operationId: "updateGoldenQuestion",
   path: "/knowledge-spaces/{id}/golden-questions/{questionId}",
   request: {
     body: {
@@ -206,6 +209,7 @@ export const annotateGoldenQuestionRoute = createRoute({
 
 export const deleteGoldenQuestionRoute = createRoute({
   method: "delete",
+  operationId: "deleteGoldenQuestion",
   path: "/knowledge-spaces/{id}/golden-questions/{questionId}",
   request: {
     params: GoldenQuestionParamsSchema,

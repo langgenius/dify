@@ -285,6 +285,27 @@ export type KnowledgeFsExternalAccessPayload = {
   workflow_enabled: boolean
 }
 
+export type KnowledgeFsGoldenQuestionListResponse = {
+  data: Array<KnowledgeFsGoldenQuestionResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsGoldenQuestionPayload = {
+  annotation: string
+  question: string
+  source_bad_case_id?: string | null
+  tags?: Array<string>
+}
+
+export type KnowledgeFsGoldenQuestionResponse = {
+  annotation: string
+  created_at: string
+  id: string
+  question: string
+  tags: Array<string>
+  updated_at: string
+}
+
 export type KnowledgeFsDocumentCompilationJobResponse = {
   base_head_revision?: number | null
   candidate_fingerprint?: string | null
@@ -365,6 +386,52 @@ export type KnowledgeFsOverviewStatsResponse = {
   source_count: number
   stale_source_count: number
   window: '24h' | '30d' | '7d'
+}
+
+export type KnowledgeFsBadCaseListResponse = {
+  data: Array<KnowledgeFsBadCaseResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsBadCaseCreatePayload = {
+  reason: string
+  tags?: Array<string>
+  trace_id: string
+}
+
+export type KnowledgeFsBadCaseResponse = {
+  created_at: string
+  id: string
+  question?: string
+  reason: string
+  replay_run_id?: string | null
+  revision: number
+  status: 'dismissed' | 'fixed' | 'open' | 'replaying'
+  tags: Array<string>
+  updated_at: string
+}
+
+export type KnowledgeFsBadCaseUpdatePayload = {
+  expected_revision: number
+  reason?: string | null
+  replay_run_id?: string | null
+  status: 'dismissed' | 'fixed' | 'open' | 'replaying'
+  tags?: Array<string> | null
+}
+
+export type KnowledgeFsBadCaseTraceReferenceResponse = {
+  trace_id: string
+}
+
+export type KnowledgeFsQualityReplayPayload = {
+  golden_question_ids: Array<string>
+  mode?: 'deep' | 'fast' | 'research' | null
+}
+
+export type KnowledgeFsQualityReplayResponse = {
+  id: string
+  revision: number
+  state: 'canceled' | 'failed' | 'passed' | 'queued' | 'running'
 }
 
 export type KnowledgeFsQueryCreatePayload = {
@@ -1812,6 +1879,75 @@ export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses = {
 export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses]
 
+export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/golden-questions'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses = {
+  200: KnowledgeFsGoldenQuestionListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsData = {
+  body: KnowledgeFsGoldenQuestionPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/golden-questions'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses = {
+  201: KnowledgeFsGoldenQuestionResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    question_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses = {
+  204: void
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdData = {
+  body: KnowledgeFsGoldenQuestionPayload
+  path: {
+    control_space_id: string
+    question_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses = {
+  200: KnowledgeFsGoldenQuestionResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
   body?: never
   path: {
@@ -1997,6 +2133,112 @@ export type GetKnowledgeFsSpacesByControlSpaceIdPermissionsResponses = {
 
 export type GetKnowledgeFsSpacesByControlSpaceIdPermissionsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdPermissionsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdPermissionsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses = {
+  200: KnowledgeFsBadCaseListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesData = {
+  body: KnowledgeFsBadCaseCreatePayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses = {
+  201: KnowledgeFsBadCaseResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdData = {
+  body?: never
+  path: {
+    bad_case_id: string
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses = {
+  200: KnowledgeFsBadCaseResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdData = {
+  body: KnowledgeFsBadCaseUpdatePayload
+  path: {
+    bad_case_id: string
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses = {
+  200: KnowledgeFsBadCaseResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceData = {
+  body?: never
+  path: {
+    bad_case_id: string
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}/trace-reference'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponses =
+  {
+    200: KnowledgeFsBadCaseTraceReferenceResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsData = {
+  body: KnowledgeFsQualityReplayPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses = {
+  202: KnowledgeFsQualityReplayResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueriesData = {
   body: KnowledgeFsQueryCreatePayload

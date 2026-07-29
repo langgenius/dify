@@ -1,9 +1,9 @@
 {
   "schemaVersion": 5,
-  "subtreeTree": "5b3aa53c945a3228deec4aa8f0400aaee3c4814f",
-  "openapiSha256": "3aff366ab900fd89166f9996f5b20a9a58bbc9315701f236f8d4dfc0bda55a3e",
+  "subtreeTree": "9e6441f54ced502f82b8353798c11de487c7c2be",
+  "openapiSha256": "840c3a77214d9132f2c70220fbab655d8bc791dad8b1fead6f272d4d692081fd",
   "capabilityV2AuthManifestSha256": "fc0a47e23cce12544882f0298522b4933002e892b84ce1815df7e81d36a7a0c7",
   "capabilityV2AuthTestVectorSha256": "ae0de37b1ff05c40f905cf17a7b410d8971acacf64db07d5ee3d6fecfa559ce3",
-  "productOperationManifestSha256": "96639519cb5dc0fe523403a14a86a64be2c3e2f751b475fea1bf57fdc072aff5",
+  "productOperationManifestSha256": "8083df207c9a4d407d667094bfa340739c147daf08fe82bbef8786b7d509c4ec",
   "productOperationGapManifestSha256": "332c80165bd5cf8e79bc511374dde771a8175510404db603a8067f1a22d36df8"
 }
