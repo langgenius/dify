@@ -14,45 +14,9 @@ import {
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useToolMarketplacePanel } from '@/app/components/integrations/hooks/use-tool-marketplace-panel'
 import IntegrationsToolProviderCard from '@/app/components/integrations/tool-provider-card'
-import Marketplace from '@/app/components/tools/marketplace'
+import { BuiltinMarketplacePanel } from '@/app/components/tools/marketplace/builtin-marketplace-panel'
 import List from './list'
-
-type BuiltinMarketplacePanelProps = {
-  containerRef: RefObject<HTMLDivElement | null>
-  contentInset: PluginPageContentInset
-  keywords: string
-  tagFilterValue: string[]
-}
-
-const BuiltinMarketplacePanel = ({
-  containerRef,
-  contentInset,
-  keywords,
-  tagFilterValue,
-}: BuiltinMarketplacePanelProps) => {
-  const { isMarketplaceArrowVisible, marketplaceContext, showMarketplacePanel, toolListTailRef } =
-    useToolMarketplacePanel({
-      containerRef,
-      keywords,
-      tagFilterValue,
-    })
-
-  return (
-    <>
-      <div ref={toolListTailRef} />
-      <Marketplace
-        searchPluginText={keywords}
-        filterPluginTags={tagFilterValue}
-        isMarketplaceArrowVisible={isMarketplaceArrowVisible}
-        showMarketplacePanel={showMarketplacePanel}
-        marketplaceContext={marketplaceContext}
-        contentInset={contentInset}
-      />
-    </>
-  )
-}
 
 type PluginsPanelResultsProps = {
   autoLoadNextPage: boolean

@@ -9,10 +9,15 @@ import { getMarketplaceListCondition } from '@/app/components/plugins/marketplac
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/client'
 
-export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {
+export const useMarketplace = (
+  searchPluginText: string,
+  filterPluginTags: string[],
+  enabled = true,
+) => {
   const { data: installedPluginIds, isSuccess } = useQuery(
     consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
       input: { query: { category: 'tool' } },
+      enabled,
     }),
   )
   const exclude = installedPluginIds?.plugin_ids
@@ -39,6 +44,8 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     filterPluginTagsRef.current = filterPluginTags
   }, [searchPluginText, filterPluginTags])
   useEffect(() => {
+    if (!enabled) return
+
     if ((searchPluginText || filterPluginTags.length) && isSuccess) {
       if (searchPluginText) {
         queryPlugins({
@@ -75,6 +82,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     queryMarketplaceCollectionsAndPlugins,
     resetPlugins,
     exclude,
+    enabled,
     isSuccess,
   ])
 
@@ -85,14 +93,15 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
       if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0) {
         const searchPluginText = searchPluginTextRef.current
         const filterPluginTags = filterPluginTagsRef.current
-        if (hasNextPage && (!!searchPluginText || !!filterPluginTags.length)) fetchNextPage()
+        if (enabled && hasNextPage && (!!searchPluginText || !!filterPluginTags.length))
+          fetchNextPage()
       }
     },
-    [exclude, fetchNextPage, hasNextPage, plugins, queryPlugins],
+    [enabled, fetchNextPage, hasNextPage],
   )
 
   return {
-    isLoading: isLoading || isPluginsLoading,
+    isLoading: enabled && (isLoading || isPluginsLoading),
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     plugins,

@@ -93,6 +93,19 @@ describe('useMarketplace', () => {
   })
 
   describe('Queries', () => {
+    it('does not query installed IDs or Marketplace data before activation', async () => {
+      renderHook(() => useMarketplace('', [], false), { wrapper: createWrapper() })
+
+      await waitFor(() => {
+        expect(mockInstalledIdsQueryOptions).toHaveBeenCalledWith({
+          input: { query: { category: 'tool' } },
+          enabled: false,
+        })
+      })
+      expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
+      expect(mockQueryPlugins).not.toHaveBeenCalled()
+    })
+
     it('should query plugins when the debounced page filter provides search text', async () => {
       mockInstalledIdsQueryOptions.mockReturnValue({
         queryKey: ['installed-plugin-ids', 'tool'],

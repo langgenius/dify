@@ -1,5 +1,5 @@
 'use client'
-import type { ReactNode, RefObject } from 'react'
+import type { ReactNode } from 'react'
 import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { ToolsContentInset } from '@/app/components/tools/content-inset'
 import type { Collection } from '@/app/components/tools/types'
@@ -27,7 +27,7 @@ import {
   useCanManageMCP,
   useCanManageTools,
 } from '@/app/components/tools/hooks/use-tool-permissions'
-import Marketplace from '@/app/components/tools/marketplace'
+import { BuiltinMarketplacePanel } from '@/app/components/tools/marketplace/builtin-marketplace-panel'
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { ToolProviderGrid } from '@/app/components/tools/tool-provider-grid'
@@ -39,7 +39,6 @@ import {
   useAllToolProviders,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { useToolMarketplacePanel } from './hooks/use-tool-marketplace-panel'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -51,41 +50,6 @@ type ProviderListProps = {
 }
 
 const EMPTY_COLLECTIONS: Collection[] = []
-
-type BuiltinMarketplacePanelProps = {
-  containerRef: RefObject<HTMLDivElement | null>
-  contentInset: ToolsContentInset
-  keywords: string
-  tagFilterValue: string[]
-}
-
-const BuiltinMarketplacePanel = ({
-  containerRef,
-  contentInset,
-  keywords,
-  tagFilterValue,
-}: BuiltinMarketplacePanelProps) => {
-  const { isMarketplaceArrowVisible, marketplaceContext, showMarketplacePanel, toolListTailRef } =
-    useToolMarketplacePanel({
-      containerRef,
-      keywords,
-      tagFilterValue,
-    })
-
-  return (
-    <>
-      <div ref={toolListTailRef} />
-      <Marketplace
-        searchPluginText={keywords}
-        filterPluginTags={tagFilterValue}
-        isMarketplaceArrowVisible={isMarketplaceArrowVisible}
-        showMarketplacePanel={showMarketplacePanel}
-        marketplaceContext={marketplaceContext}
-        contentInset={contentInset}
-      />
-    </>
-  )
-}
 
 const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
