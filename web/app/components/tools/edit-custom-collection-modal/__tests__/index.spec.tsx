@@ -34,7 +34,6 @@ vi.mock('@/context/modal-context', () => ({
     setShowModelLoadBalancingModal: vi.fn(),
     setShowOpeningModal: vi.fn(),
     setShowUpdatePluginModal: vi.fn(),
-    setShowEducationExpireNoticeModal: vi.fn(),
     setShowTriggerEventsLimitModal: vi.fn(),
   }),
 }))

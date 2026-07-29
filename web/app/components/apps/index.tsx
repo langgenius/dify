@@ -6,7 +6,8 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEducationInit } from '@/app/education-apply/hooks'
+import { EducationExpireNotice } from '@/app/education-apply/expire-notice'
+import { EducationExternalActionBoundary } from '@/app/education-apply/external-action-boundary'
 import AppListContext from '@/context/app-list-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -29,7 +30,7 @@ const ImportFromMarketplaceTemplateModal = dynamic(
   { ssr: false },
 )
 
-const Apps = () => {
+const AppsContent = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
@@ -39,7 +40,6 @@ const Apps = () => {
   const templateDismissedRef = useRef(false)
 
   useDocumentTitle(t(($) => $['menus.apps'], { ns: 'common' }))
-  useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(
     undefined,
@@ -192,64 +192,73 @@ const Apps = () => {
   )
 
   return (
-    <AppListContext.Provider
-      value={{
-        currentApp: currentTryAppParams,
-        isShowTryAppPanel,
-        setShowTryAppPanel,
-        controlHideCreateFromTemplatePanel,
-      }}
-    >
-      <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <List
-          controlRefreshList={controlRefreshList}
-          onCreateLearnDify={handleCreateLearnDify}
-          onTryLearnDify={handleTryLearnDify}
-        />
-        {isShowTryAppPanel && currentTryAppParams && (
-          <TryApp
-            appId={currentTryAppParams.appId}
-            app={currentTryAppParams.app}
-            categories={currentTryAppParams.app.categories}
-            onClose={hideTryAppPanel}
-            onCreate={handleShowFromTryApp}
+    <>
+      <EducationExpireNotice />
+      <AppListContext.Provider
+        value={{
+          currentApp: currentTryAppParams,
+          isShowTryAppPanel,
+          setShowTryAppPanel,
+          controlHideCreateFromTemplatePanel,
+        }}
+      >
+        <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+          <List
+            controlRefreshList={controlRefreshList}
+            onCreateLearnDify={handleCreateLearnDify}
+            onTryLearnDify={handleTryLearnDify}
           />
-        )}
+          {isShowTryAppPanel && currentTryAppParams && (
+            <TryApp
+              appId={currentTryAppParams.appId}
+              app={currentTryAppParams.app}
+              categories={currentTryAppParams.app.categories}
+              onClose={hideTryAppPanel}
+              onCreate={handleShowFromTryApp}
+            />
+          )}
 
-        {showDSLConfirmModal && (
-          <DSLConfirmModal
-            versions={versions}
-            onCancel={() => setShowDSLConfirmModal(false)}
-            onConfirm={onConfirmDSL}
-            confirmDisabled={isFetching}
-          />
-        )}
+          {showDSLConfirmModal && (
+            <DSLConfirmModal
+              versions={versions}
+              onCancel={() => setShowDSLConfirmModal(false)}
+              onConfirm={onConfirmDSL}
+              confirmDisabled={isFetching}
+            />
+          )}
 
-        {isShowCreateModal && (
-          <CreateAppModal
-            appIconType={currApp?.app.icon_type || 'emoji'}
-            appIcon={currApp?.app.icon || ''}
-            appIconBackground={currApp?.app.icon_background || ''}
-            appIconUrl={currApp?.app.icon_url}
-            appName={currApp?.app.name || ''}
-            appDescription={currApp?.app.description || ''}
-            show
-            onConfirm={onCreate}
-            confirmDisabled={isFetching}
-            onHide={() => setIsShowCreateModal(false)}
-          />
-        )}
+          {isShowCreateModal && (
+            <CreateAppModal
+              appIconType={currApp?.app.icon_type || 'emoji'}
+              appIcon={currApp?.app.icon || ''}
+              appIconBackground={currApp?.app.icon_background || ''}
+              appIconUrl={currApp?.app.icon_url}
+              appName={currApp?.app.name || ''}
+              appDescription={currApp?.app.description || ''}
+              show
+              onConfirm={onCreate}
+              confirmDisabled={isFetching}
+              onHide={() => setIsShowCreateModal(false)}
+            />
+          )}
 
-        {canCreateApp && templateId && !templateDismissedRef.current && (
-          <ImportFromMarketplaceTemplateModal
-            templateId={templateId}
-            onClose={handleCloseTemplateModal}
-            onConfirm={handleMarketplaceTemplateConfirm}
-          />
-        )}
-      </div>
-    </AppListContext.Provider>
+          {canCreateApp && templateId && !templateDismissedRef.current && (
+            <ImportFromMarketplaceTemplateModal
+              templateId={templateId}
+              onClose={handleCloseTemplateModal}
+              onConfirm={handleMarketplaceTemplateConfirm}
+            />
+          )}
+        </div>
+      </AppListContext.Provider>
+    </>
   )
 }
+
+const Apps = () => (
+  <EducationExternalActionBoundary>
+    <AppsContent />
+  </EducationExternalActionBoundary>
+)
 
 export default Apps

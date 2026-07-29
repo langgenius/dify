@@ -19,6 +19,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import { useEducationExpireNotice } from '@/app/education-apply/use-expire-notice'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -135,6 +136,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
+  const [educationExpireNotice] = useEducationExpireNotice()
   const [settingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const completedTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
@@ -238,7 +240,11 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))
-  const overlayVisible = visible && !hasBlockingModalOpen && !settingsDestination
+  const overlayVisible =
+    visible &&
+    !hasBlockingModalOpen &&
+    !settingsDestination &&
+    !(pathname === '/apps' && educationExpireNotice)
   const completionPromptVisible = visible && allTasksCompleted && !activeTask
   const checklistMinimized = completionPromptVisible ? false : minimized
   const expanded = !checklistMinimized
