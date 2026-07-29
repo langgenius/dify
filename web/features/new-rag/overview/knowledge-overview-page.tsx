@@ -339,7 +339,7 @@ function QueryOutcomesChart({
       </div>
       <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
-          <div className="space-y-5.5 pt-2">
+          <div className="space-y-6 pt-2">
             {[
               ['outcome-1', 100],
               ['outcome-2', 100],
@@ -347,7 +347,7 @@ function QueryOutcomesChart({
               ['outcome-4', 100],
               ['outcome-5', 55],
             ].map(([key, width]) => (
-              <Skeleton key={key} className="h-3.5" style={{ width: `${width}%` }} />
+              <Skeleton key={key} className="h-3" style={{ width: `${width}%` }} />
             ))}
           </div>
         ) : buckets.length ? (
@@ -739,19 +739,7 @@ function RecentActivity({
         </Button>
       </header>
       <Panel className="flex h-63.5 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
-        {loading ? (
-          <div className="flex flex-col gap-6.25 pt-10">
-            {[
-              ['activity-1', 100],
-              ['activity-2', 100],
-              ['activity-3', 100],
-              ['activity-4', 100],
-              ['activity-5', 86],
-            ].map(([key, width]) => (
-              <Skeleton key={key} className="h-3.5" style={{ width: `${width}%` }} />
-            ))}
-          </div>
-        ) : tasks.length ? (
+        {loading || tasks.length ? (
           <div
             role="table"
             aria-label={t(($) => $['newKnowledge.overview.recentActivity'])}
@@ -768,35 +756,47 @@ function RecentActivity({
               <span role="columnheader">{t(($) => $['newKnowledge.overview.operator'])}</span>
             </div>
             <div className="h-px bg-divider-subtle" />
-            {tasks.slice(0, 5).map((task, index) => (
-              <div
-                key={task.id}
-                role="row"
-                className={cn(
-                  'grid h-9 grid-cols-[72px_minmax(280px,1fr)_140px] items-center gap-3 px-0 system-xs-regular',
-                  index === 1 && '-mx-3 rounded-lg bg-state-base-hover px-3',
-                )}
-              >
-                <span role="cell" className="text-text-tertiary">
-                  {formatWhen(task.updated_at)}
-                </span>
-                <span role="cell" className="min-w-0 truncate text-text-secondary">
-                  <strong className="font-semibold text-text-primary">
-                    {operationLabel(task, t)}
-                  </strong>
-                  {' — '}
-                  {activityLabel(task, t)}
-                </span>
-                <span role="cell" className="flex min-w-0 items-center gap-2">
-                  <span className="system-2xs-semibold flex size-5 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
-                    S
-                  </span>
-                  <span className="truncate text-text-secondary">
-                    {t(($) => $['newKnowledge.overview.system'])}
-                  </span>
-                </span>
-              </div>
-            ))}
+            {loading
+              ? [
+                  ['activity-1', 55],
+                  ['activity-2', 55],
+                  ['activity-3', 55],
+                  ['activity-4', 55],
+                  ['activity-5', 41],
+                ].map(([key, width]) => (
+                  <div key={key} role="row" className="flex h-9 items-center py-2">
+                    <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
+                  </div>
+                ))
+              : tasks.slice(0, 5).map((task, index) => (
+                  <div
+                    key={task.id}
+                    role="row"
+                    className={cn(
+                      'grid h-9 grid-cols-[72px_minmax(280px,1fr)_140px] items-center gap-3 px-0 system-xs-regular',
+                      index === 1 && '-mx-3 rounded-lg bg-state-base-hover px-3',
+                    )}
+                  >
+                    <span role="cell" className="text-text-tertiary">
+                      {formatWhen(task.updated_at)}
+                    </span>
+                    <span role="cell" className="min-w-0 truncate text-text-secondary">
+                      <strong className="font-semibold text-text-primary">
+                        {operationLabel(task, t)}
+                      </strong>
+                      {' — '}
+                      {activityLabel(task, t)}
+                    </span>
+                    <span role="cell" className="flex min-w-0 items-center gap-2">
+                      <span className="system-2xs-semibold flex size-5 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
+                        S
+                      </span>
+                      <span className="truncate text-text-secondary">
+                        {t(($) => $['newKnowledge.overview.system'])}
+                      </span>
+                    </span>
+                  </div>
+                ))}
           </div>
         ) : (
           <EmptyInline
@@ -1122,7 +1122,7 @@ function InventoryPanel({
         {loading ? (
           <>
             <Skeleton className="h-6 w-full" />
-            <Skeleton className="mt-2.5 h-3 w-80" />
+            <Skeleton className="mt-2.5 h-3.5 w-80" />
             <div className="mt-4 grid grid-cols-3 gap-3">
               {[0, 1, 2].map((index) => (
                 <div key={index} className="h-20 rounded-lg bg-background-section p-3">
@@ -1403,6 +1403,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         task.operation.includes('import')),
   )
   const pageLoading =
+    tasksQuery.isPending ||
     statsQuery.isPending ||
     outcomesQuery.isPending ||
     inventoryQuery.isPending ||
@@ -1412,7 +1413,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     (statsQuery.isError || outcomesQuery.isError || inventoryQuery.isError || healthQuery.isError)
   const hasContent =
     (statsQuery.data?.source_count ?? 0) > 0 || (statsQuery.data?.documents ?? 0) > 0
-  const empty = !statsQuery.isPending && !statsQuery.isError && !hasContent
+  const empty = !pageLoading && !statsQuery.isError && !hasContent
   const showIndexing =
     !pageLoading &&
     !inventoryQuery.isError &&
@@ -1502,7 +1503,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         >
           <MetricCard
             empty={showEmptyModules}
-            loading={statsQuery.isPending || statsQuery.isFetching}
+            loading={pageLoading}
             title={t(($) => $['newKnowledge.overview.queries'])}
             help={t(($) => $['newKnowledge.overview.queriesHelp'])}
             value={statsQuery.data ? compactNumber(statsQuery.data.queries.value) : '—'}
@@ -1518,7 +1519,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={statsQuery.isPending || statsQuery.isFetching}
+            loading={pageLoading}
             title={t(($) => $['newKnowledge.overview.answerRate'])}
             help={t(($) => $['newKnowledge.overview.answerRateHelp'])}
             value={
@@ -1532,19 +1533,19 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={statsQuery.isPending}
+            loading={pageLoading}
             title={t(($) => $['newKnowledge.overview.documents'])}
             value={statsQuery.data ? compactNumber(statsQuery.data.documents) : '—'}
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={statsQuery.isPending}
+            loading={pageLoading}
             title={t(($) => $['newKnowledge.overview.linkedApps'])}
             value={statsQuery.data ? compactNumber(statsQuery.data.linked_apps) : '—'}
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={statsQuery.isPending}
+            loading={pageLoading}
             title={t(($) => $['newKnowledge.overview.freshness'])}
             help={t(($) => $['newKnowledge.overview.freshnessHelp'])}
             value={formatDuration(statsQuery.data?.freshness_seconds)}
@@ -1561,13 +1562,13 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             error={healthQuery.isError}
             health={healthQuery.data}
             knowledgeSpaceId={knowledgeSpaceId}
-            loading={healthQuery.isPending}
+            loading={pageLoading}
           />
           <QueryOutcomesChart
             buckets={outcomesQuery.data?.buckets ?? []}
             empty={showEmptyModules}
             error={outcomesQuery.isError}
-            loading={outcomesQuery.isPending || outcomesQuery.isFetching}
+            loading={pageLoading}
           />
         </div>
         <div className="mt-3">
@@ -1575,7 +1576,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             empty={showEmptyModules}
             error={tasksQuery.isError}
             indexing={showIndexing}
-            loading={tasksQuery.isPending}
+            loading={pageLoading}
             retrying={tasksQuery.isRefetching}
             tasks={tasks}
             onOpenAll={() => {
@@ -1591,7 +1592,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             error={inventoryQuery.isError}
             indexing={showIndexing}
             inventory={inventoryQuery.data}
-            loading={inventoryQuery.isPending}
+            loading={pageLoading}
           />
         </div>
       </div>

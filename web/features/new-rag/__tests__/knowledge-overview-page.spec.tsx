@@ -33,7 +33,12 @@ const queryData = vi.hoisted(() => ({
     source_categories: { crawl: 1, online_documents: 1, online_drives: 0, uploads: 1 },
   },
   outcomes: {
-    buckets: [],
+    buckets: [] as Array<{
+      answered: number
+      low_confidence: number
+      no_evidence: number
+      start_at: string
+    }>,
     current: {
       answer_rate: 0.84,
       answered: 8,
@@ -221,6 +226,7 @@ describe('KnowledgeOverviewPage', () => {
     }
     queryData.stats.source_count = 3
     queryData.stats.documents = 5
+    queryData.outcomes.buckets = []
     queryData.inventory.index_coverage.indexed = 4
     queryData.tasks[0]!.operation = 'source_sync'
     queryData.tasks[0]!.progress_completed = 1
@@ -282,6 +288,64 @@ describe('KnowledgeOverviewPage', () => {
     expect(screen.getByText('84%')).toBeInTheDocument()
     expect(screen.getByText('+100%')).toBeInTheDocument()
     expect(screen.getByText('+4pp')).toBeInTheDocument()
+  })
+
+  it('keeps existing overview data visible during a background refresh', () => {
+    overviewQueryState.stats.isFetching = true
+    overviewQueryState.outcomes.isFetching = true
+    queryData.outcomes.buckets = [
+      {
+        answered: 8,
+        low_confidence: 1,
+        no_evidence: 1,
+        start_at: '2026-07-29T09:00:00Z',
+      },
+    ]
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('84%')).toBeInTheDocument()
+    expect(screen.getByLabelText('query outcomes chart')).toBeInTheDocument()
+  })
+
+  it('keeps the designed skeleton until every initial snapshot resolves to the empty state', () => {
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 0
+    for (const state of Object.values(overviewQueryState)) state.isPending = true
+
+    const { rerender } = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.needsAttention' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('84%')).not.toBeInTheDocument()
+
+    overviewQueryState.stats.isPending = false
+    rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('84%')).not.toBeInTheDocument()
+
+    for (const state of Object.values(overviewQueryState)) state.isPending = false
+    rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows an activity error with a retry action instead of an empty state', async () => {
