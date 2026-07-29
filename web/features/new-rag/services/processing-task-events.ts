@@ -50,7 +50,7 @@ type TaskSubscription = {
 }
 
 const POLL_INTERVAL_MS = 5000
-const TASK_PAGE_SIZE = 200
+const TASK_PAGE_SIZE = 100
 const taskPollingHubs = new Map<string, TaskPollingHub>()
 
 function abortError(signal: AbortSignal) {

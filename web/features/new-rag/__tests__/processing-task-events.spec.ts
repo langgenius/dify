@@ -87,7 +87,7 @@ describe('KnowledgeFS processing task events', () => {
       1,
       {
         params: { control_space_id: 'space/1' },
-        query: { limit: 200 },
+        query: { limit: 100 },
       },
       expect.objectContaining({
         context: { silent: true },
@@ -112,7 +112,7 @@ describe('KnowledgeFS processing task events', () => {
       2,
       {
         params: { control_space_id: 'space-1' },
-        query: { cursor: 'next-page', limit: 200 },
+        query: { cursor: 'next-page', limit: 100 },
       },
       expect.objectContaining({
         context: { silent: true },
