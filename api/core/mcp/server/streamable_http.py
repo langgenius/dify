@@ -316,6 +316,20 @@ def process_streaming_response(response: RateLimitGenerator) -> str:
     return answer
 
 
+def _file_object_parameter_schema() -> dict[str, Any]:
+    """Single-file value shape for MCP tool inputSchema."""
+    return {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "transfer_method": {"type": "string"},
+            "url": {"type": "string"},
+            "upload_file_id": {"type": "string"},
+        },
+        "additionalProperties": True,
+    }
+
+
 def process_mapping_response(app: App, response: Mapping) -> str:
     """Process mapping response based on app mode"""
     match app.mode:
@@ -336,11 +350,7 @@ def convert_input_form_to_parameters(
     required = []
 
     for item in user_input_form:
-        if item.type in (
-            VariableEntityType.FILE,
-            VariableEntityType.FILE_LIST,
-            VariableEntityType.EXTERNAL_DATA_TOOL,
-        ):
+        if item.type == VariableEntityType.EXTERNAL_DATA_TOOL:
             continue
         parameters[item.variable] = {}
         if item.required:
@@ -358,6 +368,15 @@ def convert_input_form_to_parameters(
             parameters[item.variable]["type"] = "number"
         elif item.type == VariableEntityType.CHECKBOX:
             parameters[item.variable]["type"] = "boolean"
+        elif item.type == VariableEntityType.FILE:
+            parameters[item.variable] = _file_object_parameter_schema()
+            parameters[item.variable]["description"] = description
+        elif item.type == VariableEntityType.FILE_LIST:
+            parameters[item.variable] = {
+                "type": "array",
+                "items": _file_object_parameter_schema(),
+                "description": description,
+            }
         elif item.type == VariableEntityType.JSON_OBJECT:
             parameters[item.variable]["type"] = "object"
             if item.json_schema:
