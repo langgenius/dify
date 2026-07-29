@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
-import { useWorkflowVariableType } from '../../../hooks'
+import { useWorkflowVariableType } from '../../../hooks/use-workflow-variables'
 import { BlockEnum } from '../../../types'
 import AddInputField from './add-input-field'
 

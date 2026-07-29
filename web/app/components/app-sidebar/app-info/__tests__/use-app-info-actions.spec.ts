@@ -20,11 +20,12 @@ const mockInvalidateAppList = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
-const mockExportAppConfig = vi.fn()
+const mockExportAppDsl = vi.fn()
+const mockExportState = { isExporting: false }
+const mockExportWorkflowAppDsl = vi.fn()
+const mockWorkflowExportState = { isExporting: false }
 const mockDeleteApp = vi.fn()
 const mockFetchAppDetail = vi.fn()
-const mockFetchWorkflowDraft = vi.fn()
-const mockDownloadBlob = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
 const mockSetQueryData = vi.fn()
@@ -52,6 +53,17 @@ vi.mock('@/app/components/app/store', () => ({
       appDetail: mockAppDetail,
       setAppDetail: mockSetAppDetail,
     }),
+}))
+
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: mockExportAppDsl,
+    isExporting: mockExportState.isExporting,
+  }),
+  useExportWorkflowAppDsl: () => ({
+    exportWorkflowAppDsl: mockExportWorkflowAppDsl,
+    isExporting: mockWorkflowExportState.isExporting,
+  }),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -84,17 +96,8 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/apps', () => ({
   updateAppInfo: (...args: unknown[]) => mockUpdateAppInfo(...args),
   copyApp: (...args: unknown[]) => mockCopyApp(...args),
-  exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-}))
-
-vi.mock('@/utils/download', () => ({
-  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
@@ -116,6 +119,10 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockExportState.isExporting = false
+    mockExportAppDsl.mockResolvedValue({ status: 'downloaded' })
+    mockWorkflowExportState.isExporting = false
+    mockExportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
     mockSetQueryData.mockReset()
@@ -374,29 +381,18 @@ describe('useAppInfoActions', () => {
   })
 
   describe('onExport', () => {
-    it('should export app config and trigger download', async () => {
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
-
+    it('should export the app DSL', async () => {
       const { result } = renderHook(() => useAppInfoActions({}))
 
       await act(async () => {
         await result.current.onExport(false)
       })
 
-      expect(mockExportAppConfig).toHaveBeenCalledWith({ appID: 'app-1', include: false })
-      expect(mockDownloadBlob).toHaveBeenCalled()
-    })
-
-    it('should notify error on export failure', async () => {
-      mockExportAppConfig.mockRejectedValue(new Error('fail'))
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onExport()
+      expect(mockExportAppDsl).toHaveBeenCalledWith({
+        appId: 'app-1',
+        appName: 'Test App',
+        includeSecret: false,
       })
-
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -410,21 +406,19 @@ describe('useAppInfoActions', () => {
         await result.current.onExport()
       })
 
-      expect(mockExportAppConfig).not.toHaveBeenCalled()
+      expect(mockExportAppDsl).not.toHaveBeenCalled()
     })
   })
 
   describe('exportCheck', () => {
     it('should call onExport directly for non-workflow modes', async () => {
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
-
       const { result } = renderHook(() => useAppInfoActions({}))
 
       await act(async () => {
         await result.current.exportCheck()
       })
 
-      expect(mockExportAppConfig).toHaveBeenCalled()
+      expect(mockExportAppDsl).toHaveBeenCalled()
     })
 
     it('should open export warning modal for workflow mode', async () => {
@@ -462,32 +456,31 @@ describe('useAppInfoActions', () => {
         await result.current.exportCheck()
       })
 
-      expect(mockExportAppConfig).not.toHaveBeenCalled()
+      expect(mockExportAppDsl).not.toHaveBeenCalled()
     })
   })
 
   describe('handleConfirmExport', () => {
     it('should export directly when no secret env variables', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
-      mockFetchWorkflowDraft.mockResolvedValue({
-        environment_variables: [{ value_type: 'string' }],
-      })
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
-
       const { result } = renderHook(() => useAppInfoActions({}))
 
       await act(async () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockExportAppConfig).toHaveBeenCalled()
+      expect(mockExportWorkflowAppDsl).toHaveBeenCalledWith({
+        appId: 'app-1',
+        appName: 'Test App',
+      })
     })
 
     it('should set secret env list when secret variables exist', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
-      const secretVars = [{ value_type: 'secret', key: 'API_KEY' }]
-      mockFetchWorkflowDraft.mockResolvedValue({
-        environment_variables: secretVars,
+      const secretVars = [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }]
+      mockExportWorkflowAppDsl.mockResolvedValue({
+        status: 'confirmation-required',
+        secretEnvList: secretVars,
       })
 
       const { result } = renderHook(() => useAppInfoActions({}))
@@ -497,18 +490,6 @@ describe('useAppInfoActions', () => {
       })
 
       expect(result.current.secretEnvList).toEqual(secretVars)
-    })
-
-    it('should notify error on workflow draft fetch failure', async () => {
-      mockFetchWorkflowDraft.mockRejectedValue(new Error('fail'))
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.handleConfirmExport()
-      })
-
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -522,24 +503,7 @@ describe('useAppInfoActions', () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('handleConfirmExport - with environment variables', () => {
-    it('should handle empty environment_variables', async () => {
-      mockFetchWorkflowDraft.mockResolvedValue({
-        environment_variables: undefined,
-      })
-      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.handleConfirmExport()
-      })
-
-      expect(mockExportAppConfig).toHaveBeenCalled()
+      expect(mockExportWorkflowAppDsl).not.toHaveBeenCalled()
     })
   })
 

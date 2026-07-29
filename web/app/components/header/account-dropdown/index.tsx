@@ -9,14 +9,9 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import {
-  useSetEducationExpiredHasNoticed,
-  useSetEducationReverifyHasNoticed,
-  useSetEducationReverifyPrevExpireAt,
-} from '@/app/education-apply/storage'
 import { userProfileAtom } from '@/context/account-state'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { useRouter } from '@/next/navigation'
@@ -33,16 +28,22 @@ type AccountDropdownProps = {
 const mainNavMenuPopupClassName =
   'w-60 max-w-80 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]'
 
+const subscribeHydrationState = () => () => {}
+const getHydrationSnapshot = () => false
+const getServerHydrationSnapshot = () => true
+
 export default function AppSelector({ trigger, variant = 'default' }: AccountDropdownProps = {}) {
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const isHydrating = useSyncExternalStore(
+    subscribeHydrationState,
+    getHydrationSnapshot,
+    getServerHydrationSnapshot,
+  )
   const { t } = useTranslation()
   const userProfile = useAtomValue(userProfileAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
-  const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
-  const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()
 
   const { mutateAsync: logout } = useLogout()
 
@@ -50,11 +51,6 @@ export default function AppSelector({ trigger, variant = 'default' }: AccountDro
     await logout()
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
-
-    // To avoid use other account's education notice info
-    clearEducationReverifyPrevExpireAt(null)
-    clearEducationReverifyHasNoticed(null)
-    clearEducationExpiredHasNoticed(null)
 
     router.push('/signin')
   }
@@ -64,6 +60,7 @@ export default function AppSelector({ trigger, variant = 'default' }: AccountDro
       <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
         {trigger ? (
           <DropdownMenuTrigger
+            disabled={isHydrating}
             render={trigger({
               isOpen: isAccountMenuOpen,
               ariaLabel: t(($) => $['account.account'], { ns: 'common' }),
@@ -71,9 +68,10 @@ export default function AppSelector({ trigger, variant = 'default' }: AccountDro
           />
         ) : (
           <DropdownMenuTrigger
+            disabled={isHydrating}
             aria-label={t(($) => $['account.account'], { ns: 'common' })}
             className={cn(
-              'inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge',
+              'inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge disabled:cursor-default disabled:hover:bg-transparent',
               isAccountMenuOpen && 'bg-background-default-dodge',
             )}
           >

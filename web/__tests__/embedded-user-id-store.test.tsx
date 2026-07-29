@@ -1,12 +1,9 @@
 import { screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { renderToString } from 'react-dom/server'
-import {
-  createSystemFeaturesWrapper,
-  renderWithSystemFeatures,
-} from '@/__tests__/utils/mock-system-features'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 
 const navigationMocks = vi.hoisted(() => ({
   usePathname: vi.fn(() => '/chatbot/sample-app'),
@@ -89,7 +86,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       configurable: true,
       value: undefined,
     })
-    const { wrapper: Wrapper } = createSystemFeaturesWrapper()
+    const { wrapper: Wrapper } = createConsoleQueryWrapper()
 
     try {
       expect(() =>
@@ -118,7 +115,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     navigationMocks.useSearchParams.mockReturnValue(params)
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,
@@ -133,7 +130,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       navigationMocks.usePathname.mockReturnValue(pathname)
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
-      renderWithSystemFeatures(
+      renderWithConsoleQuery(
         <WebAppStoreProvider>
           <TestConsumer />
         </WebAppStoreProvider>,
@@ -149,7 +146,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       conversation_id: 'conversation-456',
     })
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,
@@ -171,7 +168,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     }))
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import DataSourcePluginActions from '../plugin-actions'
 
 const {
@@ -142,7 +142,7 @@ describe('DataSourcePluginActions', () => {
   it('opens the plugin README from the actions menu', () => {
     const detail = createPluginDetail()
 
-    renderWithSystemFeatures(<DataSourcePluginActions detail={detail} />, {
+    renderWithConsoleQuery(<DataSourcePluginActions detail={detail} />, {
       systemFeatures: { enable_marketplace: true },
     })
     fireEvent.click(

@@ -51,7 +51,15 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
                 field: field.label,
               })
           } else {
-            if (!errorMessages && (value === undefined || value === null || value === ''))
+            const isEmptyMultiSelect =
+              field.type === 'select' &&
+              field.multiple &&
+              Array.isArray(value) &&
+              value.length === 0
+            if (
+              !errorMessages &&
+              (value === undefined || value === null || value === '' || isEmptyMultiSelect)
+            )
               errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
                 ns: 'workflow',
                 field: field.label,
@@ -67,7 +75,12 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         })
         .forEach((field: any) => {
           const value = payload.tool_configurations[field.variable]
-          if (!errorMessages && (value === undefined || value === null || value === ''))
+          const isEmptyMultiSelect =
+            field.type === 'select' && field.multiple && Array.isArray(value) && value.length === 0
+          if (
+            !errorMessages &&
+            (value === undefined || value === null || value === '' || isEmptyMultiSelect)
+          )
             errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
               ns: 'workflow',
               field: field.label[language],

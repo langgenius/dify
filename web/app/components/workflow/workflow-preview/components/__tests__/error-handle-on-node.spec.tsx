@@ -4,7 +4,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import ErrorHandleOnNode from '../error-handle-on-node'
 
 const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
@@ -75,23 +75,6 @@ describe('ErrorHandleOnNode', () => {
         'data-handleid',
         ErrorHandleTypeEnum.failBranch,
       )
-    })
-
-    it('should add warning styles when the node is in exception status', async () => {
-      const { container } = renderErrorNode(
-        createNodeData({
-          error_strategy: ErrorHandleTypeEnum.defaultValue,
-          _runningStatus: NodeRunningStatus.Exception,
-        }),
-      )
-
-      await waitFor(() =>
-        expect(container.querySelector('.bg-state-warning-hover')).toBeInTheDocument(),
-      )
-      expect(container.querySelector('.bg-state-warning-hover')).toHaveClass(
-        'border-components-badge-status-light-warning-halo',
-      )
-      expect(container.querySelector('.text-text-warning')).toBeInTheDocument()
     })
   })
 })

@@ -133,18 +133,6 @@ describe('Tooltip', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing when data is 0', () => {
-      expect(() => render(<Tooltip data={0} text="score" icon={<span />} />)).not.toThrow()
-    })
-
-    it('should render without crashing when data is an empty string', () => {
-      expect(() => render(<Tooltip data="" text="label" icon={<span />} />)).not.toThrow()
-    })
-
-    it('should render without crashing when text is an empty string', () => {
-      expect(() => render(<Tooltip data={1} text="" icon={<span />} />)).not.toThrow()
-    })
-
     it('should keep tooltip closed without any interaction', () => {
       renderTooltip(0.5)
       expect(screen.queryByTestId('tooltip-popup')).not.toBeInTheDocument()

@@ -20,11 +20,13 @@ from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from graphon.enums import (
+    BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
@@ -241,7 +243,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         )
 
         self._node_execution_cache[event.id] = domain_execution
-        self._workflow_node_execution_repository.save(domain_execution)
+        if event.node_type == BuiltinNodeTypes.AGENT and event.node_version == "2":
+            self._workflow_node_execution_repository.save_synchronously(domain_execution)
+        else:
+            self._workflow_node_execution_repository.save(domain_execution)
 
         snapshot = _NodeRuntimeSnapshot(
             node_id=event.node_id,
@@ -361,7 +366,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _append_retry_history(self, execution: WorkflowNodeExecution, event: NodeRunRetryEvent) -> None:
         """Append a validated full attempt before repository truncation or offload."""
         finished_at = naive_utc_now()
-        process_data = dict(execution.process_data or {})
+        process_data = preserve_workflow_agent_binding_id(
+            event.node_run_result.process_data,
+            execution.process_data,
+        )
+        process_data = dict(process_data or {})
         raw_history = process_data.get(RETRY_HISTORY_PROCESS_DATA_KEY)
         history = list(raw_history) if isinstance(raw_history, list) else []
         projected_outputs = project_node_outputs_for_workflow_run(
@@ -390,11 +399,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         next_process_data: Mapping[str, Any] | None,
     ) -> Mapping[str, Any] | None:
         """Keep internal retry history while replacing node-specific Process Data."""
+        merged_process_data = preserve_workflow_agent_binding_id(existing_process_data, next_process_data)
         raw_history = (existing_process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY)
         if not isinstance(raw_history, list) or not raw_history:
-            return next_process_data
+            return merged_process_data
 
-        merged_process_data = dict(next_process_data or {})
+        merged_process_data = dict(merged_process_data or {})
         merged_process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = raw_history
         return merged_process_data
 
@@ -439,6 +449,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 process_data=process_data,
                 outputs=projected_outputs,
                 metadata=node_result.metadata,
+            )
+        else:
+            domain_execution.process_data = preserve_workflow_agent_binding_id(
+                node_result.process_data,
+                domain_execution.process_data,
             )
 
         self._workflow_node_execution_repository.save(domain_execution)

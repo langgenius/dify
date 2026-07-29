@@ -1,4 +1,4 @@
-import type { CollectionType } from '../../tools/types'
+import type { CollectionProviderType } from '../../tools/types'
 import type { PluginDetail } from '../types'
 
 export type { AddApiKeyButtonProps } from './authorize/add-api-key-button'
@@ -14,7 +14,7 @@ export enum AuthCategory {
 export type PluginPayload = {
   category: AuthCategory
   provider: string
-  providerType?: CollectionType | string
+  providerType?: CollectionProviderType
   detail?: PluginDetail
 }
 

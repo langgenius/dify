@@ -141,6 +141,23 @@ describe('create-app-tracking', () => {
       })
     })
 
+    it('should preserve agent v2 mode as its own app mode', () => {
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: 'agent-v2',
+          },
+          null,
+          new Date(2026, 3, 13, 9, 8, 9),
+        ),
+      ).toEqual({
+        source: 'studio_blank',
+        app_mode: 'agent-v2',
+        time: '04-13-09:08:09',
+      })
+    })
+
     it('should fold legacy non-agent modes into chatflow', () => {
       expect(
         buildCreateAppEventPayload(
