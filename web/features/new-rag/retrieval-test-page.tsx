@@ -13,7 +13,7 @@ import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
@@ -38,7 +38,7 @@ type LocalQueryRun = {
   mode: Exclude<RetrievalTestMode, 'research'>
   query: string
   startedAt: number
-  status: 'completed' | 'failed' | 'running'
+  status: 'completed' | 'failed' | 'no-results' | 'running'
   traceId?: string
 }
 
@@ -69,7 +69,7 @@ function ScorePill({ score }: { score: number }) {
   const normalized = Math.max(0, Math.min(1, score))
   return (
     <span className="bg-components-badge-bg relative inline-flex h-6 min-w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-components-panel-border px-2 system-xs-semibold text-text-secondary">
-      {normalized.toFixed(2)}
+      Score {normalized.toFixed(2)}
       <span
         aria-hidden
         className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-util-colors-blue-blue-500"
@@ -79,18 +79,46 @@ function ScorePill({ score }: { score: number }) {
   )
 }
 
+async function queryFailure(error: unknown) {
+  let status: number | undefined
+  let message = error instanceof Error ? error.message : ''
+  if (error instanceof Response) {
+    status = error.status
+    try {
+      const body = await error.clone().text()
+      if (body) message = body
+    } catch {
+      // The status and default copy are still enough to render a stable failure state.
+    }
+  } else if (error && typeof error === 'object' && 'status' in error) {
+    status = typeof error.status === 'number' ? error.status : undefined
+  }
+  const unavailableEmptySnapshot =
+    status === 503 &&
+    /published runtime snapshot unavailable|publication unavailable/i.test(message)
+  return {
+    message: unavailableEmptySnapshot ? undefined : message || undefined,
+    status: unavailableEmptySnapshot ? ('no-results' as const) : ('failed' as const),
+  }
+}
+
 function EvidenceCard({
+  documentReference,
   evidence,
   index,
   knowledgeSpaceId,
 }: {
+  documentReference?: {
+    id: string
+    title: string
+  }
   evidence: RetrievalEvidence
   index: number
   knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
-  const openHref = evidence.documentId
-    ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, evidence.documentId)
+  const openHref = documentReference
+    ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentReference.id)
     : undefined
 
   return (
@@ -122,7 +150,7 @@ function EvidenceCard({
           className="i-ri-file-pdf-2-fill size-4 shrink-0 text-util-colors-red-red-500"
         />
         <span className="min-w-0 flex-1 truncate system-xs-medium">
-          {evidence.documentName ?? evidence.title}
+          {documentReference?.title ?? evidence.documentName ?? evidence.title}
         </span>
         {evidence.revision && (
           <span className="shrink-0 system-xs-regular">{evidence.revision}</span>
@@ -193,6 +221,27 @@ function EmptyState({
           {t(($) => $['newKnowledge.retrievalTest.retry'])}
         </Button>
       )}
+    </div>
+  )
+}
+
+function FailedResult({ description, onRetry }: { description: string; onRetry: () => void }) {
+  const { t } = useTranslation('dataset')
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-xl border border-components-panel-border bg-background-section px-4 py-3"
+    >
+      <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 text-text-destructive" />
+      <span className="min-w-0 flex-1">
+        <span className="block system-sm-semibold text-text-primary">
+          {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
+        </span>
+        <span className="mt-0.5 block body-xs-regular text-text-tertiary">{description}</span>
+      </span>
+      <Button size="small" variant="secondary" onClick={onRetry}>
+        {t(($) => $['newKnowledge.retrievalTest.retry'])}
+      </Button>
     </div>
   )
 }
@@ -428,6 +477,11 @@ function RecordButton({
         <span className="line-clamp-2 system-sm-medium text-text-primary">{record.query}</span>
         <span className="mt-1 block system-xs-regular text-text-tertiary">
           {t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])}
+          {' · '}
+          {new Intl.DateTimeFormat(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(record.createdAt)}
         </span>
       </span>
     </button>
@@ -480,6 +534,24 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     () => retrievalTestRecords(tracesQuery.data?.data ?? [], researchTasksQuery.data?.data ?? []),
     [researchTasksQuery.data?.data, tracesQuery.data?.data],
   )
+  const displayRecords = useMemo<RetrievalTestRecord[]>(() => {
+    if (!localRun) return records
+    const traceAlreadyListed =
+      localRun.traceId &&
+      records.some((record) => record.kind === 'trace' && record.id === localRun.traceId)
+    if (traceAlreadyListed) return records
+    return [
+      {
+        createdAt: localRun.startedAt,
+        id: localRun.id,
+        kind: 'local',
+        mode: localRun.mode,
+        query: localRun.query,
+        status: localRun.status === 'no-results' ? 'completed' : localRun.status,
+      },
+      ...records,
+    ]
+  }, [localRun, records])
   const selectedRecord = records.find(
     (record) => record.id === selected?.id && record.kind === selected.kind,
   )
@@ -494,30 +566,28 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         ? localRun?.traceId
         : undefined
 
-  const traceDetailQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.get.queryOptions({
-      input: selectedTraceId
-        ? {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              trace_id: selectedTraceId,
-            },
-          }
-        : skipToken,
+  const traceDetailQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.get.queryOptions({
+      input: {
+        params: {
+          control_space_id: knowledgeSpaceId,
+          trace_id: selectedTraceId ?? '',
+        },
+      },
     }),
-  )
+    enabled: Boolean(selectedTraceId),
+  })
   const traceEvidenceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get.queryOptions({
-      input: selectedTraceId
-        ? {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              trace_id: selectedTraceId,
-            },
-            query: { limit: 100 },
-          }
-        : skipToken,
+      input: {
+        params: {
+          control_space_id: knowledgeSpaceId,
+          trace_id: selectedTraceId ?? '',
+        },
+        query: { limit: 100 },
+      },
     }),
+    enabled: Boolean(selectedTraceId),
   })
   const researchPartialsQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.partials.get.queryOptions(
@@ -545,6 +615,34 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       : selected?.kind === 'research'
         ? researchEvidence
         : historicalEvidence
+  const evidenceDocumentReferencesQuery = useQuery({
+    queryKey: ['retrieval-document-references', knowledgeSpaceId],
+    enabled: currentEvidence.some((evidence) => evidence.documentId),
+    queryFn: async () => {
+      const references: Record<string, { id: string; title: string }> = {}
+      const visitedCursors = new Set<string>()
+      let cursor: string | undefined
+      do {
+        const response =
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get({
+            params: { control_space_id: knowledgeSpaceId },
+            ...(cursor ? { query: { cursor } } : {}),
+          })
+        response.data.forEach((document) => {
+          if (document.active)
+            references[document.active.document_asset_id] = {
+              id: document.id,
+              title: document.title,
+            }
+        })
+        const nextCursor = response.next_cursor ?? undefined
+        if (!nextCursor || visitedCursors.has(nextCursor)) break
+        visitedCursors.add(nextCursor)
+        cursor = nextCursor
+      } while (cursor)
+      return references
+    },
+  })
   const resultKey = selected ? `${selected.kind}:${selected.id}` : undefined
   const selectedQuery =
     selected?.kind === 'local'
@@ -560,6 +658,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     (selected?.kind === 'trace' && !selectedRecord && traceDetailQuery.isPending) ||
     (selected?.kind === 'trace' && traceEvidenceQuery.isPending)
   const selectedFailed = selected?.kind === 'local' && localRun?.status === 'failed'
+  const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, 3)
 
   const selectRecord = (record: RetrievalTestRecord) => {
@@ -677,13 +776,14 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       await tracesQuery.refetch()
     } catch (error) {
       if (controller.signal.aborted) return
+      const failure = await queryFailure(error)
       setLocalRun((current) =>
         current?.id === id
           ? {
               ...current,
               endedAt: Date.now(),
-              error: error instanceof Error ? error.message : undefined,
-              status: 'failed',
+              error: failure.message,
+              status: failure.status,
             }
           : current,
       )
@@ -802,12 +902,14 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
               <h2 className="system-xs-semibold-uppercase text-text-tertiary">
                 {t(($) => $['newKnowledge.retrievalTest.records'])}
               </h2>
-              <span className="ml-2 system-xs-regular text-text-quaternary">{records.length}</span>
+              <span className="ml-2 system-xs-regular text-text-quaternary">
+                {displayRecords.length}
+              </span>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {records.length > 0 ? (
+              {displayRecords.length > 0 ? (
                 <div className="space-y-1">
-                  {records.map((record) => (
+                  {displayRecords.map((record) => (
                     <RecordButton
                       key={`${record.kind}:${record.id}`}
                       record={record}
@@ -838,7 +940,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 <h2 className="min-w-0 flex-1 truncate title-md-semi-bold text-text-primary">
                   {selected?.kind === 'research'
                     ? t(($) => $['newKnowledge.retrievalTest.researchResult'])
-                    : selectedQuery}
+                    : t(($) => $['newKnowledge.retrievalTest.result'], {
+                        mode: selectedMode
+                          ? t(($) => $[`newKnowledge.settings.retrievalMode.${selectedMode}`])
+                          : '',
+                      })}
                 </h2>
                 <span className="bg-components-badge-bg rounded-md px-2 py-1 system-xs-semibold text-text-secondary capitalize">
                   {selectedMode
@@ -881,9 +987,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 {selectedIsLoading && <ResultSkeleton />}
 
                 {selectedFailed && (
-                  <EmptyState
-                    failed
-                    title={t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
+                  <FailedResult
                     description={
                       localRun?.error || t(($) => $['newKnowledge.retrievalTest.failedDescription'])
                     }
@@ -891,12 +995,15 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   />
                 )}
 
-                {!selectedIsLoading && !selectedFailed && currentEvidence.length === 0 && (
-                  <EmptyState
-                    title={t(($) => $['newKnowledge.retrievalTest.noChunksTitle'])}
-                    description={t(($) => $['newKnowledge.retrievalTest.noChunksDescription'])}
-                  />
-                )}
+                {!selectedIsLoading &&
+                  !selectedFailed &&
+                  !researchTaskIsActive(selectedResearchTask) &&
+                  (selectedHasNoResults || currentEvidence.length === 0) && (
+                    <EmptyState
+                      title={t(($) => $['newKnowledge.retrievalTest.noChunksTitle'])}
+                      description={t(($) => $['newKnowledge.retrievalTest.noChunksDescription'])}
+                    />
+                  )}
 
                 {currentEvidence.length > 0 && (
                   <div className={cn(selectedResearchTask && 'mt-5')}>
@@ -913,6 +1020,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                       {visibleEvidence.map((evidence, index) => (
                         <EvidenceCard
                           key={evidence.id}
+                          documentReference={
+                            evidence.documentId
+                              ? evidenceDocumentReferencesQuery.data?.[evidence.documentId]
+                              : undefined
+                          }
                           evidence={evidence}
                           index={index}
                           knowledgeSpaceId={knowledgeSpaceId}

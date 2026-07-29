@@ -558,8 +558,8 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-105 flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-star-line size-8 text-text-tertiary" />
+          <div className="flex min-h-[calc(100vh-15rem)] flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-thumb-up-line size-8 text-text-tertiary" />
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
             </h2>
@@ -689,8 +689,8 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-105 flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-checkbox-circle-line size-8 text-text-tertiary" />
+          <div className="flex min-h-[calc(100vh-15rem)] flex-col items-center justify-center text-center">
+            <span aria-hidden className="i-ri-check-line size-8 text-text-tertiary" />
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
             </h2>

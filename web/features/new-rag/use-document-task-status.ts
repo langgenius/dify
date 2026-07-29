@@ -21,6 +21,7 @@ function documentTaskIsActive(state: string | undefined) {
 }
 
 export function useDocumentTaskStatus({
+  acceptedTaskId,
   documentId,
   enabled,
   knowledgeSpaceId,
@@ -28,6 +29,7 @@ export function useDocumentTaskStatus({
   submissionNeedsRecheck,
   submissionPending,
 }: {
+  acceptedTaskId?: string
   documentId: string
   enabled: boolean
   knowledgeSpaceId: string
@@ -77,7 +79,12 @@ export function useDocumentTaskStatus({
     () => tasksData?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
     [tasksData],
   )
+  const acceptedTask = useMemo(
+    () => (acceptedTaskId ? tasks.find((candidate) => candidate.id === acceptedTaskId) : undefined),
+    [acceptedTaskId, tasks],
+  )
   const latestTask = useMemo(() => {
+    if (acceptedTask) return acceptedTask
     const task = newestTaskByDocument(
       tasks.filter(
         (candidate) =>
@@ -85,9 +92,10 @@ export function useDocumentTaskStatus({
       ),
     ).get(documentId)
     return task && task.documentRevision >= minimumRevision ? task : undefined
-  }, [documentId, minimumRevision, tasks])
+  }, [acceptedTask, documentId, minimumRevision, tasks])
+  const lookupSatisfied = acceptedTaskId ? Boolean(acceptedTask) : Boolean(latestTask)
   const lookupExhausted = Boolean(
-    !latestTask && hasNextPage && (tasksData?.pages.length ?? 0) >= lookupPageLimit,
+    !lookupSatisfied && hasNextPage && (tasksData?.pages.length ?? 0) >= lookupPageLimit,
   )
 
   useEffect(() => {
@@ -96,7 +104,7 @@ export function useDocumentTaskStatus({
       !enabled ||
       isFetchingNextPage ||
       tasksError ||
-      latestTask ||
+      lookupSatisfied ||
       !hasNextPage ||
       lookupExhausted
     )
@@ -108,7 +116,7 @@ export function useDocumentTaskStatus({
     hasNextPage,
     isFetchingNextPage,
     isPending,
-    latestTask,
+    lookupSatisfied,
     lookupExhausted,
     tasksError,
   ])
@@ -116,7 +124,7 @@ export function useDocumentTaskStatus({
   return {
     continueLookup: () => setLookupPageLimit((current) => current + TASK_LOOKUP_PAGE_BATCH),
     isFetchingNextPage,
-    isLookingUp: Boolean(!latestTask && hasNextPage && !lookupExhausted),
+    isLookingUp: Boolean(!lookupSatisfied && hasNextPage && !lookupExhausted),
     isPending,
     latestTask,
     lookupExhausted,

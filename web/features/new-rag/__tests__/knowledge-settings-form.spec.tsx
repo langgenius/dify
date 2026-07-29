@@ -386,6 +386,7 @@ describe('KnowledgeSettingsForm', () => {
       name: /^dataset\.newKnowledge\.settings\.deleteConfirmPrompt/,
     })
 
+    expect(confirmationInput).toHaveAttribute('placeholder', 'Camera Technical Spec')
     expect(confirmButton).toBeDisabled()
     await user.type(confirmationInput, 'Camera')
     expect(confirmButton).toBeDisabled()

@@ -939,9 +939,8 @@ export function KnowledgeSettingsForm({
                     value={topK}
                     disabled={retrievalFieldsDisabled}
                     className="w-18 shrink-0"
-                    onBlur={() => setTopK(clamp(topK, TOP_K_MIN, TOP_K_MAX))}
                     onChange={(event) => {
-                      setTopK(Number(event.target.value))
+                      setTopK(clamp(Number(event.target.value), TOP_K_MIN, TOP_K_MAX))
                     }}
                   />
                   <Slider
@@ -1167,6 +1166,7 @@ export function KnowledgeSettingsForm({
               id="knowledge-delete-confirmation"
               autoComplete="off"
               name="knowledge-delete-confirmation"
+              placeholder={initialName}
               value={deleteConfirmation}
               className="mt-2 w-full"
               onChange={(event) => setDeleteConfirmation(event.target.value)}

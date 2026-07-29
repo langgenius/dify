@@ -94,7 +94,7 @@ export function GoldenQuestionDialog({
                 onValueChange={setQuestion}
               />
               {questionInvalid && (
-                <FieldError className="py-0.5 body-xs-regular text-text-destructive">
+                <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
                   {t(($) => $['newKnowledge.qualityPage.questionRequired'])}
                 </FieldError>
               )}
@@ -112,11 +112,11 @@ export function GoldenQuestionDialog({
                 onValueChange={setAnnotation}
               />
               {annotationInvalid && (
-                <FieldError className="py-0.5 body-xs-regular text-text-destructive">
+                <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
                   {t(($) => $['newKnowledge.qualityPage.annotationRequired'])}
                 </FieldError>
               )}
-              {!annotationInvalid && error && <FieldError>{error}</FieldError>}
+              {!annotationInvalid && error && <FieldError match>{error}</FieldError>}
             </Field>
             <Field name="tags">
               <FieldLabel>{t(($) => $['newKnowledge.qualityPage.tags'])}</FieldLabel>

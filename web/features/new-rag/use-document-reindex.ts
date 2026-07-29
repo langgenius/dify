@@ -45,6 +45,7 @@ export function useDocumentReindex({
   const [submissionRecoveryBusy, setSubmissionRecoveryBusy] = useState(false)
   const [submittedReindex, setSubmittedReindex] = useState<{
     baselineRevision: number
+    taskId: string
     timedOut: boolean
   }>()
   const permissionRecoveryPendingRef = useRef(false)
@@ -56,6 +57,7 @@ export function useDocumentReindex({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
   const taskStatus = useDocumentTaskStatus({
+    acceptedTaskId: submittedReindex?.taskId,
     documentId,
     enabled,
     knowledgeSpaceId,
@@ -69,9 +71,7 @@ export function useDocumentReindex({
   const latestTaskRef = useRef(latestTask)
   latestTaskRef.current = latestTask
   const submittedTaskObserved = Boolean(
-    latestTask &&
-    submittedReindex &&
-    latestTask.documentRevision > submittedReindex.baselineRevision,
+    latestTask && submittedReindex && latestTask.id === submittedReindex.taskId,
   )
   const submissionPending = Boolean(submittedReindex && !submittedTaskObserved)
 
@@ -107,7 +107,8 @@ export function useDocumentReindex({
     const timeout = window.setTimeout(
       () =>
         setSubmittedReindex((current) =>
-          current?.baselineRevision === submittedReindex.baselineRevision
+          current?.baselineRevision === submittedReindex.baselineRevision &&
+          current.taskId === submittedReindex.taskId
             ? { ...current, timedOut: true }
             : current,
         ),
@@ -125,9 +126,7 @@ export function useDocumentReindex({
       previousState === 'retry_wait'
     previousTaskStateRef.current = latestTask?.state
     const taskMatchesAcceptedSubmission = Boolean(
-      latestTask &&
-      submittedReindex &&
-      latestTask.documentRevision > submittedReindex.baselineRevision,
+      latestTask && submittedReindex && latestTask.id === submittedReindex.taskId,
     )
     if (taskMatchesAcceptedSubmission && latestTask) acceptedTaskIdRef.current = latestTask.id
     const terminalTaskKey = latestTask ? `${latestTask.id}:${latestTask.updatedAt}` : undefined
@@ -185,12 +184,18 @@ export function useDocumentReindex({
         toast.error(t(($) => $['newKnowledge.documentNotFoundTitle']))
         return
       }
+      const taskId =
+        typeof result.items[0].compilation_job?.id === 'string'
+          ? result.items[0].compilation_job.id
+          : undefined
+      if (!taskId) throw new Error('Re-index response did not include a compilation task id')
       setSubmittedReindex({
         baselineRevision: Math.max(
           baselineRevision,
           documentActiveRevision,
           latestTaskRef.current?.documentRevision ?? documentActiveRevision,
         ),
+        taskId,
         timedOut: false,
       })
       await Promise.all([

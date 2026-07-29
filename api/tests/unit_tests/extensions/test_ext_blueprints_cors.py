@@ -25,7 +25,7 @@ def test_authenticated_cors_allows_request_metadata_headers() -> None:
     response = app.test_client().options(
         "/console/api/probe",
         headers={
-            "Access-Control-Request-Headers": "Idempotency-Key, X-Request-ID",
+            "Access-Control-Request-Headers": "Idempotency-Key, X-Request-ID, X-Trace-ID",
             "Access-Control-Request-Method": "POST",
             "Origin": "http://localhost:3000",
         },
@@ -34,3 +34,4 @@ def test_authenticated_cors_allows_request_metadata_headers() -> None:
     allowed_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
     assert "idempotency-key" in allowed_headers
     assert "x-request-id" in allowed_headers
+    assert "x-trace-id" in allowed_headers

@@ -1604,6 +1604,45 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     validSelectedDocumentIds,
   ])
 
+  const handleReindexDocument = useCallback(
+    async (documentId: string) => {
+      if (!canWrite || reindexPendingRef.current) return
+      reindexPendingRef.current = true
+      setReindexing(true)
+      try {
+        if (!(await ensureModelSetupReady())) return
+        const result = await reindexDocuments({
+          body: { documentIds: [documentId] },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+        if (!result.items[0] || result.items[0].status === 'not_found')
+          toast.error(
+            t(($) => $['newKnowledge.documentsReindexPartial'], {
+              missing: 1,
+              queued: 0,
+            }),
+          )
+        else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
+        refreshDocumentsAndTasks()
+      } catch (error) {
+        if (responseStatus(error) === 403) handleWritePermissionDenied()
+        else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
+      } finally {
+        reindexPendingRef.current = false
+        setReindexing(false)
+      }
+    },
+    [
+      canWrite,
+      ensureModelSetupReady,
+      handleWritePermissionDenied,
+      knowledgeSpaceId,
+      refreshDocumentsAndTasks,
+      reindexDocuments,
+      t,
+    ],
+  )
+
   const handleTaskEvent = useCallback(
     (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => {
       const eventVersion = event.event === 'progress' ? event.data.updatedAt : taskVersion
@@ -2267,6 +2306,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}
             onOpenTasks={() => setTasksOpen(true)}
+            onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
             onSearchChange={setSearch}
             onSelectAll={toggleAllFiltered}
             onSelectDocument={toggleDocument}

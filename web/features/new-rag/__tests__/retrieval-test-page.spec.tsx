@@ -13,6 +13,9 @@ const apiMock = vi.hoisted(() => ({
   refetchPartials: vi.fn(),
   refetchTasks: vi.fn(),
   refetchTraces: vi.fn(),
+  streamQuery: vi.fn(),
+  documentReferences: {} as Record<string, { id: string; title: string }>,
+  evidence: undefined as Record<string, unknown> | undefined,
   traceDetail: undefined as Record<string, unknown> | undefined,
   traces: [] as Array<Record<string, unknown>>,
 }))
@@ -25,6 +28,10 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => (key === 'trace' ? navigationMock.trace : undefined),
   }),
+}))
+
+vi.mock('../services/knowledge-query-events', () => ({
+  streamKnowledgeQuery: apiMock.streamQuery,
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -42,6 +49,16 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (resource === 'trace-detail')
         return {
           data: apiMock.traceDetail,
+          isPending: false,
+        }
+      if (resource === 'evidence')
+        return {
+          data: apiMock.evidence,
+          isPending: false,
+        }
+      if (resource === 'retrieval-document-references')
+        return {
+          data: apiMock.documentReferences,
           isPending: false,
         }
       if (resource === 'tasks')
@@ -65,6 +82,7 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           queries: { admission: { post: apiMock.queryAdmission } },
+          logicalDocuments: { get: vi.fn() },
           goldenQuestions: { post: apiMock.createGolden },
           quality: { badCases: { post: apiMock.createBadCase } },
           researchTasks: {
@@ -136,7 +154,12 @@ describe('RetrievalTestPage', () => {
       updated_at: 1_800_000_000,
     })
     apiMock.refetchTasks.mockResolvedValue(undefined)
+    apiMock.refetchTraces.mockResolvedValue(undefined)
+    apiMock.streamQuery.mockResolvedValue(undefined)
+    apiMock.queryAdmission.mockResolvedValue({})
     apiMock.createBadCase.mockResolvedValue({ id: 'bad-case-1' })
+    apiMock.documentReferences = {}
+    apiMock.evidence = undefined
     apiMock.traceDetail = undefined
     apiMock.traces = []
     navigationMock.trace = undefined
@@ -236,7 +259,9 @@ describe('RetrievalTestPage', () => {
     render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'An older production question' }),
+      screen.getByRole('heading', {
+        name: 'dataset.newKnowledge.retrievalTest.result:{"mode":"dataset.newKnowledge.settings.retrievalMode.deep"}',
+      }),
     ).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
@@ -254,5 +279,88 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+  })
+
+  it('opens retrieval evidence through its logical document instead of its asset', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What is the refund policy?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {
+            documentId: 'asset-1',
+            score: 0.9,
+            text: 'Refunds are available within 30 days.',
+          },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    apiMock.documentReferences = {
+      'asset-1': { id: 'document-1', title: 'refund-policy.txt' },
+    }
+    const user = userEvent.setup()
+    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByText('What is the refund policy?'))
+
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1')
+    expect(screen.getByText('refund-policy.txt')).toBeInTheDocument()
+  })
+
+  it('keeps a failed run in Records and renders the failure inline', async () => {
+    apiMock.streamQuery.mockRejectedValueOnce(new Error('provider timed out'))
+    const user = userEvent.setup()
+    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Why did this fail?',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.retrievalTest.failedTitle',
+    )
+    expect(screen.getAllByText('Why did this fail?')).toHaveLength(2)
+    expect(screen.getByText('provider timed out')).toBeInTheDocument()
+  })
+
+  it('maps an empty unpublished knowledge space to the designed no-results state', async () => {
+    apiMock.streamQuery.mockRejectedValueOnce(
+      new Response('Published runtime snapshot unavailable', { status: 503 }),
+    )
+    const user = userEvent.setup()
+    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Anything here?',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.retrievalTest.noChunksTitle'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.retrievalTest.failedTitle'),
+    ).not.toBeInTheDocument()
+    expect(screen.getAllByText('Anything here?')).toHaveLength(2)
   })
 })

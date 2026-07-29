@@ -33,7 +33,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,7 +45,7 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { newKnowledgeAddSourcePath } from './routes'
-import { sourceFromApi } from './source-models'
+import { sourceFromApi, sourceWorkflowFromApi } from './source-models'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SourceStatus = Source['status']
@@ -55,6 +55,23 @@ type SourceSort = 'name-asc' | 'name-desc'
 const PAGE_SIZE = 50
 const MAX_AUTO_FILTER_PAGES = 4
 const SOURCE_POLL_INTERVAL = 3000
+const SOURCE_WORKFLOW_POLL_INTERVAL = 1500
+const SOURCE_WORKFLOW_SUCCESS_STATES = new Set([
+  'complete',
+  'completed',
+  'success',
+  'succeeded',
+  'zero_results',
+])
+const SOURCE_WORKFLOW_FAILURE_STATES = new Set([
+  'canceled',
+  'cancelled',
+  'error',
+  'exhausted',
+  'failed',
+  'timed_out',
+  'timeout',
+])
 
 const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
   active: 'success',
@@ -74,6 +91,17 @@ function isPreviewDraft(source: Source) {
 
 function createIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+}
+
+function normalizedWorkflowState(state: string) {
+  return state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
+}
+
+function sourceWorkflowStatus(state: string): SourceStatus {
+  const normalized = normalizedWorkflowState(state)
+  if (SOURCE_WORKFLOW_FAILURE_STATES.has(normalized)) return 'error'
+  if (SOURCE_WORKFLOW_SUCCESS_STATES.has(normalized)) return 'active'
+  return 'syncing'
 }
 
 function getOpenableSourceUri(uri: string) {
@@ -254,6 +282,30 @@ function SourceRow({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const [pendingAction, setPendingAction] = useState<SourceAction>()
+  const [acceptedSyncRun, setAcceptedSyncRun] = useState<ReturnType<typeof sourceWorkflowFromApi>>()
+  const syncWorkflowQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get.queryOptions({
+      input: {
+        params: {
+          control_space_id: knowledgeSpaceId,
+          run_id: acceptedSyncRun?.id ?? '',
+        },
+      },
+    }),
+    enabled: Boolean(acceptedSyncRun),
+    refetchInterval: (query) => {
+      const workflow = query.state.data ? sourceWorkflowFromApi(query.state.data) : acceptedSyncRun
+      return workflow && sourceWorkflowStatus(workflow.state) === 'syncing'
+        ? SOURCE_WORKFLOW_POLL_INTERVAL
+        : false
+    },
+  })
+  const syncWorkflow = syncWorkflowQuery.data
+    ? sourceWorkflowFromApi(syncWorkflowQuery.data)
+    : acceptedSyncRun
+  const visibleSource = syncWorkflow
+    ? { ...source, status: sourceWorkflowStatus(syncWorkflow.state) }
+    : source
   const providerName = metadataString(source.metadata, 'providerName')
   const syncPolicy = metadataString(source.metadata, 'syncPolicy')
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
@@ -318,7 +370,11 @@ function SourceRow({
           headers: { 'Idempotency-Key': createIdempotencyKey() },
           params: { control_space_id: knowledgeSpaceId, source_id: source.id },
         }),
-      () => onSourceChange({ ...source, status: 'syncing' }),
+      (workflow) => {
+        const run = sourceWorkflowFromApi(workflow)
+        setAcceptedSyncRun(run)
+        onSourceChange({ ...source, status: sourceWorkflowStatus(run.state) })
+      },
       onSourceReconciled,
       ensureModelSetupReady,
     )
@@ -358,7 +414,7 @@ function SourceRow({
     <tr
       className={cn(
         'border-t border-divider-subtle',
-        source.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
+        visibleSource.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
       )}
     >
       <td className="w-7 py-2 pr-3">
@@ -379,13 +435,13 @@ function SourceRow({
       <td className="w-24 py-2 pr-3 sm:w-35">
         <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-primary">
           <StatusDot
-            status={statusDotStatus[source.status]}
+            status={statusDotStatus[visibleSource.status]}
             className={cn(
               'shrink-0',
-              source.status === 'syncing' && 'animate-pulse motion-reduce:animate-none',
+              visibleSource.status === 'syncing' && 'animate-pulse motion-reduce:animate-none',
             )}
           />
-          {t(($) => $[`newKnowledge.sourceStatus.${source.status}`])}
+          {t(($) => $[`newKnowledge.sourceStatus.${visibleSource.status}`])}
         </span>
       </td>
       <td className="hidden w-30 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
@@ -394,13 +450,27 @@ function SourceRow({
       <td
         className={cn(
           'hidden w-40 py-2 pr-3 system-xs-regular lg:table-cell',
-          source.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
+          visibleSource.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
         )}
       >
-        {source.status === 'error' ? (
+        {visibleSource.status === 'syncing' && syncWorkflow ? (
+          <span className="inline-flex items-center gap-1.5 text-text-accent">
+            <span
+              aria-hidden
+              className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
+            />
+            {t(($) => $['newKnowledge.sourceSyncProgress'], {
+              completed:
+                syncWorkflow.progressCompleted +
+                syncWorkflow.progressFailed +
+                syncWorkflow.progressSkipped,
+              total: syncWorkflow.progressTotal ?? '—',
+            })}
+          </span>
+        ) : visibleSource.status === 'error' ? (
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden className="i-ri-error-warning-fill size-3.5" />
-            {t(($) => $['newKnowledge.sourceSyncFailed'])}
+            {syncWorkflow?.lastErrorCode ?? t(($) => $['newKnowledge.sourceSyncFailed'])}
           </span>
         ) : (
           (lastSync ?? '—')
@@ -408,7 +478,7 @@ function SourceRow({
       </td>
       <td className="w-20 py-2 text-right">
         <div className="flex items-center justify-end gap-1">
-          {canSync && source.status === 'error' && (
+          {canSync && visibleSource.status === 'error' && (
             <Button
               size="small"
               variant="secondary"
@@ -422,7 +492,7 @@ function SourceRow({
           <SourceActions
             canEdit={canEdit}
             canSync={canSync}
-            source={source}
+            source={visibleSource}
             pendingAction={pendingAction}
             onSync={syncSource}
             onToggle={toggleSource}

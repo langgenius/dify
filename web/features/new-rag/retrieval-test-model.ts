@@ -21,6 +21,14 @@ export type RetrievalTestRecord =
   | {
       createdAt: number
       id: string
+      kind: 'local'
+      mode: Exclude<RetrievalTestMode, 'research'>
+      query: string
+      status: 'completed' | 'failed' | 'running'
+    }
+  | {
+      createdAt: number
+      id: string
       kind: 'trace'
       mode: RetrievalTestMode
       query: string
@@ -80,6 +88,7 @@ function evidenceFromValue(
   if (!record) return undefined
   const metadata = objectValue(record.metadata) ?? {}
   const document = objectValue(record.document) ?? objectValue(metadata.document) ?? {}
+  const citation = Array.isArray(record.citations) ? (objectValue(record.citations[0]) ?? {}) : {}
   const text = firstString(
     record.text,
     record.content,
@@ -117,6 +126,8 @@ function evidenceFromValue(
     document.id,
     metadata.document_id,
     metadata.documentId,
+    citation.documentAssetId,
+    citation.document_asset_id,
     record.target_id,
     record.targetId,
   )
@@ -153,6 +164,8 @@ function evidenceFromValue(
       record.id,
       record.chunk_id,
       record.chunkId,
+      record.node_id,
+      record.nodeId,
       record.target_id,
       record.targetId,
       metadata.id,
@@ -181,6 +194,12 @@ function evidenceFromValue(
       metadata.revision_label,
       metadata.revisionLabel,
       typeof metadata.documentVersion === 'number' ? String(metadata.documentVersion) : undefined,
+      typeof citation.documentVersion === 'number'
+        ? `Revision ${citation.documentVersion}`
+        : undefined,
+      typeof citation.document_version === 'number'
+        ? `Revision ${citation.document_version}`
+        : undefined,
     ),
     score,
     text,

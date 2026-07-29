@@ -43,8 +43,8 @@ import {
 const connectedProviders = {
   onlineDocuments: [
     { icon: 'i-custom-public-common-notion', label: 'Notion' },
-    { icon: 'i-ri-file-text-line', label: 'Google Docs' },
-    { icon: 'i-ri-links-line', label: 'Confluence' },
+    { icon: 'i-ri-file-text-fill text-[#4d8bf5]', label: 'Google Docs' },
+    { icon: 'i-custom-public-common-confluence', label: 'Confluence' },
   ],
   onlineDrive: [
     { icon: 'i-custom-public-common-google-drive', label: 'Google Drive' },

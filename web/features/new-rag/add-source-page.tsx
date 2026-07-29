@@ -497,6 +497,105 @@ function ConnectionForm({
   )
 }
 
+function ManagedProviderConnection({
+  credentialId,
+  knowledgeSpaceId,
+  onConnected,
+  onReconcile,
+  provider,
+}: {
+  credentialId: string
+  knowledgeSpaceId: string
+  onConnected: (connection: Connection) => void
+  onReconcile: () => Promise<Connection | undefined>
+  provider: Provider
+}) {
+  const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const [attempt, setAttempt] = useState(0)
+  const [error, setError] = useState(false)
+  const requestRef = useRef<
+    | {
+        attempt: number
+        promise: Promise<Connection | undefined>
+      }
+    | undefined
+  >(undefined)
+
+  useEffect(() => {
+    if (requestRef.current?.attempt !== attempt) {
+      requestRef.current = {
+        attempt,
+        promise: (async () => {
+          try {
+            return sourceConnectionFromApi(
+              await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+                body: {
+                  authKind: 'endpoint',
+                  configuration: {
+                    ...FIRECRAWL_CONFIGURATION,
+                    credentialId,
+                  },
+                  credentials: {},
+                  name: FIRECRAWL_CONNECTION_NAME,
+                  providerId: provider.id,
+                },
+                params: { control_space_id: knowledgeSpaceId },
+              }),
+            )
+          } catch {
+            return onReconcile()
+          }
+        })(),
+      }
+    }
+
+    let subscribed = true
+    void requestRef.current.promise
+      .then((connection) => {
+        if (!subscribed) return
+        if (connection) onConnected(connection)
+        else setError(true)
+      })
+      .catch(() => {
+        if (subscribed) setError(true)
+      })
+    return () => {
+      subscribed = false
+    }
+  }, [attempt, credentialId, knowledgeSpaceId, onConnected, onReconcile, provider.id])
+
+  return (
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-xl bg-background-section p-4 text-center">
+      {error ? (
+        <>
+          <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
+          <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
+            {t(($) => $['newKnowledge.connectionFailed'])}
+          </p>
+          <Button
+            className="mt-3"
+            onClick={() => {
+              requestRef.current = undefined
+              setError(false)
+              setAttempt((current) => current + 1)
+            }}
+          >
+            {tCommon(($) => $['operation.retry'])}
+          </Button>
+        </>
+      ) : (
+        <>
+          <Loading />
+          <p role="status" className="mt-3 system-xs-medium text-text-secondary">
+            {t(($) => $['newKnowledge.connectingProvider'])}
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
 function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
@@ -518,10 +617,20 @@ function UnconfiguredProvider({
   const [configuring, setConfiguring] = useState(false)
   const difyManaged = isDifyManagedProvider(provider)
 
-  if ((difyManaged && credentialId) || configuring)
+  if (difyManaged && credentialId)
+    return (
+      <ManagedProviderConnection
+        credentialId={credentialId}
+        knowledgeSpaceId={knowledgeSpaceId}
+        onConnected={onConnected}
+        onReconcile={onReconcile}
+        provider={provider}
+      />
+    )
+
+  if (configuring)
     return (
       <ConnectionForm
-        credentialId={credentialId}
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
         onDraftChange={onDraftChange}

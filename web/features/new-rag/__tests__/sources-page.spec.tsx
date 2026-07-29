@@ -70,6 +70,29 @@ const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
   refetch: vi.fn(),
 }))
+const workflowState = vi.hoisted(() => ({
+  data: undefined as
+    | {
+        canceled_at: null
+        checkpoint: string
+        completed_at: null
+        created_at: string
+        execution_attempts: number
+        id: string
+        kind: string
+        knowledge_space_id: string
+        last_error_code: null
+        max_execution_attempts: number
+        progress_completed: number
+        progress_failed: number
+        progress_skipped: number
+        progress_total: number
+        source_id: string
+        state: string
+        updated_at: string
+      }
+    | undefined,
+}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -86,15 +109,18 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
-    useQuery: () => ({
-      data: {
-        configuration_state: settingsState.configurationState,
-        embedding: null,
-        retrieval: null,
-        revision: 1,
-      },
-      refetch: settingsState.refetch,
-    }),
+    useQuery: (options: { queryKey?: unknown[] }) =>
+      options.queryKey?.[1] === 'source-workflow'
+        ? { data: workflowState.data }
+        : {
+            data: {
+              configuration_state: settingsState.configurationState,
+              embedding: null,
+              retrieval: null,
+              revision: 1,
+            },
+            refetch: settingsState.refetch,
+          },
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
@@ -132,6 +158,15 @@ vi.mock('@/service/client', () => ({
               }),
             },
           },
+          sourceWorkflows: {
+            byRunId: {
+              get: {
+                queryOptions: ({ input }: { input: { params: { run_id: string } } }) => ({
+                  queryKey: ['knowledge-fs', 'source-workflow', input.params.run_id],
+                }),
+              },
+            },
+          },
           sources: {
             get: {
               infiniteOptions: infiniteOptionsMock,
@@ -158,6 +193,26 @@ const source = (overrides: Partial<Source>): Source => ({
   ...overrides,
 })
 
+const workflow = (state = 'queued') => ({
+  canceled_at: null,
+  checkpoint: 'sync',
+  completed_at: null,
+  created_at: '2026-07-20T10:00:00Z',
+  execution_attempts: 1,
+  id: 'workflow-1',
+  kind: 'sync',
+  knowledge_space_id: 'space-1',
+  last_error_code: null,
+  max_execution_attempts: 3,
+  progress_completed: 0,
+  progress_failed: 0,
+  progress_skipped: 0,
+  progress_total: 1,
+  source_id: 'source-1',
+  state,
+  updated_at: '2026-07-20T10:00:00Z',
+})
+
 describe('SourcesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -169,7 +224,8 @@ describe('SourcesPage', () => {
     sourcesQuery.isPending = false
     clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
     clientMock.patchSource.mockResolvedValue(source({}))
-    clientMock.syncSource.mockResolvedValue({ state: 'queued' })
+    workflowState.data = undefined
+    clientMock.syncSource.mockResolvedValue(workflow())
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
@@ -516,7 +572,7 @@ describe('SourcesPage', () => {
         }),
     )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { rerender } = render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
@@ -536,7 +592,14 @@ describe('SourcesPage', () => {
         'dataset.newKnowledge.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceSyncProgress:{"completed":0,"total":1}',
+      ),
+    ).toBeInTheDocument()
     finishRefresh?.()
+    workflowState.data = workflow('completed')
+    rerender(<SourcesPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(

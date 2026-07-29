@@ -129,7 +129,7 @@ const providerOptions = {
     },
     {
       aliases: ['google docs', 'googledocs', 'google drive', 'googledrive'],
-      icon: 'i-ri-file-text-line',
+      icon: 'i-ri-file-text-fill text-[#4d8bf5]',
       label: 'Google Docs',
     },
     {
@@ -484,7 +484,11 @@ function ProviderSelector({
             >
               <ProviderBrandIcon
                 fallbackIcon={option.icon}
-                icon={datasourceProviderIcon(optionProvider)}
+                icon={
+                  option.label === 'Google Docs'
+                    ? undefined
+                    : datasourceProviderIcon(optionProvider)
+                }
               />
               {option.label}
             </RadioItem>

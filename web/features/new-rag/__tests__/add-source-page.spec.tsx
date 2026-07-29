@@ -814,8 +814,7 @@ describe('AddSourcePage', () => {
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
   })
 
-  it('binds the default Dify Firecrawl credential for the real KnowledgeFS provider', async () => {
-    const user = userEvent.setup()
+  it('automatically binds the default Dify Firecrawl credential for the real KnowledgeFS provider', async () => {
     queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
     queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
     clientMock.createConnection.mockResolvedValue({
@@ -831,7 +830,6 @@ describe('AddSourcePage', () => {
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -851,6 +849,9 @@ describe('AddSourcePage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+    expect(
+      screen.queryByRole('button', { name: connectFirecrawlButtonName }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
   })
 

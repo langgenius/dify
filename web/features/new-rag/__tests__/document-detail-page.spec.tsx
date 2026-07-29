@@ -14,7 +14,7 @@ type BulkDocumentReindexResult = {
   bulkJobId: string
   items: Array<{
     asset?: unknown
-    compilationJob?: unknown
+    compilation_job?: { id: string; stage: 'queued' }
     documentId?: string
     status: 'not_found' | 'queued'
     statusUrl?: string
@@ -420,7 +420,7 @@ const queuedReindexResult = (): BulkDocumentReindexResult => ({
         sizeBytes: 1200,
         version: 2,
       },
-      compilationJob: { id: 'compilation-job-1', stage: 'queued' },
+      compilation_job: { id: 'compilation-job-1', stage: 'queued' },
       status: 'queued',
       statusUrl: '/knowledge-fs/status/compilation-job-1',
     },
@@ -478,7 +478,6 @@ describe('DocumentDetailPage', () => {
   })
 
   it('loads the document, revisions, chunks, and task status through generated contracts', async () => {
-    const user = userEvent.setup()
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(documentOptions).toHaveBeenCalledWith(
@@ -505,17 +504,9 @@ describe('DocumentDetailPage', () => {
       params: { control_space_id: 'space-1' },
       query: { limit: 100 },
     })
-    await user.click(
-      screen.getByRole('button', {
-        name: /dataset\.newKnowledge\.documentActions/,
-      }),
-    )
-    expect(screen.getAllByRole('menuitem')).toHaveLength(5)
-    expect(screen.getByRole('menuitem', { name: 'common.operation.rename' })).toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.reindexDocument' }),
+      screen.queryByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
   })
 
   it('does not construct a chunks request while the document is loading', () => {
@@ -1366,7 +1357,17 @@ describe('DocumentDetailPage', () => {
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
 
     tasksQuery.data = {
-      pages: [{ items: [task({ documentRevision: 4, state: 'running' })] }],
+      pages: [
+        {
+          items: [
+            task({
+              documentRevision: 3,
+              id: 'compilation-job-1',
+              state: 'running',
+            }),
+          ],
+        },
+      ],
     }
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -1396,6 +1397,47 @@ describe('DocumentDetailPage', () => {
         },
       }),
     ).toBe(5000)
+  })
+
+  it('recognizes the accepted re-index task when it recompiles the active revision', async () => {
+    vi.useFakeTimers()
+    try {
+      const rendered = render(
+        <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+      )
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
+        )
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              task({
+                documentRevision: 3,
+                id: 'compilation-job-1',
+                state: 'running',
+              }),
+            ],
+          },
+        ],
+      }
+      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
+      ).toHaveAttribute('data-disabled')
+      await act(() => vi.advanceTimersByTimeAsync(30000))
+      expect(
+        screen.queryByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('surfaces unified task-list authorization failures and blocks re-indexing', () => {

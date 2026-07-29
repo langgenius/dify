@@ -205,6 +205,25 @@ describe('QualityPage', () => {
     })
   })
 
+  it('shows both required-field messages after an empty golden question submission', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+
+    expect(
+      screen.getByText('dataset.newKnowledge.qualityPage.questionRequired'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.qualityPage.annotationRequired'),
+    ).toBeInTheDocument()
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+  })
+
   it('resolves the protected trace reference before navigating', async () => {
     const user = userEvent.setup()
     navigationMock.tab = 'bad-cases'

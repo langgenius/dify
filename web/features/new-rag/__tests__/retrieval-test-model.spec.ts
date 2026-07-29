@@ -92,6 +92,38 @@ describe('retrieval test model', () => {
     expect(evidence[0]).toEqual(expect.objectContaining({ id: 'chunk-1', score: 0.77 }))
   })
 
+  it('keeps document references carried by research citations', () => {
+    expect(
+      extractRetrievalEvidence({
+        data: [
+          {
+            evidence_bundle: {
+              items: [
+                {
+                  citations: [
+                    {
+                      documentAssetId: 'asset-1',
+                      documentVersion: 2,
+                    },
+                  ],
+                  nodeId: 'node-1',
+                  score: 0.45,
+                  text: 'Research evidence with a durable document citation.',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        documentId: 'asset-1',
+        revision: 'Revision 2',
+        score: 0.45,
+      }),
+    ])
+  })
+
   it('merges trace and research histories newest-first', () => {
     const records = retrievalTestRecords(
       [

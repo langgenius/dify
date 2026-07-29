@@ -106,6 +106,7 @@ const DocumentRow = memo(
     documentHref,
     formatTimeFromNow,
     onSelectedChange,
+    onReindex,
     readOnlyReasonId,
     selected,
     selectionDisabled,
@@ -118,6 +119,7 @@ const DocumentRow = memo(
     documentHref: string
     formatTimeFromNow: (time: number) => string
     onSelectedChange: (documentId: string) => void
+    onReindex: (documentId: string) => void
     readOnlyReasonId?: string
     selected: boolean
     selectionDisabled: boolean
@@ -209,7 +211,10 @@ const DocumentRow = memo(
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
         <td className="w-10 align-middle">
-          <DocumentActionsDropdown documentTitle={document.title} />
+          <DocumentActionsDropdown
+            documentTitle={document.title}
+            onReindex={() => onReindex(document.id)}
+          />
         </td>
       </tr>
     )
@@ -306,6 +311,7 @@ export function DocumentsList({
   onFilterChange,
   onLoadMore,
   onOpenTasks,
+  onReindexDocument,
   onSearchChange,
   onSelectAll,
   onSelectDocument,
@@ -345,6 +351,7 @@ export function DocumentsList({
   onFilterChange: (filter: DocumentFilter) => void
   onLoadMore: () => void
   onOpenTasks: () => void
+  onReindexDocument: (documentId: string) => void
   onSearchChange: (search: string) => void
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
@@ -512,6 +519,7 @@ export function DocumentsList({
                 documentHref={getDocumentHref(document.id)}
                 formatTimeFromNow={formatTimeFromNow}
                 onSelectedChange={onSelectDocument}
+                onReindex={onReindexDocument}
                 readOnlyReasonId={
                   !canEdit
                     ? readOnlyReasonId
@@ -685,21 +693,6 @@ export function DocumentBulkActions({
             {disabledReason}
           </span>
         )}
-        <Button
-          className="shrink-0"
-          size="small"
-          onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
-        >
-          {t(($) => $['newKnowledge.downloadDocuments'])}
-        </Button>
-        <Button
-          className="shrink-0"
-          size="small"
-          tone="destructive"
-          onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
-        >
-          {t(($) => $['newKnowledge.deleteDocuments'])}
-        </Button>
         <Button
           variant="ghost"
           size="small"
