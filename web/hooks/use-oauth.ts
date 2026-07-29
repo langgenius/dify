@@ -1,51 +1,128 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { validateRedirectUrl } from '@/utils/urlValidation'
 
-export const useOAuthCallback = () => {
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const subscriptionId = urlParams.get('subscription_id')
-    const error = urlParams.get('error')
-    const errorDescription = urlParams.get('error_description')
+export const OAUTH_CALLBACK_MESSAGE_TYPE = 'oauth_callback'
+export const OAUTH_CALLBACK_CHANNEL_NAME = 'dify-oauth-callback'
 
-    if (window.opener) {
-      // Use window.opener.origin instead of '*' for security
-      const targetOrigin = window.opener?.origin || '*'
-
-      if (subscriptionId) {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-            success: true,
-            subscriptionId,
-          },
-          targetOrigin,
-        )
-      } else if (error) {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-            success: false,
-            error,
-            errorDescription,
-          },
-          targetOrigin,
-        )
-      } else {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-          },
-          targetOrigin,
-        )
-      }
-      window.close()
-    }
-  }, [])
+export type OAuthCallbackData = {
+  type: typeof OAUTH_CALLBACK_MESSAGE_TYPE
+  success?: boolean
+  subscriptionId?: string | null
+  error?: string | null
+  errorDescription?: string | null
 }
 
-export const openOAuthPopup = (url: string, callback: (data?: any) => void) => {
+export type OAuthCallbackStatus = 'success' | 'error'
+
+type ParsedOAuthCallbackParams = {
+  success: boolean
+  subscriptionId: string | null
+  error: string | null
+  errorDescription: string | null
+}
+
+export const parseOAuthCallbackParams = (search: string): ParsedOAuthCallbackParams => {
+  const urlParams = new URLSearchParams(search)
+  const subscriptionId = urlParams.get('subscription_id')
+  const error = urlParams.get('error')
+  const errorDescription = urlParams.get('error_description')
+
+  if (subscriptionId) {
+    return {
+      success: true,
+      subscriptionId,
+      error: null,
+      errorDescription: null,
+    }
+  }
+
+  if (error) {
+    return {
+      success: false,
+      subscriptionId: null,
+      error,
+      errorDescription,
+    }
+  }
+
+  return {
+    success: true,
+    subscriptionId: null,
+    error: null,
+    errorDescription: null,
+  }
+}
+
+export const buildOAuthCallbackMessage = (search: string): OAuthCallbackData => {
+  const parsed = parseOAuthCallbackParams(search)
+
+  if (parsed.subscriptionId) {
+    return {
+      type: OAUTH_CALLBACK_MESSAGE_TYPE,
+      success: true,
+      subscriptionId: parsed.subscriptionId,
+    }
+  }
+
+  if (parsed.error) {
+    return {
+      type: OAUTH_CALLBACK_MESSAGE_TYPE,
+      success: false,
+      error: parsed.error,
+      errorDescription: parsed.errorDescription,
+    }
+  }
+
+  return {
+    type: OAUTH_CALLBACK_MESSAGE_TYPE,
+  }
+}
+
+export const notifyOAuthOpener = (message: OAuthCallbackData): boolean => {
+  if (!window.opener) return false
+
+  try {
+    const targetOrigin = window.opener.origin || '*'
+    window.opener.postMessage(message, targetOrigin)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const notifyOAuthBroadcast = (message: OAuthCallbackData): void => {
+  if (typeof BroadcastChannel === 'undefined') return
+
+  const channel = new BroadcastChannel(OAUTH_CALLBACK_CHANNEL_NAME)
+  channel.postMessage(message)
+  channel.close()
+}
+
+export const notifyOAuthCallback = (message: OAuthCallbackData): void => {
+  notifyOAuthOpener(message)
+  notifyOAuthBroadcast(message)
+}
+
+export const useOAuthCallback = () => {
+  const [{ status, errorDescription }] = useState(() => {
+    const parsed = parseOAuthCallbackParams(window.location.search)
+
+    return {
+      status: (parsed.success ? 'success' : 'error') as OAuthCallbackStatus,
+      errorDescription: parsed.errorDescription,
+    }
+  })
+
+  useEffect(() => {
+    notifyOAuthCallback(buildOAuthCallbackMessage(window.location.search))
+    window.close()
+  }, [])
+
+  return { status, errorDescription }
+}
+
+export const openOAuthPopup = (url: string, callback: (data?: OAuthCallbackData) => void) => {
   const width = 600
   const height = 600
   const left = window.screenX + (window.outerWidth - width) / 2
@@ -58,22 +135,39 @@ export const openOAuthPopup = (url: string, callback: (data?: any) => void) => {
     `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`,
   )
 
-  const handleMessage = (event: MessageEvent) => {
-    if (event.data?.type === 'oauth_callback') {
-      window.removeEventListener('message', handleMessage)
-      callback(event.data)
+  let completed = false
+  let checkClosed: ReturnType<typeof setInterval> | undefined
+  let channel: BroadcastChannel | null = null
+
+  function finish(data?: OAuthCallbackData) {
+    if (completed) return
+
+    completed = true
+    window.removeEventListener('message', handleMessage)
+    if (channel) {
+      channel.close()
+      channel = null
+    }
+    if (checkClosed) clearInterval(checkClosed)
+
+    callback(data)
+  }
+
+  function handleMessage(event: MessageEvent) {
+    if (event.data?.type === OAUTH_CALLBACK_MESSAGE_TYPE) finish(event.data)
+  }
+
+  if (typeof BroadcastChannel !== 'undefined') {
+    channel = new BroadcastChannel(OAUTH_CALLBACK_CHANNEL_NAME)
+    channel.onmessage = (event: MessageEvent<OAuthCallbackData>) => {
+      if (event.data?.type === OAUTH_CALLBACK_MESSAGE_TYPE) finish(event.data)
     }
   }
 
   window.addEventListener('message', handleMessage)
 
-  // Fallback for window close detection
-  const checkClosed = setInterval(() => {
-    if (popup?.closed) {
-      clearInterval(checkClosed)
-      window.removeEventListener('message', handleMessage)
-      callback()
-    }
+  checkClosed = setInterval(() => {
+    if (popup?.closed) finish()
   }, 1000)
 
   return popup
