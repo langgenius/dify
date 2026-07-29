@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -75,7 +76,7 @@ function AgentSkillAddMenuItem({
     >
       <span
         aria-hidden
-        className={cn('mt-0.5 size-4 shrink-0 text-text-tertiary', iconClassName)}
+        className={cn('mt-0.5 size-4 shrink-0 text-text-secondary', iconClassName)}
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-2">
@@ -92,20 +93,19 @@ function AgentSkillAddMenuItem({
   )
 }
 
-function WorkspaceSkillIcon({ icon }: { icon?: string }) {
+function WorkspaceSkillIcon() {
   return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-subtle bg-background-default-dodge">
-      {icon ? (
-        <span className="text-[12px] leading-none">{icon}</span>
-      ) : (
-        <span aria-hidden className="i-ri-box-3-line size-3.5 text-text-tertiary" />
-      )}
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-text-primary-on-surface p-1 backdrop-blur-xs">
+      <span
+        aria-hidden
+        className="i-custom-vender-agent-v2-building-blocks size-4 text-text-secondary"
+      />
     </span>
   )
 }
 
 function WorkspaceSkillRow({
-  disabled,
+  unavailable,
   isAdded,
   isPending,
   onSelect,
@@ -113,7 +113,7 @@ function WorkspaceSkillRow({
   selected,
   skill,
 }: {
-  disabled: boolean
+  unavailable: boolean
   isAdded: boolean
   isPending: boolean
   onSelect: (skill: SkillResponse) => void
@@ -122,30 +122,34 @@ function WorkspaceSkillRow({
   skill: SkillResponse
 }) {
   const { t } = useTranslation('agentV2')
+  const cannotAdd = unavailable || isAdded || isPending
 
   return (
     <button
       type="button"
-      disabled={disabled || isAdded || isPending}
-      onClick={() => onSelect(skill)}
+      aria-disabled={cannotAdd}
+      onClick={() => {
+        onPreview(skill)
+        if (!cannotAdd) onSelect(skill)
+      }}
       onFocus={() => onPreview(skill)}
       onMouseEnter={() => onPreview(skill)}
       className={cn(
-        'flex h-12 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left outline-hidden hover:not-disabled:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-default disabled:opacity-60',
+        'flex h-8 w-full min-w-0 items-center gap-1 rounded-lg pr-2.5 pl-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         selected && 'bg-state-base-hover',
+        isPending && 'cursor-wait opacity-60',
       )}
     >
-      <WorkspaceSkillIcon icon={skill.icon} />
-      <span className="flex w-0 min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate system-sm-medium text-text-secondary">{skill.display_name}</span>
-        <span className="truncate system-xs-regular text-text-tertiary">{skill.name}</span>
+      <WorkspaceSkillIcon />
+      <span className="w-0 min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+        {skill.display_name}
       </span>
       {isAdded && (
         <span className="shrink-0 system-xs-medium text-text-tertiary">
           {t(($) => $['agentDetail.configure.skills.workspaceSelector.added'])}
         </span>
       )}
-      {!isAdded && disabled && (
+      {!isAdded && unavailable && (
         <span className="shrink-0 system-xs-medium text-text-tertiary">
           {t(($) => $['agentDetail.configure.skills.workspaceSelector.draft'])}
         </span>
@@ -159,19 +163,19 @@ function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
 
   if (!skill) {
     return (
-      <div className="flex h-full items-center justify-center px-6 text-center system-xs-regular text-text-tertiary">
+      <div className="flex min-h-32 items-center justify-center px-6 text-center system-xs-regular text-text-tertiary">
         {t(($) => $['agentDetail.configure.skills.workspaceSelector.empty'])}
       </div>
     )
   }
 
   return (
-    <div className="flex h-full flex-col gap-4 p-4">
-      <div className="flex min-w-0 items-start gap-3">
-        <WorkspaceSkillIcon icon={skill.icon} />
+    <div className="flex max-h-[428px] flex-col gap-2 overflow-y-auto px-3 pt-3 pb-4">
+      <div className="flex min-w-0 flex-col items-start gap-1">
+        <WorkspaceSkillIcon />
         <div className="min-w-0 flex-1">
-          <div className="truncate system-md-semibold text-text-primary">{skill.display_name}</div>
-          <div className="mt-0.5 truncate system-xs-regular text-text-tertiary">{skill.name}</div>
+          <div className="truncate system-md-medium text-text-primary">{skill.display_name}</div>
+          <div className="truncate system-xs-regular text-text-tertiary">{skill.name}</div>
         </div>
       </div>
       {!!skill.tags?.length && (
@@ -186,7 +190,7 @@ function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
           ))}
         </div>
       )}
-      <p className="line-clamp-6 system-sm-regular text-text-secondary">{skill.description}</p>
+      <p className="system-xs-regular text-text-secondary">{skill.description}</p>
       {(skill.updated_by_name || skill.created_by_name) && (
         <div className="mt-auto system-xs-regular text-text-tertiary">
           {skill.updated_by_name || skill.created_by_name}
@@ -240,9 +244,9 @@ function WorkspaceSkillSelector({
   )
 
   return (
-    <div className="flex h-[520px] w-[560px] overflow-hidden rounded-xl border border-divider-regular bg-components-panel-bg shadow-lg">
-      <div className="flex min-w-0 flex-1 flex-col border-r border-divider-subtle">
-        <div className="border-b border-divider-subtle p-3">
+    <div className="relative h-[520px] w-[320px]">
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-[5px]">
+        <div className="border-b border-divider-subtle p-2">
           <div className="relative">
             <SearchInput
               value={keyword}
@@ -255,12 +259,12 @@ function WorkspaceSkillSelector({
             />
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-1.5" onScroll={handleListScroll}>
+        <div className="min-h-0 flex-1 overflow-y-auto p-1" onScroll={handleListScroll}>
           {skillsQuery.isPending && (
-            <div className="space-y-2 p-1">
-              <SkeletonRectangle className="h-10 rounded-lg" />
-              <SkeletonRectangle className="h-10 rounded-lg" />
-              <SkeletonRectangle className="h-10 rounded-lg" />
+            <div className="space-y-1">
+              <SkeletonRectangle className="h-8 rounded-lg" />
+              <SkeletonRectangle className="h-8 rounded-lg" />
+              <SkeletonRectangle className="h-8 rounded-lg" />
             </div>
           )}
           {!skillsQuery.isPending && skills.length === 0 && (
@@ -272,7 +276,7 @@ function WorkspaceSkillSelector({
             skills.map((skill) => (
               <WorkspaceSkillRow
                 key={skill.id}
-                disabled={!skill.latest_published_version_id}
+                unavailable={!skill.latest_published_version_id}
                 isAdded={boundSkillIdSet.has(skill.id)}
                 isPending={isBindingPending}
                 selected={previewSkill?.id === skill.id}
@@ -282,21 +286,21 @@ function WorkspaceSkillSelector({
               />
             ))}
           {skillsQuery.isFetchingNextPage && (
-            <div className="space-y-2 p-1">
-              <SkeletonRectangle className="h-10 rounded-lg" />
-              <SkeletonRectangle className="h-10 rounded-lg" />
+            <div className="space-y-1">
+              <SkeletonRectangle className="h-8 rounded-lg" />
+              <SkeletonRectangle className="h-8 rounded-lg" />
             </div>
           )}
         </div>
         <Link
           href="/skills"
-          className="flex h-10 items-center justify-between border-t border-divider-subtle px-3 system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="flex h-8 items-center gap-0.5 border-t border-divider-subtle px-4 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <span>{t(($) => $['agentDetail.configure.skills.workspaceSelector.manage'])}</span>
-          <span aria-hidden className="i-ri-arrow-right-up-line size-4 text-text-tertiary" />
+          <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
         </Link>
       </div>
-      <div className="w-[240px] shrink-0 bg-background-default">
+      <div className="absolute top-[52px] left-[-244px] w-[240px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
         <WorkspaceSkillPreview skill={previewSkill} />
       </div>
     </div>
@@ -314,20 +318,32 @@ function WorkspaceAgentSkillItem({
 }) {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
+  const [isActionsOpen, setIsActionsOpen] = useState(false)
+  const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
   const displayName = skill.display_name || skill.name
   const handleOpenInLibrary = useCallback(() => {
     window.open(`/skills/${skill.id}`, '_blank', 'noopener,noreferrer')
   }, [skill.id])
 
   return (
-    <div className="group relative h-8 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm">
+    <div
+      data-workspace-skill-row
+      className={cn(
+        'group relative h-8 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+        isRemoveHighlighted &&
+          'border-state-destructive-border! bg-state-destructive-hover! shadow-xs!',
+      )}
+    >
       <Link
         href={`/skills/${skill.id}`}
         target="_blank"
         rel="noreferrer"
-        className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg py-1 pr-8 pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+        className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
       >
-        <WorkspaceSkillIcon icon={skill.icon} />
+        <span
+          aria-hidden
+          className="i-custom-vender-agent-v2-building-blocks size-4 shrink-0 text-text-secondary"
+        />
         <span className="flex w-0 min-w-0 flex-1 items-center gap-1">
           <span className="min-w-0 truncate system-sm-medium text-text-secondary">
             {displayName}
@@ -341,35 +357,58 @@ function WorkspaceAgentSkillItem({
           className={cn(
             'shrink-0 system-xs-regular text-text-tertiary',
             !readOnly && 'group-focus-within:opacity-0 group-hover:opacity-0',
+            isActionsOpen && 'opacity-0',
           )}
         >
           {skill.name}
         </span>
       </Link>
-      <DropdownMenu modal={false}>
+      <DropdownMenu
+        modal={false}
+        onOpenChange={(open) => {
+          setIsActionsOpen(open)
+          if (!open) setIsRemoveHighlighted(false)
+        }}
+      >
         <DropdownMenuTrigger
           aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
             name: displayName,
           })}
-          className="absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+          className={cn(
+            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+            isRemoveHighlighted && 'text-text-destructive!',
+          )}
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
           <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
-            <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+            />
             <span>{t(($) => $['agentDetail.configure.skills.openInLibrary'])}</span>
           </DropdownMenuItem>
           {canRemove && (
-            <DropdownMenuItem
-              variant="destructive"
-              className="gap-2"
-              onClick={() => onRemove(skill.id)}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                data-workspace-skill-remove-action
+                className="group gap-2 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+                onClick={() => onRemove(skill.id)}
+                onFocus={() => setIsRemoveHighlighted(true)}
+                onBlur={() => setIsRemoveHighlighted(false)}
+                onMouseEnter={() => setIsRemoveHighlighted(true)}
+                onMouseLeave={() => setIsRemoveHighlighted(false)}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-delete-bin-line size-4 shrink-0 text-text-tertiary group-data-highlighted:text-text-destructive"
+                />
+                <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
+              </DropdownMenuItem>
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -595,14 +634,14 @@ export function AgentSkills() {
                 sideOffset={4}
                 popupClassName={
                   addMenuView === 'menu'
-                    ? 'w-[320px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
-                    : 'w-[560px] overflow-hidden border-none bg-transparent p-0 shadow-none'
+                    ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+                    : 'w-[320px] overflow-visible border-none bg-transparent p-0 shadow-none'
                 }
               >
                 {addMenuView === 'menu' ? (
                   <>
                     <AgentSkillAddMenuItem
-                      iconClassName="i-custom-public-agent-building-blocks"
+                      iconClassName="i-custom-vender-agent-v2-building-blocks"
                       label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
                       description={t(
                         ($) => $['agentDetail.configure.skills.addMenu.workspace.description'],
@@ -638,11 +677,6 @@ export function AgentSkills() {
           />
         ) : (
           <>
-            {workspaceSkills.length > 0 && (
-              <div className="px-1 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['agentDetail.configure.skills.fromSkillLibrary'])}
-              </div>
-            )}
             {workspaceSkills.map((skill) => (
               <WorkspaceAgentSkillItem
                 key={skill.id}
