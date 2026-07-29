@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useClickAway } from 'ahooks'
 import * as React from 'react'
+import { useState } from 'react'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
@@ -49,10 +50,10 @@ const TypeSelector: FC<Props> = ({
   const item = allOptions
     ? allOptions.find((item) => item.value === value)
     : list.find((item) => item.value === value)
-  const [showOption, { setFalse: setHide, toggle: toggleShow }] = useBoolean(false)
+  const [showOption, setShowOption] = useState(false)
   const ref = React.useRef(null)
   useClickAway(() => {
-    setHide()
+    setShowOption(false)
   }, ref)
   return (
     <div
@@ -60,12 +61,15 @@ const TypeSelector: FC<Props> = ({
       ref={ref}
     >
       {trigger ? (
-        <div onClick={toggleShow} className={cn(!readonly && 'cursor-pointer')}>
+        <div
+          onClick={() => setShowOption((isShown) => !isShown)}
+          className={cn(!readonly && 'cursor-pointer')}
+        >
           {trigger}
         </div>
       ) : (
         <div
-          onClick={toggleShow}
+          onClick={() => setShowOption((isShown) => !isShown)}
           className={cn(
             showOption && 'bg-state-base-hover',
             'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover',
@@ -96,7 +100,7 @@ const TypeSelector: FC<Props> = ({
             <div
               key={item.value}
               onClick={() => {
-                setHide()
+                setShowOption(false)
                 onChange(item.value)
               }}
               className={cn(
