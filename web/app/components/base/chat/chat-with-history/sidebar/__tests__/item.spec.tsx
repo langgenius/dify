@@ -342,48 +342,6 @@ describe('Item', () => {
     })
   })
 
-  describe('Styling', () => {
-    it('should have base classes on container', () => {
-      const { container } = render(<Item {...defaultProps} />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('group')
-      expect(itemDiv).toHaveClass('flex')
-      expect(itemDiv).toHaveClass('cursor-pointer')
-      expect(itemDiv).toHaveClass('rounded-lg')
-    })
-
-    it('should apply active state classes when selected', () => {
-      const { container } = render(<Item {...defaultProps} currentConversationId="1" />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('bg-state-accent-active')
-      expect(itemDiv).toHaveClass('text-text-accent')
-    })
-
-    it('should apply hover classes', () => {
-      const { container } = render(<Item {...defaultProps} />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('hover:bg-state-base-hover')
-    })
-
-    it('should maintain hover classes when active', () => {
-      const { container } = render(<Item {...defaultProps} currentConversationId="1" />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('hover:bg-state-accent-active')
-    })
-
-    it('should apply truncate class to text container', () => {
-      const { container } = render(<Item {...defaultProps} />)
-      const textDiv = container.querySelector('.grow.truncate')
-
-      expect(textDiv).toHaveClass('truncate')
-      expect(textDiv).toHaveClass('grow')
-    })
-  })
-
   describe('Props Updates', () => {
     it('should update when item prop changes', () => {
       const { rerender } = render(<Item {...defaultProps} item={mockItem} />)

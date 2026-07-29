@@ -17,7 +17,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {

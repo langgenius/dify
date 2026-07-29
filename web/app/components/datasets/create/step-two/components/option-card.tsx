@@ -27,7 +27,7 @@ type OptionCardHeaderProps = {
   disabled?: boolean
 }
 
-export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
+const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
   return (
     <div

@@ -73,7 +73,7 @@ describe('workflow-panel helpers', () => {
       const dataSourceData = asNodeData({
         type: BlockEnum.DataSource,
         plugin_id: 'source-1',
-        provider_type: 'remote',
+        provider_type: 'online_document',
       })
       const triggerPlugins = [{ plugin_id: 'trigger-1', id: '1' }]
       const dataSources = [{ plugin_id: 'source-1' }]

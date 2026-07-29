@@ -8,16 +8,19 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import LifecycleState
 from agenton_collections.layers.plain import PromptLayerConfig
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
     CreateRunRequest,
     RunComposition,
     RunEvent,
     RunLayerSpec,
     RunStatus,
 )
-from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.schemas import RunRecord
 
 
@@ -26,7 +29,30 @@ def _request(
     *,
     output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
 ) -> CreateRunRequest:
-    layers = [RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user))]
+    layers = [
+        RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user)),
+        RunLayerSpec(
+            name="execution_context",
+            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+            config=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="service-api",
+            ),
+        ),
+        RunLayerSpec(
+            name=DIFY_AGENT_MODEL_LAYER_ID,
+            type="dify.plugin.llm",
+            deps={"execution_context": "execution_context"},
+            config=DifyPluginLLMLayerConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="demo-model",
+                credentials={"api_key": "secret"},
+            ),
+        ),
+    ]
     if output_config is not None:
         layers.append(
             RunLayerSpec(
@@ -78,6 +104,11 @@ class FakeStore:
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         return event_id
 
+    async def get_run(self, run_id: str) -> RunRecord:
+        return self.records[run_id].model_copy(
+            update={"status": self.statuses[run_id], "error": self.errors.get(run_id)},
+        )
+
     async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
         self.statuses[run_id] = status
         self.errors[run_id] = error
@@ -109,6 +140,23 @@ class ControlledRunner:
     async def run(self) -> None:
         _ = self.started.set()
         await self.release.wait()
+
+
+class SwallowOneCancellationRunner:
+    started: asyncio.Event
+    first_cancellation: asyncio.Event
+
+    def __init__(self, *, started: asyncio.Event, first_cancellation: asyncio.Event) -> None:
+        self.started = started
+        self.first_cancellation = first_cancellation
+
+    async def run(self) -> None:
+        _ = self.started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            _ = self.first_cancellation.set()
+            await asyncio.Event().wait()
 
 
 def test_create_run_starts_background_task_and_returns_running() -> None:
@@ -159,6 +207,85 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
             assert store.statuses[record.run_id] == "failed"
             assert store.errors[record.run_id] == "run cancelled during server shutdown"
             assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_stops_task_and_persists_cancelled_terminal() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            response = await scheduler.cancel_run(
+                record.run_id,
+                CancelRunRequest(reason="workflow_aborted", message="outer workflow stopped"),
+            )
+
+            assert response.status == "cancelled"
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "cancelled"
+            assert store.errors[record.run_id] == "outer workflow stopped"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+
+            repeated = await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="duplicate"))
+            assert repeated.status == "cancelled"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_reinjects_cancellation_without_waiting_for_runner_cleanup() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        first_cancellation = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: SwallowOneCancellationRunner(
+                    started=started,
+                    first_cancellation=first_cancellation,
+                ),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            response = await asyncio.wait_for(
+                scheduler.cancel_run(record.run_id, CancelRunRequest(reason="workflow_aborted")),
+                timeout=1,
+            )
+
+            assert response.status == "cancelled"
+            assert first_cancellation.is_set()
+            assert store.statuses[record.run_id] == "cancelled"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            await asyncio.sleep(0)
+            assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_rejects_finished_run() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
+            record = await store.create_run()
+            await store.update_status(record.run_id, "succeeded")
+
+            with pytest.raises(RunCancellationConflictError, match="already finished"):
+                await scheduler.cancel_run(record.run_id, CancelRunRequest())
 
     asyncio.run(scenario())
 
@@ -237,7 +364,17 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
                         name="prompt",
                         lifecycle_state=LifecycleState.CLOSED,
                         runtime_state={},
-                    )
+                    ),
+                    LayerSessionSnapshot(
+                        name="execution_context",
+                        lifecycle_state=LifecycleState.SUSPENDED,
+                        runtime_state={},
+                    ),
+                    LayerSessionSnapshot(
+                        name=DIFY_AGENT_MODEL_LAYER_ID,
+                        lifecycle_state=LifecycleState.SUSPENDED,
+                        runtime_state={},
+                    ),
                 ]
             )
 

@@ -574,6 +574,23 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
+def test_console_agent_debug_conversation_refresh_has_no_body(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/agent/{agent_id}/debug-conversation/refresh"]["post"]
+
+    assert "requestBody" not in operation
+    assert "AgentDebugConversationRefreshPayload" not in payload["components"]["schemas"]
+
+
 def test_console_member_invite_documents_bad_request_response(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.console import bp as console_bp

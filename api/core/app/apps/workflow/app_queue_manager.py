@@ -41,4 +41,4 @@ class WorkflowAppQueueManager(AppQueueManager):
             | QueueWorkflowFailedEvent
             | QueueWorkflowPartialSuccessEvent,
         ):
-            self.stop_listen()
+            self.stop_listen(execution_terminal=True)

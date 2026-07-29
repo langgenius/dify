@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +19,7 @@ type Props = Readonly<{
 
 const List: FC<Props> = ({ list, onChange }) => {
   const { t } = useTranslation()
-  const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
+  const [isShowEditModal, setIsShowEditModal] = useState(false)
 
   const handleItemChange = useCallback(
     (index: number) => {
@@ -31,23 +30,20 @@ const List: FC<Props> = ({ list, onChange }) => {
           return item
         })
         onChange(newList, moreInfo)
-        hideEditModal()
+        setIsShowEditModal(false)
       }
     },
-    [hideEditModal, list, onChange],
+    [list, onChange],
   )
 
   const [currEditItemIndex, setCurrEditItemIndex] = useState<number>(-1)
 
-  const handleItemEdit = useCallback(
-    (index: number) => {
-      return () => {
-        setCurrEditItemIndex(index)
-        showEditModal()
-      }
-    },
-    [showEditModal],
-  )
+  const handleItemEdit = useCallback((index: number) => {
+    return () => {
+      setCurrEditItemIndex(index)
+      setIsShowEditModal(true)
+    }
+  }, [])
 
   const handleItemDelete = useCallback(
     (index: number) => {
@@ -81,7 +77,7 @@ const List: FC<Props> = ({ list, onChange }) => {
           type="edit"
           payload={list[currEditItemIndex]}
           onSave={handleItemChange(currEditItemIndex)}
-          onCancel={hideEditModal}
+          onCancel={() => setIsShowEditModal(false)}
         />
       )}
     </div>

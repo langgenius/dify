@@ -1,10 +1,8 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import {
-  AccountProfileQueryProvider,
-  createAccountProfileQueryClient,
-} from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -258,9 +256,9 @@ const renderConversationList = ({
 } = {}) => {
   const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
   return renderWithNuqs(
-    <AccountProfileQueryProvider queryClient={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <ConversationList appDetail={appDetail} logs={logs} onRefresh={mockOnRefresh} />
-    </AccountProfileQueryProvider>,
+    </QueryClientTestProvider>,
     { searchParams },
   )
 }

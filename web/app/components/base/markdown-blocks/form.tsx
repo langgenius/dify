@@ -246,7 +246,6 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
     <form
       autoComplete="off"
       className="flex flex-col self-stretch"
-      data-testid="markdown-form"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -260,7 +259,6 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               key={key}
               htmlFor={getLabelTarget(child)}
               className="my-2 system-md-semibold text-text-secondary"
-              data-testid="label-field"
             >
               {getTextContent(child)}
             </label>

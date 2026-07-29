@@ -248,7 +248,6 @@ class _AppRunner:
             case _Account():
                 with self._session() as session:
                     user: Account = session.get(Account, user_params.user_id)
-                    user.set_tenant_id_with_session(self._exec_params.tenant_id, session=session)
                 return user
             case _:
                 raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
@@ -257,10 +256,7 @@ class _AppRunner:
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:
     role = CreatorUserRole(workflow_run.created_by_role)
     if role == CreatorUserRole.ACCOUNT:
-        user = session.get(Account, workflow_run.created_by)
-        if user:
-            user.set_tenant_id_with_session(workflow_run.tenant_id, session=session)
-        return user
+        return session.get(Account, workflow_run.created_by)
 
     return session.get(EndUser, workflow_run.created_by)
 
@@ -315,32 +311,43 @@ def _publish_failed_workflow_terminal_events(exc: Exception, exec_params: AppExe
     topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
 
 
-def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+def _get_event_data(event: str | Mapping[str, Any] | BaseModel) -> Mapping[str, Any] | None:
     if isinstance(event, BaseModel):
         # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
         # str / Mapping responses.
-        event_name = getattr(event, "event", None)
-    elif isinstance(event, Mapping):
-        event_name = event.get("event")
-    else:
+        return event.model_dump()
+    if isinstance(event, Mapping):
+        return event
+    return None
+
+
+def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
         return None
 
+    event_name = event_data.get("event")
     if event_name is None:
         return None
     return str(event_name)
 
 
 def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
-    if isinstance(event, BaseModel):
-        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
-        # str / Mapping responses.
-        task_id = getattr(event, "task_id", None)
-    elif isinstance(event, Mapping):
-        task_id = event.get("task_id")
-    else:
+    event_data = _get_event_data(event)
+    if event_data is None:
         return None
 
+    task_id = event_data.get("task_id")
     return task_id if isinstance(task_id, str) and task_id else None
+
+
+def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
+        return None
+
+    message = event_data.get("message")
+    return message if isinstance(message, str) and message else None
 
 
 def _publish_streaming_response(
@@ -410,6 +417,7 @@ def _publish_streaming_response(
     started_published = False
     terminal_published = False
     last_task_id = normalized_workflow_run_id
+    stream_error_message: str | None = None
 
     try:
         for event in response_stream:
@@ -433,6 +441,8 @@ def _publish_streaming_response(
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
+            elif event_name == "error":
+                stream_error_message = _get_error_message(event) or stream_error_message
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -452,7 +462,7 @@ def _publish_streaming_response(
             normalized_workflow_run_id,
         )
         _publish_failed_terminal_event(
-            error_message=unexpected_stream_end_message,
+            error_message=stream_error_message or unexpected_stream_end_message,
             task_id=last_task_id,
             publish_started=not started_published,
         )
@@ -461,7 +471,7 @@ def _publish_streaming_response(
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def workflow_based_app_execution_task(
     payload: str,
-) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
+) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
@@ -617,12 +627,14 @@ def _resume_advanced_chat(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -684,12 +696,14 @@ def _resume_workflow(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

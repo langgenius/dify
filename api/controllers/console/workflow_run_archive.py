@@ -4,20 +4,16 @@ from http import HTTPStatus
 from flask import redirect
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from werkzeug.exceptions import Conflict, NotFound
+from werkzeug.exceptions import Conflict, Forbidden, NotFound
 
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_enabled,
     cloud_edition_billing_paid_plan_required,
-    is_admin_or_owner_required,
     only_edition_cloud,
-    rbac_permission_required,
     setup_required,
 )
 from extensions.ext_database import db
@@ -25,6 +21,7 @@ from fields.base import ResponseModel
 from libs.archive_storage import get_export_storage
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
+from models import TenantAccountRole
 from services.retention.workflow_run.archive_download_preparation import ARCHIVE_DOWNLOAD_MIME_TYPE
 from services.retention.workflow_run.archive_download_task_cache import (
     WorkflowRunArchiveDownloadStatus,
@@ -98,11 +95,13 @@ register_response_schema_models(
 )
 
 
-def _current_ids() -> tuple[str, str]:
-    """Return current `(tenant_id, account_id)` or raise when no workspace is selected."""
+def _current_owner_or_admin_ids() -> tuple[str, str]:
+    """Return current Cloud workspace IDs for an owner or admin, independently of enterprise RBAC."""
     current_user, current_tenant_id = current_account_with_tenant()
     if not current_tenant_id:
         raise NotFound("Current workspace not found")
+    if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        raise Forbidden()
     return current_tenant_id, current_user.id
 
 
@@ -124,12 +123,8 @@ class WorkflowRunArchivesApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
-    )
     def get(self):
-        tenant_id, _ = _current_ids()
+        tenant_id, _ = _current_owner_or_admin_ids()
         return dump_response(WorkflowRunArchiveListResponse, list_workflow_run_archives(db.session(), tenant_id))
 
 
@@ -149,12 +144,8 @@ class WorkflowRunArchiveDownloadsApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
-    )
     def post(self):
-        tenant_id, account_id = _current_ids()
+        tenant_id, account_id = _current_owner_or_admin_ids()
         payload = WorkflowRunArchiveDownloadPayload.model_validate(console_ns.payload or {})
         try:
             task = create_workflow_run_archive_download_task(
@@ -180,12 +171,8 @@ class WorkflowRunArchiveDownloadApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
-    )
     def get(self, download_id: str):
-        tenant_id, _ = _current_ids()
+        tenant_id, _ = _current_owner_or_admin_ids()
         try:
             task = get_workflow_run_archive_download_task(tenant_id=tenant_id, download_id=download_id)
         except WorkflowRunArchiveDownloadTaskNotFoundError as exc:
@@ -209,12 +196,8 @@ class WorkflowRunArchiveDownloadFileApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
-    )
     def get(self, download_id: str):
-        tenant_id, _ = _current_ids()
+        tenant_id, _ = _current_owner_or_admin_ids()
         try:
             task = get_ready_workflow_run_archive_download_task(tenant_id=tenant_id, download_id=download_id)
         except WorkflowRunArchiveDownloadTaskNotFoundError as exc:

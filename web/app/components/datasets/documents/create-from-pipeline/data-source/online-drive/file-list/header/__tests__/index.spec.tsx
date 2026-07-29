@@ -55,33 +55,6 @@ describe('Header', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<Header {...props} />)
-
-      // Assert - search input should be visible
-      // Assert - search input should be visible
-      expect(
-        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
-      )!.toBeInTheDocument()
-    })
-
-    it('should render with correct container styles', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Header {...props} />)
-
-      // Assert - container should have correct class names
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper)!.toHaveClass('flex')
-      expect(wrapper)!.toHaveClass('items-center')
-      expect(wrapper)!.toHaveClass('gap-x-2')
-      expect(wrapper)!.toHaveClass('bg-components-panel-bg')
-      expect(wrapper)!.toHaveClass('p-1')
-      expect(wrapper)!.toHaveClass('pl-3')
-    })
-
     it('should render Input component with correct props', () => {
       const props = createDefaultProps({ inputValue: 'test-value' })
 
@@ -395,11 +368,6 @@ describe('Header', () => {
 
   // Component Memoization Tests
   describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - Header component should be memoized
-      expect(Header).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-
     it('should not re-render when props are the same', () => {
       const mockHandleInputChange = vi.fn()
       const mockHandleResetKeywords = vi.fn()

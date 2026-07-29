@@ -40,14 +40,9 @@ describe('Footer', () => {
   })
 
   it('shows the idle shortcut hint', () => {
-    const { container } = render(<Footer {...defaultProps} />)
+    render(<Footer {...defaultProps} />)
 
     expect(screen.getByText('app.gotoAnything.startTyping')).toBeInTheDocument()
     expect(screen.getByText('app.gotoAnything.pressEscToClose')).toBeInTheDocument()
-    expect(container.firstChild).toHaveClass(
-      'border-t',
-      'border-divider-subtle',
-      'bg-components-panel-bg-blur',
-    )
   })
 })

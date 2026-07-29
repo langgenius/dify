@@ -96,7 +96,7 @@ const WorkflowPreview = ({
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable
+        nodesDraggable={false}
         nodesConnectable={false}
         nodesFocusable={false}
         edgesFocusable={false}
