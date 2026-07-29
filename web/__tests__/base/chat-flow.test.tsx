@@ -143,7 +143,7 @@ describe('Base Chat Flow', () => {
         expect(hoverArea).toHaveClass('left-0')
 
         fireEvent.mouseLeave(hoverArea)
-        expect(hoverArea).toHaveClass('left-[-248px]')
+        expect(hoverArea).toHaveClass('-left-62')
       }
     })
 

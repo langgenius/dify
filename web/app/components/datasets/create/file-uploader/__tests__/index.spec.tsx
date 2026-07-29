@@ -248,7 +248,7 @@ describe('FileUploader', () => {
     it('should have correct container width', () => {
       const { container } = render(<FileUploader {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('w-[640px]')
+      expect(wrapper).toHaveClass('w-160')
     })
 
     it('should have proper spacing', () => {
