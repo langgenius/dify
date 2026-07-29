@@ -38,6 +38,7 @@ vi.mock('@/i18n-config', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
+  normalizePluginCategoryListLanguage: (locale: string) => locale,
   useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
   useRetainFirstInstalledPluginPageOnUnmount: (...args: unknown[]) =>
@@ -166,7 +167,7 @@ vi.mock('@/app/components/integrations/tool-provider-card', () => ({
   ),
 }))
 
-vi.mock('@/app/components/integrations/hooks/use-tool-marketplace-panel', () => ({
+vi.mock('@/app/components/tools/marketplace/use-tool-marketplace-panel', () => ({
   useToolMarketplacePanel: () => ({
     isMarketplaceArrowVisible: true,
     marketplaceContext: {},
@@ -378,11 +379,13 @@ describe('PluginsPanel', () => {
   ])('loads %s Integration Plugins in Studio-sized pages', (category) => {
     render(<PluginsPanel contentInset="compact" fixedCategory={category} />)
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith({
-      category,
-      pageSize: 30,
-      refetchOnMount: 'always',
-    })
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category,
+        pageSize: 30,
+        refetchOnMount: 'always',
+      }),
+    )
   })
 
   it('configures first-page cache retention for an Integration category panel', () => {
@@ -391,13 +394,18 @@ describe('PluginsPanel', () => {
     expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
       PluginCategoryEnum.tool,
       30,
+      expect.any(Object),
     )
   })
 
   it('does not configure first-page cache retention for the standalone Plugin page', () => {
     render(<PluginsPanel />)
 
-    expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(undefined, 30)
+    expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
+      undefined,
+      30,
+      undefined,
+    )
   })
 
   it('loads the scoped tool plugin category list when fixed to tool plugins', () => {
