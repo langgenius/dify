@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'
@@ -17,6 +18,7 @@ type PluginAuthProps = {
 const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
+  const { canCreateCredential } = useCredentialPermissions()
   const {
     isAuthorized,
     canOAuth,
@@ -27,6 +29,7 @@ const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => 
   } = usePluginAuth(pluginPayload, !!pluginPayload.provider)
   const showPermissionHint =
     !isAuthorized &&
+    !canCreateCredential &&
     !notAllowCustomCredential &&
     pluginPayload.category === AuthCategory.tool &&
     (canOAuth || canApiKey)
