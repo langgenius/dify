@@ -539,7 +539,12 @@ class TestBaseAgentRunnerInit:
         from graphon.file.enums import FileTransferMethod, FileType
         from graphon.file.models import File
 
-        file1 = File(file_type=FileType.IMAGE, transfer_method=FileTransferMethod.LOCAL_FILE, url="http://x")
+        file1 = File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="f1",
+            url="http://x",
+        )
         app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=[file1])
         message = mocker.MagicMock(id="msg1", conversation_id="conv1")
 
@@ -592,8 +597,18 @@ class TestBaseAgentRunnerInit:
         app_config.dataset = mocker.MagicMock(dataset_ids=[], retrieve_config={"k": "v"})
         app_config.additional_features = mocker.MagicMock(show_retrieve_source=False)
 
-        doc_file = File(file_type=FileType.DOCUMENT, transfer_method=FileTransferMethod.LOCAL_FILE, url="http://x")
-        image_file = File(file_type=FileType.IMAGE, transfer_method=FileTransferMethod.LOCAL_FILE, url="http://y")
+        doc_file = File(
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="doc1",
+            url="http://x",
+        )
+        image_file = File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id="img1",
+            url="http://y",
+        )
 
         app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=[doc_file, image_file])
 
