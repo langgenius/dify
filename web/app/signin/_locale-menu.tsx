@@ -38,7 +38,7 @@ export default function LocaleMenu<T extends string>({
               render={
                 <button
                   type="button"
-                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-[10px] py-[6px] text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
+                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
                 />
               }
             >

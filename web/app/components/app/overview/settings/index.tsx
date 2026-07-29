@@ -351,7 +351,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Dialog open={isShow} onOpenChange={(open) => !open && handleClose()} disablePointerDismissal>
-        <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-[520px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
+        <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-130 grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
           {/* header */}
           <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
@@ -448,7 +448,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <SelectTrigger
                     aria-label={t(($) => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
                     size="medium"
-                    className="w-[200px]"
+                    className="w-50"
                   >
                     {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
                   </SelectTrigger>
@@ -473,7 +473,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.chatColorThemeDesc`], { ns: 'appOverview' })}
                     </div>
                   </div>
-                  <Field name="chat_color_theme" className="w-[200px] shrink-0">
+                  <Field name="chat_color_theme" className="w-50 shrink-0">
                     <FieldControl
                       className="mb-1"
                       value={inputInfo.chatColorTheme ?? ''}
@@ -534,11 +534,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                           })}
                         </div>
                         {isCloudSandboxPlan && (
-                          <div className="h-[18px] select-none">
+                          <div className="h-4.5 select-none">
                             <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                               <span
                                 aria-hidden="true"
-                                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+                                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                               />
                               <div className="system-xs-medium">
                                 <span className="p-1">
@@ -561,7 +561,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {isCloudSandboxPlan ? (
                       <Tooltip>
                         <TooltipTrigger render={inputPlaceholderField} />
-                        <TooltipContent className="w-[180px]">
+                        <TooltipContent className="w-45">
                           {t(($) => $[`${prefixSettings}.more.inputPlaceholderTooltip`], {
                             ns: 'appOverview',
                           })}
@@ -586,11 +586,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       </div>
                       {/* upgrade button */}
                       {isCloudSandboxPlan && (
-                        <div className="h-[18px] select-none">
+                        <div className="h-4.5 select-none">
                           <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                             <span
                               aria-hidden="true"
-                              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+                              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                             />
                             <div className="system-xs-medium">
                               <span className="p-1">
@@ -629,7 +629,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             </div>
                           }
                         />
-                        <TooltipContent className="w-[180px]">
+                        <TooltipContent className="w-45">
                           {t(($) => $[`${prefixSettings}.more.copyrightTooltip`], {
                             ns: 'appOverview',
                           })}

@@ -51,7 +51,7 @@ const Marketplace = ({
 
   return (
     <>
-      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-[14px]">
+      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-3.5">
         {isMarketplaceArrowVisible && (
           <RiArrowUpDoubleLine
             className="absolute top-2 left-1/2 z-10 size-4 -translate-x-1/2 cursor-pointer text-text-quaternary"
@@ -108,7 +108,7 @@ const Marketplace = ({
           </div>
         </div>
       </div>
-      <div className="mt-[-14px] shrink-0 grow bg-background-default-subtle pb-2">
+      <div className="-mt-3.5 shrink-0 grow bg-background-default-subtle pb-2">
         {isLoading && page === 1 && (
           <div className="absolute top-1/2 left-1/2 -translate-1/2">
             <Loading />

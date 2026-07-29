@@ -61,7 +61,7 @@ const Field: FC<Props> = ({
             )}
           >
             {warningDot && (
-              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              <span className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary" />
             )}
             {title} {required && <span className="text-text-destructive">*</span>}
           </div>

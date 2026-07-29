@@ -146,7 +146,7 @@ describe('ModelSelector', () => {
 
   it('should use the default model settings popup width when the trigger is narrow', () => {
     renderWithQueryClient(
-      <div className="w-[355px]">
+      <div className="w-88.75">
         <ModelSelector modelList={[makeModel()]} />
       </div>,
     )
@@ -155,8 +155,7 @@ describe('ModelSelector', () => {
 
     expect(
       Array.from(document.body.querySelectorAll('[class]')).some(
-        (element) =>
-          element.className.includes('w-[432px]') && element.className.includes('max-w-[432px]'),
+        (element) => element.className.includes('w-108') && element.className.includes('max-w-108'),
       ),
     ).toBe(true)
   })

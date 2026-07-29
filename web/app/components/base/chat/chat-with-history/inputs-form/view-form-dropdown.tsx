@@ -15,7 +15,7 @@ const ViewFormDropdown = () => {
       <PopoverTrigger
         render={
           <ActionButton size="l" state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
-            <RiChatSettingsLine className="h-[18px] w-[18px]" />
+            <RiChatSettingsLine className="h-4.5 w-4.5" />
           </ActionButton>
         }
       />
@@ -25,7 +25,7 @@ const ViewFormDropdown = () => {
         alignOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs">
+        <div className="w-100 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs">
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <Message3Fill className="size-6 shrink-0" />
             <div className="grow system-xl-semibold text-text-secondary">

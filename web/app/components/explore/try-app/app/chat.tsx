@@ -81,7 +81,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
                       aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                       onClick={handleNewConversation}
                     >
-                      <RiResetLeftLine className="h-[18px] w-[18px]" aria-hidden="true" />
+                      <RiResetLeftLine className="h-4.5 w-4.5" aria-hidden="true" />
                     </ActionButton>
                   }
                 />
@@ -91,7 +91,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
             {currentConversationId && inputsForms.length > 0 && <ViewFormDropdown />}
           </div>
         </div>
-        <div className="mx-auto mt-4 flex h-0 w-[769px] grow flex-col">
+        <div className="mx-auto mt-4 flex h-0 w-192.25 grow flex-col">
           {!isHideTryNotice && (
             <Alert
               className="mb-4 shrink-0"

@@ -167,7 +167,7 @@ const UpdateSettingDialogForm = ({
             />
           </div>
           <div className="flex w-full flex-col items-start gap-2">
-            <div className="flex h-[60px] w-full flex-col items-start gap-1">
+            <div className="flex h-15 w-full flex-col items-start gap-1">
               <div className={updateSettingFormLabelClassName}>
                 {t(($) => $['autoUpdate.scope'], { ns: 'plugin' })}
               </div>

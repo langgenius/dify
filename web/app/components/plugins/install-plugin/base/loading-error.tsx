@@ -18,7 +18,7 @@ const LoadingError: FC = () => {
             <div className="flex size-5 items-center justify-center">
               <Group className="text-text-quaternary" />
             </div>
-            <div className="absolute right-[-4px] bottom-[-4px] rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
+            <div className="absolute -right-1 -bottom-1 rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
               <RiCloseLine className="size-3 text-text-primary-on-surface" />
             </div>
           </div>
@@ -31,7 +31,7 @@ const LoadingError: FC = () => {
             </div>
           </div>
         </div>
-        <LoadingPlaceholder className="mt-3 w-[420px]" />
+        <LoadingPlaceholder className="mt-3 w-105" />
       </div>
     </div>
   )

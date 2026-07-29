@@ -30,7 +30,7 @@ function fileTreeRowClassName({ className }: { className?: string }) {
   return cn(
     'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start outline-hidden select-none',
     'hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'data-[selected]:bg-state-base-active',
+    'data-selected:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
     'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
     className,
@@ -180,7 +180,7 @@ export function FileTreeGuide({ render, className, ...props }: FileTreeGuideProp
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
     className: cn(
-      'relative h-6 w-5 shrink-0 before:absolute before:top-0 before:bottom-[-1px] before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-divider-subtle',
+      'relative h-6 w-5 shrink-0 before:absolute before:top-0 before:-bottom-px before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-divider-subtle',
       className,
     ),
   }
@@ -271,7 +271,7 @@ export function FileTreeLabel({ render, className, children, ...props }: FileTre
       'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
       labelText &&
         'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
-      'system-sm-regular text-text-secondary group-data-[selected]/file-tree-row:system-sm-medium group-data-[selected]/file-tree-row:text-text-primary',
+      'system-sm-regular text-text-secondary group-data-selected/file-tree-row:system-sm-medium group-data-selected/file-tree-row:text-text-primary',
       className,
     ),
     children,

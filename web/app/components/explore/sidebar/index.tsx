@@ -118,7 +118,7 @@ const SideBar = () => {
     <div
       data-folded={isFold ? 'true' : undefined}
       className={cn(
-        'group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]',
+        'group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-60',
         isFold && 'sm:w-14',
       )}
     >

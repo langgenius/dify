@@ -90,7 +90,7 @@ const PluginVersionPicker: FC<Props> = ({
         <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
         </div>
-        <div className="relative max-h-[224px] overflow-y-auto">
+        <div className="relative max-h-56 overflow-y-auto">
           {res?.data.versions.map((version) => (
             <div
               key={version.unique_identifier}

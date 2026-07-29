@@ -141,7 +141,7 @@ function ActionCardContent({
     isCompact ? (
       <CompactBadge badge={badge} badgeVariant={badgeVariant} />
     ) : (
-      <span className="absolute top-4 right-4 flex min-w-[18px] items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
+      <span className="absolute top-4 right-4 flex min-w-4.5 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
         {badge}
       </span>
     )
@@ -180,10 +180,10 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
       ? 'w-full items-center gap-3 overflow-hidden px-3 py-2.5 backdrop-blur-md'
       : 'flex-col border border-components-panel-border bg-components-panel-on-panel-item-bg hover:shadow-sm',
     props.visualStyle === 'compact'
-      ? 'min-h-[156px] overflow-hidden px-4 pt-6 pb-3'
+      ? 'min-h-39 overflow-hidden px-4 pt-6 pb-3'
       : props.visualStyle === 'list'
         ? undefined
-        : 'min-h-[204px] p-6',
+        : 'min-h-51 p-6',
     isDisabled &&
       'cursor-not-allowed text-text-disabled shadow-none hover:bg-components-button-secondary-bg',
     props.className,

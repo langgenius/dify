@@ -47,7 +47,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
                   <div className="text-sm text-text-primary">{currentItem.name}</div>
                   <div className="flex items-center">
-                    <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
+                    <div className="mr-1.5 w-67.5 truncate text-right text-xs text-text-quaternary">
                       {currentItem.api_endpoint}
                     </div>
                     <span
@@ -73,7 +73,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          className="w-[calc(100%-32px)] max-w-[576px]"
+          className="w-[calc(100%-32px)] max-w-xl"
           popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
@@ -97,7 +97,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                   />
                 </button>
               </div>
-              <div className="max-h-[250px] overflow-y-auto">
+              <div className="max-h-62.5 overflow-y-auto">
                 {apiBasedExtensions.map((item) => (
                   <button
                     type="button"

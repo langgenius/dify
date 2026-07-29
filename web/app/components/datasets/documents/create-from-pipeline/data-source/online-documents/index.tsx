@@ -180,7 +180,7 @@ const OnlineDocuments = ({
               isMultipleChoice={supportBatchUpload}
             />
           ) : (
-            <div className="flex h-[296px] items-center justify-center">
+            <div className="flex h-74 items-center justify-center">
               <Loading type="app" />
             </div>
           )}

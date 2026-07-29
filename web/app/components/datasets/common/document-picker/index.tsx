@@ -79,12 +79,12 @@ function DocumentPickerTriggerValue({
       <FileIcon name={document?.name} extension={getDocumentExtension(document)} size="xl" />
       <span className="flex min-w-0 flex-col items-start">
         <span className="flex max-w-full min-w-0 items-center gap-1">
-          <span className="max-w-[280px] min-w-0 truncate system-md-semibold text-text-primary">
+          <span className="max-w-70 min-w-0 truncate system-md-semibold text-text-primary">
             {document?.name || '--'}
           </span>
           <ArrowIcon className="size-4 shrink-0 text-text-primary" aria-hidden="true" />
         </span>
-        <span className="flex h-3 max-w-[300px] items-center gap-0.5 text-text-tertiary">
+        <span className="flex h-3 max-w-75 items-center gap-0.5 text-text-tertiary">
           <TypeIcon className="size-3 shrink-0" />
           <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
             {isGeneralMode && t(($) => $['chunkingMode.general'], { ns: 'dataset' })}
@@ -173,12 +173,12 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
         <DocumentList className="mt-2 data-empty:mt-0" />
         {data ? (
           <ComboboxEmpty className="p-0">
-            <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
+            <div className="mt-2 flex h-25 w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
               {t(($) => $.noData, { ns: 'common' })}
             </div>
           </ComboboxEmpty>
         ) : (
-          <ComboboxStatus className="mt-2 flex h-[100px] w-full items-center justify-center">
+          <ComboboxStatus className="mt-2 flex h-25 w-full items-center justify-center">
             <Loading />
           </ComboboxStatus>
         )}

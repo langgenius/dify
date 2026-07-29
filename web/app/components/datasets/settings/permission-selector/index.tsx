@@ -171,7 +171,7 @@ const PermissionSelector = ({
         popupClassName="border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
-        <div className="relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+        <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
           <RadioGroup<DatasetPermission>
             value={permission}
             onValueChange={(nextPermission) => {
@@ -225,7 +225,7 @@ const PermissionSelector = ({
             />
           </RadioGroup>
           {isPartialMembers && (
-            <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
+            <div className="max-h-90 overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
               <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                 <div className="relative w-full">
                   <span
@@ -236,7 +236,7 @@ const PermissionSelector = ({
                     aria-label={t(($) => $['operation.search'], { ns: 'common' })}
                     name="member-search"
                     autoComplete="off"
-                    className={cn('w-full pl-[26px]', keywords && 'pr-[26px]')}
+                    className={cn('w-full pl-6.5', keywords && 'pr-6.5')}
                     value={keywords}
                     placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
                     onChange={(event) => handleKeywordsChange(event.target.value)}

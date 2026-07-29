@@ -737,7 +737,7 @@ describe('MainNav', () => {
 
     const accountButton = screen.getByRole('button', { name: 'common.account.account' })
     expect(accountButton).toHaveTextContent('Evan Z')
-    expect(accountButton).toHaveClass('max-w-[180px]', 'gap-3', 'py-1', 'pr-4', 'pl-1')
+    expect(accountButton).toHaveClass('max-w-45', 'gap-3', 'py-1', 'pr-4', 'pl-1')
     expect(accountButton).not.toHaveClass('justify-center', 'p-1')
   })
 

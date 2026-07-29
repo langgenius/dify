@@ -95,7 +95,7 @@ export function NewKnowledgeList({
       aria-label={t(($) => $['newKnowledge.new'])}
       className="relative flex grow flex-col overflow-y-auto bg-background-body"
     >
-      <header className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-4 pt-4 pb-2 sm:px-8">
+      <header className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-4 pt-4 pb-2 sm:px-8">
         <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
@@ -129,7 +129,7 @@ export function NewKnowledgeList({
               onClick={showFilterBoundary}
             />
             <SearchInput
-              className="w-full min-w-0 sm:w-[200px]"
+              className="w-full min-w-0 sm:w-50"
               value={searchValue}
               onValueChange={setSearchValue}
             />
