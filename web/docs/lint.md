@@ -36,6 +36,8 @@ Oxlint and Vite+ type-check scope is defined by `lint.config.ts` `ignorePatterns
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
+Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `pnpm check` command does not load it. Run `pnpm lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `pnpm lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
+
 The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
 ### Auto-fix Workflow
