@@ -164,6 +164,7 @@ class TestModelProviderSummaryListApi:
             is_configured=True,
             custom_configuration=ModelProviderCustomConfigurationSummaryResponse(
                 status=CustomConfigurationStatus.ACTIVE,
+                has_custom_models=True,
                 available_credentials=[
                     CredentialConfiguration(
                         credential_id=VALID_UUID,
@@ -203,6 +204,7 @@ class TestModelProviderSummaryListApi:
         assert "tenant_id" not in result["data"][0]
         assert result["data"][0]["custom_configuration"] == {
             "status": "active",
+            "has_custom_models": True,
             "available_credentials": [
                 {
                     "credential_id": VALID_UUID,

@@ -745,6 +745,7 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path)
     assert set(custom_configuration_schema["required"]) == {
         "available_credentials",
         "current_credential_usable",
+        "has_custom_models",
         "status",
     }
     assert set(custom_configuration_properties) == {
@@ -752,6 +753,7 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path)
         "current_credential_id",
         "current_credential_name",
         "current_credential_usable",
+        "has_custom_models",
         "status",
     }
     assert custom_configuration_properties["available_credentials"]["items"]["$ref"] == (

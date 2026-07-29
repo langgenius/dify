@@ -72,6 +72,9 @@ class SystemConfigurationResponse(BaseModel):
 
 class ModelProviderCustomConfigurationSummaryResponse(BaseModel):
     status: CustomConfigurationStatus
+    has_custom_models: bool = Field(
+        description="Whether custom model configuration exists, including saved model credentials."
+    )
     available_credentials: list[CredentialConfiguration]
     current_credential_id: str | None = None
     current_credential_name: str | None = None
