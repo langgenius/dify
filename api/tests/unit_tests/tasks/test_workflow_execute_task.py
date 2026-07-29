@@ -486,6 +486,41 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     assert "ended without a terminal event" in caplog.text
 
 
+def test_publish_streaming_response_uses_stream_error_message_for_failed_terminal(mock_topic: MagicMock):
+    response_stream = iter(
+        [
+            {
+                "event": "workflow_started",
+                "task_id": "task-id",
+                "workflow_run_id": "workflow-run-id",
+                "data": {"id": "workflow-run-id", "workflow_id": "workflow-id", "inputs": {}, "created_at": 1},
+            },
+            {
+                "event": "error",
+                "workflow_run_id": "workflow-run-id",
+                "code": "invalid_workflow",
+                "message": "The workflow configuration is invalid.",
+                "status": 400,
+            },
+        ]
+    )
+
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    assert [payload["event"] for payload in payloads] == ["workflow_started", "error", "workflow_finished"]
+    assert payloads[1]["status"] == 400
+    assert payloads[2]["data"]["status"] == WorkflowExecutionStatus.FAILED
+    assert payloads[2]["data"]["error"] == "The workflow configuration is invalid."
+
+
 def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(mock_topic: MagicMock):
     response_stream = iter(
         [

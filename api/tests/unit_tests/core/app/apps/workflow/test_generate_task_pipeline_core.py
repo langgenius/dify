@@ -817,7 +817,7 @@ class TestWorkflowGenerateTaskPipeline:
                 SimpleNamespace(event=QueueWorkflowStartedEvent()),
                 SimpleNamespace(event=QueueTextChunkEvent(text="hello")),
                 SimpleNamespace(event=QueuePingEvent()),
-                SimpleNamespace(event=QueueErrorEvent(error="e")),
+                SimpleNamespace(event=QueueErrorEvent(error=RuntimeError("e"))),
             ]
         )
         pipeline._handle_workflow_started_event = lambda event, **kwargs: iter(["started"])

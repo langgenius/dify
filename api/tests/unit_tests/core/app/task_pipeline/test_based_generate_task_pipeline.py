@@ -12,8 +12,21 @@ from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
+from libs.exception import BaseHTTPException
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Message
+
+
+class _InvalidWorkflowError(BaseHTTPException):
+    error_code = "invalid_workflow"
+    description = "The workflow configuration is invalid."
+    code = 400
+
+
+class _InternalWorkflowError(BaseHTTPException):
+    error_code = "internal_workflow_error"
+    description = "Sensitive internal workflow details."
+    code = 500
 
 
 def _persist_message(session: Session, *, message_id: str) -> Message:
@@ -95,6 +108,21 @@ class TestBasedGenerateTaskPipeline:
         assert "Knowledge retrieval failed" in str(err)
         assert "agent_run_id=run-1" in str(err)
 
+    def test_handle_error_preserves_client_http_error(self, pipeline):
+        event = QueueErrorEvent(error=_InvalidWorkflowError())
+
+        err = pipeline.handle_error(event=event)
+
+        assert err is event.error
+
+    def test_handle_error_wraps_server_http_error(self, pipeline):
+        event = QueueErrorEvent(error=_InternalWorkflowError())
+
+        err = pipeline.handle_error(event=event)
+
+        assert err is not event.error
+        assert type(err) is Exception
+
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
     def test_handle_error_updates_message_when_found(self, pipeline, sqlite_session: Session):
         event = QueueErrorEvent(error=ValueError("oops"))
@@ -149,6 +177,24 @@ class TestBasedGenerateTaskPipeline:
             "code": "completion_request_error",
             "status": 400,
             "message": "Knowledge retrieval failed (agent_run_id=run-1)",
+        }
+
+    def test_stream_converter_maps_client_http_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(_InvalidWorkflowError())
+
+        assert data == {
+            "code": "invalid_workflow",
+            "status": 400,
+            "message": "The workflow configuration is invalid.",
+        }
+
+    def test_stream_converter_masks_server_http_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(_InternalWorkflowError())
+
+        assert data == {
+            "code": "internal_server_error",
+            "status": 500,
+            "message": "Internal Server Error, please contact support.",
         }
 
     def test_handle_output_moderation_when_flagged(self, pipeline):

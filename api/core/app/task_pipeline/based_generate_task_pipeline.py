@@ -19,6 +19,7 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from libs.exception import BaseHTTPException
 from models.enums import MessageStatus
 from models.model import Message
 
@@ -47,7 +48,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
-    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+    def handle_error(
+        self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""
+    ) -> Exception:
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -55,6 +58,8 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
+            case BaseHTTPException() if e.code is not None and 400 <= e.code < 500:
+                err = e
             case InvokeError() | ValueError() | AgentBackendError():
                 err = e
             case _:

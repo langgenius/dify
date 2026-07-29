@@ -132,7 +132,7 @@ class AppQueueManager(ABC):
                 "Failed to clear task belong cache for task %s (key: %s)", self._task_id, self._task_belong_cache_key
             )
 
-    def publish_error(self, e, pub_from: PublishFrom) -> None:
+    def publish_error(self, e: Exception, pub_from: PublishFrom) -> None:
         """
         Publish error
         :param e: error

@@ -10,6 +10,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
+from libs.exception import BaseHTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,13 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         :param e: exception
         :return:
         """
+        if isinstance(e, BaseHTTPException) and e.code is not None and 400 <= e.code < 500:
+            return {
+                "code": e.error_code,
+                "message": e.description or str(e),
+                "status": e.code,
+            }
+
         error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
