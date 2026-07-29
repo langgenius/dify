@@ -3,12 +3,15 @@ from unittest.mock import MagicMock
 
 import click
 import pytest
+from pytest_mock import MockerFixture
 
 from commands import migrate_legacy_sys_files_workflows
 from commands import workflow_migration as workflow_migration_commands
 
 
-def test_migrate_legacy_sys_files_workflows_command_passes_batch_options(mocker, capsys):
+def test_migrate_legacy_sys_files_workflows_command_passes_batch_options(
+    mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
+) -> None:
     runner = mocker.patch.object(
         workflow_migration_commands,
         "run_legacy_sys_files_workflow_migration",
@@ -21,7 +24,9 @@ def test_migrate_legacy_sys_files_workflows_command_passes_batch_options(mocker,
         ),
     )
 
-    migrate_legacy_sys_files_workflows.callback(
+    callback = migrate_legacy_sys_files_workflows.callback
+    assert callback is not None
+    callback(
         batch_size=200,
         limit=500,
         start_after_id="workflow-1",
@@ -44,9 +49,11 @@ def test_migrate_legacy_sys_files_workflows_command_passes_batch_options(mocker,
     assert "last_id=workflow-10" in captured.out
 
 
-def test_migrate_legacy_sys_files_workflows_rejects_non_positive_batch_size():
+def test_migrate_legacy_sys_files_workflows_rejects_non_positive_batch_size() -> None:
+    callback = migrate_legacy_sys_files_workflows.callback
+    assert callback is not None
     with pytest.raises(click.UsageError, match="batch-size"):
-        migrate_legacy_sys_files_workflows.callback(
+        callback(
             batch_size=0,
             limit=None,
             start_after_id=None,
@@ -56,9 +63,11 @@ def test_migrate_legacy_sys_files_workflows_rejects_non_positive_batch_size():
         )
 
 
-def test_migrate_legacy_sys_files_workflows_rejects_non_positive_limit():
+def test_migrate_legacy_sys_files_workflows_rejects_non_positive_limit() -> None:
+    callback = migrate_legacy_sys_files_workflows.callback
+    assert callback is not None
     with pytest.raises(click.UsageError, match="limit"):
-        migrate_legacy_sys_files_workflows.callback(
+        callback(
             batch_size=100,
             limit=0,
             start_after_id=None,
@@ -68,7 +77,7 @@ def test_migrate_legacy_sys_files_workflows_rejects_non_positive_limit():
         )
 
 
-def test_build_legacy_sys_files_workflow_query_uses_keyset_pagination():
+def test_build_legacy_sys_files_workflow_query_uses_keyset_pagination() -> None:
     stmt = workflow_migration_commands._build_legacy_sys_files_workflow_query(
         start_after_id="workflow-1",
         batch_size=200,
@@ -85,7 +94,7 @@ def test_build_legacy_sys_files_workflow_query_uses_keyset_pagination():
     assert "workflows.environment_variables" not in compiled
 
 
-def test_migrate_legacy_sys_files_workflow_batch_dry_run_rolls_back():
+def test_migrate_legacy_sys_files_workflow_batch_dry_run_rolls_back() -> None:
     migrated_workflow = MagicMock()
     migrated_workflow.id = "workflow-1"
     migrated_workflow.migrate_legacy_sys_files_graph_in_place.return_value = True
@@ -112,7 +121,9 @@ def test_migrate_legacy_sys_files_workflow_batch_dry_run_rolls_back():
     session.commit.assert_not_called()
 
 
-def test_migrate_legacy_sys_files_workflow_batch_commits_and_counts_failures(caplog):
+def test_migrate_legacy_sys_files_workflow_batch_commits_and_counts_failures(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     migrated_workflow = MagicMock()
     migrated_workflow.id = "workflow-1"
     migrated_workflow.migrate_legacy_sys_files_graph_in_place.return_value = True
@@ -140,7 +151,7 @@ def test_migrate_legacy_sys_files_workflow_batch_commits_and_counts_failures(cap
     session.rollback.assert_not_called()
 
 
-def test_run_legacy_sys_files_workflow_migration_uses_keyset_batches(mocker):
+def test_run_legacy_sys_files_workflow_migration_uses_keyset_batches(mocker: MockerFixture) -> None:
     session_maker = MagicMock()
     sessions = [MagicMock(), MagicMock()]
     session_maker.side_effect = sessions
@@ -184,7 +195,7 @@ def test_run_legacy_sys_files_workflow_migration_uses_keyset_batches(mocker):
     assert migrate_batch.call_args_list[1].kwargs["batch_size"] == 1
 
 
-def test_run_legacy_sys_files_workflow_migration_stops_on_empty_batch(mocker):
+def test_run_legacy_sys_files_workflow_migration_stops_on_empty_batch(mocker: MockerFixture) -> None:
     session_maker = MagicMock(return_value=MagicMock())
     mocker.patch.object(workflow_migration_commands, "sessionmaker", return_value=session_maker)
     mocker.patch.object(workflow_migration_commands, "db", SimpleNamespace(engine=object()))
@@ -207,7 +218,7 @@ def test_run_legacy_sys_files_workflow_migration_stops_on_empty_batch(mocker):
     assert stats.batches == 0
 
 
-def test_run_legacy_sys_files_workflow_migration_stops_on_short_batch(mocker):
+def test_run_legacy_sys_files_workflow_migration_stops_on_short_batch(mocker: MockerFixture) -> None:
     session_maker = MagicMock(return_value=MagicMock())
     mocker.patch.object(workflow_migration_commands, "sessionmaker", return_value=session_maker)
     mocker.patch.object(workflow_migration_commands, "db", SimpleNamespace(engine=object()))

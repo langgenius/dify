@@ -1,19 +1,27 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from commands import reset_encrypt_key_pair
 from commands import workspace as workspace_commands
 
 
-def test_reset_encrypt_key_pair_skips_non_self_hosted(monkeypatch, capsys):
+def test_reset_encrypt_key_pair_skips_non_self_hosted(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "CLOUD")
 
-    reset_encrypt_key_pair.callback()
+    callback = reset_encrypt_key_pair.callback
+    assert callback is not None
+    callback()
 
     captured = capsys.readouterr()
     assert "only for SELF_HOSTED" in captured.out
 
 
-def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(monkeypatch, capsys):
+def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
     monkeypatch.setattr(workspace_commands, "generate_key_pair", lambda tenant_id: f"public-key-{tenant_id}")
     tenant = MagicMock()
@@ -25,7 +33,9 @@ def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(mo
     monkeypatch.setattr(workspace_commands, "sessionmaker", lambda *args, **kwargs: session_manager)
     monkeypatch.setattr(workspace_commands, "db", MagicMock(engine=object()))
 
-    reset_encrypt_key_pair.callback()
+    callback = reset_encrypt_key_pair.callback
+    assert callback is not None
+    callback()
 
     assert tenant.encrypt_public_key == "public-key-tenant-1"
     assert session.execute.call_count == 5
@@ -33,7 +43,9 @@ def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(mo
     assert "tenant-1 has been reset" in captured.out
 
 
-def test_reset_encrypt_key_pair_stops_when_workspace_record_is_missing(monkeypatch, capsys):
+def test_reset_encrypt_key_pair_stops_when_workspace_record_is_missing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
     session = MagicMock()
     session.scalars.return_value.all.return_value = [None]
@@ -42,7 +54,9 @@ def test_reset_encrypt_key_pair_stops_when_workspace_record_is_missing(monkeypat
     monkeypatch.setattr(workspace_commands, "sessionmaker", lambda *args, **kwargs: session_manager)
     monkeypatch.setattr(workspace_commands, "db", MagicMock(engine=object()))
 
-    reset_encrypt_key_pair.callback()
+    callback = reset_encrypt_key_pair.callback
+    assert callback is not None
+    callback()
 
     session.execute.assert_not_called()
     captured = capsys.readouterr()

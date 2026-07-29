@@ -1,4 +1,8 @@
+from collections.abc import Mapping
+from typing import Any
 from unittest.mock import MagicMock
+
+from pytest_mock import MockerFixture
 
 from controllers.service_api.app.legacy_system_files import (
     attach_legacy_system_file_warning_for_service_api,
@@ -11,7 +15,7 @@ _LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
 _USER_INPUT_FILE_INPUT_KEY = ".".join(("userinput", "files"))
 
 
-def _legacy_file_graph() -> dict:
+def _legacy_file_graph() -> dict[str, Any]:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": []}},
@@ -21,7 +25,7 @@ def _legacy_file_graph() -> dict:
     }
 
 
-def test_hidden_service_api_file_payload_maps_to_userinput_files(mocker):
+def test_hidden_service_api_file_payload_maps_to_userinput_files(mocker: MockerFixture) -> None:
     workflow = MagicMock()
     workflow.graph_dict = _legacy_file_graph()
     get_workflow = mocker.patch.object(AppGenerateService, "get_workflow", return_value=workflow)
@@ -42,10 +46,10 @@ def test_hidden_service_api_file_payload_maps_to_userinput_files(mocker):
     assert args["inputs"][_USER_INPUT_FILE_INPUT_KEY] == files
 
 
-def test_service_api_file_payload_is_ignored_when_absent(mocker):
+def test_service_api_file_payload_is_ignored_when_absent(mocker: MockerFixture) -> None:
     get_workflow = mocker.patch.object(AppGenerateService, "get_workflow")
     app_model = MagicMock()
-    original_args = {"inputs": {}}
+    original_args: dict[str, Any] = {"inputs": {}}
 
     args, compat_variable = normalize_legacy_system_file_args_for_service_api(
         session=MagicMock(),
@@ -59,9 +63,10 @@ def test_service_api_file_payload_is_ignored_when_absent(mocker):
     get_workflow.assert_not_called()
 
 
-def test_top_level_service_api_file_payload_still_checks_workflow_graph(mocker):
+def test_top_level_service_api_file_payload_still_checks_workflow_graph(mocker: MockerFixture) -> None:
     workflow = MagicMock()
-    workflow.graph_dict = {"nodes": []}
+    empty_graph: dict[str, Any] = {"nodes": []}
+    workflow.graph_dict = empty_graph
     get_workflow = mocker.patch.object(AppGenerateService, "get_workflow", return_value=workflow)
     app_model = MagicMock()
     session = MagicMock()
@@ -79,11 +84,12 @@ def test_top_level_service_api_file_payload_still_checks_workflow_graph(mocker):
     assert compat_variable is None
 
 
-def test_service_api_warning_is_attached_only_when_compatibility_was_used():
+def test_service_api_warning_is_attached_only_when_compatibility_was_used() -> None:
     compat_variable = MagicMock(node_id="userinput", variable_name="files")
 
     response = attach_legacy_system_file_warning_for_service_api({"answer": "ok"}, compat_variable)
     response_without_warning = attach_legacy_system_file_warning_for_service_api({"answer": "ok"}, None)
 
+    assert isinstance(response, Mapping)
     assert response["warnings"]
     assert response_without_warning == {"answer": "ok"}

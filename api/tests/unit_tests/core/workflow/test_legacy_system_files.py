@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from typing import Any
+
 from core.workflow.legacy_system_files import (
     LegacySysFilesCompatVariable,
     attach_legacy_sys_files_warning,
@@ -16,14 +19,14 @@ _LEGACY_ALIAS_TEMPLATE = "{{#" + ".".join((_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIAB
 _LEGACY_ALIAS_INPUT_KEY = ".".join((_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIABLE_NAME))
 
 
-def test_migrate_legacy_sys_files_graph_ignores_invalid_or_unrelated_graphs():
+def test_migrate_legacy_sys_files_graph_ignores_invalid_or_unrelated_graphs() -> None:
     assert not migrate_legacy_sys_files_graph_with_result({}).changed
     assert not migrate_legacy_sys_files_graph_with_result({"nodes": [], "edges": [_LEGACY_SELECTOR]}).changed
     assert not migrate_legacy_sys_files_graph_with_result({"nodes": [{"data": {"value": ["sys", "query"]}}]}).changed
 
 
-def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_without_start_variable():
-    graph = {
+def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_without_start_variable() -> None:
+    graph: dict[str, Any] = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": [{"variable": "sys_files"}]}},
             {
@@ -48,8 +51,8 @@ def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_wi
     assert graph["nodes"][1]["data"]["template"] == _LEGACY_TEMPLATE
 
 
-def test_migrate_legacy_sys_files_graph_leaves_userinput_files_target_unchanged():
-    graph = {
+def test_migrate_legacy_sys_files_graph_leaves_userinput_files_target_unchanged() -> None:
+    graph: dict[str, Any] = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": []}},
             {
@@ -69,7 +72,7 @@ def test_migrate_legacy_sys_files_graph_leaves_userinput_files_target_unchanged(
     assert result.graph == graph
 
 
-def test_resolve_legacy_sys_files_compat_variable_returns_userinput_files_target():
+def test_resolve_legacy_sys_files_compat_variable_returns_userinput_files_target() -> None:
     assert resolve_legacy_sys_files_compat_variable({}) is None
     assert resolve_legacy_sys_files_compat_variable({"nodes": [{"data": {"value": ["sys", "query"]}}]}) is None
 
@@ -85,7 +88,7 @@ def test_resolve_legacy_sys_files_compat_variable_returns_userinput_files_target
     )
 
 
-def test_normalize_legacy_sys_files_args_handles_no_compat_and_top_level_files():
+def test_normalize_legacy_sys_files_args_handles_no_compat_and_top_level_files() -> None:
     args_without_legacy, compat_without_legacy = normalize_legacy_sys_files_args(
         graph={"nodes": []},
         args={"inputs": {}},
@@ -94,7 +97,7 @@ def test_normalize_legacy_sys_files_args_handles_no_compat_and_top_level_files()
     assert compat_without_legacy is None
 
     files = [{"id": "file-1"}]
-    graph = {
+    graph: dict[str, Any] = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": []}},
             {"id": "answer", "data": {"type": "answer", "answer": _LEGACY_TEMPLATE}},
@@ -110,7 +113,7 @@ def test_normalize_legacy_sys_files_args_handles_no_compat_and_top_level_files()
     assert normalized_args["inputs"][".".join((compat_variable.node_id, compat_variable.variable_name))] == files
 
 
-def test_normalize_legacy_sys_files_args_maps_userinput_files_to_top_level_files_without_warning():
+def test_normalize_legacy_sys_files_args_maps_userinput_files_to_top_level_files_without_warning() -> None:
     files = [{"id": "file-1"}]
     normalized_args, compat_variable = normalize_legacy_sys_files_args(
         graph={"nodes": []},
@@ -122,7 +125,7 @@ def test_normalize_legacy_sys_files_args_maps_userinput_files_to_top_level_files
     assert normalized_args["inputs"] == {_LEGACY_ALIAS_INPUT_KEY: files}
 
 
-def test_normalize_legacy_sys_files_args_prefers_userinput_files_over_legacy_files():
+def test_normalize_legacy_sys_files_args_prefers_userinput_files_over_legacy_files() -> None:
     legacy_files = [{"id": "legacy-file"}]
     userinput_files = [{"id": "userinput-file"}]
 
@@ -138,14 +141,14 @@ def test_normalize_legacy_sys_files_args_prefers_userinput_files_over_legacy_fil
     assert normalized_args["files"] == userinput_files
 
 
-def test_attach_legacy_sys_files_warning_wraps_stream_and_closes_source():
+def test_attach_legacy_sys_files_warning_wraps_stream_and_closes_source() -> None:
     class CloseableStream:
         closed = False
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[str]:
             yield "data: payload\n\n"
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     stream = CloseableStream()
