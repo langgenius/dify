@@ -11,14 +11,7 @@ import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useAtomValue } from 'jotai'
-import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
-import {
-  isAccountSettingDestination,
-  isIntegrationSettingDestination,
-  settingsQueryParamName,
-  settingsQueryParser,
-} from '@/app/components/header/account-setting/query-params'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { usePricingModal } from '@/hooks/use-query-params'
@@ -26,12 +19,6 @@ import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import { ModalContext } from './modal-context'
 
-const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
-  ssr: false,
-})
-const IntegrationsSettingModal = dynamic(() => import('@/app/components/integrations/modal'), {
-  ssr: false,
-})
 const ModerationSettingModal = dynamic(
   () =>
     import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'),
@@ -98,16 +85,6 @@ type ModalContextProviderProps = {
 }
 export const ModalContextProvider = ({ children }: ModalContextProviderProps) => {
   const [showPricingModal, setPricingModalOpen] = usePricingModal()
-  const [settingsDestination, setSettingsDestination] = useQueryState(
-    settingsQueryParamName,
-    settingsQueryParser,
-  )
-  const accountSettingModalTab = isAccountSettingDestination(settingsDestination)
-    ? settingsDestination
-    : null
-  const integrationSettingModalSection = isIntegrationSettingDestination(settingsDestination)
-    ? settingsDestination
-    : null
   const [showModerationSettingModal, setShowModerationSettingModal] =
     useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] =
@@ -131,16 +108,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
-  const handleCancelSettings = () => {
-    setSettingsDestination(null, { history: 'replace', shallow: true })
-  }
-
-  const handleSettingsDestinationChange = (
-    destination: NonNullable<typeof settingsDestination>,
-  ) => {
-    setSettingsDestination(destination, { history: 'replace', shallow: true })
-  }
-
   const { plan, isFetchedPlan } = useProviderContext()
   const {
     showTriggerEventsLimitModal,
@@ -245,7 +212,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     setPricingModalOpen(false)
   }, [setPricingModalOpen])
   const hasBlockingModalOpen = Boolean(
-    settingsDestination ||
     showModerationSettingModal ||
     showExternalDataToolModal ||
     showPricingModal ||
@@ -278,21 +244,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     >
       <>
         {children}
-        {accountSettingModalTab && (
-          <AccountSetting
-            activeTab={accountSettingModalTab}
-            onCancelAction={handleCancelSettings}
-            onTabChangeAction={handleSettingsDestinationChange}
-          />
-        )}
-        {integrationSettingModalSection && (
-          <IntegrationsSettingModal
-            section={integrationSettingModalSection}
-            onCancel={handleCancelSettings}
-            onSectionChange={handleSettingsDestinationChange}
-          />
-        )}
-
         {!!showModerationSettingModal && (
           <ModerationSettingModal
             data={showModerationSettingModal.payload}

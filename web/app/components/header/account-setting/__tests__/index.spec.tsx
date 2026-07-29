@@ -8,7 +8,6 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
-const mockResetModelProviderListExpanded = vi.fn()
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
@@ -63,10 +62,6 @@ vi.mock('next-themes', () => ({
     theme: 'system',
     setTheme: vi.fn(),
   })),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
-  useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
