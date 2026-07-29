@@ -60,7 +60,25 @@ describe('block-selector hooks', () => {
   it('includes the snippets tab by default', () => {
     const { result } = renderHook(() => useTabs({}))
 
-    expect(result.current.tabs.some((tab) => tab.key === TabType.Snippets)).toBe(true)
+    expect(result.current.tabs.map((tab) => tab.key)).toEqual([
+      TabType.Blocks,
+      TabType.Tools,
+      TabType.Sources,
+      TabType.Snippets,
+    ])
+  })
+
+  it('uses the same category order for tabs and the default fallback', () => {
+    const { result } = renderHook(() => useTabs({ noStart: false, noSources: false }))
+
+    expect(result.current.tabs.map((tab) => tab.key)).toEqual([
+      TabType.Blocks,
+      TabType.Tools,
+      TabType.Sources,
+      TabType.Start,
+      TabType.Snippets,
+    ])
+    expect(result.current.initialTab).toBe(TabType.Blocks)
   })
 
   it('hides the snippets tab and falls back when snippets are disabled', () => {

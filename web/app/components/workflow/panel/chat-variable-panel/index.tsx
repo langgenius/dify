@@ -11,7 +11,6 @@ import {
 } from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -22,6 +21,7 @@ import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { updateConversationVariables } from '@/service/workflow'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {

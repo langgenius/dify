@@ -939,34 +939,23 @@ export const site = {
 }
 
 /**
- * Get system feature flags and configuration
+ * Get the non-sensitive bootstrap snapshot exposed before authentication
  *
- * Get system feature flags and configuration
- * Returns the current system feature flags and configuration
- * that control various functionalities across the platform.
- *
- * Returns:
- * dict: System feature configuration object
- *
+ * Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
  * This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
  * except it is intended for use by the web app, instead of the console dashboard.
  *
- * NOTE: This endpoint is unauthenticated by design, as it provides system features
- * data required for webapp initialization.
- *
- * Authentication would create circular dependency (can't authenticate without webapp loading).
- *
- * Only non-sensitive configuration data should be returned by this endpoint.
+ * Authentication configuration must be available before the authentication flow can be selected.
  */
 export const get13 = oc
   .route({
     description:
-      "Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can't authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.",
+      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',
     path: '/system-features',
-    summary: 'Get system feature flags and configuration',
+    summary: 'Get the non-sensitive bootstrap snapshot exposed before authentication',
     tags: ['web'],
   })
   .output(zGetSystemFeaturesResponse)

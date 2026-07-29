@@ -1,5 +1,6 @@
+import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { screen } from '@testing-library/react'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import ChartView from '../chart-view'
 
@@ -13,6 +14,7 @@ const testState = vi.hoisted(() => ({
   currentUserId: 'user-1',
   workspacePermissionKeys: [] as string[],
   chartRenderSpy: vi.fn(),
+  conversationPeriodSpy: vi.fn(),
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -46,8 +48,9 @@ vi.mock('@/app/components/app/overview/app-chart', () => ({
     testState.chartRenderSpy('avg-user-interactions')
     return <div>avg user interactions chart</div>
   },
-  ConversationsChart: () => {
+  ConversationsChart: ({ period }: { period: PeriodParams }) => {
     testState.chartRenderSpy('conversations')
+    testState.conversationPeriodSpy(period)
     return <div>conversations chart</div>
   },
   CostChart: () => {

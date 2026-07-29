@@ -11,7 +11,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import object_session, sessionmaker
+from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from controllers.common import session as controller_session
 from controllers.console.app import model_config as model_config_module
@@ -29,11 +29,14 @@ def _poison_implicit_app_config_properties(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 @pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("sqlite_session", [(AppModelConfig,)], indirect=True)
 def test_post_updates_non_agent_model_config_without_implicit_properties(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     app_mode: AppMode,
+    sqlite_session: Session,
 ) -> None:
+    """Flush a non-agent config through the injected session without legacy model properties."""
     api = model_config_module.ModelConfigResource()
     method = unwrap(api.post)
 
@@ -45,14 +48,16 @@ def test_post_updates_non_agent_model_config_without_implicit_properties(
         updated_at=None,
     )
     original_config = AppModelConfig(app_id="app-1", created_by="u1", updated_by="u1")
+    original_config.id = "config-0"
     original_config.agent_mode = None
+    sqlite_session.add(original_config)
+    sqlite_session.commit()
     _poison_implicit_app_config_properties(monkeypatch)
     monkeypatch.setattr(
         model_config_module.AppModelConfigService,
         "validate_configuration",
         lambda **_kwargs: {"pre_prompt": "hi"},
     )
-    session = MagicMock()
 
     def _from_model_config_dict(self, model_config):
         self.pre_prompt = model_config["pre_prompt"]
@@ -62,18 +67,16 @@ def test_post_updates_non_agent_model_config_without_implicit_properties(
     monkeypatch.setattr(AppModelConfig, "from_model_config_dict", _from_model_config_dict)
     send_mock = MagicMock()
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", send_mock)
-    session.get.return_value = original_config
 
     with app.test_request_context("/console/api/apps/app-1/model-config", method="POST", json={"pre_prompt": "hi"}):
-        response = method(api, session, "t1", "u1", app_model=app_model)
+        response = method(api, sqlite_session, "t1", "u1", app_model=app_model)
 
-    session.get.assert_called_once_with(AppModelConfig, "config-0")
-    session.add.assert_called_once()
-    session.flush.assert_called_once()
-    session.commit.assert_not_called()
-    assert send_mock.call_args.kwargs["session"] is session
+    assert send_mock.call_args.kwargs["session"] is sqlite_session
     assert app_model.app_model_config_id == "config-1"
     assert app_model.mode == app_mode
+    persisted_config = sqlite_session.get(AppModelConfig, "config-1")
+    assert persisted_config is not None
+    assert persisted_config.pre_prompt == "hi"
     assert response["result"] == "success"
 
 
@@ -160,7 +163,11 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
         assert config_count == 1
 
 
-def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(AppModelConfig,)], indirect=True)
+def test_post_encrypts_agent_tool_parameters(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    """Agent parameter encryption reads and writes persisted model configurations."""
     api = model_config_module.ModelConfigResource()
     method = unwrap(api.post)
 
@@ -174,6 +181,7 @@ def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.Mon
     _poison_implicit_app_config_properties(monkeypatch)
 
     original_config = AppModelConfig(app_id="app-1", created_by="u1", updated_by="u1")
+    original_config.id = "config-0"
     original_config.agent_mode = json.dumps(
         {
             "enabled": True,
@@ -190,8 +198,8 @@ def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.Mon
         }
     )
 
-    session = MagicMock()
-    session.scalar.return_value = original_config
+    sqlite_session.add(original_config)
+    sqlite_session.commit()
 
     monkeypatch.setattr(
         model_config_module.AppModelConfigService,
@@ -236,11 +244,11 @@ def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.Mon
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", send_mock)
 
     with app.test_request_context("/console/api/apps/app-1/model-config", method="POST", json={"pre_prompt": "hi"}):
-        response = method(api, session, "t1", "u1", app_model=app_model)
+        response = method(api, sqlite_session, "t1", "u1", app_model=app_model)
 
-    stored_config = session.add.call_args[0][0]
+    stored_config = sqlite_session.get(AppModelConfig, app_model.app_model_config_id)
+    assert stored_config is not None
     stored_agent_mode = json.loads(stored_config.agent_mode)
-    session.scalar.assert_called_once()
     assert app_model.mode == AppMode.AGENT_CHAT
     assert stored_agent_mode["tools"][0]["tool_parameters"]["secret"] == "encrypted"
     assert response["result"] == "success"

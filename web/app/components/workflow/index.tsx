@@ -22,7 +22,17 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import { Fragment, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactFlow, {
   Background,
@@ -57,20 +67,17 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import {
-  useEdgesInteractions,
-  useNodesInteractions,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  usePanelInteractions,
-  useSelectionInteractions,
-  useSetWorkflowVarsWithValue,
-  useWorkflow,
-  useWorkflowReadOnly,
-  useWorkflowRefreshDraft,
-} from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { useEdgesInteractions } from './hooks/use-edges-interactions'
+import { useLocateNode } from './hooks/use-locate-node'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
+import { usePanelInteractions } from './hooks/use-panel-interactions'
+import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
+import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
@@ -125,6 +132,7 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
+  isCollaborationEnabled?: boolean
   cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
@@ -168,6 +176,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     viewport,
     children,
     onWorkflowDataUpdate,
+    isCollaborationEnabled = false,
     cursors,
     myUserId,
     onlineUsers,
@@ -362,20 +371,32 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [])
 
+    const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
+      if (!workflowStore.getState().isWorkflowDataLoaded) return
+
+      if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
+        syncWorkflowDraftWhenPageClose()
+        return
+      }
+
+      if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+
+      handleSyncWorkflowDraft(true, true, {
+        onError: () => {
+          toast.error(
+            t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+            {
+              timeout: 0,
+            },
+          )
+        },
+      })
+    })
     useEffect(() => {
       return () => {
-        handleSyncWorkflowDraft(true, true, {
-          onError: () => {
-            toast.error(
-              t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
-              {
-                timeout: 0,
-              },
-            )
-          },
-        })
+        syncWorkflowDraftOnUnmount()
       }
-    }, [handleSyncWorkflowDraft, t])
+    }, [])
 
     const handlePendingCommentPositionChange = useCallback(
       (position: NonNullable<WorkflowSliceShape['pendingComment']>) => {
@@ -560,6 +581,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
+
+    // Locate a node by ID from URL query parameter `node_id`
+    useLocateNode(nodes)
 
     // Set up scroll to node event listener using the utility function
     useEffect(() => {

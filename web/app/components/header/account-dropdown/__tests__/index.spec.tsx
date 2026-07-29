@@ -2,6 +2,7 @@ import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/syst
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import type { DeepPartial } from '@/test/console/system-features'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
@@ -10,18 +11,10 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AppSelector from '../index'
-
-type DeepPartial<T> =
-  T extends Array<infer U>
-    ? Array<U>
-    : T extends object
-      ? { [K in keyof T]?: DeepPartial<T[K]> }
-      : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -55,6 +48,7 @@ const mockConsoleState = vi.hoisted(() => ({
   current: undefined as ConsoleStateFixture | undefined,
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+const mockUseRouter = vi.hoisted(() => vi.fn())
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
@@ -97,14 +91,13 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
-    useRouter: vi.fn(),
+    useRouter: mockUseRouter,
   }
 })
 
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
-    IS_CLOUD_EDITION: false,
     AMPLITUDE_API_KEY: '',
     ZENDESK_WIDGET_KEY: '',
     SUPPORT_EMAIL_ADDRESS: '',
@@ -119,14 +112,8 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.IS_CLOUD_EDITION
-    },
     get AMPLITUDE_API_KEY() {
       return mockConfig.AMPLITUDE_API_KEY
-    },
-    get isAmplitudeEnabled() {
-      return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
     },
     get ZENDESK_WIDGET_KEY() {
       return mockConfig.ZENDESK_WIDGET_KEY
@@ -135,7 +122,6 @@ vi.mock('@/config', async (importOriginal) => {
       return mockConfig.SUPPORT_EMAIL_ADDRESS
     },
     IS_DEV: false,
-    IS_CE_EDITION: false,
   }
 })
 vi.mock('@/env', () => mockEnv)
@@ -191,6 +177,7 @@ describe('AccountDropdown', () => {
   const mockPush = vi.fn()
   const mockLogout = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
+  let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUNITY'
 
   const renderWithRouter = (
     ui: React.ReactElement,
@@ -202,14 +189,17 @@ describe('AccountDropdown', () => {
     })
     return renderWithConsoleQuery(ui, {
       queryClient,
-      systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
+      systemFeatures: options.systemFeatures ?? {
+        deployment_edition: deploymentEdition,
+        branding: { enabled: false },
+      },
     })
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', { removeItem: vi.fn() })
-    mockConfig.IS_CLOUD_EDITION = false
+    deploymentEdition = 'COMMUNITY'
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
     setConsoleState(baseConsoleState)
@@ -223,13 +213,8 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
-    vi.mocked(useRouter).mockReturnValue({
+    mockUseRouter.mockReturnValue({
       push: mockPush,
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
     })
   })
 
@@ -342,7 +327,7 @@ describe('AccountDropdown', () => {
 
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = true
+      deploymentEdition = 'CLOUD'
       setConsoleState({
         ...baseConsoleState,
         userProfile: { ...baseConsoleState.userProfile, name: 'User' },
@@ -362,10 +347,9 @@ describe('AccountDropdown', () => {
       expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
     })
 
-    // Compound AND middle-false: IS_CLOUD_EDITION=true but isCurrentWorkspaceOwner=false
     it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = true
+      deploymentEdition = 'CLOUD'
       setConsoleState({
         ...baseConsoleState,
         isCurrentWorkspaceOwner: false,

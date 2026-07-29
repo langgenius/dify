@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -76,6 +77,10 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
       },
       {
         onSuccess: (createdAgent) => {
+          trackCreateApp({
+            source: 'studio_blank',
+            appMode: 'agent-v2',
+          })
           toast.success(t(($) => $['roster.createSuccess']))
           handleOpenChange(false)
           router.push(getAgentDetailPath(createdAgent.id, 'configure'))

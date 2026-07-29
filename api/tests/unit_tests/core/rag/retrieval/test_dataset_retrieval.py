@@ -3752,8 +3752,8 @@ class TestKnowledgeRetrievalRegression:
         """
         Repro test for current bug:
         reranking runs after `with flask_app.app_context():` exits.
-        `_multiple_retrieve_thread` catches exceptions and stores them into `thread_exceptions`,
-        so we must assert from that list (not from an outer try/except).
+        The outer thread entry point catches exceptions from the traced retrieval method
+        and stores them in `thread_exceptions`.
         """
         dataset_retrieval = DatasetRetrieval()
         flask_app = Flask(__name__)
@@ -3806,7 +3806,6 @@ class TestKnowledgeRetrievalRegression:
         # output list from _multiple_retrieve_thread
         all_documents: list[Document] = []
 
-        # IMPORTANT: _multiple_retrieve_thread swallows exceptions and appends them here
         thread_exceptions: list[Exception] = []
 
         def target():
@@ -3818,7 +3817,7 @@ class TestKnowledgeRetrievalRegression:
                 ),
                 _patched_retriever_session(),
             ):
-                dataset_retrieval._multiple_retrieve_thread(
+                dataset_retrieval._multiple_retrieve_thread_safely(
                     flask_app=flask_app,
                     available_datasets=[mock_dataset, secondary_dataset],
                     metadata_condition=None,
@@ -3847,7 +3846,6 @@ class TestKnowledgeRetrievalRegression:
         # Ensure reranking branch was actually executed
         assert called["init"] >= 1, "DataPostProcessor was never constructed; reranking branch may not have run."
 
-        # Current buggy code should record an exception (not raise it)
         assert not thread_exceptions, thread_exceptions
 
     def test_run_retriever_thread_provides_session_to_retriever(self):
@@ -3865,14 +3863,12 @@ class TestKnowledgeRetrievalRegression:
                     document_ids_filter=None,
                     metadata_condition=None,
                     attachment_ids=None,
-                    cancel_event=None,
-                    thread_exceptions=[],
                 )
 
         mock_retriever.assert_called_once()
         assert mock_retriever.call_args.kwargs["session"] is session
 
-    def test_run_retriever_thread_records_retriever_exception(self):
+    def test_run_retriever_thread_safely_records_retriever_exception(self):
         dataset_retrieval = DatasetRetrieval()
         all_documents: list[Document] = []
         cancel_event = threading.Event()
@@ -3881,7 +3877,7 @@ class TestKnowledgeRetrievalRegression:
 
         with _patched_retriever_session():
             with patch.object(dataset_retrieval, "_retriever", side_effect=expected_error):
-                dataset_retrieval._run_retriever_thread(
+                dataset_retrieval._run_retriever_thread_safely(
                     flask_app=_FakeFlaskApp(),
                     dataset_id="dataset-1",
                     query="test query",
@@ -5139,7 +5135,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         app = Flask(__name__)
 
         def failing_thread(**kwargs):
-            kwargs["thread_exceptions"].append(RuntimeError("thread boom"))
+            raise RuntimeError("thread boom")
 
         with app.app_context():
             with (

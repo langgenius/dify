@@ -52,14 +52,14 @@ export const useTabs = ({
         show: !noBlocks,
       },
       {
-        key: TabType.Sources,
-        name: t(($) => $['tabs.sources'], { ns: 'workflow' }),
-        show: !noSources,
-      },
-      {
         key: TabType.Tools,
         name: t(($) => $['tabs.tools'], { ns: 'workflow' }),
         show: !noTools,
+      },
+      {
+        key: TabType.Sources,
+        name: t(($) => $['tabs.sources'], { ns: 'workflow' }),
+        show: !noSources,
       },
       {
         key: TabType.Start,
@@ -94,24 +94,11 @@ export const useTabs = ({
       if (!tab || tab.disabled) return undefined
       return tab.key
     }
-    const fallbackTab = tabs.find((tab) => !tab.disabled)?.key ?? TabType.Blocks
     const preferredDefault = getValidTabKey(defaultActiveTab)
     if (preferredDefault) return preferredDefault
 
-    const preferredOrder: TabType[] = []
-    if (!noBlocks) preferredOrder.push(TabType.Blocks)
-    if (!noTools) preferredOrder.push(TabType.Tools)
-    if (!noSources) preferredOrder.push(TabType.Sources)
-    if (!noStart) preferredOrder.push(TabType.Start)
-    if (!noSnippets) preferredOrder.push(TabType.Snippets)
-
-    for (const tabKey of preferredOrder) {
-      const validKey = getValidTabKey(tabKey)
-      if (validKey) return validKey
-    }
-
-    return fallbackTab
-  }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs])
+    return tabs.find((tab) => !tab.disabled)?.key ?? TabType.Blocks
+  }, [defaultActiveTab, tabs])
 
   return {
     tabs,

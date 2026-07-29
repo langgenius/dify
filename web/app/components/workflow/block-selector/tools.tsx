@@ -6,11 +6,12 @@ import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/previe
 import { memo, useMemo, useRef } from 'react'
 import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
-import IndexBar, { groupItems } from './index-bar'
+import { IndexBar } from './index-bar'
+import { createToolListData } from './tool-list-data'
 import { ToolActionPreviewCard } from './tool/action-item'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
-import ToolListTreeView from './tool/tool-list-tree-view/list'
-import { ViewType } from './view-type-select'
+import { ToolListTreeView } from './tool/tool-list-tree-view/list'
+import { ViewType } from './types'
 
 type ToolsProps = {
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -43,54 +44,14 @@ const Tools = ({
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
 
-  /*
-  treeViewToolsData:
-  {
-    A: {
-      'google': [ // plugin organize name
-        ...tools
-      ],
-      'custom': [ // custom tools
-        ...tools
-      ],
-      'workflow': [ // workflow as tools
-        ...tools
-      ]
-    }
-  }
-  */
-  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(
-    tools,
-    (tool) => tool.label[language]![0]!,
+  const { letters, flatTools, treeGroups } = useMemo(
+    () =>
+      createToolListData(
+        tools,
+        (tool) => (tool.label[language] || tool.label['en-US'] || tool.name)[0] || '#',
+      ),
+    [language, tools],
   )
-  const treeViewToolsData = useMemo(() => {
-    const result: Record<string, ToolWithProvider[]> = {}
-    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
-        if (!result[groupName]) result[groupName] = []
-        result[groupName].push(...(withLetterAndGroupViewToolsData[letter]![groupName] ?? []))
-      })
-    })
-    return result
-  }, [withLetterAndGroupViewToolsData])
-
-  const listViewToolData = useMemo(() => {
-    const result: ToolWithProvider[] = []
-    letters.forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
-        result.push(
-          ...withLetterAndGroupViewToolsData[letter]![groupName]!.map((item) => {
-            return {
-              ...item,
-              letter,
-            }
-          }),
-        )
-      })
-    })
-
-    return result
-  }, [withLetterAndGroupViewToolsData, letters])
 
   const toolRefsRef = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -98,7 +59,7 @@ const Tools = ({
     <div className={cn('max-w-full p-1', className)}>
       {!tools.length && !hasSearchText && (
         <div className="py-10">
-          <Empty type={toolType!} isAgent={isAgent} />
+          <Empty type={toolType} isAgent={isAgent} />
         </div>
       )}
       {!!tools.length &&
@@ -106,7 +67,7 @@ const Tools = ({
           <ToolListFlatView
             toolRefs={toolRefsRef}
             letters={letters}
-            payload={listViewToolData}
+            payload={flatTools}
             previewCardHandle={previewCardHandle}
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
@@ -120,7 +81,7 @@ const Tools = ({
           />
         ) : (
           <ToolListTreeView
-            payload={treeViewToolsData}
+            payload={treeGroups}
             previewCardHandle={previewCardHandle}
             hasSearchText={hasSearchText}
             onSelect={onSelect}

@@ -8,8 +8,13 @@ from yarl import URL
 from configs.app_config import DifyConfig
 
 
+def _clear_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in tuple(os.environ):
+        monkeypatch.delenv(name)
+
+
 def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    os.environ.clear()
+    _clear_environment(monkeypatch)
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
     monkeypatch.setenv("DB_TYPE", "postgresql")
@@ -51,7 +56,7 @@ def test_dify_config_preserves_explicit_secret_key(
 
 def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # clear system environment variables
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
@@ -105,6 +110,24 @@ def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.Mon
     ]
 
 
+def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 'host:port' compose publish spec must produce an actionable error, not an opaque int_parsing traceback."""
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PLUGIN_REMOTE_INSTALL_PORT", "127.0.0.1:5003")
+
+    with pytest.raises(ValueError, match="must be a bare port number"):
+        DifyConfig(_env_file=None)
+
+
+def test_plugin_remote_install_port_accepts_bare_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("PLUGIN_REMOTE_INSTALL_PORT", "5003")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PLUGIN_REMOTE_INSTALL_PORT == 5003
+
+
 def test_new_user_default_models_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_basic_config_env(monkeypatch)
     monkeypatch.setenv(
@@ -141,7 +164,7 @@ def test_new_user_default_models_reject_duplicate_model_types(monkeypatch: pytes
 def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     """Test that HTTP timeout defaults are correctly set"""
     # clear system environment variables
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     # Set minimal required env vars
     monkeypatch.setenv("DB_TYPE", "postgresql")
@@ -161,7 +184,7 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
     monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
 
     config = DifyConfig(_env_file=None)
@@ -170,7 +193,7 @@ def test_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: py
 
 
 def test_internal_files_url_prefers_explicit_value(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
     monkeypatch.setenv("INTERNAL_FILES_URL", "http://files-internal:5001")
     monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
 
@@ -184,7 +207,7 @@ def test_internal_files_url_prefers_explicit_value(monkeypatch: pytest.MonkeyPat
 def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     flask_app = Flask("app")
     # clear system environment variables
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
@@ -291,7 +314,7 @@ def test_db_session_timezone_override_can_disable_app_level_timezone_injection(m
 
 
 def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -314,7 +337,7 @@ def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -331,7 +354,7 @@ def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -347,7 +370,7 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
 
 
 def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -364,7 +387,7 @@ def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.Monkey
 
 
 def test_dify_config_reads_redis_key_prefix_from_env(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
@@ -416,7 +439,7 @@ def test_celery_broker_url_with_special_chars_password(
     from kombu.utils.url import parse_url
 
     # clear system environment variables
-    os.environ.clear()
+    _clear_environment(monkeypatch)
 
     # Set up basic required environment variables (following existing pattern)
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")

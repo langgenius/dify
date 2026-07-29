@@ -1,11 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  createAgentApiKey,
-  sendAgentServiceApiChatMessage,
-  setAgentApiAccess,
-} from '../../agent-v2/support/access-point'
+import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -15,8 +11,12 @@ import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
 async function enableAgentApiAccessWithKey(world: DifyWorld) {
   const agentId = getCurrentAgentId(world)
-  const apiAccess = await setAgentApiAccess(agentId, true)
-  const apiKey = await createAgentApiKey(agentId)
+  const client = world.getConsoleClient()
+  const apiAccess = await client.agent.byAgentId.apiEnable.post({
+    body: { enable_api: true },
+    params: { agent_id: agentId },
+  })
+  const apiKey = await client.agent.byAgentId.apiKeys.post({ params: { agent_id: agentId } })
 
   world.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
   world.agentBuilder.accessPoint.generatedApiKey = apiKey.token
@@ -149,7 +149,7 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   const apiReferenceLink = page.getByRole('link', { name: 'API Reference' })
 
   await expect(apiReferenceLink).toBeVisible()
-  await expect(apiReferenceLink).toHaveAttribute('href', /\/api-reference\/guides\/get-started/)
+  await expect(apiReferenceLink).toHaveAttribute('href', /\/api-reference\/guides\/agent/)
   await expect(apiReferenceLink).toHaveAttribute('target', '_blank')
 
   const [apiReferencePage] = await Promise.all([
@@ -164,7 +164,7 @@ Then('the Agent v2 API Reference should open in a new tab', async function (this
   const apiReferencePage = this.agentBuilder.accessPoint.apiReferencePage
   if (!apiReferencePage) throw new Error('No Agent v2 API Reference page was opened.')
 
-  await expect(apiReferencePage).toHaveURL(/\/api-reference\/guides\/get-started/)
+  await expect(apiReferencePage).toHaveURL(/\/api-reference\/guides\/agent/)
   await apiReferencePage.close()
   this.agentBuilder.accessPoint.apiReferencePage = undefined
 })

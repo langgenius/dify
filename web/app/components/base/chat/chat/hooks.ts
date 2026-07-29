@@ -305,9 +305,9 @@ export const useChat = (
   }, [])
 
   useEffect(() => {
-    initialConversationIdRef.current = initialConversationId ?? ''
-    if (initialConversationId && !conversationIdRef.current)
-      conversationIdRef.current = initialConversationId
+    const nextConversationId = initialConversationId ?? ''
+    initialConversationIdRef.current = nextConversationId
+    conversationIdRef.current = nextConversationId
   }, [initialConversationId])
 
   /** Find the target node by bfs and then operate on it */
@@ -751,6 +751,8 @@ export const useChat = (
           })
         },
         onMessageEnd: (messageEnd) => {
+          if (options.isNewAgent && messageEnd.conversation_id)
+            conversationIdRef.current = messageEnd.conversation_id
           updateChatTreeNode(messageId, (responseItem) => {
             if (messageEnd.metadata?.annotation_reply) {
               responseItem.annotation = {
@@ -1437,6 +1439,8 @@ export const useChat = (
           })
         },
         onMessageEnd: (messageEnd) => {
+          if (options.isNewAgent && messageEnd.conversation_id)
+            conversationIdRef.current = messageEnd.conversation_id
           if (messageEnd.metadata?.annotation_reply) {
             responseItem.id = messageEnd.id
             responseItem.annotation = {

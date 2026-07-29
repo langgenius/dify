@@ -838,6 +838,29 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.NoAudioUploadedError):
                 method(api, account, trial_app_chat)
 
+    def test_missing_file_field_returns_400(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+        """A multipart POST with no `file` field must surface as 400, not 500.
+
+        Verifies the controller passes file=None to AudioService.transcript_asr
+        instead of raising a KeyError that would yield HTTP 500.
+        """
+
+        def fake_asr(*args, **kwargs):
+            assert kwargs["file"] is None
+            raise module.services.errors.audio.NoAudioUploadedServiceError()
+
+        api = module.TrialChatAudioApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"),
+            patch.object(module.AudioService, "transcript_asr", side_effect=fake_asr),
+        ):
+            with pytest.raises(module.NoAudioUploadedError) as exc_info:
+                method(api, account, trial_app_chat)
+
+        assert exc_info.value.code == 400
+
     def test_audio_too_large(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
@@ -1086,15 +1109,13 @@ class TestTrialChatTextApi:
 class TestTrialAppWorkflowTaskStopApi:
     def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
-        method = unwrap(api.post)
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(api, trial_app_chat, str(uuid4()))
+                api.post(trial_app_chat, str(uuid4()))
 
     def test_success(self, app: Flask, trial_app_workflow: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
-        method = unwrap(api.post)
 
         task_id = str(uuid4())
         with (
@@ -1102,7 +1123,7 @@ class TestTrialAppWorkflowTaskStopApi:
             patch.object(module.AppQueueManager, "set_stop_flag_no_user_check") as mock_set_flag,
             patch.object(module.GraphEngineManager, "send_stop_command") as mock_send_cmd,
         ):
-            result = method(api, trial_app_workflow, task_id)
+            result = api.post(trial_app_workflow, task_id)
 
         assert result == {"result": "success"}
         mock_set_flag.assert_called_once_with(task_id)

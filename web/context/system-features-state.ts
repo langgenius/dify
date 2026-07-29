@@ -6,10 +6,14 @@ import { atomWithResolvedSuspenseQuery } from '@/utils/query-atoms'
 
 const systemFeaturesQueryAtom = atomWithResolvedSuspenseQuery(() => systemFeaturesQueryOptions())
 
-export const systemFeaturesAtom = atom((get) => {
+const systemFeaturesAtom = atom((get) => {
   return get(systemFeaturesQueryAtom).data
 })
 
-export const datasetRbacEnabledAtom = atom((get) => {
-  return get(systemFeaturesAtom).rbac_enabled
+export const deploymentEditionAtom = atom((get) => {
+  return get(systemFeaturesAtom).deployment_edition
+})
+
+export const brandingEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).branding.enabled
 })

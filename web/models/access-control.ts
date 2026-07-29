@@ -61,10 +61,6 @@ export type PermissionGroup = {
   permissions: Permission[]
 }
 
-export type PermissionGroups = {
-  groups: PermissionGroup[]
-}
-
 export type PermissionKey = string
 
 type RoleType = 'workspace' | 'app' | 'dataset'
@@ -208,24 +204,6 @@ export type RolesOfMemberResponse = {
 export type UpdateRolesOfMemberRequest = {
   memberId: string
   roleIds: string[]
-}
-
-type WorkspacePermissionKeys = {
-  permission_keys: string[]
-}
-
-type ResourcePermissionKeys = {
-  default_permission_keys: string[]
-  overrides: Array<{
-    resource_id: string
-    permission_keys: string[]
-  }>
-}
-
-export type PermissionKeysResponse = {
-  workspace: WorkspacePermissionKeys
-  app: ResourcePermissionKeys
-  dataset: ResourcePermissionKeys
 }
 
 export type GetMembersOfRoleRequest = {

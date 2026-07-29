@@ -156,6 +156,19 @@ def test_publish_validation_uses_active_snapshot_for_roster_agent():
     )
 
 
+def test_publish_validation_rejects_unpublished_roster_agent():
+    binding = _binding(WorkflowNodeJobConfig())
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    session = Mock()
+    session.scalar.side_effect = [binding, None]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unpublished roster agent"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
 def test_publish_validation_rejects_non_upstream_previous_output_ref():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
@@ -295,8 +308,16 @@ def test_publish_validation_dedupes_provider_level_tool_entries():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
             ]
         },
     )
@@ -321,9 +342,14 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
                 {
                     "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
                     "tool_name": "ddg_search",
                     "credential_type": "unauthorized",
                 },

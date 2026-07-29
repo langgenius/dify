@@ -1,8 +1,7 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -11,6 +10,8 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentConfigApiContextProvider } from '../../config-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentFiles } from '../index'
@@ -60,6 +61,16 @@ vi.mock('@/utils/download', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     agent: {
       byAgentId: {
         config: {
@@ -158,12 +169,10 @@ function createInitialDraft(
 
 function renderAgentFiles({
   initialDraft = createInitialDraft(),
-  initialOriginalConfig,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
-  initialOriginalConfig?: AgentSoulConfig
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
 } = {}) {
@@ -173,21 +182,22 @@ function renderAgentFiles({
       mutations: { retry: false },
     },
   })
+  queryClient.setQueryData(
+    ['console', 'systemFeatures', 'get'],
+    createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+  )
 
   return render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider
-          initialDraft={initialDraft}
-          initialOriginalConfig={initialOriginalConfig}
-        >
+        <AgentComposerProvider initialDraft={initialDraft}>
           <AgentOrchestrateReadOnlyContext value={readOnly}>
             <AgentFiles />
             <ConfigSnapshotProbe />
           </AgentOrchestrateReadOnlyContext>
         </AgentComposerProvider>
       </AgentConfigApiContextProvider>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 }
 

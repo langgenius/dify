@@ -2,7 +2,7 @@
  * Integration test: Cloud Plan Payment Flow
  *
  * Tests the payment flow for cloud plan items:
- *   CloudPlanItem → Button click → permission check → fetch URL → redirect
+ *   CloudPlanItem → Button click → payment capability check → fetch URL → redirect
  *
  * Covers plan comparison, downgrade prevention, monthly/yearly pricing,
  * and workspace manager permission enforcement.
@@ -29,10 +29,6 @@ const mockOpenAsyncWindow = vi.fn()
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
@@ -65,7 +61,6 @@ vi.mock('@/next/navigation', () => ({
 const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     ...overrides,
   }
 }
@@ -275,15 +270,11 @@ describe('Cloud Plan Payment Flow', () => {
     })
   })
 
-  // ─── 5. Permission Check ────────────────────────────────────────────────
-  describe('Permission check', () => {
-    it('should change plans when billing manage permission is granted without manager role', async () => {
-      setupConsoleState({
-        isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.manage'],
-      })
+  // ─── 5. Payment capability ──────────────────────────────────────────────
+  describe('Payment capability', () => {
+    it('should change plans when payment is allowed', async () => {
       const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional })
+      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional, canPay: true })
 
       const button = getPlanButton('billing.plansCommon.startBuilding')
       await user.click(button)
@@ -293,13 +284,9 @@ describe('Cloud Plan Payment Flow', () => {
       })
     })
 
-    it('should show error toast when billing manage permission is missing for plan changes', async () => {
-      setupConsoleState({
-        isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.view', 'billing.subscription.manage'],
-      })
+    it('should block plan changes when payment is not allowed', async () => {
       const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional })
+      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional, canPay: false })
 
       const button = getPlanButton('billing.plansCommon.startBuilding')
       await user.click(button)
@@ -310,13 +297,13 @@ describe('Cloud Plan Payment Flow', () => {
       expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
     })
 
-    it('should open billing portal when subscription management permission is granted without manager role', async () => {
-      setupConsoleState({
-        isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.subscription.manage'],
-      })
+    it('should open billing portal when payment is allowed', async () => {
       const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
+      renderCloudPlanItem({
+        currentPlan: Plan.professional,
+        plan: Plan.professional,
+        canPay: true,
+      })
 
       const button = getPlanButton('billing.plansCommon.currentPlan')
       await user.click(button)
@@ -327,13 +314,13 @@ describe('Cloud Plan Payment Flow', () => {
       expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
     })
 
-    it('should show error toast when subscription management permission is missing for current paid plan', async () => {
-      setupConsoleState({
-        isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.view', 'billing.manage'],
-      })
+    it('should block billing portal access when payment is not allowed', async () => {
       const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
+      renderCloudPlanItem({
+        currentPlan: Plan.professional,
+        plan: Plan.professional,
+        canPay: false,
+      })
 
       const button = getPlanButton('billing.plansCommon.currentPlan')
       await user.click(button)

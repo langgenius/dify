@@ -47,4 +47,25 @@ describe('AccessControlItem', () => {
 
     expect(anyone).toBeChecked()
   })
+
+  it('should not select a disabled option', async () => {
+    const user = userEvent.setup()
+    render(
+      <RadioGroup<AccessMode> aria-label="Access" defaultValue={AccessMode.PUBLIC}>
+        <AccessControlItem type={AccessMode.ORGANIZATION} disabled>
+          Organization Only
+        </AccessControlItem>
+        <AccessControlItem type={AccessMode.PUBLIC}>Anyone</AccessControlItem>
+      </RadioGroup>,
+    )
+
+    const organization = screen.getByRole('radio', { name: 'Organization Only' })
+    expect(organization).toHaveAttribute('aria-disabled', 'true')
+    expect(organization).toHaveClass('cursor-not-allowed')
+
+    await user.click(organization)
+
+    expect(organization).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Anyone' })).toBeChecked()
+  })
 })
