@@ -18,7 +18,6 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
 
   return (
     <AccountDropdown
-      variant="mainNav"
       trigger={({ isOpen, ariaLabel }) => (
         <button
           type="button"
