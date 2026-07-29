@@ -7,7 +7,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field, field_validator
-from sqlalchemy import and_, exists, or_, select
+from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
@@ -24,13 +24,12 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import dump_response, escape_like_pattern, to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
-from models import Account, App, AppModelConfig, InstalledApp, RecommendedApp, Workflow
-from models.model import AppMode, IconType
+from models import Account, App, InstalledApp, RecommendedApp
+from models.model import IconType
 from services.account_service import TenantService
-from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
+from services.installed_app_service import InstalledAppCursor, InstalledAppService
 
 
 class InstalledAppCreatePayload(BaseModel):
@@ -53,12 +52,6 @@ class InstalledAppsListQuery(BaseModel):
     )
 
 
-class InstalledAppCursor(BaseModel):
-    is_pinned: bool
-    last_used_at: datetime | None
-    installed_app_id: str
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -77,33 +70,7 @@ def _safe_primitive(value: Any) -> Any:
     return None
 
 
-def _published_app_filter():
-    """Return the SQL predicate for installed-app web API availability.
-
-    The installed-app parameters endpoint reads the published workflow for
-    workflow-style apps and the published app model config for easy UI apps.
-    Keep the list endpoint aligned in SQL so it does not return entries that
-    will immediately fail with app_unavailable when opened.
-    """
-    workflow_app_modes = (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
-    has_published_workflow = exists(select(Workflow.id).where(Workflow.id == App.workflow_id))
-    has_published_model_config = exists(select(AppModelConfig.id).where(AppModelConfig.id == App.app_model_config_id))
-
-    return and_(
-        App.mode != AppMode.AGENT,
-        or_(
-            and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
-            and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
-        ),
-    )
-
-
-def _encode_installed_app_cursor(installed_app: InstalledApp) -> str:
-    cursor = InstalledAppCursor(
-        is_pinned=installed_app.is_pinned,
-        last_used_at=installed_app.last_used_at,
-        installed_app_id=installed_app.id,
-    )
+def _encode_installed_app_cursor(cursor: InstalledAppCursor) -> str:
     payload = cursor.model_dump_json().encode()
     return base64.urlsafe_b64encode(payload).decode().rstrip("=")
 
@@ -118,119 +85,6 @@ def _decode_installed_app_cursor(cursor: str | None) -> InstalledAppCursor | Non
         return InstalledAppCursor.model_validate_json(payload)
     except (binascii.Error, UnicodeDecodeError, ValueError):
         raise BadRequest("Invalid cursor") from None
-
-
-def _installed_app_cursor_filter(cursor: InstalledAppCursor):
-    same_pin_group = InstalledApp.is_pinned == cursor.is_pinned
-    if cursor.last_used_at is None:
-        later_in_pin_group = and_(
-            InstalledApp.last_used_at.is_(None),
-            InstalledApp.id > cursor.installed_app_id,
-        )
-    else:
-        later_in_pin_group = or_(
-            InstalledApp.last_used_at < cursor.last_used_at,
-            InstalledApp.last_used_at.is_(None),
-            and_(
-                InstalledApp.last_used_at == cursor.last_used_at,
-                InstalledApp.id > cursor.installed_app_id,
-            ),
-        )
-
-    if cursor.is_pinned:
-        return or_(
-            InstalledApp.is_pinned.is_(False),
-            and_(same_pin_group, later_in_pin_group),
-        )
-    return and_(same_pin_group, later_in_pin_group)
-
-
-def _installed_app_order_by():
-    return (
-        InstalledApp.is_pinned.desc(),
-        InstalledApp.last_used_at.desc().nulls_last(),
-        InstalledApp.id.asc(),
-    )
-
-
-def _filter_rows_by_webapp_auth(
-    rows: list[tuple[InstalledApp, App]],
-    *,
-    user_id: str,
-) -> list[tuple[InstalledApp, App]]:
-    if not rows:
-        return []
-
-    app_ids = [app.id for _, app in rows]
-    webapp_settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids)
-    candidates = [
-        (installed_app, app)
-        for installed_app, app in rows
-        if (setting := webapp_settings.get(app.id)) is not None and setting.access_mode != "sso_verified"
-    ]
-    permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
-        user_id=user_id,
-        app_ids=[app.id for _, app in candidates],
-    )
-    return [(installed_app, app) for installed_app, app in candidates if permissions.get(app.id)]
-
-
-def _get_visible_installed_app_page(
-    stmt,
-    *,
-    current_user: Account,
-    cursor: InstalledAppCursor | None,
-    limit: int,
-) -> tuple[list[tuple[InstalledApp, App]], bool, str | None]:
-    """Scan ordered candidates until one page of authorized apps is complete."""
-    webapp_auth_enabled = FeatureService.get_system_features().webapp_auth.enabled
-    scan_size = limit * 2 if webapp_auth_enabled else limit + 1
-    visible_rows: list[tuple[InstalledApp, App]] = []
-    scan_cursor = cursor
-    has_more = False
-    last_consumed_app: InstalledApp | None = None
-
-    while True:
-        page_stmt = stmt
-        if scan_cursor is not None:
-            page_stmt = page_stmt.where(_installed_app_cursor_filter(scan_cursor))
-        candidate_result = db.session.execute(page_stmt.order_by(*_installed_app_order_by()).limit(scan_size)).all()
-        candidate_rows = [(installed_app, app) for installed_app, app in candidate_result]
-        if not candidate_rows:
-            break
-
-        authorized_rows = candidate_rows
-        if webapp_auth_enabled:
-            authorized_rows = _filter_rows_by_webapp_auth(
-                candidate_rows,
-                user_id=str(current_user.id),
-            )
-
-        authorized_installed_app_ids = {installed_app.id for installed_app, _ in authorized_rows}
-        for row in candidate_rows:
-            installed_app = row[0]
-            if installed_app.id not in authorized_installed_app_ids:
-                last_consumed_app = installed_app
-                continue
-            if len(visible_rows) == limit:
-                has_more = True
-                break
-            visible_rows.append(row)
-            last_consumed_app = installed_app
-        if has_more:
-            break
-
-        if len(candidate_rows) < scan_size:
-            break
-        last_scanned_app = candidate_rows[-1][0]
-        scan_cursor = InstalledAppCursor(
-            is_pinned=last_scanned_app.is_pinned,
-            last_used_at=last_scanned_app.last_used_at,
-            installed_app_id=last_scanned_app.id,
-        )
-
-    next_cursor = _encode_installed_app_cursor(last_consumed_app) if has_more and last_consumed_app else None
-    return visible_rows, has_more, next_cursor
 
 
 def _installed_app_response_data(
@@ -343,22 +197,14 @@ class InstalledAppsListApi(Resource):
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
 
-        stmt = (
-            select(InstalledApp, App)
-            .join(App, App.id == InstalledApp.app_id)
-            .where(InstalledApp.tenant_id == current_tenant_id, _published_app_filter())
-        )
-        if query.app_id:
-            stmt = stmt.where(InstalledApp.app_id == query.app_id)
-        if query.name and (name := query.name.strip()):
-            escaped_name = escape_like_pattern(name)
-            stmt = stmt.where(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-
-        installed_apps, has_more, next_cursor = _get_visible_installed_app_page(
-            stmt,
-            current_user=current_user,
+        installed_apps, has_more, next_cursor = InstalledAppService.get_visible_page(
+            tenant_id=current_tenant_id,
+            user_id=str(current_user.id),
             cursor=cursor,
             limit=query.limit,
+            app_id=query.app_id,
+            name=query.name,
+            session=db.session,
         )
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session())
@@ -378,7 +224,7 @@ class InstalledAppsListApi(Resource):
             {
                 "installed_apps": installed_app_list,
                 "has_more": has_more,
-                "next_cursor": next_cursor,
+                "next_cursor": _encode_installed_app_cursor(next_cursor) if next_cursor else None,
             },
         )
 
@@ -444,9 +290,7 @@ class InstalledAppApi(InstalledAppResource):
         current_user: Account,
         installed_app: InstalledApp,
     ):
-        app_model = db.session.scalar(
-            select(App).where(App.id == installed_app.app_id, _published_app_filter()).limit(1)
-        )
+        app_model = InstalledAppService.get_published_app(installed_app.app_id, session=db.session)
         if app_model is None:
             raise NotFound("Installed app not found")
         if current_user.current_tenant is None:
