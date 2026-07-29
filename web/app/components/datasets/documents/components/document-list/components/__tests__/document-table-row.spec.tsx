@@ -4,8 +4,7 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import DocumentTableRow from '../document-table-row'
 
@@ -27,7 +26,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
-  const QueryClientWrapper = createQueryClientWrapper(createAccountProfileQueryClient())
+  const { wrapper: QueryClientWrapper } = createConsoleQueryWrapper()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientWrapper>
       <CheckboxGroup

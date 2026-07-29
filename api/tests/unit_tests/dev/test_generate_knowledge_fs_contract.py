@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ from dev.generate_knowledge_fs_contract import (
     filter_openapi_document,
     validate_declarations,
 )
-from services.knowledge_fs_proxy import KNOWLEDGE_FS_CONSOLE_OPERATIONS, KnowledgeFSOperation
+from services.knowledge_fs_operations import KNOWLEDGE_FS_CONSOLE_OPERATIONS, KnowledgeFSOperation
 
 
 def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,7 +112,7 @@ def test_contract_script_loads_runtime_registry_outside_api_directory(tmp_path: 
         text=True,
     )
 
-    assert result.stdout.strip() == "2"
+    assert result.stdout.strip() == str(len(KNOWLEDGE_FS_CONSOLE_OPERATIONS))
 
 
 def test_validate_declarations_accepts_matching_contract() -> None:
@@ -178,47 +179,115 @@ def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_s
 
     assert set(filtered["paths"]) == {"/knowledge-spaces"}
     assert set(filtered["paths"]["/knowledge-spaces"]) == {"get"}
-    assert set(filtered["components"]["schemas"]) == {"KnowledgeSpaceList", "KnowledgeSpace"}
+    assert set(filtered["components"]["schemas"]) == {
+        "ConsoleProxyError",
+        "KnowledgeSpaceList",
+        "KnowledgeSpace",
+    }
     assert filtered["components"]["securitySchemes"] == document["components"]["securitySchemes"]
 
 
-def test_console_operation_registry_matches_contract() -> None:
-    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
-    create_route = operation("knowledge-spaces:write", "createKnowledgeSpace")
-    for route in (list_route, create_route):
-        route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
-        route["responses"] = {
-            "200": {
-                "content": {"application/json": {}},
-                "headers": {"X-Trace-Id": {}},
-            }
-        }
+def test_filter_openapi_document_keeps_sse_for_streaming_orpc_contracts() -> None:
+    json_declaration = declaration()
+    stream_declaration = declaration(
+        operation_id="streamTask",
+        path="tasks/{id}/events",
+        response_kind="stream",
+        response_media_types=("text/event-stream",),
+    )
+    json_operation = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    stream_operation = operation(
+        "knowledge-spaces:read",
+        "streamTask",
+        responses={"200": {"content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/TaskEvent"}}}}},
+    )
 
-    validate_declarations(
+    filtered = filter_openapi_document(
         {
             "paths": {
-                "/knowledge-spaces": {
-                    "get": list_route,
-                    "post": create_route,
-                }
-            }
+                "/knowledge-spaces": {"get": json_operation},
+                "/tasks/{id}/events": {"get": stream_operation},
+            },
+            "components": {"schemas": {"TaskEvent": {"type": "object"}}},
         },
+        (json_declaration, stream_declaration),
+    )
+
+    assert set(filtered["paths"]) == {"/knowledge-spaces", "/tasks/{id}/events"}
+    assert filtered["components"]["schemas"]["TaskEvent"] == {"type": "object"}
+
+
+def test_filter_openapi_document_rewrites_proxy_error_responses() -> None:
+    route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    route["responses"] = {
+        "200": {"content": {"application/json": {}}},
+        "401": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}},
+        "403": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}},
+    }
+    document = {
+        "paths": {"/knowledge-spaces": {"get": route}},
+        "components": {"schemas": {"ErrorResponse": {"type": "object"}}},
+    }
+
+    filtered = filter_openapi_document(
+        document,
+        (declaration(error_status_map=((401, 502), (403, 403))),),
+    )
+
+    responses = filtered["paths"]["/knowledge-spaces"]["get"]["responses"]
+    assert "401" not in responses
+    assert responses["403"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ConsoleProxyError"
+    }
+    assert responses["502"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ConsoleProxyError"
+    }
+    assert filtered["components"]["schemas"]["ConsoleProxyError"]["required"] == ["code", "message", "status"]
+
+
+def test_console_operation_registry_matches_contract() -> None:
+    validate_declarations(
+        console_registry_document(),
         tuple(_contract_declaration(operation) for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS),
     )
 
 
+def test_generated_contract_metadata_matches_current_pin_and_registry() -> None:
+    metadata = (
+        contract_validator.WORKSPACE_ROOT / "packages/contracts/generated/knowledge-fs/metadata.gen.ts"
+    ).read_text()
+    lock = json.loads(contract_validator.LOCK_PATH.read_text())
+
+    assert _metadata_string(metadata, "knowledgeFsSourceOpenapiSha256") == lock["openapiSha256"]
+    assert _metadata_string(
+        metadata,
+        "knowledgeFsConsoleDeclarationsSha256",
+    ) == contract_validator.contract_declarations_sha256(contract_validator.console_contract_declarations())
+
+
+def _metadata_string(source: str, export_name: str) -> str:
+    match = re.search(rf"export const {export_name}\s*=\s*'([0-9a-f]{{64}})'", source)
+    assert match is not None, f"missing generated metadata export: {export_name}"
+    return match.group(1)
+
+
 def console_registry_document() -> dict[str, object]:
-    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
-    create_route = operation("knowledge-spaces:write", "createKnowledgeSpace")
-    for route in (list_route, create_route):
-        route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
-        route["responses"] = {
-            "200": {
-                "content": {"application/json": {}},
-                "headers": {"X-Trace-Id": {}},
-            }
-        }
-    return {"paths": {"/knowledge-spaces": {"get": list_route, "post": create_route}}}
+    paths: dict[str, dict[str, object]] = {}
+    for console_operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS:
+        route = operation(
+            console_operation.required_scope,
+            console_operation.operation_id,
+            parameters=[{"in": "header", "name": name} for name in console_operation.request_headers],
+            responses={
+                "200": {
+                    "content": {media_type: {} for media_type in console_operation.response_media_types},
+                    "headers": {name: {} for name in console_operation.response_headers},
+                }
+            },
+        )
+        route["x-knowledge-fs-max-response-bytes"] = console_operation.max_response_bytes
+        paths.setdefault(f"/{console_operation.path}", {})[console_operation.method.lower()] = route
+    return {"paths": paths}
 
 
 @pytest.mark.parametrize(
@@ -377,6 +446,7 @@ def declaration(**overrides: object) -> ContractDeclaration:
         "request_headers": (),
         "response_headers": (),
         "response_media_types": ("application/json",),
+        "error_status_map": ((401, 502), (403, 403)),
     }
     value.update(overrides)
     return cast(ContractDeclaration, value)
@@ -393,6 +463,7 @@ def _contract_declaration(operation: KnowledgeFSOperation) -> ContractDeclaratio
         "request_headers": operation.request_headers,
         "response_headers": operation.response_headers,
         "response_media_types": operation.response_media_types,
+        "error_status_map": operation.error_status_map,
     }
 
 

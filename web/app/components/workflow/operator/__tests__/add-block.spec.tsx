@@ -88,17 +88,26 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   },
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-available-blocks', () => ({
   useAvailableBlocks: () => ({
     availableNextBlocks: mockAvailableNextBlocks,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow', () => ({
   useIsChatMode: () => mockIsChatMode,
-  useNodesMetaData: () => ({
-    nodesMap: mockNodesMetaDataMap,
-  }),
   useNodesReadOnly: () => ({
     nodesReadOnly: mockNodesReadOnly,
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-meta-data', () => ({
+  useNodesMetaData: () => ({
+    nodesMap: mockNodesMetaDataMap,
+  }),
+}))
+
+vi.mock('../../hooks/use-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
   }),

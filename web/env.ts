@@ -56,6 +56,13 @@ const clientSchema = {
    */
   NEXT_PUBLIC_COOKIE_DOMAIN: z.string().optional(),
   /**
+   * CookieYes site key for the Dify Cloud consent banner.
+   */
+  NEXT_PUBLIC_COOKIEYES_SITE_KEY: z
+    .string()
+    .regex(/^[\w-]+$/)
+    .optional(),
+  /**
    * CSP https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
    */
   NEXT_PUBLIC_CSP_WHITELIST: z.string().optional(),
@@ -64,10 +71,6 @@ const clientSchema = {
    */
   NEXT_PUBLIC_DEPLOY_ENV: z.enum(['DEVELOPMENT', 'PRODUCTION', 'TESTING']).optional(),
   NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
-  /**
-   * The deployment edition, SELF_HOSTED
-   */
-  NEXT_PUBLIC_EDITION: z.enum(['SELF_HOSTED', 'CLOUD']).default('SELF_HOSTED'),
   NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
    * Enable preview features that are still in development.
@@ -75,28 +78,6 @@ const clientSchema = {
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
   NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
-
-  /**
-   * Cloud-only system-features defaults.
-   * These values are only used when NEXT_PUBLIC_EDITION=CLOUD (IS_CLOUD_EDITION).
-   */
-  NEXT_PUBLIC_ENABLE_MARKETPLACE: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: coercedBoolean.default(false),
-  NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: coercedBoolean.default(false),
-  NEXT_PUBLIC_ALLOW_REGISTER: coercedBoolean.default(true),
-  NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: coercedBoolean.default(true),
-  NEXT_PUBLIC_IS_EMAIL_SETUP: coercedBoolean.default(true),
-  NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED: coercedBoolean.default(false),
-  NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: coercedBoolean.default(true),
-  NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR: coercedBoolean.default(true),
-  NEXT_PUBLIC_RBAC_ENABLED: coercedBoolean.default(false),
-
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
    * Default is false for security reasons to prevent conflicts with regular text
@@ -226,6 +207,9 @@ export const env = createEnv({
     NEXT_PUBLIC_COOKIE_DOMAIN: isServer
       ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN
       : getRuntimeEnvFromBody('cookieDomain'),
+    NEXT_PUBLIC_COOKIEYES_SITE_KEY: isServer
+      ? process.env.NEXT_PUBLIC_COOKIEYES_SITE_KEY
+      : getRuntimeEnvFromBody('cookieyesSiteKey'),
     NEXT_PUBLIC_CSP_WHITELIST: isServer
       ? process.env.NEXT_PUBLIC_CSP_WHITELIST
       : getRuntimeEnvFromBody('cspWhitelist'),
@@ -235,69 +219,12 @@ export const env = createEnv({
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
-    NEXT_PUBLIC_EDITION: isServer
-      ? process.env.NEXT_PUBLIC_EDITION
-      : getRuntimeEnvFromBody('edition'),
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
-
-    /**
-     * Cloud-only system-features defaults.
-     * These values are only used when NEXT_PUBLIC_EDITION=CLOUD (IS_CLOUD_EDITION).
-     */
-    NEXT_PUBLIC_ENABLE_MARKETPLACE: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_MARKETPLACE
-      : getRuntimeEnvFromBody('enableMarketplace'),
-    NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN
-      : getRuntimeEnvFromBody('enableEmailCodeLogin'),
-    NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN
-      : getRuntimeEnvFromBody('enableEmailPasswordLogin'),
-    NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN
-      : getRuntimeEnvFromBody('enableSocialOauthLogin'),
-    NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_COLLABORATION_MODE
-      : getRuntimeEnvFromBody('enableCollaborationMode'),
-    NEXT_PUBLIC_ALLOW_REGISTER: isServer
-      ? process.env.NEXT_PUBLIC_ALLOW_REGISTER
-      : getRuntimeEnvFromBody('allowRegister'),
-    NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: isServer
-      ? process.env.NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE
-      : getRuntimeEnvFromBody('allowCreateWorkspace'),
-    NEXT_PUBLIC_IS_EMAIL_SETUP: isServer
-      ? process.env.NEXT_PUBLIC_IS_EMAIL_SETUP
-      : getRuntimeEnvFromBody('isEmailSetup'),
-    NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED: isServer
-      ? process.env.NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED
-      : getRuntimeEnvFromBody('knowledgeFsEnabled'),
-    NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL
-      : getRuntimeEnvFromBody('enableChangeEmail'),
-    NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: isServer
-      ? process.env.NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED
-      : getRuntimeEnvFromBody('creatorsPlatformFeaturesEnabled'),
-    NEXT_PUBLIC_ENABLE_TRIAL_APP: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_TRIAL_APP
-      : getRuntimeEnvFromBody('enableTrialApp'),
-    NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER
-      : getRuntimeEnvFromBody('enableExploreBanner'),
-    NEXT_PUBLIC_ENABLE_LEARN_APP: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_LEARN_APP
-      : getRuntimeEnvFromBody('enableLearnApp'),
-    NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR
-      : getRuntimeEnvFromBody('enableStepByStepTour'),
-    NEXT_PUBLIC_RBAC_ENABLED: isServer
-      ? process.env.NEXT_PUBLIC_RBAC_ENABLED
-      : getRuntimeEnvFromBody('rbacEnabled'),
-
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
       : getRuntimeEnvFromBody('enableSingleDollarLatex'),

@@ -2,7 +2,7 @@
 import type { SchemaRoot, StructuredOutput } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean } from 'ahooks'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { Type } from '../types'
@@ -16,7 +16,7 @@ type Props = Readonly<{
 
 export function StructureOutput({ className, value, onChange }: Props) {
   const { t } = useTranslation()
-  const [showConfig, { setTrue: showConfigModal, setFalse: hideConfigModal }] = useBoolean(false)
+  const [showConfig, setShowConfig] = useState(false)
 
   function handleChange(value: SchemaRoot) {
     onChange({
@@ -31,7 +31,12 @@ export function StructureOutput({ className, value, onChange }: Props) {
           <div className="code-sm-semibold text-text-secondary">structured_output</div>
           <div className="ml-2 system-xs-regular text-text-tertiary">object</div>
         </div>
-        <Button size="small" variant="secondary" className="flex" onClick={showConfigModal}>
+        <Button
+          size="small"
+          variant="secondary"
+          className="flex"
+          onClick={() => setShowConfig(true)}
+        >
           <i className="mr-1 i-ri-edit-line size-3.5" aria-hidden="true" />
           <div className="system-xs-medium text-components-button-secondary-text">
             {t(($) => $['structOutput.configure'], { ns: 'app' })}
@@ -46,7 +51,7 @@ export function StructureOutput({ className, value, onChange }: Props) {
         <button
           type="button"
           className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary"
-          onClick={showConfigModal}
+          onClick={() => setShowConfig(true)}
         >
           {t(($) => $['structOutput.notConfiguredTip'], { ns: 'app' })}
         </button>
@@ -64,7 +69,7 @@ export function StructureOutput({ className, value, onChange }: Props) {
             }) as any
           } // wait for types change
           onSave={handleChange as any} // wait for types change
-          onClose={hideConfigModal}
+          onClose={() => setShowConfig(false)}
         />
       )}
     </div>

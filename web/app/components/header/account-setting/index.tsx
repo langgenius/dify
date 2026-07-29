@@ -11,7 +11,6 @@ import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -66,7 +65,8 @@ export default function AccountSetting({
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
-  const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
+  const canViewWorkflowLogArchives =
+    systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab =
     activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
@@ -211,6 +211,18 @@ export default function AccountSetting({
 
   return (
     <MenuDialog show onClose={handleClose}>
+      <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
+        <Button
+          variant="tertiary"
+          size="large"
+          className="px-2"
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          onClick={handleClose}
+        >
+          <span className="i-ri-close-line size-5" />
+        </Button>
+        <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
+      </div>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-[232px]">
         <div className="flex w-[44px] shrink-0 flex-col pr-6 pl-4 sm:w-[224px]">
           <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
@@ -274,18 +286,6 @@ export default function AccountSetting({
                     {activeItem?.description}
                   </div>
                 )}
-              </div>
-              <div className="fixed top-6 right-6 flex shrink-0 flex-col items-center">
-                <Button
-                  variant="tertiary"
-                  size="large"
-                  className="px-2"
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  onClick={handleClose}
-                >
-                  <span className="i-ri-close-line size-5" />
-                </Button>
-                <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
               </div>
             </div>
             <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">

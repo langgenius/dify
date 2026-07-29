@@ -6,6 +6,7 @@ export type ClientOptions = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -17,19 +18,22 @@ export type SystemFeatureModel = {
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
   webapp_auth: WebAppAuthModel
+}
+
+export type LicenseModel = {
+  expired_at: string
+  seats: LicenseLimitationModel
+  status: LicenseStatus
+  workspaces: LicenseLimitationModel
 }
 
 export type BrandingModel = {
@@ -40,20 +44,15 @@ export type BrandingModel = {
   workspace_logo: string
 }
 
-export type LicenseModel = {
-  expired_at: string
-  seats: LicenseLimitationModel
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
+export type LicenseStatusModel = {
   status: LicenseStatus
-  workspaces: LicenseLimitationModel
 }
 
 export type PluginInstallationPermissionModel = {
   plugin_installation_scope: PluginInstallationScope
   restrict_to_marketplace_only: boolean
-}
-
-export type PluginManagerModel = {
-  enabled: boolean
 }
 
 export type WebAppAuthModel = {
@@ -95,3 +94,17 @@ export type GetSystemFeaturesResponses = {
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]
+
+export type GetSystemFeaturesLicenseData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/system-features/license'
+}
+
+export type GetSystemFeaturesLicenseResponses = {
+  200: LicenseModel
+}
+
+export type GetSystemFeaturesLicenseResponse =
+  GetSystemFeaturesLicenseResponses[keyof GetSystemFeaturesLicenseResponses]

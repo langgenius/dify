@@ -832,7 +832,7 @@ class TestWorkflowService:
             patch("services.workflow_service.app_published_workflow_was_updated"),
             patch("services.workflow_service.dify_config.BILLING_ENABLED", False),
         ):
-            result = workflow_service.publish_workflow(
+            result, retirement_candidates = workflow_service.publish_workflow(
                 session=sqlite_session,
                 app_model=app,
                 account=account,
@@ -845,6 +845,7 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.marked_name == "Version 1"
         assert result.marked_comment == "Initial release"
+        assert retirement_candidates == set()
 
     def test_publish_workflow_no_draft_raises_error(self, workflow_service: WorkflowService, sqlite_session: Session):
         """

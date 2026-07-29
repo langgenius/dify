@@ -29,7 +29,7 @@ In `pyproject.toml`:
 pgvector = "dify_vdb_pgvector.pgvector:PGVectorFactory"
 ```
 
-The value is **`module:attribute`**: a importable module path and the class implementing `AbstractVectorFactory`.
+The value is **`module:attribute`**: an importable module path and the class implementing `AbstractVectorFactory`.
 
 ### How registration works
 

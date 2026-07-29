@@ -1,7 +1,7 @@
 'use client'
 
+import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { App } from '@/models/explore'
-import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import ContinueWork from '@/app/components/explore/continue-work'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -17,7 +17,7 @@ export function ExploreRecommendations({
   onTry,
 }: {
   canCreate: boolean
-  continueWorkApps: WorkspaceApp[]
+  continueWorkApps: RecentAppResponse[]
   forceShowLearnDify?: boolean
   onCreate: (app: App) => void
   onTry: (params: TryAppSelection) => void

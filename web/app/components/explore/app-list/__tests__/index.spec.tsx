@@ -1,14 +1,15 @@
+import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
-import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
@@ -56,7 +57,7 @@ let mockExploreData: { categories: string[]; allList: App[] } | undefined = {
 }
 let mockLearnDifyApps: App[] = []
 let mockLearnDifyLoading = false
-let mockWorkspaceApps: WorkspaceApp[] = []
+let mockWorkspaceApps: RecentAppResponse[] = []
 let mockWorkspaceAppsLoading = false
 let mockBanners: BannerType[] = []
 let mockBannersLoading = false
@@ -66,6 +67,10 @@ const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
+const mockAppQueries = vi.hoisted(() => ({
+  listQueryOptions: vi.fn(),
+  recentQueryOptions: vi.fn(),
+}))
 const mockStepByStepTour = vi.hoisted(() => {
   const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
   const createState = (
@@ -230,6 +235,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'systemFeatures'],
+          ...options,
+        }),
       },
     },
     apps: {
@@ -237,13 +246,14 @@ vi.mock('@/service/client', () => ({
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
-            data: WorkspaceApp[]
+            data: RecentAppResponse[]
             has_more: boolean
             limit: number
             page: number
             total: number
           }) => unknown
         }) => {
+          mockAppQueries.listQueryOptions(options)
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
           if (mockWorkspaceAppsLoading) {
             return {
@@ -265,6 +275,33 @@ vi.mock('@/service/client', () => ({
             initialData: response,
             select: options.select,
           }
+        },
+      },
+      recent: {
+        get: {
+          queryOptions: (options: {
+            input?: { query?: { limit?: number } }
+            select?: (response: { data: RecentAppResponse[] }) => unknown
+          }) => {
+            mockAppQueries.recentQueryOptions(options)
+            const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
+            if (mockWorkspaceAppsLoading) {
+              return {
+                queryKey: ['console', 'apps', 'recent', 'get', options],
+                queryFn: () => new Promise(() => {}),
+                select: options.select,
+              }
+            }
+            const response = {
+              data: mockWorkspaceApps.slice(0, limit),
+            }
+            return {
+              queryKey: ['console', 'apps', 'recent', 'get', options],
+              queryFn: () => Promise.resolve(response),
+              initialData: response,
+              select: options.select,
+            }
+          },
         },
       },
     },
@@ -345,20 +382,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
-
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: false,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: (props: CreateAppModalProps) => {
@@ -464,33 +487,19 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp =>
-  ({
-    id: overrides.id ?? 'workspace-app-1',
-    name: overrides.name ?? 'Workspace App',
-    description: overrides.description ?? 'Workspace app description',
-    author_name: overrides.author_name ?? 'Evan',
-    icon_type: overrides.icon_type ?? 'emoji',
-    icon: overrides.icon ?? '😀',
-    icon_background: overrides.icon_background ?? '#fff',
-    icon_url: overrides.icon_url ?? null,
-    use_icon_as_answer_icon: overrides.use_icon_as_answer_icon ?? false,
-    mode: overrides.mode ?? AppModeEnum.CHAT,
-    created_at: overrides.created_at ?? 1704067200,
-    updated_at: overrides.updated_at ?? 1704153600,
-    enable_site: overrides.enable_site ?? false,
-    enable_api: overrides.enable_api ?? false,
-    api_rpm: overrides.api_rpm ?? 60,
-    api_rph: overrides.api_rph ?? 3600,
-    is_demo: overrides.is_demo ?? false,
-    model_config: overrides.model_config,
-    app_model_config: overrides.app_model_config,
-    site: overrides.site,
-    api_base_url: overrides.api_base_url ?? '',
-    tags: overrides.tags ?? [],
-    access_mode: overrides.access_mode,
-    permission_keys: overrides.permission_keys,
-  }) as WorkspaceApp
+const createWorkspaceApp = (overrides: Partial<RecentAppResponse> = {}): RecentAppResponse => ({
+  id: overrides.id ?? 'workspace-app-1',
+  name: overrides.name ?? 'Workspace App',
+  author_name: overrides.author_name ?? 'Evan',
+  icon_type: overrides.icon_type ?? 'emoji',
+  icon: overrides.icon ?? '😀',
+  icon_background: overrides.icon_background ?? '#fff',
+  icon_url: overrides.icon_url ?? null,
+  mode: overrides.mode ?? 'chat',
+  updated_at: overrides.updated_at ?? 1704153600,
+  maintainer: overrides.maintainer ?? 'user-1',
+  permission_keys: overrides.permission_keys,
+})
 
 const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
   id: overrides.id ?? 'banner-1',
@@ -514,7 +523,7 @@ type RenderOptions = {
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
   extra?: ReactNode
-  isCloudEdition?: boolean
+  deploymentEdition?: DeploymentEdition
 }
 
 const localeInput = { query: { language: 'en-US' } }
@@ -527,10 +536,10 @@ const renderAppList = (
   searchParams?: Record<string, string>,
   options: RenderOptions = {},
 ) => {
-  mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
+      deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
     },
@@ -620,7 +629,6 @@ describe('AppList', () => {
     mockBannersLoading = false
     mockIsLoading = false
     mockIsError = false
-    mockConfig.isCloudEdition = false
     mockStepByStepTour.reset()
   })
 
@@ -756,6 +764,27 @@ describe('AppList', () => {
       expect(
         screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' }),
       ).toHaveAttribute('href', '/apps')
+    })
+
+    it('should load continue work from the lightweight recent apps query', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceApps = [createWorkspaceApp()]
+
+      renderAppList()
+
+      expect(mockAppQueries.recentQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: {
+            query: {
+              limit: 8,
+            },
+          },
+        }),
+      )
+      expect(mockAppQueries.listQueryOptions).not.toHaveBeenCalled()
     })
 
     it('should render preview-only continue work app as a dimmed card and warn on click', () => {
@@ -1045,7 +1074,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1072,7 +1101,7 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, {
         extra: <SkipHomeGuideProbe />,
-        isCloudEdition: true,
+        deploymentEdition: 'CLOUD',
       })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
@@ -1103,7 +1132,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(false, undefined, undefined, { isCloudEdition: true })
+      renderAppList(false, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1153,7 +1182,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1210,7 +1239,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1277,7 +1306,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1307,7 +1336,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       const createFromDetailsButton = await screen.findByTestId('try-app-create')
@@ -1465,7 +1494,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
@@ -1496,7 +1525,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
@@ -1519,7 +1548,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()

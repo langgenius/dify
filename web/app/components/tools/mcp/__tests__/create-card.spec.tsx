@@ -1,12 +1,10 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import NewMCPCard, { NewMCPButton } from '../create-card'
 
@@ -78,15 +76,7 @@ vi.mock('@/service/common', () => ({
 
 describe('NewMCPCard', () => {
   const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
+    return createConsoleQueryWrapper().wrapper
   }
 
   const defaultProps = {

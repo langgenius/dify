@@ -1,25 +1,25 @@
 'use client'
 
-import { RiHourglass2Fill } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
+import { consoleQuery } from '@/service/client'
 import PremiumBadge from '../../base/premium-badge'
 
-const LicenseNav = () => {
+function LicenseNav() {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: license } = useQuery(consoleQuery.systemFeatures.license.get.queryOptions())
 
-  if (systemFeatures.license?.status === LicenseStatus.EXPIRING) {
-    const expiredAt = systemFeatures.license?.expired_at
-    const count = dayjs(expiredAt).diff(dayjs(), 'days')
+  if (license?.status === LicenseStatus.EXPIRING) {
+    const count = dayjs(license.expired_at).diff(dayjs(), 'days')
     return (
       <PremiumBadge color="orange" className="select-none">
-        <RiHourglass2Fill
+        <span
+          className={
+            'i-ri-hourglass-2-fill flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0'
+          }
           aria-hidden="true"
-          className="flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0"
         />
         {count <= 1 && (
           <span className="px-0.5 system-xs-medium">
@@ -34,7 +34,7 @@ const LicenseNav = () => {
       </PremiumBadge>
     )
   }
-  if (systemFeatures.license.status === LicenseStatus.ACTIVE) {
+  if (license?.status === LicenseStatus.ACTIVE) {
     return (
       <PremiumBadge color="indigo" className="select-none">
         <span className="px-1 system-xs-medium">Enterprise</span>

@@ -13,15 +13,14 @@ import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { Plan } from '@/app/components/billing/type'
+// useWorkflowRunValidation,
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useChecklist,
   useChecklistBeforePublish,
-  useIsChatMode,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  // useWorkflowRunValidation,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+} from '@/app/components/workflow/hooks/use-checklist'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'

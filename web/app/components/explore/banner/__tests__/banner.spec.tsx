@@ -130,11 +130,13 @@ vi.mock('../banner-item', () => ({
     sort,
     language,
     accountId,
+    titleId,
   }: {
     banner: BannerType
     sort: number
     language: string
     accountId?: string
+    titleId?: string
   }) => (
     <article
       data-testid="banner-item"
@@ -143,7 +145,7 @@ vi.mock('../banner-item', () => ({
       data-language={language}
       data-account-id={accountId}
     >
-      {banner.content.title}
+      <p id={titleId}>{banner.content.title}</p>
     </article>
   ),
 }))
@@ -218,6 +220,17 @@ describe('Banner', () => {
     expect(firstSlide).not.toHaveAttribute('inert')
     expect(secondSlide).toHaveAttribute('aria-hidden', 'true')
     expect(secondSlide).toHaveAttribute('inert')
+  })
+
+  it('names each slide with its visible title', () => {
+    render(<Banner banners={[createMockBanner('1', 'enabled', 'First banner')]} />)
+
+    const slide = screen.getByRole('group', { name: 'First banner' })
+    const title = document.getElementById(slide.getAttribute('aria-labelledby')!)
+
+    expect(slide).not.toHaveAttribute('aria-label')
+    expect(title).toHaveTextContent('First banner')
+    expect(slide).toContainElement(title)
   })
 
   it('keeps one shared control set mounted while selecting a banner', () => {
