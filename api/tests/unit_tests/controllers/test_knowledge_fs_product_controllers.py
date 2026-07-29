@@ -6,14 +6,12 @@ from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, RequestEntityTooLarge
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from controllers.console import console_ns
-from controllers.console import wraps as console_wraps
 from controllers.console.knowledge_fs import resources as console_resources
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
@@ -305,13 +303,7 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
     ]
 
 
-def test_small_file_console_bff_maps_oversize_to_413(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
-    monkeypatch.setattr(
-        console_wraps.FeatureService,
-        "get_knowledge_rate_limit",
-        lambda _tenant_id: SimpleNamespace(enabled=False),
-    )
+def test_small_file_console_bff_maps_oversize_to_413() -> None:
     app = Flask(__name__)
     with app.test_request_context(
         method="POST",
@@ -330,31 +322,37 @@ def test_small_file_console_bff_maps_oversize_to_413(monkeypatch: pytest.MonkeyP
         reject()
 
 
-def test_console_knowledge_fs_uses_existing_knowledge_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis = MagicMock()
-    redis.zcard.return_value = 2
-    session = MagicMock()
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
-    monkeypatch.setattr(
-        console_wraps.FeatureService,
-        "get_knowledge_rate_limit",
-        lambda _tenant_id: SimpleNamespace(enabled=True, limit=1, subscription_plan="sandbox"),
+def test_console_knowledge_rate_limit_is_scoped_to_upload_and_query_entrypoints() -> None:
+    tree = ast.parse(
+        Path(console_resources.__file__).read_text(encoding="utf-8"),
+        filename=console_resources.__file__,
     )
-    monkeypatch.setattr(console_wraps, "redis_client", redis)
-    monkeypatch.setattr(console_wraps, "db", SimpleNamespace(session=session))
+    decorated_methods: set[tuple[str, str]] = set()
 
-    @console_resources._knowledge_fs_errors
-    def view():
-        return "should not run"
+    for class_node in (node for node in tree.body if isinstance(node, ast.ClassDef)):
+        for method_node in (
+            node
+            for node in class_node.body
+            if isinstance(node, ast.FunctionDef) and node.name in {"delete", "get", "patch", "post", "put"}
+        ):
+            for decorator in method_node.decorator_list:
+                if (
+                    isinstance(decorator, ast.Call)
+                    and isinstance(decorator.func, ast.Name)
+                    and decorator.func.id == "cloud_edition_billing_rate_limit_check"
+                    and len(decorator.args) == 1
+                    and isinstance(decorator.args[0], ast.Constant)
+                    and decorator.args[0].value == "knowledge"
+                ):
+                    decorated_methods.add((class_node.name, method_node.name))
 
-    app = Flask(__name__)
-    with app.test_request_context(), pytest.raises(Forbidden, match="knowledge base request rate limit"):
-        view()
-
-    redis.zadd.assert_called_once()
-    redis.zremrangebyscore.assert_called_once()
-    session.add.assert_called_once()
-    session.commit.assert_called_once()
+    assert decorated_methods == {
+        ("KnowledgeFSSpaceDocumentsApi", "post"),
+        ("KnowledgeFSSpaceQueryAdmissionApi", "post"),
+        ("KnowledgeFSSpaceQueryStreamCapabilityApi", "post"),
+        ("KnowledgeFSSpaceSmallFileUploadApi", "post"),
+        ("KnowledgeFSSpaceUploadCapabilitiesApi", "post"),
+    }
 
 
 def test_space_update_and_delete_publish_their_actual_http_status_contracts() -> None:

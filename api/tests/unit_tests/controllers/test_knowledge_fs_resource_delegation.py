@@ -16,7 +16,6 @@ from werkzeug.exceptions import (
     UnprocessableEntity,
 )
 
-from controllers.console import wraps as console_wraps
 from controllers.console.knowledge_fs import resources as console_resources
 from controllers.console.knowledge_fs.error import (
     KnowledgeFSAccessDeniedHTTPError,
@@ -1165,17 +1164,9 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
         service_resources._runtime()
 
 
-def test_console_request_rejections_preserve_conflict_size_and_validation_contracts(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_console_request_rejections_preserve_conflict_size_and_validation_contracts() -> None:
     from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
-    monkeypatch.setattr(
-        console_wraps.FeatureService,
-        "get_knowledge_rate_limit",
-        lambda _tenant_id: SimpleNamespace(enabled=False),
-    )
     expected = {
         HTTPStatus.CONFLICT: Conflict,
         HTTPStatus.REQUEST_ENTITY_TOO_LARGE: RequestEntityTooLarge,
@@ -1214,9 +1205,7 @@ def test_jwks_resource_fails_closed_for_disabled_missing_and_misconfigured_issue
         console_resources.KnowledgeFSJWKSApi().get()
 
 
-def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_contract(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_contract() -> None:
     from pydantic import ValidationError
 
     from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
@@ -1229,12 +1218,6 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     )
     from services.knowledge_fs_capability import KnowledgeFSCapabilityConfigurationError
 
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (object(), "tenant-1"))
-    monkeypatch.setattr(
-        console_wraps.FeatureService,
-        "get_knowledge_rate_limit",
-        lambda _tenant_id: SimpleNamespace(enabled=False),
-    )
     with pytest.raises(ValidationError) as raised_validation:
         KnowledgeFSQueryCreatePayload.model_validate({"query": ""})
     validation_error = raised_validation.value

@@ -304,7 +304,6 @@ def _console_services() -> KnowledgeFSRuntime:
 
 
 def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
@@ -1018,6 +1017,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1966,6 +1966,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
@@ -2461,6 +2462,7 @@ class KnowledgeFSSpaceUploadCapabilitiesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
@@ -2499,6 +2501,7 @@ class KnowledgeFSSpaceSmallFileUploadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str, upload_session_id: str):
         actor_id, tenant_id = _actor()
@@ -2525,6 +2528,7 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
