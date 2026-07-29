@@ -252,6 +252,12 @@ export interface SupersedeDocumentCompilationAttemptInput {
 
 export interface RetryTerminalDocumentCompilationAttemptInput {
   readonly attemptId: string;
+  /**
+   * Fresh publication head captured by the control plane. It rebases only attempts that have not
+   * bound an immutable candidate; bound candidates retain their original base for idempotent
+   * recovery.
+   */
+  readonly baseHeadRevision?: number | undefined;
   readonly capabilityGrantId?: string | undefined;
   readonly availableAt?: string | undefined;
   readonly expectedRowVersion: number;
@@ -736,6 +742,7 @@ export function createInMemoryDocumentCompilationAttemptRepository(
       if (active) {
         return null;
       }
+      const baseHeadRevision = terminalRetryBaseHeadRevision(current, input);
       const event = requiredMemoryOutbox(outbox, current.id);
       const now = canonicalDateTime(input.now, "now");
       const nextEvent = parseOutboxEvent({
@@ -755,6 +762,7 @@ export function createInMemoryDocumentCompilationAttemptRepository(
       const nextAttempt = parseAttempt({
         ...current,
         activeSlot: 1,
+        baseHeadRevision,
         completedAt: undefined,
         executionAttempts: 0,
         externalJobId: undefined,
@@ -1335,6 +1343,20 @@ export function createDatabaseDocumentCompilationAttemptRepository({
         if (active) {
           return null;
         }
+        const baseHeadRevision = terminalRetryBaseHeadRevision(current, input);
+        if (input.baseHeadRevision !== undefined && !hasBoundCompilationCandidate(current)) {
+          const actualHeadRevision = await databaseCurrentHeadRevision(
+            database,
+            transaction,
+            current,
+          );
+          if (actualHeadRevision !== baseHeadRevision) {
+            throw new DocumentCompilationAttemptHeadConflictError(
+              baseHeadRevision,
+              actualHeadRevision,
+            );
+          }
+        }
         await requireDatabaseCompilationControlResources(
           database,
           transaction,
@@ -1369,6 +1391,7 @@ export function createDatabaseDocumentCompilationAttemptRepository({
           {
             ...current,
             activeSlot: 1,
+            baseHeadRevision,
             completedAt: undefined,
             executionAttempts: 0,
             externalJobId: undefined,
@@ -1621,6 +1644,28 @@ function parseRetryPermissionBinding(
     permissionSnapshot: parsePermissionSnapshotReference(input.permissionSnapshot),
     requestedBySubjectId: requiredString(input.requestedBySubjectId, "requestedBySubjectId", 255),
   };
+}
+
+function terminalRetryBaseHeadRevision(
+  current: DocumentCompilationAttempt,
+  input: Pick<RetryTerminalDocumentCompilationAttemptInput, "baseHeadRevision">,
+): number {
+  const requested =
+    input.baseHeadRevision === undefined
+      ? current.baseHeadRevision
+      : nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision");
+  if (hasBoundCompilationCandidate(current) && requested !== current.baseHeadRevision) {
+    throw new DocumentCompilationAttemptTransitionError(
+      "Document compilation retry cannot rebase an immutable candidate",
+    );
+  }
+  return requested;
+}
+
+function hasBoundCompilationCandidate(
+  attempt: Pick<DocumentCompilationAttempt, "candidateFingerprint" | "candidatePublicationId">,
+): boolean {
+  return attempt.candidateFingerprint !== undefined || attempt.candidatePublicationId !== undefined;
 }
 
 function parseStartInput(

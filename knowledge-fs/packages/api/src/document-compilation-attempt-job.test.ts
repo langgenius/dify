@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createDurableDocumentCompilationJobStateMachine } from "./document-compilation-attempt-job";
-import { createInMemoryDocumentCompilationAttemptRepository } from "./document-compilation-attempt-repository";
+import {
+  DocumentCompilationAttemptHeadConflictError,
+  createInMemoryDocumentCompilationAttemptRepository,
+} from "./document-compilation-attempt-repository";
 
 const attemptId = "11111111-1111-4111-8111-111111111111";
 const outboxId = "22222222-2222-4222-8222-222222222222";
@@ -196,6 +199,7 @@ describe("durable document compilation job control plane", () => {
 
   it("cancels before dispatch and reactivates a user-canceled attempt on retry", async () => {
     let now = "2026-07-13T10:00:00.000Z";
+    let publicationHeadRevision = 0;
     const attempts = createInMemoryDocumentCompilationAttemptRepository();
     const jobs = createDurableDocumentCompilationJobStateMachine({
       attempts,
@@ -204,7 +208,7 @@ describe("durable document compilation job control plane", () => {
       generatePublicationGenerationId: () => generationId,
       maxExecutionAttempts: 5,
       now: () => now,
-      resolveBaseHeadRevision: async () => 0,
+      resolveBaseHeadRevision: async () => publicationHeadRevision,
     });
     const started = await jobs.start({
       documentAssetId: assetId,
@@ -220,10 +224,52 @@ describe("durable document compilation job control plane", () => {
       stage: "canceled",
     });
     now = "2026-07-13T10:02:00.000Z";
+    publicationHeadRevision = 1;
     await expect(jobs.retry?.(started.id)).resolves.toMatchObject({
+      baseHeadRevision: 1,
       runState: "dispatch_pending",
       stage: "queued",
     });
+  });
+
+  it("refreshes the retry base when the publication head changes during admission", async () => {
+    let now = "2026-07-13T10:00:00.000Z";
+    let publicationHeadRevision = 0;
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    const retryTerminal = vi.fn(async (input) => {
+      if (retryTerminal.mock.calls.length === 1) {
+        publicationHeadRevision = 2;
+        throw new DocumentCompilationAttemptHeadConflictError(
+          input.baseHeadRevision ?? -1,
+          publicationHeadRevision,
+        );
+      }
+      return repository.retryTerminal(input);
+    });
+    const jobs = createDurableDocumentCompilationJobStateMachine({
+      attempts: { ...repository, retryTerminal },
+      generateAttemptId: () => attemptId,
+      generateOutboxId: () => outboxId,
+      generatePublicationGenerationId: () => generationId,
+      maxExecutionAttempts: 5,
+      now: () => now,
+      resolveBaseHeadRevision: async () => publicationHeadRevision,
+    });
+    const started = await jobs.start({
+      documentAssetId: assetId,
+      knowledgeSpaceId: spaceId,
+      tenantId: "tenant-1",
+      version: 1,
+    });
+    await jobs.cancel(started.id, "user request");
+
+    now = "2026-07-13T10:01:00.000Z";
+    publicationHeadRevision = 1;
+    await expect(jobs.retry?.(started.id)).resolves.toMatchObject({
+      baseHeadRevision: 2,
+      runState: "dispatch_pending",
+    });
+    expect(retryTerminal.mock.calls.map(([input]) => input.baseHeadRevision)).toEqual([1, 2]);
   });
 
   it("rechecks deletion admission and binds a fresh caller permission before retry", async () => {

@@ -541,6 +541,55 @@ describe("in-memory document compilation attempt repository", () => {
     ).resolves.toBeNull();
   });
 
+  it("never rebases a terminal attempt after its immutable candidate is bound", async () => {
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    await repository.start(startInput());
+    await dispatch(repository, lockToken, "queue-1");
+    const running = await repository.claim({
+      attemptId,
+      expectedRowVersion: 1,
+      leaseExpiresAt: "2026-07-13T12:02:00.000Z",
+      leaseToken,
+      now: "2026-07-13T12:00:02.000Z",
+      queueJobId: "queue-1",
+      workerId: "worker-1",
+    });
+    const candidatePublicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3901";
+    const candidateFingerprint = `projection-set-sha256:${"e".repeat(64)}`;
+    const bound = await repository.advance({
+      attemptId,
+      candidateFingerprint,
+      candidatePublicationId,
+      checkpoint: "queued",
+      expectedRowVersion: running?.rowVersion ?? -1,
+      leaseToken,
+      now: "2026-07-13T12:00:03.000Z",
+    });
+    const failed = await repository.fail({
+      attemptId,
+      errorCode: "PUBLISH_FAILED",
+      errorMessage: "publication failed",
+      expectedRowVersion: bound?.rowVersion ?? -1,
+      leaseToken,
+      now: "2026-07-13T12:00:04.000Z",
+    });
+
+    await expect(
+      repository.retryTerminal({
+        attemptId,
+        baseHeadRevision: 3,
+        expectedRowVersion: failed?.rowVersion ?? -1,
+        now: "2026-07-13T12:01:00.000Z",
+      }),
+    ).rejects.toThrow("cannot rebase an immutable candidate");
+    await expect(repository.get(attemptId)).resolves.toMatchObject({
+      baseHeadRevision: 2,
+      candidateFingerprint,
+      candidatePublicationId,
+      runState: "failed",
+    });
+  });
+
   it("CAS-fails exhausted active work and releases its active slot", async () => {
     const repository = createInMemoryDocumentCompilationAttemptRepository();
     await repository.start(startInput({ maxExecutionAttempts: 1 }));
@@ -1346,6 +1395,9 @@ describe("database document compilation attempt repository", () => {
         if (input.tableName === "document_assets") {
           return result([activeDocumentAssetRow()], 0);
         }
+        if (input.tableName === "projection_set_publication_heads") {
+          return result([{ head_revision: 3 }], 0);
+        }
         if (input.tableName === "logical_documents" && input.operation === "select") {
           return input.sql.includes(" JOIN ")
             ? result([{ id: logicalDocumentId }], 0)
@@ -1398,6 +1450,7 @@ describe("database document compilation attempt repository", () => {
       await expect(
         repository.retryTerminal({
           attemptId,
+          baseHeadRevision: 3,
           expectedRowVersion: 4,
           now: "2026-07-13T12:06:00.000Z",
           permissionSnapshot: {
@@ -1408,6 +1461,7 @@ describe("database document compilation attempt repository", () => {
           requestedBySubjectId: "current-editor",
         }),
       ).resolves.toMatchObject({
+        baseHeadRevision: 3,
         permissionSnapshot: {
           accessChannel: "interactive",
           id: freshSnapshotId,

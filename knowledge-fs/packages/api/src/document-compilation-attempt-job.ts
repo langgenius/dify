@@ -118,20 +118,38 @@ export function createDurableDocumentCompilationJobStateMachine({
         knowledgeSpaceId: current.knowledgeSpaceId,
         tenantId: current.tenantId,
       });
-      const retried = await attempts.retryTerminal({
-        attemptId: current.id,
-        expectedRowVersion: current.rowVersion,
-        now: now(),
-        ...permissionBinding,
-      });
-      if (!retried) {
-        throw new Error("Document compilation attempt cannot be retried");
+      for (let retry = 0; retry < maxHeadConflictRetries; retry += 1) {
+        const baseHeadRevision =
+          current.candidatePublicationId || current.candidateFingerprint
+            ? current.baseHeadRevision
+            : await resolveBaseHeadRevision(current);
+        validateNonnegativeInteger(baseHeadRevision, "baseHeadRevision");
+        try {
+          const retried = await attempts.retryTerminal({
+            attemptId: current.id,
+            baseHeadRevision,
+            expectedRowVersion: current.rowVersion,
+            now: now(),
+            ...permissionBinding,
+          });
+          if (!retried) {
+            throw new Error("Document compilation attempt cannot be retried");
+          }
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "retry",
+            taskKind: "document_compilation",
+          });
+          return attemptToCompilationJob(retried);
+        } catch (error) {
+          if (
+            !(error instanceof DocumentCompilationAttemptHeadConflictError) ||
+            retry === maxHeadConflictRetries - 1
+          ) {
+            throw error;
+          }
+        }
       }
-      recordDurableTaskOperationalMetric(metrics, {
-        lifecycle: "retry",
-        taskKind: "document_compilation",
-      });
-      return attemptToCompilationJob(retried);
+      throw new Error("Document compilation retry could not snapshot the publication head");
     },
     start: async (input) => {
       const normalized = normalizeStartInput(input);
