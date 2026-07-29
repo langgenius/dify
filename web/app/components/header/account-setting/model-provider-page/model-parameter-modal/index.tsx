@@ -278,7 +278,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         {!hideDebugWithMultipleModel && (
           <button
             type="button"
-            className="flex h-12.5 w-full cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle bg-transparent px-4 text-left system-sm-regular text-text-accent"
+            className="flex h-[50px] w-full cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle bg-transparent px-4 text-left system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {debugWithMultipleModel
