@@ -422,6 +422,7 @@ describe('SkillsPage', () => {
   it('does not show export for an unpublished skill', async () => {
     const user = userEvent.setup()
     mocks.skills = [createSkill({ latest_published_version_id: null })]
+    mocks.skillPages = [mocks.skills]
     renderSkillsPage()
 
     await user.click(
