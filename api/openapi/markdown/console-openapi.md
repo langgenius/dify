@@ -22093,13 +22093,14 @@ Simple provider entity response.
 
 #### SkillAssistMessagePayload
 
-One user message and optional uploaded context for the read-only Skill Authoring assistant.
+One user message and optional uploaded context for the Skill Authoring assistant.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | attachments | [ [SkillAssistAttachmentPayload](#skillassistattachmentpayload) ] |  | No |
 | message | string |  | Yes |
 | model | [SkillAssistModelPayload](#skillassistmodelpayload) |  | No |
+| target_path | string |  | No |
 
 #### SkillAssistModelPayload
 
