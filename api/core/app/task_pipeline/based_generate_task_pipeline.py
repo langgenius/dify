@@ -3,6 +3,7 @@ import time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import HTTPException
 
 from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -19,7 +20,6 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from libs.exception import BaseHTTPException
 from models.enums import MessageStatus
 from models.model import Message
 
@@ -58,13 +58,14 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
-            case BaseHTTPException() if e.code is not None and 400 <= e.code < 500:
-                err = e
+            case HTTPException() if e.code is not None and 400 <= e.code < 500:
+                err = ValueError(e.description)
             case InvokeError() | ValueError() | AgentBackendError():
                 err = e
+            case HTTPException():
+                err = Exception(e.description)
             case _:
-                description = getattr(e, "description", None)
-                err = Exception(description if description is not None else str(e))
+                err = Exception(str(e))
 
         if not message_id or not session:
             return err
