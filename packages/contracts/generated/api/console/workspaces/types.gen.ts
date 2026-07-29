@@ -732,6 +732,7 @@ export type SkillAssistMessagePayload = {
   attachments?: Array<SkillAssistAttachmentPayload>
   message: string
   model?: SkillAssistModelPayload | null
+  target_path?: string | null
 }
 
 export type SkillDraftFileOperationPayload = {

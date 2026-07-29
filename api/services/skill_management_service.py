@@ -914,8 +914,10 @@ class SkillManagementService:
 
     @staticmethod
     def _is_assistant_writable_path(path: str) -> bool:
-        return path == _SKILL_MD or path in {"scripts", "references", "assets"} or path.startswith(
-            ("scripts/", "references/", "assets/")
+        return (
+            path == _SKILL_MD
+            or path in {"scripts", "references", "assets"}
+            or path.startswith(("scripts/", "references/", "assets/"))
         )
 
     def get_or_create_assistant_app(
