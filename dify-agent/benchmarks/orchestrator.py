@@ -978,14 +978,38 @@ def _render_markdown(report: ComparisonReport) -> str:
         )
         for reason in comparison.invalid_reasons:
             lines.append(f"\n- `{comparison.scenario_id}` invalid: {reason}")
-    lines.extend(["", "## Redis command mix", ""])
-    for comparison in report.scenarios:
-        changes = ", ".join(
-            f"`{name}` {_format_metric(metric)}" for name, metric in comparison.redis_command_mix.items()
-        )
-        lines.append(f"- `{comparison.scenario_id}`: {changes or 'none'}")
     lines.extend(
         [
+            "",
+            "## Redis command behavior",
+            "",
+            "| Scenario | Total commands/success | Changed commands | Verdict |",
+            "|---|---:|---|---:|",
+        ]
+    )
+    for comparison in report.scenarios:
+        changes = "<br>".join(
+            f"`{name.replace('|', '/')}` {_format_metric_values(metric)}"
+            for name, metric in comparison.redis_command_mix.items()
+            if metric.verdict in {"behavior_change", "inconclusive"}
+        )
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    comparison.scenario_id,
+                    _format_metric_values(comparison.redis_commands_per_successful_run),
+                    changes or "—",
+                    f"`{_redis_command_verdict(comparison)}`",
+                ]
+            )
+            + " |"
+        )
+    lines.extend(
+        [
+            "",
+            "Only `behavior_change` and `inconclusive` commands are expanded here. "
+            "Full per-command data remains available in `comparison.json`.",
             "",
             "Performance classifications are report-only. Correctness and compatibility failures make the command fail.",
             "",
@@ -995,10 +1019,26 @@ def _render_markdown(report: ComparisonReport) -> str:
 
 
 def _format_metric(metric: MetricComparison) -> str:
+    return f"{_format_metric_values(metric)} `{metric.verdict}`"
+
+
+def _format_metric_values(metric: MetricComparison) -> str:
     if metric.baseline is None or metric.candidate is None:
-        return f"`{metric.verdict}`"
+        return "unavailable"
     relative = "n/a" if metric.relative_change_percent is None else f"{metric.relative_change_percent:+.2f}%"
-    return f"{metric.baseline:.4g} → {metric.candidate:.4g} ({relative}) `{metric.verdict}`"
+    return f"{metric.baseline:.4g} → {metric.candidate:.4g} ({relative})"
+
+
+def _redis_command_verdict(comparison: ScenarioComparison) -> str:
+    verdicts = {
+        comparison.redis_commands_per_successful_run.verdict,
+        *(metric.verdict for metric in comparison.redis_command_mix.values()),
+    }
+    if "behavior_change" in verdicts:
+        return "behavior_change"
+    if verdicts & {"inconclusive", "unavailable"}:
+        return "inconclusive"
+    return "no_regression"
 
 
 def _format_pair(baseline: float | None, candidate: float | None) -> str:
