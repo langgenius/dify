@@ -20,7 +20,12 @@ import time
 from collections.abc import Awaitable
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from shellctl.shared.schemas import Credential
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
@@ -220,8 +225,11 @@ class ShellctlClientProtocol(Protocol):
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        credentials: list[Credential] | None = None,
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
     ) -> ShellctlJobResult: ...
+
+    async def prepare(self, credentials: list[Credential]) -> object: ...
 
     async def wait(
         self,
@@ -283,8 +291,14 @@ class ShellctlCommands(ShellCommandProtocol):
         )
         resolved_env = _lease_env(env, home_dir=self.home_dir)
         return _from_job_result(
-            await _run_client_call(self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout))
+            await _run_client_call(
+                self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout)
+            )
         )
+
+    async def prepare(self, credentials: Sequence[Credential]) -> None:
+        """Register credentials with the sandbox credential proxy."""
+        await _run_client_call(self.client.prepare(list(credentials)))
 
     async def wait(
         self,

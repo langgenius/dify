@@ -127,6 +127,30 @@ class ErrorResponse(ShellctlModel):
     error: ErrorDetail
 
 
+class HTTPHeaderInject(ShellctlModel):
+    """Inject a credential value as an HTTP request header."""
+
+    name: str
+    prefix: str = ""
+    domains: list[str] = Field(default_factory=list)
+
+
+class InjectPolicy(ShellctlModel):
+    """Credential injection strategy (discriminated by type)."""
+
+    type: str  # e.g. "http-header"
+    http_header: HTTPHeaderInject | None = None
+
+
+class Credential(ShellctlModel):
+    """A secret with its identity and optional injection policy."""
+
+    provider: str
+    name: str
+    value: str
+    inject: InjectPolicy | None = None
+
+
 class RunJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/run`.
 
@@ -138,6 +162,7 @@ class RunJobRequest(ShellctlModel):
     script: str
     cwd: str | None = None
     env: dict[str, str] | None = None
+    credentials: list[Credential] | None = None
     terminal: TerminalSize | None = None
     timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
@@ -195,10 +220,13 @@ class TerminateJobRequest(ShellctlModel):
 
 __all__ = [
     "TERMINAL_JOB_STATUSES",
+    "Credential",
     "DeleteJobResponse",
     "ErrorDetail",
     "ErrorResponse",
+    "HTTPHeaderInject",
     "HealthResponse",
+    "InjectPolicy",
     "InputJobRequest",
     "JobInfo",
     "JobResult",

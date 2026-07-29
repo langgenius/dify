@@ -194,6 +194,9 @@ class FakeCommands:
             raise AssertionError("Unexpected run() call")
         return self.run_handler(script, cwd, env, timeout)
 
+    async def prepare(self, credentials: object) -> None:
+        pass
+
     async def wait(self, job_id: str, *, offset: int, timeout: float):
         self.wait_calls.append(WaitCall(job_id=job_id, offset=offset, timeout=timeout))
         if self.wait_handler is None:

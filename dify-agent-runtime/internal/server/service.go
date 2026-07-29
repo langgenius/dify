@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/egressproxy"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -22,6 +24,11 @@ type Service struct {
 	mu           sync.Mutex
 	cancelGC     context.CancelFunc
 	cancelMon    context.CancelFunc
+
+	// Egress proxy (nil when disabled).
+	egressResolver *egressproxy.Resolver
+	egressProxy    *egressproxy.Proxy
+	egressCAFiles  *egressproxy.CAFiles
 }
 
 // NewService creates a new shellctl service.
@@ -38,10 +45,95 @@ func (s *Service) Initialize() error {
 	if err := s.PrepareRuntime(); err != nil {
 		return err
 	}
+	if s.config.EgressProxyEnabled {
+		if err := s.initEgressProxy(); err != nil {
+			return fmt.Errorf("egress proxy: %w", err)
+		}
+	}
 	if err := s.Reconcile(); err != nil {
 		return err
 	}
 	return s.GCOnce()
+}
+
+// initEgressProxy generates a CA, creates the resolver, and starts the MITM proxy.
+func (s *Service) initEgressProxy() error {
+	upstream := s.config.EgressProxyUpstream
+
+	caDir := s.config.EgressProxyCAPath()
+	caFiles, err := egressproxy.GenerateCA(caDir)
+	if err != nil {
+		return err
+	}
+	s.egressCAFiles = caFiles
+	log.Printf("egressproxy: CA generated in %s", caDir)
+
+	resolver := egressproxy.NewResolver()
+	s.egressResolver = resolver
+
+	proxy, err := egressproxy.NewProxy(&egressproxy.Config{
+		ListenAddr:    s.config.EgressProxyAddr,
+		UpstreamProxy: upstream,
+		CACertPath:    caFiles.CertPath,
+		CAKeyPath:     caFiles.KeyPath,
+		Resolver:      resolver,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := proxy.Start(); err != nil {
+		return err
+	}
+	s.egressProxy = proxy
+	if upstream == "" {
+		log.Printf("egressproxy: MITM proxy started on %s (direct, no upstream)", proxy.Addr())
+	} else {
+		log.Printf("egressproxy: MITM proxy started on %s (upstream: %s)", proxy.Addr(), upstream)
+	}
+	return nil
+}
+
+// RegisterCredentials converts API-level Credential values into the resolver's
+// internal StoredCredential representation and registers them.
+func (s *Service) RegisterCredentials(creds []Credential) {
+	if s.egressResolver == nil {
+		return
+	}
+	for i := range creds {
+		c := &creds[i]
+		stored := &egressproxy.StoredCredential{Value: c.Value}
+		if c.Inject != nil && c.Inject.HTTPHeader != nil {
+			h := c.Inject.HTTPHeader
+			stored.Inject = &egressproxy.HeaderInjectRule{
+				HeaderName: h.Name,
+				Prefix:     h.Prefix,
+				Domains:    h.Domains,
+				Value:      c.Value,
+			}
+		}
+		s.egressResolver.Register(c.Ref(), stored)
+	}
+}
+
+// EgressProxyEnv returns the env vars that should be injected into agent jobs
+// when the egress proxy is active. Returns nil if disabled.
+func (s *Service) EgressProxyEnv() map[string]string {
+	if s.egressProxy == nil || s.egressCAFiles == nil {
+		return nil
+	}
+	return map[string]string{
+		"HTTP_PROXY":          s.egressProxy.ProxyURL(),
+		"HTTPS_PROXY":         s.egressProxy.ProxyURL(),
+		"http_proxy":          s.egressProxy.ProxyURL(),
+		"https_proxy":         s.egressProxy.ProxyURL(),
+		"NO_PROXY":            "localhost,127.0.0.1",
+		"no_proxy":            "localhost,127.0.0.1",
+		"SSL_CERT_FILE":       s.egressCAFiles.CertPath,
+		"REQUESTS_CA_BUNDLE":  s.egressCAFiles.CertPath,
+		"NODE_EXTRA_CA_CERTS": s.egressCAFiles.CertPath,
+		"CURL_CA_BUNDLE":      s.egressCAFiles.CertPath,
+	}
 }
 
 // PrepareRuntime sets up directories, DB schema, runner script, and tmux server.
@@ -81,6 +173,9 @@ func (s *Service) Shutdown() {
 	}
 	if s.cancelMon != nil {
 		s.cancelMon()
+	}
+	if s.egressProxy != nil {
+		s.egressProxy.Stop()
 	}
 	if s.db != nil {
 		_ = s.db.Close()
@@ -132,6 +227,12 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		return nil, err
 	}
 
+	// Register credentials with the resolver (if egressproxy is active).
+	if s.egressResolver != nil && len(req.Credentials) > 0 {
+		s.RegisterCredentials(req.Credentials)
+		log.Printf("RunJob: registered %d credentials", len(req.Credentials))
+	}
+
 	cols := s.config.DefaultTerminalCols
 	rows := s.config.DefaultTerminalRows
 	if req.Terminal != nil {
@@ -173,10 +274,25 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		s.cleanupStarting(jobID, jobDir)
 		return nil, err
 	}
+
+	// Merge egress proxy env vars into the job environment so agent processes
+	// route through the MITM proxy and trust its CA cert.
+	env := req.Env
+	if proxyEnv := s.EgressProxyEnv(); proxyEnv != nil {
+		if env == nil {
+			env = make(map[string]string)
+		}
+		for k, v := range proxyEnv {
+			if _, exists := env[k]; !exists {
+				env[k] = v
+			}
+		}
+	}
+
 	envJSON := "{}"
-	if req.Env != nil {
-		pairs := make([]string, 0, len(req.Env))
-		for k, v := range req.Env {
+	if env != nil {
+		pairs := make([]string, 0, len(env))
+		for k, v := range env {
 			pairs = append(pairs, fmt.Sprintf("%q:%q", k, v))
 		}
 		envJSON = "{" + strings.Join(pairs, ",") + "}"

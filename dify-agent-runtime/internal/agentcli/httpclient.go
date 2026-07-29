@@ -24,7 +24,7 @@ func NewHTTPClient(env *Environment) *HTTPClient {
 	return &HTTPClient{
 		baseURL: env.URL,
 		authJWE: env.AuthJWE,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: 30 * time.Second, Transport: noKeepAliveTransport()},
 	}
 }
 
@@ -33,8 +33,24 @@ func NewHTTPClientWithTimeout(env *Environment, timeout time.Duration) *HTTPClie
 	return &HTTPClient{
 		baseURL: env.URL,
 		authJWE: env.AuthJWE,
-		client:  &http.Client{Timeout: timeout},
+		client:  &http.Client{Timeout: timeout, Transport: noKeepAliveTransport()},
 	}
+}
+
+// noKeepAliveTransport returns a Transport dedicated to one client instead of
+// sharing http.DefaultTransport's connection pool. Different HTTPClient
+// instances in this package target unrelated hosts (agent_backend, then a
+// signed upload/download URL on a different host); when proxied through
+// HTTP(S)_PROXY, a pooled keep-alive connection to the proxy can otherwise be
+// reused across those different destination hosts (valid per RFC 7230 for
+// plain-HTTP forward proxying), which the sandbox's MITM egress proxy does
+// not support (it binds one destination per client connection). Disabling
+// keep-alives forces a fresh connection per request, avoiding that class of
+// "http keep-alive target changed" failures.
+func noKeepAliveTransport() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DisableKeepAlives = true
+	return transport
 }
 
 // postJSON sends a POST request with JSON body and returns the response body.
@@ -176,7 +192,7 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 		return nil, fmt.Errorf("close multipart writer: %w", err)
 	}
 
-	uploadClient := &http.Client{Timeout: 120 * time.Second}
+	uploadClient := &http.Client{Timeout: 120 * time.Second, Transport: noKeepAliveTransport()}
 	req, err := http.NewRequest("POST", uploadURL, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("create upload request: %w", err)
@@ -201,7 +217,7 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 
 // downloadFromURL downloads bytes from a signed URL.
 func (c *HTTPClient) downloadFromURL(downloadURL string) ([]byte, error) {
-	dlClient := &http.Client{Timeout: 120 * time.Second}
+	dlClient := &http.Client{Timeout: 120 * time.Second, Transport: noKeepAliveTransport()}
 	resp, err := dlClient.Get(downloadURL)
 	if err != nil {
 		return nil, fmt.Errorf("download request failed: %w", err)

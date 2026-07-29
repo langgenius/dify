@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 )
 
 const (
@@ -54,6 +56,12 @@ type Config struct {
 	SQLiteBusyTimeoutMs          int
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
+
+	// Egress proxy settings
+	EgressProxyEnabled  bool
+	EgressProxyAddr     string
+	EgressProxyCADir    string
+	EgressProxyUpstream string
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -92,7 +100,29 @@ func DefaultConfig() *Config {
 		cfg.AuthToken = os.Getenv(DefaultAuthTokenEnv)
 	}
 
+	// Egress proxy from environment (new names, with legacy fallback).
+	if v := envOrFallback(envvar.EnvEgressProxyEnabled, envvar.EnvCredProxyEnabled); v == "true" || v == "1" {
+		cfg.EgressProxyEnabled = true
+	}
+	if v := envOrFallback(envvar.EnvEgressProxyAddr, envvar.EnvCredProxyAddr); v != "" {
+		cfg.EgressProxyAddr = v
+	}
+	if v := envOrFallback(envvar.EnvEgressProxyCADir, envvar.EnvCredProxyCADir); v != "" {
+		cfg.EgressProxyCADir = v
+	}
+	if v := envOrFallback(envvar.EnvEgressProxyUpstream, envvar.EnvCredProxyUpstream); v != "" {
+		cfg.EgressProxyUpstream = v
+	}
+
 	return cfg
+}
+
+// EgressProxyCAPath returns the directory used for the egress proxy CA files.
+func (c *Config) EgressProxyCAPath() string {
+	if c.EgressProxyCADir != "" {
+		return c.EgressProxyCADir
+	}
+	return filepath.Join(c.RuntimeDir, "egressproxy-ca")
 }
 
 // JobsDir returns the path to the jobs artifact directory.
@@ -113,6 +143,16 @@ func (c *Config) TmuxSocket() string {
 // RunnerPath returns the path to the installed runner script.
 func (c *Config) RunnerPath() string {
 	return filepath.Join(c.RuntimeDir, "bin", "shellctl-runner")
+}
+
+// envOrFallback returns the value of the first non-empty env var.
+func envOrFallback(keys ...string) string {
+	for _, k := range keys {
+		if v := os.Getenv(k); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func defaultStateDir() string {

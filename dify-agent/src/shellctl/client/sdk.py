@@ -25,6 +25,7 @@ from shellctl.shared.constants import (
     DEFAULT_TIMEOUT_SECONDS,
 )
 from shellctl.shared.schemas import (
+    Credential,
     DeleteJobResponse,
     HealthResponse,
     JobInfo,
@@ -141,19 +142,23 @@ class ShellctlClient:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        credentials: list[Credential] | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         terminal: TerminalSize | None = None,
     ) -> JobResult:
         """Create a new job and wait for initial output or completion.
 
         `cwd` and `env` preset the script's working directory and environment
-        overlay on the server side.
+        overlay on the server side. `credentials` registers structured secrets
+        with the credential proxy for header injection and placeholder
+        replacement in outbound HTTP requests.
         """
 
         payload = RunJobRequest(
             script=script,
             cwd=cwd,
             env=env,
+            credentials=credentials,
             terminal=terminal,
             timeout=timeout,
             output_limit=self.output_limit,
@@ -265,6 +270,20 @@ class ShellctlClient:
             timeout=self._terminate_request_timeout(grace_seconds),
         )
         return JobStatusView.model_validate(self._decode_response(response))
+
+    async def prepare(self, credentials: list[Credential]) -> dict[str, Any]:
+        """Register structured credentials with the sandbox credential proxy.
+
+        This is a standalone endpoint for registering credentials outside of
+        job runs. Credentials persist for the lifetime of the sandbox.
+        """
+
+        response = await self._client.put(
+            "/v1/prepare",
+            json={"credentials": [c.model_dump(mode="json", exclude_none=True) for c in credentials]},
+            headers=self._auth_headers(),
+        )
+        return self._decode_response(response)
 
     async def delete(
         self,

@@ -55,6 +55,9 @@ class _FakeCommands:
         del script, cwd, env, timeout
         return self.initial
 
+    async def prepare(self, credentials: object) -> None:
+        pass
+
     async def wait(self, job_id: str, *, offset: int, timeout: float) -> ShellCommandResult:
         del job_id, offset, timeout
         if self.wait_error is not None:

@@ -5,6 +5,7 @@ type RunJobRequest struct {
 	Script           string            `json:"script"`
 	Cwd              *string           `json:"cwd,omitempty"`
 	Env              map[string]string `json:"env,omitempty"`
+	Credentials      []Credential      `json:"credentials,omitempty"`
 	Terminal         *TerminalSize     `json:"terminal,omitempty"`
 	Timeout          float64           `json:"timeout,omitempty"`
 	OutputLimit      int               `json:"output_limit,omitempty"`
@@ -86,6 +87,61 @@ type DeleteJobResponse struct {
 // HealthResponse is the health check response.
 type HealthResponse struct {
 	Status string `json:"status"`
+}
+
+// Credential represents a secret with its identity and injection policy.
+type Credential struct {
+	// Provider identifies the credential source (e.g. "github", "dify_agent_stub").
+	Provider string `json:"provider"`
+	// Name identifies the credential within the provider (e.g. "token", "auth_jwe").
+	Name string `json:"name"`
+	// Value is the actual secret.
+	Value string `json:"value"`
+	// Inject defines how the credential is automatically injected into HTTP requests.
+	// If nil, the credential is only resolved via __secret:provider/name__ placeholders.
+	Inject *InjectPolicy `json:"inject,omitempty"`
+}
+
+// InjectType enumerates supported credential injection strategies.
+type InjectType string
+
+const (
+	// InjectTypeHTTPHeader injects the credential as an HTTP request header.
+	InjectTypeHTTPHeader InjectType = "http-header"
+)
+
+// InjectPolicy defines how a credential is proactively injected into outbound HTTP requests.
+// The Type field selects the strategy; exactly one corresponding payload field should be set.
+type InjectPolicy struct {
+	Type       InjectType        `json:"type"`
+	HTTPHeader *HTTPHeaderInject `json:"http_header,omitempty"`
+}
+
+// HTTPHeaderInject injects a credential value as an HTTP request header.
+type HTTPHeaderInject struct {
+	// Name is the HTTP header name (e.g. "Authorization", "X-API-Key").
+	Name string `json:"name"`
+	// Prefix is prepended to the credential value (e.g. "Bearer ", "token ").
+	Prefix string `json:"prefix,omitempty"`
+	// Domains restricts injection to requests matching these host patterns.
+	// Supports wildcard prefix (e.g. "*.github.com", "api.example.com").
+	// Empty means inject on all domains.
+	Domains []string `json:"domains,omitempty"`
+}
+
+// Ref returns the canonical credential reference used in placeholders: "provider/name".
+func (c *Credential) Ref() string {
+	return c.Provider + "/" + c.Name
+}
+
+// PrepareRequest is the HTTP request body for PUT /v1/prepare.
+type PrepareRequest struct {
+	Credentials []Credential `json:"credentials"`
+}
+
+// PrepareResponse is the response for PUT /v1/prepare.
+type PrepareResponse struct {
+	Registered int `json:"registered"`
 }
 
 // ErrorDetail is the machine-readable API error payload.

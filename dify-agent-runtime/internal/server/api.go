@@ -26,6 +26,7 @@ func Handler(svc *Service, config *Config) http.Handler {
 	mux.HandleFunc("POST /v1/jobs/{job_id}/input", auth(handleInputJob(svc, config)))
 	mux.HandleFunc("POST /v1/jobs/{job_id}/terminate", auth(handleTerminateJob(svc, config)))
 	mux.HandleFunc("DELETE /v1/jobs/{job_id}", auth(handleDeleteJob(svc, config)))
+	mux.HandleFunc("PUT /v1/prepare", auth(handlePrepare(svc)))
 
 	return requestLoggingMiddleware(recoveryMiddleware(mux))
 }
@@ -208,6 +209,26 @@ func handleDeleteJob(svc *Service, config *Config) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+func handlePrepare(svc *Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req PrepareRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, 400, "invalid_request", "Invalid JSON body")
+			return
+		}
+		if len(req.Credentials) == 0 {
+			writeError(w, 400, "invalid_request", "credentials must not be empty")
+			return
+		}
+		if svc.egressResolver == nil {
+			writeError(w, 409, "egressproxy_disabled", "Egress proxy is not enabled")
+			return
+		}
+		svc.RegisterCredentials(req.Credentials)
+		writeJSON(w, http.StatusOK, PrepareResponse{Registered: len(req.Credentials)})
 	}
 }
 

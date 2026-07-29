@@ -543,19 +543,23 @@ services:
   # for shellctl, and it can reach agent_backend directly) and
   # `local_sandbox_proxy_network` (so its egress is forced through
   # agent_ssrf_proxy).
-  # All non-agent_backend/localhost traffic goes through the Squid forward proxy
-  # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
-  # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
+  # The in-process egress proxy (127.0.0.1:18080) only handles credential
+  # injection; network-level egress restriction (allowlist/SSRF) is enforced
+  # by agent_ssrf_proxy (Squid), which the egress proxy chains to as upstream.
   local_sandbox:
     image: langgenius/dify-agent-local-sandbox:1.16.1
     restart: always
     env_file:
       - path: ./envs/core-services/local-sandbox.env
         required: false
+      - path: .env
+        required: false
     environment:
       - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
-      - HTTP_PROXY=http://agent_ssrf_proxy:3128
-      - HTTPS_PROXY=http://agent_ssrf_proxy:3128
+      - SHELLCTL_EGRESSPROXY_ENABLED=${DIFY_AGENT_EGRESSPROXY_ENABLED:-true}
+      - SHELLCTL_EGRESSPROXY_UPSTREAM=http://agent_ssrf_proxy:${SSRF_HTTP_PORT:-3128}
+      - HTTP_PROXY=http://127.0.0.1:18080
+      - HTTPS_PROXY=http://127.0.0.1:18080
       - NO_PROXY=localhost,127.0.0.1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
@@ -683,6 +687,7 @@ services:
       DIFY_AGENT_E2B_SHELLCTL_PORT: ${DIFY_AGENT_E2B_SHELLCTL_PORT:-5004}
       DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES: ${PLUGIN_MAX_FILE_SIZE:-52428800}
       DIFY_AGENT_STUB_API_BASE_URL: ${DIFY_AGENT_STUB_API_BASE_URL:-http://agent_backend:5050/agent-stub}
+      DIFY_AGENT_USE_EGRESSPROXY: ${DIFY_AGENT_USE_EGRESSPROXY:-true}
       # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
       # Replace this development default in production.
       # Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'

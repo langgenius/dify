@@ -74,6 +74,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
+        use_egressproxy=resolved_settings.use_egressproxy,
     )
     workspace_file_service = (
         WorkspaceFileService(

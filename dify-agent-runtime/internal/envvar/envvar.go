@@ -37,6 +37,34 @@ const (
 	DefaultDriveBase = "/mnt/drive"
 )
 
+// --- Egress Proxy ---
+
+const (
+	// EnvEgressProxyEnabled controls whether the in-process egress proxy is started.
+	EnvEgressProxyEnabled = "SHELLCTL_EGRESSPROXY_ENABLED"
+
+	// EnvEgressProxyAddr overrides the egress proxy listen address (default: 127.0.0.1:18080).
+	EnvEgressProxyAddr = "SHELLCTL_EGRESSPROXY_ADDR"
+
+	// EnvEgressProxyCADir overrides the directory for the auto-generated CA cert/key.
+	EnvEgressProxyCADir = "SHELLCTL_EGRESSPROXY_CA_DIR"
+
+	// EnvEgressProxyCACert is set per-job to the CA cert path for TLS trust.
+	EnvEgressProxyCACert = "SHELLCTL_EGRESSPROXY_CA_CERT"
+
+	// EnvEgressProxyUpstream overrides the upstream proxy URL (empty = direct).
+	EnvEgressProxyUpstream = "SHELLCTL_EGRESSPROXY_UPSTREAM"
+)
+
+// Legacy env var aliases for backward compatibility.
+const (
+	EnvCredProxyEnabled  = "SHELLCTL_CREDPROXY_ENABLED"
+	EnvCredProxyAddr     = "SHELLCTL_CREDPROXY_ADDR"
+	EnvCredProxyCADir    = "SHELLCTL_CREDPROXY_CA_DIR"
+	EnvCredProxyCACert   = "SHELLCTL_CREDPROXY_CA_CERT"
+	EnvCredProxyUpstream = "SHELLCTL_CREDPROXY_UPSTREAM"
+)
+
 // PathIsolationEnabled returns whether Landlock filesystem isolation is active.
 func PathIsolationEnabled() bool {
 	v, ok := os.LookupEnv(EnvEnablePathIsolation)

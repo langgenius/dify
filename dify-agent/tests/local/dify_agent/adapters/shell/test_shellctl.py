@@ -86,12 +86,16 @@ class FakeShellctlClient:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        credentials: object = None,
         timeout: float = 30.0,
     ) -> _Job:
         self.run_calls.append(_RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
         if self.run_handler is not None:
             return self.run_handler(script, cwd, env, timeout)
         return _Job(job_id="job", status="exited", done=True, exit_code=0)
+
+    async def prepare(self, credentials: object) -> object:
+        return {}
 
     async def wait(self, job_id: str, *, offset: int, timeout: float = 30.0) -> _Job:
         self.wait_calls.append((job_id, offset, timeout))

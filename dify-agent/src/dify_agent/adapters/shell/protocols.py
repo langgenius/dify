@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from shellctl.shared.schemas import Credential
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +69,8 @@ class ShellCommandProtocol(Protocol):
         env: dict[str, str] | None = None,
         timeout: float,
     ) -> ShellCommandResult: ...
+
+    async def prepare(self, credentials: Sequence[Credential]) -> None: ...
 
     async def wait(
         self,
