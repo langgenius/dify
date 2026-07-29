@@ -177,12 +177,9 @@ async def run_block(settings: DriverSettings) -> BlockResult:
     if outcomes.successful_runs:
         command_deltas = redis_command_call_deltas(redis_before, redis_after)
         result.resources.redis_command_calls_per_successful_run = {
-            name: calls / outcomes.successful_runs
-            for name, calls in sorted(command_deltas.items())
+            name: calls / outcomes.successful_runs for name, calls in sorted(command_deltas.items())
         }
-        result.resources.redis_commands_per_successful_run = (
-            sum(command_deltas.values()) / outcomes.successful_runs
-        )
+        result.resources.redis_commands_per_successful_run = sum(command_deltas.values()) / outcomes.successful_runs
         redis_network_bytes = max(
             0,
             redis_after.total_net_input_bytes - redis_before.total_net_input_bytes,
@@ -190,12 +187,8 @@ async def run_block(settings: DriverSettings) -> BlockResult:
             0,
             redis_after.total_net_output_bytes - redis_before.total_net_output_bytes,
         )
-        result.resources.redis_network_bytes_per_successful_run = (
-            redis_network_bytes / outcomes.successful_runs
-        )
-        result.resources.redis_storage_bytes_per_successful_run = (
-            redis_after.storage_bytes / outcomes.successful_runs
-        )
+        result.resources.redis_network_bytes_per_successful_run = redis_network_bytes / outcomes.successful_runs
+        result.resources.redis_storage_bytes_per_successful_run = redis_after.storage_bytes / outcomes.successful_runs
     fake_response_times = [
         elapsed_ms
         for sample in samples
@@ -624,16 +617,9 @@ def summarize_run_outcomes(
     """Derive lifecycle counts without treating admission or success as terminal."""
     attempted_runs = len(samples)
     admitted_runs = sum(sample.admitted for sample in samples)
-    terminal_runs = sum(
-        sample.terminal_status in {"succeeded", "failed", "cancelled"}
-        for sample in samples
-    )
+    terminal_runs = sum(sample.terminal_status in {"succeeded", "failed", "cancelled"} for sample in samples)
     successful_runs = sum(sample.terminal_status == "succeeded" for sample in samples)
-    successful_event_count = sum(
-        sample.event_count
-        for sample in samples
-        if sample.terminal_status == "succeeded"
-    )
+    successful_event_count = sum(sample.event_count for sample in samples if sample.terminal_status == "succeeded")
     return RunOutcomeSummary(
         attempted_runs=attempted_runs,
         admitted_runs=admitted_runs,

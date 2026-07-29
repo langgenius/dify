@@ -39,9 +39,7 @@ def test_fake_llm_emits_configured_text_chunks(scenario_id: str, expected_chunks
                 "/plugin/tenant-1/dispatch/llm/invoke",
                 json=_request_payload(run_id="run-text", scenario_id=scenario_id),
             )
-            ledger = (
-                await client.get("/__bench/ledgers/run-text")
-            ).json()
+            ledger = (await client.get("/__bench/ledgers/run-text")).json()
 
         assert response.status_code == 200
         assert len(_stream_data(response)) == expected_chunks

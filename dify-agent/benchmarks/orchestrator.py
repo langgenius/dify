@@ -52,9 +52,7 @@ logger = logging.getLogger(__name__)
 
 _HARNESS_VERSION = 2
 _PYTHON_BASE_IMAGE = "python:3.12-slim-bookworm"
-_REDIS_IMAGE = (
-    "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
-)
+_REDIS_IMAGE = "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
 _PRODUCTION_INPUTS = (
     "dify-agent/src",
     "dify-agent/pyproject.toml",
@@ -496,8 +494,7 @@ def _compare_scenario(
         ),
         redis_command_mix=_compare_redis_command_mix(baseline_by_pair, candidate_by_pair),
         stats_coverage_valid=all(
-            block.resources.agent_stats_coverage.window_covered
-            and block.resources.redis_stats_coverage.window_covered
+            block.resources.agent_stats_coverage.window_covered and block.resources.redis_stats_coverage.window_covered
             for block in [*baseline_blocks, *candidate_blocks]
         ),
         baseline_fake_cpu_p95_percent=_maximum_resource(
@@ -529,14 +526,10 @@ def _sample_blocks_by_pair(
     candidate_blocks: list[list[float]] = []
     for pair_index in sorted(set(baseline_by_pair) & set(candidate_by_pair)):
         baseline_values = [
-            value
-            for sample in baseline_by_pair[pair_index].samples
-            if (value := getter(sample)) is not None
+            value for sample in baseline_by_pair[pair_index].samples if (value := getter(sample)) is not None
         ]
         candidate_values = [
-            value
-            for sample in candidate_by_pair[pair_index].samples
-            if (value := getter(sample)) is not None
+            value for sample in candidate_by_pair[pair_index].samples if (value := getter(sample)) is not None
         ]
         if baseline_values and candidate_values:
             baseline_blocks.append(baseline_values)
@@ -638,7 +631,9 @@ def _run_compose_block(
     result: BlockResult | None = None
     sampler_stopped = False
     try:
-        _run_command([*compose, "up", "-d", "--wait", "--wait-timeout", "180", "redis", "fake-deps", "agent"], env=environment)
+        _run_command(
+            [*compose, "up", "-d", "--wait", "--wait-timeout", "180", "redis", "fake-deps", "agent"], env=environment
+        )
         agent_container_id = _run_command([*compose, "ps", "-q", "agent"], env=environment).stdout.strip()
         redis_container_id = _run_command([*compose, "ps", "-q", "redis"], env=environment).stdout.strip()
         fake_container_id = _run_command([*compose, "ps", "-q", "fake-deps"], env=environment).stdout.strip()
@@ -986,8 +981,7 @@ def _render_markdown(report: ComparisonReport) -> str:
     lines.extend(["", "## Redis command mix", ""])
     for comparison in report.scenarios:
         changes = ", ".join(
-            f"`{name}` {_format_metric(metric)}"
-            for name, metric in comparison.redis_command_mix.items()
+            f"`{name}` {_format_metric(metric)}" for name, metric in comparison.redis_command_mix.items()
         )
         lines.append(f"- `{comparison.scenario_id}`: {changes or 'none'}")
     lines.extend(
@@ -1003,11 +997,7 @@ def _render_markdown(report: ComparisonReport) -> str:
 def _format_metric(metric: MetricComparison) -> str:
     if metric.baseline is None or metric.candidate is None:
         return f"`{metric.verdict}`"
-    relative = (
-        "n/a"
-        if metric.relative_change_percent is None
-        else f"{metric.relative_change_percent:+.2f}%"
-    )
+    relative = "n/a" if metric.relative_change_percent is None else f"{metric.relative_change_percent:+.2f}%"
     return f"{metric.baseline:.4g} → {metric.candidate:.4g} ({relative}) `{metric.verdict}`"
 
 
@@ -1122,8 +1112,7 @@ def _run_command_bytes(command: Sequence[str], *, cwd: Path) -> bytes:
     result = subprocess.run(list(command), cwd=cwd, capture_output=True, check=False)
     if result.returncode != 0:
         raise BenchmarkCommandError(
-            f"command failed ({result.returncode}): {' '.join(command)}\n"
-            f"{result.stderr.decode(errors='replace')}"
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stderr.decode(errors='replace')}"
         )
     return result.stdout
 

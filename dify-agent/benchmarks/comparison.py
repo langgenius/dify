@@ -139,6 +139,7 @@ def compare_blocked_quantile_latency(
     candidate = [value for block in candidate_blocks for value in block]
     if not baseline or not candidate:
         return _unavailable_comparison()
+
     def statistic(values: Sequence[float]) -> float:
         return quantile(values, probability)
 
@@ -208,10 +209,7 @@ def compare_redis_commands(baseline: Sequence[float], candidate: Sequence[float]
         absolute_threshold=math.inf,
     )
     pair_count = min(len(baseline), len(candidate))
-    pair_increases = [
-        candidate[index] - baseline[index] >= 1
-        for index in range(pair_count)
-    ]
+    pair_increases = [candidate[index] - baseline[index] >= 1 for index in range(pair_count)]
     if pair_increases and all(pair_increases):
         comparison.verdict = "behavior_change"
     elif any(pair_increases):
