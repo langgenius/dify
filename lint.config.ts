@@ -3,6 +3,22 @@ import path from 'node:path'
 
 const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
+const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+const tailwindCanonicalClassesOverride = {
+  files: [
+    'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+  ],
+  rules: {
+    'better-tailwindcss/enforce-canonical-classes': [
+      'warn',
+      {
+        collapse: false,
+        logical: false,
+      },
+    ],
+  },
+} satisfies NonNullable<OxlintConfig['overrides']>[number]
 
 /**
  * Oxlint equivalent of the ESLint configurations that were active before the migration.
@@ -55,6 +71,7 @@ export const lintConfig = {
   jsPlugins: [
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
+    ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     'eslint-plugin-command',
     'eslint-plugin-erasable-syntax-only',
     {
@@ -86,6 +103,15 @@ export const lintConfig = {
     typeCheck: true,
   },
   settings: {
+    ...(enableTailwindCanonicalClasses
+      ? {
+          'better-tailwindcss': {
+            cwd: path.resolve(rootDir, 'web'),
+            entryPoint: 'app/styles/globals.css',
+            rootFontSize: 16,
+          },
+        }
+      : {}),
     'react-x': {
       additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
     },
@@ -425,6 +451,7 @@ export const lintConfig = {
     'no-undef': 'error',
   },
   overrides: [
+    ...(enableTailwindCanonicalClasses ? [tailwindCanonicalClassesOverride] : []),
     {
       files: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {

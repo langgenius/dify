@@ -135,7 +135,7 @@ const DocumentRow = memo(
           <div className="flex min-w-0 items-center gap-2.5">
             <span
               aria-hidden
-              className="i-ri-file-text-line size-[18px] shrink-0 text-text-tertiary"
+              className="i-ri-file-text-line size-4.5 shrink-0 text-text-tertiary"
             />
             <Link
               id={titleId}
@@ -472,7 +472,7 @@ export function DocumentsList({
         role="region"
         tabIndex={-1}
       >
-        <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
+        <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
           <thead className="system-2xs-medium text-text-tertiary uppercase">
             <tr>
               <th className="pb-2 font-medium">

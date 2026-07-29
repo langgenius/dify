@@ -94,7 +94,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
           className="absolute bottom-0 left-0 flex h-2 w-full cursor-row-resize justify-center"
           onMouseDown={handleStartResize}
         >
-          <div className="h-[3px] w-5 rounded-xs bg-gray-300"></div>
+          <div className="h-0.75 w-5 rounded-xs bg-gray-300"></div>
         </div>
       )}
     </div>

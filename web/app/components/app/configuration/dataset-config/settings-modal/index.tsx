@@ -229,7 +229,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
       </div>
       {/* Body */}
-      <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]">
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-17">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">

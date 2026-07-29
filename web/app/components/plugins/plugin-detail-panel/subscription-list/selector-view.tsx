@@ -44,7 +44,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
           <CreateSubscriptionButton buttonType={CreateButtonType.ICON_BUTTON} shape="circle" />
         </div>
       )}
-      <div className="max-h-[320px] overflow-y-auto">
+      <div className="max-h-80 overflow-y-auto">
         {subscriptions?.map((subscription) => (
           <div
             key={subscription.id}

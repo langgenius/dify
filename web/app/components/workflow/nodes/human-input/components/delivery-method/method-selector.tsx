@@ -76,7 +76,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-1">
             <div
               className={cn(
@@ -114,12 +114,12 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 </div>
               </div>
               {webAppDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">
+                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}
                 </div>
               )}
               {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">
+                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`], {
                     ns: 'workflow',
                   })}
@@ -165,7 +165,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 </div>
               </div>
               {emailDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">
+                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}
                 </div>
               )}
@@ -197,7 +197,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-[8px] right-[8px]">
+              <div className="absolute top-2 right-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -228,7 +228,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-[8px] right-[8px]">
+              <div className="absolute top-2 right-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -259,7 +259,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-[8px] right-[8px]">
+              <div className="absolute top-2 right-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>

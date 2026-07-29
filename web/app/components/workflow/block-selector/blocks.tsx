@@ -107,7 +107,7 @@ const Blocks = ({
       return (
         <div key={classification} className="mb-1 last-of-type:mb-0">
           {classification !== '-' && !!filteredList.length && (
-            <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
+            <div className="flex h-5.5 items-start px-3 text-xs font-medium text-text-tertiary">
               {t(($) => $[`tabs.${classification}`], { ns: 'workflow' })}
             </div>
           )}
@@ -186,9 +186,9 @@ const Blocks = ({
   )
 
   return (
-    <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
+    <div className="max-h-120 max-w-125 overflow-y-auto p-1">
       {isEmpty && (
-        <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">
+        <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
           {t(($) => $['tabs.noResult'], { ns: 'workflow' })}
         </div>
       )}

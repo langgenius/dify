@@ -27,7 +27,7 @@ export function StructureOutput({ className, value, onChange }: Props) {
   return (
     <div className={cn(className)}>
       <div className="flex justify-between">
-        <div className="flex items-center leading-[18px]">
+        <div className="flex items-center leading-4.5">
           <div className="code-sm-semibold text-text-secondary">structured_output</div>
           <div className="ml-2 system-xs-regular text-text-tertiary">object</div>
         </div>

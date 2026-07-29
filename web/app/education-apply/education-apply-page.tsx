@@ -168,18 +168,18 @@ const EducationApplyAgeContent = () => {
 
   return (
     <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
-      <div className="mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle">
+      <div className="mx-auto w-full max-w-352 rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
-          className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
+          className="h-87.25 w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: 'url(/education/bg.png)',
           }}
         ></div>
-        <div className="mt-[-349px] box-content flex h-7 items-center justify-between p-6">
+        <div className="-mt-87.25 box-content flex h-7 items-center justify-between p-6">
           <DifyLogo alt="Dify" size="large" className="brightness-0 invert" />
         </div>
-        <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
-          <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
+        <div className="mx-auto max-w-180 px-8 pb-45">
+          <div className="mb-2 flex h-48 flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
             <div className="mb-2 title-5xl-bold shadow-xs">
               {t(($) => $.toVerified, { ns: 'education' })}
             </div>

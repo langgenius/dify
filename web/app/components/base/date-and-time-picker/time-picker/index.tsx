@@ -224,7 +224,7 @@ const TimePicker = ({
             <div
               className={cn(
                 'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-                triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
+                triggerFullWidth ? 'w-full min-w-0' : 'w-63',
               )}
               onClick={handleClickTrigger}
               data-testid="time-picker-trigger"
@@ -269,7 +269,7 @@ const TimePicker = ({
         className={popupClassName}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
+        <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
           <Header title={title} />
 

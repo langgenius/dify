@@ -789,7 +789,7 @@ function SkipRecoveryPrompt({
   return (
     <section
       aria-label={label}
-      className="fixed bottom-[76px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
+      className="fixed bottom-19 left-1.5 z-50 flex w-65 max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
     >
       <p className="system-sm-regular text-text-secondary">{message}</p>
       <div className="flex h-12 items-end justify-end pt-4">
@@ -805,11 +805,11 @@ function SkipRecoveryPrompt({
       </div>
       <span
         aria-hidden
-        className="absolute top-full left-[214px] h-7 w-0.5 bg-state-accent-hover-alt"
+        className="absolute top-full left-53.5 h-7 w-0.5 bg-state-accent-hover-alt"
       />
       <span
         aria-hidden
-        className="absolute top-[calc(100%+22px)] left-[209px] size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
+        className="absolute top-[calc(100%+22px)] left-52.25 size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
       />
     </section>
   )

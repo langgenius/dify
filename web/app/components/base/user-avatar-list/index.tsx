@@ -67,7 +67,7 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
         {shouldShowCount && remainingCount > 0 && (
           <div className="relative shrink-0" style={{ zIndex: 0 }}>
             <div
-              className="inline-flex items-center justify-center rounded-full bg-gray-500 text-[10px] leading-none text-white ring-2 ring-components-panel-bg"
+              className="inline-flex items-center justify-center rounded-full bg-gray-500 text-2xs leading-none text-white ring-2 ring-components-panel-bg"
               style={{
                 width: avatarSizeToPx[size],
                 height: avatarSizeToPx[size],

@@ -158,13 +158,13 @@ const Loaded: React.FC<LoadedProps> = ({
       </div>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isInstalling && (
-          <Button variant="secondary" className="min-w-[72px]" onClick={onBack}>
+          <Button variant="secondary" className="min-w-18" onClick={onBack}>
             {t(($) => $['installModal.back'], { ns: 'plugin' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="flex min-w-[72px] space-x-0.5"
+          className="flex min-w-18 space-x-0.5"
           onClick={handleInstall}
           disabled={isInstalling || isLoading}
         >

@@ -24,7 +24,7 @@ const Block = React.memo(({ className }: BlockProps) => {
 
 const Item = React.memo(({ firstLineWidth, secondLineWidth }: ItemProps) => {
   return (
-    <div className="flex gap-x-2 px-2 py-[5px]">
+    <div className="flex gap-x-2 px-2 py-1.25">
       <div className="py-0.5">
         <Block className="size-4 rounded-sm" />
       </div>
@@ -32,7 +32,7 @@ const Item = React.memo(({ firstLineWidth, secondLineWidth }: ItemProps) => {
         <div className="flex h-5 w-full items-center">
           <Block className={cn('h-2.5 rounded-xs', firstLineWidth)} />
         </div>
-        <div className="flex h-[18px] w-full items-center">
+        <div className="flex h-4.5 w-full items-center">
           <Block className={cn('h-1.5 rounded-xs', secondLineWidth)} />
         </div>
       </div>

@@ -5,7 +5,7 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 
 function ExploreAppCardSkeleton() {
   return (
-    <div className="col-span-1 flex h-[142px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
+    <div className="col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">
           <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
@@ -21,7 +21,7 @@ function ExploreAppCardSkeleton() {
           <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
         </div>
       </div>
-      <div className="relative flex h-[26px] w-full shrink-0 flex-col gap-2 overflow-hidden px-3">
+      <div className="relative flex h-6.5 w-full shrink-0 flex-col gap-2 overflow-hidden px-3">
         <div className="flex w-full shrink-0 items-center gap-1 rounded-lg p-1">
           <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-[5px]" />
         </div>
@@ -128,10 +128,10 @@ function BannerSkeletonBody() {
   return (
     <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
       <div className="flex w-full flex-col gap-1">
-        <SkeletonRectangle className="my-0 h-6 w-[240px] max-w-full animate-pulse" />
+        <SkeletonRectangle className="my-0 h-6 w-60 max-w-full animate-pulse" />
         <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
       </div>
-      <SkeletonRectangle className="h-[168px] w-full animate-pulse rounded-2xl" />
+      <SkeletonRectangle className="h-42 w-full animate-pulse rounded-2xl" />
     </div>
   )
 }

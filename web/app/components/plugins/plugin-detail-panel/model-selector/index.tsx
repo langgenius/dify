@@ -191,7 +191,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       <div className="relative">
         {isSplitTrigger ? (
-          <div className="flex h-8 min-w-[296px] items-center gap-px overflow-hidden rounded-lg">
+          <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">
             <div className="min-w-0 flex-1">
               <ModelSelector
                 defaultModel={
@@ -255,9 +255,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         <PopoverContent
           placement={isInWorkflow ? 'left' : 'bottom-end'}
           sideOffset={4}
-          popupClassName={cn(popupClassName, 'w-[389px] rounded-2xl')}
+          popupClassName={cn(popupClassName, 'w-97.25 rounded-2xl')}
         >
-          <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
+          <div className="max-h-105 overflow-y-auto p-4 pt-3">
             {!isSplitTrigger && (
               <div className="relative">
                 <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">

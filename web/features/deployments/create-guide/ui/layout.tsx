@@ -192,14 +192,14 @@ export function GuideFrame({
       <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-hidden">
         <section
           aria-label={t(($) => $['createGuide.title'])}
-          className="flex h-full w-full max-w-[840px] flex-col px-5 sm:px-8 lg:px-10"
+          className="flex h-full w-full max-w-210 flex-col px-5 sm:px-8 lg:px-10"
         >
           <div className="h-5 sm:h-8 lg:h-12" />
           <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
             <h1 className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['createGuide.title'])}
             </h1>
-            <div className="hidden w-[184px] shrink-0 min-[1120px]:block">
+            <div className="hidden w-46 shrink-0 min-[1120px]:block">
               <GuideProgressSummary activeStep={activeStep} />
             </div>
           </div>

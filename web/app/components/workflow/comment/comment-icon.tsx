@@ -243,7 +243,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
               style={{ width: dynamicWidth }}
             >
               <div
-                className={`absolute inset-[6px] overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full border bg-components-panel-bg transition-shadow ${
+                className={`absolute inset-1.5 overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full border bg-components-panel-bg transition-shadow ${
                   isActive
                     ? 'border-primary-500 ring-1 ring-primary-500'
                     : 'border-components-panel-border'

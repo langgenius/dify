@@ -115,7 +115,7 @@ export function KnowledgeSpaceShell({
           <div className="flex min-w-0 items-center px-1 py-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-2">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft">
-                <span aria-hidden className="i-ri-book-open-line size-[18px] text-text-tertiary" />
+                <span aria-hidden className="i-ri-book-open-line size-4.5 text-text-tertiary" />
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate system-md-semibold text-text-secondary">

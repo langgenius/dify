@@ -71,7 +71,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
               />
             </span>
             {!!needWarningNodes.length && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+              <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
                 {needWarningNodes.length}
               </span>
             )}
@@ -121,7 +121,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
             </div>
           ) : (
             <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
-              <span className="mx-auto mb-[5px] i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
+              <span className="mx-auto mb-1.25 i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
               {t(($) => $['panel.checklistResolved'], { ns: 'workflow' })}
             </div>
           )}
