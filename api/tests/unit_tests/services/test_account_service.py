@@ -1444,23 +1444,23 @@ class TestRegisterService:
         with sqlite_session_factory() as assertion_session:
             assert assertion_session.scalar(select(DifySetup)) is not None
 
-    def test_setup_failure_rollback(
+    def test_setup_failure_cleans_partially_persisted_account(
         self,
         sqlite_session_factory: sessionmaker[Session],
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
-        """Test setup failure with proper rollback."""
-        # Setup mocks to simulate failure
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_license.return_value.seats.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
-        # Mock AccountService.create_account to raise exception
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
-            mock_create_account.side_effect = Exception("Database error")
-
-            # Execute test and verify exception
+        with patch(
+            "services.account_service.TenantService.create_owner_tenant_if_not_exist",
+            side_effect=RuntimeError("tenant creation failed"),
+        ):
             with sqlite_session_factory() as service_session:
-                with pytest.raises(ValueError):
+                with pytest.raises(ValueError, match="Setup failed: tenant creation failed"):
                     RegisterService.setup(
                         "admin@example.com",
                         "Admin User",
@@ -1471,6 +1471,7 @@ class TestRegisterService:
                     )
 
         with sqlite_session_factory() as assertion_session:
+            assert assertion_session.scalar(select(Account).where(Account.email == "admin@example.com")) is None
             assert assertion_session.scalar(select(DifySetup)) is None
 
     # ==================== Registration Tests ====================
