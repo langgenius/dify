@@ -133,7 +133,7 @@ function RowActions({
           variant="secondary"
           disabled={row.action.kind === 'changeVersion' && row.action.disabled}
           onClick={handlePrimaryAction}
-          className="min-w-0 grow gap-1 px-2"
+          className="min-w-0 gap-1 px-2"
         >
           <span
             aria-hidden
