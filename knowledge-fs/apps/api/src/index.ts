@@ -35,6 +35,7 @@ import { createApiProfileReasoningCapability } from "./answer-generation-options
 import { createApiAuthVerifier } from "./auth-options";
 import { createApiCapabilityV2Assembly } from "./capability-v2-options";
 import { createApiComputeRuntime } from "./compute-options";
+import { waitForApiDatabaseStartup } from "./database-startup-options";
 import { createApiDatasourceInvocationClient } from "./datasource-runtime-options";
 import { createDifyModelCapabilityCatalog } from "./dify-model-capability-catalog";
 import { createApiDifyModelRuntimeClient } from "./dify-model-runtime-options";
@@ -220,11 +221,33 @@ const retrievalExecutionLeases =
         }),
       })
     : undefined;
-// The 0017 migration intentionally leaves ambiguous legacy bundles quarantined as NULL scope.
-// Do not expose destructive routes until operators have run the bounded purge to zero.
-await assertApiDurableDeletionDataReadiness({
-  database: adapter.database,
-  enabled: databaseRepositories.durableDeletionEnabled,
+await waitForApiDatabaseStartup({
+  env: process.env,
+  onRetry: ({ attempt, code, delayMs }) => {
+    process.stderr.write(
+      `${JSON.stringify({
+        attempt,
+        code,
+        delayMs,
+        event: "knowledge_fs.database.startup_retry",
+      })}\n`,
+    );
+  },
+  operation: async () => {
+    await adapter.database.execute({
+      maxRows: 1,
+      operation: "select",
+      params: [],
+      sql: "SELECT 1 AS ready;",
+      tableName: "database_startup_readiness",
+    });
+    // The 0017 migration intentionally leaves ambiguous legacy bundles quarantined as NULL scope.
+    // Do not expose destructive routes until operators have run the bounded purge to zero.
+    await assertApiDurableDeletionDataReadiness({
+      database: adapter.database,
+      enabled: databaseRepositories.durableDeletionEnabled,
+    });
+  },
 });
 const durableDeletion = createApiDurableDeletionAssembly({
   adapter,
