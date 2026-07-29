@@ -1,5 +1,5 @@
+import copy
 from collections.abc import Iterator
-from typing import Any
 
 from core.workflow.legacy_system_files import (
     LegacySysFilesCompatVariable,
@@ -26,7 +26,7 @@ def test_migrate_legacy_sys_files_graph_ignores_invalid_or_unrelated_graphs() ->
 
 
 def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_without_start_variable() -> None:
-    graph: dict[str, Any] = {
+    graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": [{"variable": "sys_files"}]}},
             {
@@ -39,6 +39,7 @@ def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_wi
             },
         ],
     }
+    original_graph = copy.deepcopy(graph)
 
     result = migrate_legacy_sys_files_graph_with_result(graph)
 
@@ -47,14 +48,12 @@ def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_wi
     assert start_data["variables"] == [{"variable": "sys_files"}]
     assert result.graph["nodes"][1]["data"]["answer"] == _LEGACY_ALIAS_SELECTOR
     assert result.graph["nodes"][1]["data"]["template"] == _LEGACY_ALIAS_TEMPLATE
-    assert graph["nodes"][1]["data"]["answer"] == _LEGACY_SELECTOR
-    assert graph["nodes"][1]["data"]["template"] == _LEGACY_TEMPLATE
+    assert graph == original_graph
 
 
 def test_migrate_legacy_sys_files_graph_leaves_userinput_files_target_unchanged() -> None:
-    graph: dict[str, Any] = {
+    graph = {
         "nodes": [
-            {"id": "start", "data": {"type": "start", "variables": []}},
             {
                 "id": "answer",
                 "data": {
@@ -97,9 +96,8 @@ def test_normalize_legacy_sys_files_args_handles_no_compat_and_top_level_files()
     assert compat_without_legacy is None
 
     files = [{"id": "file-1"}]
-    graph: dict[str, Any] = {
+    graph = {
         "nodes": [
-            {"id": "start", "data": {"type": "start", "variables": []}},
             {"id": "answer", "data": {"type": "answer", "answer": _LEGACY_TEMPLATE}},
         ],
     }

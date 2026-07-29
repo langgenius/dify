@@ -30,7 +30,7 @@ def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(
     session.scalars.return_value.all.return_value = [tenant]
     session_manager = MagicMock()
     session_manager.begin.return_value.__enter__.return_value = session
-    monkeypatch.setattr(workspace_commands, "sessionmaker", lambda *args, **kwargs: session_manager)
+    monkeypatch.setattr(workspace_commands, "sessionmaker", MagicMock(return_value=session_manager))
     monkeypatch.setattr(workspace_commands, "db", MagicMock(engine=object()))
 
     callback = reset_encrypt_key_pair.callback
@@ -51,7 +51,7 @@ def test_reset_encrypt_key_pair_stops_when_workspace_record_is_missing(
     session.scalars.return_value.all.return_value = [None]
     session_manager = MagicMock()
     session_manager.begin.return_value.__enter__.return_value = session
-    monkeypatch.setattr(workspace_commands, "sessionmaker", lambda *args, **kwargs: session_manager)
+    monkeypatch.setattr(workspace_commands, "sessionmaker", MagicMock(return_value=session_manager))
     monkeypatch.setattr(workspace_commands, "db", MagicMock(engine=object()))
 
     callback = reset_encrypt_key_pair.callback

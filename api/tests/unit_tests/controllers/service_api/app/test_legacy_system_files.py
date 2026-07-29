@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from typing import Any
 from unittest.mock import MagicMock
 
 from pytest_mock import MockerFixture
@@ -15,13 +14,11 @@ _LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
 _USER_INPUT_FILE_INPUT_KEY = ".".join(("userinput", "files"))
 
 
-def _legacy_file_graph() -> dict[str, Any]:
+def _legacy_file_graph() -> dict[str, object]:
     return {
         "nodes": [
-            {"id": "start", "data": {"type": "start", "variables": []}},
             {"id": "answer", "data": {"type": "answer", "answer": _LEGACY_FILE_TEMPLATE}},
-        ],
-        "edges": [],
+        ]
     }
 
 
@@ -49,7 +46,7 @@ def test_hidden_service_api_file_payload_maps_to_userinput_files(mocker: MockerF
 def test_service_api_file_payload_is_ignored_when_absent(mocker: MockerFixture) -> None:
     get_workflow = mocker.patch.object(AppGenerateService, "get_workflow")
     app_model = MagicMock()
-    original_args: dict[str, Any] = {"inputs": {}}
+    original_args = {"inputs": {"existing": "value"}}
 
     args, compat_variable = normalize_legacy_system_file_args_for_service_api(
         session=MagicMock(),
@@ -65,8 +62,7 @@ def test_service_api_file_payload_is_ignored_when_absent(mocker: MockerFixture) 
 
 def test_top_level_service_api_file_payload_still_checks_workflow_graph(mocker: MockerFixture) -> None:
     workflow = MagicMock()
-    empty_graph: dict[str, Any] = {"nodes": []}
-    workflow.graph_dict = empty_graph
+    workflow.graph_dict = {"nodes": [{"data": {"type": "answer", "answer": "no legacy file"}}]}
     get_workflow = mocker.patch.object(AppGenerateService, "get_workflow", return_value=workflow)
     app_model = MagicMock()
     session = MagicMock()
