@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconType } from '@/types/app'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
@@ -9,35 +9,27 @@ import Link from '@/next/link'
 
 type IAppNavItemProps = {
   variant?: 'default' | 'mainNav'
-  name: string
   ariaLabel?: string
-  id: string
-  icon_type: AppIconType | null
-  icon: string
-  icon_background: string
-  icon_url: string
+  app: InstalledAppResponse
   isSelected: boolean
-  isPinned: boolean
-  togglePin: () => void
-  uninstallable: boolean
+  onTogglePin: (id: string, isPinned: boolean) => void
   onDelete: (id: string) => void
 }
 
 export default function AppNavItem({
   variant = 'default',
-  name,
   ariaLabel,
-  id,
-  icon_type,
-  icon,
-  icon_background,
-  icon_url,
+  app: installedApp,
   isSelected,
-  isPinned,
-  togglePin,
-  uninstallable,
+  onTogglePin,
   onDelete,
 }: IAppNavItemProps) {
+  const {
+    id,
+    is_pinned: isPinned,
+    uninstallable,
+    app: { name, icon_type, icon, icon_background, icon_url },
+  } = installedApp
   const url = buildInstalledAppPath(id)
   const isMainNav = variant === 'mainNav'
 
@@ -68,7 +60,7 @@ export default function AppNavItem({
           size="tiny"
           className={cn(isMainNav && 'size-5 rounded-md text-sm')}
           iconType={icon_type}
-          icon={icon}
+          icon={icon ?? undefined}
           background={icon_background}
           imageUrl={icon_url}
         />
@@ -90,7 +82,7 @@ export default function AppNavItem({
       >
         <ItemOperation
           isPinned={isPinned}
-          togglePin={togglePin}
+          togglePin={() => onTogglePin(id, !isPinned)}
           isShowDelete={!uninstallable && !isSelected}
           onDelete={() => onDelete(id)}
         />
