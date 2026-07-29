@@ -101,7 +101,7 @@ class AudioApi(Resource):
 
         Accepts an audio file upload and returns the transcribed text.
         """
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
             response = AudioService.transcript_asr(

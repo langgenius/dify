@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Izvajanje standardnega delovnega procesa",
   "plansCommon.workflowExecution.tooltip": "Prednostna vrstni red in hitrost izvajanja delovnega toka.",
   "plansCommon.year": "leto",
+  "plansCommon.yearlyBilling": "Letno obračunavanje",
   "plansCommon.yearlyTip": "Z letno naročnino pridobite 2 meseca brezplačno!",
   "teamMembers": "Člani ekipe",
   "triggerLimitModal.description": "Dosegli ste omejitev sprožilcev dogodkov delovnega toka za ta načrt.",

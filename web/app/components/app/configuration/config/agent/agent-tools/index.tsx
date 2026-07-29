@@ -17,11 +17,12 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
+import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Infotip } from '@/app/components/base/infotip'
+import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import {
   addDefaultValue,
@@ -115,16 +116,17 @@ const AgentTools: FC = () => {
       ? toolParametersToFormSchemas(currToolWithConfigs.parameters)
       : []
     const paramsWithDefaultValue = addDefaultValue(tool.params, formSchemas)
+    const providerType = parseToolProviderType(tool.provider_type)
     return {
       provider_id: tool.provider_id,
-      provider_type: tool.provider_type as CollectionType,
+      provider_type: providerType,
       provider_name: tool.provider_name,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
       tool_parameters: paramsWithDefaultValue,
       notAuthor: !tool.is_team_authorization,
       enabled: true,
-      type: tool.provider_type as CollectionType,
+      type: providerType,
     }
   }
   const handleSelectTool = (tool: ToolDefaultValue) => {
@@ -190,7 +192,7 @@ const AgentTools: FC = () => {
               <>
                 <div className="mr-1 ml-3 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
-                  trigger={<OperationBtn type="add" />}
+                  trigger={<OperationButton operation="add" />}
                   isShow={isShowChooseTool}
                   onShowChange={setIsShowChooseTool}
                   disabled={false}

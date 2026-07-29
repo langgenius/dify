@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "समूहों और सदस्यों की खोज करें",
   "accessControlDialog.title": "वेब एप्लिकेशन पहुँच नियंत्रण",
   "accessControlDialog.updateSuccess": "सफलता से अपडेट किया गया",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "सार्वजनिक पहुंच आपके व्यवस्थापक द्वारा अक्षम कर दी गई है।",
   "accessControlDialog.webAppSSONotEnabledTip": "कृपया वेब ऐप प्रमाणीकरण विधि कॉन्फ़िगर करने के लिए उद्यम प्रशासक से संपर्क करें।",
   "accessItemsDescription.anyone": "कोई भी वेब ऐप तक पहुँच सकता है",
   "accessItemsDescription.external": "केवल प्रमाणित बाहरी उपयोगकर्ता वेब अनुप्रयोग तक पहुँच सकते हैं",

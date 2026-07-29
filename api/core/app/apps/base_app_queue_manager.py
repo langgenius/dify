@@ -21,6 +21,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
 from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,9 @@ class AppQueueManager(ABC):
         self._graph_runtime_state: GraphRuntimeState | None = None
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
+        self._execution_terminal = threading.Event()
+        self._abort_sent = threading.Event()
+        self._lifecycle_lock = threading.Lock()
 
     def listen(self):
         """
@@ -59,7 +63,7 @@ class AppQueueManager(ABC):
         """
         # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
         listen_timeout = dify_config.APP_MAX_EXECUTION_TIME
-        start_time = time.time()
+        start_time = time.monotonic()
         last_ping_time: int | float = 0
         try:
             while True:
@@ -72,8 +76,14 @@ class AppQueueManager(ABC):
                 except queue.Empty:
                     continue
                 finally:
-                    elapsed_time = time.time() - start_time
-                    if elapsed_time >= listen_timeout or self._is_stopped():
+                    elapsed_time = time.monotonic() - start_time
+                    timed_out = elapsed_time >= listen_timeout
+                    manually_stopped = self._is_stopped()
+                    if not self._execution_terminal.is_set() and (timed_out or manually_stopped):
+                        reason = (
+                            f"App execution exceeded {listen_timeout} seconds" if timed_out else "App task was stopped"
+                        )
+                        self._abort_execution(reason)
                         # publish two messages to make sure the client can receive the stop signal
                         # and stop listening after the stop signal processed
                         self.publish(
@@ -84,15 +94,32 @@ class AppQueueManager(ABC):
                         self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
                         last_ping_time = elapsed_time // 10
         finally:
+            if not self._execution_terminal.is_set():
+                self._abort_execution("Client response stream closed before app execution completed")
             self._graph_runtime_state = None  # Release reference once consumers finish or close the generator.
 
-    def stop_listen(self):
+    def stop_listen(self, *, execution_terminal: bool = False):
         """
         Stop listen to queue
         :return:
         """
+        if execution_terminal:
+            self._execution_terminal.set()
         self._clear_task_belong_cache()
         self._q.put(None)
+
+    def _abort_execution(self, reason: str) -> None:
+        """Propagate response timeout/disconnect to legacy and GraphEngine runners."""
+        with self._lifecycle_lock:
+            if self._execution_terminal.is_set() or self._abort_sent.is_set():
+                return
+            self._abort_sent.set()
+
+        try:
+            self.set_stop_flag_no_user_check(self._task_id)
+            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
+        except Exception:
+            logger.exception("Failed to abort app execution for task %s", self._task_id)
 
     def _clear_task_belong_cache(self) -> None:
         """

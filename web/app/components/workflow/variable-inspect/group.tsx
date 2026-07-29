@@ -16,7 +16,7 @@ import ActionButton from '@/app/components/base/action-button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
-import { useToolIcon } from '../hooks'
+import { useToolIcon } from '../hooks/use-tool-icon'
 
 type Props = Readonly<{
   nodeData?: NodeWithVar

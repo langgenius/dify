@@ -8,7 +8,7 @@ import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import { fetchConversationMessages } from '@/service/debug'
-import { useWorkflowRun } from '../../hooks'
+import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
 import { formatWorkflowRunIdentifier } from '../../utils'
 import UserInput from './user-input'

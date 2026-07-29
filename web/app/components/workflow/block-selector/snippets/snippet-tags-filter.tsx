@@ -1,8 +1,9 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,20 +45,25 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
   const triggerLabel = selectedTags.length
     ? selectedTags.map((tag) => tag.name).join(', ')
     : t(($) => $['tag.placeholder'], { ns: 'common' })
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) setSearchText('')
+  }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="small"
             aria-label={triggerLabel}
             className={cn(
-              'relative flex cursor-pointer items-center justify-center text-text-tertiary select-none',
+              'relative text-text-tertiary select-none focus-visible:ring-inset',
               embedded
-                ? 'h-7 rounded-md p-0.5'
+                ? 'mr-1 h-7 rounded-md'
                 : 'h-8 min-w-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-input-bg-normal px-2',
-              embedded && !value.length && 'py-1 pr-2 pl-1.5',
+              embedded && !value.length && 'size-7 min-h-0 p-0',
               embedded &&
                 value.length > 0 &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-1.5 pl-1 shadow-xs shadow-shadow-shadow-3',
@@ -76,7 +82,7 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
             {value.length > 0 && (
               <span className="ml-1 system-xs-medium text-text-secondary">{value.length}</span>
             )}
-          </button>
+          </Button>
         }
       />
       <PopoverContent
@@ -84,6 +90,7 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
         sideOffset={6}
         popupClassName="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-xs"
       >
+        <PopoverTitle className="sr-only">{triggerLabel}</PopoverTitle>
         <div className="p-2 pb-1">
           <div className="relative">
             <span
@@ -91,6 +98,8 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
               aria-hidden="true"
             />
             <Input
+              aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+              autoComplete="off"
               className="pl-6.5"
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}

@@ -26,6 +26,7 @@ from models import Account, ApiToken, Tenant, TenantAccountJoin, TenantAccountRo
 from models.enums import ApiTokenType
 from models.model import App
 from models.tools import ApiToolProvider, MCPToolProvider, WorkflowToolProvider
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_dsl_service import AppDslService
 from services.data_migration.dependency_discovery_service import DependencyDiscoveryService
 from services.data_migration.entities import (
@@ -47,6 +48,7 @@ from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow_service import WorkflowService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True)
@@ -711,7 +713,7 @@ class MigrationImportService:
                 raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
             if account_in_session is None:
                 raise MigrationDataError(f"Operator account not found: {account.id}")
-            workflow = workflow_service.publish_workflow(
+            workflow, retirement_candidates = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_in_session,
                 account=account_in_session,
@@ -721,6 +723,16 @@ class MigrationImportService:
             app_in_session.workflow_id = workflow.id
             app_in_session.updated_by = account.id
             app_in_session.updated_at = naive_utc_now()
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=target.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account.id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=target.tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
+        )
 
     def _import_mcp_tools(
         self,

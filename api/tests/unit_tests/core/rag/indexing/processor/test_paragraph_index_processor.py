@@ -271,14 +271,26 @@ class TestParagraphIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"
             ) as mock_store_cls,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts"
+            ) as mock_token_counter,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
         ):
+            mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [11, 22]
             mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
             mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, ["chunk-1", "chunk-2"], session)
 
-        assert phase_events == ["store", "commit", "vector"]
-        mock_store_cls.return_value.add_documents.assert_called_once()
+        assert phase_events == ["count", "store", "commit", "vector"]
+        documents = mock_token_counter.call_args.kwargs["documents"]
+        assert [document.page_content for document in documents] == ["chunk-1", "chunk-2"]
+        mock_token_counter.assert_called_once_with(dataset=dataset, documents=documents)
+        mock_store_cls.return_value.add_documents.assert_called_once_with(
+            session=session,
+            docs=documents,
+            token_counts=[11, 22],
+            save_child=False,
+        )
         mock_vector_cls.assert_called_once_with(dataset, session=session)
         mock_vector_cls.return_value.create.assert_called_once()
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
@@ -299,13 +311,18 @@ class TestParagraphIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"
             ) as mock_store_cls,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts"
+            ) as mock_token_counter,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
+            mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [0]
             mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
             mock_keyword_cls.return_value.add_texts.side_effect = lambda *_args: phase_events.append("keyword")
             processor.index(dataset, dataset_document, ["chunk-3"], session)
 
-        assert phase_events == ["store", "commit", "keyword"]
+        assert phase_events == ["count", "store", "commit", "keyword"]
+        mock_token_counter.assert_called_once()
         mock_keyword_cls.return_value.add_texts.assert_called_once()
 
     def test_index_multimodal_structure_handles_files_and_account_lookup(
@@ -341,6 +358,10 @@ class TestParagraphIndexProcessor:
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="img", metadata={})]
             ) as mock_files,
             patch("core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"),
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts",
+                return_value=[11, 22],
+            ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector"),
         ):
             processor.index(dataset, dataset_document, {"general_chunks": []}, session)

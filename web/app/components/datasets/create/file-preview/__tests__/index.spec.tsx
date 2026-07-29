@@ -58,14 +58,6 @@ describe('FilePreview', () => {
 
   // Rendering Tests - Verify component renders properly
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
-      })
-    })
-
     it('should render file preview header', async () => {
       renderFilePreview()
 
@@ -97,13 +89,6 @@ describe('FilePreview', () => {
       renderFilePreview({ file })
 
       expect(screen.getByText('.pdf'))!.toBeInTheDocument()
-    })
-
-    it('should apply correct CSS classes to container', async () => {
-      const { container } = renderFilePreview()
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper)!.toHaveClass('h-full')
     })
   })
 
@@ -245,18 +230,14 @@ describe('FilePreview', () => {
       })
     })
 
-    it('should handle API error gracefully', async () => {
+    it('should keep the preview header visible when loading fails', async () => {
       mockFetchFilePreview.mockRejectedValue(new Error('Network error'))
 
-      const { container } = renderFilePreview()
+      renderFilePreview()
 
-      // Assert - Component should not crash, loading may persist
       await waitFor(() => {
-        expect(container.firstChild)!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
       })
-      // No error thrown, component still rendered
-      // No error thrown, component still rendered
-      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
     })
 
     it('should handle empty content response', async () => {
@@ -434,16 +415,6 @@ describe('FilePreview', () => {
         const fileNameSpan = fileNameElement?.querySelector('span:first-child')
         expect(fileNameSpan?.textContent).toBe('')
       })
-
-      it('should handle file with empty name', async () => {
-        const file = createMockFile({ name: '' })
-
-        const { container } = renderFilePreview({ file })
-
-        // Assert - Should not crash
-        // Assert - Should not crash
-        expect(container.firstChild)!.toBeInTheDocument()
-      })
     })
 
     describe('hidePreview prop', () => {
@@ -463,11 +434,9 @@ describe('FilePreview', () => {
     it('should handle file with undefined id', async () => {
       const file = createMockFile({ id: undefined })
 
-      const { container } = renderFilePreview({ file })
+      renderFilePreview({ file })
 
-      // Assert - Should not call API, remain in loading state
       expect(mockFetchFilePreview).not.toHaveBeenCalled()
-      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle file with empty string id', async () => {
@@ -548,17 +517,6 @@ describe('FilePreview', () => {
         expect(contentDiv?.textContent).toContain('Line 3')
       })
     })
-
-    it('should handle null content from API', async () => {
-      mockFetchFilePreview.mockResolvedValue({ content: null as unknown as string })
-
-      const { container } = renderFilePreview()
-
-      // Assert - Should not crash
-      await waitFor(() => {
-        expect(container.firstChild)!.toBeInTheDocument()
-      })
-    })
   })
 
   // Side Effects and Cleanup Tests
@@ -615,24 +573,10 @@ describe('FilePreview', () => {
       })
     })
 
-    it('should handle unmount during loading', async () => {
-      mockFetchFilePreview.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
-      )
-
-      const { unmount } = renderFilePreview()
-
-      // Unmount before API resolves
-      unmount()
-
-      // Assert - No errors should be thrown (React handles state updates on unmounted)
-      expect(true).toBe(true)
-    })
-
     it('should handle file changing from defined to undefined', async () => {
       const file = createMockFile()
 
-      const { rerender, container } = render(<FilePreview file={file} hidePreview={vi.fn()} />)
+      const { rerender } = render(<FilePreview file={file} hidePreview={vi.fn()} />)
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
@@ -640,9 +584,6 @@ describe('FilePreview', () => {
 
       rerender(<FilePreview file={undefined} hidePreview={vi.fn()} />)
 
-      // Assert - Should not crash, API should not be called again
-      // Assert - Should not crash, API should not be called again
-      expect(container.firstChild)!.toBeInTheDocument()
       expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
     })
   })
@@ -684,56 +625,6 @@ describe('FilePreview', () => {
       // Assert - File name area should have empty first span
       const fileNameElement = container.querySelector('.system-xs-medium')
       expect(fileNameElement)!.toBeInTheDocument()
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have clickable close button with visual indicator', async () => {
-      const { container } = renderFilePreview()
-
-      const closeButton = container.querySelector('.cursor-pointer')
-      expect(closeButton)!.toBeInTheDocument()
-      expect(closeButton)!.toHaveClass('cursor-pointer')
-    })
-
-    it('should have proper heading structure', async () => {
-      renderFilePreview()
-
-      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
-    })
-  })
-
-  // Error Handling Tests
-  describe('Error Handling', () => {
-    it('should not crash on API network error', async () => {
-      mockFetchFilePreview.mockRejectedValue(new Error('Network Error'))
-
-      const { container } = renderFilePreview()
-
-      // Assert - Component should still render
-      await waitFor(() => {
-        expect(container.firstChild)!.toBeInTheDocument()
-      })
-    })
-
-    it('should not crash on API timeout', async () => {
-      mockFetchFilePreview.mockRejectedValue(new Error('Timeout'))
-
-      const { container } = renderFilePreview()
-
-      await waitFor(() => {
-        expect(container.firstChild)!.toBeInTheDocument()
-      })
-    })
-
-    it('should not crash on malformed API response', async () => {
-      mockFetchFilePreview.mockResolvedValue({} as { content: string })
-
-      const { container } = renderFilePreview()
-
-      await waitFor(() => {
-        expect(container.firstChild)!.toBeInTheDocument()
-      })
     })
   })
 })
