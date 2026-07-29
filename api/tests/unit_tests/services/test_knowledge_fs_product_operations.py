@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from services.knowledge_fs.product_operations import (
     KNOWLEDGE_FS_PRODUCT_OPERATIONS,
     is_product_operation_ready,
     is_product_operation_registered,
     knowledge_fs_product_operation_gaps,
+    product_operation_action,
 )
 from services.knowledge_fs_capability import KNOWLEDGE_FS_CAPABILITY_OPERATIONS
 
@@ -179,3 +182,13 @@ def test_manifest_gaps_remain_explicit_and_stable() -> None:
             ),
         },
     ]
+
+
+def test_unregistered_product_operations_fail_closed() -> None:
+    operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS["getSpace"]
+
+    assert operation._replace(capability_operation_id=None).action is None
+    assert operation._replace(capability_operation_id="unknown-operation").action is None
+    assert is_product_operation_registered("unknown-operation") is False
+    with pytest.raises(KeyError, match="unknown-operation"):
+        product_operation_action("unknown-operation")

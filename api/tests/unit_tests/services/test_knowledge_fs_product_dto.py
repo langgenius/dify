@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -11,16 +11,25 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBadCaseCreatePayload,
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSDocumentReindexPayload,
     KnowledgeFSGoldenQuestionPayload,
+    KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSRerankIntent,
+    KnowledgeFSRetrievalProfileIntent,
+    KnowledgeFSScoreThresholdIntent,
+    KnowledgeFSSettingsPayload,
+    KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceListQuery,
+    KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceListItemResponse,
+    KnowledgeFSUploadCapabilityPayload,
 )
 
 
@@ -44,6 +53,106 @@ def test_space_list_item_serializes_naive_database_timestamps_as_utc() -> None:
 
     assert payload["created_at"] == "2026-07-28T06:58:18Z"
     assert payload["updated_at"] == "2026-07-28T06:59:16Z"
+
+
+def test_space_list_item_converts_aware_database_timestamps_to_utc() -> None:
+    response = KnowledgeFSSpaceListItemResponse.model_validate(
+        {
+            "control_space_id": "control-space-1",
+            "created_at": datetime(2026, 7, 28, 6, 58, 18, tzinfo=UTC),
+            "knowledge_space_id": "knowledge-space-1",
+            "owner_account_id": "account-1",
+            "permission_keys": ["knowledge_space_read"],
+            "resource_version": 1,
+            "state": "active",
+            "technical_status": "available",
+            "updated_at": datetime(2026, 7, 28, 6, 59, 16, tzinfo=timezone(timedelta(hours=8))),
+            "visibility": "only_me",
+        }
+    )
+
+    assert response.updated_at == datetime(2026, 7, 27, 22, 59, 16, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("model", "payload"),
+    [
+        (KnowledgeFSRerankIntent, {"enabled": True}),
+        (KnowledgeFSScoreThresholdIntent, {"enabled": True}),
+        (
+            KnowledgeFSRetrievalProfileIntent,
+            {
+                "defaultMode": "fast",
+                "reasoningModel": {"pluginId": "plugin-1", "provider": "provider-1", "model": "model-1"},
+                "rerank": {"enabled": False},
+                "scoreThreshold": {"enabled": True, "value": 0.5},
+                "topK": 10,
+            },
+        ),
+        (KnowledgeFSSettingsPayload, {"expectedRevision": 1}),
+        (KnowledgeFSDocumentReindexPayload, {}),
+        (KnowledgeFSDocumentReindexPayload, {"all": True, "documentIds": ["document-1"]}),
+        (
+            KnowledgeFSSourceCreatePayload,
+            {
+                "connectionId": "connection-1",
+                "credentials": {"token": "secret"},
+                "name": "Source",
+                "type": "connector",
+                "uri": "notion://source",
+            },
+        ),
+        (KnowledgeFSSourceUpdatePayload, {}),
+        (
+            KnowledgeFSUploadCapabilityPayload,
+            {"operation_id": "createUploadSession", "upload_session_id": "session-1"},
+        ),
+        (KnowledgeFSUploadCapabilityPayload, {"operation_id": "completeUploadSession"}),
+    ],
+)
+def test_product_dto_cross_field_validators_reject_ambiguous_payloads(
+    model: type[object],
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        model.model_validate(payload)  # type: ignore[attr-defined]
+
+
+def test_product_dto_cross_field_validators_accept_unambiguous_payloads() -> None:
+    assert KnowledgeFSDocumentReindexPayload.model_validate({"all": True}).all is True
+    upload = KnowledgeFSUploadCapabilityPayload.model_validate(
+        {"operation_id": "completeUploadSession", "upload_session_id": "session-1"}
+    )
+    assert upload.upload_session_id == "session-1"
+
+
+def test_quality_dtos_normalize_tags_and_read_annotation_metadata() -> None:
+    golden = KnowledgeFSGoldenQuestionPayload(
+        annotation="Annotation",
+        question="Question",
+        tags=[" tag-1 ", "", "tag-1"],
+    )
+    bad_case = KnowledgeFSBadCaseCreatePayload(
+        reason="Reason",
+        tags=[" tag-1 ", "", "tag-1"],
+        trace_id="trace-1",
+    )
+    response = KnowledgeFSGoldenQuestionResponse.model_validate(
+        {
+            "id": "question-1",
+            "question": "Question",
+            "metadata": {"annotation": "Annotation"},
+            "tags": ["tag-1"],
+            "createdAt": "2026-07-28T06:58:18Z",
+            "updatedAt": "2026-07-28T06:59:16Z",
+        }
+    )
+
+    assert golden.tags == ["tag-1"]
+    assert bad_case.tags == ["tag-1"]
+    assert response.annotation == "Annotation"
+    with pytest.raises(ValidationError):
+        KnowledgeFSGoldenQuestionResponse.model_validate("invalid")
 
 
 def test_background_task_dtos_accept_the_knowledge_fs_wire_shape() -> None:
