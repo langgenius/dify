@@ -240,14 +240,14 @@ class TestCreateEventPoller:
         wf.get_node_config_by_id.return_value = {"data": {}}
         wf.get_node_type_from_node_config.return_value = BuiltinNodeTypes.START
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unable to create event poller for node type start"):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
     def test_raises_when_node_config_missing(self):
         wf = MagicMock()
         wf.get_node_config_by_id.return_value = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Node data not found for node n1"):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
 
