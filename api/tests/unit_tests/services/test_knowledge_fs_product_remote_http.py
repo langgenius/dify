@@ -15,6 +15,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteMultipartRequest,
     KnowledgeFSRemoteSSERequest,
+    UnavailableKnowledgeFSProductRemote,
 )
 from services.knowledge_fs.product_remote_http import HTTPKnowledgeFSProductRemoteClient
 
@@ -542,6 +543,62 @@ def _binary_request(**updates: object) -> KnowledgeFSRemoteBinaryRequest:
     return KnowledgeFSRemoteBinaryRequest(**values)  # type: ignore[arg-type]
 
 
+def _multipart_request(**updates: object) -> KnowledgeFSRemoteMultipartRequest:
+    values: dict[str, object] = {
+        "operation_id": "createDocument",
+        "method": "POST",
+        "path": "/knowledge-spaces/space-1/documents",
+        "namespace_id": "tenant-1",
+        "knowledge_space_id": "space-1",
+        "capability_token": "capability-token",
+        "trace_id": "trace-1",
+        "file": KnowledgeFSRemoteMultipartFile(
+            filename="notes.md",
+            content_type="text/markdown",
+            body=b"# Notes",
+        ),
+    }
+    values.update(updates)
+    return KnowledgeFSRemoteMultipartRequest(**values)  # type: ignore[arg-type]
+
+
+def _sse_request(**updates: object) -> KnowledgeFSRemoteSSERequest:
+    values: dict[str, object] = {
+        "operation_id": "createQuery",
+        "method": "POST",
+        "path": "/queries",
+        "capability_token": "capability-token",
+        "trace_id": "trace-1",
+        "payload": {
+            "knowledgeSpaceId": "space-1",
+            "mode": "fast",
+            "query": "hello",
+        },
+    }
+    values.update(updates)
+    return KnowledgeFSRemoteSSERequest(**values)  # type: ignore[arg-type]
+
+
+def test_unavailable_remote_fails_closed_for_every_transport() -> None:
+    remote = UnavailableKnowledgeFSProductRemote()
+    calls = (
+        lambda: remote.batch_space_summaries(
+            namespace_id="tenant-1",
+            knowledge_space_ids=("space-1",),
+            capability_token="capability-token",
+            trace_id="trace-1",
+        ),
+        lambda: remote.execute_json(_json_request()),
+        lambda: remote.execute_binary(_binary_request()),
+        lambda: remote.execute_multipart(_multipart_request()),
+        lambda: remote.execute_sse(_sse_request()),
+    )
+
+    for call in calls:
+        with pytest.raises(KnowledgeFSOperationUnavailableError, match="not configured"):
+            call()
+
+
 @pytest.mark.parametrize(
     "remote_request",
     [
@@ -587,6 +644,276 @@ def test_binary_remote_rejects_manifest_binding_and_empty_body_before_io(
     if status_code is not None:
         assert isinstance(raised.value, KnowledgeFSProductRequestRejectedError)
         assert raised.value.status_code == status_code
+
+
+@pytest.mark.parametrize(
+    ("updates", "error_type", "status_code"),
+    [
+        ({"operation_id": "missingOperation"}, KnowledgeFSOperationUnavailableError, None),
+        ({"method": "GET"}, KnowledgeFSOperationUnavailableError, None),
+        ({"namespace_id": ""}, KnowledgeFSProductRemoteError, None),
+        (
+            {
+                "file": KnowledgeFSRemoteMultipartFile(
+                    filename="",
+                    content_type="text/markdown",
+                    body=b"# Notes",
+                )
+            },
+            KnowledgeFSProductRequestRejectedError,
+            422,
+        ),
+        (
+            {
+                "file": KnowledgeFSRemoteMultipartFile(
+                    filename="notes\n.md",
+                    content_type="text/markdown",
+                    body=b"# Notes",
+                )
+            },
+            KnowledgeFSProductRequestRejectedError,
+            422,
+        ),
+        (
+            {
+                "file": KnowledgeFSRemoteMultipartFile(
+                    filename="notes.md",
+                    content_type="",
+                    body=b"# Notes",
+                )
+            },
+            KnowledgeFSProductRequestRejectedError,
+            422,
+        ),
+        (
+            {
+                "file": KnowledgeFSRemoteMultipartFile(
+                    filename="notes.md",
+                    content_type="text/markdown\r",
+                    body=b"# Notes",
+                )
+            },
+            KnowledgeFSProductRequestRejectedError,
+            422,
+        ),
+        (
+            {
+                "file": KnowledgeFSRemoteMultipartFile(
+                    filename="notes.md",
+                    content_type="text/markdown",
+                    body=b"",
+                )
+            },
+            KnowledgeFSProductRequestRejectedError,
+            422,
+        ),
+    ],
+)
+def test_multipart_remote_rejects_manifest_binding_and_invalid_file_before_io(
+    updates: dict[str, object],
+    error_type: type[Exception],
+    status_code: int | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ssrf_proxy, "make_request", pytest.fail)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(error_type) as raised:
+        client.execute_multipart(_multipart_request(**updates))
+
+    if status_code is not None:
+        assert isinstance(raised.value, KnowledgeFSProductRequestRejectedError)
+        assert raised.value.status_code == status_code
+
+
+def test_multipart_remote_rejects_request_and_response_limits_before_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ssrf_proxy, "make_request", pytest.fail)
+    operation = product_remote_http.KNOWLEDGE_FS_PRODUCT_OPERATIONS["createDocument"]
+    oversized_file = KnowledgeFSRemoteMultipartFile(
+        filename="notes.md",
+        content_type="text/markdown",
+        body=b"x" * (operation.max_request_bytes + 1),
+    )
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as oversized:
+        client.execute_multipart(_multipart_request(file=oversized_file))
+    assert oversized.value.status_code == 413
+
+    zero_limit_client = HTTPKnowledgeFSProductRemoteClient(
+        base_url="https://knowledge-fs.test",
+        timeout_seconds=3,
+        max_response_bytes=0,
+    )
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="response limit"):
+        zero_limit_client.execute_multipart(_multipart_request())
+
+
+def test_multipart_remote_maps_network_failure_to_stable_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_request(**_: object) -> httpx.Response:
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fail_request)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRemoteError, match="request failed"):
+        client.execute_multipart(_multipart_request())
+
+
+@pytest.mark.parametrize(
+    ("status_code", "content_type", "body", "error_type", "expected_status"),
+    [
+        (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
+        (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
+        (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),
+        (404, "application/json", b"{}", KnowledgeFSProductResourceNotFoundError, None),
+        (500, "application/json", b"{}", KnowledgeFSProductRemoteError, None),
+        (200, "text/plain", b"ok", KnowledgeFSProductRemoteError, None),
+        (200, "application/json", b"{", KnowledgeFSProductRemoteError, None),
+    ],
+)
+def test_multipart_remote_closes_and_maps_upstream_response_failures(
+    status_code: int,
+    content_type: str,
+    body: bytes,
+    error_type: type[Exception],
+    expected_status: int | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(status_code, content=body, headers={"Content-Type": content_type})
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(error_type) as raised:
+        client.execute_multipart(_multipart_request())
+
+    if expected_status is not None:
+        assert isinstance(raised.value, KnowledgeFSProductRequestRejectedError)
+        assert raised.value.status_code == expected_status
+    assert response.is_closed
+
+
+@pytest.mark.parametrize(
+    ("updates", "error_type", "status_code"),
+    [
+        ({"operation_id": "missingOperation"}, KnowledgeFSOperationUnavailableError, None),
+        ({"method": "GET"}, KnowledgeFSOperationUnavailableError, None),
+        ({"capability_token": ""}, KnowledgeFSProductRemoteError, None),
+        ({"payload": {"score": float("nan")}}, KnowledgeFSProductRemoteError, None),
+        (
+            {"payload": None, "query": (("cursor", "x" * (65 * 1024)),)},
+            KnowledgeFSProductRequestRejectedError,
+            413,
+        ),
+    ],
+)
+def test_sse_remote_rejects_manifest_binding_payload_and_size_before_io(
+    updates: dict[str, object],
+    error_type: type[Exception],
+    status_code: int | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ssrf_proxy, "make_request", pytest.fail)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(error_type) as raised:
+        client.execute_sse(_sse_request(**updates))
+
+    if status_code is not None:
+        assert isinstance(raised.value, KnowledgeFSProductRequestRejectedError)
+        assert raised.value.status_code == status_code
+
+
+def test_sse_remote_supports_get_stream_without_request_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+    response = httpx.Response(
+        200,
+        content=b"event: progress\ndata: {}\n\n",
+        headers={"Content-Type": "text/event-stream"},
+    )
+
+    def fake_make_request(**kwargs):
+        captured.update(kwargs)
+        return response
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fake_make_request)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    result = client.execute_sse(
+        _sse_request(
+            operation_id="streamResearchTask",
+            method="GET",
+            path="/research-tasks/task-1/events",
+            payload=None,
+            query=(("knowledgeSpaceId", "space-1"),),
+        )
+    )
+
+    assert b"".join(result.chunks) == b"event: progress\ndata: {}\n\n"
+    assert "content" not in captured
+    headers = captured["headers"]
+    assert isinstance(headers, dict)
+    assert "Content-Type" not in headers
+    result.close()
+
+
+def test_sse_remote_maps_network_failure_to_stable_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_request(**_: object) -> httpx.Response:
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fail_request)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRemoteError, match="SSE request failed"):
+        client.execute_sse(_sse_request())
+
+
+@pytest.mark.parametrize(
+    ("status_code", "headers", "expected_message"),
+    [
+        (
+            200,
+            {"Content-Type": "text/event-stream", "Content-Encoding": "gzip"},
+            "unsupported SSE encoding",
+        ),
+        (200, {"Content-Type": "text/plain"}, "unsupported SSE media type"),
+        (500, {"Content-Type": "text/plain"}, "unsupported error media type"),
+    ],
+)
+def test_sse_remote_closes_unsupported_upstream_responses(
+    status_code: int,
+    headers: dict[str, str],
+    expected_message: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(status_code, content=b"", headers=headers)
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRemoteError, match=expected_message):
+        client.execute_sse(_sse_request())
+
+    assert response.is_closed
+
+
+def test_sse_remote_preserves_json_error_stream_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = httpx.Response(
+        429,
+        json={"error": "busy"},
+        headers={"Content-Type": "application/problem+json", "Retry-After": "3"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    result = client.execute_sse(_sse_request())
+
+    assert result.status_code == 429
+    assert dict(result.headers)["retry-after"] == "3"
+    assert b"".join(result.chunks) == b'{"error":"busy"}'
+    result.close()
 
 
 @pytest.mark.parametrize("binary", [False, True])

@@ -707,6 +707,75 @@ def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
     assert set(call) == {"capability_token", "trace_id", "payload"}
 
 
+def test_service_query_stream_proxy_forwards_only_the_admitted_capability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    close = MagicMock()
+    facade = SimpleNamespace(
+        stream_query=MagicMock(
+            return_value=KnowledgeFSRemoteSSEResponse(
+                status_code=200,
+                headers=(
+                    ("content-type", "text/event-stream"),
+                    ("x-query-run-id", "query-1"),
+                ),
+                chunks=iter((b"event: answer\n", b'data: {"answer":"ok"}\n\n')),
+                close=close,
+            )
+        )
+    )
+    monkeypatch.setattr(service_resources, "_runtime", lambda: SimpleNamespace(facade=facade))
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        json={
+            "activeDocumentIds": [],
+            "activeEntityIds": [],
+            "knowledgeSpaceId": "space-1",
+            "mode": "fast",
+            "query": "hello",
+        },
+        headers={
+            "Authorization": "Bearer capability-token",
+            "Cookie": "session=must-not-forward",
+            "X-Trace-ID": "trace-1",
+        },
+    ):
+        post = inspect.unwrap(service_resources.KnowledgeFSServiceQueryStreamProxyApi.post)
+        response = post(service_resources.KnowledgeFSServiceQueryStreamProxyApi())
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/event-stream"
+    assert response.headers["X-Accel-Buffering"] == "no"
+    assert b"".join(response.response) == b'event: answer\ndata: {"answer":"ok"}\n\n'
+    close.assert_called_once_with()
+    call = facade.stream_query.call_args.kwargs
+    assert call["capability_token"] == "capability-token"
+    assert call["trace_id"] == "trace-1"
+    assert call["payload"].knowledge_space_id == "space-1"
+    assert set(call) == {"capability_token", "trace_id", "payload"}
+
+
+@pytest.mark.parametrize(
+    ("headers", "error_type"),
+    [
+        ({"X-Trace-ID": "trace-1"}, service_resources.KnowledgeFSInvalidCredentialHTTPError),
+        (
+            {"Authorization": "Bearer capability-token"},
+            service_resources.KnowledgeFSServiceInvalidRequestHTTPError,
+        ),
+    ],
+)
+def test_service_query_stream_proxy_rejects_invalid_internal_transport_headers(
+    headers: dict[str, str],
+    error_type: type[Exception],
+) -> None:
+    app = Flask(__name__)
+
+    with app.test_request_context(headers=headers), pytest.raises(error_type):
+        service_resources._stream_capability()
+
+
 def test_task_stream_capability_uses_broker(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
