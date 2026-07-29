@@ -80,6 +80,9 @@ const documentFilterParser = parseAsStringLiteral([
 const documentSearchParser = parseAsString.withDefault('').withOptions({
   limitUrlUpdates: debounce(300),
 })
+const documentUploadParser = parseAsStringLiteral(['1'] as const).withOptions({
+  history: 'replace',
+})
 
 const uploadExclusionReasonKey = {
   batch_byte_limit_exceeded: 'batchLimit',
@@ -207,8 +210,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const reindexPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
+  const [uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
-  const [uploadFormOpen, setUploadFormOpen] = useState(false)
+  const [uploadFormOpenedLocally, setUploadFormOpenedLocally] = useState(false)
   const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
   const [isFileDragActive, setIsFileDragActive] = useState(false)
   const fileDragDepthRef = useRef(0)
@@ -340,14 +344,25 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const canWrite = hasWorkspaceWritePermission && !permissionDenied && !writePermissionRevoked
   const canUpload = canWrite && uploadAvailable
+  const uploadFormOpen = canUpload && (uploadRequest === '1' || uploadFormOpenedLocally)
   const openUploadForm = useCallback((files: File[] = []) => {
     writePermissionFocusRecoveryRequestedRef.current = true
     writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
     fileDragDepthRef.current = 0
     setIsFileDragActive(false)
     setUploadFormInitialFiles(files)
-    setUploadFormOpen(true)
+    setUploadFormOpenedLocally(true)
   }, [])
+  const closeUploadForm = useCallback(() => {
+    setUploadFormOpenedLocally(false)
+    setUploadFormInitialFiles([])
+    void setUploadRequest(null)
+  }, [setUploadRequest])
+  useEffect(() => {
+    if (uploadRequest !== '1' || permissionPending || canUpload) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the route-owned one-shot signal after authorization resolves.
+    void setUploadRequest(null)
+  }, [canUpload, permissionPending, setUploadRequest, uploadRequest])
   const documentWriteRestrictionReasonId = permissionPending
     ? 'documents-permission-pending'
     : permissionQueryError
@@ -1504,8 +1519,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       } catch (error) {
         if (responseStatus(error) === 403) {
           writePermissionDenied = true
-          setUploadFormOpen(false)
-          setUploadFormInitialFiles([])
+          closeUploadForm()
           handleWritePermissionDenied()
         } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
         return false
@@ -1520,6 +1534,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [
       canUpload,
+      closeUploadForm,
       ensureModelSetupReady,
       handleWritePermissionDenied,
       knowledgeSpaceId,
@@ -2205,18 +2220,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <DocumentUploadForm
             initialFiles={uploadFormInitialFiles}
             uploading={uploading}
-            onCancel={() => {
-              setUploadFormOpen(false)
-              setUploadFormInitialFiles([])
-            }}
+            onCancel={closeUploadForm}
             onSubmit={async (files) => {
               writePermissionFocusRecoveryRequestedRef.current = true
               writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
               const uploaded = await handleUploadFiles(files)
-              if (uploaded) {
-                setUploadFormOpen(false)
-                setUploadFormInitialFiles([])
-              }
+              if (uploaded) closeUploadForm()
               return uploaded
             }}
           />

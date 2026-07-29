@@ -751,6 +751,42 @@ describe('DocumentsPage', () => {
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
   })
 
+  it('opens the upload form and consumes the one-shot URL request', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />, {
+      searchParams: '?upload=1',
+    })
+
+    expect(
+      await screen.findByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.get('upload')).toBeNull()
+      expect(urlUpdate?.options.history).toBe('replace')
+    })
+    expect(
+      screen.queryByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('consumes an upload URL request without opening the form for a read-only user', async () => {
+    permissionStateMock.datasetKeys = ['dataset.acl.readonly']
+    const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />, {
+      searchParams: '?upload=1',
+    })
+
+    expect(
+      screen.queryByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => {
+      const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.get('upload')).toBeNull()
+      expect(urlUpdate?.options.history).toBe('replace')
+    })
+  })
+
   it('renders revisions, sources, stable cursor-ordered rows, and every designed status', () => {
     documentsQuery.data = {
       pages: [

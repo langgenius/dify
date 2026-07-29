@@ -11,13 +11,16 @@ import {
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { userProfileAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
-import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
@@ -114,7 +117,7 @@ export function DefaultMenuContent({
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const { isEducationAccount } = useProviderContext()
-  const { setShowAccountSettingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   return (
     <>
@@ -145,7 +148,7 @@ export function DefaultMenuContent({
         <AccountMenuActionItem
           iconClassName="i-ri-settings-3-line"
           label={t(($) => $['userProfile.settings'], { ns: 'common' })}
-          onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
+          onClick={() => setSettingsDestination('members')}
         />
       </DropdownMenuGroup>
       <DropdownMenuSeparator className="my-0! bg-divider-subtle" />

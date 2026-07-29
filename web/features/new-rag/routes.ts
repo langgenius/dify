@@ -181,6 +181,9 @@ const newKnowledgeCreatePath = '/datasets/new/create'
 
 export const newKnowledgeListPath = '/datasets?view=new'
 
+export const newKnowledgeOverviewPath = (knowledgeSpaceId: string) =>
+  `/datasets/new/${knowledgeSpaceId}`
+
 export const newKnowledgeCreatePathWithStartMode = (startMode: NewKnowledgeStartMode) =>
   `${newKnowledgeCreatePath}?start=${startMode}`
 

@@ -18,15 +18,11 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
-// Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
@@ -237,7 +233,7 @@ describe('OnlineDocuments', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetShowAccountSettingModal.mockClear()
+    mockSetSettingsDestination.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -612,9 +608,7 @@ describe('OnlineDocuments', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
   })
 
@@ -709,9 +703,7 @@ describe('OnlineDocuments', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should handle credential change', () => {

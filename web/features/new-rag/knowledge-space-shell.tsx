@@ -21,6 +21,7 @@ import {
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
+  newKnowledgeOverviewPath,
   newKnowledgeQualityPath,
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
@@ -101,7 +102,7 @@ export function KnowledgeSpaceShell({
           )}
         </p>
         <div className="mt-5 flex gap-2">
-          <Button render={<Link href={newKnowledgeListPath} />}>
+          <Button nativeButton={false} render={<Link href={newKnowledgeListPath} />}>
             {t(($) => $['newKnowledge.backToList'])}
           </Button>
           {!notFound && (
@@ -115,10 +116,12 @@ export function KnowledgeSpaceShell({
   }
 
   const sourcesPath = newKnowledgeDetailPath(knowledgeSpaceId)
+  const overviewPath = newKnowledgeOverviewPath(knowledgeSpaceId)
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const retrievalTestPath = newKnowledgeRetrievalTestPath(knowledgeSpaceId)
   const qualityPath = newKnowledgeQualityPath(knowledgeSpaceId)
   const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
+  const overviewActive = pathname === overviewPath
   const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
   const retrievalTestActive =
@@ -224,19 +227,21 @@ export function KnowledgeSpaceShell({
             className="flex gap-0.5 overflow-x-auto px-2 py-1 sm:flex-1 sm:flex-col"
             aria-label={knowledgeSpaceName}
           >
-            <Button
-              aria-label={t(($) => $['newKnowledge.overview'])}
-              variant="ghost"
+            <Link
+              href={overviewPath}
+              aria-label={t(($) => $['newKnowledge.overviewTitle'])}
+              aria-current={overviewActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
-                'text-text-secondary',
+                overviewActive
+                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
               )}
-              onClick={showDeferredPage}
             >
               {navIcon('i-ri-layout-grid-line')}
-              {sidebarExpanded && t(($) => $['newKnowledge.overview'])}
-            </Button>
+              {sidebarExpanded && t(($) => $['newKnowledge.overviewTitle'])}
+            </Link>
             <Link
               href={sourcesPath}
               aria-label={t(($) => $['newKnowledge.sourceColumn'])}

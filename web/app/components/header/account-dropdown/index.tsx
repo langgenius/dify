@@ -12,11 +12,6 @@ import { useAtomValue } from 'jotai'
 import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import {
-  useSetEducationExpiredHasNoticed,
-  useSetEducationReverifyHasNoticed,
-  useSetEducationReverifyPrevExpireAt,
-} from '@/app/education-apply/storage'
 import { userProfileAtom } from '@/context/account-state'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { useRouter } from '@/next/navigation'
@@ -49,9 +44,6 @@ export default function AppSelector({ trigger, variant = 'default' }: AccountDro
   const { t } = useTranslation()
   const userProfile = useAtomValue(userProfileAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
-  const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
-  const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()
 
   const { mutateAsync: logout } = useLogout()
 
@@ -59,11 +51,6 @@ export default function AppSelector({ trigger, variant = 'default' }: AccountDro
     await logout()
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
-
-    // To avoid use other account's education notice info
-    clearEducationReverifyPrevExpireAt(null)
-    clearEducationReverifyHasNoticed(null)
-    clearEducationExpiredHasNoticed(null)
 
     router.push('/signin')
   }

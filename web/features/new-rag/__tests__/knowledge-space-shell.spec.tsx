@@ -102,6 +102,9 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.overviewTitle' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1')
     expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/sources',

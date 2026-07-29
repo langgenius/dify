@@ -266,6 +266,18 @@ async function authorizeOverview(
   const subject = context.get("subject") as AuthSubject;
   const space = await input.spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
   if (!space) return context.json({ error: "Knowledge space not found" }, 404);
+  const capabilityGrant = context.get("capabilityV2Grant");
+  if (capabilityGrant && requiredAccess === "read") {
+    const candidateGrants = currentCandidateGrants({
+      capabilityGrant,
+      decision: undefined,
+      knowledgeSpaceId,
+      subject,
+    });
+    return candidateGrants
+      ? { candidateGrants, knowledgeSpaceId, subject }
+      : context.json({ error: "Knowledge space access denied" }, 403);
+  }
   try {
     const decision = await input.authorization.authorize({
       callerKind: context.get("callerKind") ?? "interactive",

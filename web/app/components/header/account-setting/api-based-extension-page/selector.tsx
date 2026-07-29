@@ -1,9 +1,12 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { consoleQuery } from '@/service/client'
 import { ApiBasedExtensionModal } from './modal'
 
@@ -16,7 +19,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { data: apiBasedExtensions = [] } = useQuery(
     consoleQuery.apiBasedExtension.get.queryOptions(),
   )
@@ -84,9 +87,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                   className="flex cursor-pointer items-center border-none bg-transparent p-0 text-xs text-text-accent"
                   onClick={() => {
                     setOpen(false)
-                    openIntegrationsSetting({
-                      payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-                    })
+                    setSettingsDestination('custom-endpoint')
                   }}
                 >
                   {t(($) => $['apiBasedExtension.selector.manage'], { ns: 'common' })}

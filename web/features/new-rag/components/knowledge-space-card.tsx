@@ -2,6 +2,7 @@ import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/conso
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { newKnowledgeOverviewPath } from '../routes'
 import { KnowledgeSpaceActions } from './knowledge-space-actions'
 import { KnowledgeSpaceIcon } from './knowledge-space-icon'
 
@@ -29,7 +30,7 @@ export function KnowledgeSpaceCard({
   return (
     <li className="group relative">
       <Link
-        href={`/datasets/new/${knowledgeSpace.control_space_id}/sources`}
+        href={newKnowledgeOverviewPath(knowledgeSpace.control_space_id)}
         aria-label={name}
         className="relative flex h-[166px] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
       >

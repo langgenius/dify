@@ -70,6 +70,27 @@ describe("knowledge-space Overview handler branch coverage", () => {
     await expect(health.json()).resolves.toMatchObject({ state: "healthy" });
   });
 
+  it("uses the exact capability grant for integrated Overview reads without a legacy ACL", async () => {
+    const fixture = overviewFixture({
+      capability: capabilityGrant(),
+      decision: undefined,
+    });
+
+    for (const route of [
+      getKnowledgeSpaceOverviewStatsRoute,
+      getKnowledgeSpaceOverviewQueryOutcomesRoute,
+      getKnowledgeSpaceOverviewInventoryRoute,
+      getKnowledgeSpaceProductHealthRoute,
+    ]) {
+      expect((await fixture.invoke(route)).status).toBe(200);
+    }
+
+    expect(fixture.authorize).not.toHaveBeenCalled();
+    expect(fixture.overview.getStats).toHaveBeenCalledWith(
+      expect.objectContaining({ candidateGrants: ["scope:a", "scope:b"] }),
+    );
+  });
+
   it("lists fully filtered activity with and without a next cursor", async () => {
     const nextCursor = { id: EVENT_ID, occurredAt: "2026-07-14T12:00:00.000Z" };
     const fixture = overviewFixture({
@@ -194,6 +215,7 @@ interface OverviewFixtureOptions {
   readonly authorizeError?: Error;
   readonly body?: Record<string, unknown>;
   readonly callerKind?: string;
+  readonly capability?: unknown;
   readonly decision?: unknown;
   readonly overview?: boolean;
   readonly query?: Record<string, unknown>;
@@ -261,15 +283,14 @@ function overviewFixture(options: OverviewFixtureOptions = {}) {
       return options.transitionResult === undefined ? attention() : options.transitionResult;
     }),
   };
+  const authorize = vi.fn(async () => {
+    if (options.authorizeError) throw options.authorizeError;
+    return "decision" in options ? options.decision : decision();
+  });
   registerKnowledgeSpaceOverviewHandlers({
     access: { createPermissionSnapshot } as never,
     app: app as never,
-    authorization: {
-      authorize: vi.fn(async () => {
-        if (options.authorizeError) throw options.authorizeError;
-        return "decision" in options ? options.decision : decision();
-      }),
-    } as never,
+    authorization: { authorize } as never,
     now: () => "2026-07-14T12:00:00.000Z",
     ...(options.overview === false ? {} : { overview: overview as never }),
     spaces: {
@@ -277,6 +298,7 @@ function overviewFixture(options: OverviewFixtureOptions = {}) {
     } as never,
   });
   return {
+    authorize,
     createPermissionSnapshot,
     invoke: async (route: unknown) => {
       const callback = callbacks.get(route);
@@ -291,6 +313,7 @@ function overviewContext(options: OverviewFixtureOptions) {
   const values = new Map<string, unknown>([
     ["authenticatedApiKey", options.apiKey],
     ["callerKind", options.callerKind],
+    ["capabilityV2Grant", options.capability],
     ["subject", SUBJECT],
   ]);
   return {
@@ -308,6 +331,15 @@ function overviewContext(options: OverviewFixtureOptions) {
       },
     },
     set: (key: string, value: unknown) => values.set(key, value),
+  };
+}
+
+function capabilityGrant() {
+  return {
+    contentScopeIds: ["scope:b", "scope:a", "scope:a"],
+    namespaceId: SUBJECT.tenantId,
+    resource: { id: SPACE_ID, type: "knowledge_space" },
+    subject: SUBJECT.subjectId,
   };
 }
 
