@@ -10,7 +10,7 @@ import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -162,14 +162,16 @@ DATASET_DETAIL_KEYS = {
 }
 
 
-def assert_dataset_detail_shape(response: dict, *, with_partial_members: bool = False) -> None:
+def assert_dataset_detail_shape(response: dict[str, object], *, with_partial_members: bool = False) -> None:
     expected_keys = set(DATASET_DETAIL_KEYS)
     if with_partial_members:
         expected_keys.add("partial_member_list")
     assert set(response) == expected_keys
     assert isinstance(response["created_at"], int)
     assert isinstance(response["updated_at"], int)
-    assert set(response["retrieval_model_dict"]) == {
+    retrieval_model = response["retrieval_model_dict"]
+    assert isinstance(retrieval_model, dict)
+    assert set(retrieval_model) == {
         "search_method",
         "reranking_enable",
         "reranking_mode",
@@ -179,8 +181,10 @@ def assert_dataset_detail_shape(response: dict, *, with_partial_members: bool = 
         "score_threshold_enabled",
         "score_threshold",
     }
-    if response["external_retrieval_model"] is not None:
-        assert set(response["external_retrieval_model"]) == {
+    external_retrieval_model = response["external_retrieval_model"]
+    if external_retrieval_model is not None:
+        assert isinstance(external_retrieval_model, dict)
+        assert set(external_retrieval_model) == {
             "top_k",
             "score_threshold",
             "score_threshold_enabled",
@@ -201,17 +205,17 @@ class TestDatasetListApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_list_datasets_success(
         self,
-        mock_dataset_svc,
-        mock_provider_mgr,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetListApi
 
         mock_dataset_svc.get_datasets.return_value = ([make_dataset(controller_session, tenant, account)], 1)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
 
         with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
             api = DatasetListApi()
@@ -230,17 +234,17 @@ class TestDatasetListApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_list_datasets_preserves_repeated_tag_ids(
         self,
-        mock_dataset_svc,
-        mock_provider_mgr,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetListApi
 
         mock_dataset_svc.get_datasets.return_value = ([make_dataset(controller_session, tenant, account)], 1)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
 
         with app.test_request_context("/datasets?tag_ids=tag-a&tag_ids=tag-b", method="GET"):
             api = DatasetListApi()
@@ -269,12 +273,12 @@ class TestDatasetListApiPost:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_create_dataset_success(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetListApi
 
         mock_dataset_svc.create_empty_dataset.return_value = make_dataset(
@@ -297,12 +301,12 @@ class TestDatasetListApiPost:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_create_dataset_duplicate_name(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetListApi
 
         mock_dataset_svc.create_empty_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
@@ -330,19 +334,19 @@ class TestDatasetApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_success(
         self,
-        mock_dataset_svc,
-        mock_provider_mgr,
-        mock_perm_svc,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        mock_perm_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
 
         with app.test_request_context(
             f"/datasets/{dataset.id}",
@@ -361,21 +365,21 @@ class TestDatasetApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_partial_members_shape(
         self,
-        mock_dataset_svc,
-        mock_provider_mgr,
-        mock_perm_svc,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        mock_perm_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         dataset.permission = PermissionEnum.PARTIAL_TEAM
         mock_dataset_svc.get_dataset.return_value = dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
         mock_perm_svc.get_dataset_partial_member_list.return_value = ["user-1", "user-2"]
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
 
         with app.test_request_context(
             f"/datasets/{dataset.id}",
@@ -393,20 +397,20 @@ class TestDatasetApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_uses_default_external_retrieval_model(
         self,
-        mock_dataset_svc,
-        mock_provider_mgr,
-        mock_perm_svc,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        mock_perm_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         dataset.retrieval_model = None
         mock_dataset_svc.get_dataset.return_value = dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
 
         with app.test_request_context(f"/datasets/{dataset.id}", method="GET"):
             api = DatasetApi()
@@ -423,11 +427,11 @@ class TestDatasetApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_not_found(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = None
@@ -443,12 +447,12 @@ class TestDatasetApiGet:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_no_permission(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -470,13 +474,13 @@ class TestDatasetApiPatch:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_patch_dataset_success_shape(
         self,
-        mock_dataset_svc,
-        mock_perm_svc,
+        mock_dataset_svc: MagicMock,
+        mock_perm_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         dataset.name = "Updated Dataset"
@@ -528,13 +532,13 @@ class TestDatasetApiDelete:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_delete_dataset_success(
         self,
-        mock_dataset_svc,
-        mock_perm_svc,
+        mock_dataset_svc: MagicMock,
+        mock_perm_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.delete_dataset.return_value = True
@@ -551,12 +555,12 @@ class TestDatasetApiDelete:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_delete_dataset_not_found(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.delete_dataset.return_value = False
@@ -572,12 +576,12 @@ class TestDatasetApiDelete:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_delete_dataset_in_use(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         account: Account,
         dataset: Dataset,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetInUseError()
@@ -603,13 +607,13 @@ class TestDocumentStatusApiPatch:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_batch_update_status_success(
         self,
-        mock_dataset_svc,
-        mock_doc_svc,
+        mock_dataset_svc: MagicMock,
+        mock_doc_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         dataset: Dataset,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -635,11 +639,11 @@ class TestDocumentStatusApiPatch:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_batch_update_status_dataset_not_found(
         self,
-        mock_dataset_svc,
+        mock_dataset_svc: MagicMock,
         app: Flask,
         tenant: Tenant,
         dataset: Dataset,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = None
@@ -661,13 +665,13 @@ class TestDocumentStatusApiPatch:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_batch_update_status_permission_error(
         self,
-        mock_dataset_svc,
-        mock_doc_svc,
+        mock_dataset_svc: MagicMock,
+        mock_doc_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         dataset: Dataset,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -692,13 +696,13 @@ class TestDocumentStatusApiPatch:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_batch_update_status_indexing_error(
         self,
-        mock_dataset_svc,
-        mock_doc_svc,
+        mock_dataset_svc: MagicMock,
+        mock_doc_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         dataset: Dataset,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -723,13 +727,13 @@ class TestDocumentStatusApiPatch:
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_batch_update_status_value_error(
         self,
-        mock_dataset_svc,
-        mock_doc_svc,
+        mock_dataset_svc: MagicMock,
+        mock_doc_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         dataset: Dataset,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = dataset

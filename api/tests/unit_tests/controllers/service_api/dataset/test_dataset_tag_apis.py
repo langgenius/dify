@@ -8,7 +8,7 @@ cover the concrete objects and session passed across the controller boundary.
 import uuid
 from inspect import unwrap
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -85,12 +85,12 @@ class TestDatasetTagsApiGet:
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_list_tags_success(
         self,
-        mock_tag_svc,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         tag = make_tag(controller_session, tenant, account, id="tag-1", name="Test Tag", binding_count=0)
@@ -111,12 +111,12 @@ class TestDatasetTagsApiPost:
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_create_tag_success(
         self,
-        mock_tag_svc,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         tag = make_tag(controller_session, tenant, account, id="tag-new", name="New Tag")
@@ -134,7 +134,7 @@ class TestDatasetTagsApiPost:
         assert response == {"id": "tag-new", "name": "New Tag", "type": "knowledge", "binding_count": "0"}
         mock_tag_svc.save_tags.assert_called_once()
 
-    def test_create_tag_forbidden(self, app: Flask, account: Account):
+    def test_create_tag_forbidden(self, app: Flask, account: Account) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         account.role = TenantAccountRole.NORMAL
@@ -156,13 +156,13 @@ class TestDatasetTagsApiPatch:
     @patch("controllers.service_api.dataset.dataset.service_api_ns")
     def test_update_tag_success(
         self,
-        mock_service_api_ns,
-        mock_tag_svc,
+        mock_service_api_ns: MagicMock,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         tag = make_tag(controller_session, tenant, account, id="tag-1", name="Updated Tag")
@@ -186,7 +186,7 @@ class TestDatasetTagsApiPatch:
         assert tag_id == "tag-1"
         assert session is controller_session
 
-    def test_update_tag_forbidden(self, app: Flask, account: Account):
+    def test_update_tag_forbidden(self, app: Flask, account: Account) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         account.role = TenantAccountRole.NORMAL
@@ -208,12 +208,12 @@ class TestDatasetTagsApiDelete:
     @patch("controllers.service_api.dataset.dataset.service_api_ns")
     def test_delete_tag_success(
         self,
-        mock_service_api_ns,
-        mock_tag_svc,
+        mock_service_api_ns: MagicMock,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_tag_svc.delete_tag.return_value = None
@@ -237,12 +237,12 @@ class TestDatasetTagsBindingStatusApi:
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_get_dataset_tags_binding_status(
         self,
-        mock_tag_svc,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         tenant: Tenant,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsBindingStatusApi
 
         tag = make_tag(controller_session, tenant, account, id="tag_1", name="Test Tag")
@@ -266,11 +266,11 @@ class TestDatasetTagBindingApiPost:
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_bind_tags_success(
         self,
-        mock_tag_svc,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
         mock_tag_svc.save_tag_binding.return_value = None
@@ -291,7 +291,7 @@ class TestDatasetTagBindingApiPost:
             controller_session,
         )
 
-    def test_bind_tags_forbidden(self, app: Flask, account: Account):
+    def test_bind_tags_forbidden(self, app: Flask, account: Account) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
         account.role = TenantAccountRole.NORMAL
@@ -312,11 +312,11 @@ class TestDatasetTagUnbindingApiPost:
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_unbind_tag_success(
         self,
-        mock_tag_svc,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
         mock_tag_svc.delete_tag_binding.return_value = None
@@ -340,11 +340,11 @@ class TestDatasetTagUnbindingApiPost:
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_unbind_legacy_tag_id_success(
         self,
-        mock_tag_svc,
+        mock_tag_svc: MagicMock,
         app: Flask,
         account: Account,
         controller_session: Session,
-    ):
+    ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
         mock_tag_svc.delete_tag_binding.return_value = None
@@ -365,7 +365,7 @@ class TestDatasetTagUnbindingApiPost:
             controller_session,
         )
 
-    def test_unbind_tag_forbidden(self, app: Flask, account: Account):
+    def test_unbind_tag_forbidden(self, app: Flask, account: Account) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
         account.role = TenantAccountRole.NORMAL
