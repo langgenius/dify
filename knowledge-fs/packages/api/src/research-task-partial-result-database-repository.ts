@@ -8,14 +8,15 @@ import type {
 } from "@knowledge/core";
 import { EvidenceBundleSchema } from "@knowledge/core";
 
-import { numberColumn, stringColumn } from "./database-row-utils";
+import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
-import type {
-  AppendResearchTaskPartialResultInput,
-  ListResearchTaskPartialResultsInput,
-  ResearchTaskPartialResult,
-  ResearchTaskPartialResultRepository,
+import {
+  type AppendResearchTaskPartialResultInput,
+  type ListResearchTaskPartialResultsInput,
+  type ResearchTaskPartialResult,
+  type ResearchTaskPartialResultRepository,
+  normalizeResearchTaskPartialAnswer,
 } from "./research-task-job";
 
 export interface CreateDatabaseResearchTaskPartialResultRepositoryOptions {
@@ -41,6 +42,7 @@ export function createDatabaseResearchTaskPartialResultRepository({
   return {
     append: async (input) => {
       validateAppend(input);
+      const answer = normalizeResearchTaskPartialAnswer(input.answer);
       return database.transaction(async (transaction) => {
         await requireJobScope(database, transaction, input);
         const idempotencyKey =
@@ -64,6 +66,7 @@ export function createDatabaseResearchTaskPartialResultRepository({
           sequence,
           idempotencyKey,
           JSON.stringify(evidenceBundle),
+          answer ?? null,
           now(),
         ];
         await transaction.execute({
@@ -78,6 +81,7 @@ export function createDatabaseResearchTaskPartialResultRepository({
             "sequence",
             "idempotency_key",
             "evidence_bundle",
+            "answer",
             "created_at",
           ]
             .map((column) => q(database, column))
@@ -93,6 +97,7 @@ export function createDatabaseResearchTaskPartialResultRepository({
           tableName: partialTable,
         });
         return {
+          ...(answer ? { answer } : {}),
           evidenceBundle,
           knowledgeSpaceId: input.knowledgeSpaceId,
           researchTaskJobId: input.researchTaskJobId,
@@ -201,7 +206,9 @@ async function getByIdempotencyKey(
 }
 
 function partialFromRow(row: DatabaseRow): ResearchTaskPartialResult {
+  const answer = normalizeResearchTaskPartialAnswer(optionalStringColumn(row, "answer"));
   return {
+    ...(answer ? { answer } : {}),
     evidenceBundle: EvidenceBundleSchema.parse(jsonObjectColumn(row, "evidence_bundle")),
     knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
     researchTaskJobId: stringColumn(row, "research_task_job_id"),

@@ -72,8 +72,9 @@ describe("runApiDatabaseMigrations", () => {
         "0030_bulk_operations",
         "0031_source_connection_capability_provenance",
         "0032_capability_source_sync_policies",
+        "0033_research_task_final_answers",
       ],
-      pendingBeforeRun: 32,
+      pendingBeforeRun: 33,
     });
     expect(operations).toEqual([
       "schema",
@@ -143,8 +144,10 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(32);
+    expect(migrationSql).toHaveLength(33);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');
@@ -188,6 +191,7 @@ describe("runApiDatabaseMigrations", () => {
       "-- Migration id: 0031_source_connection_capability_provenance\n",
     );
     expect(migrationSql[31]).toContain("-- Migration id: 0032_capability_source_sync_policies\n");
+    expect(migrationSql[32]).toContain("-- Migration id: 0033_research_task_final_answers\n");
     expect(closed).toBe(true);
   });
 

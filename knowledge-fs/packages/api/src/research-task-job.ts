@@ -114,6 +114,7 @@ export interface ListResearchTaskJobsResult {
 }
 
 export interface ResearchTaskPartialResult {
+  answer?: string | undefined;
   evidenceBundle: EvidenceBundle;
   knowledgeSpaceId: string;
   researchTaskJobId: string;
@@ -122,6 +123,7 @@ export interface ResearchTaskPartialResult {
 }
 
 export interface AppendResearchTaskPartialResultInput {
+  readonly answer?: string | undefined;
   readonly evidenceBundle: EvidenceBundle;
   readonly idempotencyKey?: string | undefined;
   readonly knowledgeSpaceId: string;
@@ -144,6 +146,25 @@ export interface ListResearchTaskPartialResultsResult {
 export interface ResearchTaskPartialResultRepository {
   append(input: AppendResearchTaskPartialResultInput): Promise<ResearchTaskPartialResult>;
   list(input: ListResearchTaskPartialResultsInput): Promise<ListResearchTaskPartialResultsResult>;
+}
+
+export const RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS = 20_000;
+
+export function normalizeResearchTaskPartialAnswer(answer: string | undefined): string | undefined {
+  if (answer === undefined) {
+    return undefined;
+  }
+
+  const normalized = answer.trim();
+  if (!normalized) {
+    throw new Error("Research task partial result answer must not be empty");
+  }
+  if (normalized.length > RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS) {
+    throw new Error(
+      `Research task partial result answer exceeds maxChars=${RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS}`,
+    );
+  }
+  return normalized;
 }
 
 export interface InMemoryResearchTaskJobRepositoryOptions {
@@ -678,6 +699,7 @@ export function createInMemoryResearchTaskPartialResultRepository({
   return {
     append: async (input) => {
       validatePartialResultScope(input);
+      const answer = normalizeResearchTaskPartialAnswer(input.answer);
       const idempotencyKey = input.idempotencyKey?.trim();
       if (input.idempotencyKey !== undefined && !idempotencyKey) {
         throw new Error("Research task partial result idempotencyKey must not be empty");
@@ -697,6 +719,7 @@ export function createInMemoryResearchTaskPartialResultRepository({
       }
 
       const result = {
+        ...(answer ? { answer } : {}),
         evidenceBundle: EvidenceBundleSchema.parse(cloneEvidenceBundle(input.evidenceBundle)),
         knowledgeSpaceId: input.knowledgeSpaceId.trim(),
         researchTaskJobId: input.researchTaskJobId.trim(),

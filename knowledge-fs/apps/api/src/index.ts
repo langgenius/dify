@@ -24,6 +24,7 @@ import {
   createProfileAwareKnowledgeSpaceManifestRepository,
   createProfileAwareQueryGenerator,
   createPublishedProjectionReadSnapshotResolver,
+  createResearchAwareQueryGenerator,
   createRetrievalExecutionLeaseCoordinator,
   createRetrievalPlanner,
   createRetrievalTestExecutor,
@@ -577,8 +578,8 @@ const researchAnswerMultimodalOptions = {
   ...multimodalAnswerOptions,
   ...multimodalCitationOptions,
 };
-// Interactive query-stream is a retrieval surface: it returns bounded evidence and citations,
-// never an LLM/VLM-synthesized answer. Answer synthesis remains a separate Research capability.
+// Fast and Deep query-stream requests return bounded evidence and citations without answer
+// synthesis. Research uses the same retrieval foundation, then performs one final LLM synthesis.
 const retrievalEvidenceQueryGenerator = retriever
   ? createHybridQueryGenerator({
       limit: 5,
@@ -607,6 +608,13 @@ const researchAnswerQueryGenerator =
     ? createProfileAwareQueryGenerator({
         extractiveGenerator: retrievalEvidenceQueryGenerator,
         profileLlmGenerator: profileLlmAnswerQueryGenerator,
+      })
+    : undefined;
+const interactiveQueryGenerator =
+  retrievalEvidenceQueryGenerator && researchAnswerQueryGenerator
+    ? createResearchAwareQueryGenerator({
+        researchGenerator: researchAnswerQueryGenerator,
+        retrievalGenerator: retrievalEvidenceQueryGenerator,
       })
     : undefined;
 const researchProjectionSnapshotResolver = repositoryOptions.projectionSetPublications
@@ -773,7 +781,7 @@ const app = createKnowledgeGateway({
         },
       }
     : {}),
-  ...(retrievalEvidenceQueryGenerator ? { queryGenerator: retrievalEvidenceQueryGenerator } : {}),
+  ...(interactiveQueryGenerator ? { queryGenerator: interactiveQueryGenerator } : {}),
   ...(retrievalTestExecutor ? { retrievalTestExecutor } : {}),
   ...(publishedGraph ? { publishedGraph } : {}),
   ...(researchTaskRuntime

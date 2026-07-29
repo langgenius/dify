@@ -5313,6 +5313,7 @@ const tables = [
       integerColumn("sequence"),
       varcharColumn("idempotency_key", 512),
       jsonColumn("evidence_bundle"),
+      textColumn("answer", true),
       bigintColumn("created_at"),
     ],
   },

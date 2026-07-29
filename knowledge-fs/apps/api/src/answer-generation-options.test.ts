@@ -113,7 +113,7 @@ describe("createApiAnswerGenerationOptions", () => {
     expect(indexSource).not.toContain("model: answerGenerationOptions.model");
   });
 
-  it("keeps interactive retrieval evidence-only and reserves LLM synthesis for Research", async () => {
+  it("keeps Fast and Deep evidence-only while restoring final LLM synthesis for Research", async () => {
     const { readFile } = await import("node:fs/promises");
     const indexSource = await readFile(new URL("./index.ts", import.meta.url), "utf8");
     const citationOptionsStart = indexSource.indexOf("const multimodalCitationOptions =");
@@ -145,7 +145,11 @@ describe("createApiAnswerGenerationOptions", () => {
     expect(retrievalAssembly).toContain("...multimodalCitationOptions");
     expect(retrievalAssembly).not.toContain("multimodalAnswerOptions");
     expect(indexSource).toContain("generator: researchAnswerQueryGenerator");
-    expect(indexSource).toContain("{ queryGenerator: retrievalEvidenceQueryGenerator }");
+    expect(indexSource).toContain("createResearchAwareQueryGenerator");
+    expect(indexSource).toContain("researchGenerator: researchAnswerQueryGenerator");
+    expect(indexSource).toContain("retrievalGenerator: retrievalEvidenceQueryGenerator");
+    expect(indexSource).toContain("{ queryGenerator: interactiveQueryGenerator }");
+    expect(indexSource).not.toContain("{ queryGenerator: retrievalEvidenceQueryGenerator }");
     expect(indexSource).not.toContain("{ queryGenerator: researchAnswerQueryGenerator }");
   });
 

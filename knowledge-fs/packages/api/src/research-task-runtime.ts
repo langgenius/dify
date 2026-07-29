@@ -38,10 +38,11 @@ import type {
   ResearchTaskDurableRepository,
   ResearchTaskExecutionFence,
 } from "./research-task-durable-repository";
-import type {
-  ResearchTaskJob,
-  ResearchTaskJobStage,
-  ResearchTaskPartialResultRepository,
+import {
+  RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS,
+  type ResearchTaskJob,
+  type ResearchTaskJobStage,
+  type ResearchTaskPartialResultRepository,
 } from "./research-task-job";
 import type {
   ResearchTaskProgressEventType,
@@ -602,6 +603,7 @@ async function runResearchTask({
         })
       : undefined);
 
+  let answer = "";
   let evidenceBundle: EvidenceBundle | undefined;
   const iterator = generator
     .stream({
@@ -635,6 +637,14 @@ async function runResearchTask({
       break;
     }
     const event = result.value;
+    if (event.type === "delta") {
+      if (answer.length + event.delta.length > RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS) {
+        throw new Error(
+          `Research task partial result answer exceeds maxChars=${RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS}`,
+        );
+      }
+      answer += event.delta;
+    }
     evidenceBundle = evidenceBundleFromEvent(event) ?? evidenceBundle;
     if (
       event.type === "trace-step" &&
@@ -659,9 +669,14 @@ async function runResearchTask({
     await advance("generating");
   }
   await revalidate();
+  const normalizedAnswer = answer.trim();
+  if (normalizedAnswer && !evidenceBundle) {
+    throw new Error("Research task generated an answer without an evidence bundle");
+  }
   if (evidenceBundle) {
     await assertWritable();
     await partials.append({
+      ...(normalizedAnswer ? { answer: normalizedAnswer } : {}),
       evidenceBundle,
       idempotencyKey: `research-task:${current.id}:final-evidence`,
       knowledgeSpaceId: current.knowledgeSpaceId,

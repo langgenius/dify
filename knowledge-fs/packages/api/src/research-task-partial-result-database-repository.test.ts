@@ -40,6 +40,7 @@ describe.each(["postgres", "tidb"] as const)(
 
       await expect(
         firstRepository.append({
+          answer: "  Final researched answer.  ",
           evidenceBundle: evidenceBundle("bundle-1"),
           idempotencyKey: "partial-step-1",
           knowledgeSpaceId,
@@ -47,6 +48,7 @@ describe.each(["postgres", "tidb"] as const)(
           tenantId,
         }),
       ).resolves.toMatchObject({
+        answer: "Final researched answer.",
         evidenceBundle: { id: evidenceBundle("bundle-1").id },
         knowledgeSpaceId,
         researchTaskJobId,
@@ -62,6 +64,7 @@ describe.each(["postgres", "tidb"] as const)(
         1,
         "partial-step-1",
         JSON.stringify(evidenceBundle("bundle-1")),
+        "Final researched answer.",
         now,
       ]);
       expect(insert?.sql).toContain(dialect === "postgres" ? "::jsonb" : " AS JSON");
@@ -98,7 +101,7 @@ describe.each(["postgres", "tidb"] as const)(
       ]);
       secondScript.expectDone();
 
-      const replayRow = partialRow({ sequence: 7 });
+      const replayRow = partialRow({ answer: "Previously persisted answer.", sequence: 7 });
       const replayScript = scriptedDatabase(dialect, [
         step("research_task_jobs", "select", [{ id: researchTaskJobId }]),
         step("research_task_partial_results", "select", [replayRow]),
@@ -116,6 +119,7 @@ describe.each(["postgres", "tidb"] as const)(
           tenantId,
         }),
       ).resolves.toEqual({
+        answer: "Previously persisted answer.",
         evidenceBundle: evidenceBundle("bundle-7"),
         knowledgeSpaceId,
         researchTaskJobId,
@@ -177,6 +181,14 @@ describe.each(["postgres", "tidb"] as const)(
       const invalidOperations = [
         () =>
           repository.append({
+            answer: " ",
+            evidenceBundle: evidenceBundle("invalid"),
+            knowledgeSpaceId,
+            researchTaskJobId,
+            tenantId,
+          }),
+        () =>
+          repository.append({
             evidenceBundle: evidenceBundle("invalid"),
             knowledgeSpaceId,
             researchTaskJobId,
@@ -215,6 +227,7 @@ function evidenceBundle(id: string) {
 function partialRow(overrides: Partial<DatabaseRow> = {}): DatabaseRow {
   const sequence = typeof overrides.sequence === "number" ? overrides.sequence : 1;
   return {
+    answer: null,
     evidence_bundle: evidenceBundle(`bundle-${sequence}`),
     knowledge_space_id: knowledgeSpaceId,
     research_task_job_id: researchTaskJobId,

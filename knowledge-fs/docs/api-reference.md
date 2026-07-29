@@ -865,7 +865,7 @@ compatibility path does not admit Auto.
 **Auth**: Bearer; scope `knowledge-spaces:read`.
 **Path params**: `id` (string, min 1). **Query** (strict): `limit` (int 1–100, optional, default 25); `cursor` (optional).
 **Responses**:
-- `200`: `{ items: [{ tenantId, knowledgeSpaceId, researchTaskJobId, sequence: int>0, evidenceBundle }], nextCursor? }`. `EvidenceBundle` `{ id, query, state: enum(answerable|partial|not-enough-evidence|conflict|permission-limited), items: [{ nodeId, text, score: 0–1, scores, freshness, citations[], conflicts[], metadata }], missingEvidence: [{ text, reason: enum(not-retrieved|permission-filtered|stale|conflict|unknown), expectedEvidenceId?, metadata }], traceId?, createdAt }`.
+- `200`: `{ items: [{ tenantId, knowledgeSpaceId, researchTaskJobId, sequence: int>0, answer?: string, evidenceBundle }], nextCursor? }`. `answer` is the final Research-only LLM synthesis; legacy rows and evidence-only results omit it. `EvidenceBundle` `{ id, query, state: enum(answerable|partial|not-enough-evidence|conflict|permission-limited), items: [{ nodeId, text, score: 0–1, scores, freshness, citations[], conflicts[], metadata }], missingEvidence: [{ text, reason: enum(not-retrieved|permission-filtered|stale|conflict|unknown), expectedEvidenceId?, metadata }], traceId?, createdAt }`.
 - `404`; `401`/`403`.
 
 ### `GET /research-tasks/{id}/events`

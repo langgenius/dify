@@ -13,6 +13,30 @@ export interface ProfileAwareQueryGeneratorOptions {
   readonly profileLlmGenerator?: QueryGenerator | undefined;
 }
 
+export interface ResearchAwareQueryGeneratorOptions {
+  /** Evidence-only generator used by Fast and Deep interactive retrieval. */
+  readonly retrievalGenerator: QueryGenerator;
+  /** Evidence retrieval followed by one final LLM synthesis, used only by Research. */
+  readonly researchGenerator: QueryGenerator;
+}
+
+/**
+ * Keeps interactive retrieval mode semantics explicit at the final generator boundary.
+ *
+ * Fast and Deep are retrieval-only product surfaces. Research shares the same retrieval
+ * foundations, then invokes the profile-selected reasoning model for one final synthesis.
+ */
+export function createResearchAwareQueryGenerator({
+  researchGenerator,
+  retrievalGenerator,
+}: ResearchAwareQueryGeneratorOptions): QueryGenerator {
+  return {
+    stream: async function* (input: QueryGenerationInput): AsyncGenerator<QueryGenerationEvent> {
+      yield* (input.mode === "research" ? researchGenerator : retrievalGenerator).stream(input);
+    },
+  };
+}
+
 /**
  * Selects answer synthesis without letting a configured space silently lose its reasoning model.
  *

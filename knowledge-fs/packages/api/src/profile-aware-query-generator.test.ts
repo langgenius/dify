@@ -8,6 +8,7 @@ import type {
 import {
   ReasoningCapabilityUnavailableError,
   createProfileAwareQueryGenerator,
+  createResearchAwareQueryGenerator,
 } from "./profile-aware-query-generator";
 
 const INPUT: QueryGenerationInput = {
@@ -124,6 +125,43 @@ describe("profile-aware query generator", () => {
       message: "unavailable",
       name: "ReasoningCapabilityUnavailableError",
     });
+  });
+});
+
+describe("research-aware query generator", () => {
+  it.each(["fast", "deep"] as const)(
+    "keeps %s interactive queries on the evidence-only generator",
+    async (mode) => {
+      const retrieval = recordingGenerator("retrieval");
+      const research = recordingGenerator("research-answer");
+      const generator = createResearchAwareQueryGenerator({
+        researchGenerator: research.generator,
+        retrievalGenerator: retrieval.generator,
+      });
+
+      await expect(drain(generator, { ...INPUT, mode })).resolves.toEqual([
+        expect.objectContaining({ delta: "retrieval", type: "delta" }),
+      ]);
+      expect(retrieval.stream).toHaveBeenCalledOnce();
+      expect(retrieval.stream).toHaveBeenCalledWith(expect.objectContaining({ mode }));
+      expect(research.stream).not.toHaveBeenCalled();
+    },
+  );
+
+  it("routes Research through retrieval plus final LLM synthesis", async () => {
+    const retrieval = recordingGenerator("retrieval");
+    const research = recordingGenerator("research-answer");
+    const generator = createResearchAwareQueryGenerator({
+      researchGenerator: research.generator,
+      retrievalGenerator: retrieval.generator,
+    });
+
+    await expect(drain(generator, { ...INPUT, mode: "research" })).resolves.toEqual([
+      expect.objectContaining({ delta: "research-answer", type: "delta" }),
+    ]);
+    expect(research.stream).toHaveBeenCalledOnce();
+    expect(research.stream).toHaveBeenCalledWith(expect.objectContaining({ mode: "research" }));
+    expect(retrieval.stream).not.toHaveBeenCalled();
   });
 });
 

@@ -45,6 +45,7 @@ describe("research-task-response-schemas", () => {
       ResearchTaskPartialResultListResponseSchema.parse({
         items: [
           {
+            answer: "The final researched answer.",
             evidenceBundle: {
               createdAt: "2026-05-14T00:00:00.000Z",
               id: UUID_A,
@@ -59,7 +60,9 @@ describe("research-task-response-schemas", () => {
           },
         ],
       }),
-    ).toMatchObject({ items: [{ sequence: 1 }] });
+    ).toMatchObject({
+      items: [{ answer: "The final researched answer.", sequence: 1 }],
+    });
   });
 
   it("rejects invalid persisted retrieval settings", () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS,
+  type ResearchTaskDurableDispatch,
   createInMemoryResearchTaskJobRepository,
   createInMemoryResearchTaskPartialResultRepository,
   createResearchTaskJobStateMachine,
@@ -57,6 +59,17 @@ describe("research task job state machine", () => {
     await expect(machine.start(missing)).rejects.toThrow(
       "exactly one durable authorization binding",
     );
+
+    const { permissionSnapshot: _snapshot, ...subjectOnly } = baseStartInput();
+    await expect(machine.start(subjectOnly)).rejects.toThrow(
+      "Research task legacy authorization binding is incomplete",
+    );
+    await expect(
+      machine.start({
+        ...missing,
+        capabilityGrantId: " ",
+      }),
+    ).rejects.toThrow("Research task capabilityGrantId is required");
   });
 
   it("starts a research task and enqueues bounded durable work", async () => {
@@ -95,6 +108,38 @@ describe("research task job state machine", () => {
       },
     ]);
     expect(record).toHaveBeenCalledWith({ lifecycle: "queued", taskKind: "research" });
+  });
+
+  it("uses the durable dispatch for both initial delivery and resume", async () => {
+    const repository = createInMemoryResearchTaskJobRepository({ maxJobs: 10 });
+    const durableDispatch: ResearchTaskDurableDispatch = {
+      requestResume: vi.fn(async ({ job, resumeFromStage, updatedAt }) =>
+        repository.update({
+          ...job,
+          stage: resumeFromStage,
+          updatedAt,
+        }),
+      ),
+      start: vi.fn(async (job) => repository.create(job)),
+    };
+    const machine = createResearchTaskJobStateMachine({
+      durableDispatch,
+      generateId: () => "research-task-job-1",
+      jobs: new FakeJobQueue(),
+      now: () => 1_000,
+      repository,
+    });
+
+    const job = await machine.start(baseStartInput());
+    await machine.advance(job.id, "planning");
+    await machine.pause(job.id, { reason: "backpressure" });
+    const resumed = await machine.resume(job.id);
+
+    expect(durableDispatch.start).toHaveBeenCalledOnce();
+    expect(durableDispatch.requestResume).toHaveBeenCalledWith(
+      expect.objectContaining({ resumeFromStage: "planning" }),
+    );
+    expect(resumed.stage).toBe("planning");
   });
 
   it("persists retrieval mode and topK while queue payloads contain only the job locator", async () => {
@@ -253,6 +298,14 @@ describe("research task job state machine", () => {
     expect(() => createInMemoryResearchTaskJobRepository({ maxJobs: 0 })).toThrow(
       "Research task job repository maxJobs must be at least 1",
     );
+    expect(() =>
+      createResearchTaskJobStateMachine({
+        generateId: () => "unused",
+        jobs: new FakeJobQueue(),
+        maxExecutionAttempts: 0,
+        repository,
+      }),
+    ).toThrow("Research task job maxExecutionAttempts must be at least 1");
     await expect(machine.get("missing")).resolves.toBeNull();
     await expect(machine.advance("missing", "planning")).rejects.toThrow(
       "Research task job missing not found",
@@ -263,6 +316,27 @@ describe("research task job state machine", () => {
     await expect(machine.start({ ...baseStartInput(), query: " " })).rejects.toThrow(
       "Research task job query is required",
     );
+    await expect(
+      machine.start({
+        ...baseStartInput(),
+        permissionSnapshot: { ...basePermissionSnapshot, id: " " },
+      }),
+    ).rejects.toThrow("Research task permission snapshot id is required");
+    await expect(
+      machine.start({
+        ...baseStartInput(),
+        permissionSnapshot: {
+          ...basePermissionSnapshot,
+          accessChannel: "invalid" as never,
+        },
+      }),
+    ).rejects.toThrow("Research task permission snapshot access channel is invalid");
+    await expect(
+      machine.start({
+        ...baseStartInput(),
+        permissionSnapshot: { ...basePermissionSnapshot, revision: 0 },
+      }),
+    ).rejects.toThrow("Research task permission snapshot revision must be at least 1");
     await expect(
       machine.start({
         ...baseStartInput(),
@@ -337,6 +411,80 @@ describe("research task job state machine", () => {
     });
     expect(secondPage.items.map((item) => item.id)).toEqual([oldest.id]);
     expect(secondPage.nextCursor).toBeUndefined();
+  });
+
+  it("fails closed on unavailable listing, invalid cursors, and stale repository writes", async () => {
+    const fullRepository = createInMemoryResearchTaskJobRepository({ maxJobs: 10 });
+    const { listBySpace: _listBySpace, ...repositoryWithoutListing } = fullRepository;
+    const unavailableMachine = createResearchTaskJobStateMachine({
+      generateId: () => "unused",
+      jobs: new FakeJobQueue(),
+      repository: repositoryWithoutListing,
+    });
+    const listInput = {
+      capabilityRequester: {
+        callerKind: "interactive" as const,
+        grantId: "grant-1",
+        subjectId: "subject-1",
+      },
+      knowledgeSpaceId: "space-1",
+      limit: 1,
+      tenantId: "tenant-1",
+    };
+
+    await expect(unavailableMachine.listBySpace(listInput)).rejects.toThrow(
+      "Research task space listing is unavailable",
+    );
+
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => "research-task-job-1",
+      jobs: new FakeJobQueue(),
+      now: () => 1_000,
+      repository: fullRepository,
+    });
+    const job = await machine.start(capabilityStartInput("grant-1"));
+    await expect(machine.listBySpace({ ...listInput, limit: 0 })).rejects.toThrow(
+      "Research task list limit must be between 1 and 100",
+    );
+    await expect(
+      machine.listBySpace({
+        ...listInput,
+        cursor: { createdAt: -1, id: job.id },
+      }),
+    ).rejects.toThrow("Research task list cursor createdAt must be a nonnegative integer");
+    await expect(fullRepository.update({ ...job, rowVersion: 0 })).rejects.toThrow(
+      "Research task job update lost its row-version fence",
+    );
+  });
+
+  it("orders equal timestamps by id and excludes legacy jobs from Capability listing", async () => {
+    const repository = createInMemoryResearchTaskJobRepository({ maxJobs: 10 });
+    const ids = ["research-task-b", "research-task-a", "legacy-task"];
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => ids.shift() ?? "unexpected-task",
+      jobs: new FakeJobQueue(),
+      now: () => 1_000,
+      repository,
+    });
+    const grantId = "grant-1";
+    await machine.start(capabilityStartInput(grantId));
+    await machine.start(capabilityStartInput(grantId));
+    await machine.start(baseStartInput());
+
+    await expect(
+      machine.listBySpace({
+        capabilityRequester: {
+          callerKind: "interactive",
+          grantId,
+          subjectId: "subject-1",
+        },
+        knowledgeSpaceId: "space-1",
+        limit: 10,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: "research-task-b" }, { id: "research-task-a" }],
+    });
   });
 
   it("records step costs and cancels when the research budget is exhausted", async () => {
@@ -593,11 +741,23 @@ describe("research task partial result repository", () => {
     });
 
     const first = await repository.append({
+      answer: "  The first final answer.  ",
       evidenceBundle: evidenceBundle("018f0d60-7a49-7cc2-9c1b-5b36f18f6a01", "first evidence"),
+      idempotencyKey: "final-answer",
       knowledgeSpaceId: "space-1",
       researchTaskJobId: "research-task-job-1",
       tenantId: "tenant-1",
     });
+    await expect(
+      repository.append({
+        answer: "This replay must not replace the first result.",
+        evidenceBundle: evidenceBundle("018f0d60-7a49-7cc2-9c1b-5b36f18f6a08", "replayed evidence"),
+        idempotencyKey: "final-answer",
+        knowledgeSpaceId: "space-1",
+        researchTaskJobId: "research-task-job-1",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toEqual(first);
     await repository.append({
       evidenceBundle: evidenceBundle("018f0d60-7a49-7cc2-9c1b-5b36f18f6a02", "second evidence"),
       knowledgeSpaceId: "space-1",
@@ -619,6 +779,7 @@ describe("research task partial result repository", () => {
     expect(firstPage).toMatchObject({
       items: [
         {
+          answer: "The first final answer.",
           evidenceBundle: { id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a01" },
           sequence: 1,
         },
@@ -658,6 +819,38 @@ describe("research task partial result repository", () => {
         }),
       ]),
     });
+
+    await expect(
+      repository.append({
+        answer: " ",
+        evidenceBundle: evidenceBundle("018f0d60-7a49-7cc2-9c1b-5b36f18f6a06", "invalid answer"),
+        knowledgeSpaceId: "space-1",
+        researchTaskJobId: "research-task-job-3",
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toThrow("answer must not be empty");
+    await expect(
+      repository.append({
+        evidenceBundle: evidenceBundle(
+          "018f0d60-7a49-7cc2-9c1b-5b36f18f6a09",
+          "invalid idempotency key",
+        ),
+        idempotencyKey: " ",
+        knowledgeSpaceId: "space-1",
+        researchTaskJobId: "research-task-job-3",
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toThrow("idempotencyKey must not be empty");
+
+    await expect(
+      repository.append({
+        answer: "x".repeat(RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS + 1),
+        evidenceBundle: evidenceBundle("018f0d60-7a49-7cc2-9c1b-5b36f18f6a07", "oversized answer"),
+        knowledgeSpaceId: "space-1",
+        researchTaskJobId: "research-task-job-3",
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toThrow(`answer exceeds maxChars=${RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS}`);
   });
 
   it("rejects unbounded partial result storage and reads", async () => {

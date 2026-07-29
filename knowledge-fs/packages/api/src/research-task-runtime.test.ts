@@ -19,6 +19,7 @@ import type {
   ResearchTaskOutboxEvent,
 } from "./research-task-durable-repository";
 import {
+  RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS,
   type ResearchTaskJob,
   type ResearchTaskJobStage,
   createInMemoryResearchTaskPartialResultRepository,
@@ -275,6 +276,8 @@ describe("research task production runtime", () => {
           generationInputs.push(input);
           yield traceStep("query.retrieve");
           yield traceStep("query.answer");
+          yield { delta: "The warranty ", type: "delta" as const };
+          yield { delta: "is two years.", type: "delta" as const };
           yield {
             finishReason: "retrieval-evidence",
             metadata: { evidenceBundle: evidenceBundle() },
@@ -324,7 +327,9 @@ describe("research task production runtime", () => {
     ]);
     await expect(
       partials.list({ limit: 10, researchTaskJobId: JOB_ID, tenantId: "tenant-1" }),
-    ).resolves.toMatchObject({ items: [{ sequence: 1 }] });
+    ).resolves.toMatchObject({
+      items: [{ answer: "The warranty is two years.", sequence: 1 }],
+    });
     await expect(
       progress.list({ limit: 20, researchTaskJobId: JOB_ID, tenantId: "tenant-1" }),
     ).resolves.toMatchObject({
@@ -337,6 +342,43 @@ describe("research task production runtime", () => {
         { stage: "completed", type: "research_task.stage_changed" },
       ],
     });
+  });
+
+  it.each([
+    {
+      error: `Research task partial result answer exceeds maxChars=${RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS}`,
+      kind: "oversized" as const,
+    },
+    {
+      error: "Research task generated an answer without an evidence bundle",
+      kind: "missing-evidence" as const,
+    },
+  ])("fails and retries a $kind generator result instead of persisting it", async (scenario) => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* () {
+          yield {
+            delta:
+              scenario.kind === "oversized"
+                ? "x".repeat(RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS + 1)
+                : "Unsupported final answer",
+            type: "delta" as const,
+          };
+        },
+      },
+      maxRetryDelayMs: 1,
+      now: () => 1_000,
+      retryDelayMs: 1,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 0,
+      retryScheduled: 1,
+      succeeded: 0,
+    });
+    expect(repository.job.error).toBe(scenario.error);
   });
 
   it("reuses the frozen publication and profiles across retries without mutable reads", async () => {

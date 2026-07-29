@@ -1,6 +1,8 @@
 import { z } from "@hono/zod-openapi";
 import { EvidenceBundleSchema } from "@knowledge/core";
 
+import { RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS } from "./research-task-job";
+
 export const ResearchTaskJobResponseSchema = z
   .object({
     budgetUsd: z.number().nonnegative().optional(),
@@ -60,6 +62,7 @@ export const ResearchTaskJobListResponseSchema = z
 
 export const ResearchTaskPartialResultResponseSchema = z
   .object({
+    answer: z.string().min(1).max(RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS).optional(),
     evidenceBundle: EvidenceBundleSchema,
     knowledgeSpaceId: z.string().min(1),
     researchTaskJobId: z.string().min(1),
