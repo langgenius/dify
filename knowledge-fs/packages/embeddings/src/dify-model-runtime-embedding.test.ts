@@ -29,7 +29,7 @@ const BASE = {
 } as const;
 
 describe("Dify model runtime embedding provider", () => {
-  it("embeds through Dify and maps the ModelInstance response", async () => {
+  it("embeds through Dify and preserves the selected route across upstream model aliases", async () => {
     const calls: DifyTextEmbeddingInput[] = [];
     const provider = createDifyModelRuntimeEmbeddingProvider({
       ...BASE,
@@ -61,11 +61,11 @@ describe("Dify model runtime embedding provider", () => {
       ],
       metadata: {
         dimension: 2,
-        model: "resolved-model",
+        model: "text-embedding-3-large",
         provider: "dify-model-runtime",
         usage: { totalTokens: 7 },
       },
-      model: "resolved-model",
+      model: "text-embedding-3-large",
     });
     expect(calls[0]).toMatchObject({
       inputType: "document",
@@ -107,6 +107,17 @@ describe("Dify model runtime embedding provider", () => {
     await expect(provider.embed({ model: BASE.model, texts: ["q"] })).rejects.toBeInstanceOf(
       ProviderInputError,
     );
+  });
+
+  it("rejects a model outside the provider's bound Dify route", async () => {
+    const provider = createDifyModelRuntimeEmbeddingProvider({
+      ...BASE,
+      client: fakeClient(async () => ({ embeddings: [[1, 1]] })),
+    });
+
+    await expect(
+      provider.embed({ model: "other-embedding", tenantId: "t", texts: ["q"] }),
+    ).rejects.toThrow("is bound to model text-embedding-3-large");
   });
 
   it("rejects invalid or mismatched embedding responses", async () => {

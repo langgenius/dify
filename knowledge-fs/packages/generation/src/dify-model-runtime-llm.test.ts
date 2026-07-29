@@ -36,15 +36,18 @@ function deltaChunk(content: string): unknown {
 }
 
 describe("Dify model runtime LLM provider", () => {
-  it("streams delta events then a done event with usage, and maps the request", async () => {
+  it("streams deltas and preserves the selected route across upstream model aliases", async () => {
     let captured: DifyLlmInput | undefined;
     const provider = createDifyModelRuntimeLlmProvider({
       ...BASE,
       client: fakeClient(
         () => [
-          { delta: { message: { content: "Hel" } }, model: "gpt-4.1-mini-2025" },
+          { delta: { message: { content: "Hel" } }, model: BASE.model },
           deltaChunk("lo"),
-          { delta: { finish_reason: "stop", usage: { completion_tokens: 2, prompt_tokens: 5 } } },
+          {
+            delta: { finish_reason: "stop", usage: { completion_tokens: 2, prompt_tokens: 5 } },
+            model: "gpt-4.1-mini-runtime-deployment",
+          },
         ],
         (input) => {
           captured = input;
@@ -73,7 +76,7 @@ describe("Dify model runtime LLM provider", () => {
       {
         finishReason: "stop",
         metadata: {
-          model: "gpt-4.1-mini-2025",
+          model: BASE.model,
           provider: "dify-model-runtime",
           usage: { completionTokens: 2, promptTokens: 5 },
         },
@@ -186,6 +189,13 @@ describe("Dify model runtime LLM provider", () => {
     await expect(
       provider.generate({ messages: [{ content: "hi", role: "user" }], model: "gpt-4.1-mini" }),
     ).rejects.toThrow("requires a tenantId");
+    await expect(
+      provider.generate({
+        messages: [{ content: "hi", role: "user" }],
+        model: "other-llm",
+        tenantId: "t",
+      }),
+    ).rejects.toThrow("is bound to model gpt-4.1-mini");
   });
 
   it("threads model parameters, skips unparseable chunks, and maps partial usage", async () => {

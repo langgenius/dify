@@ -464,6 +464,7 @@ export function createDifyModelRuntimeEmbeddingProvider(
     kind: "dify-model-runtime",
     async embed(input) {
       validateEmbedInput(input, { maxBatchSize, maxTextBytes });
+      assertDifyRouteModel(input.model, options.model, "embedding");
 
       const tenantId = input.tenantId?.trim();
 
@@ -495,10 +496,8 @@ export function createDifyModelRuntimeEmbeddingProvider(
         );
       }
 
-      const model = parsed.data.model ?? input.model;
       const dimension = validateEmbeddingResponseVectors(parsed.data.embeddings);
-      const configuredDimension =
-        observedDimensions.get(input.model) ?? observedDimensions.get(model);
+      const configuredDimension = observedDimensions.get(input.model);
 
       if (configuredDimension !== undefined && configuredDimension !== dimension) {
         throw new ProviderResponseError(
@@ -507,18 +506,20 @@ export function createDifyModelRuntimeEmbeddingProvider(
       }
 
       observedDimensions.set(input.model, dimension);
-      observedDimensions.set(model, dimension);
       const totalTokens = parsed.data.usage?.total_tokens ?? parsed.data.usage?.tokens;
 
       return {
         dense: parsed.data.embeddings.map((vector) => [...vector]),
         metadata: {
           dimension,
-          model,
+          // Dify has already resolved and invoked the exact catalog route selected by the
+          // knowledge-space profile. Upstream providers may report a deployment name or
+          // versioned alias, so expose the stable Dify route identity to downstream checks.
+          model: input.model,
           provider: "dify-model-runtime",
           ...(totalTokens === undefined ? {} : { usage: { totalTokens } }),
         },
-        model,
+        model: input.model,
       };
     },
     async models() {
@@ -624,6 +625,7 @@ export function createDifyModelRuntimeRerankerProvider(
     kind: "dify-model-runtime",
     async rerank(input) {
       validateRerankInput(input, { maxDocuments, maxTextBytes });
+      assertDifyRouteModel(input.model, options.model, "rerank");
 
       const tenantId = input.tenantId?.trim();
 
@@ -680,17 +682,12 @@ export function createDifyModelRuntimeRerankerProvider(
         };
       });
 
-      const model = (parsed.data.model ?? input.model).trim();
-      if (!model || model !== input.model) {
-        throw new ProviderResponseError(
-          `Dify rerank model mismatch: requested=${input.model}, returned=${parsed.data.model ?? ""}`,
-        );
-      }
-
       return {
         items,
-        metadata: { model, provider: "dify-model-runtime" },
-        model,
+        // The response model may be an upstream deployment name or versioned alias.
+        // Catalog resolution plus the tenant-bound Dify invocation establish the route identity.
+        metadata: { model: input.model, provider: "dify-model-runtime" },
+        model: input.model,
       };
     },
     async models() {
@@ -709,6 +706,18 @@ function defaultDifyModelRuntimeRerankerModel(
     provider: "dify-model-runtime",
     version: "dify-model-runtime",
   };
+}
+
+function assertDifyRouteModel(
+  requestedModel: string,
+  configuredModel: string,
+  capability: "embedding" | "rerank",
+): void {
+  if (requestedModel.trim() !== configuredModel.trim()) {
+    throw new ProviderInputError(
+      `Dify model runtime ${capability} provider is bound to model ${configuredModel.trim()}`,
+    );
+  }
 }
 
 function validateEmbedInput(
