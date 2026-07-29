@@ -69,7 +69,9 @@ const Installed: FC<Props> = ({
     onStartToInstall?.()
 
     try {
-      if (hasInstalled) await uninstallPlugin(installedInfoPayload.installedId)
+      if (hasInstalled) {
+        await uninstallPlugin(installedInfoPayload.installedId, { preserveCredentials: true })
+      }
 
       const response = await installPackageFromLocal(uniqueIdentifier)
       const { all_installed, task_id } = response
