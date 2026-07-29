@@ -23,7 +23,6 @@ export type AgentAppCreatePayload = {
 
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -169,6 +168,7 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type AgentAppComposerResponse = {
+  active_config_is_published: boolean
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   agent: AgentComposerAgentResponse
   agent_soul: AgentSoulConfig
@@ -280,10 +280,6 @@ export type AgentAppCopyPayload = {
   icon_type?: IconType | null
   name?: string | null
   role?: string | null
-}
-
-export type AgentDebugConversationRefreshPayload = {
-  draft_type?: AgentConfigDraftType
 }
 
 export type AgentDebugConversationRefreshResponse = {
@@ -426,7 +422,6 @@ export type AgentReferencingWorkflowsResponse = {
 }
 
 export type SandboxInfoResponse = {
-  session_id: string
   workspace_cwd: string
 }
 
@@ -445,7 +440,8 @@ export type SandboxReadResponse = {
 }
 
 export type AgentSandboxUploadPayload = {
-  conversation_id: string
+  caller_id: string
+  caller_type: 'build_draft' | 'conversation'
   path: string
 }
 
@@ -821,8 +817,6 @@ export type AgentConfigSkillMarkdownResponse = {
   text: string
   truncated: boolean
 }
-
-export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type AgentDriveItemResponse = {
   created_at?: number | null
@@ -1226,6 +1220,8 @@ export type AgentSoulToolsConfig = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
+
+export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
@@ -1892,7 +1888,6 @@ export type AgentAppPaginationWritable = {
 
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -2757,7 +2752,7 @@ export type PostAgentByAgentIdCopyResponse =
   PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
-  body?: AgentDebugConversationRefreshPayload
+  body?: never
   path: {
     agent_id: string
   }
@@ -3078,7 +3073,8 @@ export type GetAgentByAgentIdSandboxData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
   }
   url: '/agent/{agent_id}/sandbox'
 }
@@ -3096,7 +3092,8 @@ export type GetAgentByAgentIdSandboxFilesData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
     path?: string
   }
   url: '/agent/{agent_id}/sandbox/files'
@@ -3115,7 +3112,8 @@ export type GetAgentByAgentIdSandboxFilesReadData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
     path: string
   }
   url: '/agent/{agent_id}/sandbox/files/read'

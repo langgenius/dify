@@ -20,7 +20,7 @@ const CustomPage = () => {
   const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col overflow-x-hidden">
       {showBillingTip && (
         <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs">
           <div className="space-y-1 text-text-primary-on-surface">

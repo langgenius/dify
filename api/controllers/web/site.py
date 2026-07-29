@@ -14,7 +14,7 @@ from extensions.storage.storage_type import StorageType
 from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from models.account import Tenant, TenantStatus
-from models.model import App, EndUser, IconType, Site
+from models.model import App, AppMode, EndUser, IconType, Site
 from services.feature_service import FeatureModel, FeatureService
 from services.file_service import FileService
 
@@ -67,6 +67,7 @@ class WebAppCustomConfigResponse(ResponseModel):
 
 class WebAppSiteResponse(ResponseModel):
     app_id: str
+    mode: AppMode
     end_user_id: str | None = None
     enable_site: bool
     site: WebSiteResponse
@@ -83,6 +84,7 @@ class WebAppSiteResponse(ResponseModel):
         *,
         tenant: Tenant,
         app_model: App,
+        mode: AppMode,
         site: Site,
         end_user_id: str | None,
         features: FeatureModel,
@@ -109,6 +111,7 @@ class WebAppSiteResponse(ResponseModel):
 
         return cls(
             app_id=app_model.id,
+            mode=mode,
             end_user_id=end_user_id,
             enable_site=app_model.enable_site,
             site=site_response,
@@ -167,6 +170,7 @@ class AppSiteApi(WebApiResource):
         return WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.value_of(app_model.mode_compatible_with_agent_with_session(session=db.session())),
             site=site,
             end_user_id=end_user.id,
             features=features,

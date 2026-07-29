@@ -266,6 +266,12 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED: bool = Field(
+        description="Whether tenant plugin model providers are cached in Redis. Disable when plugins are installed "
+        "by a system other than this one, which cannot invalidate the cache when a tenant's plugins change.",
+        default=True,
+    )
+
     PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
         description="TTL in seconds for caching tenant plugin model providers in Redis",
         default=60 * 60 * 24,
@@ -813,6 +819,41 @@ class UpdateConfig(BaseSettings):
     CHECK_UPDATE_URL: str = Field(
         description="URL to check for application updates",
         default="https://updates.dify.ai",
+    )
+
+
+class CommunityTelemetryConfig(BaseSettings):
+    """
+    Configuration for anonymous self-hosted community telemetry.
+    """
+
+    DISABLE_TELEMETRY: bool = Field(
+        description="Disable anonymous community telemetry",
+        default=False,
+    )
+    DO_NOT_TRACK: bool = Field(
+        description="Respect the standard do-not-track opt-out signal for telemetry",
+        default=False,
+    )
+    TELEMETRY_ENDPOINT: str = Field(
+        description="Endpoint for anonymous community telemetry events",
+        default="https://otel.dify.ai/v1/events",
+    )
+    TELEMETRY_FALLBACK_ENDPOINT: str = Field(
+        description="Fallback endpoint for anonymous community telemetry events",
+        default="https://otel.dify.cn/v1/events",
+    )
+    TELEMETRY_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="HTTP timeout in seconds for anonymous community telemetry requests",
+        default=3,
+    )
+    TELEMETRY_HEARTBEAT_INTERVAL_MINUTES: PositiveInt = Field(
+        description="Celery beat interval in minutes for checking whether heartbeat telemetry is due",
+        default=30,
+    )
+    CI: bool = Field(
+        description="Whether the process is running in CI; telemetry is skipped when true",
+        default=False,
     )
 
 
@@ -1599,6 +1640,7 @@ class FeatureConfig(
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
+    CommunityTelemetryConfig,
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,

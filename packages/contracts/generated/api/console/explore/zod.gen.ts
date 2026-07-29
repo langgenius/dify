@@ -6,7 +6,7 @@ import * as z from 'zod'
  * RecommendedAppDetailResponse
  */
 export const zRecommendedAppDetailResponse = z.object({
-  can_trial: z.boolean().nullish(),
+  can_trial: z.boolean(),
   export_data: z.string(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
@@ -56,7 +56,7 @@ export const zRecommendedAppInfoResponse = z.object({
 export const zRecommendedAppResponse = z.object({
   app: zRecommendedAppInfoResponse.nullish(),
   app_id: z.string(),
-  can_trial: z.boolean().nullish(),
+  can_trial: z.boolean(),
   categories: z.array(z.string()).optional(),
   copyright: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),
@@ -99,7 +99,7 @@ export const zRecommendedAppInfoResponseWritable = z.object({
 export const zRecommendedAppResponseWritable = z.object({
   app: zRecommendedAppInfoResponseWritable.nullish(),
   app_id: z.string(),
-  can_trial: z.boolean().nullish(),
+  can_trial: z.boolean(),
   categories: z.array(z.string()).optional(),
   copyright: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),

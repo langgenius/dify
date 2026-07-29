@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from enums.deployment_edition import DeploymentEdition
 from models.model import AccountTrialAppRecord, App, AppMode, TrialApp
 from services import recommended_app_service as service_module
-from services.feature_service import SystemFeatureModel
 from services.recommended_app_service import RecommendedAppService
 
 pytestmark = pytest.mark.parametrize(
@@ -49,6 +48,30 @@ class AppDetailKwargs(TypedDict, total=False):
     tools: list[str]
 
 
+@pytest.mark.parametrize(
+    ("edition", "enterprise_enabled", "feature_enabled", "expected"),
+    [
+        ("CLOUD", False, True, True),
+        ("CLOUD", False, False, False),
+        ("SELF_HOSTED", False, True, False),
+        ("SELF_HOSTED", True, True, False),
+    ],
+)
+def test_trial_app_policy_is_cloud_only(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    edition: str,
+    enterprise_enabled: bool,
+    feature_enabled: bool,
+    expected: bool,
+) -> None:
+    monkeypatch.setattr(service_module.dify_config, "EDITION", edition)
+    monkeypatch.setattr(service_module.dify_config, "ENTERPRISE_ENABLED", enterprise_enabled)
+    monkeypatch.setattr(service_module.dify_config, "ENABLE_TRIAL_APP", feature_enabled)
+
+    assert RecommendedAppService.is_trial_app_enabled() is expected
+
+
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
@@ -58,8 +81,8 @@ def _apps_response(
 ) -> AppsResponse:
     if recommended_apps is None:
         recommended_apps = [
-            {"id": "app-1", "name": "Test App 1", "description": "d1", "category": "productivity"},
-            {"id": "app-2", "name": "Test App 2", "description": "d2", "category": "communication"},
+            {"app_id": "app-1", "name": "Test App 1", "description": "d1", "category": "productivity"},
+            {"app_id": "app-2", "name": "Test App 2", "description": "d2", "category": "communication"},
         ]
     if categories is None:
         categories = ["productivity", "communication", "utilities"]
@@ -175,7 +198,7 @@ class TestRecommendedAppServiceGetApps:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
         empty_response = AppsResponse(recommended_apps=[], categories=[])
         builtin_response = _apps_response(
-            recommended_apps=[{"id": "builtin-1", "name": "Builtin App", "category": "default"}]
+            recommended_apps=[{"app_id": "builtin-1", "name": "Builtin App", "category": "default"}]
         )
 
         mock_remote_instance = MagicMock()
@@ -189,7 +212,7 @@ class TestRecommendedAppServiceGetApps:
         result = RecommendedAppService.get_recommended_apps_and_categories("zh-CN", session=sqlite_session)
 
         assert result == builtin_response
-        assert result["recommended_apps"][0]["id"] == "builtin-1"
+        assert result["recommended_apps"][0]["app_id"] == "builtin-1"
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
 
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
@@ -223,7 +246,7 @@ class TestRecommendedAppServiceGetApps:
 
         for language in ["en-US", "zh-CN", "ja-JP", "fr-FR"]:
             lang_response = _apps_response(
-                recommended_apps=[{"id": f"app-{language}", "name": f"App {language}", "category": "test"}]
+                recommended_apps=[{"app_id": f"app-{language}", "name": f"App {language}", "category": "test"}]
             )
             mock_instance = MagicMock()
             mock_instance.get_recommended_apps_and_categories.return_value = lang_response
@@ -231,7 +254,7 @@ class TestRecommendedAppServiceGetApps:
 
             result = RecommendedAppService.get_recommended_apps_and_categories(language, session=sqlite_session)
 
-            assert result["recommended_apps"][0]["id"] == f"app-{language}"
+            assert result["recommended_apps"][0]["app_id"] == f"app-{language}"
             mock_instance.get_recommended_apps_and_categories.assert_called_with(language, session=sqlite_session)
 
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
@@ -262,14 +285,14 @@ class TestRecommendedAppServiceGetApp:
             monkeypatch,
             result=RecommendedAppPayload(id=app.id),
         )
-        feature_lookup = MagicMock(side_effect=AssertionError("get_app must not inspect trial features"))
-        monkeypatch.setattr(service_module.FeatureService, "get_system_features", feature_lookup)
+        trial_policy = MagicMock(side_effect=AssertionError("get_app must not inspect trial policy"))
+        monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", trial_policy)
 
         result = RecommendedAppService.get_app(app.id, session=sqlite_session)
 
         assert result is app
         retrieval_instance.get_recommend_app_detail.assert_called_once_with(app.id, session=sqlite_session)
-        feature_lookup.assert_not_called()
+        trial_policy.assert_not_called()
 
     def test_returns_none_when_app_is_not_recommended(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
@@ -288,21 +311,17 @@ class TestRecommendedAppServiceGetApp:
 
 
 class TestRecommendedAppServiceGetDetail:
-    @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
     def test_returns_retrieval_detail_when_trial_disabled(
         self,
         mock_config: MagicMock,
         mock_factory_class: MagicMock,
-        mock_feature_service: MagicMock,
         sqlite_session: Session,
     ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        mock_feature_service.get_system_features.return_value = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_trial_app=False,
-        )
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+        mock_config.ENABLE_TRIAL_APP = True
         cases: list[tuple[str, RecommendedAppPayload]] = [
             (
                 "complex-app",
@@ -328,23 +347,20 @@ class TestRecommendedAppServiceGetDetail:
 
             result = RecommendedAppService.get_recommend_app_detail(app_id, session=sqlite_session)
 
-            assert result == expected
+            assert result is not None
+            assert result["can_trial"] is False
             mock_instance.get_recommend_app_detail.assert_called_once_with(app_id, session=sqlite_session)
 
-    @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
     def test_different_modes(
         self,
         mock_config: MagicMock,
         mock_factory_class: MagicMock,
-        mock_feature_service: MagicMock,
         sqlite_session: Session,
     ) -> None:
-        mock_feature_service.get_system_features.return_value = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_trial_app=False,
-        )
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+        mock_config.ENABLE_TRIAL_APP = True
         for mode in ["remote", "builtin", "db"]:
             mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = mode
             detail = _app_detail(app_id="test-app", name=f"App from {mode}")
@@ -363,21 +379,17 @@ class TestRecommendedAppServiceGetDetail:
 
 
 class TestRecommendedAppServiceGetLearnDifyApps:
-    @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
     def test_uses_configured_retrieval_source(
         self,
         mock_config: MagicMock,
         mock_factory_class: MagicMock,
-        mock_feature_service: MagicMock,
         sqlite_session: Session,
     ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        mock_feature_service.get_system_features.return_value = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_trial_app=False,
-        )
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+        mock_config.ENABLE_TRIAL_APP = True
         expected_app = RecommendedAppPayload(app_id="app-1", category="Workflow")
         mock_instance = MagicMock()
         mock_instance.get_learn_dify_apps.return_value = {
@@ -388,7 +400,7 @@ class TestRecommendedAppServiceGetLearnDifyApps:
 
         result = RecommendedAppService.get_learn_dify_apps("en-US", session=sqlite_session)
 
-        assert result == {"recommended_apps": [expected_app]}
+        assert result == {"recommended_apps": [{**expected_app, "can_trial": False}]}
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
         mock_instance.get_learn_dify_apps.assert_called_once_with("en-US", session=sqlite_session)
 
@@ -409,23 +421,14 @@ class TestRecommendedAppServiceGetLearnDifyApps:
             "get_recommend_app_factory",
             MagicMock(return_value=mock_retrieval_factory),
         )
-        monkeypatch.setattr(
-            service_module.FeatureService,
-            "get_system_features",
-            MagicMock(
-                return_value=SystemFeatureModel(
-                    deployment_edition=DeploymentEdition.COMMUNITY,
-                    enable_trial_app=True,
-                )
-            ),
-        )
-        can_trial_mock = MagicMock(return_value=True)
-        monkeypatch.setattr(RecommendedAppService, "_can_trial_app", can_trial_mock)
+        monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=True))
+        trial_app_ids = MagicMock(return_value={"app-1"})
+        monkeypatch.setattr(RecommendedAppService, "_get_trial_app_ids", trial_app_ids)
 
         result = RecommendedAppService.get_learn_dify_apps("en-US", session=sqlite_session)
 
         assert result["recommended_apps"][0]["can_trial"] is True
-        can_trial_mock.assert_called_once_with(sqlite_session, "app-1")
+        trial_app_ids.assert_called_once_with(sqlite_session, ["app-1"])
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────
@@ -435,22 +438,20 @@ class TestRecommendedAppServiceTrialFeatures:
     def test_get_apps_should_not_query_trial_table_when_disabled(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
-        expected = AppsResponse(recommended_apps=[RecommendedAppPayload(app_id="app-1")], categories=["all"])
-        retrieval_instance, builtin_instance = _mock_factory_for_apps(monkeypatch, mode="remote", result=expected)
-        monkeypatch.setattr(
-            service_module.FeatureService,
-            "get_system_features",
-            MagicMock(
-                return_value=SystemFeatureModel(
-                    deployment_edition=DeploymentEdition.COMMUNITY,
-                    enable_trial_app=False,
-                )
-            ),
+        upstream_result = AppsResponse(
+            recommended_apps=[RecommendedAppPayload(app_id="app-1", can_trial=True)], categories=["all"]
         )
+        retrieval_instance, builtin_instance = _mock_factory_for_apps(
+            monkeypatch, mode="remote", result=upstream_result
+        )
+        monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=False))
+        trial_app_ids = MagicMock(side_effect=AssertionError("disabled trial must not query TrialApp"))
+        monkeypatch.setattr(RecommendedAppService, "_get_trial_app_ids", trial_app_ids)
 
         result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=sqlite_session)
 
-        assert result == expected
+        assert result["recommended_apps"][0]["can_trial"] is False
+        trial_app_ids.assert_not_called()
         retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US", session=sqlite_session)
         builtin_instance.fetch_recommended_apps_from_builtin.assert_not_called()
 
@@ -473,16 +474,7 @@ class TestRecommendedAppServiceTrialFeatures:
         _, builtin_instance = _mock_factory_for_apps(
             monkeypatch, mode="remote", result=remote_result, fallback_result=fallback_result
         )
-        monkeypatch.setattr(
-            service_module.FeatureService,
-            "get_system_features",
-            MagicMock(
-                return_value=SystemFeatureModel(
-                    deployment_edition=DeploymentEdition.COMMUNITY,
-                    enable_trial_app=True,
-                )
-            ),
-        )
+        monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=True))
 
         result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=sqlite_session)
 
@@ -514,16 +506,7 @@ class TestRecommendedAppServiceTrialFeatures:
             "get_recommend_app_factory",
             MagicMock(return_value=retrieval_factory),
         )
-        monkeypatch.setattr(
-            service_module.FeatureService,
-            "get_system_features",
-            MagicMock(
-                return_value=SystemFeatureModel(
-                    deployment_edition=DeploymentEdition.COMMUNITY,
-                    enable_trial_app=True,
-                )
-            ),
-        )
+        monkeypatch.setattr(RecommendedAppService, "is_trial_app_enabled", MagicMock(return_value=True))
 
         result = RecommendedAppService.get_recommend_app_detail(app_id, session=sqlite_session)
         assert result is not None
@@ -532,26 +515,25 @@ class TestRecommendedAppServiceTrialFeatures:
         assert detail_result["id"] == app_id
         assert detail_result["can_trial"] is has_trial_app
 
-    @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
     def test_get_detail_returns_none_before_reading_trial_flag(
         self,
         mock_config: MagicMock,
         mock_factory_class: MagicMock,
-        mock_feature_service: MagicMock,
         sqlite_session: Session,
     ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
         mock_instance = MagicMock()
         mock_instance.get_recommend_app_detail.return_value = None
         mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
-
-        result = RecommendedAppService.get_recommend_app_detail("nonexistent", session=sqlite_session)
+        trial_policy = MagicMock(side_effect=AssertionError("missing app must not inspect trial policy"))
+        with patch.object(RecommendedAppService, "is_trial_app_enabled", trial_policy):
+            result = RecommendedAppService.get_recommend_app_detail("nonexistent", session=sqlite_session)
 
         assert result is None
         mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent", session=sqlite_session)
-        mock_feature_service.get_system_features.assert_not_called()
+        trial_policy.assert_not_called()
 
     def test_add_trial_app_record_increments_count_for_existing(self, sqlite_session: Session) -> None:
         app_id = str(uuid.uuid4())

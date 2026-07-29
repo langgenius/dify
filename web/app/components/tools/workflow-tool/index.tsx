@@ -355,11 +355,12 @@ export function WorkflowToolDrawer({
                           <input
                             type="text"
                             className="w-full appearance-none bg-transparent text-[13px] leading-[18px] font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
-                            placeholder={
-                              t(($) => $['createTool.toolInput.descriptionPlaceholder'], {
+                            placeholder={t(
+                              ($) => $['createTool.toolInput.descriptionPlaceholder'],
+                              {
                                 ns: 'tools',
-                              })!
-                            }
+                              },
+                            )!}
                             value={item.description}
                             onChange={(e) =>
                               handleParameterChange('description', e.target.value, index)

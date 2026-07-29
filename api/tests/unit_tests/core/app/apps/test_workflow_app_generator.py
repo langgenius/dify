@@ -211,6 +211,13 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
         def start(self):
             return None
 
+        def join(self, timeout):
+            worker_kwargs["joined"] = True
+            worker_kwargs["join_timeout"] = timeout
+
+        def is_alive(self):
+            return False
+
     mocker.patch("core.app.apps.workflow.app_generator.threading.Thread", DummyThread)
 
     app_model = SimpleNamespace(mode="workflow", tenant_id="tenant")
@@ -244,6 +251,8 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
     assert result == "converted"
     assert worker_kwargs["kwargs"]["graph_engine_layers"] == ("base-layer", pause_layer)
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
+    assert worker_kwargs["joined"] is True
+    assert worker_kwargs["join_timeout"] == 300
     assert draft_saver_factory.call_args.kwargs["tenant_id"] == app_model.tenant_id
 
 
@@ -286,12 +295,21 @@ def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
 
     mocker.patch("core.app.apps.workflow.app_generator.WorkflowAppRunner", side_effect=runner_ctor)
 
+    worker_lifecycle: dict[str, bool] = {}
+
     class ImmediateThread:
         def __init__(self, target, kwargs):
             target(**kwargs)
 
         def start(self):
             return None
+
+        def join(self, timeout):
+            worker_lifecycle["joined"] = True
+            worker_lifecycle["join_timeout"] = timeout
+
+        def is_alive(self):
+            return False
 
     mocker.patch("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
 
@@ -331,5 +349,7 @@ def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
     )
 
     assert result == "raw-response"
+    assert worker_lifecycle["joined"] is True
+    assert worker_lifecycle["join_timeout"] == 300
     runner_instance.run.assert_called_once()
     queue_manager.graph_runtime_state = runtime_state

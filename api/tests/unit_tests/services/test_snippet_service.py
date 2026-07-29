@@ -58,6 +58,7 @@ def test_create_snippet_allows_duplicate_names(monkeypatch: pytest.MonkeyPatch) 
     account = SimpleNamespace(id="account-1")
 
     service = SnippetService.__new__(SnippetService)
+    service._session = None
     service._session_maker = _session_maker(session)
 
     snippet = service.create_snippet(
@@ -190,6 +191,7 @@ def test_update_snippet_updates_optional_fields() -> None:
 
 def test_sync_draft_workflow_creates_draft_and_updates_input_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetService.__new__(SnippetService)
+    service._session = None
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
     session = Mock()
     session.scalars.return_value.all.return_value = []
@@ -235,6 +237,7 @@ def test_sync_draft_workflow_raises_when_hash_mismatches() -> None:
 
 def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetService.__new__(SnippetService)
+    service._session = None
     workflow = _create_workflow(
         workflow_id="workflow-1",
         version=Workflow.VERSION_DRAFT,
@@ -376,6 +379,7 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
         features={},
     )
     service = SnippetService.__new__(SnippetService)
+    service._session = None
     session = Mock()
     session.scalars.return_value.all.return_value = []
     service._session_maker = _session_maker(session)
@@ -431,6 +435,7 @@ def test_restore_published_snippet_workflow_to_draft_adds_new_draft(monkeypatch:
         features={},
     )
     service = SnippetService.__new__(SnippetService)
+    service._session = None
     session = Mock()
     session.scalars.return_value.all.return_value = []
     service._session_maker = _session_maker(session)
@@ -465,6 +470,7 @@ def test_get_published_workflow_by_id_raises_for_draft(monkeypatch: pytest.Monke
     draft_workflow = SimpleNamespace(version=Workflow.VERSION_DRAFT)
     session = SimpleNamespace(scalar=Mock(return_value=draft_workflow))
     service = SnippetService.__new__(SnippetService)
+    service._session = None
     service._session_maker = _session_maker(session)
 
     with pytest.raises(IsDraftWorkflowError):
@@ -503,8 +509,12 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(monkeypatch: pyte
         updated_by=None,
     )
     session = SimpleNamespace(scalar=Mock(return_value=draft_workflow), add=Mock())
+    monkeypatch.setattr(
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService.copy_agent_node_bindings_to_published",
+        Mock(return_value=set()),
+    )
 
-    result = service.publish_workflow(
+    result, retirement_candidates = service.publish_workflow(
         session=session,
         snippet=snippet,
         account=SimpleNamespace(id="account-1"),
@@ -516,6 +526,7 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(monkeypatch: pyte
     assert snippet.workflow_id == result.id
     assert snippet.updated_by == "account-1"
     assert session.add.call_args_list[-1].args == (snippet,)
+    assert retirement_candidates == set()
 
 
 def test_get_all_published_workflows_returns_empty_without_current_workflow() -> None:

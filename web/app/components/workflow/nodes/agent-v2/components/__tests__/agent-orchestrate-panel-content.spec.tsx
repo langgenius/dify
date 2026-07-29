@@ -183,7 +183,6 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/preview-c
 
 vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   useWorkflowInlineAgentConfigureSync: () => ({
-    draftSavedAt: undefined,
     saveAgentSoulConfig: mocks.saveAgentSoulConfig,
     saveDraft: mocks.saveDraft,
   }),
@@ -303,6 +302,7 @@ vi.mock('@/service/client', async () => {
             },
             files: {
               get: {
+                key: () => ['agent-sandbox-files'],
                 queryOptions: () => ({
                   queryKey: ['sandbox-files'],
                   queryFn: () =>
@@ -472,7 +472,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
-      draft: {},
+      draft: {
+        id: 'build-draft-1',
+      },
       variant: 'agent_app',
     })
     mocks.deleteBuildDraft.mockResolvedValue({ result: 'success' })
@@ -494,7 +496,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           system_prompt: 'Help with workflow tasks.',
         },
       },
-      draft: {},
+      draft: {
+        id: 'build-draft-1',
+      },
       variant: 'agent_app',
     })
     mocks.saveDraft.mockResolvedValue(createInlineComposerState())
@@ -857,6 +861,12 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         }),
       })
 
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+        }),
+      ).not.toBeInTheDocument()
+
       fireEvent.click(
         await screen.findByRole('button', {
           name: 'send build message',
@@ -876,11 +886,6 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       fireEvent.click(
         await screen.findByRole('button', {
           name: 'complete build conversation',
-        }),
-      )
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'send build message',
         }),
       )
       expect(

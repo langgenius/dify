@@ -112,9 +112,15 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-DSL', () => ({
   useDSL: () => ({ handleExportDSL: mockHandleExportDSL }),
+}))
+
+vi.mock('../../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
+}))
+
+vi.mock('../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,

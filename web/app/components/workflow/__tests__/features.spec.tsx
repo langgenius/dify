@@ -31,8 +31,8 @@ const mockFeaturesStore = {
 let mockIsChatMode = true
 let mockNodesReadOnly = false
 
-vi.mock('../hooks', async () => {
-  const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
+vi.mock('../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
   return {
     ...actual,
     useIsChatMode: () => mockIsChatMode,

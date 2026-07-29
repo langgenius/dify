@@ -1,3 +1,5 @@
+import './scripts/env-register'
+
 export const defaultBaseURL = 'http://127.0.0.1:3000'
 export const defaultApiURL = 'http://127.0.0.1:5001'
 export const defaultLocale = 'en-US'
