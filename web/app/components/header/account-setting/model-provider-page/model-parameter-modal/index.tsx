@@ -5,11 +5,14 @@ import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
@@ -65,7 +68,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
+  void settingsDestination
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
@@ -110,7 +117,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const handleConfigureEmptyState = () => {
     if (readonly) return
 
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+    setSettingsDestination('provider')
   }
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
@@ -269,8 +276,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           )}
         </div>
         {!hideDebugWithMultipleModel && (
-          <div
-            className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
+          <button
+            type="button"
+            className="flex h-[50px] w-full cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle bg-transparent px-4 text-left system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {debugWithMultipleModel
@@ -280,7 +288,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               aria-hidden
               className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
             />
-          </div>
+          </button>
         )}
       </PopoverContent>
     </Popover>

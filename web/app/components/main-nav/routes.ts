@@ -45,8 +45,8 @@ export const MAIN_NAV_ROUTES = [
     href: '/',
     labelKey: 'mainNav.home',
     active: (path: string) => path === '/' || path === '/explore/apps',
-    icon: 'i-custom-vender-main-nav-home',
-    activeIcon: 'i-custom-vender-main-nav-home-active',
+    icon: 'i-custom-vender-main-nav-home-v2',
+    activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -57,8 +57,8 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/apps') ||
       isPathUnderRoute(path, '/app') ||
       isPathUnderRoute(path, '/snippets'),
-    icon: 'i-custom-vender-main-nav-studio',
-    activeIcon: 'i-custom-vender-main-nav-studio-active',
+    icon: 'i-custom-vender-main-nav-studio-v2',
+    activeIcon: 'i-custom-vender-main-nav-studio-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -66,8 +66,8 @@ export const MAIN_NAV_ROUTES = [
     href: '/agents',
     label: 'Agents',
     active: (path: string) => isPathUnderRoute(path, '/agents'),
-    icon: 'i-custom-vender-main-nav-roster',
-    activeIcon: 'i-custom-vender-main-nav-roster-active',
+    icon: 'i-custom-vender-main-nav-agent',
+    activeIcon: 'i-custom-vender-main-nav-agent-active',
     visibility: CAN_MANAGE_AGENTS,
     feature: 'agentV2',
   },
@@ -76,8 +76,8 @@ export const MAIN_NAV_ROUTES = [
     href: '/skills',
     labelKey: 'mainNav.skills',
     active: (path: string) => isPathUnderRoute(path, '/skills'),
-    icon: 'i-ri-box-3-line',
-    activeIcon: 'i-ri-box-3-fill',
+    icon: 'i-custom-vender-main-nav-skill',
+    activeIcon: 'i-custom-vender-main-nav-skill-active',
     visibility: NOT_DATASET_OPERATOR,
   },
   {
@@ -85,8 +85,8 @@ export const MAIN_NAV_ROUTES = [
     href: '/datasets',
     labelKey: 'menus.datasets',
     active: (path: string) => isPathUnderRoute(path, '/datasets'),
-    icon: 'i-custom-vender-main-nav-knowledge',
-    activeIcon: 'i-custom-vender-main-nav-knowledge-active',
+    icon: 'i-custom-vender-main-nav-knowledge-v2',
+    activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -95,8 +95,8 @@ export const MAIN_NAV_ROUTES = [
     labelKey: 'mainNav.integrations',
     active: (path: string) =>
       isPathUnderRoute(path, '/integrations') || isPathUnderRoute(path, '/tools'),
-    icon: 'i-custom-vender-main-nav-integrations',
-    activeIcon: 'i-custom-vender-main-nav-integrations-active',
+    icon: 'i-custom-vender-main-nav-integrations-v2',
+    activeIcon: 'i-custom-vender-main-nav-integrations-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -105,8 +105,8 @@ export const MAIN_NAV_ROUTES = [
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
       isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
-    icon: 'i-custom-vender-main-nav-marketplace',
-    activeIcon: 'i-custom-vender-main-nav-marketplace-active',
+    icon: 'i-custom-vender-main-nav-marketplace-v2',
+    activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
   },

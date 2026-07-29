@@ -11,7 +11,6 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -53,15 +52,14 @@ const DatasetItem: FC<Props> = ({
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 
-  const [isShowSettingsModal, { setTrue: showSettingsModal, setFalse: hideSettingsModal }] =
-    useBoolean(false)
+  const [isShowSettingsModal, setIsShowSettingsModal] = useState(false)
 
   const handleSave = useCallback(
     (newDataset: DataSet) => {
       onChange(newDataset)
-      hideSettingsModal()
+      setIsShowSettingsModal(false)
     },
-    [hideSettingsModal, onChange],
+    [onChange],
   )
 
   const handleRemove = useCallback(
@@ -104,7 +102,7 @@ const DatasetItem: FC<Props> = ({
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
               onClick={(e) => {
                 e.stopPropagation()
-                showSettingsModal()
+                setIsShowSettingsModal(true)
               }}
             >
               <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
@@ -150,7 +148,7 @@ const DatasetItem: FC<Props> = ({
           modal
           swipeDirection="right"
           onOpenChange={(open) => {
-            if (!open) hideSettingsModal()
+            if (!open) setIsShowSettingsModal(false)
           }}
         >
           <DrawerPortal>
@@ -173,7 +171,7 @@ const DatasetItem: FC<Props> = ({
                   <SettingsModal
                     currentDataset={payload}
                     height={settingsModalHeight}
-                    onCancel={hideSettingsModal}
+                    onCancel={() => setIsShowSettingsModal(false)}
                     onSave={handleSave}
                   />
                 </DrawerContent>

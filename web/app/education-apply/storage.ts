@@ -1,10 +1,5 @@
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
 
-const EDUCATION_VERIFYING_LOCALSTORAGE_ITEM = 'educationVerifying'
-
-const [useEducationVerifying, _useEducationVerifyingValue, useSetEducationVerifying] =
-  createLocalStorageState<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'no', { raw: true })
-
 const [
   useEducationReverifyPrevExpireAt,
   _useEducationReverifyPrevExpireAtValue,
@@ -27,9 +22,7 @@ export {
   useEducationExpiredHasNoticed,
   useEducationReverifyHasNoticed,
   useEducationReverifyPrevExpireAt,
-  useEducationVerifying,
   useSetEducationExpiredHasNoticed,
   useSetEducationReverifyHasNoticed,
   useSetEducationReverifyPrevExpireAt,
-  useSetEducationVerifying,
 }

@@ -5,19 +5,15 @@ import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { useCallback, useEffect, useState } from 'react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   useEducationExpiredHasNoticed,
   useEducationReverifyHasNoticed,
   useEducationReverifyPrevExpireAt,
-  useEducationVerifying,
 } from '@/app/education-apply/storage'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter, useSearchParams } from '@/next/navigation'
-import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
-import { EDUCATION_RE_VERIFY_ACTION, EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION } from './constants'
+import { useEducationAutocomplete } from '@/service/use-education'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -119,37 +115,13 @@ const useEducationReverifyNotice = ({ onNotice }: useEducationReverifyNoticePara
 }
 
 export const useEducationInit = () => {
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(
     (s) => s.setShowEducationExpireNoticeModal,
   )
-  const [educationVerifying, setEducationVerifying] = useEducationVerifying()
-  const searchParams = useSearchParams()
-  const educationVerifyAction = searchParams.get('action')
 
   useEducationReverifyNotice({
     onNotice: (payload) => {
       setShowEducationExpireNoticeModal({ payload })
     },
   })
-
-  const router = useRouter()
-  const { mutateAsync } = useEducationVerify()
-  const handleVerify = async () => {
-    const { token } = await mutateAsync()
-    if (token) router.push(`/education-apply?token=${token}`)
-  }
-
-  useEffect(() => {
-    if (
-      educationVerifying === 'yes' ||
-      educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION
-    ) {
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
-
-      if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        setEducationVerifying('yes')
-    }
-    if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION) handleVerify()
-  }, [setShowAccountSettingModal, setEducationVerifying, educationVerifying, educationVerifyAction])
 }

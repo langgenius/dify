@@ -79,23 +79,11 @@ vi.mock('@/context/system-features-state', async () => {
   }))
 })
 
-// Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (state: {
-      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
-    }) => unknown,
-  ) => {
-    const state = {
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }
-    return selector(state)
-  },
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock dataset detail context
 let mockDatasetDetail: DataSet | undefined
@@ -650,7 +638,7 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-one-setting'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should open provider settings when onSetting is called from StepTwo', () => {
@@ -659,7 +647,7 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-two-setting'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
 
     it('should update crawl options when onCrawlOptionsChange is called', () => {

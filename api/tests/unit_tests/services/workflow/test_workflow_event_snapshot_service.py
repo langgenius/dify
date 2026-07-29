@@ -985,7 +985,8 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
     )
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+            # Persisted UTC datetimes can be loaded as naive values.
+            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1), '{"display_in_ui": true}')],
         )
     )
     pause_entity = _FakePauseEntity(

@@ -3065,14 +3065,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -5020,11 +5012,6 @@
   "web/app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/list.spec.tsx": {
-    "no-unused-vars": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {

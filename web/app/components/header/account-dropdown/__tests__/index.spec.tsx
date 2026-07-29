@@ -7,7 +7,6 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -81,6 +80,12 @@ vi.mock('@/context/provider-context', () => ({
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
+
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/service/use-common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-common')>()),
@@ -176,7 +181,6 @@ const setConsoleState = (value: ConsoleStateFixture) => {
 describe('AccountDropdown', () => {
   const mockPush = vi.fn()
   const mockLogout = vi.fn()
-  const mockSetShowAccountSettingModal = vi.fn()
   let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUNITY'
 
   const renderWithRouter = (
@@ -207,9 +211,7 @@ describe('AccountDropdown', () => {
       isEducationAccount: false,
       plan: { type: Plan.sandbox },
     } as unknown as ProviderContextState)
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    } as unknown as ModalContextState)
+    vi.mocked(useModalContext).mockReturnValue({} as unknown as ModalContextState)
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
@@ -288,14 +290,14 @@ describe('AccountDropdown', () => {
   })
 
   describe('Settings and Support', () => {
-    it('should trigger setShowAccountSettingModal when settings is clicked', () => {
+    it('should open member settings when settings is clicked', () => {
       // Act
       renderWithRouter(<AppSelector />)
       fireEvent.click(screen.getByRole('button'))
       fireEvent.click(screen.getByText('common.userProfile.settings'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('members')
     })
 
     it('should open preferences from the account dropdown', () => {
@@ -305,9 +307,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByText('common.settings.preferences'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.PREFERENCES,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
     })
 
     it('should show Appearance after Preferences in the main nav account dropdown', () => {

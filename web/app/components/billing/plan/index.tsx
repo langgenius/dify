@@ -6,18 +6,15 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmountedRef } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { userProfileEmailAtom } from '@/context/account-state'
-import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { usePathname, useRouter } from '@/next/navigation'
+import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
@@ -41,7 +38,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
   })
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const router = useRouter()
-  const path = usePathname()
   const userProfileEmail = useAtomValue(userProfileEmailAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
@@ -65,14 +61,11 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const [showModal, setShowModal] = React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
-  const setEducationVerifying = useSetEducationVerifying()
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending) return
     mutateAsync()
       .then((res) => {
-        setEducationVerifying(null)
         if (unmountedRef.current) return
         router.push(`/education-apply?token=${res.token}`)
       })
@@ -80,10 +73,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
         setShowModal(true)
       })
   }
-  useEffect(() => {
-    // setShowAccountSettingModal would prevent navigation
-    if (path.startsWith('/education-apply')) setShowAccountSettingModal(null)
-  }, [path, setShowAccountSettingModal])
   return (
     <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
