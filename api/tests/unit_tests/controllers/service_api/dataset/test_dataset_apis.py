@@ -298,12 +298,12 @@ class TestDatasetListApiPost:
         assert response["name"] == "New Dataset"
         mock_dataset_svc.create_empty_dataset.assert_called_once()
 
+    @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_create_dataset_duplicate_name(
         self,
         mock_dataset_svc: MagicMock,
         app: Flask,
-        account: Account,
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
@@ -329,16 +329,13 @@ class TestDatasetListApiPost:
 class TestDatasetApiGet:
     """Test suite for DatasetApi.get() endpoint."""
 
-    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
     @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_success(
         self,
         mock_dataset_svc: MagicMock,
         mock_provider_mgr: MagicMock,
-        mock_perm_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -369,7 +366,6 @@ class TestDatasetApiGet:
         mock_provider_mgr: MagicMock,
         mock_perm_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -392,16 +388,13 @@ class TestDatasetApiGet:
         assert_dataset_detail_shape(response, with_partial_members=True)
         assert response["partial_member_list"] == ["user-1", "user-2"]
 
-    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
     @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_uses_default_external_retrieval_model(
         self,
         mock_dataset_svc: MagicMock,
         mock_provider_mgr: MagicMock,
-        mock_perm_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -449,7 +442,6 @@ class TestDatasetApiGet:
         self,
         mock_dataset_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -477,7 +469,6 @@ class TestDatasetApiPatch:
         mock_dataset_svc: MagicMock,
         mock_perm_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -535,7 +526,6 @@ class TestDatasetApiDelete:
         mock_dataset_svc: MagicMock,
         mock_perm_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -551,13 +541,13 @@ class TestDatasetApiDelete:
             result = unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
         assert result == ("", 204)
+        mock_perm_svc.clear_partial_member_list.assert_called_once_with(dataset.id, controller_session)
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_delete_dataset_not_found(
         self,
         mock_dataset_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -578,7 +568,6 @@ class TestDatasetApiDelete:
         self,
         mock_dataset_svc: MagicMock,
         app: Flask,
-        account: Account,
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
@@ -610,7 +599,6 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc: MagicMock,
         mock_doc_svc: MagicMock,
         app: Flask,
-        account: Account,
         tenant: Tenant,
         dataset: Dataset,
     ) -> None:
@@ -661,14 +649,11 @@ class TestDocumentStatusApiPatch:
                     action="enable",
                 )
 
-    @patch("controllers.service_api.dataset.dataset.DocumentService")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_batch_update_status_permission_error(
         self,
         mock_dataset_svc: MagicMock,
-        mock_doc_svc: MagicMock,
         app: Flask,
-        account: Account,
         tenant: Tenant,
         dataset: Dataset,
     ) -> None:
@@ -699,7 +684,6 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc: MagicMock,
         mock_doc_svc: MagicMock,
         app: Flask,
-        account: Account,
         tenant: Tenant,
         dataset: Dataset,
     ) -> None:
@@ -730,7 +714,6 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc: MagicMock,
         mock_doc_svc: MagicMock,
         app: Flask,
-        account: Account,
         tenant: Tenant,
         dataset: Dataset,
     ) -> None:

@@ -204,6 +204,7 @@ class TestDatasetTagsApiPatch:
 class TestDatasetTagsApiDelete:
     """Test suite for DatasetTagsApi.delete() endpoint."""
 
+    @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.dataset.dataset.TagService")
     @patch("controllers.service_api.dataset.dataset.service_api_ns")
     def test_delete_tag_success(
@@ -211,7 +212,6 @@ class TestDatasetTagsApiDelete:
         mock_service_api_ns: MagicMock,
         mock_tag_svc: MagicMock,
         app: Flask,
-        account: Account,
         controller_session: Session,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagsApi
@@ -263,12 +263,12 @@ class TestDatasetTagsBindingStatusApi:
 class TestDatasetTagBindingApiPost:
     """Test suite for DatasetTagBindingApi.post() endpoint."""
 
+    @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_bind_tags_success(
         self,
         mock_tag_svc: MagicMock,
         app: Flask,
-        account: Account,
         controller_session: Session,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
@@ -309,12 +309,12 @@ class TestDatasetTagBindingApiPost:
 class TestDatasetTagUnbindingApiPost:
     """Test suite for DatasetTagUnbindingApi.post() endpoint."""
 
+    @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_unbind_tag_success(
         self,
         mock_tag_svc: MagicMock,
         app: Flask,
-        account: Account,
         controller_session: Session,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
@@ -337,12 +337,12 @@ class TestDatasetTagUnbindingApiPost:
             controller_session,
         )
 
+    @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.dataset.dataset.TagService")
     def test_unbind_legacy_tag_id_success(
         self,
         mock_tag_svc: MagicMock,
         app: Flask,
-        account: Account,
         controller_session: Session,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
