@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from unittest.mock import Mock
@@ -19,7 +18,6 @@ from controllers.console.app import workflow_run as workflow_run_module
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from models.base import TypeBase
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 
@@ -28,16 +26,6 @@ from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 class _Database:
     engine: Engine
     session: Session
-
-
-@pytest.fixture
-def pause_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield isolated workflow-run and pause tables for controller lookups."""
-
-    tables = [TypeBase.metadata.tables[model.__tablename__] for model in (WorkflowRun, WorkflowPause)]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
 
 
 def _persist_run(
@@ -87,14 +75,14 @@ class _PauseEntity:
 
 
 def test_pause_details_returns_backstage_input_url(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, pause_session: Session
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
 
     tenant_id = str(uuid4())
     run_id = str(uuid4())
     _persist_run(
-        pause_session,
+        sqlite_session,
         run_id=run_id,
         tenant_id=tenant_id,
         status=WorkflowExecutionStatus.PAUSED,
@@ -103,7 +91,7 @@ def test_pause_details_returns_backstage_input_url(
     monkeypatch.setattr(
         workflow_run_module,
         "db",
-        _Database(engine=pause_session.get_bind(), session=pause_session),
+        _Database(engine=sqlite_session.get_bind(), session=sqlite_session),
     )
 
     reason = HumanInputRequired(
@@ -148,12 +136,12 @@ def test_pause_details_returns_backstage_input_url(
     assert "pending_human_inputs" not in response
 
 
-def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPatch, pause_session: Session) -> None:
+def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
 
     run_id = str(uuid4())
     _persist_run(
-        pause_session,
+        sqlite_session,
         run_id=run_id,
         tenant_id=str(uuid4()),
         status=WorkflowExecutionStatus.PAUSED,
@@ -162,7 +150,7 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(
         workflow_run_module,
         "db",
-        _Database(engine=pause_session.get_bind(), session=pause_session),
+        _Database(engine=sqlite_session.get_bind(), session=sqlite_session),
     )
 
     handler = inspect.unwrap(workflow_run_module.ConsoleWorkflowPauseDetailsApi.get)
@@ -176,12 +164,12 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
 
 
 def test_pause_details_returns_empty_response_for_non_paused_run(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, pause_session: Session
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     tenant_id = str(uuid4())
     run_id = str(uuid4())
     _persist_run(
-        pause_session,
+        sqlite_session,
         run_id=run_id,
         tenant_id=tenant_id,
         status=WorkflowExecutionStatus.RUNNING,
@@ -189,7 +177,7 @@ def test_pause_details_returns_empty_response_for_non_paused_run(
     monkeypatch.setattr(
         workflow_run_module,
         "db",
-        _Database(engine=pause_session.get_bind(), session=pause_session),
+        _Database(engine=sqlite_session.get_bind(), session=sqlite_session),
     )
 
     with app.test_request_context(f"/console/api/workflow/{run_id}/pause-details", method="GET"):
