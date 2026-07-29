@@ -1,5 +1,5 @@
 import type { InfiniteData } from '@tanstack/react-query'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { NewKnowledgeList } from '../new-knowledge-list'
@@ -11,6 +11,9 @@ type KnowledgeSpaceList = {
     iconRef?: string
     id: string
     name: string
+    permissionKeys?: Array<
+      'knowledge_space_delete' | 'knowledge_space_edit' | 'knowledge_space_read'
+    >
     revision: number
     slug: string
     tenantId: string
@@ -35,14 +38,23 @@ const externalApiPanelMock = vi.hoisted(() => ({
   open: false,
   setOpen: vi.fn(),
 }))
-const toastInfoMock = vi.hoisted(() => vi.fn())
+const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
+  info: vi.fn(),
+  success: vi.fn(),
+}))
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+}))
+const deleteSpaceMock = vi.hoisted(() => vi.fn())
+const invalidateQueriesMock = vi.hoisted(() => vi.fn())
 const knowledgeSpaceApiResponse = vi.hoisted(
   () => (space: KnowledgeSpaceList['items'][number]) => ({
     control_space_id: space.id,
     created_at: space.createdAt,
     knowledge_space_id: space.id,
     owner_account_id: 'account-1',
-    permission_keys: ['knowledge_space_read'],
+    permission_keys: space.permissionKeys ?? ['knowledge_space_read'],
     resource_version: space.revision,
     state: 'active',
     technical_status: 'available',
@@ -61,7 +73,11 @@ const knowledgeSpaceApiResponse = vi.hoisted(
 )
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: { info: toastInfoMock },
+  toast: toastMock,
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => routerMock,
 }))
 
 const queryMock = vi.hoisted(() => ({
@@ -76,7 +92,9 @@ const queryMock = vi.hoisted(() => ({
 }))
 
 const consoleQueryMock = vi.hoisted(() => ({
+  deleteMutationOptions: vi.fn(() => ({ mutationFn: deleteSpaceMock })),
   infiniteOptions: vi.fn((_options: ListKnowledgeSpacesInfiniteOptions) => ({})),
+  listKey: ['knowledge-fs', 'spaces'],
 }))
 
 const permissionStateMock = vi.hoisted(() => ({
@@ -107,6 +125,16 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
+    useMutation: (options: {
+      mutationFn: (input: unknown) => Promise<unknown>
+      onError?: () => void
+      onSuccess?: () => void
+    }) => ({
+      isPending: false,
+      mutate: (input: unknown) => {
+        void options.mutationFn(input).then(options.onSuccess, options.onError)
+      },
+    }),
     useInfiniteQuery: () => ({
       ...queryMock,
       data: queryMock.data
@@ -120,6 +148,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
             })),
           }
         : undefined,
+    }),
+    useQueryClient: () => ({
+      invalidateQueries: invalidateQueriesMock,
     }),
   }
 })
@@ -144,8 +175,14 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {
+        byControlSpaceId: {
+          delete: {
+            mutationOptions: consoleQueryMock.deleteMutationOptions,
+          },
+        },
         get: {
           infiniteOptions: consoleQueryMock.infiniteOptions,
+          key: () => consoleQueryMock.listKey,
         },
       },
     },
@@ -169,6 +206,8 @@ describe('NewKnowledgeList', () => {
     queryMock.isFetchNextPageError = false
     queryMock.isFetchingNextPage = false
     queryMock.isPending = false
+    deleteSpaceMock.mockResolvedValue(undefined)
+    invalidateQueriesMock.mockResolvedValue(undefined)
     permissionStateMock.workspacePermissionKeys = [
       'dataset.create_and_management',
       'dataset.external.connect',
@@ -247,6 +286,79 @@ describe('NewKnowledgeList', () => {
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('shows legacy-style card actions and opens edit settings when permitted', async () => {
+    const user = userEvent.setup()
+    setResolvedPage([
+      {
+        createdAt: '2026-07-15T00:00:00Z',
+        id: 'space-1',
+        name: 'Support knowledge',
+        permissionKeys: ['knowledge_space_delete', 'knowledge_space_edit', 'knowledge_space_read'],
+        revision: 1,
+        slug: 'support-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-18T00:00:00Z',
+      },
+    ])
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    const cardLink = screen.getByRole('link', { name: 'Support knowledge' })
+    const actions = screen.getByRole('button', { name: 'common.operation.more' })
+    expect(cardLink).not.toContainElement(actions)
+
+    await user.click(actions)
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+  })
+
+  it('requires the exact knowledge name before deleting from the card', async () => {
+    const user = userEvent.setup()
+    setResolvedPage([
+      {
+        createdAt: '2026-07-15T00:00:00Z',
+        id: 'space-1',
+        name: 'Support knowledge',
+        permissionKeys: ['knowledge_space_delete', 'knowledge_space_read'],
+        revision: 1,
+        slug: 'support-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-18T00:00:00Z',
+      },
+    ])
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    const confirmationInput = within(dialog).getByRole('textbox', {
+      name: /^dataset\.newKnowledge\.settings\.deleteConfirmPrompt/,
+    })
+    const deleteButton = within(dialog).getByRole('button', {
+      name: 'common.operation.delete',
+    })
+
+    expect(deleteButton).toBeDisabled()
+    await user.type(confirmationInput, 'Support')
+    expect(deleteButton).toBeDisabled()
+    await user.clear(confirmationInput)
+    await user.type(confirmationInput, 'Support knowledge')
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(deleteSpaceMock).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1' },
+      })
+    })
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({
+      queryKey: consoleQueryMock.listKey,
+    })
+    expect(toastMock.success).toHaveBeenCalledWith('dataset.datasetDeleted')
+  })
+
   it('keeps backend-dependent metadata filters interactive and filters loaded items by search', async () => {
     const user = userEvent.setup()
     setResolvedPage([
@@ -285,7 +397,7 @@ describe('NewKnowledgeList', () => {
     expect(tags).toBeEnabled()
     expect(creators).toBeEnabled()
     await user.click(tags)
-    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     expect(search).toBeEnabled()
     expect(create).toHaveAttribute('href', '/datasets/new/create')
 

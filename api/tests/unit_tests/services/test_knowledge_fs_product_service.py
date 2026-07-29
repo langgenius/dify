@@ -154,13 +154,14 @@ def _space(
     visibility: KnowledgeFSControlSpaceVisibility,
     key: str,
     remote_id: str,
+    state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE,
 ) -> KnowledgeFSControlSpace:
     return KnowledgeFSControlSpace(
         tenant_id=tenant_id,
         owner_account_id=owner,
         provisioning_key=key,
         knowledge_space_id=remote_id,
-        state=KnowledgeFSControlSpaceState.ACTIVE,
+        state=state,
         visibility=visibility,
     )
 
@@ -260,6 +261,50 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
     }
     assert metrics.record_batch_status.call_args.args[0] == (0.25, 2, "degraded", 3, 1)
     assert "tenant-1" not in str(metrics.record_batch_status.call_args_list)
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission)],
+    indirect=True,
+)
+def test_list_excludes_deleting_and_deleted_spaces_before_authorization(sqlite_session: Session) -> None:
+    active = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="active",
+        remote_id="space-active",
+    )
+    deleting = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="deleting",
+        remote_id="space-deleting",
+        state=KnowledgeFSControlSpaceState.DELETING,
+    )
+    deleted = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="deleted",
+        remote_id="space-deleted",
+        state=KnowledgeFSControlSpaceState.DELETED,
+    )
+    sqlite_session.add_all([active, deleting, deleted])
+    sqlite_session.commit()
+    remote = FakeRemote({})
+    batch_capabilities = FakeBatchCapabilities()
+    rbac = FakeRBAC()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=batch_capabilities,
+        cutover_gate=FakeCutoverGate(),
+        remote=remote,
+        rbac=rbac,
+    )
+
+    response = service.list_spaces(tenant_id="tenant-1", account_id="account-1", page=1, limit=20)
+
+    assert [item.control_space_id for item in response.data] == [active.id]
+    assert rbac.batch_calls == [(active.id,)]
+    assert batch_capabilities.calls == [(KnowledgeFSBatchSpaceBinding(active.id, "space-active"),)]
+    assert remote.batch_calls == [("space-active",)]
 
 
 @pytest.mark.parametrize(

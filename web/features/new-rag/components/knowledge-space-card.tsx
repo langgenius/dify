@@ -2,6 +2,7 @@ import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/conso
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { KnowledgeSpaceActions } from './knowledge-space-actions'
 import { KnowledgeSpaceIcon } from './knowledge-space-icon'
 
 function getBuiltinIconName(iconRef: string | undefined) {
@@ -26,7 +27,7 @@ export function KnowledgeSpaceCard({
     : formatTimeFromNow(updatedAt)
 
   return (
-    <li>
+    <li className="group relative">
       <Link
         href={`/datasets/new/${knowledgeSpace.control_space_id}/sources`}
         aria-label={name}
@@ -79,6 +80,7 @@ export function KnowledgeSpaceCard({
           </span>
         </div>
       </Link>
+      <KnowledgeSpaceActions knowledgeSpace={knowledgeSpace} />
     </li>
   )
 }

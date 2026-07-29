@@ -145,7 +145,7 @@ _ROLE_PERMISSIONS: dict[KnowledgeFSControlSpacePermissionRole, frozenset[Knowled
 
 
 def visible_control_space_statement(*, tenant_id: str, account_id: str) -> sa.Select[tuple[KnowledgeFSControlSpace]]:
-    """Build the SQL visibility filter before pagination or any KFS request."""
+    """Build the SQL lifecycle and visibility filters before pagination or any KFS request."""
 
     active_permission = sa.exists().where(
         KnowledgeFSControlSpacePermission.tenant_id == KnowledgeFSControlSpace.tenant_id,
@@ -155,7 +155,9 @@ def visible_control_space_statement(*, tenant_id: str, account_id: str) -> sa.Se
     )
     return sa.select(KnowledgeFSControlSpace).where(
         KnowledgeFSControlSpace.tenant_id == tenant_id,
-        KnowledgeFSControlSpace.state != KnowledgeFSControlSpaceState.DELETED,
+        KnowledgeFSControlSpace.state.not_in(
+            (KnowledgeFSControlSpaceState.DELETING, KnowledgeFSControlSpaceState.DELETED)
+        ),
         sa.or_(
             KnowledgeFSControlSpace.owner_account_id == account_id,
             KnowledgeFSControlSpace.visibility == KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
