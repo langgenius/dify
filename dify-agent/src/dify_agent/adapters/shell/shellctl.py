@@ -291,9 +291,7 @@ class ShellctlCommands(ShellCommandProtocol):
         )
         resolved_env = _lease_env(env, home_dir=self.home_dir)
         return _from_job_result(
-            await _run_client_call(
-                self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout)
-            )
+            await _run_client_call(self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout))
         )
 
     async def prepare(self, credentials: Sequence[Credential]) -> None:
