@@ -12,12 +12,16 @@ This module tests the dataset cleanup task functionality including:
 """
 
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.enums import DataSourceType
+from extensions.storage.storage_type import StorageType
+from models.dataset import DocumentSegment, SegmentAttachmentBinding
+from models.enums import CreatorUserRole, SegmentStatus
+from models.model import UploadFile
 from tasks.clean_dataset_task import clean_dataset_task
 
 # ============================================================================
@@ -105,35 +109,32 @@ def mock_get_image_upload_file_ids():
         yield mock_func
 
 
-@pytest.fixture
-def mock_document():
-    """Create a mock Document object."""
-    doc = MagicMock()
-    doc.id = str(uuid.uuid4())
-    doc.tenant_id = str(uuid.uuid4())
-    doc.dataset_id = str(uuid.uuid4())
-    doc.data_source_type = DataSourceType.UPLOAD_FILE
-    doc.data_source_info = '{"upload_file_id": "test-file-id"}'
-    doc.data_source_info_dict = {"upload_file_id": "test-file-id"}
-    return doc
-
-
-@pytest.fixture
-def mock_segment():
-    """Create a mock DocumentSegment object."""
-    segment = MagicMock()
-    segment.id = str(uuid.uuid4())
-    segment.content = "Test segment content"
-    return segment
-
-
-@pytest.fixture
-def mock_upload_file():
-    """Create a mock UploadFile object."""
-    upload_file = MagicMock()
-    upload_file.id = str(uuid.uuid4())
-    upload_file.key = f"test_files/{uuid.uuid4()}.txt"
-    return upload_file
+def _attachment(
+    *,
+    tenant_id: str,
+    dataset_id: str,
+) -> tuple[SegmentAttachmentBinding, UploadFile]:
+    attachment_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"attachments/{uuid.uuid4()}.pdf",
+        name="attachment.pdf",
+        size=10,
+        extension="pdf",
+        mime_type="application/pdf",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="00000000-0000-0000-0000-000000000001",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=str(uuid.uuid4()),
+        segment_id=str(uuid.uuid4()),
+        attachment_id=attachment_file.id,
+    )
+    return binding, attachment_file
 
 
 # ============================================================================
@@ -225,9 +226,9 @@ class TestPipelineAndWorkflowDeletion:
             pipeline_id=pipeline_id,
         )
 
-        # Assert - verify execute was called for delete operations
-        # 1 attachment JOIN query + 5 base deletes + 2 pipeline/workflow deletes = 8
-        assert mock_db_session.session.execute.call_count >= 8
+        executed_sql = [str(call.args[0]) for call in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM pipelines" in sql for sql in executed_sql)
+        assert any("DELETE FROM workflows" in sql for sql in executed_sql)
 
     def test_clean_dataset_task_without_pipeline_id(
         self,
@@ -256,9 +257,11 @@ class TestPipelineAndWorkflowDeletion:
             pipeline_id=None,
         )
 
-        # Assert - verify execute was called for delete operations
-        # 1 attachment JOIN query + 5 base deletes = 6
-        assert mock_db_session.session.execute.call_count == 6
+        executed_sql = [str(call.args[0]) for call in mock_db_session.session.execute.call_args_list]
+        assert not any("DELETE FROM pipelines" in sql for sql in executed_sql)
+        assert not any("DELETE FROM workflows" in sql for sql in executed_sql)
+        assert any("DELETE FROM document_segment_summaries" in sql for sql in executed_sql)
+        assert any("DELETE FROM child_chunks" in sql for sql in executed_sql)
 
 
 # ============================================================================
@@ -292,15 +295,10 @@ class TestSegmentAttachmentCleanup:
         - Binding records are deleted from database
         """
         # Arrange
-        mock_binding = MagicMock()
-        mock_binding.attachment_id = str(uuid.uuid4())
-
-        mock_attachment_file = MagicMock()
-        mock_attachment_file.id = mock_binding.attachment_id
-        mock_attachment_file.key = f"attachments/{uuid.uuid4()}.pdf"
+        binding, attachment_file = _attachment(tenant_id=tenant_id, dataset_id=dataset_id)
 
         # Setup execute to return attachment with binding
-        mock_db_session.session.execute.return_value.all.return_value = [(mock_binding, mock_attachment_file)]
+        mock_db_session.session.execute.return_value.all.return_value = [(binding, attachment_file)]
 
         # Act
         clean_dataset_task(
@@ -313,7 +311,7 @@ class TestSegmentAttachmentCleanup:
         )
 
         # Assert
-        mock_storage.delete.assert_called_with(mock_attachment_file.key)
+        mock_storage.delete.assert_called_with(attachment_file.key)
         # Attachment file and binding are deleted in batch; verify DELETEs were issued
         execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
         assert any("DELETE FROM upload_files" in sql for sql in execute_sqls)
@@ -337,14 +335,9 @@ class TestSegmentAttachmentCleanup:
         - Attachment file and binding are still deleted from database
         """
         # Arrange
-        mock_binding = MagicMock()
-        mock_binding.attachment_id = str(uuid.uuid4())
+        binding, attachment_file = _attachment(tenant_id=tenant_id, dataset_id=dataset_id)
 
-        mock_attachment_file = MagicMock()
-        mock_attachment_file.id = mock_binding.attachment_id
-        mock_attachment_file.key = f"attachments/{uuid.uuid4()}.pdf"
-
-        mock_db_session.session.execute.return_value.all.return_value = [(mock_binding, mock_attachment_file)]
+        mock_db_session.session.execute.return_value.all.return_value = [(binding, attachment_file)]
         mock_storage.delete.side_effect = Exception("Storage error")
 
         # Act
@@ -487,4 +480,55 @@ class TestIndexProcessorParameters:
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
 
+        assert any(
+            "DELETE FROM child_chunks" in str(call.args[0]) for call in mock_db_session.session.execute.call_args_list
+        )
         schedule_refresh.assert_not_called()
+
+    def test_cleanup_removes_segments_when_documents_were_already_deleted(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_db_session,
+        mock_storage,
+        mock_index_processor_factory,
+        mock_get_image_upload_file_ids,
+    ):
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=str(uuid.uuid4()),
+            position=1,
+            content="Test segment content",
+            word_count=2,
+            tokens=2,
+            created_by="00000000-0000-0000-0000-000000000001",
+            status=SegmentStatus.COMPLETED,
+        )
+        segment.id = str(uuid.uuid4())
+        document_result = MagicMock()
+        document_result.all.return_value = []
+        segment_result = MagicMock()
+        segment_result.all.return_value = [segment]
+        empty_result = MagicMock()
+        empty_result.all.return_value = []
+        mock_db_session.session.scalars.side_effect = [
+            document_result,
+            segment_result,
+            empty_result,
+        ]
+
+        clean_dataset_task(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            index_struct='{"type": "paragraph"}',
+            collection_binding_id=collection_binding_id,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        )
+
+        assert any(
+            "DELETE FROM document_segments" in str(call.args[0])
+            for call in mock_db_session.session.execute.call_args_list
+        )

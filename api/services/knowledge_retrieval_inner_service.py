@@ -62,6 +62,9 @@ class InnerKnowledgeRetrievalService:
         """
         self._validate_caller_app(tenant_id=request.caller.tenant_id, app_id=request.caller.app_id, session=session)
         self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids, session=session)
+        # The injected inner-API session contains validation reads only. Release
+        # that transaction before metadata/router model or provider I/O begins.
+        session.commit()
 
         rag = DatasetRetrieval()
         results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))

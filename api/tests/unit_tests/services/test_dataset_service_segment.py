@@ -1,5 +1,9 @@
 """Unit tests for SegmentService behaviors in dataset_service."""
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from models import Tenant
+from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from services.dataset_ref_service import DatasetRef, DatasetRefService, DocumentRef, SegmentRef
 
 from .dataset_service_test_helpers import (
@@ -8,7 +12,6 @@ from .dataset_service_test_helpers import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
     ChildChunkUpdateArgs,
-    DocumentSegment,
     IndexStructureType,
     MagicMock,
     ModelType,
@@ -24,6 +27,82 @@ from .dataset_service_test_helpers import (
     patch,
     pytest,
 )
+
+
+def _concrete_dataset() -> Dataset:
+    return Dataset(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        description="",
+        provider="vendor",
+        permission="only_me",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        indexing_technique=IndexTechniqueType.ECONOMY,
+        created_by="00000000-0000-0000-0000-000000000001",
+    )
+
+
+def _concrete_document(dataset: Dataset, *, word_count: int) -> Document:
+    return Document(
+        id="doc-1",
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="00000000-0000-0000-0000-000000000001",
+        indexing_status="completed",
+        enabled=True,
+        archived=False,
+        doc_form="text_model",
+        word_count=word_count,
+    )
+
+
+def _concrete_segment(
+    dataset: Dataset,
+    document: Document,
+    *,
+    enabled: bool,
+    index_node_id: str | None,
+) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        position=1,
+        content="segment content",
+        word_count=4,
+        tokens=2,
+        created_by="00000000-0000-0000-0000-000000000001",
+        enabled=enabled,
+        index_node_id=index_node_id,
+        status=SegmentStatus.COMPLETED,
+    )
+    segment.id = "segment-1"
+    return segment
+
+
+def _summary(summary_content: str) -> DocumentSegmentSummary:
+    return DocumentSegmentSummary(
+        dataset_id="dataset-1",
+        document_id="doc-1",
+        chunk_id="segment-1",
+        summary_content=summary_content,
+        status=SummaryStatus.COMPLETED,
+        enabled=True,
+    )
+
+
+def _concrete_account() -> Account:
+    account = Account(name="Owner", email="owner@example.com")
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    account._current_tenant = tenant
+    return account
 
 
 def _make_segment_ref(segment_id: str = "segment-1"):
@@ -687,7 +766,7 @@ class TestSegmentServiceMutations:
         dataset = _make_dataset(indexing_technique="high_quality")
         refreshed_segment = SimpleNamespace(id=segment.id)
         processing_rule = SimpleNamespace(id=document.dataset_process_rule_id)
-        existing_summary = SimpleNamespace(summary_content="old summary")
+        existing_summary = _summary("old summary")
         embedding_model_instance = object()
         args = SegmentUpdateArgs(
             content="same content",
@@ -731,7 +810,7 @@ class TestSegmentServiceMutations:
         dataset = _make_dataset(indexing_technique="high_quality")
         dataset.summary_index_setting = {"enable": True}
         refreshed_segment = SimpleNamespace(id=segment.id)
-        existing_summary = SimpleNamespace(summary_content="old summary")
+        existing_summary = _summary("old summary")
         embedding_model = MagicMock()
         embedding_model.get_text_embedding_num_tokens.return_value = [9]
         args = SegmentUpdateArgs(content="new content", keywords=["kw-1"])
@@ -770,7 +849,7 @@ class TestSegmentServiceMutations:
         dataset = _make_dataset(indexing_technique="high_quality")
         dataset.summary_index_setting = {"enable": True}
         refreshed_segment = SimpleNamespace(id=segment.id)
-        existing_summary = SimpleNamespace(summary_content="same summary")
+        existing_summary = _summary("same summary")
         embedding_model = MagicMock()
         embedding_model.get_text_embedding_num_tokens.return_value = [7]
         args = SegmentUpdateArgs(content="new text", summary="same summary")
@@ -838,6 +917,56 @@ class TestSegmentServiceMutations:
             with pytest.raises(ValueError, match="Segment is deleting"):
                 SegmentService.delete_segment(segment, document, dataset, MagicMock())
 
+    def test_delete_disabled_segment_still_dispatches_summary_cleanup(self):
+        session = MagicMock()
+        dataset = _concrete_dataset()
+        document = _concrete_document(dataset, word_count=10)
+        segment = _concrete_segment(dataset, document, enabled=False, index_node_id=None)
+        side_effect_order: list[str] = []
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
+        ):
+            mock_redis.get.return_value = None
+            session.scalars.return_value.all.return_value = []
+            session.commit.side_effect = lambda: side_effect_order.append("commit")
+            delete_task.delay.side_effect = lambda *_args: side_effect_order.append("publish")
+
+            SegmentService.delete_segment(segment, document, dataset, session)
+
+        mock_redis.setex.assert_called_once_with(f"segment_{segment.id}_delete_indexing", 600, 1)
+        delete_task.delay.assert_called_once_with([], dataset.id, document.id, [segment.id], [])
+        session.delete.assert_called_once_with(segment)
+        assert side_effect_order == ["commit", "publish"]
+
+    def test_delete_segment_publish_failure_removes_relational_dependants(self):
+        session = MagicMock()
+        dataset = _concrete_dataset()
+        document = _concrete_document(dataset, word_count=10)
+        segment = _concrete_segment(dataset, document, enabled=True, index_node_id="node-1")
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
+        ):
+            mock_redis.get.return_value = None
+            session.scalars.return_value.all.return_value = []
+            delete_task.delay.side_effect = RuntimeError("broker unavailable")
+
+            with pytest.raises(RuntimeError, match="broker unavailable"):
+                SegmentService.delete_segment(segment, document, dataset, session)
+
+        assert session.commit.call_count == 2
+        delete_statements = [
+            str(call.args[0].compile(compile_kwargs={"literal_binds": True})) for call in session.execute.call_args_list
+        ]
+        summary_delete_sql = next(sql for sql in delete_statements if "DELETE FROM document_segment_summaries" in sql)
+        assert f"document_segment_summaries.dataset_id = '{dataset.id}'" in summary_delete_sql
+        assert f"document_segment_summaries.chunk_id IN ('{segment.id}')" in summary_delete_sql
+        assert any("DELETE FROM child_chunks" in sql for sql in delete_statements)
+        assert any("DELETE FROM segment_attachment_bindings" in sql for sql in delete_statements)
+
     def test_delete_segments_removes_records_and_clamps_document_word_count(self):
         session = MagicMock()
         dataset = _make_dataset()
@@ -870,6 +999,94 @@ class TestSegmentServiceMutations:
             ["child-1"],
         )
         session.commit.assert_called()
+
+    def test_delete_segments_dispatches_cleanup_without_vector_ids(self):
+        session = MagicMock()
+        dataset = _concrete_dataset()
+        document = _concrete_document(dataset, word_count=3)
+        current_user = _concrete_account()
+        side_effect_order: list[str] = []
+
+        with (
+            patch("services.dataset_service.current_user", current_user),
+            patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
+        ):
+            execute_result = MagicMock()
+            execute_result.all.return_value = [(None, "segment-1", 2)]
+            session.execute.return_value = execute_result
+            session.scalars.return_value.all.return_value = []
+            session.commit.side_effect = lambda: side_effect_order.append("commit")
+            delete_task.delay.side_effect = lambda *_args: side_effect_order.append("publish")
+
+            SegmentService.delete_segments(["segment-1"], document, dataset, session)
+
+        delete_task.delay.assert_called_once_with([], dataset.id, document.id, ["segment-1"], [])
+        assert side_effect_order == ["commit", "publish"]
+
+    def test_delete_segments_publish_failure_removes_relational_dependants(self):
+        session = MagicMock()
+        dataset = _concrete_dataset()
+        document = _concrete_document(dataset, word_count=3)
+        current_user = _concrete_account()
+        segment_rows = MagicMock()
+        segment_rows.all.return_value = [(None, "segment-1", 2)]
+        session.execute.return_value = segment_rows
+        session.scalars.return_value.all.return_value = []
+
+        with (
+            patch("services.dataset_service.current_user", current_user),
+            patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
+        ):
+            delete_task.delay.side_effect = RuntimeError("broker unavailable")
+            with pytest.raises(RuntimeError, match="broker unavailable"):
+                SegmentService.delete_segments(["segment-1"], document, dataset, session)
+
+        assert session.commit.call_count == 2
+        delete_statements = [
+            str(call.args[0].compile(compile_kwargs={"literal_binds": True})) for call in session.execute.call_args_list
+        ]
+        summary_delete_sql = next(sql for sql in delete_statements if "DELETE FROM document_segment_summaries" in sql)
+        assert f"document_segment_summaries.dataset_id = '{dataset.id}'" in summary_delete_sql
+        assert "document_segment_summaries.chunk_id IN ('segment-1')" in summary_delete_sql
+        assert any("DELETE FROM child_chunks" in sql for sql in delete_statements)
+        assert any("DELETE FROM segment_attachment_bindings" in sql for sql in delete_statements)
+
+    def test_publish_failure_summary_cleanup_rolls_back_without_hiding_broker_error(self):
+        session = MagicMock()
+        session.execute.side_effect = RuntimeError("database unavailable")
+
+        SegmentService._remove_orphaned_summary_rows_after_publish_failure(
+            session,
+            "dataset-1",
+            ["segment-1"],
+        )
+
+        session.rollback.assert_called_once_with()
+
+    def test_delete_segments_mutates_only_rows_validated_by_the_ownership_query(self, account_context):
+        session = MagicMock()
+        dataset = _concrete_dataset()
+        document = _concrete_document(dataset, word_count=3)
+        execute_result = MagicMock()
+        execute_result.all.return_value = [("node-1", "segment-1", 2)]
+        session.execute.return_value = execute_result
+        session.scalars.return_value.all.return_value = []
+
+        with patch("services.dataset_service.delete_segment_from_index_task"):
+            SegmentService.delete_segments(
+                ["segment-1", "foreign-segment"],
+                document,
+                dataset,
+                session,
+            )
+
+        delete_statement = session.execute.call_args_list[-1].args[0]
+        sql = str(delete_statement.compile(compile_kwargs={"literal_binds": True}))
+        assert "document_segments.id IN ('segment-1')" in sql
+        assert "foreign-segment" not in sql
+        assert f"document_segments.dataset_id = '{dataset.id}'" in sql
+        assert f"document_segments.document_id = '{document.id}'" in sql
+        assert "document_segments.tenant_id = 'tenant-1'" in sql
 
     def test_update_segments_status_enables_only_segments_without_indexing_cache(self):
         session = MagicMock()
@@ -1055,7 +1272,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         dataset.embedding_model_provider = None
         refreshed_segment = SimpleNamespace(id=segment.id)
         processing_rule = SimpleNamespace(id=document.dataset_process_rule_id)
-        existing_summary = SimpleNamespace(summary_content="old summary")
+        existing_summary = _summary("old summary")
         embedding_model_instance = object()
 
         with (

@@ -13,6 +13,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
+from services.vector_service import VectorService
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -47,13 +48,22 @@ def batch_clean_document_task(
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
     dataset_tenant_id: str | None = None
+    vector_cleanup_succeeded = False
 
     try:
         # ============ Step 1: Query segment and file data (short read-only transaction) ============
         with session_factory.create_session() as session:
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            if not dataset:
+                logger.warning("Dataset not found for document cleanup, dataset_id: %s", dataset_id)
+                return
+            dataset_tenant_id = dataset.tenant_id
             # Get segments info
             segments = session.scalars(
-                select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
+                select(DocumentSegment).where(
+                    DocumentSegment.document_id.in_(document_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                )
             ).all()
 
             if segments:
@@ -68,34 +78,45 @@ def batch_clean_document_task(
             # Query storage keys for image files
             if total_image_upload_file_ids:
                 image_files = session.scalars(
-                    select(UploadFile).where(UploadFile.id.in_(total_image_upload_file_ids))
+                    select(UploadFile).where(
+                        UploadFile.id.in_(total_image_upload_file_ids),
+                        UploadFile.tenant_id == dataset_tenant_id,
+                    )
                 ).all()
                 storage_keys_to_delete.extend([f.key for f in image_files if f and f.key])
 
             # Query storage keys for document files
             if file_ids:
-                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
+                files = session.scalars(
+                    select(UploadFile).where(
+                        UploadFile.id.in_(file_ids),
+                        UploadFile.tenant_id == dataset_tenant_id,
+                    )
+                ).all()
                 storage_keys_to_delete.extend([f.key for f in files if f and f.key])
 
         # ============ Step 2: Clean vector index (external service, fresh session for dataset) ============
-        if index_node_ids:
+        if index_node_ids or segment_ids:
             try:
                 # Fetch dataset in a fresh session to avoid DetachedInstanceError
-                with session_factory.create_session() as session, session.begin():
+                with session_factory.create_session() as session:
                     dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                     if not dataset:
                         logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
                     else:
                         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                        session.commit()
                         index_processor.clean(
                             dataset,
                             index_node_ids,
                             with_keywords=True,
                             delete_child_chunks=True,
                             delete_summaries=True,
+                            segment_ids=segment_ids,
                             session=session,
                         )
-                        dataset_tenant_id = dataset.tenant_id
+                        session.commit()
+                        vector_cleanup_succeeded = True
             except Exception:
                 logger.exception(
                     "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
@@ -134,7 +155,10 @@ def batch_clean_document_task(
                 batch = total_image_upload_file_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
-                        stmt = delete(UploadFile).where(UploadFile.id.in_(batch))
+                        stmt = delete(UploadFile).where(
+                            UploadFile.id.in_(batch),
+                            UploadFile.tenant_id == dataset_tenant_id,
+                        )
                         session.execute(stmt)
                         session.commit()
                 except Exception:
@@ -161,7 +185,16 @@ def batch_clean_document_task(
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
-                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
+                        segment_delete_stmt = delete(DocumentSegment).where(
+                            DocumentSegment.id.in_(batch),
+                            DocumentSegment.dataset_id == dataset_id,
+                        )
+                        # In case index_processor.clean didn't clean fully
+                        VectorService.delete_segment_index_artifacts(
+                            session=session,
+                            dataset_id=dataset_id,
+                            segment_ids=batch,
+                        )
                         session.execute(segment_delete_stmt)
                         session.commit()
                 except Exception:
@@ -185,7 +218,10 @@ def batch_clean_document_task(
         if file_ids:
             try:
                 with session_factory.create_session() as session:
-                    stmt = delete(UploadFile).where(UploadFile.id.in_(file_ids))
+                    stmt = delete(UploadFile).where(
+                        UploadFile.id.in_(file_ids),
+                        UploadFile.tenant_id == dataset_tenant_id,
+                    )
                     session.execute(stmt)
                     session.commit()
             except Exception:
@@ -211,7 +247,7 @@ def batch_clean_document_task(
                 dataset_id,
             )
 
-        if dataset_tenant_id is not None:
+        if vector_cleanup_succeeded and dataset_tenant_id is not None:
             schedule_billing_vector_space_refresh(dataset_tenant_id)
 
         end_at = time.perf_counter()

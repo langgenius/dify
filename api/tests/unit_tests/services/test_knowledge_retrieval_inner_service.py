@@ -175,7 +175,7 @@ class TestInnerKnowledgeRetrievalService:
         assert response.results[0].title == "FAQ.md"
         assert response.usage.currency == "USD"
         assert rag.knowledge_retrieval.call_args.kwargs["session"] is sqlite_session
-        assert sqlite_session.in_transaction()
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
@@ -233,7 +233,7 @@ class TestInnerKnowledgeRetrievalService:
         assert rag_request.metadata_filtering_mode == "automatic"
         assert rag_request.metadata_model_config is not None
         assert rag_request.metadata_model_config.provider == "openai"
-        assert sqlite_session.in_transaction()
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     def test_retrieve_raises_when_app_missing(self, sqlite_session: Session):

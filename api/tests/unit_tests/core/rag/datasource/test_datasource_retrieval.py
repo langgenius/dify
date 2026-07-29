@@ -13,7 +13,10 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from models.dataset import Dataset
+from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary
+from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SummaryStatus
+from services.external_knowledge_service import ResolvedExternalKnowledgeConfig
 
 
 def create_mock_document(
@@ -232,13 +235,16 @@ class TestRetrievalServiceInternals:
         mock_validate.return_value = "validated-condition"
         expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
         mock_fetch.return_value = expected_documents
-        session = MagicMock()
-        session.scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
+        )
 
         results = RetrievalService.external_retrieve(
-            session=session,
+            tenant_id="tenant-1",
             dataset_id="dataset-1",
             query="test query",
+            resolved_config=resolved_config,
             external_retrieval_model={"top_k": 3},
             metadata_filtering_conditions={"field": "source", "operator": "contains", "value": "manual"},
         )
@@ -251,16 +257,8 @@ class TestRetrievalServiceInternals:
             query="test query",
             external_retrieval_parameters={"top_k": 3},
             metadata_condition="validated-condition",
-            session=session,
+            resolved_config=resolved_config,
         )
-
-    def test_external_retrieve_returns_empty_when_dataset_not_found(self):
-        session = MagicMock()
-        session.scalar.return_value = None
-
-        results = RetrievalService.external_retrieve(session=session, dataset_id="missing", query="q")
-
-        assert results == []
 
     @patch("core.rag.datasource.retrieval_service.Session")
     def test_get_dataset_queries_by_id(self, mock_session_class):
@@ -385,7 +383,7 @@ class TestRetrievalServiceInternals:
 
         assert len(all_documents) == 1
         assert exceptions == []
-        mock_vector_class.assert_called_once_with(dataset=internal_dataset, session=vector_session)
+        mock_vector_class.assert_called_once_with(dataset=internal_dataset)
         vector_instance.search_by_vector.assert_called_once()
 
     @patch("core.rag.datasource.retrieval_service.Vector")
@@ -634,7 +632,12 @@ class TestRetrievalServiceInternals:
 
         assert len(all_documents) == 1
         assert exceptions == []
-        vector_instance.search_by_full_text.assert_called_once()
+        vector_instance.search_by_full_text.assert_called_once_with(
+            'query \\"x\\"',
+            top_k=4,
+            filter={"group_id": [internal_dataset.id]},
+            document_ids_filter=None,
+        )
 
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.Vector")
@@ -731,26 +734,128 @@ class TestRetrievalServiceInternals:
         assert exceptions == ["fulltext failed"]
 
     def test_format_retrieval_documents_with_empty_input_returns_empty_list(self):
-        assert RetrievalService.format_retrieval_documents(MagicMock(), []) == []
+        assert RetrievalService.format_retrieval_documents(MagicMock(), [], allowed_dataset_ids=set()) == []
 
     def test_format_retrieval_documents_without_document_id_returns_empty_list(self):
         documents = [Document(page_content="content", metadata={"doc_id": "doc-1", "score": 0.4}, provider="dify")]
 
-        assert RetrievalService.format_retrieval_documents(MagicMock(), documents) == []
+        assert (
+            RetrievalService.format_retrieval_documents(
+                MagicMock(),
+                documents,
+                allowed_dataset_ids=set(),
+            )
+            == []
+        )
+
+    @pytest.mark.parametrize(
+        ("enabled", "archived", "indexing_status"),
+        [
+            (False, False, "completed"),
+            (True, True, "completed"),
+            (True, False, "error"),
+        ],
+    )
+    def test_format_retrieval_documents_rejects_hits_for_inactive_documents(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        enabled: bool,
+        archived: bool,
+        indexing_status: str,
+    ):
+        dataset_document = SimpleNamespace(
+            id="document-id",
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            enabled=enabled,
+            archived=archived,
+            indexing_status=indexing_status,
+        )
+        segment = SimpleNamespace(
+            id="segment-id",
+            document_id=dataset_document.id,
+            index_node_id="index-node-id",
+        )
+        fake_session = _FakeSession(
+            execute_payloads=[[], [segment]],
+            scalars_payloads=[[dataset_document], []],
+        )
+        vector_hit = Document(
+            page_content="stale vector content",
+            metadata={
+                "dataset_id": dataset_document.dataset_id,
+                "document_id": dataset_document.id,
+                "doc_id": segment.index_node_id,
+                "score": 1.0,
+            },
+            provider="dify",
+        )
+        monkeypatch.setattr(retrieval_service_module, "RetrievalSegments", _SimpleRetrievalSegment)
+
+        result = RetrievalService.format_retrieval_documents(
+            fake_session,
+            [vector_hit],
+            allowed_dataset_ids={dataset_document.dataset_id},
+        )
+
+        assert result == []
 
     def test_format_retrieval_documents_with_parent_child_summary_and_attachments(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        dataset_doc_parent = SimpleNamespace(
-            id="doc-parent",
-            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
-            dataset_id="dataset-id",
+        def dataset_document(document_id: str, doc_form: IndexStructureType) -> DatasetDocument:
+            document = DatasetDocument(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                position=1,
+                data_source_type=DataSourceType.UPLOAD_FILE,
+                batch="batch-id",
+                name=f"{document_id}.txt",
+                created_from=DocumentCreatedFrom.API,
+                created_by="creator-id",
+                doc_metadata={},
+                doc_form=doc_form,
+                indexing_status=IndexingStatus.COMPLETED,
+                enabled=True,
+                archived=False,
+            )
+            document.id = document_id
+            return document
+
+        def segment(
+            segment_id: str,
+            document_id: str,
+            index_node_id: str,
+        ) -> DocumentSegment:
+            result = DocumentSegment(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id=document_id,
+                position=1,
+                content=f"content for {segment_id}",
+                word_count=3,
+                tokens=3,
+                created_by="creator-id",
+                index_node_id=index_node_id,
+                index_node_hash=f"hash-{segment_id}",
+                status=SegmentStatus.COMPLETED,
+                enabled=True,
+            )
+            result.id = segment_id
+            return result
+
+        dataset_doc_parent = dataset_document(
+            "doc-parent",
+            IndexStructureType.PARENT_CHILD_INDEX,
         )
-        dataset_doc_text = SimpleNamespace(id="doc-text", doc_form="paragraph", dataset_id="dataset-id")
-        dataset_doc_parent_summary = SimpleNamespace(
-            id="doc-parent-summary",
-            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
-            dataset_id="dataset-id",
+        dataset_doc_text = dataset_document(
+            "doc-text",
+            IndexStructureType.PARAGRAPH_INDEX,
+        )
+        dataset_doc_parent_summary = dataset_document(
+            "doc-parent-summary",
+            IndexStructureType.PARENT_CHILD_INDEX,
         )
 
         monkeypatch.setattr(retrieval_service_module, "RetrievalChildChunk", _SimpleRetrievalChildChunk)
@@ -831,22 +936,74 @@ class TestRetrievalServiceInternals:
                 },
                 provider="dify",
             ),
+            Document(
+                page_content="disabled durable summary",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "summary-disabled-node",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-disabled-summary",
+                    "score": "0.99",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="summary missing durable pointer",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "summary-missing-pointer-node",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-missing-pointer",
+                    "score": "0.98",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="stale summary without current vector hit",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "summary-stale-only-node",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-current-pointer-not-hit",
+                    "score": "0.97",
+                },
+                provider="dify",
+            ),
         ]
-
-        child_chunk = SimpleNamespace(
-            id="child-chunk-1",
-            segment_id="segment-parent",
-            index_node_id="child-node-1",
-            content="child details",
-            position=2,
+        for input_document in input_documents:
+            input_document.metadata["dataset_id"] = "dataset-id"
+        input_documents.append(
+            Document(
+                page_content="cross-dataset vector hit",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "foreign-index-node",
+                    "dataset_id": "foreign-dataset-id",
+                    "score": 1.0,
+                },
+                provider="dify",
+            )
         )
-        segment_parent = SimpleNamespace(id="segment-parent", document_id="doc-parent", index_node_id="parent-node")
-        segment_text = SimpleNamespace(id="segment-text", document_id="doc-text", index_node_id="index-node-1")
-        segment_summary = SimpleNamespace(id="segment-summary", document_id="doc-text", index_node_id="summary-node")
-        segment_parent_summary = SimpleNamespace(
-            id="segment-parent-summary",
-            document_id="doc-parent-summary",
-            index_node_id="summary-parent-node",
+
+        child_chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="doc-parent",
+            segment_id="segment-parent",
+            position=2,
+            content="child details",
+            word_count=2,
+            created_by="creator-id",
+            index_node_id="child-node-1",
+        )
+        child_chunk.id = "child-chunk-1"
+        segment_parent = segment("segment-parent", "doc-parent", "parent-node")
+        segment_text = segment("segment-text", "doc-text", "index-node-1")
+        segment_summary = segment("segment-summary", "doc-text", "summary-node")
+        segment_parent_summary = segment(
+            "segment-parent-summary",
+            "doc-parent-summary",
+            "summary-parent-node",
         )
 
         fake_session = _FakeSession(
@@ -859,15 +1016,67 @@ class TestRetrievalServiceInternals:
             scalars_payloads=[
                 [dataset_doc_parent, dataset_doc_text, dataset_doc_parent_summary],
                 [
-                    SimpleNamespace(chunk_id="segment-summary", summary_content="summary for text"),
-                    SimpleNamespace(chunk_id="segment-parent-summary", summary_content="summary for parent"),
+                    DocumentSegmentSummary(
+                        dataset_id=dataset_doc_text.dataset_id,
+                        document_id=dataset_doc_text.id,
+                        chunk_id="segment-summary",
+                        summary_index_node_id="summary-node-1",
+                        summary_content="summary for text",
+                        status=SummaryStatus.COMPLETED,
+                        enabled=True,
+                    ),
+                    DocumentSegmentSummary(
+                        dataset_id=dataset_doc_text.dataset_id,
+                        document_id=dataset_doc_text.id,
+                        chunk_id="segment-summary",
+                        summary_index_node_id="summary-node-2",
+                        summary_content="older duplicate summary",
+                        status=SummaryStatus.COMPLETED,
+                        enabled=True,
+                    ),
+                    DocumentSegmentSummary(
+                        dataset_id=dataset_doc_parent_summary.dataset_id,
+                        document_id=dataset_doc_parent_summary.id,
+                        chunk_id="segment-parent-summary",
+                        summary_index_node_id="summary-parent-valid",
+                        summary_content="summary for parent",
+                        status=SummaryStatus.COMPLETED,
+                        enabled=True,
+                    ),
+                    DocumentSegmentSummary(
+                        dataset_id=dataset_doc_text.dataset_id,
+                        document_id=dataset_doc_text.id,
+                        chunk_id="segment-disabled-summary",
+                        summary_index_node_id="summary-disabled-node",
+                        summary_content="disabled summary",
+                        status=SummaryStatus.COMPLETED,
+                        enabled=False,
+                    ),
+                    DocumentSegmentSummary(
+                        dataset_id=dataset_doc_text.dataset_id,
+                        document_id=dataset_doc_text.id,
+                        chunk_id="segment-missing-pointer",
+                        summary_index_node_id=None,
+                        summary_content="summary missing pointer",
+                        status=SummaryStatus.COMPLETED,
+                        enabled=True,
+                    ),
+                    DocumentSegmentSummary(
+                        dataset_id=dataset_doc_text.dataset_id,
+                        document_id=dataset_doc_text.id,
+                        chunk_id="segment-current-pointer-not-hit",
+                        summary_index_node_id="summary-current-node",
+                        summary_content="current summary",
+                        status=SummaryStatus.COMPLETED,
+                        enabled=True,
+                    ),
                 ],
             ],
         )
         monkeypatch.setattr(
             RetrievalService,
             "get_segment_attachment_infos",
-            lambda attachment_ids, session: [
+            lambda attachment_ids, session, **_: [
                 {
                     "attachment_id": "attach-node-1",
                     "attachment_info": {
@@ -895,11 +1104,17 @@ class TestRetrievalServiceInternals:
             ],
         )
 
-        result = RetrievalService.format_retrieval_documents(fake_session, input_documents)
+        result = RetrievalService.format_retrieval_documents(
+            fake_session,
+            input_documents,
+            allowed_dataset_ids={"dataset-id"},
+        )
 
         assert len(result) == 4
         result_by_segment_id = {item.segment.id: item for item in result}
-        assert result_by_segment_id["segment-summary"].score == pytest.approx(0.95)
+        # The higher-scoring summary-node-2 is stale and must not override the
+        # current durable pointer summary-node-1.
+        assert result_by_segment_id["segment-summary"].score == pytest.approx(0.9)
         assert result_by_segment_id["segment-summary"].summary == "summary for text"
         assert result_by_segment_id["segment-parent"].score == pytest.approx(0.8)
         assert result_by_segment_id["segment-parent"].files is not None
@@ -916,7 +1131,11 @@ class TestRetrievalServiceInternals:
         documents = [Document(page_content="content", metadata={"document_id": "doc-1"}, provider="dify")]
 
         with pytest.raises(RuntimeError, match="db error"):
-            RetrievalService.format_retrieval_documents(session, documents)
+            RetrievalService.format_retrieval_documents(
+                session,
+                documents,
+                allowed_dataset_ids={"dataset-id"},
+            )
 
         session.rollback.assert_called_once()
 

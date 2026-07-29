@@ -11,13 +11,14 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account
 from models.dataset import Dataset, DatasetQuery
+from services.external_knowledge_service import ResolvedExternalKnowledgeConfig
 from services.hit_testing_service import HitTestingService
 
 pytestmark = [
@@ -417,15 +418,33 @@ class TestHitTestingServiceExternalRetrieve:
             {"content": "External doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
             {"content": "External doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
         ]
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
+        )
 
         with (
+            patch(
+                "services.hit_testing_service.ExternalDatasetService.resolve_external_knowledge_config",
+                autospec=True,
+            ) as mock_resolve,
             patch(
                 "services.hit_testing_service.RetrievalService.external_retrieve", autospec=True
             ) as mock_external_retrieve,
             patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
-            mock_external_retrieve.return_value = external_documents
+
+            def resolve_config(**_kwargs):
+                sqlite_session.execute(text("SELECT 1"))
+                return resolved_config
+
+            def retrieve_external(**_kwargs):
+                assert not sqlite_session.in_transaction()
+                return external_documents
+
+            mock_resolve.side_effect = resolve_config
+            mock_external_retrieve.side_effect = retrieve_external
 
             # Act
             result = HitTestingService.external_retrieve(
@@ -446,6 +465,7 @@ class TestHitTestingServiceExternalRetrieve:
             mock_external_retrieve.assert_called_once()
             # Verify query was escaped
             assert mock_external_retrieve.call_args[1]["query"] == 'test query with \\"quotes\\"'
+            assert mock_external_retrieve.call_args.kwargs["resolved_config"] is resolved_config
             query_log = sqlite_session.scalar(select(DatasetQuery))
             assert query_log is not None
             assert query_log.dataset_id == dataset.id
@@ -491,8 +511,16 @@ class TestHitTestingServiceExternalRetrieve:
         metadata_filtering_conditions = {"category": "test"}
 
         external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}]
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
+        )
 
         with (
+            patch(
+                "services.hit_testing_service.ExternalDatasetService.resolve_external_knowledge_config",
+                return_value=resolved_config,
+            ),
             patch(
                 "services.hit_testing_service.RetrievalService.external_retrieve", autospec=True
             ) as mock_external_retrieve,
@@ -530,8 +558,16 @@ class TestHitTestingServiceExternalRetrieve:
         query = "test query"
         external_retrieval_model = {}
         metadata_filtering_conditions = {}
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
+        )
 
         with (
+            patch(
+                "services.hit_testing_service.ExternalDatasetService.resolve_external_knowledge_config",
+                return_value=resolved_config,
+            ),
             patch(
                 "services.hit_testing_service.RetrievalService.external_retrieve", autospec=True
             ) as mock_external_retrieve,
@@ -588,7 +624,12 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
+            result = HitTestingService.compact_retrieve_response(
+                query,
+                documents,
+                dataset_id="dataset-1",
+                session=sqlite_session,
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -599,6 +640,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             assert mock_format.call_args.args[0] is not sqlite_session
             assert mock_format.call_args.args[0].get_bind() is sqlite_session.get_bind()
             assert mock_format.call_args.args[1] == documents
+            assert mock_format.call_args.kwargs["allowed_dataset_ids"] == {"dataset-1"}
 
     def test_compact_retrieve_response_empty_documents(self, sqlite_session: Session):
         """
@@ -617,7 +659,12 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = []
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
+            result = HitTestingService.compact_retrieve_response(
+                query,
+                documents,
+                dataset_id="dataset-1",
+                session=sqlite_session,
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -626,6 +673,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             assert mock_format.call_args.args[0] is not sqlite_session
             assert mock_format.call_args.args[0].get_bind() is sqlite_session.get_bind()
             assert mock_format.call_args.args[1] == documents
+            assert mock_format.call_args.kwargs["allowed_dataset_ids"] == {"dataset-1"}
 
 
 class TestHitTestingServiceCompactExternalRetrieveResponse:

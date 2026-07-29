@@ -76,7 +76,8 @@ class BaseIndexProcessor(ABC):
             preview_texts: List of preview details to generate summaries for
             summary_index_setting: Summary index configuration
             doc_language: Optional document language to ensure summary is generated in the correct language
-            session: SQLAlchemy session used for summary image lookups
+            session: Caller-owned session reserved for processor-specific preview reads. Implementations must not
+                share it with worker threads or retain it across model I/O.
         """
         raise NotImplementedError
 

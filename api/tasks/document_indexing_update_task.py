@@ -48,20 +48,28 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                 return
 
             index_type = document.doc_form
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
+            ).all()
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+            segment_ids = [segment.id for segment in segments]
             # Persist the parsing status before vector cleanup and extraction.
             session.commit()
 
             clean_success = False
             try:
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
-                if index_node_ids:
+                if segment_ids:
                     index_processor.clean(
                         dataset,
                         index_node_ids,
                         with_keywords=True,
                         delete_child_chunks=True,
+                        delete_summaries=True,
+                        segment_ids=segment_ids,
                         session=session,
                     )
                     end_at = time.perf_counter()
@@ -88,7 +96,10 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                 session.commit()
 
             if clean_success:
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                segment_delete_stmt = delete(DocumentSegment).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
                 session.execute(segment_delete_stmt)
                 session.commit()
 

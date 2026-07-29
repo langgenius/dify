@@ -6,7 +6,7 @@ from sqlalchemy import select
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
-from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
+from models.dataset import Dataset, Document, DocumentSegment
 from services.summary_index_service import SummaryIndexService
 from tasks.generate_summary_index_task import generate_summary_index_task
 
@@ -54,14 +54,14 @@ class SummaryIndex:
                 if not segment_ids:
                     return
 
-                existing_summaries = session.scalars(
-                    select(DocumentSegmentSummary).where(
-                        DocumentSegmentSummary.chunk_id.in_(segment_ids),
-                        DocumentSegmentSummary.dataset_id == dataset_id,
-                        DocumentSegmentSummary.status == "completed",
-                    )
-                ).all()
-                completed_summary_segment_ids = {i.chunk_id for i in existing_summaries}
+                existing_summaries = SummaryIndexService.get_segments_summaries(
+                    segment_ids,
+                    dataset_id,
+                    session=session,
+                )
+                completed_summary_segment_ids = {
+                    segment_id for segment_id, summary in existing_summaries.items() if summary.status == "completed"
+                }
                 # Preview mode should process segments that are MISSING completed summaries
                 pending_segment_ids = [sid for sid in segment_ids if sid not in completed_summary_segment_ids]
 

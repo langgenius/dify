@@ -11,12 +11,13 @@ regenerated under the same conditions as during initial creation:
 """
 
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.indexing_runner import DocumentIsPausedError
+from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -42,32 +43,57 @@ def _make_dataset_and_documents(
     doc_form: str = "text_model",
     need_summary: bool = True,
 ):
-    """Create mock dataset and document objects.
+    """Create concrete detached ORM dataset and document objects.
 
     Returns (dataset, doc_for_session1, doc_for_session3).
 
     session1 doc: before IndexingRunner runs (status irrelevant for summary).
     session3 doc: re-queried after IndexingRunner completes — normally COMPLETED.
     """
-    dataset = SimpleNamespace(
+    dataset = Dataset(
         id=dataset_id,
+        tenant_id="tenant-1",
+        name="Dataset",
+        description="",
+        provider="vendor",
+        permission="only_me",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         indexing_technique=indexing_technique,
+        created_by="00000000-0000-0000-0000-000000000001",
         summary_index_setting=summary_index_setting,
     )
-    doc_s1 = SimpleNamespace(
+    doc_s1 = Document(
         id=document_id,
+        tenant_id="tenant-1",
         dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="00000000-0000-0000-0000-000000000001",
         indexing_status="waiting",
         doc_form=doc_form,
         need_summary=need_summary,
+        enabled=True,
+        archived=False,
     )
     # After IndexingRunner.run the document status is COMPLETED in the DB
-    doc_s3 = SimpleNamespace(
+    doc_s3 = Document(
         id=document_id,
+        tenant_id="tenant-1",
         dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="00000000-0000-0000-0000-000000000001",
         indexing_status="completed",
         doc_form=doc_form,
         need_summary=need_summary,
+        enabled=True,
+        archived=False,
     )
     return dataset, doc_s1, doc_s3
 
@@ -417,9 +443,16 @@ class TestUpdateTaskSummaryGeneration:
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
 
         # Document still in error status after indexing
-        doc_s3_error = SimpleNamespace(
+        doc_s3_error = Document(
             id="doc-1",
-            dataset_id="ds-1",
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch-1",
+            name="Document",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by="00000000-0000-0000-0000-000000000001",
             indexing_status="error",
             doc_form="text_model",
             need_summary=True,
@@ -490,7 +523,19 @@ class TestUpdateTaskSummaryGeneration:
 
         session1 = _session_with_begin()
         session1.scalar.side_effect = [doc_s1, dataset]
-        seg = SimpleNamespace(index_node_id="node-1")
+        seg = DocumentSegment(
+            tenant_id="tenant-1",
+            dataset_id=dataset.id,
+            document_id=doc_s1.id,
+            position=1,
+            content="segment content",
+            word_count=2,
+            tokens=2,
+            created_by="00000000-0000-0000-0000-000000000001",
+            index_node_id="node-1",
+            status=SegmentStatus.COMPLETED,
+        )
+        seg.id = "segment-1"
         session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[seg]))
 
         session3 = MagicMock()
@@ -518,3 +563,64 @@ class TestUpdateTaskSummaryGeneration:
         document_indexing_update_task("ds-1", "doc-1")
 
         delay_mock.assert_called_once_with("ds-1", "doc-1", None)
+        processor.clean.assert_called_once_with(
+            dataset,
+            ["node-1"],
+            with_keywords=True,
+            delete_child_chunks=True,
+            delete_summaries=True,
+            segment_ids=["segment-1"],
+            session=session1,
+        )
+
+    def test_should_clean_summaries_when_segment_has_no_vector_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Summary cleanup is keyed by segment IDs, even before a vector ID was assigned."""
+        dataset, doc_s1, doc_s3 = _make_dataset_and_documents(
+            summary_index_setting={"enable": True},
+        )
+
+        session1 = _session_with_begin()
+        session1.scalar.side_effect = [doc_s1, dataset]
+        segment = DocumentSegment(
+            tenant_id="tenant-1",
+            dataset_id=dataset.id,
+            document_id=doc_s1.id,
+            position=1,
+            content="segment content",
+            word_count=2,
+            tokens=2,
+            created_by="00000000-0000-0000-0000-000000000001",
+            index_node_id=None,
+            status=SegmentStatus.COMPLETED,
+        )
+        segment.id = "segment-1"
+        session1.scalars.return_value = MagicMock(all=MagicMock(return_value=[segment]))
+
+        session3 = MagicMock()
+        session3.scalar.side_effect = [doc_s3, dataset]
+
+        runner = MagicMock()
+        processor = MagicMock()
+        _patch_all(
+            monkeypatch,
+            sessions=[_SessionContext(session1), _SessionContext(session3)],
+            runner=runner,
+            processor=processor,
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_update_task.generate_summary_index_task.delay",
+            MagicMock(),
+        )
+
+        document_indexing_update_task("ds-1", "doc-1")
+
+        processor.clean.assert_called_once_with(
+            dataset,
+            [],
+            with_keywords=True,
+            delete_child_chunks=True,
+            delete_summaries=True,
+            segment_ids=["segment-1"],
+            session=session1,
+        )
+        assert any("DELETE FROM document_segments" in str(call.args[0]) for call in session1.execute.call_args_list)

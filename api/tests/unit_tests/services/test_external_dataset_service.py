@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy.exc import MultipleResultsFound
 
 from constants import HIDDEN_VALUE
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
@@ -22,7 +23,20 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 )
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
-from services.external_knowledge_service import ExternalDatasetService
+from services.external_knowledge_service import ExternalDatasetService, ResolvedExternalKnowledgeConfig
+
+
+def resolved_external_config(
+    settings: dict[str, Any] | None = None,
+    external_knowledge_id: str = "knowledge-123",
+) -> ResolvedExternalKnowledgeConfig:
+    return ResolvedExternalKnowledgeConfig(
+        settings_json=json.dumps(
+            settings or {"endpoint": "https://api.example.com", "api_key": "test-key-123"},
+            ensure_ascii=False,
+        ),
+        external_knowledge_id=external_knowledge_id,
+    )
 
 
 class ExternalDatasetServiceTestDataFactory:
@@ -1652,13 +1666,6 @@ class TestExternalDatasetServiceFetchRetrieval:
         dataset_id = "dataset-123"
         query = "test query for retrieval"
 
-        binding = factory.create_external_knowledge_binding_mock(
-            dataset_id=dataset_id, external_knowledge_api_id="api-123"
-        )
-        api = factory.create_external_knowledge_api_mock(api_id="api-123")
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -1677,7 +1684,7 @@ class TestExternalDatasetServiceFetchRetrieval:
             dataset_id,
             query,
             external_retrieval_parameters,
-            session=mock_db.session,
+            resolved_config=resolved_external_config(),
         )
 
         # Assert
@@ -1685,18 +1692,51 @@ class TestExternalDatasetServiceFetchRetrieval:
         assert result[0]["content"] == "result 1"
         assert result[1]["score"] == 0.8
 
+    def test_resolve_external_knowledge_config_uses_one_tenant_scoped_query(self):
+        session = MagicMock()
+        session.execute.return_value.one_or_none.return_value = (
+            "knowledge-123",
+            '{"endpoint": "https://api.example.com", "api_key": "secret"}',
+        )
+
+        resolved_config = ExternalDatasetService.resolve_external_knowledge_config(
+            "tenant-123",
+            "dataset-123",
+            session=session,
+        )
+
+        assert resolved_config.external_knowledge_id == "knowledge-123"
+        assert resolved_config.settings_json == '{"endpoint": "https://api.example.com", "api_key": "secret"}'
+        session.execute.assert_called_once()
+        statement = str(session.execute.call_args.args[0])
+        assert "external_knowledge_bindings.tenant_id" in statement
+        assert "external_knowledge_apis.tenant_id" in statement
+
+    def test_resolve_external_knowledge_config_rejects_ambiguous_bindings(self):
+        session = MagicMock()
+        session.execute.return_value.one_or_none.side_effect = MultipleResultsFound()
+
+        with pytest.raises(ExternalKnowledgeRetrievalError, match="multiple external knowledge bindings"):
+            ExternalDatasetService.resolve_external_knowledge_config(
+                "tenant-123",
+                "dataset-123",
+                session=session,
+            )
+
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_binding_not_found_error(
         self, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when external knowledge binding is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_db.session.execute.return_value.one_or_none.return_value = None
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="external knowledge binding not found"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {}, session=mock_db.session
+            ExternalDatasetService.resolve_external_knowledge_config(
+                "tenant-123",
+                "dataset-123",
+                session=mock_db.session,
             )
 
     @patch("services.external_knowledge_service.db")
@@ -1705,13 +1745,14 @@ class TestExternalDatasetServiceFetchRetrieval:
     ):
         """Test error when a binding points to an API template outside the dataset tenant."""
         # Arrange
-        binding = factory.create_external_knowledge_binding_mock()
-        mock_db.session.scalar.side_effect = [binding, None]
+        mock_db.session.execute.return_value.one_or_none.return_value = ("knowledge-123", None)
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="external api template not found"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {}, session=mock_db.session
+            ExternalDatasetService.resolve_external_knowledge_config(
+                "tenant-123",
+                "dataset-123",
+                session=mock_db.session,
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
@@ -1721,11 +1762,6 @@ class TestExternalDatasetServiceFetchRetrieval:
     ):
         """Test retrieval with empty results."""
         # Arrange
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"records": []}
@@ -1737,7 +1773,7 @@ class TestExternalDatasetServiceFetchRetrieval:
             "dataset-123",
             "query",
             {"top_k": 5},
-            session=mock_db.session,
+            resolved_config=resolved_external_config(),
         )
 
         # Assert
@@ -1750,11 +1786,6 @@ class TestExternalDatasetServiceFetchRetrieval:
     ):
         """Test retrieval with score threshold enabled."""
         # Arrange
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"records": [{"content": "high score result"}]}
@@ -1772,7 +1803,7 @@ class TestExternalDatasetServiceFetchRetrieval:
             "dataset-123",
             "query",
             external_retrieval_parameters,
-            session=mock_db.session,
+            resolved_config=resolved_external_config(),
         )
 
         # Assert
@@ -1788,11 +1819,6 @@ class TestExternalDatasetServiceFetchRetrieval:
     ):
         """Test that non-200 status code raises Exception with response text."""
         # Arrange
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error: Database connection failed"
@@ -1805,7 +1831,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "dataset-123",
                 "query",
                 {"top_k": 5},
-                session=mock_db.session,
+                resolved_config=resolved_external_config(),
             )
 
     @pytest.mark.parametrize(
@@ -1831,13 +1857,6 @@ class TestExternalDatasetServiceFetchRetrieval:
         tenant_id = "tenant-123"
         dataset_id = "dataset-123"
 
-        binding = factory.create_external_knowledge_binding_mock(
-            dataset_id=dataset_id, external_knowledge_api_id="api-123"
-        )
-        api = factory.create_external_knowledge_api_mock(api_id="api-123")
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = status_code
         mock_response.text = error_message
@@ -1846,7 +1865,11 @@ class TestExternalDatasetServiceFetchRetrieval:
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match=re.escape(error_message)):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                tenant_id, dataset_id, "query", {"top_k": 5}, session=mock_db.session
+                tenant_id,
+                dataset_id,
+                "query",
+                {"top_k": 5},
+                resolved_config=resolved_external_config(),
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
@@ -1856,11 +1879,6 @@ class TestExternalDatasetServiceFetchRetrieval:
     ):
         """Test exception with empty response text."""
         # Arrange
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 503
         mock_response.text = ""
@@ -1873,18 +1891,13 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "dataset-123",
                 "query",
                 {"top_k": 5},
-                session=mock_db.session,
+                resolved_config=resolved_external_config(),
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_invalid_json_response(self, mock_db, mock_process, factory):
         """Test malformed JSON success responses are normalized to external retrieval errors."""
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
@@ -1896,18 +1909,13 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "dataset-123",
                 "query",
                 {"top_k": 5},
-                session=mock_db.session,
+                resolved_config=resolved_external_config(),
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_invalid_success_payload_shape(self, mock_db, mock_process, factory):
         """Test malformed success payload shapes are normalized to external retrieval errors."""
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = ["not-a-dict"]
@@ -1919,18 +1927,13 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "dataset-123",
                 "query",
                 {"top_k": 5},
-                session=mock_db.session,
+                resolved_config=resolved_external_config(),
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_invalid_records_shape(self, mock_db, mock_process, factory):
         """Test non-list records payloads are normalized to external retrieval errors."""
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"records": {"unexpected": "shape"}}
@@ -1942,17 +1945,13 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "dataset-123",
                 "query",
                 {"top_k": 5},
-                session=mock_db.session,
+                resolved_config=resolved_external_config(),
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_wraps_transport_errors(self, mock_db, mock_process, factory):
         """Test transport/runtime failures are normalized to external retrieval errors."""
-        binding = factory.create_external_knowledge_binding_mock()
-        api = factory.create_external_knowledge_api_mock()
-
-        mock_db.session.scalar.side_effect = [binding, api]
         mock_process.side_effect = RuntimeError("connection reset by peer")
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="connection reset by peer"):
@@ -1961,5 +1960,5 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "dataset-123",
                 "query",
                 {"top_k": 5},
-                session=mock_db.session,
+                resolved_config=resolved_external_config(),
             )

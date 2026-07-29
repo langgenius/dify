@@ -114,6 +114,9 @@ class IndexingRunner:
                     current_user=current_user,
                     session=session,
                 )
+                # Account/transform lookups may own a transaction. Token counting can call the embedding provider.
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                    session.commit()
                 token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
                 total_tokens = sum(token_counts)
                 # save segment
@@ -199,6 +202,9 @@ class IndexingRunner:
                 current_user=current_user,
                 session=session,
             )
+            # Account/transform lookups may own a transaction. Token counting can call the embedding provider.
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                session.commit()
             token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             total_tokens = sum(token_counts)
             # save segment

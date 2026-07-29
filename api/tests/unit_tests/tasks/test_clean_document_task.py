@@ -6,6 +6,7 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as clean_document_task_module
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
     Dataset,
     DatasetMetadataBinding,
@@ -20,7 +22,7 @@ from models.dataset import (
     DocumentSegment,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
 
@@ -201,6 +203,22 @@ def _assert_relational_cleanup(
     assert remaining_binding_document_ids == {other_document_id}
 
 
+def _upload_file(*, tenant_id: str, key: str) -> UploadFile:
+    return UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name=f"{key}.bin",
+        size=10,
+        extension="bin",
+        mime_type="application/octet-stream",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="creator-1",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=True,
+    )
+
+
 class TestVectorCleanupResilience:
     """Vector/index failures must not abort relational cleanup."""
 
@@ -280,6 +298,7 @@ class TestVectorCleanupResilience:
             "with_keywords": True,
             "delete_child_chunks": True,
             "delete_summaries": True,
+            "segment_ids": ["seg-1"],
         }
         _assert_relational_cleanup(
             sqlite_session,
@@ -288,6 +307,49 @@ class TestVectorCleanupResilience:
             survivor_segment_id=survivor_segment_id,
         )
         schedule_refresh.assert_called_once_with(tenant_id)
+
+    def test_segment_without_primary_node_id_still_runs_summary_cleanup(
+        self,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
+        mock_storage,
+        mock_index_processor_factory,
+    ) -> None:
+        segment_id = "seg-with-summary-only"
+        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=[segment_id],
+        )
+        segment = sqlite_session.get(DocumentSegment, segment_id)
+        assert segment is not None
+        segment.index_node_id = None
+        sqlite_session.commit()
+
+        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh"):
+            clean_document_task(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                doc_form="paragraph",
+                file_id=None,
+            )
+
+        mock_index_processor_factory["processor"].clean.assert_called_once()
+        args, kwargs = mock_index_processor_factory["processor"].clean.call_args
+        assert args[1] == []
+        assert kwargs["segment_ids"] == [segment_id]
+        assert kwargs["delete_summaries"] is True
+        _assert_relational_cleanup(
+            sqlite_session,
+            document_id=document_id,
+            other_document_id=other_document_id,
+            survivor_segment_id=survivor_segment_id,
+        )
 
     def test_no_segments_skips_vector_cleanup(
         self,
@@ -324,3 +386,78 @@ class TestVectorCleanupResilience:
             survivor_segment_id=survivor_segment_id,
         )
         schedule_refresh.assert_not_called()
+
+    def test_document_and_attachment_cleanup_is_tenant_scoped_when_storage_fails(
+        self,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
+        mock_storage,
+        mock_index_processor_factory,
+    ) -> None:
+        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=[],
+        )
+        foreign_tenant_id = str(uuid.uuid4())
+        attachment_file = _upload_file(tenant_id=tenant_id, key="attachment-key")
+        document_file = _upload_file(tenant_id=tenant_id, key="document-key")
+        foreign_file = _upload_file(tenant_id=foreign_tenant_id, key="foreign-key")
+        target_binding = SegmentAttachmentBinding(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            segment_id="segment-1",
+            attachment_id=attachment_file.id,
+        )
+        foreign_binding = SegmentAttachmentBinding(
+            tenant_id=foreign_tenant_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            segment_id="segment-1",
+            attachment_id=foreign_file.id,
+        )
+        document_file_id = document_file.id
+        attachment_file_id = attachment_file.id
+        foreign_file_id = foreign_file.id
+        target_binding_id = target_binding.id
+        foreign_binding_id = foreign_binding.id
+        expected_storage_keys = [document_file.key, attachment_file.key]
+        sqlite_session.add_all(
+            [
+                attachment_file,
+                document_file,
+                foreign_file,
+                target_binding,
+                foreign_binding,
+            ]
+        )
+        sqlite_session.commit()
+        mock_storage.delete.side_effect = RuntimeError("storage unavailable")
+
+        clean_document_task(
+            document_id=document_id,
+            dataset_id=dataset_id,
+            doc_form="paragraph",
+            file_id=document_file_id,
+        )
+
+        mock_index_processor_factory["factory_cls"].assert_not_called()
+        assert [call.args[0] for call in mock_storage.delete.call_args_list] == expected_storage_keys
+        sqlite_session.expire_all()
+        assert sqlite_session.get(UploadFile, document_file_id) is None
+        assert sqlite_session.get(UploadFile, attachment_file_id) is None
+        assert sqlite_session.get(UploadFile, foreign_file_id) is not None
+        assert sqlite_session.get(SegmentAttachmentBinding, target_binding_id) is None
+        assert sqlite_session.get(SegmentAttachmentBinding, foreign_binding_id) is not None
+        _assert_relational_cleanup(
+            sqlite_session,
+            document_id=document_id,
+            other_document_id=other_document_id,
+            survivor_segment_id=survivor_segment_id,
+        )

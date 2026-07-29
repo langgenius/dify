@@ -1,13 +1,48 @@
-from unittest.mock import patch
+from contextlib import nullcontext
+from typing import Any, override
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
 from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
     TidbOnQdrantConfig,
     TidbOnQdrantVector,
+    TidbOnQdrantVectorFactory,
 )
+from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from qdrant_client.http import models as rest
 from qdrant_client.http.exceptions import UnexpectedResponse
+
+from core.rag.embedding.embedding_base import Embeddings
+from models.dataset import Dataset, TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
+
+
+def _dataset() -> Dataset:
+    dataset = Dataset()
+    dataset.id = "dataset-1"
+    dataset.tenant_id = "tenant-1"
+    return dataset
+
+
+class _UnusedEmbeddings(Embeddings):
+    """Concrete embedding dependency for factory tests that never request embeddings."""
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise AssertionError("embed_documents should not be called")
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+        raise AssertionError("embed_multimodal_documents should not be called")
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        raise AssertionError("embed_query should not be called")
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+        raise AssertionError("embed_multimodal_query should not be called")
 
 
 class TestTidbOnQdrantVectorDeleteByIds:
@@ -175,6 +210,31 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
 
 class TestInitVectorEndpointSelection:
+    def test_load_tenant_binding_requires_unambiguous_cardinality(self):
+        binding = TidbAuthBinding(
+            tenant_id="tenant-1",
+            cluster_id="cluster-1",
+            cluster_name="cluster-name-1",
+            active=True,
+            status=TidbAuthBindingStatus.ACTIVE,
+            account="account-1",
+            password="password-1",
+            qdrant_endpoint="https://qdrant.example.com",
+        )
+        session = MagicMock()
+        session.scalars.return_value.one_or_none.return_value = binding
+
+        with patch(
+            "dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.session_factory.create_session",
+            return_value=nullcontext(session),
+        ):
+            config = TidbOnQdrantVectorFactory._load_tenant_binding("tenant-1")
+
+        assert config is not None
+        assert config.cluster_id == binding.cluster_id
+        session.scalars.return_value.one_or_none.assert_called_once_with()
+        session.scalar.assert_not_called()
+
     """Test that init_vector selects the correct qdrant endpoint.
 
     We avoid importing the full module (which triggers Flask app context)
@@ -226,3 +286,43 @@ class TestInitVectorEndpointSelection:
         qdrant_url = binding_endpoint or global_url or ""
 
         assert qdrant_url == "https://qdrant-global.tidb.com"
+
+    def test_provisioning_without_an_active_cluster_raises_explicitly(self):
+        factory = TidbOnQdrantVectorFactory()
+        dataset = _dataset()
+        session = MagicMock()
+        session.scalar.return_value = None
+
+        with (
+            patch.object(factory, "_load_tenant_binding", return_value=None),
+            patch(
+                "dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.session_factory.create_session",
+                return_value=nullcontext(session),
+            ),
+            patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.redis_client.lock", return_value=nullcontext()),
+            patch.object(TidbService, "create_tidb_serverless_cluster", return_value=None),
+            pytest.raises(RuntimeError, match="did not return an active cluster"),
+        ):
+            factory.init_vector(dataset, [], _UnusedEmbeddings())
+
+    def test_provisioning_with_malformed_cluster_response_raises_explicitly(self):
+        factory = TidbOnQdrantVectorFactory()
+        dataset = _dataset()
+        session = MagicMock()
+        session.scalar.return_value = None
+
+        with (
+            patch.object(factory, "_load_tenant_binding", return_value=None),
+            patch(
+                "dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.session_factory.create_session",
+                return_value=nullcontext(session),
+            ),
+            patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.redis_client.lock", return_value=nullcontext()),
+            patch.object(
+                TidbService,
+                "create_tidb_serverless_cluster",
+                return_value={"cluster_id": "cluster-1"},
+            ),
+            pytest.raises(RuntimeError, match="invalid cluster response"),
+        ):
+            factory.init_vector(dataset, [], _UnusedEmbeddings())

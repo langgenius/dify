@@ -321,6 +321,15 @@ class PipelineGenerator(BaseAppGenerator):
             workflow = session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
+            # The worker and response pipeline use their own repository/node
+            # sessions. Release the caller's read transaction before either can
+            # block on provider I/O or stream events back to the client.
+            expire_on_commit = session.expire_on_commit
+            session.expire_on_commit = False
+            try:
+                session.commit()
+            finally:
+                session.expire_on_commit = expire_on_commit
             queue_manager = PipelineQueueManager(
                 task_id=application_generate_entity.task_id,
                 user_id=application_generate_entity.user_id,
@@ -625,19 +634,22 @@ class PipelineGenerator(BaseAppGenerator):
                     else:
                         # For internal calls, use the original user ID
                         system_user_id = application_generate_entity.user_id
-                    # workflow app
-                    runner = PipelineRunner(
-                        application_generate_entity=application_generate_entity,
-                        queue_manager=queue_manager,
-                        workflow_thread_pool_id=workflow_thread_pool_id,
-                        variable_loader=variable_loader,
-                        workflow=workflow,
-                        system_user_id=system_user_id,
-                        workflow_execution_repository=workflow_execution_repository,
-                        workflow_node_execution_repository=workflow_node_execution_repository,
-                    )
 
-                    runner.run()
+                # The loaded scalar fields remain usable after close. Pipeline nodes
+                # and repositories own any later SQL, so the worker must not retain
+                # this checkout during external work.
+                runner = PipelineRunner(
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    workflow_thread_pool_id=workflow_thread_pool_id,
+                    variable_loader=variable_loader,
+                    workflow=workflow,
+                    system_user_id=system_user_id,
+                    workflow_execution_repository=workflow_execution_repository,
+                    workflow_node_execution_repository=workflow_node_execution_repository,
+                )
+
+                runner.run()
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:

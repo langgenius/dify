@@ -1,35 +1,72 @@
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.enums import IndexingStatus, SegmentStatus
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 
 
-def test_enable_segment_commits_index_rows_after_loading() -> None:
-    dataset = SimpleNamespace(id="dataset-1", is_multimodal=False)
-    document = SimpleNamespace(
+def _dataset() -> Dataset:
+    return Dataset(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        description="",
+        provider="vendor",
+        permission="only_me",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        created_by="00000000-0000-0000-0000-000000000001",
+        is_multimodal=False,
+    )
+
+
+def _document(dataset: Dataset) -> Document:
+    return Document(
         id="document-1",
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="00000000-0000-0000-0000-000000000001",
+        indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=False,
-        indexing_status=IndexingStatus.COMPLETED,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
-    segment = SimpleNamespace(
-        id="segment-1",
-        status=SegmentStatus.COMPLETED,
+
+
+def _segment(dataset: Dataset, document: Document) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        position=1,
         content="content",
+        word_count=1,
+        tokens=1,
+        created_by="00000000-0000-0000-0000-000000000001",
         index_node_id="node-1",
         index_node_hash="hash-1",
-        document_id=document.id,
-        dataset_id=dataset.id,
-        get_dataset=MagicMock(return_value=dataset),
-        get_document=MagicMock(return_value=document),
+        status=SegmentStatus.COMPLETED,
+        enabled=True,
     )
+    segment.id = "segment-1"
+    return segment
+
+
+def test_enable_segment_commits_index_rows_after_loading() -> None:
+    dataset = _dataset()
+    document = _document(dataset)
+    segment = _segment(dataset, document)
     session = MagicMock()
     session.scalar.return_value = segment
+    session.get.side_effect = lambda model, _identifier: dataset if model is Dataset else document
     phase_events: list[str] = []
     session.commit.side_effect = lambda: phase_events.append("commit")
     index_processor = MagicMock()
@@ -48,41 +85,29 @@ def test_enable_segment_commits_index_rows_after_loading() -> None:
         processor_factory.return_value.init_index_processor.return_value = index_processor
         enable_segment_to_index_task.run(segment.id)
 
-    assert phase_events == ["load", "commit", "summary"]
+    assert phase_events == ["commit", "load", "commit", "summary"]
+    enable_summaries.assert_called_once_with(dataset=dataset, session=session, segment_ids=[segment.id])
 
 
 def test_enable_segment_rolls_back_before_error_compensation() -> None:
-    dataset = SimpleNamespace(id="dataset-1", is_multimodal=False)
-    document = SimpleNamespace(
-        id="document-1",
-        enabled=True,
-        archived=False,
-        indexing_status=IndexingStatus.COMPLETED,
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-    )
-    segment = SimpleNamespace(
-        id="segment-1",
-        status=SegmentStatus.COMPLETED,
-        content="content",
-        index_node_id="node-1",
-        index_node_hash="hash-1",
-        document_id=document.id,
-        dataset_id=dataset.id,
-        enabled=True,
-        disabled_at=None,
-        error=None,
-        get_dataset=MagicMock(return_value=dataset),
-        get_document=MagicMock(return_value=document),
-    )
+    dataset = _dataset()
+    document = _document(dataset)
+    segment = _segment(dataset, document)
     phase_events: list[str] = []
     session = MagicMock()
     session.scalar.return_value = segment
+    session.get.side_effect = lambda model, _identifier: dataset if model is Dataset else document
     session.rollback.side_effect = lambda: phase_events.append("rollback")
 
+    commit_count = 0
+
     def commit() -> None:
-        assert segment.enabled is False
-        assert segment.status == SegmentStatus.ERROR
-        assert segment.error == "load failed"
+        nonlocal commit_count
+        commit_count += 1
+        if commit_count == 2:
+            assert segment.enabled is False
+            assert segment.status == SegmentStatus.ERROR
+            assert segment.error == "load failed"
         phase_events.append("commit")
 
     session.commit.side_effect = commit
@@ -103,27 +128,14 @@ def test_enable_segment_rolls_back_before_error_compensation() -> None:
         processor_factory.return_value.init_index_processor.return_value = index_processor
         enable_segment_to_index_task.run(segment.id)
 
-    assert phase_events == ["load", "rollback", "commit"]
+    assert phase_events == ["commit", "load", "rollback", "commit"]
     enable_summaries.assert_not_called()
 
 
 def test_enable_segments_commits_index_rows_after_loading() -> None:
-    dataset = SimpleNamespace(id="dataset-1", is_multimodal=False)
-    document = SimpleNamespace(
-        id="document-1",
-        enabled=True,
-        archived=False,
-        indexing_status="completed",
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-    )
-    segment = SimpleNamespace(
-        id="segment-1",
-        content="content",
-        index_node_id="node-1",
-        index_node_hash="hash-1",
-        document_id=document.id,
-        dataset_id=dataset.id,
-    )
+    dataset = _dataset()
+    document = _document(dataset)
+    segment = _segment(dataset, document)
     session = MagicMock()
     session.scalar.side_effect = [dataset, document]
     session.scalars.return_value.all.return_value = [segment]
@@ -145,26 +157,14 @@ def test_enable_segments_commits_index_rows_after_loading() -> None:
         processor_factory.return_value.init_index_processor.return_value = index_processor
         enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
 
-    assert phase_events == ["load", "commit", "summary"]
+    assert phase_events == ["commit", "load", "commit", "summary"]
+    enable_summaries.assert_called_once_with(dataset=dataset, session=session, segment_ids=[segment.id])
 
 
 def test_enable_segments_rolls_back_before_error_compensation() -> None:
-    dataset = SimpleNamespace(id="dataset-1", is_multimodal=False)
-    document = SimpleNamespace(
-        id="document-1",
-        enabled=True,
-        archived=False,
-        indexing_status="completed",
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-    )
-    segment = SimpleNamespace(
-        id="segment-1",
-        content="content",
-        index_node_id="node-1",
-        index_node_hash="hash-1",
-        document_id=document.id,
-        dataset_id=dataset.id,
-    )
+    dataset = _dataset()
+    document = _document(dataset)
+    segment = _segment(dataset, document)
     phase_events: list[str] = []
     session = MagicMock()
     session.scalar.side_effect = [dataset, document]
@@ -189,5 +189,5 @@ def test_enable_segments_rolls_back_before_error_compensation() -> None:
         processor_factory.return_value.init_index_processor.return_value = index_processor
         enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
 
-    assert phase_events == ["load", "rollback", "compensate", "commit"]
+    assert phase_events == ["commit", "load", "rollback", "compensate", "commit"]
     enable_summaries.assert_not_called()

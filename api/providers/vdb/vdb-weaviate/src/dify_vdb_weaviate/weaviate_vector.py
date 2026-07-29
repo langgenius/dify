@@ -11,7 +11,8 @@ import json
 import logging
 import threading
 import uuid as _uuid
-from typing import Any, override
+from itertools import batched
+from typing import Any, cast, override
 from urllib.parse import urlparse
 
 import weaviate
@@ -20,7 +21,8 @@ from pydantic import BaseModel, model_validator
 from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
-from weaviate.exceptions import UnexpectedStatusCodeError, WeaviateQueryError
+from weaviate.collections.classes.filters import FilterReturn
+from weaviate.exceptions import WeaviateQueryError
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -34,8 +36,17 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
+_DELETE_BATCH_SIZE = 500
+_DOC_ID_UUID_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
+
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
+
+def _normalize_result_vector(value: object) -> list[float] | None:
+    if not isinstance(value, list) or not all(isinstance(item, int | float) for item in value):
+        return None
+    return [float(item) for item in cast(list[int | float], value)]
 
 
 def _shutdown_weaviate_client() -> None:
@@ -228,8 +239,16 @@ class WeaviateVector(BaseVector):
                                 data_type=wc.DataType.TEXT,
                                 tokenization=tokenization,
                             ),
-                            wc.Property(name="document_id", data_type=wc.DataType.TEXT),
-                            wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
+                            wc.Property(
+                                name="document_id",
+                                data_type=wc.DataType.TEXT,
+                                tokenization=wc.Tokenization.FIELD,
+                            ),
+                            wc.Property(
+                                name="doc_id",
+                                data_type=wc.DataType.TEXT,
+                                tokenization=wc.Tokenization.FIELD,
+                            ),
                             wc.Property(name="doc_type", data_type=wc.DataType.TEXT),
                             wc.Property(name="chunk_index", data_type=wc.DataType.INT),
                             wc.Property(name="is_summary", data_type=wc.DataType.BOOL),
@@ -259,9 +278,11 @@ class WeaviateVector(BaseVector):
 
         to_add = []
         if "document_id" not in existing:
-            to_add.append(wc.Property(name="document_id", data_type=wc.DataType.TEXT))
+            to_add.append(
+                wc.Property(name="document_id", data_type=wc.DataType.TEXT, tokenization=wc.Tokenization.FIELD)
+            )
         if "doc_id" not in existing:
-            to_add.append(wc.Property(name="doc_id", data_type=wc.DataType.TEXT))
+            to_add.append(wc.Property(name="doc_id", data_type=wc.DataType.TEXT, tokenization=wc.Tokenization.FIELD))
         if "doc_type" not in existing:
             to_add.append(wc.Property(name="doc_type", data_type=wc.DataType.TEXT))
         if "chunk_index" not in existing:
@@ -277,18 +298,50 @@ class WeaviateVector(BaseVector):
             except Exception as e:
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
+    @staticmethod
+    def _exact_text_filter(property_name: str, values: list[str]) -> FilterReturn | None:
+        """Match complete TEXT-property values without token-overlap leakage."""
+        unique_values = list(dict.fromkeys(value for value in values if value))
+        if not unique_values:
+            return None
+
+        combined = Filter.by_property(property_name).equal(unique_values[0])
+        for value in unique_values[1:]:
+            combined |= Filter.by_property(property_name).equal(value)
+        return combined
+
+    @staticmethod
+    def _build_search_filter(kwargs: dict[str, Any]) -> FilterReturn | None:
+        """Filter optional document IDs; the selected collection already scopes the dataset."""
+        document_ids = [str(document_id) for document_id in kwargs.get("document_ids_filter") or []]
+        return WeaviateVector._exact_text_filter("document_id", document_ids)
+
+    @staticmethod
+    def _matches_search_scope(properties: dict[str, Any], kwargs: dict[str, Any]) -> bool:
+        """Reject document-ID false positives from legacy collections that use WORD tokenization."""
+        document_ids = {str(document_id) for document_id in kwargs.get("document_ids_filter") or []}
+        if document_ids and str(properties.get("document_id") or "") not in document_ids:
+            return False
+        return True
+
     @override
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
         """
-        Generates deterministic UUIDs for documents based on their content.
+        Generates deterministic UUIDs from each durable metadata ``doc_id``.
 
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
+        UUID-shaped handles are preserved. Other handles are namespaced into a
+        UUID so identity never depends on document content and identical chunks
+        cannot overwrite one another.
         """
-        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-
         uuids = []
-        for doc in documents:
-            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
+        for doc in texts:
+            doc_id = doc.metadata.get("doc_id")
+            if doc_id is None or str(doc_id) == "":
+                raise ValueError("Document must contain a doc_id")
+            try:
+                uuid_val = _uuid.UUID(str(doc_id))
+            except (TypeError, ValueError, AttributeError):
+                uuid_val = _uuid.uuid5(_DOC_ID_UUID_NAMESPACE, str(doc_id))
             uuids.append(str(uuid_val))
 
         return uuids
@@ -298,14 +351,16 @@ class WeaviateVector(BaseVector):
         """
         Adds documents with their embeddings to the collection.
 
-        Batches insertions for efficiency and returns the list of inserted object IDs.
+        Canonical object UUIDs are derived from ``doc_id``. Existing canonical
+        objects are replaced, new objects are inserted in a checked batch, and
+        legacy content-derived UUIDs are retired only after publication succeeds.
         """
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
         col = self._client.collections.use(self._collection_name)
-        objs: list[DataObject] = []
+        objs: list[DataObject[dict[str, Any]]] = []
         ids_out: list[str] = []
 
         for i, text in enumerate(texts):
@@ -330,11 +385,104 @@ class WeaviateVector(BaseVector):
                 )
             )
 
-        with col.batch.dynamic() as batch:
-            for obj in objs:
-                batch.add_object(properties=obj.properties, uuid=obj.uuid, vector=obj.vector)
+        doc_ids = [str(metadata["doc_id"]) for metadata in metadatas if metadata.get("doc_id")]
+        existing_uuids = self._get_object_uuids_by_doc_id(col, doc_ids)
+        objects_to_insert: list[DataObject[dict[str, Any]]] = []
+        for obj, metadata in zip(objs, metadatas):
+            doc_id = str(metadata["doc_id"]) if metadata.get("doc_id") else None
+            object_uuid = obj.uuid
+            object_properties = obj.properties
+            if object_uuid is None or object_properties is None:
+                raise RuntimeError("Weaviate data object is missing its UUID or properties")
+            if doc_id is not None and str(object_uuid) in existing_uuids.get(doc_id, set()):
+                col.data.replace(uuid=object_uuid, properties=object_properties, vector=obj.vector)
+            else:
+                objects_to_insert.append(obj)
+
+        if objects_to_insert:
+            with col.batch.dynamic() as batch:
+                for obj in objects_to_insert:
+                    batch.add_object(properties=obj.properties, uuid=obj.uuid, vector=obj.vector)
+            self._raise_for_batch_failures(col)
+
+        # Query again after canonical publication so a retry or mixed-version
+        # deployment can also retire legacy objects created concurrently.
+        canonical_uuid_by_doc_id = {
+            str(metadata["doc_id"]): str(obj.uuid) for obj, metadata in zip(objs, metadatas) if metadata.get("doc_id")
+        }
+        published_uuids = self._get_object_uuids_by_doc_id(col, list(canonical_uuid_by_doc_id))
+        legacy_uuids: list[str] = []
+        for doc_id, canonical_uuid in canonical_uuid_by_doc_id.items():
+            for object_uuid in published_uuids.get(doc_id, set()):
+                if object_uuid != canonical_uuid:
+                    legacy_uuids.append(object_uuid)
+        self._delete_object_uuids(col, legacy_uuids)
 
         return ids_out
+
+    def _get_object_uuids_by_property(
+        self,
+        col: Any,
+        property_name: str,
+        values: list[str],
+    ) -> dict[str, set[str]]:
+        """Return object UUIDs after exact client-side validation for legacy WORD-tokenized fields."""
+        object_uuids: dict[str, set[str]] = {}
+        unique_values = list(dict.fromkeys(value for value in values if value))
+        for value_batch in batched(unique_values, _DELETE_BATCH_SIZE):
+            value_filter = self._exact_text_filter(property_name, list(value_batch))
+            if value_filter is None:
+                continue
+            offset = 0
+            while True:
+                result = col.query.fetch_objects(
+                    filters=value_filter,
+                    limit=_DELETE_BATCH_SIZE,
+                    offset=offset,
+                    return_properties=[property_name],
+                    include_vector=False,
+                )
+                objects = list(result.objects or [])
+                for obj in objects:
+                    value = (obj.properties or {}).get(property_name)
+                    if value is not None and str(value) in value_batch:
+                        object_uuids.setdefault(str(value), set()).add(str(obj.uuid))
+                if len(objects) < _DELETE_BATCH_SIZE:
+                    break
+                # Weaviate 1.27 rejects cursor (``after``) pagination when a
+                # filter is present. Keep the result set stable until every
+                # UUID has been collected, then retire legacy objects.
+                offset += len(objects)
+        return object_uuids
+
+    def _get_object_uuids_by_doc_id(self, col: Any, doc_ids: list[str]) -> dict[str, set[str]]:
+        """Return every object UUID grouped by durable ``doc_id``."""
+        return self._get_object_uuids_by_property(col, "doc_id", doc_ids)
+
+    def _delete_object_uuids(self, col: Any, object_uuids: list[str]) -> None:
+        unique_uuids = list(dict.fromkeys(object_uuids))
+        for uuid_batch in batched(unique_uuids, _DELETE_BATCH_SIZE):
+            self._delete_many_checked(col, Filter.by_id().contains_any(list(uuid_batch)))
+
+    def _raise_for_batch_failures(self, col: Any) -> None:
+        """Raise when Weaviate reports object-level batch insertion errors."""
+        failed_objects = list(col.batch.failed_objects)
+        if not failed_objects:
+            return
+
+        messages = [failed_object.message for failed_object in failed_objects[:3]]
+        details = "; ".join(messages)
+        raise RuntimeError(f"Weaviate failed to insert {len(failed_objects)} object(s): {details}")
+
+    def _delete_many_checked(self, col: Any, where: FilterReturn) -> None:
+        """Delete matching objects and surface Weaviate's partial failures."""
+        result = col.data.delete_many(where=where, verbose=True)
+        failed = result.failed
+        if failed > 0:
+            raise RuntimeError(
+                f"Weaviate failed to delete {failed} of {result.matches} matching object(s) "
+                f"from collection {self._collection_name}"
+            )
 
     def _is_uuid(self, val: str) -> bool:
         """Validates whether a string is a valid UUID format."""
@@ -351,7 +499,8 @@ class WeaviateVector(BaseVector):
             return
 
         col = self._client.collections.use(self._collection_name)
-        col.data.delete_many(where=Filter.by_property(key).equal(value))
+        object_uuids = self._get_object_uuids_by_property(col, key, [value]).get(value, set())
+        self._delete_object_uuids(col, list(object_uuids))
 
     @override
     def delete(self):
@@ -366,32 +515,28 @@ class WeaviateVector(BaseVector):
             return False
 
         col = self._client.collections.use(self._collection_name)
-        res = col.query.fetch_objects(
-            filters=Filter.by_property("doc_id").equal(id),
-            limit=1,
-            return_properties=["doc_id"],
-        )
-
-        return len(res.objects) > 0
+        return bool(self._get_object_uuids_by_doc_id(col, [id]).get(id))
 
     @override
     def delete_by_ids(self, ids: list[str]) -> None:
         """
-        Deletes objects by their UUID identifiers.
+        Deletes objects by their durable metadata ``doc_id`` values.
 
-        Silently ignores 404 errors for non-existent IDs.
+        Historical Weaviate objects used content-derived object UUIDs, while the
+        application persisted ``doc_id`` as the deletion handle. Property-based
+        deletion therefore supports both historical objects and new summaries
+        whose object UUID is the same as ``doc_id``.
         """
-        if not self._client.collections.exists(self._collection_name):
+        unique_ids = list(dict.fromkeys(identifier for identifier in ids if identifier))
+        if not unique_ids or not self._client.collections.exists(self._collection_name):
             return
 
         col = self._client.collections.use(self._collection_name)
-
-        for uid in ids:
-            try:
-                col.data.delete_by_id(uid)
-            except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
-                    raise
+        object_uuids = self._get_object_uuids_by_doc_id(col, unique_ids)
+        self._delete_object_uuids(
+            col,
+            [object_uuid for doc_id in unique_ids for object_uuid in object_uuids.get(doc_id, set())],
+        )
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -407,51 +552,65 @@ class WeaviateVector(BaseVector):
         col = self._client.collections.use(self._collection_name)
         props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
-        where = None
-        doc_ids = kwargs.get("document_ids_filter") or []
-        if doc_ids:
-            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
+        where = self._build_search_filter(kwargs)
 
         top_k = int(kwargs.get("top_k", 4))
+        if top_k <= 0:
+            return []
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
-        try:
-            res = col.query.near_vector(
-                near_vector=query_vector,
-                limit=top_k,
-                return_properties=props,
-                return_metadata=MetadataQuery(distance=True),
-                include_vector=False,
-                filters=where,
-                target_vector="default",
-            )
-        except WeaviateQueryError:
-            self._ensure_properties()
-            res = col.query.near_vector(
-                near_vector=query_vector,
-                limit=top_k,
-                return_properties=props,
-                return_metadata=MetadataQuery(distance=True),
-                include_vector=False,
-                filters=where,
-                target_vector="default",
-            )
-
         docs: list[Document] = []
-        for obj in res.objects:
-            properties = dict(obj.properties or {})
-            text = properties.pop(Field.TEXT_KEY.value, "")
-            if obj.metadata and obj.metadata.distance is not None:
-                distance = obj.metadata.distance
-            else:
-                distance = 1.0
-            score = 1.0 - distance
+        offset = 0
+        while len(docs) < top_k:
+            try:
+                res = col.query.near_vector(
+                    near_vector=query_vector,
+                    limit=top_k,
+                    offset=offset,
+                    return_properties=props,
+                    return_metadata=MetadataQuery(distance=True),
+                    include_vector=False,
+                    filters=where,
+                    target_vector="default",
+                )
+            except WeaviateQueryError:
+                self._ensure_properties()
+                res = col.query.near_vector(
+                    near_vector=query_vector,
+                    limit=top_k,
+                    offset=offset,
+                    return_properties=props,
+                    return_metadata=MetadataQuery(distance=True),
+                    include_vector=False,
+                    filters=where,
+                    target_vector="default",
+                )
 
-            if score > score_threshold:
+            objects = list(res.objects or [])
+            score_threshold_reached = False
+            for obj in objects:
+                properties = dict(obj.properties or {})
+                if obj.metadata and obj.metadata.distance is not None:
+                    distance = obj.metadata.distance
+                else:
+                    distance = 1.0
+                score = 1.0 - distance
+                if score <= score_threshold:
+                    score_threshold_reached = True
+                    break
+                if not self._matches_search_scope(properties, kwargs):
+                    continue
+                text_value = properties.pop(Field.TEXT_KEY.value, "")
+                text = text_value if isinstance(text_value, str) else str(text_value or "")
                 properties["score"] = score
                 docs.append(Document(page_content=text, metadata=properties))
+                if len(docs) == top_k:
+                    break
 
-        docs.sort(key=lambda d: d.metadata.get("score", 0.0), reverse=True)
+            if len(docs) == top_k or score_threshold_reached or len(objects) < top_k:
+                break
+            offset += len(objects)
+
         return docs
 
     @override
@@ -467,43 +626,57 @@ class WeaviateVector(BaseVector):
         col = self._client.collections.use(self._collection_name)
         props = list({*self._attributes, Field.TEXT_KEY.value})
 
-        where = None
-        doc_ids = kwargs.get("document_ids_filter") or []
-        if doc_ids:
-            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
+        where = self._build_search_filter(kwargs)
 
         top_k = int(kwargs.get("top_k", 4))
-
-        try:
-            res = col.query.bm25(
-                query=query,
-                query_properties=[Field.TEXT_KEY.value],
-                limit=top_k,
-                return_properties=props,
-                include_vector=True,
-                filters=where,
-            )
-        except WeaviateQueryError:
-            self._ensure_properties()
-            res = col.query.bm25(
-                query=query,
-                query_properties=[Field.TEXT_KEY.value],
-                limit=top_k,
-                return_properties=props,
-                include_vector=True,
-                filters=where,
-            )
+        if top_k <= 0:
+            return []
 
         docs: list[Document] = []
-        for obj in res.objects:
-            properties = dict(obj.properties or {})
-            text = properties.pop(Field.TEXT_KEY.value, "")
+        offset = 0
+        while len(docs) < top_k:
+            try:
+                res = col.query.bm25(
+                    query=query,
+                    query_properties=[Field.TEXT_KEY.value],
+                    limit=top_k,
+                    offset=offset,
+                    return_properties=props,
+                    include_vector=True,
+                    filters=where,
+                )
+            except WeaviateQueryError:
+                self._ensure_properties()
+                res = col.query.bm25(
+                    query=query,
+                    query_properties=[Field.TEXT_KEY.value],
+                    limit=top_k,
+                    offset=offset,
+                    return_properties=props,
+                    include_vector=True,
+                    filters=where,
+                )
 
-            vec = obj.vector
-            if isinstance(vec, dict):
-                vec = vec.get("default") or next(iter(vec.values()), None)
+            objects = list(res.objects or [])
+            for obj in objects:
+                properties = dict(obj.properties or {})
+                if not self._matches_search_scope(properties, kwargs):
+                    continue
+                text_value = properties.pop(Field.TEXT_KEY.value, "")
+                text = text_value if isinstance(text_value, str) else str(text_value or "")
 
-            docs.append(Document(page_content=text, vector=vec, metadata=properties))
+                raw_vector = obj.vector
+                if isinstance(raw_vector, dict):
+                    raw_vector = raw_vector.get("default") or next(iter(raw_vector.values()), None)
+                vector = _normalize_result_vector(raw_vector)
+
+                docs.append(Document(page_content=text, vector=vector, metadata=properties))
+                if len(docs) == top_k:
+                    break
+
+            if len(docs) == top_k or len(objects) < top_k:
+                break
+            offset += len(objects)
         return docs
 
     def _json_serializable(self, value: Any) -> Any:

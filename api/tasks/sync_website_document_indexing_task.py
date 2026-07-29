@@ -69,17 +69,32 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             # clean old data
             index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
+            ).all()
             if segments:
                 index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                segment_ids = [segment.id for segment in segments]
                 # delete from vector index
                 index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
+                    dataset,
+                    index_node_ids,
+                    with_keywords=True,
+                    delete_child_chunks=True,
+                    delete_summaries=True,
+                    segment_ids=segment_ids,
+                    session=session,
                 )
 
             segment_ids = [segment.id for segment in segments]
             if segment_ids:
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                segment_delete_stmt = delete(DocumentSegment).where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                )
                 session.execute(segment_delete_stmt)
             session.commit()
 

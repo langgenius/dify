@@ -37,7 +37,7 @@ from controllers.service_api.dataset.segment import (
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
-from models.enums import IndexingStatus, SegmentType
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SegmentType
 from services.dataset_service import DocumentService, SegmentService
 
 
@@ -110,15 +110,32 @@ def _child_chunk() -> ChildChunk:
 
 def _document_for_dataset(
     dataset: Dataset, document_id: str = "doc-id", doc_form: str = IndexStructureType.PARAGRAPH_INDEX
-):
-    document = Mock()
-    document.id = document_id
-    document.dataset_id = dataset.id
-    document.tenant_id = dataset.tenant_id
-    document.indexing_status = "completed"
-    document.enabled = True
-    document.doc_form = doc_form
-    return document
+) -> Document:
+    return Document(
+        id=document_id,
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="document.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="account-1",
+        indexing_status=IndexingStatus.COMPLETED,
+        enabled=True,
+        archived=False,
+        doc_form=doc_form,
+    )
+
+
+def _dataset_for_tenant(tenant_id: str) -> Dataset:
+    return Dataset(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        name="Dataset",
+        created_by="account-1",
+        indexing_technique="high_quality",
+    )
 
 
 class TestSegmentCreatePayload:
@@ -1207,9 +1224,12 @@ class TestDatasetSegmentApiDelete:
         mock_seg_svc.delete_segment.return_value = None
 
         # Act
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
-            method="DELETE",
+        with (
+            app.test_request_context(
+                f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
+                method="DELETE",
+            ),
+            patch("controllers.service_api.dataset.segment.db.session.remove") as mock_remove_auth_session,
         ):
             api = DatasetSegmentApi()
             delete = inspect.unwrap(api.delete)
@@ -1224,6 +1244,7 @@ class TestDatasetSegmentApiDelete:
 
         # Assert
         assert response == ("", 204)
+        mock_remove_auth_session.assert_called_once_with()
         mock_seg_svc.delete_segment.assert_called_once_with(
             mock_segment, mock_doc, mock_dataset, session_factory.session
         )
@@ -1415,11 +1436,14 @@ class TestDatasetSegmentApiUpdate:
         mock_get_summary.return_value = None
         mock_dump_segment.return_value = _segment_response_dict()
 
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
-            method="POST",
-            json={"segment": {"content": "updated content"}},
-            headers={"Authorization": "Bearer test_token"},
+        with (
+            app.test_request_context(
+                f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
+                method="POST",
+                json={"segment": {"content": "updated content"}},
+                headers={"Authorization": "Bearer test_token"},
+            ),
+            patch("controllers.service_api.dataset.segment.db.session.remove") as mock_remove_auth_session,
         ):
             api = DatasetSegmentApi()
             response, status = api.post(
@@ -1431,6 +1455,7 @@ class TestDatasetSegmentApiUpdate:
 
         assert status == 200
         assert "data" in response
+        mock_remove_auth_session.assert_called_once_with()
         mock_seg_svc.update_segment.assert_called_once()
         mock_dump_segment.assert_called_once_with(updated, None, session=session_factory.session)
 
@@ -1912,11 +1937,14 @@ class TestChildChunkApiPost:
         mock_child = _child_chunk()
         mock_seg_svc.create_child_chunk.return_value = mock_child
 
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
-            method="POST",
-            json={"content": "child chunk content"},
-            headers={"Authorization": "Bearer test_token"},
+        with (
+            app.test_request_context(
+                f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
+                method="POST",
+                json={"content": "child chunk content"},
+                headers={"Authorization": "Bearer test_token"},
+            ),
+            patch("controllers.service_api.dataset.segment.db.session.remove") as mock_remove_auth_session,
         ):
             api = ChildChunkApi()
             response, status = api.post(
@@ -1928,6 +1956,7 @@ class TestChildChunkApiPost:
 
         assert status == 200
         assert "data" in response
+        mock_remove_auth_session.assert_called_once_with()
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
@@ -2046,9 +2075,12 @@ class TestDatasetChildChunkApiDelete:
         mock_seg_svc.get_child_chunk_by_segment_ref.return_value = mock_child
         mock_seg_svc.delete_child_chunk.return_value = None
 
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/{child_chunk_id}",
-            method="DELETE",
+        with (
+            app.test_request_context(
+                f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/{child_chunk_id}",
+                method="DELETE",
+            ),
+            patch("controllers.service_api.dataset.segment.db.session.remove") as mock_remove_auth_session,
         ):
             api = DatasetChildChunkApi()
             delete = inspect.unwrap(api.delete)
@@ -2063,7 +2095,79 @@ class TestDatasetChildChunkApiDelete:
             )
 
         assert response == ("", 204)
+        mock_remove_auth_session.assert_called_once_with()
         mock_seg_svc.delete_child_chunk.assert_called_once()
+
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_update_child_chunk_releases_auth_session_before_vector_io(
+        self,
+        mock_validate_token,
+        mock_feature_svc,
+        session_factory,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        app: Flask,
+        mock_tenant,
+    ):
+        TestChildChunkApiPost._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        dataset = _dataset_for_tenant(mock_tenant.id)
+        document = _document_for_dataset(dataset)
+        session_factory.session.scalar.return_value = dataset
+        mock_doc_svc.get_document.return_value = document
+        segment_id = str(uuid.uuid4())
+        child_chunk_id = str(uuid.uuid4())
+        segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=1,
+            content="parent content",
+            word_count=2,
+            tokens=2,
+            created_by="account-1",
+            status=SegmentStatus.COMPLETED,
+        )
+        segment.id = segment_id
+        mock_seg_svc.get_segment_by_ref.return_value = segment
+        child_chunk = _child_chunk()
+        child_chunk.id = child_chunk_id
+        child_chunk.segment_id = segment_id
+        child_chunk.dataset_id = dataset.id
+        child_chunk.document_id = document.id
+        child_chunk.tenant_id = dataset.tenant_id
+        child_chunk.content = "updated child content"
+        mock_seg_svc.get_child_chunk_by_segment_ref.return_value = child_chunk
+        mock_seg_svc.update_child_chunk.return_value = child_chunk
+
+        with (
+            app.test_request_context(
+                f"/datasets/{dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/{child_chunk_id}",
+                method="PATCH",
+                json={"content": "updated child content"},
+                headers={"Authorization": "Bearer test_token"},
+            ),
+            patch("controllers.service_api.dataset.segment.db.session.remove") as mock_remove_auth_session,
+        ):
+            api = DatasetChildChunkApi()
+            response, status = api.patch(
+                tenant_id=mock_tenant.id,
+                dataset_id=dataset.id,
+                document_id="doc-id",
+                segment_id=segment_id,
+                child_chunk_id=child_chunk_id,
+            )
+
+        assert status == 200
+        assert response["data"]["content"] == "updated child content"
+        mock_remove_auth_session.assert_called_once_with()
+        mock_seg_svc.update_child_chunk.assert_called_once()
 
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")

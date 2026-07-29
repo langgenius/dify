@@ -25,8 +25,8 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from fields.segment_fields import segment_response_with_summary, segment_responses_with_summaries
 from libs.datetime_utils import naive_utc_now
-from models.dataset import ChildChunk, DocumentSegment
-from models.enums import SegmentStatus, SegmentType
+from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SegmentType
 from models.model import UploadFile
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
@@ -53,6 +53,34 @@ def _segment():
     segment.updated_at = naive_utc_now()
     segment.updated_by = "u1"
     return segment
+
+
+def _dataset() -> Dataset:
+    return Dataset(
+        id="ds-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        created_by="u1",
+        indexing_technique="high_quality",
+    )
+
+
+def _document(dataset: Dataset) -> Document:
+    return Document(
+        id="doc-1",
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="document.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="u1",
+        indexing_status=IndexingStatus.COMPLETED,
+        enabled=True,
+        archived=False,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
 
 
 def _child_chunk():
@@ -230,10 +258,12 @@ class TestDatasetDocumentSegmentApi:
                 "controllers.console.datasets.datasets_segments.SegmentService.update_segments_status",
                 return_value=None,
             ),
+            patch("controllers.console.datasets.datasets_segments.db.session.remove") as remove_auth_session,
         ):
             response, status = method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "enable")
         assert status == 200
         assert response["result"] == "success"
+        remove_auth_session.assert_called_once_with()
 
     def test_patch_document_indexing_in_progress(self, app: Flask):
         api = DatasetDocumentSegmentApi()
@@ -439,10 +469,12 @@ class TestDatasetDocumentSegmentUpdateApi:
                 "controllers.console.datasets.datasets_segments.SummaryIndexService.get_segment_summary",
                 return_value=None,
             ),
+            patch("controllers.console.datasets.datasets_segments.db.session.remove") as mock_remove_auth_session,
         ):
             response, status = method(api, session, "tenant-1", user, "ds-1", "doc-1", "seg-1")
         assert status == 200
         assert "data" in response
+        mock_remove_auth_session.assert_called_once_with()
 
     def test_patch_document_outside_dataset_is_not_found(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -734,10 +766,12 @@ class TestChildChunkAddApi:
                 "controllers.console.datasets.datasets_segments.SegmentService.create_child_chunk",
                 return_value=child_chunk,
             ),
+            patch("controllers.console.datasets.datasets_segments.db.session.remove") as remove_auth_session,
         ):
             response, status = method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
         assert status == 200
         assert response["data"]["id"] == "cc-1"
+        remove_auth_session.assert_called_once_with()
 
     def test_post_child_chunk_indexing_error(self, app: Flask):
         api = ChildChunkAddApi()
@@ -767,6 +801,45 @@ class TestChildChunkAddApi:
         ):
             with pytest.raises(ChildChunkIndexingError):
                 method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+
+    def test_patch_releases_auth_session_before_batch_vector_io(self, app: Flask):
+        api = ChildChunkAddApi()
+        method = unwrap(api.patch)
+        payload = {"chunks": [{"id": "cc-1", "content": "updated child"}]}
+        user = MagicMock(is_dataset_editor=True)
+        dataset = _dataset()
+        document = _document(dataset)
+        segment = _segment()
+        child_chunk = _child_chunk()
+        child_chunk.content = "updated child"
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=dataset),
+            patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.update_child_chunks",
+                return_value=[child_chunk],
+            ),
+            patch("controllers.console.datasets.datasets_segments.db.session.remove") as remove_auth_session,
+        ):
+            response, status = method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+
+        assert status == 200
+        assert response["data"][0]["content"] == "updated child"
+        remove_auth_session.assert_called_once_with()
 
     def test_post_permission_denied(self, app: Flask):
         api = ChildChunkAddApi()
@@ -819,10 +892,55 @@ class TestChildChunkUpdateApi:
             patch(
                 "controllers.console.datasets.datasets_segments.SegmentService.delete_child_chunk", return_value=None
             ),
+            patch("controllers.console.datasets.datasets_segments.db.session.remove") as remove_auth_session,
         ):
             response, status = method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
         assert status == 204
         assert response == ""
+        remove_auth_session.assert_called_once_with()
+
+    def test_patch_success_releases_auth_session_before_vector_io(self, app: Flask):
+        api = ChildChunkUpdateApi()
+        method = unwrap(api.patch)
+        payload = {"content": "updated child"}
+        user = MagicMock(is_dataset_editor=True)
+        dataset = _dataset()
+        document = _document(dataset)
+        segment = _segment()
+        child_chunk = _child_chunk()
+        child_chunk.content = payload["content"]
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=dataset),
+            patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunk_by_segment_ref",
+                return_value=child_chunk,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.update_child_chunk",
+                return_value=child_chunk,
+            ),
+            patch("controllers.console.datasets.datasets_segments.db.session.remove") as remove_auth_session,
+        ):
+            response, status = method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+
+        assert status == 200
+        assert response["data"]["content"] == "updated child"
+        remove_auth_session.assert_called_once_with()
 
     def test_delete_child_chunk_index_error(self, app: Flask):
         api = ChildChunkUpdateApi()

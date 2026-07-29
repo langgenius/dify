@@ -1,4 +1,4 @@
-from typing import override
+from typing import Any, override
 
 """Unit tests for Weaviate vector database implementation.
 
@@ -12,14 +12,56 @@ Focuses on verifying that doc_type is properly handled in:
 import datetime
 import json
 import unittest
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from dify_vdb_weaviate import weaviate_vector as weaviate_vector_module
 from dify_vdb_weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+from weaviate.collections.classes.batch import BatchObject, DeleteManyReturn, ErrorObject
 
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from models.dataset import Dataset
+
+
+def _dataset(dataset_id: str, *, collection_name: str | None = None) -> Dataset:
+    dataset = Dataset()
+    dataset.id = dataset_id
+    dataset.index_struct = (
+        json.dumps({"vector_store": {"class_prefix": collection_name}}) if collection_name is not None else None
+    )
+    return dataset
+
+
+def _delete_many_result(*, failed: int = 0, successful: int = 0, matches: int | None = None) -> DeleteManyReturn[None]:
+    return DeleteManyReturn(
+        failed=failed,
+        matches=failed + successful if matches is None else matches,
+        objects=None,
+        successful=successful,
+    )
+
+
+class _UnusedEmbeddings(Embeddings):
+    """Concrete embedding dependency for factory tests that never request embeddings."""
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise AssertionError("embed_documents should not be called")
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+        raise AssertionError("embed_multimodal_documents should not be called")
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        raise AssertionError("embed_query should not be called")
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+        raise AssertionError("embed_multimodal_query should not be called")
 
 
 class TestWeaviateVector(unittest.TestCase):
@@ -43,6 +85,60 @@ class TestWeaviateVector(unittest.TestCase):
     def test_config_requires_endpoint(self):
         with pytest.raises(ValueError, match="config WEAVIATE_ENDPOINT is required"):
             WeaviateConfig(endpoint="")
+
+    def test_result_vector_normalization_rejects_non_numeric_shapes(self):
+        assert weaviate_vector_module._normalize_result_vector([0.1, 2]) == [0.1, 2.0]
+        assert weaviate_vector_module._normalize_result_vector([[0.1]]) is None
+        assert weaviate_vector_module._normalize_result_vector("0.1") is None
+
+    def test_object_uuid_uses_metadata_doc_id_without_content_collision(self):
+        first_id = str(uuid.uuid4())
+        second_id = str(uuid.uuid4())
+        documents = [
+            Document(
+                page_content="identical content",
+                metadata={"doc_id": first_id},
+            ),
+            Document(
+                page_content="identical content",
+                metadata={"doc_id": second_id},
+            ),
+        ]
+
+        vector = WeaviateVector.__new__(WeaviateVector)
+
+        assert vector._get_uuids(documents) == [first_id, second_id]
+
+    def test_non_uuid_doc_id_has_stable_identity_independent_of_content(self):
+        vector = WeaviateVector.__new__(WeaviateVector)
+        first = Document(page_content="first", metadata={"doc_id": "external-handle"})
+        second = Document(page_content="second", metadata={"doc_id": "external-handle"})
+
+        assert vector._get_uuids([first]) == vector._get_uuids([second])
+
+    def test_document_identity_requires_durable_doc_id(self):
+        vector = WeaviateVector.__new__(WeaviateVector)
+
+        with pytest.raises(ValueError, match="must contain a doc_id"):
+            vector._get_uuids([Document(page_content="missing identity", metadata={})])
+
+    def test_build_search_filter_uses_exact_predicates_for_document_ids(self):
+        search_filter = WeaviateVector._build_search_filter(
+            {
+                "document_ids_filter": ["document-a", "document-b"],
+                "filter": {"group_id": ["dataset-a", "dataset-b"]},
+            }
+        )
+
+        assert search_filter is not None
+        conditions = vars(search_filter)["filters"]
+        assert [(condition.operator.value, condition.value) for condition in conditions] == [
+            ("Equal", "document-a"),
+            ("Equal", "document-b"),
+        ]
+
+    def test_build_search_filter_ignores_dataset_group_filter(self):
+        assert WeaviateVector._build_search_filter({"filter": {"group_id": ["dataset-a"]}}) is None
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def _create_weaviate_vector(self, mock_weaviate_module):
@@ -164,13 +260,13 @@ class TestWeaviateVector(unittest.TestCase):
         }
 
     def test_get_collection_name_uses_existing_class_prefix_and_appends_suffix(self):
-        dataset = SimpleNamespace(index_struct_dict={"vector_store": {"class_prefix": "ExistingCollection"}}, id="ds-1")
+        dataset = _dataset("ds-1", collection_name="ExistingCollection")
         wv = WeaviateVector.__new__(WeaviateVector)
 
         assert wv.get_collection_name(dataset) == "ExistingCollection_Node"
 
     def test_get_collection_name_generates_name_from_dataset_id(self):
-        dataset = SimpleNamespace(index_struct_dict=None, id="ds-2")
+        dataset = _dataset("ds-2")
         wv = WeaviateVector.__new__(WeaviateVector)
 
         with patch.object(weaviate_vector_module.Dataset, "gen_collection_name_by_id", return_value="Generated_Node"):
@@ -235,6 +331,7 @@ class TestWeaviateVector(unittest.TestCase):
         assert "doc_type" in property_names, (
             f"doc_type should be in collection schema properties, got: {property_names}"
         )
+        assert "dataset_id" not in property_names
 
     @patch("dify_vdb_weaviate.weaviate_vector.redis_client")
     def test_create_collection_returns_early_when_cache_key_exists(self, mock_redis):
@@ -291,6 +388,7 @@ class TestWeaviateVector(unittest.TestCase):
         # Simulate existing properties WITHOUT doc_type
         existing_props = [
             SimpleNamespace(name="text"),
+            SimpleNamespace(name="dataset_id"),
             SimpleNamespace(name="document_id"),
             SimpleNamespace(name="doc_id"),
             SimpleNamespace(name="chunk_index"),
@@ -332,7 +430,14 @@ class TestWeaviateVector(unittest.TestCase):
 
         add_calls = mock_col.config.add_property.call_args_list
         added_names = [call.args[0].name for call in add_calls]
-        assert added_names == ["document_id", "doc_id", "doc_type", "chunk_index", "is_summary", "original_chunk_id"]
+        assert added_names == [
+            "document_id",
+            "doc_id",
+            "doc_type",
+            "chunk_index",
+            "is_summary",
+            "original_chunk_id",
+        ]
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_ensure_properties_skips_existing_doc_type(self, mock_weaviate_module):
@@ -452,6 +557,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_obj = MagicMock()
         mock_obj.properties = {
             "text": "fallback distance result",
+            "dataset_id": "dataset-1",
             "document_id": "doc-1",
             "doc_id": "segment-1",
         }
@@ -469,13 +575,17 @@ class TestWeaviateVector(unittest.TestCase):
         docs = wv.search_by_vector(
             query_vector=[0.2] * 3,
             document_ids_filter=["doc-1"],
+            filter={"group_id": ["dataset-1"]},
             top_k=2,
             score_threshold=-1,
         )
 
         assert len(docs) == 1
         assert docs[0].metadata["score"] == 0.0
-        assert mock_col.query.near_vector.call_args.kwargs["filters"] is not None
+        search_filter = mock_col.query.near_vector.call_args.kwargs["filters"]
+        assert search_filter.target == "document_id"
+        assert search_filter.value == "doc-1"
+        assert search_filter.operator.value == "Equal"
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_vector_returns_empty_when_collection_is_missing(self, mock_weaviate_module):
@@ -491,6 +601,61 @@ class TestWeaviateVector(unittest.TestCase):
         )
 
         assert wv.search_by_vector(query_vector=[0.1] * 3) == []
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_vector_pages_past_legacy_token_filter_false_positive(self, mock_weaviate_module):
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+        mock_col.query.near_vector.side_effect = [
+            SimpleNamespace(
+                objects=[
+                    SimpleNamespace(
+                        properties={
+                            "text": "wrong but closest",
+                            "doc_id": "wrong",
+                            "document_id": "document-1-suffix",
+                            "dataset_id": "dataset-1",
+                        },
+                        metadata=SimpleNamespace(distance=0.01),
+                    )
+                ]
+            ),
+            SimpleNamespace(
+                objects=[
+                    SimpleNamespace(
+                        properties={
+                            "text": "right but second",
+                            "doc_id": "right",
+                            "document_id": "document-1",
+                            "dataset_id": "dataset-1",
+                        },
+                        metadata=SimpleNamespace(distance=0.02),
+                    )
+                ]
+            ),
+        ]
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_vector(
+            [0.1, 0.2],
+            top_k=1,
+            score_threshold=0.0,
+            document_ids_filter=["document-1"],
+            filter={"group_id": ["dataset-1"]},
+        )
+
+        assert [document.metadata["doc_id"] for document in docs] == ["right"]
+        assert mock_col.query.near_vector.call_count == 2
+        assert mock_col.query.near_vector.call_args_list[0].kwargs["offset"] == 0
+        assert mock_col.query.near_vector.call_args_list[1].kwargs["offset"] == 1
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_vector_retries_on_weaviate_query_error(self, mock_weaviate_module):
@@ -594,7 +759,12 @@ class TestWeaviateVector(unittest.TestCase):
         mock_client.collections.use.return_value = mock_col
 
         mock_obj = MagicMock()
-        mock_obj.properties = {"text": "bm25 result", "doc_id": "segment-1"}
+        mock_obj.properties = {
+            "text": "bm25 result",
+            "dataset_id": "dataset-1",
+            "document_id": "doc-1",
+            "doc_id": "segment-1",
+        }
         mock_obj.vector = [0.3, 0.4]
 
         mock_result = MagicMock()
@@ -606,11 +776,17 @@ class TestWeaviateVector(unittest.TestCase):
             config=self.config,
             attributes=self.attributes,
         )
-        docs = wv.search_by_full_text(query="bm25", document_ids_filter=["doc-1"])
+        docs = wv.search_by_full_text(
+            query="bm25",
+            document_ids_filter=["doc-1"],
+            filter={"group_id": ["dataset-1"]},
+        )
 
         assert len(docs) == 1
         assert docs[0].vector == [0.3, 0.4]
-        assert mock_col.query.bm25.call_args.kwargs["filters"] is not None
+        search_filter = mock_col.query.bm25.call_args.kwargs["filters"]
+        assert search_filter.target == "document_id"
+        assert search_filter.value == "doc-1"
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_returns_empty_when_collection_is_missing(self, mock_weaviate_module):
@@ -626,6 +802,60 @@ class TestWeaviateVector(unittest.TestCase):
         )
 
         assert wv.search_by_full_text(query="missing") == []
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_pages_past_legacy_token_filter_false_positive(self, mock_weaviate_module):
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+        mock_col.query.bm25.side_effect = [
+            SimpleNamespace(
+                objects=[
+                    SimpleNamespace(
+                        properties={
+                            "text": "wrong but highest ranked",
+                            "doc_id": "wrong",
+                            "document_id": "document-1-suffix",
+                            "dataset_id": "dataset-1",
+                        },
+                        vector={"default": [0.1, 0.2]},
+                    )
+                ]
+            ),
+            SimpleNamespace(
+                objects=[
+                    SimpleNamespace(
+                        properties={
+                            "text": "right but second",
+                            "doc_id": "right",
+                            "document_id": "document-1",
+                            "dataset_id": "dataset-1",
+                        },
+                        vector={"default": [0.2, 0.3]},
+                    )
+                ]
+            ),
+        ]
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(
+            "query",
+            top_k=1,
+            document_ids_filter=["document-1"],
+            filter={"group_id": ["dataset-1"]},
+        )
+
+        assert [document.metadata["doc_id"] for document in docs] == ["right"]
+        assert mock_col.query.bm25.call_count == 2
+        assert mock_col.query.bm25.call_args_list[0].kwargs["offset"] == 0
+        assert mock_col.query.bm25.call_args_list[1].kwargs["offset"] == 1
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_retries_on_weaviate_query_error(self, mock_weaviate_module):
@@ -753,6 +983,77 @@ class TestWeaviateVector(unittest.TestCase):
         assert call_kwargs.kwargs["vector"] is None
         assert call_kwargs.kwargs["properties"]["created_at"] == created_at.isoformat()
 
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_add_texts_raises_when_batch_reports_failed_objects(self, mock_weaviate_module):
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+        mock_col.query.fetch_objects.return_value = SimpleNamespace(objects=[])
+
+        mock_batch = MagicMock()
+        mock_batch.__enter__ = MagicMock(return_value=mock_batch)
+        mock_batch.__exit__ = MagicMock(return_value=False)
+        mock_col.batch.dynamic.return_value = mock_batch
+        mock_col.batch.failed_objects = [
+            ErrorObject(
+                message="object rejected",
+                object_=BatchObject(collection=self.collection_name, index=0),
+            )
+        ]
+
+        doc = Document(page_content="text", metadata={"doc_id": "segment-1"})
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+
+        with pytest.raises(RuntimeError, match="object rejected"):
+            wv.add_texts(documents=[doc], embeddings=[[0.1]])
+
+    def test_add_texts_rejects_malformed_weaviate_data_object(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        wv._collection_name = self.collection_name
+        wv._client = MagicMock()
+
+        with (
+            patch.object(
+                weaviate_vector_module,
+                "DataObject",
+                return_value=SimpleNamespace(uuid=None, properties={}),
+            ),
+            pytest.raises(RuntimeError, match="missing its UUID or properties"),
+        ):
+            wv.add_texts(
+                documents=[Document(page_content="text", metadata={"doc_id": "segment-1"})],
+                embeddings=[[0.1]],
+            )
+
+    def test_doc_id_lookup_paginates_with_filter_compatible_offset(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        collection = MagicMock()
+        first = SimpleNamespace(uuid=uuid.uuid4(), properties={"doc_id": "segment-1"})
+        second = SimpleNamespace(uuid=uuid.uuid4(), properties={"doc_id": "segment-2"})
+        false_positive = SimpleNamespace(uuid=uuid.uuid4(), properties={"doc_id": "segment-3"})
+        collection.query.fetch_objects.side_effect = [
+            SimpleNamespace(objects=[first, second]),
+            SimpleNamespace(objects=[false_positive]),
+        ]
+
+        with patch.object(weaviate_vector_module, "_DELETE_BATCH_SIZE", 2):
+            result = wv._get_object_uuids_by_doc_id(collection, ["segment-1", "segment-2"])
+
+        assert result == {
+            "segment-1": {str(first.uuid)},
+            "segment-2": {str(second.uuid)},
+        }
+        assert collection.query.fetch_objects.call_count == 2
+        assert collection.query.fetch_objects.call_args_list[0].kwargs["offset"] == 0
+        assert collection.query.fetch_objects.call_args_list[1].kwargs["offset"] == 2
+        assert "after" not in collection.query.fetch_objects.call_args_list[1].kwargs
+
     def test_is_uuid_handles_invalid_values(self):
         wv = WeaviateVector.__new__(WeaviateVector)
 
@@ -777,9 +1078,35 @@ class TestWeaviateVector(unittest.TestCase):
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
 
+        object_uuid = str(uuid.uuid4())
+        mock_col.query.fetch_objects.return_value = SimpleNamespace(
+            objects=[SimpleNamespace(uuid=object_uuid, properties={"doc_id": "segment-1"})]
+        )
+        mock_col.data.delete_many.return_value = _delete_many_result(successful=1)
+
         wv.delete_by_metadata_field("doc_id", "segment-1")
 
         mock_col.data.delete_many.assert_called_once()
+        delete_kwargs = mock_col.data.delete_many.call_args.kwargs
+        assert delete_kwargs["where"].target == "_id"
+        assert delete_kwargs["where"].value == [object_uuid]
+        assert delete_kwargs["verbose"] is True
+
+    def test_delete_by_metadata_field_raises_on_partial_failure(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        wv._collection_name = self.collection_name
+        wv._client = MagicMock()
+        wv._client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        wv._client.collections.use.return_value = mock_col
+        object_uuid = str(uuid.uuid4())
+        mock_col.query.fetch_objects.return_value = SimpleNamespace(
+            objects=[SimpleNamespace(uuid=object_uuid, properties={"doc_id": "segment-1"})]
+        )
+        mock_col.data.delete_many.return_value = _delete_many_result(failed=1, successful=1)
+
+        with pytest.raises(RuntimeError, match="failed to delete 1"):
+            wv.delete_by_metadata_field("doc_id", "segment-1")
 
     def test_delete_removes_collection_when_present(self):
         wv = WeaviateVector.__new__(WeaviateVector)
@@ -798,50 +1125,132 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client.collections.exists.side_effect = [False, True]
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
-        mock_col.query.fetch_objects.return_value = SimpleNamespace(objects=[SimpleNamespace()])
+        mock_col.query.fetch_objects.return_value = SimpleNamespace(
+            objects=[SimpleNamespace(uuid=uuid.uuid4(), properties={"doc_id": "segment-1"})]
+        )
 
         assert wv.text_exists("segment-1") is False
         assert wv.text_exists("segment-1") is True
 
-    def test_delete_by_ids_handles_missing_collections_and_404s(self):
-        class FakeUnexpectedStatusCodeError(Exception):
-            def __init__(self, status_code):
-                super().__init__(f"status={status_code}")
-                self.status_code = status_code
-
+    def test_delete_by_ids_deletes_by_metadata_for_legacy_and_current_objects(self):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
         wv._client = MagicMock()
         wv._client.collections.exists.side_effect = [False, True]
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
-        mock_col.data.delete_by_id.side_effect = [FakeUnexpectedStatusCodeError(404), None]
+        legacy_uuid = str(uuid.uuid4())
+        current_uuid = str(uuid.uuid4())
+        mock_col.query.fetch_objects.return_value = SimpleNamespace(
+            objects=[
+                SimpleNamespace(uuid=legacy_uuid, properties={"doc_id": "legacy-id"}),
+                SimpleNamespace(uuid=current_uuid, properties={"doc_id": "current-id"}),
+            ]
+        )
+        mock_col.data.delete_many.return_value = _delete_many_result(successful=2)
 
-        with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError):
-            wv.delete_by_ids(["ignored"])
-            wv.delete_by_ids(["missing-id", "ok-id"])
+        wv.delete_by_ids(["ignored"])
+        wv.delete_by_ids(["legacy-id", "current-id"])
 
-        assert mock_col.data.delete_by_id.call_count == 2
+        mock_col.data.delete_many.assert_called_once()
+        delete_filter = mock_col.data.delete_many.call_args.kwargs["where"]
+        assert (delete_filter.target, delete_filter.operator.value, delete_filter.value) == (
+            "_id",
+            "ContainsAny",
+            [legacy_uuid, current_uuid],
+        )
+        assert mock_col.data.delete_many.call_args.kwargs["verbose"] is True
 
-    def test_delete_by_ids_reraises_non_404_errors(self):
-        class FakeUnexpectedStatusCodeError(Exception):
-            def __init__(self, status_code):
-                super().__init__(f"status={status_code}")
-                self.status_code = status_code
-
+    def test_delete_by_ids_raises_on_partial_failure(self):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
         wv._client = MagicMock()
         wv._client.collections.exists.return_value = True
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
-        mock_col.data.delete_by_id.side_effect = FakeUnexpectedStatusCodeError(500)
+        object_uuid = str(uuid.uuid4())
+        mock_col.query.fetch_objects.return_value = SimpleNamespace(
+            objects=[SimpleNamespace(uuid=object_uuid, properties={"doc_id": "segment-1"})]
+        )
+        mock_col.data.delete_many.return_value = _delete_many_result(failed=1)
+
+        with pytest.raises(RuntimeError, match="failed to delete 1"):
+            wv.delete_by_ids(["segment-1"])
+
+    def test_delete_by_ids_skips_empty_input(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        wv._collection_name = self.collection_name
+        wv._client = MagicMock()
+        wv._client.collections.exists.return_value = True
+
+        wv.delete_by_ids([])
+
+        wv._client.collections.exists.assert_not_called()
+
+    def test_delete_by_ids_deduplicates_and_batches(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        wv._collection_name = self.collection_name
+        wv._client = MagicMock()
+        wv._client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        wv._client.collections.use.return_value = mock_col
+        mock_col.data.delete_many.return_value = _delete_many_result(successful=2)
+        object_uuids = {
+            "node-1": {str(uuid.uuid4())},
+            "node-2": {str(uuid.uuid4())},
+            "node-3": {str(uuid.uuid4())},
+        }
 
         with (
-            patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError),
-            pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"),
+            patch.object(weaviate_vector_module, "_DELETE_BATCH_SIZE", 2),
+            patch.object(wv, "_get_object_uuids_by_doc_id", return_value=object_uuids),
         ):
-            wv.delete_by_ids(["bad-id"])
+            wv.delete_by_ids(["node-1", "node-2", "node-1", "node-3"])
+
+        filters = [mock_call.kwargs["where"] for mock_call in mock_col.data.delete_many.call_args_list]
+        assert filters[0].target == "_id"
+        assert filters[0].value == [*object_uuids["node-1"], *object_uuids["node-2"]]
+        assert filters[1].value == [*object_uuids["node-3"]]
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_add_texts_retires_legacy_content_uuid_after_canonical_insert(self, mock_weaviate_module):
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        doc_id = str(uuid.uuid4())
+        legacy_uuid = str(uuid.uuid4())
+        legacy_object = SimpleNamespace(uuid=legacy_uuid, properties={"doc_id": doc_id})
+        canonical_object = SimpleNamespace(uuid=doc_id, properties={"doc_id": doc_id})
+        mock_col.query.fetch_objects.side_effect = [
+            SimpleNamespace(objects=[legacy_object]),
+            SimpleNamespace(objects=[legacy_object, canonical_object]),
+        ]
+
+        mock_batch = MagicMock()
+        mock_batch.__enter__ = MagicMock(return_value=mock_batch)
+        mock_batch.__exit__ = MagicMock(return_value=False)
+        mock_col.batch.dynamic.return_value = mock_batch
+        mock_col.batch.failed_objects = []
+        mock_col.data.delete_many.return_value = _delete_many_result(successful=1)
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        ids = wv.add_texts(
+            documents=[Document(page_content="replacement", metadata={"doc_id": doc_id})],
+            embeddings=[[0.1, 0.2]],
+        )
+
+        assert ids == [doc_id]
+        mock_batch.add_object.assert_called_once()
+        mock_col.data.delete_many.assert_called_once()
+        delete_filter = mock_col.data.delete_many.call_args.kwargs["where"]
+        assert (delete_filter.target, delete_filter.value) == ("_id", [legacy_uuid])
 
     def test_json_serializable_converts_datetime(self):
         wv = WeaviateVector.__new__(WeaviateVector)
@@ -863,21 +1272,15 @@ class TestVectorDefaultAttributes(unittest.TestCase):
         mock_get_embeddings.return_value = MagicMock()
         mock_init_vector.return_value = MagicMock()
 
-        mock_dataset = MagicMock()
-        mock_dataset.index_struct_dict = None
-
-        vector = Vector(dataset=mock_dataset, session=MagicMock())
+        vector = Vector(dataset=_dataset("dataset-1"))
 
         assert "doc_type" in vector._attributes, f"doc_type should be in default attributes, got: {vector._attributes}"
 
 
 class TestWeaviateVectorFactory(unittest.TestCase):
     def test_init_vector_uses_existing_dataset_index_struct(self):
-        dataset = SimpleNamespace(
-            id="dataset-1",
-            index_struct_dict={"vector_store": {"class_prefix": "ExistingCollection_Node"}},
-            index_struct=None,
-        )
+        dataset = _dataset("dataset-1", collection_name="ExistingCollection_Node")
+        original_index_struct = dataset.index_struct
         attributes = ["doc_id"]
 
         with (
@@ -888,7 +1291,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
-            result = factory.init_vector(dataset, attributes, MagicMock())
+            result = factory.init_vector(dataset, attributes, _UnusedEmbeddings())
 
         assert result == "vector"
         config = mock_vector.call_args.kwargs["config"]
@@ -898,10 +1301,10 @@ class TestWeaviateVectorFactory(unittest.TestCase):
         assert config.grpc_endpoint == "localhost:50051"
         assert config.api_key == "api-key"
         assert config.batch_size == 88
-        assert dataset.index_struct is None
+        assert dataset.index_struct == original_index_struct
 
     def test_init_vector_generates_collection_and_updates_index_struct(self):
-        dataset = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+        dataset = _dataset("dataset-2")
         attributes = ["doc_id", "doc_type"]
 
         with (
@@ -917,7 +1320,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
-            result = factory.init_vector(dataset, attributes, MagicMock())
+            result = factory.init_vector(dataset, attributes, _UnusedEmbeddings())
 
         assert result == "vector"
         assert mock_vector.call_args.kwargs["collection_name"] == "GeneratedCollection_Node"

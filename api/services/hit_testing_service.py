@@ -18,6 +18,7 @@ from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
+from services.external_knowledge_service import ExternalDatasetService
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,6 @@ class HitTestingService:
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions_raw)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-                session=session,
                 dataset_ids=[dataset.id],
                 query=query,
                 metadata_filtering_mode="manual",
@@ -143,7 +143,7 @@ class HitTestingService:
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
             if metadata_condition and not document_ids_filter:
-                return cls.compact_retrieve_response(query, [], session=session)
+                return cls.compact_retrieve_response(query, [], dataset_id=dataset.id, session=session)
         all_documents = RetrievalService.retrieve(
             retrieval_method=RetrievalMethod(
                 resolved_retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)
@@ -185,7 +185,7 @@ class HitTestingService:
             session.add(dataset_query)
         session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents, session=session)
+        return cls.compact_retrieve_response(query, all_documents, dataset_id=dataset.id, session=session)
 
     @classmethod
     def external_retrieve(
@@ -206,10 +206,22 @@ class HitTestingService:
 
         start = time.perf_counter()
 
-        all_documents = RetrievalService.external_retrieve(
+        dataset_id = dataset.id
+        tenant_id = dataset.tenant_id
+        account_id = account.id
+        resolved_config = ExternalDatasetService.resolve_external_knowledge_config(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
             session=session,
-            dataset_id=dataset.id,
+        )
+        # Reuse the request transaction for permission, dataset, binding, and API-template reads, then end that entire
+        # read phase before HTTP. The audit write below safely starts a new transaction through SQLAlchemy autobegin.
+        session.commit()
+        all_documents = RetrievalService.external_retrieve(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
             query=cls.escape_query_for_search(query),
+            resolved_config=resolved_config,
             external_retrieval_model=external_retrieval_model,
             metadata_filtering_conditions=metadata_filtering_conditions,
         )
@@ -218,12 +230,12 @@ class HitTestingService:
         logger.debug("External knowledge hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
-            dataset_id=dataset.id,
+            dataset_id=dataset_id,
             content=query,
             source=DatasetQuerySource.HIT_TESTING,
             source_app_id=None,
             created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=account.id,
+            created_by=account_id,
         )
 
         session.add(dataset_query)
@@ -233,10 +245,21 @@ class HitTestingService:
 
     @classmethod
     def compact_retrieve_response(
-        cls, query: str, documents: list[Document], *, session: Session
+        cls,
+        query: str,
+        documents: list[Document],
+        *,
+        dataset_id: str,
+        session: Session,
     ) -> RetrieveResponseDict:
+        # format_retrieval_documents possibly writes.
+        # Isolate formatter rollbacks and ORM state from the caller-owned transaction.
         with Session(bind=session.get_bind()) as format_session:
-            records = RetrievalService.format_retrieval_documents(format_session, documents)
+            records = RetrievalService.format_retrieval_documents(
+                format_session,
+                documents,
+                allowed_dataset_ids={dataset_id},
+            )
 
         return {
             "query": {

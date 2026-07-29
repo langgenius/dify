@@ -48,8 +48,7 @@ def add_annotation_to_index_task(
         document = Document(
             page_content=question, metadata={"annotation_id": annotation_id, "app_id": app_id, "doc_id": annotation_id}
         )
-        with session_factory.create_session() as session:
-            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
+        vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
         vector.create([document], duplicate_check=True)
 
         end_at = time.perf_counter()

@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from typing import Any, TypedDict, override
+from typing import Any, TypedDict, cast, override
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -144,7 +144,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset, session=session)
+            vector = Vector(dataset)
             for document in documents:
                 child_documents = document.children
                 if child_documents:
@@ -160,37 +160,46 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
     ) -> None:
         # node_ids is segment's node_ids
+        segment_ids = cast(list[str] | None, kwargs.get("segment_ids"))
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
         # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
         delete_summaries = kwargs.get("delete_summaries", False)
         if delete_summaries:
-            if node_ids:
-                # Find segments by index_node_id
-                segments = session.scalars(
-                    select(DocumentSegment).where(
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.index_node_id.in_(node_ids),
-                    )
-                ).all()
-                segment_ids = [segment.id for segment in segments]
-                if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
-            else:
-                # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
+            if node_ids is not None and segment_ids is None:
+                raise ValueError("segment_ids are required for partial summary cleanup")
+            SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=segment_ids, session=session)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
             precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
-            vector = Vector(dataset, session=session)
+            if node_ids is None:
+                Vector(dataset).delete()
 
-            if node_ids:
+                if delete_child_chunks:
+                    session.execute(
+                        delete(ChildChunk).where(
+                            ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
+                        )
+                    )
+                    session.flush()
+            else:
                 # Use precomputed child_node_ids if available (to avoid race conditions)
                 if precomputed_child_node_ids is not None:
                     child_node_ids = precomputed_child_node_ids
-                else:
+                elif segment_ids:
+                    child_node_ids = [
+                        node_id
+                        for node_id in session.scalars(
+                            select(ChildChunk.index_node_id).where(
+                                ChildChunk.dataset_id == dataset.id,
+                                ChildChunk.segment_id.in_(segment_ids),
+                            )
+                        ).all()
+                        if node_id
+                    ]
+                elif node_ids:
                     # Fallback to original query (may fail if segments are already deleted)
                     rows = session.execute(
                         select(ChildChunk.index_node_id)
@@ -202,29 +211,30 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         )
                     ).all()
                     child_node_ids = [row[0] for row in rows if row[0]]
+                else:
+                    child_node_ids = []
 
                 # Delete from vector index
                 if child_node_ids:
-                    vector.delete_by_ids(child_node_ids)
+                    Vector(dataset).delete_by_ids(child_node_ids)
 
                 # Delete from database
-                if delete_child_chunks and child_node_ids:
-                    session.execute(
-                        delete(ChildChunk).where(
-                            ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
-                        )
-                    )
-                    session.flush()
-            else:
-                vector.delete()
-
                 if delete_child_chunks:
-                    # Use existing compound index: (tenant_id, dataset_id, ...)
-                    session.execute(
-                        delete(ChildChunk).where(
-                            ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
+                    if segment_ids:
+                        session.execute(
+                            delete(ChildChunk).where(
+                                ChildChunk.dataset_id == dataset.id,
+                                ChildChunk.segment_id.in_(segment_ids),
+                            )
                         )
-                    )
+                    elif child_node_ids:
+                        session.execute(
+                            delete(ChildChunk).where(
+                                ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
+                            )
+                        )
+                    else:
+                        return
                     session.flush()
 
     def _split_child_nodes(
@@ -305,6 +315,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 doc.attachments = self._get_content_files(doc, current_user=account, session=session)
             documents.append(doc)
         if documents:
+            # Attachment lookups above may own a read transaction. Token counting can call the embedding provider.
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                session.commit()
             token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # update document parent mode
             dataset_process_rule = DatasetProcessRule(
@@ -338,7 +351,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         all_child_documents.extend(doc.children)
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
-                vector = Vector(dataset, session=session)
+                vector = Vector(dataset)
                 if all_child_documents:
                     vector.create(all_child_documents)
                 if all_multimodal_documents and dataset.is_multimodal:
@@ -393,25 +406,21 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    with session_factory.create_session() as worker_session:
-                        summary, _ = ParagraphIndexProcessor.generate_summary(
-                            tenant_id=tenant_id,
-                            text=preview.content,
-                            summary_index_setting=summary_index_setting,
-                            document_language=doc_language,
-                            session=worker_session,
-                        )
-                    preview.summary = summary
-            else:
-                # Fallback: try without app context (may fail)
-                with session_factory.create_session() as worker_session:
                     summary, _ = ParagraphIndexProcessor.generate_summary(
                         tenant_id=tenant_id,
                         text=preview.content,
                         summary_index_setting=summary_index_setting,
                         document_language=doc_language,
-                        session=worker_session,
                     )
+                    preview.summary = summary
+            else:
+                # Fallback: try without app context (may fail)
+                summary, _ = ParagraphIndexProcessor.generate_summary(
+                    tenant_id=tenant_id,
+                    text=preview.content,
+                    summary_index_setting=summary_index_setting,
+                    document_language=doc_language,
+                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor

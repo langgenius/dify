@@ -44,6 +44,7 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.segment_fields import (
@@ -325,6 +326,8 @@ class DatasetDocumentSegmentListApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
+        # Release the materialized console auth session before the service commits and publishes cleanup.
+        db.session.remove()
         SegmentService.delete_segments(segment_ids, document, dataset, session)
         return "", 204
 
@@ -393,6 +396,8 @@ class DatasetDocumentSegmentApi(Resource):
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
         try:
+            # Release the materialized console auth session before the service commits and publishes indexing work.
+            db.session.remove()
             SegmentService.update_segments_status(segment_ids, action, dataset, document, session)
         except Exception as e:
             raise InvalidActionError(str(e))
@@ -537,6 +542,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         SegmentService.segment_create_args_validate(payload_dict, document)
 
         # Update segment (summary update with change detection is handled in SegmentService.update_segment)
+        # Console authentication uses Flask-SQLAlchemy's scoped session, while this handler uses the explicitly
+        # injected session. The account and tenant are materialized by this point, so release the auth session
+        # before update paths can call embedding or vector providers.
+        db.session.remove()
         segment = SegmentService.update_segment(
             SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)),
             segment,
@@ -595,6 +604,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise Forbidden(str(e))
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
+        # Release the materialized console auth session before the service commits and publishes cleanup.
+        db.session.remove()
         SegmentService.delete_segment(segment, document, dataset, session)
         return "", 204
 
@@ -743,6 +754,8 @@ class ChildChunkAddApi(Resource):
         # validate args
         try:
             payload = ChildChunkCreatePayload.model_validate(console_ns.payload or {})
+            # Release the materialized console auth session before embedding and vector-provider I/O.
+            db.session.remove()
             child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
@@ -845,6 +858,7 @@ class ChildChunkAddApi(Resource):
         # validate args
         payload = ChildChunkBatchUpdatePayload.model_validate(console_ns.payload or {})
         try:
+            db.session.remove()
             child_chunks = SegmentService.update_child_chunks(payload.chunks, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
@@ -901,6 +915,7 @@ class ChildChunkUpdateApi(Resource):
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         try:
+            db.session.remove()
             SegmentService.delete_child_chunk(child_chunk, dataset, session)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
@@ -956,6 +971,7 @@ class ChildChunkUpdateApi(Resource):
         # validate args
         try:
             payload = ChildChunkUpdatePayload.model_validate(console_ns.payload or {})
+            db.session.remove()
             child_chunk = SegmentService.update_child_chunk(
                 payload.content, child_chunk, segment, document, dataset, session
             )

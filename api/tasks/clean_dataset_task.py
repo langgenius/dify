@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -24,6 +24,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.vector_service import VectorService
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ def clean_dataset_task(
     logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
     vector_cleanup_succeeded = False
+    storage_file_keys: list[str] = []
 
     with session_factory.create_session() as session:
         try:
@@ -69,7 +71,13 @@ def clean_dataset_task(
             # Use JOIN to fetch attachments with bindings in a single query
             attachments_with_bindings = session.execute(
                 select(SegmentAttachmentBinding, UploadFile)
-                .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                .outerjoin(
+                    UploadFile,
+                    and_(
+                        UploadFile.id == SegmentAttachmentBinding.attachment_id,
+                        UploadFile.tenant_id == tenant_id,
+                    ),
+                )
                 .where(
                     SegmentAttachmentBinding.tenant_id == tenant_id,
                     SegmentAttachmentBinding.dataset_id == dataset_id,
@@ -90,19 +98,31 @@ def clean_dataset_task(
                     )
                 )
 
+            # Release the read transaction before contacting the vector backend.
+            session.commit()
+
             # Add exception handling around IndexProcessorFactory.clean() to prevent single point of failure
             # This ensures Document/Segment deletion can continue even if vector database cleanup fails
             try:
                 index_processor = IndexProcessorFactory(doc_form).init_index_processor()
                 index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True, session=session)
+                session.commit()
                 vector_cleanup_succeeded = True
                 logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
             except Exception:
+                session.rollback()
                 logger.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
                 # Continue with document and segment deletion even if vector cleanup fails
                 logger.info(
                     click.style(f"Continuing with document and segment deletion for dataset: {dataset_id}", fg="yellow")
                 )
+
+            # In case index_processor.clean didn't clean fully
+            VectorService.delete_segment_index_artifacts(
+                session=session,
+                dataset_id=dataset_id,
+                segment_ids=None,
+            )
 
             if documents is None or len(documents) == 0:
                 logger.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
@@ -112,42 +132,41 @@ def clean_dataset_task(
                 for document in documents:
                     session.delete(document)
 
-                segment_ids = [segment.id for segment in segments]
-                for segment in segments:
-                    image_upload_file_ids = get_image_upload_file_ids(segment.content)
-                    image_files = session.scalars(
-                        select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
-                    ).all()
-                    for image_file in image_files:
-                        if image_file is None:
-                            continue
-                        try:
-                            storage.delete(image_file.key)
-                        except Exception:
-                            logger.exception(
-                                "Delete image_files failed when storage deleted, \
-                                              image_upload_file_is: %s",
-                                image_file.id,
-                            )
-                    stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
-                    session.execute(stmt)
+            segment_ids = [segment.id for segment in segments]
+            for segment in segments:
+                image_upload_file_ids = get_image_upload_file_ids(segment.content)
+                image_files = session.scalars(
+                    select(UploadFile).where(
+                        UploadFile.id.in_(image_upload_file_ids),
+                        UploadFile.tenant_id == tenant_id,
+                    )
+                ).all()
+                storage_file_keys.extend(image_file.key for image_file in image_files)
+                stmt = delete(UploadFile).where(
+                    UploadFile.id.in_(image_upload_file_ids),
+                    UploadFile.tenant_id == tenant_id,
+                )
+                session.execute(stmt)
 
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+            if segment_ids:
+                segment_delete_stmt = delete(DocumentSegment).where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                )
                 session.execute(segment_delete_stmt)
             # delete segment attachments
             if attachments_with_bindings:
-                attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
+                attachment_ids = [binding.attachment_id for binding, _ in attachments_with_bindings]
                 binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-                for binding, attachment_file in attachments_with_bindings:
-                    try:
-                        storage.delete(attachment_file.key)
-                    except Exception:
-                        logger.exception(
-                            "Delete attachment_file failed when storage deleted, \
-                                            attachment_file_id: %s",
-                            binding.attachment_id,
-                        )
-                attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
+                storage_file_keys.extend(
+                    attachment_file.key
+                    for _, attachment_file in attachments_with_bindings
+                    if attachment_file is not None
+                )
+                attachment_file_delete_stmt = delete(UploadFile).where(
+                    UploadFile.id.in_(attachment_ids),
+                    UploadFile.tenant_id == tenant_id,
+                )
                 session.execute(attachment_file_delete_stmt)
 
                 binding_delete_stmt = delete(SegmentAttachmentBinding).where(
@@ -181,14 +200,31 @@ def clean_dataset_task(
                             if data_source_info and "upload_file_id" in data_source_info:
                                 file_id = data_source_info["upload_file_id"]
                                 file_ids.append(file_id)
-                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
-                for file in files:
-                    storage.delete(file.key)
+                files = session.scalars(
+                    select(UploadFile).where(
+                        UploadFile.id.in_(file_ids),
+                        UploadFile.tenant_id == tenant_id,
+                    )
+                ).all()
+                storage_file_keys.extend(file.key for file in files)
 
-                file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(file_ids))
+                file_delete_stmt = delete(UploadFile).where(
+                    UploadFile.id.in_(file_ids),
+                    UploadFile.tenant_id == tenant_id,
+                )
                 session.execute(file_delete_stmt)
 
             session.commit()
+            # Do this after DB commits because dangling reference in DB is less
+            # acceptable than uncleaned storaged files (?)
+            for storage_file_key in dict.fromkeys(storage_file_keys):
+                try:
+                    storage.delete(storage_file_key)
+                except Exception:
+                    logger.exception(
+                        "Delete file failed when dataset deleted, storage_file_key: %s",
+                        storage_file_key,
+                    )
             if vector_cleanup_succeeded:
                 schedule_billing_vector_space_refresh(dataset.tenant_id)
             end_at = time.perf_counter()

@@ -6,11 +6,12 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
+from dataclasses import dataclass
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
 from sqlalchemy import and_, func, literal, or_, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -86,7 +87,7 @@ from models.dataset import (
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
 from models.enums import CreatorUserRole, DatasetQuerySource
-from services.external_knowledge_service import ExternalDatasetService
+from services.external_knowledge_service import ExternalDatasetService, ResolvedExternalKnowledgeConfig
 from services.feature_service import FeatureService
 
 default_retrieval_model: DefaultRetrievalModelDict = {
@@ -96,6 +97,24 @@ default_retrieval_model: DefaultRetrievalModelDict = {
     "top_k": 4,
     "score_threshold_enabled": False,
 }
+
+
+@dataclass(frozen=True)
+class _DatasetRetrievalConfig:
+    """Committed dataset values needed after the lookup session closes."""
+
+    id: str
+    tenant_id: str
+    name: str
+    provider: str
+    retrieval_model: dict[str, Any] | None
+    indexing_technique: IndexTechniqueType | None
+    external_knowledge_config: ResolvedExternalKnowledgeConfig | None
+
+    @property
+    def external_retrieval_model(self) -> dict[str, Any]:
+        return self.retrieval_model or {"top_k": 2, "score_threshold": 0.0}
+
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +166,6 @@ class DatasetRetrieval:
             query = request.query if request.query is not None else ""
 
             metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
-                session=session,
                 dataset_ids=available_datasets_ids,
                 query=query,
                 tenant_id=request.tenant_id,
@@ -217,7 +235,6 @@ class DatasetRetrieval:
                 stop=stop,
             )
             all_documents = self.single_retrieve(
-                session,
                 request.app_id,
                 request.tenant_id,
                 request.user_id,
@@ -277,7 +294,11 @@ class DatasetRetrieval:
         # deal with dify documents
         if dify_documents:
             with Session(bind=session.get_bind()) as format_session:
-                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
+                records = RetrievalService.format_retrieval_documents(
+                    format_session,
+                    dify_documents,
+                    allowed_dataset_ids={dataset.id for dataset in available_datasets},
+                )
             dataset_ids = [i.segment.dataset_id for i in records]
             document_ids = [i.segment.document_id for i in records]
 
@@ -425,7 +446,6 @@ class DatasetRetrieval:
             inputs = {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
-            session,
             available_datasets_ids,
             query,
             tenant_id,
@@ -440,7 +460,6 @@ class DatasetRetrieval:
         user_from = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             all_documents = self.single_retrieve(
-                session,
                 app_id,
                 tenant_id,
                 user_id,
@@ -495,7 +514,11 @@ class DatasetRetrieval:
         # deal with dify documents
         if dify_documents:
             with Session(bind=session.get_bind()) as format_session:
-                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
+                records = RetrievalService.format_retrieval_documents(
+                    format_session,
+                    dify_documents,
+                    allowed_dataset_ids=set(available_datasets_ids),
+                )
             if records:
                 for record in records:
                     segment = record.segment
@@ -604,7 +627,6 @@ class DatasetRetrieval:
     @trace_span()
     def single_retrieve(
         self,
-        session: Session,
         app_id: str,
         tenant_id: str,
         user_id: str,
@@ -650,19 +672,19 @@ class DatasetRetrieval:
         self._record_usage(router_usage)
         timer = None
         if dataset_id:
-            # get retrieval model config
-            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            selected_dataset = session.scalar(dataset_stmt)
+            selected_dataset = self._get_dataset_retrieval_config(dataset_id, tenant_id)
             if selected_dataset:
                 results = []
                 if selected_dataset.provider == "external":
+                    if selected_dataset.external_knowledge_config is None:
+                        raise RuntimeError("External knowledge configuration was not resolved")
                     external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                        session=session,
                         tenant_id=selected_dataset.tenant_id,
                         dataset_id=dataset_id,
                         query=query,
-                        external_retrieval_parameters=selected_dataset.retrieval_model,
+                        external_retrieval_parameters=selected_dataset.external_retrieval_model,
                         metadata_condition=metadata_condition,
+                        resolved_config=selected_dataset.external_knowledge_config,
                     )
                     for external_document in external_documents:
                         document = Document(
@@ -739,6 +761,46 @@ class DatasetRetrieval:
 
                 return results
         return []
+
+    @staticmethod
+    def _get_dataset_retrieval_config(dataset_id: str, tenant_id: str) -> _DatasetRetrievalConfig | None:
+        """Copy retrieval configuration to plain values before provider or vector I/O."""
+        dataset_stmt = (
+            select(Dataset)
+            .where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id)
+            .options(
+                load_only(
+                    Dataset.id,
+                    Dataset.tenant_id,
+                    Dataset.name,
+                    Dataset.provider,
+                    Dataset.retrieval_model,
+                    Dataset.indexing_technique,
+                )
+            )
+        )
+        with session_factory.create_session() as read_session:
+            dataset = read_session.scalar(dataset_stmt)
+            if dataset is None:
+                return None
+            external_knowledge_config = (
+                ExternalDatasetService.resolve_external_knowledge_config(
+                    tenant_id=dataset.tenant_id,
+                    dataset_id=dataset.id,
+                    session=read_session,
+                )
+                if dataset.provider == "external"
+                else None
+            )
+            return _DatasetRetrievalConfig(
+                id=dataset.id,
+                tenant_id=dataset.tenant_id,
+                name=dataset.name,
+                provider=dataset.provider,
+                retrieval_model=dataset.retrieval_model,
+                indexing_technique=dataset.indexing_technique,
+                external_knowledge_config=external_knowledge_config,
+            )
 
     @trace_span()
     def multiple_retrieve(
@@ -1103,14 +1165,36 @@ class DatasetRetrieval:
             if not dataset:
                 return []
 
-            if dataset.provider == "external" and query:
-                external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            selected_dataset_id = dataset.id
+            dataset_provider = dataset.provider
+            retrieval_model_value = dataset.retrieval_model
+            indexing_technique = dataset.indexing_technique
+            dataset_tenant_id = dataset.tenant_id if dataset_provider == "external" else None
+            dataset_name = dataset.name if dataset_provider == "external" else None
+            external_knowledge_config = None
+            if dataset_provider == "external" and query:
+                assert dataset_tenant_id is not None
+                external_knowledge_config = ExternalDatasetService.resolve_external_knowledge_config(
+                    tenant_id=dataset_tenant_id,
+                    dataset_id=selected_dataset_id,
                     session=session,
-                    tenant_id=dataset.tenant_id,
+                )
+            # Reuse this worker transaction for all database-backed retrieval configuration, then end it before
+            # provider, embedding, reranking, or vector I/O.
+            session.commit()
+
+            if dataset_provider == "external" and query:
+                if external_knowledge_config is None:
+                    raise RuntimeError("External knowledge configuration was not resolved")
+                if dataset_tenant_id is None or dataset_name is None:
+                    raise RuntimeError("External dataset values were not resolved")
+                external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+                    tenant_id=dataset_tenant_id,
                     dataset_id=dataset_id,
                     query=query,
-                    external_retrieval_parameters=dataset.retrieval_model,
+                    external_retrieval_parameters=retrieval_model_value,
                     metadata_condition=metadata_condition,
+                    resolved_config=external_knowledge_config,
                 )
                 for external_document in external_documents:
                     document = Document(
@@ -1122,21 +1206,21 @@ class DatasetRetrieval:
                         document.metadata["score"] = external_document.get("score")
                         document.metadata["title"] = external_document.get("title")
                         document.metadata["dataset_id"] = dataset_id
-                        document.metadata["dataset_name"] = dataset.name
+                        document.metadata["dataset_name"] = dataset_name
                     all_documents.append(document)
             else:
                 # get retrieval model , if the model is not setting , using default
                 retrieval_model: DefaultRetrievalModelDict = (
-                    cast(DefaultRetrievalModelDict, dataset.retrieval_model)
-                    if dataset.retrieval_model
+                    cast(DefaultRetrievalModelDict, retrieval_model_value)
+                    if retrieval_model_value
                     else default_retrieval_model
                 )
 
-                if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
+                if indexing_technique == IndexTechniqueType.ECONOMY:
                     # use keyword table query
                     documents = RetrievalService.retrieve(
                         retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
-                        dataset_id=dataset.id,
+                        dataset_id=selected_dataset_id,
                         query=query,
                         top_k=top_k,
                         document_ids_filter=document_ids_filter,
@@ -1148,7 +1232,7 @@ class DatasetRetrieval:
                         # retrieval source
                         documents = RetrievalService.retrieve(
                             retrieval_method=retrieval_model["search_method"],
-                            dataset_id=dataset.id,
+                            dataset_id=selected_dataset_id,
                             query=query,
                             top_k=retrieval_model.get("top_k") or 4,
                             score_threshold=retrieval_model.get("score_threshold", 0.0)
@@ -1425,7 +1509,6 @@ class DatasetRetrieval:
 
     def get_metadata_filter_condition(
         self,
-        session: Session,
         dataset_ids: list[str],
         query: str,
         tenant_id: str,
@@ -1435,7 +1518,7 @@ class DatasetRetrieval:
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict[str, Any],
     ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
-        document_query = select(DatasetDocument).where(
+        document_query = select(DatasetDocument.dataset_id, DatasetDocument.id).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled == True,
@@ -1447,7 +1530,7 @@ class DatasetRetrieval:
             return None, None
         elif metadata_filtering_mode == "automatic":
             automatic_metadata_filters = self._automatic_metadata_filter_func(
-                session, dataset_ids, query, tenant_id, user_id, metadata_model_config
+                dataset_ids, query, tenant_id, user_id, metadata_model_config
             )
             if automatic_metadata_filters:
                 conditions = []
@@ -1506,11 +1589,12 @@ class DatasetRetrieval:
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
-        documents = session.scalars(document_query).all()
+        with session_factory.create_session() as read_session:
+            document_refs = read_session.execute(document_query).all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
-        for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
+        metadata_filter_document_ids = defaultdict(list) if document_refs else None  # type: ignore
+        for dataset_id, document_id in document_refs:
+            metadata_filter_document_ids[dataset_id].append(document_id)  # type: ignore
         return metadata_filter_document_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict[str, Any]) -> str:
@@ -1529,7 +1613,6 @@ class DatasetRetrieval:
 
     def _automatic_metadata_filter_func(
         self,
-        session: Session,
         dataset_ids: list[str],
         query: str,
         tenant_id: str,
@@ -1537,9 +1620,10 @@ class DatasetRetrieval:
         metadata_model_config: ModelConfig,
     ) -> list[dict[str, Any]] | None:
         # get all metadata field
-        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = session.scalars(metadata_stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        metadata_stmt = select(DatasetMetadata.name).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        with session_factory.create_session() as read_session:
+            metadata_fields = read_session.scalars(metadata_stmt).all()
+        all_metadata_fields = list(metadata_fields)
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")

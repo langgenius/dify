@@ -14,7 +14,14 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.models.document import AttachmentDocument, Document
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetProcessRule,
+    DocumentSegment,
+    DocumentSegmentSummary,
+    SegmentAttachmentBinding,
+)
 from models.dataset import Document as DatasetDocument
 from models.enums import SegmentType
 
@@ -369,3 +376,50 @@ class VectorService:
             logger.exception("Failed to update multimodal vector for segment %s", segment.id)
             session.rollback()
             raise
+
+    @staticmethod
+    def delete_segment_index_artifacts(
+        *,
+        session: Session,
+        dataset_id: str,
+        segment_ids: list[str] | None,
+    ) -> None:
+        """Delete summary and child-chunk rows for segments or an entire dataset.
+
+        The caller owns the transaction so cleanup can participate in either a
+        task fallback or a service-level publication failure path.
+        """
+        if segment_ids == []:
+            return
+
+        summary_delete_stmt = delete(DocumentSegmentSummary).where(DocumentSegmentSummary.dataset_id == dataset_id)
+        child_chunk_delete_stmt = delete(ChildChunk).where(ChildChunk.dataset_id == dataset_id)
+        if segment_ids is not None:
+            summary_delete_stmt = summary_delete_stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
+            child_chunk_delete_stmt = child_chunk_delete_stmt.where(ChildChunk.segment_id.in_(segment_ids))
+
+        session.execute(summary_delete_stmt)
+        session.execute(child_chunk_delete_stmt)
+
+    @staticmethod
+    def delete_segment_relational_dependants(
+        *,
+        session: Session,
+        dataset_id: str,
+        segment_ids: list[str],
+    ) -> None:
+        """Delete every relational row that depends on removed segments."""
+        if not segment_ids:
+            return
+
+        VectorService.delete_segment_index_artifacts(
+            session=session,
+            dataset_id=dataset_id,
+            segment_ids=segment_ids,
+        )
+        session.execute(
+            delete(SegmentAttachmentBinding).where(
+                SegmentAttachmentBinding.dataset_id == dataset_id,
+                SegmentAttachmentBinding.segment_id.in_(segment_ids),
+            )
+        )

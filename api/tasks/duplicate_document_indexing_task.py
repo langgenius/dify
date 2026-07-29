@@ -135,10 +135,14 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
                 segments = session.scalars(
-                    select(DocumentSegment).where(DocumentSegment.document_id == document.id)
+                    select(DocumentSegment).where(
+                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.dataset_id == dataset.id,
+                    )
                 ).all()
                 if segments:
                     index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                    segment_ids = [segment.id for segment in segments]
 
                     # delete from vector index
                     index_processor.clean(
@@ -146,12 +150,16 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                         index_node_ids,
                         with_keywords=True,
                         delete_child_chunks=True,
+                        delete_summaries=True,
+                        segment_ids=segment_ids,
                         session=session,
                     )
 
-                    segment_ids = [segment.id for segment in segments]
                     if segment_ids:
-                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                        segment_delete_stmt = delete(DocumentSegment).where(
+                            DocumentSegment.id.in_(segment_ids),
+                            DocumentSegment.dataset_id == dataset.id,
+                        )
                         session.execute(segment_delete_stmt)
                     session.commit()
 

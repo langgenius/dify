@@ -1,6 +1,7 @@
 import base64
 from typing import override
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance, ModelManager
@@ -16,6 +17,12 @@ from models.model import UploadFile
 
 
 class RerankModelRunner(BaseRerankRunner):
+    """Run model reranking with short, tenant-scoped multimodal file reads.
+
+    Required upload-file keys are prefetched in one transaction. That
+    transaction is committed before storage or model-provider I/O begins.
+    """
+
     _session: Session
 
     def __init__(self, rerank_model_instance: ModelInstance, *, session: Session):
@@ -130,64 +137,78 @@ class RerankModelRunner(BaseRerankRunner):
         :param query_type: query type
         :return: rerank result
         """
-        docs: list[MultimodalRerankInput] = []
-        doc_ids = set()
-        unique_documents = []
+        if query_type == QueryType.TEXT_QUERY:
+            return self.fetch_text_rerank(query, documents, score_threshold, top_n)
+        if query_type != QueryType.IMAGE_QUERY:
+            raise ValueError(f"Query type {query_type} is not supported")
+
+        doc_ids: set[str] = set()
+        unique_candidates: list[Document] = []
+        image_file_ids: set[str] = set()
         for document in documents:
+            metadata = document.metadata or {}
             if (
                 document.provider == "dify"
-                and document.metadata is not None
-                and document.metadata["doc_id"] not in doc_ids
+                and metadata.get("doc_id") is not None
+                and str(metadata["doc_id"]) not in doc_ids
             ):
-                if document.metadata.get("doc_type") == DocType.IMAGE:
-                    upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
-                    if upload_file:
-                        blob = storage.load_once(upload_file.key)
-                        document_file_base64 = base64.b64encode(blob).decode()
-                        docs.append(
-                            MultimodalRerankInput(
-                                content=document_file_base64,
-                                content_type=document.metadata["doc_type"],
-                            )
-                        )
-                else:
-                    docs.append(
-                        MultimodalRerankInput(
-                            content=document.page_content,
-                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
-                        )
-                    )
-                doc_ids.add(document.metadata["doc_id"])
-                unique_documents.append(document)
+                doc_id = str(metadata["doc_id"])
+                doc_ids.add(doc_id)
+                unique_candidates.append(document)
+                if metadata.get("doc_type") == DocType.IMAGE:
+                    image_file_ids.add(doc_id)
             elif document.provider == "external":
-                if document not in unique_documents:
-                    docs.append(
-                        MultimodalRerankInput(
-                            content=document.page_content,
-                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
-                        )
+                if document not in unique_candidates:
+                    unique_candidates.append(document)
+
+        tenant_id = self.rerank_model_instance.provider_model_bundle.configuration.tenant_id
+        upload_file_ids = [*image_file_ids, query]
+        upload_files = self._session.scalars(
+            select(UploadFile).where(
+                UploadFile.id.in_(upload_file_ids),
+                UploadFile.tenant_id == tenant_id,
+            )
+        ).all()
+        upload_keys = {upload_file.id: upload_file.key for upload_file in upload_files}
+        self._session.commit()
+
+        query_key = upload_keys.get(query)
+        if query_key is None:
+            raise ValueError(f"Upload file not found for query: {query}")
+
+        docs: list[MultimodalRerankInput] = []
+        unique_documents: list[Document] = []
+        for document in unique_candidates:
+            metadata = document.metadata or {}
+            if document.provider == "dify" and metadata.get("doc_type") == DocType.IMAGE:
+                image_key = upload_keys.get(str(metadata["doc_id"]))
+                if image_key is None:
+                    continue
+                blob = storage.load_once(image_key)
+                docs.append(
+                    MultimodalRerankInput(
+                        content=base64.b64encode(blob).decode(),
+                        content_type=DocType.IMAGE,
                     )
-                    unique_documents.append(document)
-
-        documents = unique_documents
-        if query_type == QueryType.TEXT_QUERY:
-            rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
-            return rerank_result, unique_documents
-        elif query_type == QueryType.IMAGE_QUERY:
-            upload_file = self._session.get(UploadFile, query)
-            if upload_file:
-                blob = storage.load_once(upload_file.key)
-                file_query = base64.b64encode(blob).decode()
-                file_query_input = MultimodalRerankInput(
-                    content=file_query,
-                    content_type=DocType.IMAGE,
                 )
-                rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_input, docs=docs, score_threshold=score_threshold, top_n=top_n
-                )
-                return rerank_result, unique_documents
             else:
-                raise ValueError(f"Upload file not found for query: {query}")
+                docs.append(
+                    MultimodalRerankInput(
+                        content=document.page_content,
+                        content_type=metadata.get("doc_type") or DocType.TEXT,
+                    )
+                )
+            unique_documents.append(document)
 
-        else:
-            raise ValueError(f"Query type {query_type} is not supported")
+        query_blob = storage.load_once(query_key)
+        file_query_input = MultimodalRerankInput(
+            content=base64.b64encode(query_blob).decode(),
+            content_type=DocType.IMAGE,
+        )
+        rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
+            query=file_query_input,
+            docs=docs,
+            score_threshold=score_threshold,
+            top_n=top_n,
+        )
+        return rerank_result, unique_documents

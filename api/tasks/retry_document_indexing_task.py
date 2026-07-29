@@ -83,22 +83,31 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
                     segments = session.scalars(
-                        select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                        select(DocumentSegment).where(
+                            DocumentSegment.document_id == document_id,
+                            DocumentSegment.dataset_id == dataset.id,
+                        )
                     ).all()
                     if segments:
                         index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                        segment_ids = [segment.id for segment in segments]
                         # delete from vector index
                         index_processor.clean(
                             dataset,
                             index_node_ids,
                             with_keywords=True,
                             delete_child_chunks=True,
+                            delete_summaries=True,
+                            segment_ids=segment_ids,
                             session=session,
                         )
 
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
-                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                        segment_delete_stmt = delete(DocumentSegment).where(
+                            DocumentSegment.id.in_(segment_ids),
+                            DocumentSegment.dataset_id == dataset.id,
+                        )
                         session.execute(segment_delete_stmt)
                     session.commit()
 
