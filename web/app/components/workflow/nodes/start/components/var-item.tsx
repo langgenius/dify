@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useBoolean, useHover } from 'ahooks'
+import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Badge from '@/app/components/base/badge'
@@ -41,16 +41,15 @@ const VarItem: FC<Props> = ({
 
   const ref = useRef(null)
   const isHovering = useHover(ref)
-  const [isShowEditVarModal, { setTrue: showEditVarModal, setFalse: hideEditVarModal }] =
-    useBoolean(false)
+  const [isShowEditVarModal, setIsShowEditVarModal] = useState(false)
 
   const handlePayloadChange = useCallback(
     (payload: InputVar, moreInfo?: MoreInfo) => {
       const isValid = onChange(payload, moreInfo)
       if (!isValid) return
-      hideEditVarModal()
+      setIsShowEditVarModal(false)
     },
-    [onChange, hideEditVarModal],
+    [onChange],
   )
   return (
     <div
@@ -107,7 +106,7 @@ const VarItem: FC<Props> = ({
                     type="button"
                     aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
                     className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                    onClick={showEditVarModal}
+                    onClick={() => setIsShowEditVarModal(true)}
                   >
                     <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
                   </button>
@@ -133,7 +132,7 @@ const VarItem: FC<Props> = ({
           isShow
           supportFile
           payload={payload}
-          onClose={hideEditVarModal}
+          onClose={() => setIsShowEditVarModal(false)}
           onConfirm={handlePayloadChange}
           varKeys={varKeys}
         />
