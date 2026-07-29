@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
 import { InfiniteScrollSentinel } from '@/app/components/explore/installed-app-navigation/infinite-scroll-sentinel'
+import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import Link from '@/next/link'
 import { usePathname, useSelectedLayoutSegments } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -195,23 +196,20 @@ const SideBar = () => {
               <ScrollAreaRoot className="h-full">
                 <ScrollAreaViewport
                   ref={scrollRef}
-                  aria-busy={installedAppsQuery.isFetching}
+                  aria-busy={installedAppsQuery.isFetchingNextPage}
                   aria-labelledby={webAppsLabelId}
                   className="overscroll-contain"
                   role="region"
                 >
                   <ScrollAreaContent className="space-y-0.5 pr-3">
                     {installedAppItems}
+                    {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
                     <InfiniteScrollSentinel
+                      canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
                       fetchNextPage={() =>
                         installedAppsQuery.fetchNextPage({
                           cancelRefetch: false,
                         })
-                      }
-                      isEnabled={
-                        installedAppsQuery.hasNextPage &&
-                        !installedAppsQuery.isFetching &&
-                        !installedAppsQuery.error
                       }
                       isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
                       scrollRootRef={scrollRef}
@@ -226,20 +224,17 @@ const SideBar = () => {
           ) : (
             <div
               ref={scrollRef}
-              aria-busy={installedAppsQuery.isFetching}
+              aria-busy={installedAppsQuery.isFetchingNextPage}
               className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto"
             >
               {installedAppItems}
+              {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
               <InfiniteScrollSentinel
+                canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
                 fetchNextPage={() =>
                   installedAppsQuery.fetchNextPage({
                     cancelRefetch: false,
                   })
-                }
-                isEnabled={
-                  installedAppsQuery.hasNextPage &&
-                  !installedAppsQuery.isFetching &&
-                  !installedAppsQuery.error
                 }
                 isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
                 scrollRootRef={scrollRef}

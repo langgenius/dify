@@ -1368,35 +1368,6 @@ describe('MainNav', () => {
     expect(await screen.findByText(longName)).toHaveClass('truncate')
   })
 
-  it('virtualizes large installed web app lists', async () => {
-    const offsetHeightSpy = vi
-      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
-      .mockReturnValue(320)
-    const offsetWidthSpy = vi
-      .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
-      .mockReturnValue(240)
-    mockInstalledApps = Array.from({ length: 100 }, (_, index) =>
-      createInstalledApp({
-        id: `installed-${index}`,
-        app: {
-          ...createInstalledApp().app,
-          id: `app-${index}`,
-          name: `Web App ${index}`,
-        },
-      }),
-    )
-
-    try {
-      renderMainNav()
-
-      expect(await screen.findByText('Web App 0')).toBeInTheDocument()
-      expect(screen.queryByText('Web App 99')).not.toBeInTheDocument()
-    } finally {
-      offsetHeightSpy.mockRestore()
-      offsetWidthSpy.mockRestore()
-    }
-  })
-
   it('fetches the next installed web app page when the bottom sentinel enters the viewport', async () => {
     let intersectionCallback: IntersectionObserverCallback | undefined
     vi.stubGlobal(

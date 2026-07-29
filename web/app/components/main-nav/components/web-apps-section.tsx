@@ -24,24 +24,20 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
 import { InfiniteScrollSentinel } from '@/app/components/explore/installed-app-navigation/infinite-scroll-sentinel'
+import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 
-const appNavItemHeight = 32
-const appNavItemGap = 2
-const appNavSeparatorHeight = 17
-const virtualizationThreshold = 50
 const webAppSkeletonClassName =
   'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const webAppSkeletonWidths = ['w-24', 'w-32', 'w-28']
@@ -74,17 +70,6 @@ function WebAppsSkeleton() {
     </div>
   )
 }
-
-type WebAppListRow =
-  | {
-      key: string
-      kind: 'app'
-      app: InstalledAppResponse
-    }
-  | {
-      key: string
-      kind: 'separator'
-    }
 
 const WebAppsSectionContent = () => {
   const { t } = useTranslation()
@@ -120,41 +105,7 @@ const WebAppsSectionContent = () => {
     consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
   )
 
-  const webAppRows = useMemo<WebAppListRow[]>(() => {
-    const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
-
-    return installedApps.flatMap((app, index) => {
-      const rows: WebAppListRow[] = [
-        {
-          key: app.id,
-          kind: 'app',
-          app,
-        },
-      ]
-
-      if (index === pinnedAppsCount - 1 && index !== installedApps.length - 1) {
-        rows.push({
-          key: `${app.id}-separator`,
-          kind: 'separator',
-        })
-      }
-
-      return rows
-    })
-  }, [installedApps])
-  const shouldVirtualize = webAppRows.length > virtualizationThreshold
-
-  const rowVirtualizer = useVirtualizer({
-    count: webAppRows.length,
-    estimateSize: (index) =>
-      webAppRows[index]?.kind === 'separator' ? appNavSeparatorHeight : appNavItemHeight,
-    gap: appNavItemGap,
-    getItemKey: (index) => webAppRows[index]?.key ?? index,
-    getScrollElement: () => scrollRef.current,
-    overscan: 6,
-    paddingEnd: 8,
-  })
-  const virtualRows = rowVirtualizer.getVirtualItems()
+  const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
 
   const handleDelete = () => {
     if (!uninstallDialogAppId) return
@@ -206,12 +157,6 @@ const WebAppsSectionContent = () => {
       onDelete={setUninstallDialogAppId}
     />
   )
-  const renderRow = (row: WebAppListRow) => {
-    if (row.kind === 'separator') return <Divider />
-
-    return renderAppNavItem(row.app)
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {installedAppsQuery.isPending ? (
@@ -271,7 +216,7 @@ const WebAppsSectionContent = () => {
         <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden overscroll-contain">
           <ScrollAreaViewport
             ref={scrollRef}
-            aria-busy={installedAppsQuery.isFetching}
+            aria-busy={installedAppsQuery.isPending || installedAppsQuery.isFetchingNextPage}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
             className="overflow-x-hidden"
             role="region"
@@ -304,48 +249,25 @@ const WebAppsSectionContent = () => {
                     {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
                   </div>
                 )}
-              {!installedAppsQuery.isPending && webAppRows.length > 0 && !shouldVirtualize && (
+              {!installedAppsQuery.isPending && installedApps.length > 0 && (
                 <div className="space-y-0.5 pb-2">
-                  {webAppRows.map((row) => (
-                    <Fragment key={row.key}>{renderRow(row)}</Fragment>
+                  {installedApps.map((installedApp, index) => (
+                    <Fragment key={installedApp.id}>
+                      {renderAppNavItem(installedApp)}
+                      {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && (
+                        <Divider />
+                      )}
+                    </Fragment>
                   ))}
                 </div>
               )}
-              {!installedAppsQuery.isPending && shouldVirtualize && (
-                <div
-                  className="relative w-full"
-                  style={{
-                    height: `${rowVirtualizer.getTotalSize()}px`,
-                  }}
-                >
-                  {virtualRows.map((virtualRow) => {
-                    const row = webAppRows[virtualRow.index]!
-
-                    return (
-                      <div
-                        key={virtualRow.key}
-                        className="absolute top-0 left-0 w-full"
-                        style={{
-                          height: `${virtualRow.size}px`,
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}
-                      >
-                        {renderRow(row)}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
               <InfiniteScrollSentinel
+                canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
                 fetchNextPage={() =>
                   installedAppsQuery.fetchNextPage({
                     cancelRefetch: false,
                   })
-                }
-                isEnabled={
-                  installedAppsQuery.hasNextPage &&
-                  !installedAppsQuery.isFetching &&
-                  !installedAppsQuery.error
                 }
                 isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
                 scrollRootRef={scrollRef}

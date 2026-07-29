@@ -2,30 +2,34 @@
 
 import type { RefObject } from 'react'
 import { useEffect, useEffectEvent, useRef } from 'react'
-import Loading from '@/app/components/base/loading'
 
 type InfiniteScrollSentinelProps = {
+  canFetchNextPage: boolean
   fetchNextPage: () => Promise<unknown>
-  isEnabled: boolean
   isFetchingNextPage: boolean
   scrollRootRef: RefObject<HTMLDivElement | null>
 }
 
 export const InfiniteScrollSentinel = ({
+  canFetchNextPage,
   fetchNextPage,
-  isEnabled,
   isFetchingNextPage,
   scrollRootRef,
 }: InfiniteScrollSentinelProps) => {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const handleIntersection = useEffectEvent((entry: IntersectionObserverEntry) => {
-    if (entry.isIntersecting && isEnabled) void fetchNextPage()
+    if (entry.isIntersecting && canFetchNextPage && !isFetchingNextPage) void fetchNextPage()
   })
 
   useEffect(() => {
     const scrollRoot = scrollRootRef.current
     const sentinel = sentinelRef.current
-    if (!isEnabled || !scrollRoot || !sentinel || typeof IntersectionObserver === 'undefined')
+    if (
+      !canFetchNextPage ||
+      !scrollRoot ||
+      !sentinel ||
+      typeof IntersectionObserver === 'undefined'
+    )
       return
 
     const observer = new IntersectionObserver(
@@ -40,12 +44,7 @@ export const InfiniteScrollSentinel = ({
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [isEnabled, scrollRootRef])
+  }, [canFetchNextPage, scrollRootRef])
 
-  return (
-    <>
-      <div ref={sentinelRef} aria-hidden className="h-px" />
-      {isFetchingNextPage && <Loading className="h-8" />}
-    </>
-  )
+  return <div ref={sentinelRef} aria-hidden className="h-px" />
 }
