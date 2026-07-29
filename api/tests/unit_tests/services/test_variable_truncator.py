@@ -238,6 +238,13 @@ class TestArrayTruncation:
         for item in result.value:
             assert isinstance(item, dict)
 
+    def test_array_truncation_flag_accumulation(self, small_truncator: VariableTruncator):
+        """Test that truncated flag stays True when an early element is truncated but a later element is not."""
+        mixed_array: list[object] = ["very long string " * 5, 42]
+        result = small_truncator._truncate_array(mixed_array, 50)
+
+        assert result.truncated is True
+
 
 class TestObjectTruncation:
     """Test object truncation functionality."""
