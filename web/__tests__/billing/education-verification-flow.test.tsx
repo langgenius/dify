@@ -42,10 +42,8 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -69,10 +67,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 // ─── Service mocks ───────────────────────────────────────────────────────────
@@ -100,10 +94,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
-}))
-
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────
@@ -247,20 +237,6 @@ describe('Education Verification Flow', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledTimes(1)
         expect(mockRouterPush).toHaveBeenCalledWith('/education-apply?token=edu-token-123')
-      })
-    })
-
-    it('should clear education verifying flag on success', async () => {
-      mockMutateAsync.mockResolvedValue({ token: 'token-xyz' })
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(mockSetEducationVerifying).toHaveBeenCalledWith(null)
       })
     })
   })

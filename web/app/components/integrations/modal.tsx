@@ -1,29 +1,25 @@
 'use client'
 
-import type { IntegrationSection } from '@/app/components/integrations/routes'
+import type { IntegrationSection } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import IntegrationsPage from '@/app/components/integrations/page'
 import { getMarketplaceUrl } from '@/utils/var'
+import IntegrationsPage from './page'
 
 type IntegrationsSettingModalProps = {
   section: IntegrationSection
-  source?: 'agent'
   onCancel: () => void
   onSectionChange: (section: IntegrationSection) => void
 }
 
 export default function IntegrationsSettingModal({
   section,
-  source,
   onCancel,
   onSectionChange,
 }: IntegrationsSettingModalProps) {
   const { t } = useTranslation()
-  const isAgentSource = source === 'agent'
   const handleSwitchToMarketplace = useCallback((path: string) => {
     window.open(
       getMarketplaceUrl(path, undefined, { source: window.location.origin }),
@@ -33,18 +29,8 @@ export default function IntegrationsSettingModal({
   }, [])
 
   return (
-    <MenuDialog
-      show
-      backdropClassName={isAgentSource ? 'bg-background-overlay' : undefined}
-      className={isAgentSource ? 'bg-transparent backdrop-blur-none' : undefined}
-      onClose={onCancel}
-    >
-      <div
-        className={cn(
-          'mx-auto flex h-dvh w-[min(1440px,calc(100vw-48px))] shrink-0 py-6',
-          isAgentSource && 'w-full p-6',
-        )}
-      >
+    <MenuDialog show onClose={onCancel}>
+      <div className="mx-auto flex h-dvh w-[min(1440px,calc(100vw-48px))] shrink-0 py-6">
         <div className="relative flex min-h-0 w-full shrink-0 overflow-hidden rounded-2xl border border-divider-subtle bg-components-panel-bg shadow-2xl">
           <IntegrationsPage
             section={section}
