@@ -7,15 +7,14 @@ v2 binding resolver and file URL boundaries remain isolated from network I/O.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, Protocol
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -148,33 +147,21 @@ class SessionFor(Protocol):
 
 
 @pytest.fixture
-def session_for(sqlite_engine: Engine) -> Iterator[SessionFor]:
-    """Persist one scenario and return a caller-owned real SQLite session."""
-    WorkflowRun.metadata.create_all(
-        sqlite_engine,
-        tables=[WorkflowRun.__table__, WorkflowNodeExecutionModel.__table__],
-    )
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    sessions: list[Session] = []
-
+def session_for(sqlite_session: Session) -> SessionFor:
+    """Persist one scenario in the shared SQLite session."""
     def create_session(
         *,
         workflow_run: WorkflowRun | None,
         executions: Sequence[WorkflowNodeExecutionModel] = (),
     ) -> Session:
-        session = session_maker()
         if workflow_run is not None:
-            session.add(workflow_run)
-        session.add_all(executions)
-        session.commit()
-        session.expunge_all()
-        sessions.append(session)
-        return session
+            sqlite_session.add(workflow_run)
+        sqlite_session.add_all(executions)
+        sqlite_session.commit()
+        sqlite_session.expunge_all()
+        return sqlite_session
 
-    yield create_session
-
-    for session in sessions:
-        session.close()
+    return create_session
 
 
 def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
