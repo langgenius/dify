@@ -959,12 +959,6 @@ Stop a running Agent App chat message generation
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  No | **application/json**: [AgentDebugConversationRefreshPayload](#agentdebugconversationrefreshpayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
@@ -1256,7 +1250,8 @@ Get basic information for an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 
 #### Responses
 
@@ -1272,7 +1267,8 @@ List a directory in an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
 #### Responses
@@ -1289,7 +1285,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
 #### Responses
@@ -3802,7 +3799,7 @@ List a directory in a workflow Agent node sandbox
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
 #### Responses
@@ -3821,7 +3818,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
 #### Responses
@@ -15280,12 +15277,6 @@ Stable Agent Soul reference to one normalized skill archive.
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
 
-#### AgentDebugConversationRefreshPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| draft_type | [AgentConfigDraftType](#agentconfigdrafttype) | Agent draft surface whose conversation should be refreshed | No |
-
 #### AgentDebugConversationRefreshResponse
 
 | Name | Type | Description | Required |
@@ -16003,7 +15994,8 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Agent App conversation ID | Yes |
+| caller_id | string | Agent App caller ID | Yes |
+| caller_type | string, <br>**Available values:** "build_draft", "conversation" | *Enum:* `"build_draft"`, `"conversation"` | Yes |
 | path | string | File path relative to the sandbox workspace | Yes |
 
 #### AgentScope
@@ -24261,7 +24253,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| session_id | string |  | Yes |
 | workspace_cwd | string |  | Yes |
 
 #### SandboxListResponse
@@ -26081,7 +26072,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
+| node_execution_id | string | Workflow node execution ID | Yes |
 | path | string | File path relative to the sandbox workspace | Yes |
 
 #### WorkflowAppLogPaginationResponse

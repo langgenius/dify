@@ -276,7 +276,7 @@ export const expectProviderToolActionVisible = async (
   const action = toolsSection.getByText(tool.actionName, { exact: true })
   await expect(action).toBeVisible()
 
-  return { action, tool }
+  return { action, provider, tool }
 }
 
 export const openAgentKnowledgeRetrievalDialog = async (

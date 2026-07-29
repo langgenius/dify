@@ -157,7 +157,7 @@
   "agentDetail.configure.preview.empty.title": "Aperçu de {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Authentification de l’utilisateur final",
   "agentDetail.configure.preview.inputPlaceholder": "Envoyer un message à {{name}}",
-  "agentDetail.configure.preview.restart": "Redémarrer l’aperçu",
+  "agentDetail.configure.preview.restart": "Recommencer",
   "agentDetail.configure.preview.sandboxNotice": "L’agent s’exécute dans un bac à sable Linux.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "Dans Dify Community Edition, chacun de vos agents s’exécute dans un environnement bac à sable Linux 7.0.0-10060-aws au sein de votre Docker. Les modifications apportées à l’environnement via Build Chats sont persistantes.",
   "agentDetail.configure.preview.title": "Aperçu",

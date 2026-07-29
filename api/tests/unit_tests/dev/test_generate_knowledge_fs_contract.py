@@ -6,7 +6,7 @@ import subprocess
 import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
@@ -504,7 +504,7 @@ def fixture_capability_operations() -> tuple[CapabilityOperationRuntimeContract,
     )
 
 
-def fixture_product_manifest() -> dict[str, Any]:
+def fixture_product_manifest() -> dict[str, object]:
     return {
         "schemaVersion": 2,
         "operations": [
@@ -542,7 +542,7 @@ def fixture_product_manifest() -> dict[str, Any]:
     }
 
 
-def fixture_product_gap_manifest() -> dict[str, Any]:
+def fixture_product_gap_manifest() -> dict[str, object]:
     return {
         "schemaVersion": 2,
         "gaps": [
@@ -580,7 +580,7 @@ def fixture_product_gap_manifest() -> dict[str, Any]:
     }
 
 
-def fixture_capability_policy_document() -> dict[str, Any]:
+def fixture_capability_policy_document() -> dict[str, object]:
     bindings = {
         "getKnowledgeSpace": {"pathParameter": "id"},
         "createUploadSession": {"pathParameter": "id"},
@@ -608,8 +608,8 @@ def fixture_capability_policy_document() -> dict[str, Any]:
 
 def validate_fixture_product_contracts(
     *,
-    gap_manifest: dict[str, Any] | None = None,
-    manifest: dict[str, Any] | None = None,
+    gap_manifest: dict[str, object] | None = None,
+    manifest: dict[str, object] | None = None,
 ) -> None:
     validate_product_operation_contracts(
         capability_operations=fixture_capability_operations(),
@@ -656,8 +656,8 @@ def complete_contract_document() -> dict[str, object]:
     return document
 
 
-def openapi_operation(document: dict[str, object], method: str) -> dict[str, Any]:
-    paths = cast(dict[str, dict[str, dict[str, Any]]], document["paths"])
+def openapi_operation(document: dict[str, object], method: str) -> dict[str, object]:
+    paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
     return paths["/knowledge-spaces"][method]
 
 
@@ -860,7 +860,7 @@ def declaration(**overrides: object) -> ContractDeclaration:
 def write_fake_pnpm(
     path: Path,
     document: dict[str, object],
-    capability_policy: dict[str, Any],
+    capability_policy: dict[str, object],
 ) -> None:
     documents = {
         "capability:export": json.dumps(capability_policy),

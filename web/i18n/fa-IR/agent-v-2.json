@@ -157,7 +157,7 @@
   "agentDetail.configure.preview.empty.title": "پیش‌نمایش {{name}}",
   "agentDetail.configure.preview.endUserAuth": "احراز هویت کاربر نهایی",
   "agentDetail.configure.preview.inputPlaceholder": "ارسال پیام به {{name}}",
-  "agentDetail.configure.preview.restart": "راه‌اندازی مجدد پیش‌نمایش",
+  "agentDetail.configure.preview.restart": "شروع تازه",
   "agentDetail.configure.preview.sandboxNotice": "Agent در یک سندباکس لینوکس اجرا می‌شود.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "در Dify Community Edition، هر یک از Agentهای شما در یک محیط سندباکس Linux 7.0.0-10060-aws داخل Docker شما اجرا می‌شود. ویرایش‌های شما روی محیط از طریق Build Chats پایدار می‌ماند.",
   "agentDetail.configure.preview.title": "پیش‌نمایش",

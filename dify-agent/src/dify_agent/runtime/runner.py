@@ -1,18 +1,14 @@
 """Runtime execution for one scheduled Dify Agent run.
 
 The runner is storage-agnostic: it normalizes the public Dify composition into
-Agenton's graph/config split and chooses one of two execution modes after the
-composition is normalized and the ``on_exit`` policy is validated:
+Agenton's graph/config split and executes one model run after the ``on_exit``
+policy is validated:
 
 - model runs: enter a fresh ``CompositorRun`` (or resume one from a snapshot),
   render the current Dify system prompts into temporary ``message_history``, run
   pydantic-ai with either the current ``run.user_prompts`` or deferred external
   tool results, emit raw stream events with agent-message delta annotations, apply
   request-level ``on_exit`` signals, and publish a terminal success or failure event;
-- lifecycle-only runs: enter from a supplied snapshot, apply request-level
-  ``on_exit`` signals, exit without invoking a model, and succeed with explicit
-  ``output = null`` and ``usage = null``.
-
 The Pydantic AI model is resolved from the active Agenton layer named by
 ``DIFY_AGENT_MODEL_LAYER_ID``. An optional history layer contributes stored
 message history only through session state; successful model runs append only
@@ -63,7 +59,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
-from dify_agent.adapters.shell.protocols import SandboxExpiredError
+from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -120,8 +116,8 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
     message = str(exc) or type(exc).__name__
     reason: str | None = None
 
-    if isinstance(exc, SandboxExpiredError):
-        return message, "sandbox_expired"
+    if isinstance(exc, BindingLostError):
+        return message, "binding_lost"
 
     if isinstance(exc, ModelHTTPError):
         body = exc.body
@@ -234,7 +230,7 @@ class AgentRunRunner:
         await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> RunSuccessOutcome:
-        """Run the normalized request in model or lifecycle-only mode.
+        """Run the normalized request through the model path.
 
         Known request-shaped Agenton enter-time failures are normalized to
         ``AgentRunValidationError``. That includes the existing small class of
@@ -262,48 +258,8 @@ class AgentRunRunner:
             raise AgentRunValidationError(str(exc)) from exc
 
         if not _has_model_layer(self.request):
-            return await self._run_lifecycle_only(compositor=compositor, layer_configs=layer_configs)
+            raise AgentRunValidationError(f"Missing required '{DIFY_AGENT_MODEL_LAYER_ID}' layer.")
         return await self._run_model(compositor=compositor, layer_configs=layer_configs)
-
-    async def _run_lifecycle_only(
-        self,
-        *,
-        compositor: Any,
-        layer_configs: dict[str, LayerConfigInput],
-    ) -> RunSuccessOutcome:
-        """Replay only layer lifecycle work for a no-LLM composition plus snapshot."""
-        if self.request.session_snapshot is None:
-            raise AgentRunValidationError(
-                f"Missing '{DIFY_AGENT_MODEL_LAYER_ID}' requires a session_snapshot for lifecycle-only runs."
-            )
-        if self.request.deferred_tool_results is not None:
-            raise AgentRunValidationError(
-                f"Deferred tool results require the reserved '{DIFY_AGENT_MODEL_LAYER_ID}' layer."
-            )
-
-        entered_run = False
-        try:
-            async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
-                entered_run = True
-                apply_layer_exit_signals(run, self.request.on_exit)
-        except RuntimeError as exc:
-            if not entered_run and is_agenton_enter_validation_runtime_error(exc):
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-        except ValueError as exc:
-            if not entered_run:
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-
-        if run.session_snapshot is None:
-            raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
-        return RunSuccessOutcome(
-            result_kind="output",
-            output=None,
-            deferred_tool_call=None,
-            session_snapshot=run.session_snapshot,
-            usage=None,
-        )
 
     async def _run_model(
         self,

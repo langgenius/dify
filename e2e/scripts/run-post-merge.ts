@@ -6,7 +6,16 @@ const postMergeTags = '@prepared or @external-model or @external-tool'
 const main = async () => {
   await runForegroundProcess({
     command: 'npx',
-    args: ['tsx', './scripts/run-cucumber.ts', '--', '--tags', postMergeTags],
+    args: [
+      'tsx',
+      './scripts/run-cucumber.ts',
+      '--full',
+      '--profile',
+      'post-merge',
+      '--',
+      '--tags',
+      postMergeTags,
+    ],
     cwd: e2eDir,
   })
 }
