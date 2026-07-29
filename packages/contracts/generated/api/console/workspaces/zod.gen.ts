@@ -1521,7 +1521,7 @@ export const zSkillAssistModelPayload = z.object({
 /**
  * SkillAssistMessagePayload
  *
- * One user message and optional uploaded context for the read-only Skill Authoring assistant.
+ * One user message and optional uploaded context for the Skill Authoring assistant.
  */
 export const zSkillAssistMessagePayload = z.object({
   attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),

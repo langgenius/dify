@@ -2040,7 +2040,9 @@ describe('AgentConfigurePage', () => {
               system_prompt: 'build prompt',
             },
           },
-          draft: {},
+          draft: {
+            id: 'build-draft-1',
+          },
           variant: 'agent_app',
         },
         dataUpdatedAt: 1,

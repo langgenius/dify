@@ -7,13 +7,15 @@ import json
 import zipfile
 from collections.abc import Generator
 from types import SimpleNamespace
+from typing import cast, override
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import Table, delete, func, select
 
 from core.db.session_factory import session_factory
+from core.tools.tool_file_manager import ToolFileManager
 from models.account import Account
 from models.agent import (
     Agent,
@@ -22,9 +24,6 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigSnapshot,
     AgentKind,
-    AgentRuntimeSession,
-    AgentRuntimeSessionOwnerType,
-    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -42,8 +41,11 @@ from models.skill import AgentSkillBinding, Skill, SkillDraftFile, SkillVersion
 from models.tools import ToolFile
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
+    SkillAssistDraftOperationPayload,
     SkillCreatePayload,
+    SkillDraftFileOperation,
     SkillDraftFileOperationPayload,
+    SkillDraftTreeItemPayload,
     SkillDraftTreePayload,
     SkillImportPayload,
     SkillManagementService,
@@ -62,27 +64,33 @@ AGENT = "22222222-2222-2222-2222-222222222222"
 USER = "33333333-3333-3333-3333-333333333333"
 
 
-class _FakeToolFileManager:
-    def create_file_by_raw(self, **kwargs):
+class _FakeToolFileManager(ToolFileManager):
+    @override
+    def create_file_by_raw(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> ToolFile:
         tool_file = ToolFile(
-            user_id=kwargs["user_id"],
-            tenant_id=kwargs["tenant_id"],
-            conversation_id=kwargs["conversation_id"],
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
             file_key=f"tools/{uuid4().hex}",
-            mimetype=kwargs["mimetype"],
+            mimetype=mimetype,
             original_url=None,
-            name=kwargs.get("filename") or "file.bin",
-            size=len(kwargs["file_binary"]),
+            name=filename or "file.bin",
+            size=len(file_binary),
         )
         tool_file.id = str(uuid4())
         with session_factory.create_session() as session:
             session.add(tool_file)
             session.commit()
-        return SimpleNamespace(
-            id=tool_file.id,
-            size=len(kwargs["file_binary"]),
-            mimetype=kwargs["mimetype"],
-        )
+        return tool_file
 
 
 @pytest.fixture(autouse=True)
@@ -95,7 +103,6 @@ def _tables() -> Generator[None, None, None]:
         AgentConfigSnapshot,
         AgentConfigDraft,
         AgentConfigRevision,
-        AgentRuntimeSession,
         ToolFile,
         Tag,
         TagBinding,
@@ -106,7 +113,8 @@ def _tables() -> Generator[None, None, None]:
         WorkflowAgentNodeBinding,
     )
     for model in models:
-        model.__table__.create(bind=engine, checkfirst=True)
+        table = cast(Table, model.__table__)
+        table.create(bind=engine, checkfirst=True)
     _seed_agent()
     yield
     with session_factory.create_session() as session:
@@ -185,6 +193,87 @@ def test_normalize_skill_file_path_rejects_escape_paths() -> None:
     for bad in ["", "../x", "/etc/passwd", "a/\x00b"]:
         with pytest.raises(ValueError):
             normalize_skill_file_path(bad)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"path": "SKILL.md", "content": None}, "text file content is required"),
+        (
+            {"path": "SKILL.md", "storage": "text", "content": "Body", "tool_file_id": "tool-file-1"},
+            "text file must not include tool_file_id",
+        ),
+        (
+            {"path": "assets/logo.png", "storage": "tool_file"},
+            "tool_file draft file requires tool_file_id",
+        ),
+        (
+            {
+                "path": "assets/logo.png",
+                "storage": "tool_file",
+                "tool_file_id": "tool-file-1",
+                "content": "inline",
+            },
+            "tool_file draft file must not include inline content",
+        ),
+    ],
+)
+def test_skill_draft_tree_item_payload_rejects_inconsistent_file_storage(
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        SkillDraftTreeItemPayload.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"operation": "upsert_text", "path": "SKILL.md"}, "content is required for upsert_text"),
+        (
+            {"operation": "upsert_tool_file", "path": "assets/logo.png"},
+            "tool_file_id is required for upsert_tool_file",
+        ),
+        ({"operation": "rename", "path": "a.md"}, "target_path is required for rename"),
+        (
+            {"operation": "rename", "path": "a.md", "target_path": "a.md"},
+            "target_path must be different from path",
+        ),
+    ],
+)
+def test_skill_draft_file_operation_payload_rejects_invalid_operations(
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        SkillDraftFileOperationPayload.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"operation": "upsert_text", "path": "notes.md", "content": "x"}, "outside the assistant writable area"),
+        ({"operation": "upsert_text", "path": "references/policy.md"}, "content is required for upsert_text"),
+        ({"operation": "delete", "path": "SKILL.md"}, "SKILL.md cannot be deleted by the assistant"),
+    ],
+)
+def test_skill_assist_draft_operation_payload_rejects_unsafe_operations(
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        SkillAssistDraftOperationPayload.model_validate(payload)
+
+
+def test_skill_draft_file_operation_payload_normalizes_target_path() -> None:
+    payload = SkillDraftFileOperationPayload(
+        operation=SkillDraftFileOperation.RENAME,
+        path="./references/old.md",
+        target_path="./references/new.md",
+    )
+
+    assert payload.path == "references/old.md"
+    assert payload.target_path == "references/new.md"
 
 
 def test_create_skill_without_name_initializes_untitled_draft() -> None:
@@ -455,17 +544,6 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
             updated_by=USER,
         )
         session.add(draft)
-        runtime_session = AgentRuntimeSession(
-            tenant_id=TENANT,
-            app_id=agent.backing_app_id,
-            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-            agent_id=agent.id,
-            agent_config_snapshot_id=draft.id,
-            conversation_id=str(uuid4()),
-            session_snapshot="{}",
-            status=AgentRuntimeSessionStatus.ACTIVE,
-        )
-        session.add(runtime_session)
         session.flush()
 
         SkillManagementService._sync_assistant_model_config(
@@ -479,7 +557,6 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
         assert updated_draft.model is not None
         assert updated_draft.model.model_provider == "langgenius/tongyi/tongyi"
         assert updated_draft.model.model == "qwen3.7-plus"
-        assert runtime_session.status == AgentRuntimeSessionStatus.CLEANED
 
 
 def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> None:
@@ -943,7 +1020,7 @@ def test_list_skill_references_includes_roster_agent_nodes_after_workflow_app() 
     ]
 
 
-def test_publish_updates_referenced_agent_config_skill_archives() -> None:
+def test_publish_does_not_write_referenced_agent_config_skills() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(
         tenant_id=TENANT,
@@ -1050,6 +1127,8 @@ def test_publish_updates_referenced_agent_config_skill_archives() -> None:
                 node_job_config={},
             )
         )
+        agent_snapshot_id = agent_snapshot.id
+        inline_snapshot_id = inline_snapshot.id
         session.commit()
 
     service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
@@ -1079,19 +1158,18 @@ def test_publish_updates_referenced_agent_config_skill_archives() -> None:
     assert agent_snapshot is not None
     assert inline_snapshot is not None
     assert agent_draft is not None
-    assert agent.updated_by == USER
-    assert inline_agent.updated_by == USER
-    assert workflow_binding.updated_by == USER
-    assert workflow_binding.current_snapshot_id == inline_agent.active_config_snapshot_id
-    assert agent_snapshot.version == 2
-    assert inline_snapshot.version == 2
+    assert agent.active_config_snapshot_id == agent_snapshot_id
+    assert inline_agent.active_config_snapshot_id == inline_snapshot_id
+    assert workflow_binding.current_snapshot_id == inline_snapshot_id
+    assert agent_snapshot.version == 1
+    assert inline_snapshot.version == 1
     agent_skill_ref = AgentSoulConfig.model_validate(agent_snapshot.config_snapshot_dict).config_skills[0]
     inline_skill_ref = AgentSoulConfig.model_validate(inline_snapshot.config_snapshot_dict).config_skills[0]
     draft_skill_ref = AgentSoulConfig.model_validate(agent_draft.config_snapshot_dict).config_skills[0]
-    assert agent_skill_ref.file_id == latest_skill_version.archive_tool_file_id
-    assert inline_skill_ref.file_id == latest_skill_version.archive_tool_file_id
-    assert draft_skill_ref.file_id == latest_skill_version.archive_tool_file_id
-    assert agent_skill_ref.hash == latest_skill_version.hash_code
+    assert agent_skill_ref.file_id == "old-skill-file"
+    assert inline_skill_ref.file_id == "old-inline-skill-file"
+    assert draft_skill_ref.file_id == "old-draft-skill-file"
+    assert agent_skill_ref.hash == "old-hash"
 
 
 def test_replace_draft_tree_is_full_snapshot_and_autofills_parent_directories() -> None:
@@ -1148,9 +1226,26 @@ def test_publish_archive_contains_synced_skill_md() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(
@@ -1173,9 +1268,26 @@ def test_list_versions_includes_publisher_name_and_version_detail_files() -> Non
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(
@@ -1273,6 +1385,103 @@ def test_delete_latest_version_promotes_next_latest_then_clears_when_empty() -> 
 
     assert deleted_last == {"id": first["id"], "deleted": True, "latest_published_version_id": None}
     assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["latest_published_version_id"] is None
+
+
+def test_delete_latest_version_does_not_write_referenced_agent_config_skills() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    first = service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillPublishPayload(),
+    )
+    second = service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillPublishPayload(),
+    )
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+
+    with session_factory.create_session() as session:
+        agent_snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(
+                config_skills=[
+                    AgentConfigSkillRefConfig(
+                        name="finance-sop",
+                        description="old",
+                        file_id="old-skill-file",
+                        size=1,
+                        hash="old-hash",
+                    )
+                ]
+            ),
+            created_by=USER,
+        )
+        session.add(agent_snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = agent_snapshot.id
+        session.add(
+            AgentConfigDraft(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                draft_owner_key="",
+                base_snapshot_id=agent_snapshot.id,
+                config_snapshot=AgentSoulConfig(
+                    config_skills=[
+                        AgentConfigSkillRefConfig(
+                            name="finance-sop",
+                            description="old draft",
+                            file_id="old-draft-skill-file",
+                            size=1,
+                            hash="old-draft-hash",
+                        )
+                    ]
+                ),
+                created_by=USER,
+                updated_by=USER,
+            )
+        )
+        agent_snapshot_id = agent_snapshot.id
+        session.commit()
+
+    deleted = service.delete_version(tenant_id=TENANT, user_id=USER, skill_id=created["id"], version_id=second["id"])
+
+    with session_factory.create_session() as session:
+        skill = session.get(Skill, created["id"])
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        active_snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        draft = session.scalar(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.agent_id == AGENT,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+            )
+        )
+        snapshot_count = session.scalar(
+            select(func.count()).select_from(AgentConfigSnapshot).where(AgentConfigSnapshot.agent_id == AGENT)
+        )
+
+    assert deleted == {"id": second["id"], "deleted": True, "latest_published_version_id": first["id"]}
+    assert skill is not None
+    assert skill.latest_published_version_id == first["id"]
+    assert agent.active_config_snapshot_id == agent_snapshot_id
+    assert active_snapshot is not None
+    assert draft is not None
+    assert snapshot_count == 1
+    active_skill_ref = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict).config_skills[0]
+    draft_skill_ref = AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills[0]
+    assert active_skill_ref.file_id == "old-skill-file"
+    assert active_skill_ref.hash == "old-hash"
+    assert draft_skill_ref.file_id == "old-draft-skill-file"
 
 
 def test_replace_draft_tree_syncs_frontmatter_name_to_db() -> None:
@@ -1607,9 +1816,26 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(
@@ -1695,7 +1921,7 @@ def test_delete_skill_requires_confirmation_when_referenced() -> None:
     assert service.list_skills(tenant_id=TENANT)["data"] == []
 
 
-def test_delete_skill_removes_synced_agent_config_skill_refs() -> None:
+def test_delete_skill_removes_bindings_without_writing_agent_config_skill_refs() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
     service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
@@ -1726,6 +1952,7 @@ def test_delete_skill_removes_synced_agent_config_skill_refs() -> None:
         )
         session.add(agent_snapshot)
         session.flush()
+        agent_snapshot_id = agent_snapshot.id
         agent = session.get(Agent, AGENT)
         assert agent is not None
         agent.active_config_snapshot_id = agent_snapshot.id
@@ -1769,17 +1996,18 @@ def test_delete_skill_removes_synced_agent_config_skill_refs() -> None:
         binding_count = session.scalar(select(func.count()).select_from(AgentSkillBinding))
 
     assert deleted == {"id": created["id"], "deleted": True}
+    assert agent.active_config_snapshot_id == agent_snapshot_id
     assert active_snapshot is not None
     assert draft is not None
     assert binding_count == 0
-    assert active_snapshot.version == 2
+    assert active_snapshot.version == 1
     active_skill_names = [
         item.name for item in AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict).config_skills
     ]
     draft_skill_names = [item.name for item in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills]
-    assert active_skill_names == ["inline-helper"]
-    assert draft_skill_names == []
-    assert draft.base_snapshot_id == active_snapshot.id
+    assert active_skill_names == ["finance-sop", "inline-helper"]
+    assert draft_skill_names == ["finance-sop"]
+    assert draft.base_snapshot_id == agent_snapshot_id
 
 
 def test_import_skill_package_creates_draft_and_rejects_name_conflicts() -> None:
@@ -1834,9 +2062,26 @@ def test_publish_and_export_include_binary_tool_files() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured["archive"] = kwargs["file_binary"]
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured["archive"] = file_binary
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
@@ -1883,9 +2128,26 @@ def test_restore_version_replaces_draft_and_creates_new_published_version() -> N
     captured: list[bytes] = []
 
     class CapturingToolFileManager(_FakeToolFileManager):
-        def create_file_by_raw(self, **kwargs):
-            captured.append(kwargs["file_binary"])
-            return super().create_file_by_raw(**kwargs)
+        @override
+        def create_file_by_raw(
+            self,
+            *,
+            user_id: str,
+            tenant_id: str,
+            conversation_id: str | None,
+            file_binary: bytes,
+            mimetype: str,
+            filename: str | None = None,
+        ) -> ToolFile:
+            captured.append(file_binary)
+            return super().create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=conversation_id,
+                file_binary=file_binary,
+                mimetype=mimetype,
+                filename=filename,
+            )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))

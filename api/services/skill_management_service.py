@@ -2,10 +2,11 @@
 
 Workspace Skills are reusable resources shared across Agents in a tenant. This
 service owns their metadata, editable draft files, immutable published versions,
-and direct Agent bindings. Publishing creates a new version hash code for audit
-and refreshes bound Agent/Workflow Agent ``config_skills`` so consumers point at
-the latest immutable archive. Draft binary files reference ToolFile records so
-upload, preview, publish, and Agent consumption all use the same storage model.
+and direct Agent bindings. Publishing creates a new version hash code for audit.
+Bound Agents read workspace Skills through ``agent_skill_bindings`` at runtime;
+the Skill lifecycle must not mutate Agent ``config_skills`` snapshots or drafts.
+Draft binary files reference ToolFile records so upload, preview, publish, and
+Agent consumption all use the same storage model.
 """
 
 from __future__ import annotations
@@ -44,13 +45,8 @@ from models.account import Account
 from models.agent import (
     Agent,
     AgentConfigDraft,
-    AgentConfigRevision,
-    AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentKind,
-    AgentRuntimeSession,
-    AgentRuntimeSessionOwnerType,
-    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -58,7 +54,6 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import (
-    AgentConfigSkillRefConfig,
     AgentSoulConfig,
     AgentSoulModelConfig,
     AgentSoulModelSettings,
@@ -917,8 +912,10 @@ class SkillManagementService:
 
     @staticmethod
     def _is_assistant_writable_path(path: str) -> bool:
-        return path == _SKILL_MD or path in {"scripts", "references", "assets"} or path.startswith(
-            ("scripts/", "references/", "assets/")
+        return (
+            path == _SKILL_MD
+            or path in {"scripts", "references", "assets"}
+            or path.startswith(("scripts/", "references/", "assets/"))
         )
 
     def get_or_create_assistant_app(
@@ -1062,7 +1059,6 @@ class SkillManagementService:
         model_config: AgentSoulModelConfig,
     ) -> None:
         model_changed = False
-        cleaned_runtime_session_count = 0
         if assistant.active_config_snapshot_id:
             snapshot = session.get(AgentConfigSnapshot, assistant.active_config_snapshot_id)
             if snapshot is not None:
@@ -1094,24 +1090,11 @@ class SkillManagementService:
             draft_config.model = model_config
             draft.config_snapshot = draft_config
         if model_changed:
-            for runtime_session in session.scalars(
-                select(AgentRuntimeSession).where(
-                    AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
-                    AgentRuntimeSession.tenant_id == assistant.tenant_id,
-                    AgentRuntimeSession.app_id == assistant.backing_app_id,
-                    AgentRuntimeSession.agent_id == assistant.id,
-                    AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
-                )
-            ):
-                runtime_session.status = AgentRuntimeSessionStatus.CLEANED
-                runtime_session.cleaned_at = naive_utc_now()
-                cleaned_runtime_session_count += 1
             logger.info(
-                "skill_assistant_model_synced assistant_id=%s provider=%s model=%s cleaned_runtime_sessions=%s",
+                "skill_assistant_model_synced assistant_id=%s provider=%s model=%s",
                 assistant.id,
                 model_config.model_provider,
                 model_config.model,
-                cleaned_runtime_session_count,
             )
 
     def update_metadata(
@@ -1323,13 +1306,6 @@ class SkillManagementService:
             session.flush()
             skill.latest_published_version_id = version.id
             skill.updated_by = user_id
-            self._update_skill_reference_consumers(
-                session,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                skill=skill,
-                version=version,
-            )
             session.commit()
             session.refresh(version)
             return self._serialize_version(version, latest_version_id=skill.latest_published_version_id)
@@ -1490,14 +1466,6 @@ class SkillManagementService:
                 skill.latest_published_version_id = replacement.id if replacement is not None else None
                 latest_published_version_id = skill.latest_published_version_id
                 skill.updated_by = user_id
-                if replacement is not None:
-                    self._update_skill_reference_consumers(
-                        session,
-                        tenant_id=tenant_id,
-                        user_id=user_id,
-                        skill=skill,
-                        version=replacement,
-                    )
             session.commit()
             return {
                 "id": version_id,
@@ -1628,13 +1596,6 @@ class SkillManagementService:
                     "skill is referenced and requires name confirmation",
                     status_code=409,
                 )
-            self._remove_skill_reference_consumers(
-                session,
-                tenant_id=tenant_id,
-                skill=skill,
-                user_id=skill.updated_by or skill.created_by or "",
-                updated_at=naive_utc_now(),
-            )
             session.query(AgentSkillBinding).filter(
                 AgentSkillBinding.tenant_id == tenant_id,
                 AgentSkillBinding.skill_id == skill.id,
@@ -2318,311 +2279,6 @@ class SkillManagementService:
                 }
             )
         return references
-
-    def _update_skill_reference_consumers(
-        self,
-        session,
-        *,
-        tenant_id: str,
-        user_id: str,
-        skill: Skill,
-        version: SkillVersion,
-    ) -> None:
-        now = naive_utc_now()
-        agents = list(
-            session.scalars(
-                select(Agent)
-                .join(AgentSkillBinding, AgentSkillBinding.agent_id == Agent.id)
-                .where(
-                    AgentSkillBinding.tenant_id == tenant_id,
-                    AgentSkillBinding.skill_id == skill.id,
-                    Agent.tenant_id == tenant_id,
-                )
-            )
-        )
-        if not agents:
-            return
-        agent_ids = [agent.id for agent in agents]
-        skill_ref = AgentConfigSkillRefConfig(
-            name=skill.name,
-            description=skill.description,
-            file_id=version.archive_tool_file_id,
-            size=version.archive_size,
-            hash=version.hash_code,
-            mime_type="application/zip",
-        )
-        workflow_bindings_by_agent_id = self._workflow_inline_bindings_by_agent_id(
-            session,
-            tenant_id=tenant_id,
-            agent_ids=agent_ids,
-        )
-        for agent in agents:
-            self._sync_agent_config_skill_ref(
-                session,
-                agent=agent,
-                skill_ref=skill_ref,
-                user_id=user_id,
-                updated_at=now,
-                workflow_bindings=workflow_bindings_by_agent_id.get(agent.id, []),
-            )
-            agent.updated_by = user_id
-            agent.updated_at = now
-
-    @staticmethod
-    def _workflow_inline_bindings_by_agent_id(
-        session,
-        *,
-        tenant_id: str,
-        agent_ids: list[str],
-    ) -> dict[str, list[WorkflowAgentNodeBinding]]:
-        workflow_bindings = list(
-            session.scalars(
-                select(WorkflowAgentNodeBinding).where(
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
-                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.INLINE_AGENT,
-                )
-            )
-        )
-        by_agent_id: dict[str, list[WorkflowAgentNodeBinding]] = {}
-        for binding in workflow_bindings:
-            if binding.agent_id is None:
-                continue
-            by_agent_id.setdefault(binding.agent_id, []).append(binding)
-        return by_agent_id
-
-    def _sync_agent_config_skill_ref(
-        self,
-        session,
-        *,
-        agent: Agent,
-        skill_ref: AgentConfigSkillRefConfig,
-        user_id: str,
-        updated_at,
-        workflow_bindings: list[WorkflowAgentNodeBinding],
-    ) -> None:
-        new_snapshot_id: str | None = None
-        previous_active_snapshot_id = agent.active_config_snapshot_id
-        if previous_active_snapshot_id:
-            active_snapshot = session.scalar(
-                select(AgentConfigSnapshot).where(
-                    AgentConfigSnapshot.tenant_id == agent.tenant_id,
-                    AgentConfigSnapshot.agent_id == agent.id,
-                    AgentConfigSnapshot.id == previous_active_snapshot_id,
-                )
-            )
-            if active_snapshot is not None:
-                agent_soul = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict)
-                agent_soul.config_skills = self._upsert_config_skill_ref(agent_soul.config_skills, skill_ref)
-                new_snapshot = AgentConfigSnapshot(
-                    tenant_id=agent.tenant_id,
-                    agent_id=agent.id,
-                    version=self._next_agent_config_version(session, tenant_id=agent.tenant_id, agent_id=agent.id),
-                    config_snapshot=agent_soul,
-                    version_note=f"Updated workspace skill {skill_ref.name}",
-                    created_by=user_id,
-                )
-                session.add(new_snapshot)
-                session.flush()
-                session.add(
-                    AgentConfigRevision(
-                        tenant_id=agent.tenant_id,
-                        agent_id=agent.id,
-                        previous_snapshot_id=active_snapshot.id,
-                        current_snapshot_id=new_snapshot.id,
-                        revision=self._next_agent_config_revision(
-                            session,
-                            tenant_id=agent.tenant_id,
-                            agent_id=agent.id,
-                        ),
-                        operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
-                        version_note=f"Updated workspace skill {skill_ref.name}",
-                        created_by=user_id,
-                    )
-                )
-                agent.active_config_snapshot_id = new_snapshot.id
-                new_snapshot_id = new_snapshot.id
-
-        drafts = list(
-            session.scalars(
-                select(AgentConfigDraft).where(
-                    AgentConfigDraft.tenant_id == agent.tenant_id,
-                    AgentConfigDraft.agent_id == agent.id,
-                )
-            )
-        )
-        for draft in drafts:
-            draft_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-            draft_soul.config_skills = self._upsert_config_skill_ref(draft_soul.config_skills, skill_ref)
-            draft.config_snapshot = draft_soul
-            if new_snapshot_id and draft.base_snapshot_id == previous_active_snapshot_id:
-                draft.base_snapshot_id = new_snapshot_id
-            draft.updated_by = user_id
-            draft.updated_at = updated_at
-
-        for binding in workflow_bindings:
-            if new_snapshot_id:
-                binding.current_snapshot_id = new_snapshot_id
-            binding.updated_by = user_id
-            binding.updated_at = updated_at
-
-    def _remove_skill_reference_consumers(
-        self,
-        session,
-        *,
-        tenant_id: str,
-        skill: Skill,
-        user_id: str,
-        updated_at,
-    ) -> None:
-        agents = list(
-            session.scalars(
-                select(Agent)
-                .join(AgentSkillBinding, AgentSkillBinding.agent_id == Agent.id)
-                .where(
-                    AgentSkillBinding.tenant_id == tenant_id,
-                    AgentSkillBinding.skill_id == skill.id,
-                    Agent.tenant_id == tenant_id,
-                )
-            )
-        )
-        if not agents:
-            return
-
-        workflow_bindings_by_agent_id = self._workflow_inline_bindings_by_agent_id(
-            session,
-            tenant_id=tenant_id,
-            agent_ids=[agent.id for agent in agents],
-        )
-        for agent in agents:
-            self._remove_agent_config_skill_ref(
-                session,
-                agent=agent,
-                skill_name=skill.name,
-                user_id=user_id,
-                updated_at=updated_at,
-                workflow_bindings=workflow_bindings_by_agent_id.get(agent.id, []),
-            )
-            agent.updated_by = user_id
-            agent.updated_at = updated_at
-
-    def _remove_agent_config_skill_ref(
-        self,
-        session,
-        *,
-        agent: Agent,
-        skill_name: str,
-        user_id: str,
-        updated_at,
-        workflow_bindings: list[WorkflowAgentNodeBinding],
-    ) -> None:
-        new_snapshot_id: str | None = None
-        previous_active_snapshot_id = agent.active_config_snapshot_id
-        if previous_active_snapshot_id:
-            active_snapshot = session.scalar(
-                select(AgentConfigSnapshot).where(
-                    AgentConfigSnapshot.tenant_id == agent.tenant_id,
-                    AgentConfigSnapshot.agent_id == agent.id,
-                    AgentConfigSnapshot.id == previous_active_snapshot_id,
-                )
-            )
-            if active_snapshot is not None:
-                agent_soul = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict)
-                agent_soul.config_skills = self._remove_config_skill_ref(agent_soul.config_skills, skill_name)
-                new_snapshot = AgentConfigSnapshot(
-                    tenant_id=agent.tenant_id,
-                    agent_id=agent.id,
-                    version=self._next_agent_config_version(session, tenant_id=agent.tenant_id, agent_id=agent.id),
-                    config_snapshot=agent_soul,
-                    version_note=f"Removed workspace skill {skill_name}",
-                    created_by=user_id,
-                )
-                session.add(new_snapshot)
-                session.flush()
-                session.add(
-                    AgentConfigRevision(
-                        tenant_id=agent.tenant_id,
-                        agent_id=agent.id,
-                        previous_snapshot_id=active_snapshot.id,
-                        current_snapshot_id=new_snapshot.id,
-                        revision=self._next_agent_config_revision(
-                            session,
-                            tenant_id=agent.tenant_id,
-                            agent_id=agent.id,
-                        ),
-                        operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
-                        version_note=f"Removed workspace skill {skill_name}",
-                        created_by=user_id,
-                    )
-                )
-                agent.active_config_snapshot_id = new_snapshot.id
-                new_snapshot_id = new_snapshot.id
-
-        drafts = list(
-            session.scalars(
-                select(AgentConfigDraft).where(
-                    AgentConfigDraft.tenant_id == agent.tenant_id,
-                    AgentConfigDraft.agent_id == agent.id,
-                )
-            )
-        )
-        for draft in drafts:
-            draft_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-            draft_soul.config_skills = self._remove_config_skill_ref(draft_soul.config_skills, skill_name)
-            draft.config_snapshot = draft_soul
-            if new_snapshot_id and draft.base_snapshot_id == previous_active_snapshot_id:
-                draft.base_snapshot_id = new_snapshot_id
-            draft.updated_by = user_id
-            draft.updated_at = updated_at
-
-        for binding in workflow_bindings:
-            if new_snapshot_id:
-                binding.current_snapshot_id = new_snapshot_id
-            binding.updated_by = user_id
-            binding.updated_at = updated_at
-
-    @staticmethod
-    def _upsert_config_skill_ref(
-        current: list[AgentConfigSkillRefConfig],
-        skill_ref: AgentConfigSkillRefConfig,
-    ) -> list[AgentConfigSkillRefConfig]:
-        by_name = {item.name: item for item in current}
-        order = [item.name for item in current]
-        if skill_ref.name not in order:
-            order.append(skill_ref.name)
-        by_name[skill_ref.name] = skill_ref
-        return [by_name[name] for name in order if name in by_name]
-
-    @staticmethod
-    def _remove_config_skill_ref(
-        current: list[AgentConfigSkillRefConfig],
-        skill_name: str,
-    ) -> list[AgentConfigSkillRefConfig]:
-        return [item for item in current if item.name != skill_name]
-
-    @staticmethod
-    def _next_agent_config_version(session, *, tenant_id: str, agent_id: str) -> int:
-        return (
-            session.scalar(
-                select(func.max(AgentConfigSnapshot.version)).where(
-                    AgentConfigSnapshot.tenant_id == tenant_id,
-                    AgentConfigSnapshot.agent_id == agent_id,
-                )
-            )
-            or 0
-        ) + 1
-
-    @staticmethod
-    def _next_agent_config_revision(session, *, tenant_id: str, agent_id: str) -> int:
-        return (
-            session.scalar(
-                select(func.max(AgentConfigRevision.revision)).where(
-                    AgentConfigRevision.tenant_id == tenant_id,
-                    AgentConfigRevision.agent_id == agent_id,
-                )
-            )
-            or 0
-        ) + 1
 
     @staticmethod
     def _check_expected_updated_at(skill: Skill, expected_updated_at: int | None) -> None:

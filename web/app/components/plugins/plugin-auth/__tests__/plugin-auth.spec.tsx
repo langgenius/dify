@@ -68,6 +68,7 @@ describe('PluginAuth', () => {
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
+    expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
