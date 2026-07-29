@@ -8,7 +8,6 @@ This test file covers the methods not fully tested in test_embedding_service.py:
 
 import base64
 import logging
-from collections.abc import Iterator
 from dataclasses import dataclass
 from decimal import Decimal
 from unittest.mock import Mock, patch
@@ -16,14 +15,12 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 from sqlalchemy import event, func, select
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.rag.embedding import cached_embedding as cached_embedding_module
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
-from models.base import TypeBase
 from models.dataset import Embedding
 
 
@@ -33,14 +30,11 @@ class _DatabaseBinding:
 
 
 @pytest.fixture
-def embedding_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind CacheEmbedding to an isolated real session containing only cache rows."""
+def embedding_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
+    """Bind CacheEmbedding to the shared SQLite session."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[Embedding.__table__])
-    maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with maker() as session:
-        monkeypatch.setattr(cached_embedding_module, "db", _DatabaseBinding(session=session))
-        yield session
+    monkeypatch.setattr(cached_embedding_module, "db", _DatabaseBinding(session=sqlite_session))
+    return sqlite_session
 
 
 def _persist_embedding(
