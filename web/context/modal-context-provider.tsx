@@ -7,7 +7,6 @@ import type { CreateExternalAPIReq } from '@/app/components/datasets/external-ap
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useAtomValue } from 'jotai'
@@ -70,9 +69,6 @@ const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugi
   ssr: false,
 })
 
-const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
-  ssr: false,
-})
 const TriggerEventsLimitModal = dynamic(
   () => import('@/app/components/billing/trigger-events-limit-modal'),
   {
@@ -103,8 +99,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   > | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] =
     useState<ModalState<UpdatePluginPayload> | null>(null)
-  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] =
-    useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
@@ -221,7 +215,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     showModelLoadBalancingModal ||
     showOpeningModal ||
     showUpdatePluginModal ||
-    showEducationExpireNoticeModal ||
     showTriggerEventsLimitModal,
   )
 
@@ -238,7 +231,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         setShowModelLoadBalancingModal,
         setShowOpeningModal,
         setShowUpdatePluginModal,
-        setShowEducationExpireNoticeModal,
         setShowTriggerEventsLimitModal,
       }}
     >
@@ -319,12 +311,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
               setShowUpdatePluginModal(null)
               showUpdatePluginModal.onSaveCallback?.()
             }}
-          />
-        )}
-        {!!showEducationExpireNoticeModal && (
-          <ExpireNoticeModal
-            {...showEducationExpireNoticeModal.payload}
-            onClose={() => setShowEducationExpireNoticeModal(null)}
           />
         )}
         {!!showTriggerEventsLimitModal && (
