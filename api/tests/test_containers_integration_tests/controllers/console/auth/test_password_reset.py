@@ -468,4 +468,4 @@ class TestForgotPasswordResetApi:
             api = ForgotPasswordResetApi()
             with pytest.raises(AccountNotFound):
                 api.post()
-        mock_revoke_token.assert_not_called()
+        mock_revoke_token.assert_called_once_with("token")
