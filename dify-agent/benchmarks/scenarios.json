@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "single_1_chunk_c1",
+      "version": 1,
+      "model_rounds": 1,
+      "text_chunks": 1,
+      "concurrency": 1,
+      "model_delay_ms": 10.0,
+      "tool_delay_ms": 5.0,
+      "chunk_interval_ms": 0.0,
+      "tool_response_bytes": 1024,
+      "warmup_runs": 10,
+      "trial_runs": 50
+    },
+    {
+      "id": "single_100_chunks_c1",
+      "version": 1,
+      "model_rounds": 1,
+      "text_chunks": 100,
+      "concurrency": 1,
+      "model_delay_ms": 10.0,
+      "tool_delay_ms": 5.0,
+      "chunk_interval_ms": 1.0,
+      "tool_response_bytes": 1024,
+      "warmup_runs": 10,
+      "trial_runs": 50
+    },
+    {
+      "id": "three_tool_rounds_100_chunks_c1",
+      "version": 1,
+      "model_rounds": 3,
+      "text_chunks": 100,
+      "concurrency": 1,
+      "model_delay_ms": 10.0,
+      "tool_delay_ms": 5.0,
+      "chunk_interval_ms": 1.0,
+      "tool_response_bytes": 1024,
+      "warmup_runs": 10,
+      "trial_runs": 50
+    },
+    {
+      "id": "three_tool_rounds_100_chunks_c10",
+      "version": 1,
+      "model_rounds": 3,
+      "text_chunks": 100,
+      "concurrency": 10,
+      "model_delay_ms": 10.0,
+      "tool_delay_ms": 5.0,
+      "chunk_interval_ms": 1.0,
+      "tool_response_bytes": 1024,
+      "warmup_seconds": 10.0,
+      "duration_seconds": 30.0
+    },
+    {
+      "id": "single_1000_chunks_c1",
+      "version": 1,
+      "model_rounds": 1,
+      "text_chunks": 1000,
+      "concurrency": 1,
+      "model_delay_ms": 10.0,
+      "tool_delay_ms": 5.0,
+      "chunk_interval_ms": 0.0,
+      "tool_response_bytes": 1024,
+      "warmup_runs": 10,
+      "trial_runs": 20
+    }
+  ]
+}

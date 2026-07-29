@@ -6,6 +6,7 @@
 **/.cache
 **/__pycache__
 **/*.pyc
+**/.venv
 **/.mypy_cache
 **/.ruff_cache
 .git
@@ -13,3 +14,5 @@
 *.md
 !web/README.md
 !api/README.md
+!dify-agent/README.md
+dify-agent/benchmarks/results
