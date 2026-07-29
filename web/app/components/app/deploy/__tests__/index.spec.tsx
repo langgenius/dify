@@ -126,6 +126,76 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
+  it('opens the latest version configuration and allows choosing another version', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const preReleaseRow = screen.getByRole('row', { name: /Pre-release/ })
+    await user.click(
+      within(preReleaseRow).getByRole('button', {
+        name: 'deployments.studio.deployLatest',
+      }),
+    )
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    expect(within(configurationDialog).getByText('#6')).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('Pre-release')).toBeInTheDocument()
+
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.operation.back' }),
+    )
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'deployments.studio.changeVersion · Pre-release',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens the failed version configuration for retry without a version-selection step', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const previewRow = screen.getByRole('row', { name: /Preview/ })
+    await user.click(
+      within(previewRow).getByRole('button', {
+        name: 'deployments.studio.retryVersion:{"version":"Sprint-42"}',
+      }),
+    )
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    expect(within(configurationDialog).getByText('Sprint-42')).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('Preview')).toBeInTheDocument()
+    expect(
+      within(configurationDialog).queryByRole('button', { name: 'common.operation.back' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('opens redeploy configuration without a version-selection step', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const qaRow = screen.getByRole('row', { name: /QA/ })
+    await user.click(
+      within(qaRow).getByRole('button', {
+        name: 'deployments.deployTab.redeploy',
+      }),
+    )
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    expect(within(configurationDialog).getByText('v0.3-beta')).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('QA')).toBeInTheDocument()
+    expect(
+      within(configurationDialog).queryByRole('button', { name: 'common.operation.back' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens change version for the selected deployed environment', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)

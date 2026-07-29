@@ -90,15 +90,35 @@ const ROW_ACTION_ICON_CLASS_NAMES: Record<MockRowAction['kind'], string> = {
 function RowActions({
   row,
   onChangeVersion,
+  onDeployLatest,
+  onRedeploy,
   onUndeploy,
 }: {
   row: MockEnvironmentDeployment
   onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+  onDeployLatest?: (deployment: MockEnvironmentDeployment) => void
+  onRedeploy?: (deployment: MockEnvironmentDeployment) => void
   onUndeploy?: (deployment: MockEnvironmentDeployment) => void
 }) {
   const { t } = useTranslation('deployments')
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const label = rowActionLabel(row.action, t)
+  const canRedeploy = Boolean(row.version || row.action.kind === 'retry')
+
+  const handlePrimaryAction = useCallback(() => {
+    switch (row.action.kind) {
+      case 'changeVersion':
+        onChangeVersion?.(row)
+        break
+      case 'deployLatest':
+        onDeployLatest?.(row)
+        break
+      case 'redeploy':
+      case 'retry':
+        onRedeploy?.(row)
+        break
+    }
+  }, [onChangeVersion, onDeployLatest, onRedeploy, row])
 
   const handleUndeploy = useCallback(() => {
     onUndeploy?.(row)
@@ -112,7 +132,7 @@ function RowActions({
           size="small"
           variant="secondary"
           disabled={row.action.kind === 'changeVersion' && row.action.disabled}
-          onClick={() => row.action.kind === 'changeVersion' && onChangeVersion?.(row)}
+          onClick={handlePrimaryAction}
           className="min-w-0 grow gap-1 px-2"
         >
           <span
@@ -145,7 +165,11 @@ function RowActions({
                 {t(($) => $['studio.changeVersion'])}
               </span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 px-2">
+            <DropdownMenuItem
+              disabled={!canRedeploy}
+              className="gap-2 px-2"
+              onClick={() => onRedeploy?.(row)}
+            >
               <span
                 aria-hidden
                 className="i-custom-vender-other-replay-line size-4 shrink-0 text-text-secondary"
@@ -180,10 +204,14 @@ function RowActions({
 function EnvironmentRow({
   row,
   onChangeVersion,
+  onDeployLatest,
+  onRedeploy,
   onUndeploy,
 }: {
   row: MockEnvironmentDeployment
   onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+  onDeployLatest?: (deployment: MockEnvironmentDeployment) => void
+  onRedeploy?: (deployment: MockEnvironmentDeployment) => void
   onUndeploy?: (deployment: MockEnvironmentDeployment) => void
 }) {
   return (
@@ -217,7 +245,13 @@ function EnvironmentRow({
         </div>
       </td>
       <td className="border-b border-divider-subtle pr-2 pl-3">
-        <RowActions row={row} onChangeVersion={onChangeVersion} onUndeploy={onUndeploy} />
+        <RowActions
+          row={row}
+          onChangeVersion={onChangeVersion}
+          onDeployLatest={onDeployLatest}
+          onRedeploy={onRedeploy}
+          onUndeploy={onUndeploy}
+        />
       </td>
     </tr>
   )
@@ -226,14 +260,18 @@ function EnvironmentRow({
 type EnvironmentTableProps = {
   deployments?: MockEnvironmentDeployment[]
   onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
+  onDeployLatest?: (deployment: MockEnvironmentDeployment) => void
   onDeployToEnvironment?: (environment: string) => void
+  onRedeploy?: (deployment: MockEnvironmentDeployment) => void
   onUndeploy?: (deployment: MockEnvironmentDeployment) => void
 }
 
 export function EnvironmentTable({
   deployments = MOCK_ENVIRONMENT_DEPLOYMENTS,
   onChangeVersion,
+  onDeployLatest,
   onDeployToEnvironment,
+  onRedeploy,
   onUndeploy,
 }: EnvironmentTableProps) {
   const { t } = useTranslation('deployments')
@@ -311,6 +349,8 @@ export function EnvironmentTable({
                   key={row.id}
                   row={row}
                   onChangeVersion={onChangeVersion}
+                  onDeployLatest={onDeployLatest}
+                  onRedeploy={onRedeploy}
                   onUndeploy={onUndeploy}
                 />
               ))}

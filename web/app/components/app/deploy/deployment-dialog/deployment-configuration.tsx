@@ -27,7 +27,7 @@ export function DeploymentConfiguration({
 }: {
   request: DeploymentDialogRequest
   version: MockVersion
-  onBack: () => void
+  onBack?: () => void
   onClose: () => void
 }) {
   const { t } = useTranslation('deployments')
@@ -63,16 +63,18 @@ export function DeploymentConfiguration({
         className="top-5 right-5 size-8 rounded-lg"
       />
       <header className="shrink-0 px-5 pt-5 pr-14 pb-1">
-        <Button
-          type="button"
-          size="small"
-          variant="ghost-accent"
-          className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
-          onClick={onBack}
-        >
-          <span aria-hidden className="i-ri-arrow-left-line size-4" />
-          {tCommon(($) => $['operation.back'])}
-        </Button>
+        {onBack && (
+          <Button
+            type="button"
+            size="small"
+            variant="ghost-accent"
+            className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
+            onClick={onBack}
+          >
+            <span aria-hidden className="i-ri-arrow-left-line size-4" />
+            {tCommon(($) => $['operation.back'])}
+          </Button>
+        )}
         <DialogTitle className="mt-0.5 px-1 title-2xl-semi-bold text-text-primary">
           {t(($) => $['studio.deployConfiguration'])}
         </DialogTitle>

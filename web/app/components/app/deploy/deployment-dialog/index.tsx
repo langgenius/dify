@@ -19,7 +19,9 @@ function DeploymentDialogSession({
   request: DeploymentDialogRequest
   onClose: () => void
 }) {
-  const [selectedVersion, setSelectedVersion] = useState<MockVersion>()
+  const [selectedVersion, setSelectedVersion] = useState<MockVersion | undefined>(() =>
+    'initialVersion' in request ? request.initialVersion : undefined,
+  )
 
   return (
     <DialogContent className="flex max-h-[calc(100dvh-32px)] w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden p-0">
@@ -28,7 +30,7 @@ function DeploymentDialogSession({
           key={selectedVersion.name}
           request={request}
           version={selectedVersion}
-          onBack={() => setSelectedVersion(undefined)}
+          onBack={request.kind === 'redeploy' ? undefined : () => setSelectedVersion(undefined)}
           onClose={onClose}
         />
       ) : (
@@ -43,7 +45,9 @@ export function DeploymentDialog({ request, onClose }: DeploymentDialogProps) {
     <Dialog open={Boolean(request)} onOpenChange={(open) => !open && onClose()}>
       {request && (
         <DeploymentDialogSession
-          key={`${request.kind}-${request.environment}-${request.currentVersion ?? 'none'}`}
+          key={`${request.kind}-${request.environment}-${request.currentVersion ?? 'none'}-${
+            'initialVersion' in request ? request.initialVersion.name : 'none'
+          }`}
           request={request}
           onClose={onClose}
         />

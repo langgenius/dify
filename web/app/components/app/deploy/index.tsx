@@ -1,17 +1,35 @@
 'use client'
 
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
+import type { MockEnvironmentDeployment } from './mock-data'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
-import { BUILT_IN_ENVIRONMENT } from './mock-data'
+import { BUILT_IN_ENVIRONMENT, MOCK_PUBLISHED_VERSIONS } from './mock-data'
 
 export default function AppDeploy() {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
+  const latestVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)
+
+  const handleRedeploy = (deployment: MockEnvironmentDeployment) => {
+    const failedVersionName =
+      deployment.action.kind === 'retry' ? deployment.action.version : undefined
+    const initialVersion = failedVersionName
+      ? MOCK_PUBLISHED_VERSIONS.find((version) => version.name === failedVersionName)
+      : deployment.version
+
+    if (!initialVersion) return
+
+    setDeploymentRequest({
+      environment: deployment.name,
+      initialVersion,
+      kind: 'redeploy',
+    })
+  }
 
   return (
     <>
@@ -51,6 +69,17 @@ export default function AppDeploy() {
                 kind: 'changeVersion',
               })
             }
+            onDeployLatest={(deployment) => {
+              if (!latestVersion) return
+
+              setDeploymentRequest({
+                currentVersion: deployment.version?.name,
+                environment: deployment.name,
+                initialVersion: latestVersion,
+                kind: 'deployLatest',
+              })
+            }}
+            onRedeploy={handleRedeploy}
             onUndeploy={() => {}}
           />
         </div>
