@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Konu Adı",
   "nodes.questionClassifiers.topicPlaceholder": "Konu adınızı yazın",
   "nodes.start.builtInVar": "Yerleşik Değişkenler",
+  "nodes.start.defaultValue": "varsayılan",
   "nodes.start.inputField": "Giriş Alanı",
   "nodes.start.noVarTip": "İş Akışında kullanılabilecek girişleri ayarlayın",
   "nodes.start.outputVars.files": "Dosya listesi",

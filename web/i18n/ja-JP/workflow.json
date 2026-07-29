@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "トピック名",
   "nodes.questionClassifiers.topicPlaceholder": "トピック名を入力してください",
   "nodes.start.builtInVar": "組み込み変数",
+  "nodes.start.defaultValue": "デフォルト",
   "nodes.start.inputField": "入力フィールド",
   "nodes.start.noVarTip": "入力設定はワークフロー内で利用可能",
   "nodes.start.outputVars.files": "ファイル一覧",

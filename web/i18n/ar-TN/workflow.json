@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "اسم الموضوع",
   "nodes.questionClassifiers.topicPlaceholder": "اكتب اسم الموضوع الخاص بك",
   "nodes.start.builtInVar": "المتغيرات المدمجة",
+  "nodes.start.defaultValue": "افتراضي",
   "nodes.start.inputField": "حقل الإدخال",
   "nodes.start.noVarTip": "تعيين المدخلات التي يمكن استخدامها في سير العمل",
   "nodes.start.outputVars.files": "قائمة الملفات",
