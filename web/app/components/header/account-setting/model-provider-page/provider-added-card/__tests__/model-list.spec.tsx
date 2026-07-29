@@ -49,6 +49,7 @@ describe('ModelList', () => {
   const mockProvider = {
     provider: 'test-provider',
     configurate_methods: ['customizableModel'],
+    custom_configuration: { custom_models: [] },
   } as unknown as ModelProvider
 
   const mockModels = [
@@ -250,6 +251,7 @@ describe('ModelList', () => {
     const configurableProvider = {
       provider: 'test-provider',
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
+      custom_configuration: { custom_models: [] },
     } as unknown as ModelProvider
 
     mockWorkspacePermissionKeys = ['plugin.model_config']
@@ -273,6 +275,7 @@ describe('ModelList', () => {
     const configurableProvider = {
       provider: 'test-provider',
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
+      custom_configuration: { custom_models: [] },
     } as unknown as ModelProvider
 
     mockWorkspacePermissionKeys = []

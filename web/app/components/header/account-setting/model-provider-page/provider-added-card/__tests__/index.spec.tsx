@@ -279,10 +279,13 @@ describe('ProviderAddedCard', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
+      custom_configuration: { has_custom_models: true },
     } as unknown as ModelProvider
     const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
-    expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
     ).toBeInTheDocument()
@@ -292,6 +295,9 @@ describe('ProviderAddedCard', () => {
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(
+      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+    ).not.toBeInTheDocument()
+    expect(
       screen.queryByRole('button', { name: 'common.modelProvider.addModel' }),
     ).not.toBeInTheDocument()
   })
@@ -300,12 +306,15 @@ describe('ProviderAddedCard', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
+      custom_configuration: { has_custom_models: false },
     } as unknown as ModelProvider
     mockWorkspacePermissionKeys = ['plugin.model_config']
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
-    expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
     ).toBeInTheDocument()

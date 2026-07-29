@@ -26,7 +26,7 @@ import {
   normalizeModelProviderModelsResponse,
 } from '../utils'
 import CredentialPanel from './credential-panel'
-import LazyAddCustomModel from './lazy-add-custom-model'
+import LazyCustomModelActions from './lazy-custom-model-actions'
 import ModelList from './model-list'
 import ProviderCardActions from './provider-card-actions'
 
@@ -200,7 +200,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           {showCredential && <CredentialPanel provider={provider} />}
           {showCustomModelActions && (
             <div className="flex shrink-0">
-              <LazyAddCustomModel provider={provider} />
+              <LazyCustomModelActions provider={provider} />
             </div>
           )}
         </div>
@@ -274,7 +274,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           )}
           {showCustomModelActions && (
             <div className="flex grow justify-end">
-              <LazyAddCustomModel provider={provider} />
+              <LazyCustomModelActions provider={provider} />
             </div>
           )}
         </div>

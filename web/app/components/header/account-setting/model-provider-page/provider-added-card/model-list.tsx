@@ -10,7 +10,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import { ConfigurationMethodEnum } from '../declarations'
-import LazyAddCustomModel from './lazy-add-custom-model'
+import LazyCustomModelActions from './lazy-custom-model-actions'
 // import Tab from './tab'
 import ModelListItem from './model-list-item'
 
@@ -79,7 +79,7 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
           </span>
           {isConfigurable && canConfigureModels && (
             <div className="flex grow justify-end">
-              <LazyAddCustomModel provider={provider} />
+              <LazyCustomModelActions provider={provider} />
             </div>
           )}
         </div>
