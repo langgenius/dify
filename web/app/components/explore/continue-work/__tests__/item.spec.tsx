@@ -1,9 +1,7 @@
+import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
-import type { App } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
-import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import ContinueWorkItem from '../item'
 
@@ -52,37 +50,23 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-const createApp = (overrides: Partial<App> = {}): App => ({
+const createApp = (overrides: Partial<RecentAppResponse> = {}): RecentAppResponse => ({
   id: 'app-1',
   name: 'Continue App',
-  description: 'Continue app description',
   author_name: 'Alice',
   icon_type: 'emoji',
   icon: '🤖',
   icon_background: '#FFEAD5',
   icon_url: null,
-  use_icon_as_answer_icon: false,
-  mode: AppModeEnum.CHAT,
-  enable_site: false,
-  enable_api: false,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
-  created_at: 100,
+  mode: 'chat',
   maintainer: 'maintainer-1',
   updated_at: 200,
-  site: {} as App['site'],
-  api_base_url: '',
-  tags: [],
-  access_mode: AccessMode.PUBLIC,
   permission_keys: [AppACLPermission.Edit],
   ...overrides,
 })
 
 const renderItem = (
-  app: App,
+  app: RecentAppResponse,
   systemFeatures: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'] = {
     rbac_enabled: true,
   },
@@ -107,12 +91,6 @@ describe('ContinueWorkItem', () => {
       screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
     ).toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
-  })
-
-  it('should use created time when updated time is missing', () => {
-    renderItem(createApp({ updated_at: 0, created_at: 123 }))
-
-    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(123000)
   })
 
   it('should link to access config when RBAC is enabled and only access config permission is available', () => {

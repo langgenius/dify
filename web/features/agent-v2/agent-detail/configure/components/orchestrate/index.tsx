@@ -33,18 +33,14 @@ type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
   textGenerationModelList: Model[]
-  draftSavedAt?: number
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  workflowReferencesEnabled?: boolean
   isBuildDraftActive?: boolean
   buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
   showHeader?: boolean
@@ -62,18 +58,14 @@ export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  activeConfigIsPublished,
-  activeConfigSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,
-  draftSavedAt,
   isPublishing,
   className,
   readOnly = false,
   selectedVersionSnapshot,
-  workflowReferencesEnabled,
   isBuildDraftActive = false,
   buildDraftChangedKeys = [],
   showHeader = true,
@@ -94,13 +86,9 @@ export function AgentOrchestratePanel({
     (showPublishBar ? (
       <AgentConfigurePublishBar
         agentId={agentId}
-        activeConfigIsPublished={activeConfigIsPublished}
-        activeConfigSnapshot={activeConfigSnapshot}
         agentName={agentName}
-        draftSavedAt={draftSavedAt}
         isPublishing={isPublishing}
         selectedVersionSnapshot={selectedVersionSnapshot}
-        workflowReferencesEnabled={workflowReferencesEnabled}
         onPublish={onPublish}
         onExitVersions={onExitVersions}
         onOpenVersions={onOpenVersions}

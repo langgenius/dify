@@ -16,6 +16,7 @@ nav:
       - Overview: dify-agent/index.md
       - Concepts:
           - Agent Run Lifecycle: dify-agent/concepts/run-lifecycle/index.md
+          - Runtime Resources: dify-agent/concepts/runtime-resources/index.md
       - User Manual:
           - Get Started: dify-agent/get-started/index.md
           - Prompt Layer: dify-agent/user-manual/prompt-layer/index.md

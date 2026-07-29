@@ -29,6 +29,12 @@ class AgentModelNotConfiguredError(BaseHTTPException):
     code = 400
 
 
+class AgentBuildSandboxNotFoundError(BaseHTTPException):
+    error_code = "agent_build_sandbox_not_found"
+    description = "The retained Build Sandbox is no longer available."
+    code = 404
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 

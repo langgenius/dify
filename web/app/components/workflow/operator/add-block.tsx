@@ -9,14 +9,11 @@ import { useStoreApi } from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodesMetaData,
-  useNodesReadOnly,
-  usePanelInteractions,
-} from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useAvailableBlocks } from '../hooks/use-available-blocks'
+import { useNodesMetaData } from '../hooks/use-nodes-meta-data'
+import { usePanelInteractions } from '../hooks/use-panel-interactions'
+import { useIsChatMode, useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowStore } from '../store'
 import {
   generateNewNode,

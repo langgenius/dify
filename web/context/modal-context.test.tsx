@@ -6,17 +6,11 @@ import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -89,7 +83,19 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
 
 const renderProvider = (
   children: React.ReactNode = <div data-testid="modal-context-test-child" />,
-) => renderWithNuqs(<ModalContextProvider>{children}</ModalContextProvider>)
+) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const wrapper = ({ children: wrapperChildren }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{wrapperChildren}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper })
+}
 
 const AccountSettingOpener = () => {
   const setShowAccountSettingModal = useModalContextSelector(

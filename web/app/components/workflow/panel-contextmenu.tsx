@@ -8,14 +8,12 @@ import {
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlowType } from '@/types/common'
-import {
-  useDSL,
-  useIsChatMode,
-  useNodesInteractions,
-  useWorkflowMoveMode,
-  useWorkflowStartRun,
-} from './hooks'
 import { useHooksStore } from './hooks-store'
+import { useDSL } from './hooks/use-DSL'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
+import { useIsChatMode } from './hooks/use-workflow'
+import { useWorkflowMoveMode } from './hooks/use-workflow-panel-interactions'
+import { useWorkflowStartRun } from './hooks/use-workflow-start-run'
 import { TEST_RUN_MENU_HOTKEY } from './hotkeys'
 import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'

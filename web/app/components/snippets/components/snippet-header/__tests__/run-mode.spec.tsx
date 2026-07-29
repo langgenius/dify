@@ -21,12 +21,15 @@ const runningResult = {
   outputs_truncated: false,
 }
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
-  }),
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: workflowHookMocks.handleStopRun,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
+  useWorkflowStartRun: () => ({
+    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
   }),
 }))
 

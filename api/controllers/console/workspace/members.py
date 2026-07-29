@@ -198,7 +198,7 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_accou
         if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
             raise WorkspaceMembersLimitExceeded()
         if new_account_count > 0:
-            seats = FeatureService.get_system_features(is_authenticated=True).license.seats
+            seats = FeatureService.get_license().seats
             if not seats.is_available(new_account_count):
                 raise SeatsLimitExceeded()
         return

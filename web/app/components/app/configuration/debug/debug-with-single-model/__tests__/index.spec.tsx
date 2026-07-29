@@ -16,6 +16,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
@@ -461,6 +462,16 @@ const mockFile: FileEntity = {
   supportFileType: 'image',
 }
 
+const mockDocumentFile: FileEntity = {
+  id: 'file-2',
+  name: 'test.pdf',
+  size: 456,
+  type: 'application/pdf',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: SupportUploadFileTypes.document,
+}
+
 // Mock Chat component (complex with many dependencies)
 // This is a pragmatic mock that tests the integration at DebugWithSingleModel level
 vi.mock('@/app/components/base/chat/chat', () => ({
@@ -518,6 +529,13 @@ vi.mock('@/app/components/base/chat/chat', () => ({
           disabled={isResponding || readonly || inputDisabled}
         >
           Send With Files
+        </button>
+        <button
+          data-testid="send-with-document"
+          onClick={() => onSend?.('test message', [mockDocumentFile])}
+          disabled={isResponding || readonly || inputDisabled}
+        >
+          Send With Document
         </button>
         {isResponding && (
           <button data-testid="stop-button" onClick={onStopResponding}>
@@ -985,7 +1003,7 @@ describe('DebugWithSingleModel', () => {
 
   // File Upload Tests
   describe('File Upload', () => {
-    it('should not include files when vision is not supported', async () => {
+    it('should include document files when document is supported without vision', async () => {
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
         modelConfig: createMockModelConfig({
@@ -1006,7 +1024,7 @@ describe('DebugWithSingleModel', () => {
                   model: 'gpt-3.5-turbo',
                   label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
                   model_type: ModelTypeEnum.textGeneration,
-                  features: [], // No vision
+                  features: [ModelFeatureEnum.document],
                   fetch_from: ConfigurationMethodEnum.predefinedModel,
                   model_properties: {},
                   deprecated: false,
@@ -1026,14 +1044,21 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      fireEvent.click(screen.getByTestId('send-with-files'))
+      fireEvent.click(screen.getByTestId('send-with-document'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toEqual([])
+      expect(body.files).toEqual([
+        {
+          type: SupportUploadFileTypes.document,
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: '',
+        },
+      ])
     })
 
     it('should support files when vision is enabled', async () => {

@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "標準ワークフロー実行キュー",
   "plansCommon.workflowExecution.tooltip": "ワークフローの実行キューの優先度と実行速度。",
   "plansCommon.year": "年",
+  "plansCommon.yearlyBilling": "年間請求",
   "plansCommon.yearlyTip": "10 ヶ月分支払って、1 年間楽しもう！",
   "teamMembers": "チームメンバー",
   "triggerLimitModal.description": "このプランでは、ワークフローのトリガーイベント数の上限に達しています。",

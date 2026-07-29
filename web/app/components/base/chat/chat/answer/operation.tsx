@@ -23,6 +23,7 @@ import NewAudioButton from '@/app/components/base/new-audio-button'
 import { useChatContext } from '../context'
 
 type OperationProps = {
+  answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
   index: number
@@ -32,6 +33,8 @@ type OperationProps = {
   hasWorkflowProcess: boolean
   noChatInput?: boolean
 }
+
+export type AnswerActionPosition = 'auto' | 'below'
 
 type FeedbackTooltipProps = {
   content: ReactNode
@@ -69,6 +72,7 @@ const FeedbackTooltip = ({ content, children }: FeedbackTooltipProps) => {
 }
 
 function Operation({
+  answerActionPosition = 'auto',
   item,
   question,
   index,
@@ -204,7 +208,10 @@ function Operation({
     showPromptLog,
   ])
 
-  const positionRight = useMemo(() => operationWidth < maxSize, [operationWidth, maxSize])
+  const positionRight = useMemo(
+    () => answerActionPosition === 'auto' && operationWidth < maxSize,
+    [answerActionPosition, operationWidth, maxSize],
+  )
 
   return (
     <>

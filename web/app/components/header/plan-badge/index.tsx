@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import { RiGraduationCapFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { SparklesSoft } from '../../base/icons/src/public/common'
 import PremiumBadge, { PremiumBadgeButton } from '../../base/premium-badge'
 import { Plan } from '../../billing/type'
@@ -47,11 +48,15 @@ function PlanBadgeShell({
 }
 
 export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick }: PlanBadgeProps) {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
   if (!isFetchedPlan) return null
-  if (plan === Plan.sandbox && sandboxAsUpgrade && IS_CLOUD_EDITION) {
+  if (plan === Plan.sandbox && sandboxAsUpgrade && deploymentEdition === 'CLOUD') {
     return (
       <PlanBadgeShell color="blue" allowHover={allowHover} onClick={onClick}>
         <SparklesSoft

@@ -129,6 +129,16 @@ For complex business forms, keep state ownership outside these primitives. TanSt
 
 Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through the appropriate label primitive (`FieldLabel`, `SelectLabel`, `SliderLabel`, or `FieldsetLegend`), expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
 
+## Search and picker selection
+
+Choose the primitive by its value contract:
+
+- `Autocomplete` accepts free-form text with optional suggestions or completions.
+- `Combobox` selects and remembers one or more values from a searchable collection.
+- `Select` chooses from a closed, scannable list without text entry.
+
+Keep Base UI anatomy visible in public APIs instead of wrapping a picker into one business component. Multiple-selection comboboxes follow the official chips composition: chips and input share the input group, chips wrap, and the group grows vertically. Autocomplete and Combobox popups own their portals, use the package overlay layer, and size from `--anchor-width` with viewport-aware maximum width; do not force a minimum width that defeats viewport clamping.
+
 ## Tailwind CSS v4 integration
 
 This package uses Tailwind CSS v4's CSS-first configuration model. Consumers should import Tailwind from their own root stylesheet, then import this package's CSS entry:
@@ -143,6 +153,23 @@ If a consumer uses Dify UI source files through the workspace, add an explicit s
 ```css
 @source '../packages/dify-ui/src';
 ```
+
+Figma radius tokens are offset by one step from Tailwind CSS v4 defaults. Use this mapping rather than adding custom theme values or `radius-*` utilities:
+
+| Figma token     | Tailwind class   |
+| --------------- | ---------------- |
+| `--radius/2xs`  | `rounded-xs`     |
+| `--radius/xs`   | `rounded-sm`     |
+| `--radius/sm`   | `rounded-md`     |
+| `--radius/md`   | `rounded-lg`     |
+| `--radius/lg`   | `rounded-[10px]` |
+| `--radius/xl`   | `rounded-xl`     |
+| `--radius/2xl`  | `rounded-2xl`    |
+| `--radius/3xl`  | `rounded-[20px]` |
+| `--radius/6xl`  | `rounded-[28px]` |
+| `--radius/full` | `rounded-full`   |
+
+Convert Figma output such as `rounded-[var(--radius/sm, 6px)]` to the mapped Tailwind class. Use an arbitrary value only when no standard class matches.
 
 ## Overlay & portal contract
 
@@ -189,7 +216,7 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 
 ## Development
 
-- `vp run @langgenius/dify-ui#lint` (from the repository root) — strict Oxlint checks for component source, stories, tests, and package configuration.
+- `vp check packages/dify-ui` (from the repository root) — formatting, lint, and TypeScript diagnostics for the package.
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
@@ -228,7 +255,6 @@ Set the Base UI test flag in a Vitest setup file to skip those waits:
 See `[AGENTS.md](./AGENTS.md)` for:
 
 - Component authoring rules (one-component-per-folder, `cva` + `cn`, relative imports inside the package, subpath imports from consumers).
-- Figma `--radius/`_ token → Tailwind `rounded-_` class mapping.
 
 ## Not part of this package
 

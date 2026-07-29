@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
-from services.app_service import AppService, CreateAppParams
+from services.app_service import AppListParams, AppService, CreateAppParams
 
 
 class TestCreateAppTransactionBoundary:
@@ -234,6 +238,92 @@ class TestOpenapiVisibilityHelpers:
         assert out == rows
         gate.assert_called_once()
         mock_session.execute.assert_called_once()
+
+
+@pytest.mark.parametrize("sqlite_session", [(Account, App, AppModelConfig)], indirect=True)
+def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    other_tenant_id = str(uuid4())
+    account = Account(name="Recent Apps Author", email="recent-apps@example.com")
+    sqlite_session.add(account)
+    sqlite_session.flush()
+
+    def create_app(*, name: str, tenant_id: str, updated_at: datetime, mode: AppMode = AppMode.CHAT) -> App:
+        app = App()
+        app.id = str(uuid4())
+        app.tenant_id = tenant_id
+        app.name = name
+        app.description = ""
+        app.mode = mode
+        app.icon_type = IconType.EMOJI
+        app.icon = "🚀"
+        app.icon_background = "#FFFFFF"
+        app.enable_site = False
+        app.enable_api = False
+        app.created_by = account.id
+        app.maintainer = account.id
+        app.created_at = updated_at
+        app.updated_at = updated_at
+        app.use_icon_as_answer_icon = False
+        return app
+
+    newest = create_app(name="Newest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 3))
+    legacy_agent = AppModelConfig(app_id=newest.id)
+    legacy_agent.agent_mode = '{"enabled": true, "strategy": "react"}'
+    newest.app_model_config_id = legacy_agent.id
+    second = create_app(
+        name="Second",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 2),
+        mode=AppMode.WORKFLOW,
+    )
+    second.icon_type = None
+    second.icon = None
+    second.icon_background = None
+    second.created_by = None
+    second.maintainer = None
+    channel = create_app(
+        name="Channel",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 5),
+        mode=AppMode.CHANNEL,
+    )
+    rag_pipeline = create_app(
+        name="RAG Pipeline",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 4),
+        mode=AppMode.RAG_PIPELINE,
+    )
+    oldest = create_app(name="Oldest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 1))
+    foreign = create_app(name="Foreign", tenant_id=other_tenant_id, updated_at=datetime(2026, 7, 4))
+    sqlite_session.add_all([newest, legacy_agent, second, channel, rag_pipeline, oldest, foreign])
+    sqlite_session.commit()
+
+    statements: list[str] = []
+    bind = sqlite_session.get_bind()
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    event.listen(bind, "before_cursor_execute", record_sql)
+    try:
+        recent_apps = AppService().get_recent_apps(
+            account.id,
+            tenant_id,
+            AppListParams(limit=2),
+            sqlite_session,
+        )
+    finally:
+        event.remove(bind, "before_cursor_execute", record_sql)
+
+    assert [(app.name, app.mode, app.icon_type, app.author_name, app.maintainer) for app in recent_apps] == [
+        ("Newest", AppMode.CHAT, IconType.EMOJI, "Recent Apps Author", account.id),
+        ("Second", AppMode.WORKFLOW, None, None, None),
+    ]
+    select_statements = [statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]
+    assert len(select_statements) == 1
+    assert "count(" not in select_statements[0].lower()
+    assert "app_model_configs" not in select_statements[0].lower()
 
 
 class TestAppMeta:
@@ -536,7 +626,8 @@ class TestAgentAppType:
         from services.app_service import AppService
 
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
-        backing_agent = SimpleNamespace(status=AgentStatus.ACTIVE, archived_by=None, archived_at=None)
+        backing_agent = SimpleNamespace(id="agent-1", status=AgentStatus.ACTIVE, archived_by=None, archived_at=None)
+        events: list[str] = []
 
         with (
             patch("services.app_service.db") as mock_db,
@@ -546,11 +637,81 @@ class TestAgentAppType:
             patch("services.app_service.FeatureService"),
             patch("services.app_service.dify_config"),
             patch("services.app_service.remove_app_and_related_data_task"),
+            patch(
+                "services.app_service.AgentHomeSnapshotService.retire_all_for_agent",
+                return_value=["home-1"],
+            ) as mock_retire_homes,
+            patch(
+                "services.app_service.AgentWorkspaceService.retire_all_for_app",
+                side_effect=lambda **_kwargs: events.append("retire-app-workspaces") or ["workspace-1"],
+            ) as mock_retire_workspaces,
+            patch(
+                "services.app_service.WorkflowAgentRetirementService.retire_unowned",
+                side_effect=lambda **_kwargs: (
+                    events.append("retire-workflow-agents") or (["workflow-binding-1"], ["workflow-home-1"])
+                ),
+            ) as mock_workflow_retirement,
+            patch(
+                "services.app_service.enqueue_agent_resource_collection",
+                side_effect=lambda **_kwargs: events.append("enqueue"),
+            ) as mock_enqueue_collection,
         ):
             mock_db.session.scalar.return_value = backing_agent
+            mock_db.session.commit.side_effect = lambda: events.append("commit")
+            workflow_agents = MagicMock()
+            workflow_agents.all.return_value = ["workflow-agent-1", "workflow-agent-2"]
+            bindings = MagicMock()
+            bindings.all.return_value = []
+            mock_db.session.scalars.side_effect = [workflow_agents, bindings]
             AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
 
+        assert events == ["retire-app-workspaces", "commit", "retire-workflow-agents", "enqueue"]
         assert backing_agent.status == AgentStatus.ARCHIVED
         assert backing_agent.archived_by == "account-2"
         assert backing_agent.archived_at is not None
         mock_db.session.delete.assert_called_once_with(app)
+        mock_workflow_retirement.assert_called_once_with(
+            tenant_id="tenant-1",
+            agent_ids=["workflow-agent-1", "workflow-agent-2"],
+            account_id="account-2",
+        )
+        mock_retire_workspaces.assert_called_once_with(
+            session=mock_db.session,
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )
+        mock_retire_homes.assert_called_once_with(
+            session=mock_db.session,
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+        )
+        mock_enqueue_collection.assert_called_once_with(
+            tenant_id="tenant-1",
+            workspace_ids=["workspace-1"],
+            binding_ids=["workflow-binding-1"],
+            home_snapshot_ids=["home-1", "workflow-home-1"],
+        )
+
+    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self):
+        from models.model import AppMode
+        from services.app_service import AppService
+
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        with (
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
+            patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+            patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+        ):
+            mock_db.session.scalar.return_value = None
+            workflow_agents = MagicMock()
+            workflow_agents.all.return_value = ["workflow-agent-1"]
+            mock_db.session.scalars.return_value = workflow_agents
+            mock_db.session.commit.side_effect = RuntimeError("commit failed")
+
+            with pytest.raises(RuntimeError, match="commit failed"):
+                AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
+
+        retire_unowned.assert_not_called()
+        enqueue_collection.assert_not_called()
