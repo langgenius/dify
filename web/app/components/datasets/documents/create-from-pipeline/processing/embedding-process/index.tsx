@@ -156,7 +156,7 @@ const EmbeddingProcess = ({
           {isEmbeddingCompleted && t(($) => $['embedding.completed'], { ns: 'datasetDocuments' })}
         </div>
         {enableBilling && plan.type !== Plan.team && (
-          <div className="flex h-[52px] items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
+          <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
             <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <RiAedFill className="size-4 text-text-primary-on-surface" />
             </div>
@@ -171,7 +171,7 @@ const EmbeddingProcess = ({
             <div
               key={indexingStatusDetail.id}
               className={cn(
-                'relative h-[26px] overflow-hidden rounded-md bg-components-progress-bar-bg',
+                'relative h-6.5 overflow-hidden rounded-md bg-components-progress-bar-bg',
                 indexingStatusDetail.indexing_status === 'error' &&
                   'bg-state-destructive-hover-alt',
               )}
@@ -182,7 +182,7 @@ const EmbeddingProcess = ({
                   style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
                 />
               )}
-              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-[6px]">
+              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
                   <DocumentFileIcon
                     size="sm"

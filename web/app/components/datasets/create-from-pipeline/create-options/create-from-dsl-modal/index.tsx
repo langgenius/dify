@@ -52,7 +52,7 @@ const CreateFromDSLModal = ({
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
           <Header onClose={onClose} />
           <Tab currentTab={currentTab} setCurrentTab={setCurrentTab} />
           <div className="px-6 py-4">

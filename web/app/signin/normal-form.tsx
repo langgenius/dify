@@ -113,11 +113,7 @@ function NormalForm() {
   if (isLoading) {
     return (
       <div
-        className={cn(
-          'flex w-full grow flex-col items-center justify-center',
-          'px-6',
-          'md:px-[108px]',
-        )}
+        className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
         <Loading type="area" />
       </div>

@@ -165,7 +165,7 @@ function ModelSelector({
       <ComboboxContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName={cn('w-[432px] max-w-[432px] overflow-hidden rounded-xl', popupClassName)}
+        popupClassName={cn('w-108 max-w-108 overflow-hidden rounded-xl', popupClassName)}
       >
         <Popup
           defaultModel={defaultModel}

@@ -569,12 +569,12 @@ function WorkflowGeneratorModal() {
         }
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-[1140px]! min-w-0 overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-285! min-w-0 overflow-hidden! border-none p-0! text-left align-middle">
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
-          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-[570px]">
+          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
             <div className="mb-5">
-              <DialogTitle className="text-lg leading-[28px] font-bold text-text-primary">
+              <DialogTitle className="text-lg leading-7 font-bold text-text-primary">
                 {isRefine
                   ? t(($) => $['workflowGenerator.refineTitle'], { mode: modeLabel })
                   : t(($) => $['workflowGenerator.title'], { mode: modeLabel })}
@@ -608,7 +608,7 @@ function WorkflowGeneratorModal() {
                 // capture an instruction, so focusing it on open aids the flow.
                 // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
-                className="h-[160px]"
+                className="h-40"
                 placeholder={
                   isRefine
                     ? t(($) => $['workflowGenerator.refineInstructionPlaceholder'])

@@ -59,10 +59,10 @@ const InstallBundle: FC<Props> = ({
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'w-full max-w-[480px] overflow-hidden! text-left align-middle',
+          'w-full max-w-120 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >

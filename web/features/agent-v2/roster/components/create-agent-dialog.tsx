@@ -102,7 +102,7 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
             <span className="px-0.5 system-sm-medium">{t(($) => $['roster.createAgent'])}</span>
           </DialogTrigger>
         )}
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
           <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">

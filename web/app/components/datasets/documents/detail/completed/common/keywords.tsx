@@ -28,7 +28,7 @@ const Keywords: FC<IKeywordsProps> = ({
       <div className="system-xs-medium-uppercase text-text-tertiary">
         {t(($) => $['segment.keywords'], { ns: 'datasetDocuments' })}
       </div>
-      <div className="flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary">
+      <div className="flex max-h-50 w-full flex-wrap gap-1 overflow-auto text-text-tertiary">
         {!segInfo?.keywords?.length && actionType === 'view' ? (
           '-'
         ) : (

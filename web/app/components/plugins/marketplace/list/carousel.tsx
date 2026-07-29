@@ -74,7 +74,7 @@ const CarouselControls = ({
             <button
               key={item.id}
               className={cn(
-                'h-[5px] w-[5px] rounded-full transition-all',
+                'h-1.25 w-1.25 rounded-full transition-all',
                 selectedIndex === index
                   ? 'w-4 bg-components-button-primary-bg'
                   : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
@@ -165,7 +165,7 @@ const Carousel = ({
           scrollSnaps={scrollSnaps}
         />
       )}
-      <div ref={carouselRef} className="overflow-hidden [border-radius:inherit]">
+      <div ref={carouselRef} className="overflow-hidden rounded-[inherit]">
         <div className="flex" style={{ columnGap: '12px' }}>
           {children}
         </div>

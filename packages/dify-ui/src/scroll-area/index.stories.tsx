@@ -213,7 +213,7 @@ export const ScrollFade: Story = {
           role="region"
           className={cn(
             'h-full max-h-full max-w-full rounded-xl bg-components-panel-bg outline-none focus-visible:outline-none',
-            'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
+            'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%-min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           )}
         >
           <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 system-sm-regular leading-6 text-text-secondary">

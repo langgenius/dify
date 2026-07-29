@@ -28,7 +28,7 @@ export default function ThemeSwitcher() {
         </div>
       </button>
       <div
-        className={cn('h-[14px] w-px bg-transparent', theme === 'dark' && 'bg-divider-regular')}
+        className={cn('h-3.5 w-px bg-transparent', theme === 'dark' && 'bg-divider-regular')}
         data-testid="divider"
       ></div>
       <button
@@ -46,7 +46,7 @@ export default function ThemeSwitcher() {
         </div>
       </button>
       <div
-        className={cn('h-[14px] w-px bg-transparent', theme === 'system' && 'bg-divider-regular')}
+        className={cn('h-3.5 w-px bg-transparent', theme === 'system' && 'bg-divider-regular')}
         data-testid="divider"
       ></div>
       <button

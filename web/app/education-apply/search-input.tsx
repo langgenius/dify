@@ -82,7 +82,7 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
           sideOffset={4}
           popupClassName="w-[var(--anchor-width)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
         >
-          <div className="max-h-[330px] overflow-y-auto" onScroll={handleScroll}>
+          <div className="max-h-82.5 overflow-y-auto" onScroll={handleScroll}>
             {schools.map((school) => (
               <div
                 key={school}

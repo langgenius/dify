@@ -97,7 +97,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   return (
     <OptionCard
       title={t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' })}
-      icon={<ParentChildChunk className="h-[20px] w-[20px]" />}
+      icon={<ParentChildChunk className="h-5 w-5" />}
       effectImg={BlueEffect.src}
       className="text-util-colors-blue-light-blue-light-500"
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"

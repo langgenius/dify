@@ -181,7 +181,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         {item.type === 'paragraph' && (
                           <Textarea
                             aria-label={item.name}
-                            className="h-[104px] sm:text-xs"
+                            className="h-26 sm:text-xs"
                             placeholder={item.name}
                             value={inputs[item.key] as string}
                             onValueChange={(value) => {
@@ -255,7 +255,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                               handleInputsChange({ ...inputsRef.current, [item.key]: value })
                             }}
                             noWrapper
-                            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+                            className="bg h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                             placeholder={
                               <div className="whitespace-pre">
                                 {typeof item.json_schema === 'string'

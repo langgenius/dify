@@ -145,7 +145,7 @@ export default function WorkflowLogArchivesPage() {
           {summaryItems.map((item) => (
             <div
               key={item.label}
-              className="flex min-h-[92px] flex-col gap-2 rounded-xl bg-components-panel-bg p-4"
+              className="flex min-h-23 flex-col gap-2 rounded-xl bg-components-panel-bg p-4"
             >
               <span className={cn(item.icon, 'size-4 text-text-tertiary')} aria-hidden="true" />
               <div className="system-xs-medium text-text-tertiary">{item.label}</div>
@@ -165,7 +165,7 @@ export default function WorkflowLogArchivesPage() {
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
         <div className="overflow-x-auto">
-          <div className="min-w-[460px]">
+          <div className="min-w-115">
             <div
               className={cn(
                 'grid h-8 items-center gap-3 border-b border-divider-subtle bg-background-section-burn px-4 system-xs-medium-uppercase text-text-tertiary',
@@ -275,7 +275,7 @@ function ArchivedLogsUpgradeBanner() {
       </div>
       <button
         type="button"
-        className="flex h-10 w-[120px] shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+        className="flex h-10 w-30 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
         onClick={() => setShowPricingModal()}
       >
         {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
@@ -413,8 +413,8 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
           <TooltipContent
             placement="top"
             className={cn(
-              'max-w-[260px] text-center text-text-tertiary',
-              isFailed && 'max-w-[300px] text-start [overflow-wrap:anywhere] whitespace-pre-wrap',
+              'max-w-65 text-center text-text-tertiary',
+              isFailed && 'max-w-75 text-start wrap-anywhere whitespace-pre-wrap',
             )}
           >
             {downloadHint}

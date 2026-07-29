@@ -157,18 +157,13 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       </Field>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit && (
-          <Button
-            variant="secondary"
-            className="min-w-[72px]"
-            onClick={onBack}
-            disabled={isUploading}
-          >
+          <Button variant="secondary" className="min-w-18" onClick={onBack} disabled={isUploading}>
             {t(($) => $['installModal.back'], { ns: 'plugin' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="min-w-[72px]"
+          className="min-w-18"
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >
