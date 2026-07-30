@@ -152,10 +152,7 @@ export function NewKnowledgeList({
                 })}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="flex items-center pl-1">
-                  {createLabel}
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
-                </span>
+                <span className="pl-1">{createLabel}</span>
               </Link>
             </div>
           )}
