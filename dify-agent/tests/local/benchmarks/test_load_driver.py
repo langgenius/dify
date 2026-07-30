@@ -6,12 +6,13 @@ from benchmarks.load_driver import (
     summarize_run_outcomes,
     validate_ledger,
 )
-from benchmarks.scenario import load_scenario_manifest
+from benchmarks.scenario import AgentBenchmarkScenario, load_scenario_manifest
 from benchmarks.schemas import FakeDependencyLedger, RedisSnapshot, RunSample
 
 
 def test_no_tool_request_uses_only_prompt_context_and_model_layers() -> None:
     scenario = load_scenario_manifest().get("single_1_chunk_c1")
+    assert isinstance(scenario, AgentBenchmarkScenario)
 
     request = build_create_run_request(scenario=scenario, benchmark_run_id="bench-run-1")
 
@@ -30,6 +31,7 @@ def test_no_tool_request_uses_only_prompt_context_and_model_layers() -> None:
 
 def test_tool_request_exposes_deterministic_tool_contract() -> None:
     scenario = load_scenario_manifest().get("three_tool_rounds_100_chunks_c1")
+    assert isinstance(scenario, AgentBenchmarkScenario)
 
     request = build_create_run_request(scenario=scenario, benchmark_run_id="bench-run-tools")
 
@@ -47,6 +49,7 @@ def test_tool_request_exposes_deterministic_tool_contract() -> None:
 
 def test_ledger_validation_checks_all_deterministic_counts() -> None:
     scenario = load_scenario_manifest().get("three_tool_rounds_100_chunks_c1")
+    assert isinstance(scenario, AgentBenchmarkScenario)
     ledger = FakeDependencyLedger(
         benchmark_run_id="bench-run-tools",
         scenario_id=scenario.id,

@@ -22,7 +22,7 @@ import httpx
 from redis.asyncio import Redis
 
 from benchmarks.comparison import quantile
-from benchmarks.scenario import BenchmarkScenario, load_scenario_manifest
+from benchmarks.scenario import AgentBenchmarkScenario, BenchmarkScenario, load_scenario_manifest
 from benchmarks.schemas import (
     BlockResult,
     FailureKind,
@@ -107,7 +107,10 @@ class ActiveRunTracker:
 
 async def run_block(settings: DriverSettings) -> BlockResult:
     """Execute warmup, measurement, and post-window correctness validation."""
-    scenario = load_scenario_manifest().get(settings.scenario_id)
+    loaded_scenario = load_scenario_manifest(profile="agent").get(settings.scenario_id)
+    if not isinstance(loaded_scenario, AgentBenchmarkScenario):
+        raise TypeError(f"{settings.scenario_id} is not an Agent benchmark scenario")
+    scenario = loaded_scenario
     scenario = _apply_scenario_overrides(scenario, settings)
     settings.results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -159,6 +162,7 @@ async def run_block(settings: DriverSettings) -> BlockResult:
         redis_after=redis_after,
     )
     result = BlockResult(
+        profile="agent",
         target=settings.target,
         target_id=settings.target_id,
         scenario_id=scenario.id,
@@ -180,14 +184,6 @@ async def run_block(settings: DriverSettings) -> BlockResult:
             name: calls / outcomes.successful_runs for name, calls in sorted(command_deltas.items())
         }
         result.resources.redis_commands_per_successful_run = sum(command_deltas.values()) / outcomes.successful_runs
-        redis_network_bytes = max(
-            0,
-            redis_after.total_net_input_bytes - redis_before.total_net_input_bytes,
-        ) + max(
-            0,
-            redis_after.total_net_output_bytes - redis_before.total_net_output_bytes,
-        )
-        result.resources.redis_network_bytes_per_successful_run = redis_network_bytes / outcomes.successful_runs
         result.resources.redis_storage_bytes_per_successful_run = redis_after.storage_bytes / outcomes.successful_runs
     fake_response_times = [
         elapsed_ms
@@ -334,6 +330,7 @@ async def _run_once(
     benchmark_run_id = f"{settings.block_id}-{sequence}-{uuid4().hex}"
     started_ns = time.perf_counter_ns()
     sample = RunSample(
+        profile="agent",
         target=settings.target,
         scenario_id=scenario.id,
         block_id=settings.block_id,
@@ -354,6 +351,7 @@ async def _run_once(
         if not isinstance(run_id, str):
             raise TypeError("create-run response did not contain a string run_id")
         sample.run_id = run_id
+        sample.operation_id = run_id
         sample.admitted = True
         if tracker is not None:
             tracker.admitted()
@@ -389,6 +387,7 @@ async def _run_once(
             terminal_status = "cancelled"
             sample.failure_kind = "cancelled"
         sample.terminal_status = terminal_status
+        sample.cleanup_valid = True
     except Exception as exc:
         failure_kind: FailureKind = "stream_error" if sample.admitted else "admission_error"
         sample.failure_kind = failure_kind
@@ -620,6 +619,12 @@ def summarize_run_outcomes(
     terminal_runs = sum(sample.terminal_status in {"succeeded", "failed", "cancelled"} for sample in samples)
     successful_runs = sum(sample.terminal_status == "succeeded" for sample in samples)
     successful_event_count = sum(sample.event_count for sample in samples if sample.terminal_status == "succeeded")
+    successful_times = [
+        sample.terminal_e2e_ms
+        for sample in samples
+        if sample.terminal_status == "succeeded" and sample.terminal_e2e_ms is not None
+    ]
+    successful_throughput = successful_runs / elapsed_seconds if elapsed_seconds else 0
     return RunOutcomeSummary(
         attempted_runs=attempted_runs,
         admitted_runs=admitted_runs,
@@ -629,7 +634,9 @@ def summarize_run_outcomes(
         terminal_rate=terminal_runs / admitted_runs if admitted_runs else 0,
         success_rate=successful_runs / terminal_runs if terminal_runs else 0,
         terminal_runs_per_second=terminal_runs / elapsed_seconds if elapsed_seconds else 0,
-        successful_runs_per_second=successful_runs / elapsed_seconds if elapsed_seconds else 0,
+        successful_runs_per_second=successful_throughput,
+        successful_operations_per_second=successful_throughput,
+        service_time_mean_ms=sum(successful_times) / len(successful_times) if successful_times else None,
         events_per_successful_run=successful_event_count / successful_runs if successful_runs else 0,
         max_active_runs=max_active_runs,
     )
@@ -687,8 +694,10 @@ def _write_block_artifacts(results_dir: Path, result: BlockResult) -> None:
         for sample in result.samples:
             samples_file.write(sample.model_dump_json())
             samples_file.write("\n")
-    (results_dir / "redis-before.json").write_text(result.redis_before.model_dump_json(indent=2))
-    (results_dir / "redis-after.json").write_text(result.redis_after.model_dump_json(indent=2))
+    if result.redis_before is not None:
+        (results_dir / "redis-before.json").write_text(result.redis_before.model_dump_json(indent=2))
+    if result.redis_after is not None:
+        (results_dir / "redis-after.json").write_text(result.redis_after.model_dump_json(indent=2))
 
 
 def _required_environment(name: str) -> str:
