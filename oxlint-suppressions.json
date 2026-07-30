@@ -5974,16 +5974,6 @@
       "count": 1
     }
   },
-  "web/context/external-api-panel-context.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/context/external-knowledge-api-context.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 3
