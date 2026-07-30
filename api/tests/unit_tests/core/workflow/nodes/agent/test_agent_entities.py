@@ -1,3 +1,5 @@
+from typing import Any
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.agent.entities import AgentNodeData
@@ -9,17 +11,17 @@ from graphon.graph_events import GraphNodeEventBase, GraphRunSucceededEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 
 
-def test_agent_node_data_unconfigured_defaults():
+def test_agent_node_data_unconfigured_defaults() -> None:
     data = AgentNodeData.model_validate({"title": "Agent"})
 
     assert data.agent_strategy_provider_name == ""
     assert data.agent_strategy_name == ""
     assert data.agent_strategy_label == ""
-    assert data.agent_parameters == {}
+    assert not data.agent_parameters
 
 
-def test_unconfigured_disconnected_agent_does_not_block_workflow():
-    graph_config = {
+def test_unconfigured_disconnected_agent_does_not_block_workflow() -> None:
+    graph_config: dict[str, Any] = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
             {"id": "agent", "data": {"type": "agent", "title": "Agent", "tool_node_version": "2"}},
