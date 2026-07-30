@@ -178,7 +178,6 @@ const mockVisionConfig: FileUpload = {
     image_file_size_limit: 10,
     file_size_limit: 10,
     audio_file_size_limit: 10,
-    skill_file_size_limit: 10,
     video_file_size_limit: 10,
     workflow_file_upload_limit: 10,
     batch_count_limit: 0,

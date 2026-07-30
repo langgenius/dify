@@ -126,7 +126,6 @@ export type FileUploadConfigResponse = {
   attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
   file_size_limit: number // default is 15MB
   audio_file_size_limit?: number // default is 50MB
-  skill_file_size_limit: number // default is 50MB
   video_file_size_limit?: number // default is 100MB
   skill_file_size_limit?: number // default is 50MB
   workflow_file_upload_limit?: number // default is 10
