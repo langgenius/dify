@@ -1,12 +1,21 @@
 import type { Edge, Node } from '../types'
-import { BlockEnum } from '../types'
+import { BlockEnum, VarType } from '../types'
 
 /**
- * Detects Output (End) nodes that declare the same output variable name *and* can run in the same
- * execution. Two such nodes silently overwrite each other's value, so the editor warns about them.
+ * Detects Output (End) node output variables that clash.
  *
- * Output nodes sitting on mutually exclusive branches are not a conflict: a single run only ever
- * reaches one of them, so reusing a variable name there is legitimate and must not block publishing.
+ * Two kinds of clash exist, because the workflow-level output is keyed by variable name only:
+ *
+ * - `duplicateName` — two Output nodes that can run in the same execution declare the same name, so
+ *   one value silently overwrites the other.
+ * - `conflictingTypes` — Output nodes on mutually exclusive branches reuse a name but declare
+ *   different types. Only one of them ever runs, so no value is lost, but the published output schema
+ *   keeps a single definition per name
+ *   (`WorkflowToolConfigurationUtils.get_workflow_graph_output` lets the later Output node win), so a
+ *   branch could return a value that does not match the schema consumers were given.
+ *
+ * Reusing a name across mutually exclusive branches with a matching type is legitimate and must not
+ * block publishing.
  */
 
 /** ReactFlow omits `sourceHandle` on nodes with a single output; the graph treats that as 'source'. */
@@ -28,7 +37,14 @@ const ENTRY_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
 ]
 
-type EndOutput = { variable?: string }
+type EndOutput = { variable?: string; value_type?: VarType }
+
+export type EndOutputConflict = {
+  variable: string
+  kind: 'duplicateName' | 'conflictingTypes'
+  /** The clashing declared types, only set for `conflictingTypes`. */
+  types?: VarType[]
+}
 
 /** Branch decisions that must hold for a node to run: branch node id -> handle taken. */
 type PathCondition = Map<string, string>
@@ -46,6 +62,8 @@ type ScopeGraph = {
   /** Nodes whose outgoing edges use more than one handle, so only one of them is taken per run. */
   branchIds: Set<string>
 }
+
+type OutputOccurrence = { nodeId: string; valueType?: VarType }
 
 const getScopeId = (node: Node) => node.parentId ?? ''
 
@@ -199,20 +217,27 @@ const canRunTogether = (reachability: Map<string, NodeReachability>, aId: string
 }
 
 /**
- * Returns the conflicting output variable names per Output node id. A name conflicts when the same
- * Output node declares it twice, or when another Output node that may run in the same execution
- * declares it too.
+ * Mirrors `filterVar` / `filterVarByType`: `any` matches everything. A missing type — a graph saved
+ * before the editor recorded it, or a reference it could not resolve — cannot prove a clash either.
  */
-export const getDuplicateEndOutputVariables = (nodes: Node[], edges: Edge[]) => {
-  const conflicts = new Map<string, string[]>()
+const areOutputTypesCompatible = (a?: VarType, b?: VarType) => {
+  if (!a || !b) return true
+  if (a === VarType.any || b === VarType.any) return true
+  return a === b
+}
+
+/**
+ * Returns the clashing output variables per Output node id. See `EndOutputConflict` for the two kinds.
+ */
+export const getEndOutputConflicts = (nodes: Node[], edges: Edge[]) => {
+  const conflicts = new Map<string, EndOutputConflict[]>()
   const endNodes = nodes.filter((node) => node.data.type === BlockEnum.End)
   if (endNodes.length === 0) return conflicts
 
   const scopeIds = new Set(endNodes.map(getScopeId))
 
   scopeIds.forEach((scopeId) => {
-    // variable name -> Output node id -> how many times that node declares it
-    const occurrences = new Map<string, Map<string, number>>()
+    const occurrences = new Map<string, OutputOccurrence[]>()
 
     endNodes
       .filter((node) => getScopeId(node) === scopeId)
@@ -222,17 +247,15 @@ export const getDuplicateEndOutputVariables = (nodes: Node[], edges: Edge[]) => 
           const variable = output.variable?.trim()
           if (!variable) return
 
-          const byNode = occurrences.get(variable) ?? new Map<string, number>()
-          byNode.set(node.id, (byNode.get(node.id) ?? 0) + 1)
-          occurrences.set(variable, byNode)
+          const entries = occurrences.get(variable) ?? []
+          entries.push({ nodeId: node.id, valueType: output.value_type })
+          occurrences.set(variable, entries)
         })
       })
 
-    const hasRepeatedName = [...occurrences.values()].some(
-      (byNode) => byNode.size > 1 || [...byNode.values()].some((count) => count > 1),
-    )
+    const repeated = [...occurrences.values()].some((entries) => entries.length > 1)
     // Keep the common case free of graph analysis: no repeated name means nothing to reconcile.
-    if (!hasRepeatedName) return
+    if (!repeated) return
 
     const reachability = getReachability(
       buildScopeGraph(
@@ -241,19 +264,43 @@ export const getDuplicateEndOutputVariables = (nodes: Node[], edges: Edge[]) => 
       ),
     )
 
-    occurrences.forEach((byNode, variable) => {
-      const nodeIds = [...byNode.keys()]
+    occurrences.forEach((entries, variable) => {
+      const nodeIds = [...new Set(entries.map((entry) => entry.nodeId))]
 
       nodeIds.forEach((nodeId) => {
-        const declaredTwice = (byNode.get(nodeId) ?? 0) > 1
-        const collidesWithSibling = nodeIds.some(
-          (otherId) => otherId !== nodeId && canRunTogether(reachability, nodeId, otherId),
-        )
-        if (!declaredTwice && !collidesWithSibling) return
+        const own = entries.filter((entry) => entry.nodeId === nodeId)
+        // The same Output node declaring a name twice always collides with itself.
+        let duplicateName = own.length > 1
+        const clashingTypes = new Set<VarType>()
 
-        const variables = conflicts.get(nodeId) ?? []
-        if (!variables.includes(variable)) variables.push(variable)
-        conflicts.set(nodeId, variables)
+        nodeIds.forEach((otherId) => {
+          if (otherId === nodeId) return
+
+          if (canRunTogether(reachability, nodeId, otherId)) {
+            duplicateName = true
+            return
+          }
+
+          entries
+            .filter((entry) => entry.nodeId === otherId)
+            .forEach((other) => {
+              own.forEach((mine) => {
+                if (areOutputTypesCompatible(mine.valueType, other.valueType)) return
+                clashingTypes.add(mine.valueType!)
+                clashingTypes.add(other.valueType!)
+              })
+            })
+        })
+
+        // A lost value is the more serious problem, so it wins when both apply.
+        const conflict: EndOutputConflict | undefined = duplicateName
+          ? { variable, kind: 'duplicateName' }
+          : clashingTypes.size
+            ? { variable, kind: 'conflictingTypes', types: [...clashingTypes].sort() }
+            : undefined
+        if (!conflict) return
+
+        conflicts.set(nodeId, [...(conflicts.get(nodeId) ?? []), conflict])
       })
     })
   })
