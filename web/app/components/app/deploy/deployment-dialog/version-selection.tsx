@@ -59,12 +59,14 @@ export function VersionChoice({
           {version.description}
         </span>
       )}
-      <span className={cn('system-xs-regular text-text-tertiary', current && 'opacity-50')}>
-        {tWorkflow(($) => $['common.publishedBy'], {
-          time: formatTimeFromNow(version.publishedAt),
-          author: version.publishedBy,
-        })}
-      </span>
+      {version.publishedAt !== undefined && version.publishedBy && (
+        <span className={cn('system-xs-regular text-text-tertiary', current && 'opacity-50')}>
+          {tWorkflow(($) => $['common.publishedBy'], {
+            time: formatTimeFromNow(version.publishedAt),
+            author: version.publishedBy,
+          })}
+        </span>
+      )}
       {version.tags && version.tags.length > 0 && (
         <span className="flex flex-wrap items-center gap-1 pt-1">
           {version.tags.map((tag) => (

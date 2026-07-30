@@ -114,13 +114,15 @@ export function PublisherEnvironmentSummarySection({
               </span>
             )}
           </div>
-          <p className="truncate system-xs-regular text-text-tertiary">
-            {t(($) => $['common.publishedBy'], {
-              ns: 'workflow',
-              time: formatTimeFromNow(deployedVersion.publishedAt),
-              author: deployedVersion.publishedBy,
-            })}
-          </p>
+          {deployedVersion.publishedAt !== undefined && deployedVersion.publishedBy && (
+            <p className="truncate system-xs-regular text-text-tertiary">
+              {t(($) => $['common.publishedBy'], {
+                ns: 'workflow',
+                time: formatTimeFromNow(deployedVersion.publishedAt),
+                author: deployedVersion.publishedBy,
+              })}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex w-full flex-col gap-1">

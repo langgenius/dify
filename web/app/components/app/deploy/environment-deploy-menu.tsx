@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -9,12 +10,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { MOCK_UNDEPLOYED_ENVIRONMENTS } from './mock-data'
+import { undeployedAppEnvironmentsAtom } from './state'
 
 type EnvironmentDeployMenuProps = {
   appearance?: 'empty' | 'header'
-  onSelectEnvironment?: (environment: string) => void
+  onSelectEnvironment?: (environment: AppEnvironment) => void
 }
 
 export function EnvironmentDeployMenu({
@@ -23,6 +25,7 @@ export function EnvironmentDeployMenu({
 }: EnvironmentDeployMenuProps) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
+  const undeployedEnvironments = useAtomValue(undeployedAppEnvironmentsAtom)
   const isEmptyState = appearance === 'empty'
   const label = isEmptyState
     ? t(($) => $['studio.deployToEnvironment'])
@@ -48,15 +51,15 @@ export function EnvironmentDeployMenu({
           <DropdownMenuLabel className="px-2 py-1 system-xs-medium-uppercase text-text-tertiary">
             {t(($) => $['card.notDeployed'])}
           </DropdownMenuLabel>
-          {MOCK_UNDEPLOYED_ENVIRONMENTS.map((environment) => (
+          {undeployedEnvironments.map((environment) => (
             <DropdownMenuItem
-              key={environment}
+              key={environment.id}
               className="mx-0 flex gap-2 px-2 py-1.5"
               onClick={() => onSelectEnvironment?.(environment)}
             >
               <span aria-hidden className="i-ri-instance-line size-4 shrink-0 text-text-tertiary" />
               <span className="grow truncate system-md-regular text-text-secondary">
-                {environment}
+                {environment.display_name}
               </span>
             </DropdownMenuItem>
           ))}

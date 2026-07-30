@@ -1,6 +1,16 @@
 'use client'
 
-import type { MockActivity, MockEnvironmentDeployment, MockRowAction } from './mock-data'
+import type {
+  AppEnvironment,
+  EnvironmentDeployment,
+  EnvironmentDeploymentOperation,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { AccessPoint } from './access-point'
+import type { EnvironmentDeploymentAction } from './state'
+import {
+  DeploymentOperationStatus,
+  DeploymentOperationType,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -10,36 +20,47 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useCallback, useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { ACCESS_POINT_ORDER } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
 import { DeploymentStatus } from './deployment-status'
 import { EnvironmentDeployMenu } from './environment-deploy-menu'
 import { EnvironmentTableEmpty } from './environment-table-empty'
 import {
-  ACCESS_POINT_ORDER,
-  MOCK_ENVIRONMENT_CAPACITY,
-  MOCK_ENVIRONMENT_DEPLOYMENTS,
-} from './mock-data'
+  appEnvironmentDeploymentsAtom,
+  appEnvironmentDeploymentsIsErrorAtom,
+  appEnvironmentDeploymentsIsLoadingAtom,
+  appEnvironmentUsageAtom,
+  getEnvironmentDeploymentActions,
+  getWorkflowVersionName,
+} from './state'
 import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 import { VersionLabel } from './version-label'
 
 function activityLabel(
-  activity: MockActivity,
+  activity: EnvironmentDeploymentOperation,
   t: ReturnType<typeof useTranslation<'deployments'>>['t'],
 ) {
-  if (activity.result === 'failed')
-    return t(($) => $['studio.activity.deployFailed'], { target: activity.target })
-  if (activity.result === 'succeeded')
-    return t(($) => $['studio.activity.deploySucceeded'], { target: activity.target })
-  return t(($) => $['studio.activity.deploy'], { target: activity.target })
+  if (activity.type === DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY)
+    return t(($) => $['deployTab.undeploy'])
+
+  const target = getWorkflowVersionName(activity.target_version) ?? `#${activity.id}`
+  if (activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED)
+    return t(($) => $['studio.activity.deployFailed'], { target })
+  if (activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED)
+    return t(($) => $['studio.activity.deploySucceeded'], { target })
+  return t(($) => $['studio.activity.deploy'], { target })
 }
 
-function ActivityCell({ activity }: { activity: MockActivity }) {
+function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOperation }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const failed = activity.result === 'failed'
+  if (!activity) return <span className="text-text-quaternary">--</span>
+
+  const failed = activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -56,8 +77,8 @@ function ActivityCell({ activity }: { activity: MockActivity }) {
       </div>
       <div className="truncate system-xs-regular text-text-tertiary">
         {t(($) => $['studio.activity.meta'], {
-          name: activity.actor,
-          time: formatTimeFromNow(activity.occurredAt),
+          name: activity.operator.display_name,
+          time: formatTimeFromNow(Date.parse(activity.activity_at)),
         })}
       </div>
     </div>
@@ -65,7 +86,8 @@ function ActivityCell({ activity }: { activity: MockActivity }) {
 }
 
 function rowActionLabel(
-  action: MockRowAction,
+  action: EnvironmentDeploymentAction,
+  row: EnvironmentDeployment,
   t: ReturnType<typeof useTranslation<'deployments'>>['t'],
 ) {
   switch (action.kind) {
@@ -75,16 +97,25 @@ function rowActionLabel(
       return t(($) => $['studio.deployLatest'])
     case 'redeploy':
       return t(($) => $['deployTab.redeploy'])
-    case 'retry':
-      return t(($) => $['studio.retryVersion'], { version: action.version })
+    case 'retry': {
+      const operation = row.deployment?.latest_operation
+      const version =
+        getWorkflowVersionName(operation?.target_version) ??
+        getWorkflowVersionName(row.deployment?.current_version) ??
+        `#${operation?.id ?? row.environment.id}`
+      return t(($) => $['studio.retryVersion'], { version })
+    }
+    case 'undeploy':
+      return t(($) => $['deployTab.undeploy'])
   }
 }
 
-const ROW_ACTION_ICON_CLASS_NAMES: Record<MockRowAction['kind'], string> = {
+const ROW_ACTION_ICON_CLASS_NAMES: Record<EnvironmentDeploymentAction['kind'], string> = {
   changeVersion: 'i-ri-repeat-line',
   deployLatest: 'i-custom-vender-deploy-rocket',
   redeploy: 'i-ri-reset-left-line',
   retry: 'i-ri-reset-left-line',
+  undeploy: 'i-ri-logout-circle-r-line',
 }
 
 function RowActions({
@@ -94,36 +125,47 @@ function RowActions({
   onRedeploy,
   onUndeploy,
 }: {
-  row: MockEnvironmentDeployment
-  onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
-  onDeployLatest?: (deployment: MockEnvironmentDeployment) => void
-  onRedeploy?: (deployment: MockEnvironmentDeployment) => void
-  onUndeploy?: (deployment: MockEnvironmentDeployment) => void
+  row: EnvironmentDeployment
+  onChangeVersion?: (deployment: EnvironmentDeployment) => void
+  onDeployLatest?: (deployment: EnvironmentDeployment) => void
+  onRedeploy?: (deployment: EnvironmentDeployment) => void
+  onUndeploy?: (deployment: EnvironmentDeployment) => void
 }) {
   const { t } = useTranslation('deployments')
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
-  const label = rowActionLabel(row.action, t)
-  const canRedeploy = Boolean(row.version || row.action.kind === 'retry')
+  const actions = getEnvironmentDeploymentActions(row)
+  const primaryAction = actions[0]
+  const moreActions = actions.slice(1)
 
-  const handlePrimaryAction = useCallback(() => {
-    switch (row.action.kind) {
-      case 'changeVersion':
-        onChangeVersion?.(row)
-        break
-      case 'deployLatest':
-        onDeployLatest?.(row)
-        break
-      case 'redeploy':
-      case 'retry':
-        onRedeploy?.(row)
-        break
-    }
-  }, [onChangeVersion, onDeployLatest, onRedeploy, row])
+  const handleAction = useCallback(
+    (action: EnvironmentDeploymentAction) => {
+      if (action.disabled) return
+
+      switch (action.kind) {
+        case 'changeVersion':
+          onChangeVersion?.(row)
+          break
+        case 'deployLatest':
+          onDeployLatest?.(row)
+          break
+        case 'redeploy':
+        case 'retry':
+          onRedeploy?.(row)
+          break
+        case 'undeploy':
+          setShowUndeployConfirm(true)
+          break
+      }
+    },
+    [onChangeVersion, onDeployLatest, onRedeploy, row],
+  )
 
   const handleUndeploy = useCallback(() => {
     onUndeploy?.(row)
     setShowUndeployConfirm(false)
   }, [onUndeploy, row])
+
+  if (!primaryAction) return null
 
   return (
     <>
@@ -131,15 +173,15 @@ function RowActions({
         <Button
           size="small"
           variant="secondary"
-          disabled={row.action.kind === 'changeVersion' && row.action.disabled}
-          onClick={handlePrimaryAction}
+          disabled={primaryAction.disabled}
+          onClick={() => handleAction(primaryAction)}
           className="min-w-0 gap-1 px-2"
         >
           <span
             aria-hidden
-            className={cn(ROW_ACTION_ICON_CLASS_NAMES[row.action.kind], 'size-3.5 shrink-0')}
+            className={cn(ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind], 'size-3.5 shrink-0')}
           />
-          <span className="truncate">{label}</span>
+          <span className="truncate">{rowActionLabel(primaryAction, row, t)}</span>
         </Button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
@@ -147,7 +189,7 @@ function RowActions({
               <Button
                 size="small"
                 variant="secondary"
-                aria-label={`${row.name} · ${t(($) => $['deployTab.moreActions'])}`}
+                aria-label={`${row.environment.display_name} · ${t(($) => $['deployTab.moreActions'])}`}
                 className="w-6 shrink-0 px-0"
               >
                 <span aria-hidden className="i-ri-more-fill size-4" />
@@ -155,44 +197,32 @@ function RowActions({
             }
           />
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-50">
-            <DropdownMenuItem
-              disabled={row.action.kind === 'changeVersion' && row.action.disabled}
-              className="gap-2 px-2"
-              onClick={() => onChangeVersion?.(row)}
-            >
-              <span aria-hidden className="i-ri-repeat-line size-4 shrink-0 text-text-secondary" />
-              <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-                {t(($) => $['studio.changeVersion'])}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!canRedeploy}
-              className="gap-2 px-2"
-              onClick={() => onRedeploy?.(row)}
-            >
-              <span
-                aria-hidden
-                className="i-custom-vender-other-replay-line size-4 shrink-0 text-text-secondary"
-              />
-              <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-                {t(($) => $['deployTab.redeploy'])}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 px-2" onClick={() => setShowUndeployConfirm(true)}>
-              <span
-                aria-hidden
-                className="i-ri-logout-circle-r-line size-4 shrink-0 text-text-secondary"
-              />
-              <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-                {t(($) => $['deployTab.undeploy'])}
-              </span>
-            </DropdownMenuItem>
+            {moreActions.map((action, index) => (
+              <Fragment key={action.kind}>
+                {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuItem
+                  disabled={action.disabled}
+                  className="gap-2 px-2"
+                  onClick={() => handleAction(action)}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      ROW_ACTION_ICON_CLASS_NAMES[action.kind],
+                      'size-4 shrink-0 text-text-secondary',
+                    )}
+                  />
+                  <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                    {rowActionLabel(action, row, t)}
+                  </span>
+                </DropdownMenuItem>
+              </Fragment>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       <UndeployConfirmDialog
-        environmentName={row.name}
+        environmentName={row.environment.display_name}
         open={showUndeployConfirm}
         onConfirm={handleUndeploy}
         onOpenChange={setShowUndeployConfirm}
@@ -208,12 +238,18 @@ function EnvironmentRow({
   onRedeploy,
   onUndeploy,
 }: {
-  row: MockEnvironmentDeployment
-  onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
-  onDeployLatest?: (deployment: MockEnvironmentDeployment) => void
-  onRedeploy?: (deployment: MockEnvironmentDeployment) => void
-  onUndeploy?: (deployment: MockEnvironmentDeployment) => void
+  row: EnvironmentDeployment
+  onChangeVersion?: (deployment: EnvironmentDeployment) => void
+  onDeployLatest?: (deployment: EnvironmentDeployment) => void
+  onRedeploy?: (deployment: EnvironmentDeployment) => void
+  onUndeploy?: (deployment: EnvironmentDeployment) => void
 }) {
+  const isAccessPointActive = (accessPoint: AccessPoint) => {
+    if (accessPoint === 'webApp') return row.access.enable_site
+    if (accessPoint === 'serviceApi') return row.access.enable_api
+    return false
+  }
+
   return (
     <tr className="h-14 border-b border-divider-subtle hover:bg-state-base-hover">
       <td className="border-b border-divider-subtle pr-2 pl-3">
@@ -221,17 +257,22 @@ function EnvironmentRow({
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg text-text-secondary">
             <span aria-hidden className="i-ri-instance-line size-3.5" />
           </span>
-          <span className="truncate system-md-medium text-text-secondary">{row.name}</span>
+          <span className="truncate system-md-medium text-text-secondary">
+            {row.environment.display_name}
+          </span>
         </div>
       </td>
       <td className="border-b border-divider-subtle pr-2 pl-3">
-        <VersionLabel version={row.version} />
+        <VersionLabel
+          version={row.deployment?.current_version}
+          versionsBehind={row.deployment?.versions_behind}
+        />
       </td>
       <td className="border-b border-divider-subtle px-2">
-        <DeploymentStatus status={row.status} />
+        <DeploymentStatus status={row.deployment?.status} />
       </td>
       <td className="border-b border-divider-subtle pr-2 pl-3">
-        <ActivityCell activity={row.activity} />
+        <ActivityCell activity={row.deployment?.latest_operation} />
       </td>
       <td className="border-b border-divider-subtle pr-2 pl-3">
         <div className="flex items-center gap-1">
@@ -239,7 +280,7 @@ function EnvironmentRow({
             <AccessPointIcon
               key={accessPoint}
               accessPoint={accessPoint}
-              active={row.accessPoints.includes(accessPoint)}
+              active={isAccessPointActive(accessPoint)}
             />
           ))}
         </div>
@@ -258,16 +299,14 @@ function EnvironmentRow({
 }
 
 type EnvironmentTableProps = {
-  deployments?: MockEnvironmentDeployment[]
-  onChangeVersion?: (deployment: MockEnvironmentDeployment) => void
-  onDeployLatest?: (deployment: MockEnvironmentDeployment) => void
-  onDeployToEnvironment?: (environment: string) => void
-  onRedeploy?: (deployment: MockEnvironmentDeployment) => void
-  onUndeploy?: (deployment: MockEnvironmentDeployment) => void
+  onChangeVersion?: (deployment: EnvironmentDeployment) => void
+  onDeployLatest?: (deployment: EnvironmentDeployment) => void
+  onDeployToEnvironment?: (environment: AppEnvironment) => void
+  onRedeploy?: (deployment: EnvironmentDeployment) => void
+  onUndeploy?: (deployment: EnvironmentDeployment) => void
 }
 
 export function EnvironmentTable({
-  deployments = MOCK_ENVIRONMENT_DEPLOYMENTS,
   onChangeVersion,
   onDeployLatest,
   onDeployToEnvironment,
@@ -275,11 +314,18 @@ export function EnvironmentTable({
   onUndeploy,
 }: EnvironmentTableProps) {
   const { t } = useTranslation('deployments')
-  const used = deployments.length
+  const deployments = useAtomValue(appEnvironmentDeploymentsAtom) ?? []
+  const isLoading = useAtomValue(appEnvironmentDeploymentsIsLoadingAtom)
+  const isError = useAtomValue(appEnvironmentDeploymentsIsErrorAtom)
+  const usage = useAtomValue(appEnvironmentUsageAtom)
+  const used = usage?.used ?? deployments.length
+  const total = usage?.total ?? deployments.length
+  const showEmptyState = !isLoading && !isError && deployments.length === 0
 
   return (
     <section
       aria-labelledby="deploy-environments-title"
+      aria-busy={isLoading}
       className="flex min-h-0 grow flex-col gap-3"
     >
       <div className="flex shrink-0 items-center justify-between">
@@ -295,7 +341,7 @@ export function EnvironmentTable({
           </span>
           <span className="truncate system-xs-regular text-text-tertiary">
             {t(($) => $['studio.environmentsInUse'], {
-              total: MOCK_ENVIRONMENT_CAPACITY,
+              total,
               used,
             })}
           </span>
@@ -309,7 +355,7 @@ export function EnvironmentTable({
           deployments.length > 0 ? 'overflow-x-auto' : 'overflow-x-hidden',
         )}
       >
-        {deployments.length === 0 ? (
+        {showEmptyState ? (
           <EnvironmentTableEmpty onSelectEnvironment={onDeployToEnvironment} />
         ) : (
           <table className="w-full min-w-260 table-fixed border-separate border-spacing-0">
@@ -346,7 +392,7 @@ export function EnvironmentTable({
             <tbody>
               {deployments.map((row) => (
                 <EnvironmentRow
-                  key={row.id}
+                  key={row.environment.id}
                   row={row}
                   onChangeVersion={onChangeVersion}
                   onDeployLatest={onDeployLatest}

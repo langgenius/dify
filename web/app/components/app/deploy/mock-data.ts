@@ -1,6 +1,6 @@
-export type MockDeploymentStatus = 'deploying' | 'failed' | 'running'
+import type { AccessPoint } from './access-point'
 
-export type AccessPoint = 'mcp' | 'serviceApi' | 'trigger' | 'webApp'
+export type MockDeploymentStatus = 'deploying' | 'failed' | 'running'
 
 export type MockActivity = {
   actor: string
@@ -14,8 +14,8 @@ export type MockVersion = {
   description?: string
   latest?: boolean
   name: string
-  publishedAt: number
-  publishedBy: string
+  publishedAt?: number
+  publishedBy?: string
   tags?: string[]
 }
 
@@ -58,8 +58,6 @@ export type MockEnvironmentDeployment = {
   version?: MockVersion
 }
 
-export const ACCESS_POINT_ORDER: readonly AccessPoint[] = ['webApp', 'serviceApi', 'mcp', 'trigger']
-
 const MOCK_VERSION_DESCRIPTION =
   'Fixed several critical bugs affecting data synchronization and optimized page loading speed. Enhanced system stability and user experience through backend improvements.'
 const MOCK_VERSION_PUBLISHED_AT = Date.now() - 17 * 24 * 60 * 60 * 1000
@@ -89,8 +87,6 @@ export const BUILT_IN_ENVIRONMENT: {
     latest: true,
   }),
 }
-
-export const MOCK_ENVIRONMENT_CAPACITY = 12
 
 const MOCK_ACTIVITY_AT = Date.UTC(2026, 6, 25, 1)
 

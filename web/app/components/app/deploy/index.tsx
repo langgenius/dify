@@ -1,7 +1,11 @@
 'use client'
 
+import type {
+  EnvironmentDeployment,
+  WorkflowVersion,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
-import type { MockEnvironmentDeployment } from './mock-data'
+import type { MockVersion } from './mock-data'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +18,14 @@ import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
 import { BUILT_IN_ENVIRONMENT, MOCK_PUBLISHED_VERSIONS } from './mock-data'
+import { AppDeployStateBoundary, getWorkflowVersionName } from './state'
+
+function toDialogVersion(version: WorkflowVersion): MockVersion {
+  return {
+    description: version.marked_comment || undefined,
+    name: getWorkflowVersionName(version) ?? version.version,
+  }
+}
 
 export default function AppDeploy() {
   const { t } = useTranslation('deployments')
@@ -29,18 +41,24 @@ export default function AppDeploy() {
   }).canDeploy
   const latestVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)
 
-  const handleRedeploy = (deployment: MockEnvironmentDeployment) => {
-    const failedVersionName =
-      deployment.action.kind === 'retry' ? deployment.action.version : undefined
-    const initialVersion = failedVersionName
-      ? MOCK_PUBLISHED_VERSIONS.find((version) => version.name === failedVersionName)
-      : deployment.version
+  const handleRedeploy = (deployment: EnvironmentDeployment) => {
+    const deploymentState = deployment.deployment
+    const version =
+      deploymentState?.latest_operation?.target_version ?? deploymentState?.current_version
+    const environment = deployment.environment.display_name
 
-    if (!initialVersion) return
+    if (!version) {
+      setDeploymentRequest({
+        environment,
+        kind: 'changeVersion',
+      })
+      return
+    }
 
     setDeploymentRequest({
-      environment: deployment.name,
-      initialVersion,
+      currentVersion: getWorkflowVersionName(deploymentState?.current_version),
+      environment,
+      initialVersion: toDialogVersion(version),
       kind: 'redeploy',
     })
   }
@@ -48,7 +66,7 @@ export default function AppDeploy() {
   if (appDetail?.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
 
   return (
-    <>
+    <AppDeployStateBoundary appId={appDetail.id}>
       <main className="flex h-full flex-col bg-components-panel-bg">
         <header className="shrink-0 px-6 pt-3 pb-2">
           <h1 className="title-xl-semi-bold text-text-primary">
@@ -74,14 +92,14 @@ export default function AppDeploy() {
             onDeployToEnvironment={(environment) =>
               setDeploymentRequest({
                 currentVersion: BUILT_IN_ENVIRONMENT.version.name,
-                environment,
+                environment: environment.display_name,
                 kind: 'deploy',
               })
             }
             onChangeVersion={(deployment) =>
               setDeploymentRequest({
-                currentVersion: deployment.version?.name,
-                environment: deployment.name,
+                currentVersion: getWorkflowVersionName(deployment.deployment?.current_version),
+                environment: deployment.environment.display_name,
                 kind: 'changeVersion',
               })
             }
@@ -89,8 +107,8 @@ export default function AppDeploy() {
               if (!latestVersion) return
 
               setDeploymentRequest({
-                currentVersion: deployment.version?.name,
-                environment: deployment.name,
+                currentVersion: getWorkflowVersionName(deployment.deployment?.current_version),
+                environment: deployment.environment.display_name,
                 initialVersion: latestVersion,
                 kind: 'deployLatest',
               })
@@ -104,6 +122,6 @@ export default function AppDeploy() {
         request={deploymentRequest}
         onClose={() => setDeploymentRequest(undefined)}
       />
-    </>
+    </AppDeployStateBoundary>
   )
 }

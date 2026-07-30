@@ -1,5 +1,6 @@
 'use client'
 
+import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { MockVersion } from './mock-data'
 import {
   Popover,
@@ -12,18 +13,39 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
-export function VersionLabel({ version }: { version?: MockVersion }) {
+function isWorkflowVersion(version: MockVersion | WorkflowVersion): version is WorkflowVersion {
+  return 'marked_name' in version
+}
+
+export function VersionLabel({
+  version,
+  versionsBehind,
+}: {
+  version?: MockVersion | WorkflowVersion
+  versionsBehind?: number
+}) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   if (!version) return <span className="text-text-quaternary">--</span>
 
+  const fromDeployment = isWorkflowVersion(version)
+  const name = fromDeployment ? version.marked_name || version.version : version.name
+  const description = fromDeployment ? version.marked_comment : version.description
+  const publishedAt = fromDeployment ? undefined : version.publishedAt
+  const publishedBy = fromDeployment ? undefined : version.publishedBy
+  const latest = fromDeployment ? versionsBehind === 0 : version.latest
+  const behind = fromDeployment
+    ? versionsBehind !== undefined && versionsBehind > 0
+      ? versionsBehind
+      : undefined
+    : version.behind
   const versionsBehindLabel =
-    version.behind === undefined
+    behind === undefined
       ? ''
-      : version.behind === 1
-        ? t(($) => $['studio.versionsBehind_one'], { count: version.behind })
-        : t(($) => $['studio.versionsBehind_other'], { count: version.behind })
+      : behind === 1
+        ? t(($) => $['studio.versionsBehind_one'], { count: behind })
+        : t(($) => $['studio.versionsBehind_other'], { count: behind })
 
   return (
     <div className="flex min-w-0 items-center gap-1">
@@ -37,7 +59,7 @@ export function VersionLabel({ version }: { version?: MockVersion }) {
               type="button"
               className="min-w-0 cursor-help truncate border-b border-dotted border-text-quaternary system-md-medium text-text-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
             >
-              {version.name}
+              {name}
             </button>
           }
         />
@@ -46,33 +68,33 @@ export function VersionLabel({ version }: { version?: MockVersion }) {
           popupClassName="w-[296px] max-w-[calc(100vw-32px)] border-0 bg-components-tooltip-bg px-4 py-3.5 text-start inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]"
         >
           <div className="flex flex-col gap-1">
-            <PopoverTitle className="system-sm-semibold text-text-secondary">
-              {version.name}
-            </PopoverTitle>
-            <p className="system-xs-regular whitespace-nowrap text-text-tertiary">
-              {t(($) => $['common.publishedBy'], {
-                ns: 'workflow',
-                time: formatTimeFromNow(version.publishedAt),
-                author: version.publishedBy,
-              })}
-            </p>
-            {version.description && (
+            <PopoverTitle className="system-sm-semibold text-text-secondary">{name}</PopoverTitle>
+            {publishedAt !== undefined && publishedBy && (
+              <p className="system-xs-regular whitespace-nowrap text-text-tertiary">
+                {t(($) => $['common.publishedBy'], {
+                  ns: 'workflow',
+                  time: formatTimeFromNow(publishedAt),
+                  author: publishedBy,
+                })}
+              </p>
+            )}
+            {description && (
               <>
-                <span className="h-px w-4 bg-divider-regular my-1" />
+                <span className="my-1 h-px w-4 bg-divider-regular" />
                 <PopoverDescription className="system-xs-regular text-text-tertiary">
-                  {version.description}
+                  {description}
                 </PopoverDescription>
               </>
             )}
           </div>
         </PopoverContent>
       </Popover>
-      {version.latest && (
-        <span className="inline-flex h-4.5 shrink-0 items-center rounded-[5px] border border-text-accent px-1 bg-components-badge-bg-dimm system-2xs-medium-uppercase text-text-accent">
+      {latest && (
+        <span className="inline-flex h-4.5 shrink-0 items-center rounded-[5px] border border-text-accent bg-components-badge-bg-dimm px-1 system-2xs-medium-uppercase text-text-accent">
           {t(($) => $['overview.chip.latest'])}
         </span>
       )}
-      {version.behind !== undefined && (
+      {behind !== undefined && (
         <Tooltip>
           <TooltipTrigger
             render={
@@ -82,7 +104,7 @@ export function VersionLabel({ version }: { version?: MockVersion }) {
                 className="inline-flex h-4.5 shrink-0 cursor-default items-center rounded-[5px] border border-util-colors-orange-orange-500 px-1 system-2xs-medium text-util-colors-orange-orange-600 outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
               >
                 <span aria-hidden className="i-ri-arrow-up-line size-3" />
-                {version.behind}
+                {behind}
               </button>
             }
           />

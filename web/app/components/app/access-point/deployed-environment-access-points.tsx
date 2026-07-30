@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/mock-data'
+import type { AccessPoint } from '@/app/components/app/deploy/access-point'
 import { useTranslation } from 'react-i18next'
 import { MOCK_ENVIRONMENT_DEPLOYMENTS } from '@/app/components/app/deploy/mock-data'
 import { AccessPointCard, AccessPointEmptyContent, AccessPointEndpoint } from './access-point-card'

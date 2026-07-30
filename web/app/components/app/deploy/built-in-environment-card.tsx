@@ -1,14 +1,15 @@
 'use client'
 
+import { DeploymentStatus as DeploymentStatusEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
 import { useAppWorkflow } from '@/service/use-workflow'
+import { ACCESS_POINT_ORDER } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
 import { DeploymentStatus } from './deployment-status'
-import { ACCESS_POINT_ORDER } from './mock-data'
 import { VersionLabel } from './version-label'
 
 function Divider() {
@@ -90,7 +91,7 @@ export function BuiltInEnvironmentCard() {
       </div>
       {/* Status and updated time */}
       <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-        <DeploymentStatus status="running" />
+        <DeploymentStatus status={DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING} />
         <p className="truncate system-xs-regular text-text-tertiary">
           {publishedWorkflow
             ? t(($) => $['studio.updatedAtBy'], {

@@ -1,9 +1,410 @@
+import type {
+  AppEnvironment,
+  EnvironmentDeployment,
+  EnvironmentDeploymentOperation,
+  WorkflowVersion,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { ReactElement } from 'react'
+import {
+  DeploymentOperationStatus,
+  DeploymentOperationType,
+  DeploymentStatus,
+  EnvironmentStatus,
+  OperatorType,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
+import { AppDeployStateBoundary, getEnvironmentDeploymentActions } from '../state'
+
+const APP_ID = 'app-1'
+const ACTIVITY_AT = '2026-07-25T01:00:00.000Z'
+const VERSION_DESCRIPTION =
+  'Fixed several critical bugs affecting data synchronization and optimized page loading speed. Enhanced system stability and user experience through backend improvements.'
+const OPERATOR = {
+  display_name: 'Evan',
+  id: 'user-2',
+  type: OperatorType.OPERATOR_TYPE_ACCOUNT,
+}
+
+function workflowVersion(name: string, id = name.toLowerCase()): WorkflowVersion {
+  return {
+    id,
+    marked_comment: name === 'Sprint-42' ? VERSION_DESCRIPTION : '',
+    marked_name: name,
+    version: `2026-07-30.${id}`,
+  }
+}
+
+const VERSIONS = {
+  sprint42: workflowVersion('Sprint-42', 'sprint-42'),
+  version02: workflowVersion('Version-02', 'version-02'),
+  hotfix: workflowVersion('v0.9-hotfix', 'hotfix'),
+  beta: workflowVersion('v0.6-beta', 'beta'),
+  qa: workflowVersion('v0.3-beta', 'qa-version'),
+}
+
+function deploymentOperation({
+  id,
+  status = DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
+  targetVersion,
+  type = DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+}: {
+  id: string
+  status?: EnvironmentDeploymentOperation['status']
+  targetVersion?: WorkflowVersion
+  type?: EnvironmentDeploymentOperation['type']
+}): EnvironmentDeploymentOperation {
+  return {
+    activity_at: ACTIVITY_AT,
+    id,
+    operator: OPERATOR,
+    status,
+    target_version: targetVersion,
+    type,
+  }
+}
+
+function environmentDeployment({
+  access = { enable_api: true, enable_site: true },
+  currentVersion,
+  id,
+  latestOperation,
+  name,
+  status,
+  versionsBehind,
+}: {
+  access?: EnvironmentDeployment['access']
+  currentVersion?: WorkflowVersion
+  id: string
+  latestOperation?: EnvironmentDeploymentOperation
+  name: string
+  status: NonNullable<EnvironmentDeployment['deployment']>['status']
+  versionsBehind?: number
+}): EnvironmentDeployment {
+  return {
+    access,
+    deployment: {
+      current_version: currentVersion,
+      deployed_at: currentVersion ? ACTIVITY_AT : undefined,
+      deployed_by: currentVersion ? OPERATOR : undefined,
+      latest_operation: latestOperation,
+      status,
+      versions_behind: versionsBehind,
+    },
+    environment: {
+      description: '',
+      display_name: name,
+      id,
+      status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+    },
+  }
+}
+
+const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
+  environmentDeployment({
+    id: 'staging',
+    latestOperation: deploymentOperation({
+      id: '1',
+      status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+      targetVersion: VERSIONS.sprint42,
+    }),
+    name: 'Staging',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+  }),
+  environmentDeployment({
+    currentVersion: VERSIONS.sprint42,
+    id: 'canary',
+    latestOperation: deploymentOperation({
+      id: '2',
+      targetVersion: VERSIONS.sprint42,
+    }),
+    name: 'Canary',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    versionsBehind: 0,
+  }),
+  environmentDeployment({
+    currentVersion: VERSIONS.version02,
+    id: 'pre-release',
+    latestOperation: deploymentOperation({
+      id: '11',
+      targetVersion: VERSIONS.version02,
+    }),
+    name: 'Pre-release',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    versionsBehind: 1,
+  }),
+  environmentDeployment({
+    currentVersion: VERSIONS.hotfix,
+    id: 'prod',
+    latestOperation: deploymentOperation({
+      id: '12',
+      targetVersion: VERSIONS.hotfix,
+    }),
+    name: 'Prod',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    versionsBehind: 1,
+  }),
+  environmentDeployment({
+    access: { enable_api: false, enable_site: false },
+    currentVersion: VERSIONS.beta,
+    id: 'eu-prod',
+    latestOperation: deploymentOperation({
+      id: '10',
+      status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED,
+      targetVersion: VERSIONS.sprint42,
+    }),
+    name: 'EU-Prod',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    versionsBehind: 2,
+  }),
+  environmentDeployment({
+    access: { enable_api: false, enable_site: false },
+    currentVersion: VERSIONS.qa,
+    id: 'qa',
+    latestOperation: deploymentOperation({
+      id: '13',
+      targetVersion: VERSIONS.qa,
+    }),
+    name: 'QA',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    versionsBehind: 0,
+  }),
+  environmentDeployment({
+    access: { enable_api: false, enable_site: false },
+    currentVersion: VERSIONS.qa,
+    id: 'sandbox',
+    latestOperation: deploymentOperation({
+      id: '14',
+      targetVersion: VERSIONS.qa,
+    }),
+    name: 'Sandbox',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    versionsBehind: 0,
+  }),
+  environmentDeployment({
+    access: { enable_api: false, enable_site: false },
+    id: 'preview',
+    latestOperation: deploymentOperation({
+      id: '15',
+      status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED,
+      targetVersion: VERSIONS.sprint42,
+    }),
+    name: 'Preview',
+    status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+  }),
+]
+
+const ACTION_MATRIX_CASES: Array<{
+  actions: Array<{
+    disabled: boolean
+    kind: ReturnType<typeof getEnvironmentDeploymentActions>[number]['kind']
+  }>
+  name: string
+  row: EnvironmentDeployment
+}> = [
+  {
+    actions: [
+      { disabled: false, kind: 'deployLatest' },
+      { disabled: false, kind: 'changeVersion' },
+    ],
+    name: 'undeployed',
+    row: {
+      access: { enable_api: false, enable_site: false },
+      environment: {
+        description: '',
+        display_name: 'Undeployed',
+        id: 'undeployed',
+        status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+      },
+    },
+  },
+  {
+    actions: [
+      { disabled: false, kind: 'redeploy' },
+      { disabled: false, kind: 'changeVersion' },
+      { disabled: false, kind: 'undeploy' },
+    ],
+    name: 'running the latest version',
+    row: environmentDeployment({
+      currentVersion: VERSIONS.sprint42,
+      id: 'latest',
+      name: 'Latest',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      versionsBehind: 0,
+    }),
+  },
+  {
+    actions: [
+      { disabled: false, kind: 'deployLatest' },
+      { disabled: false, kind: 'changeVersion' },
+      { disabled: false, kind: 'redeploy' },
+      { disabled: false, kind: 'undeploy' },
+    ],
+    name: 'running behind the latest version',
+    row: environmentDeployment({
+      currentVersion: VERSIONS.version02,
+      id: 'behind',
+      name: 'Behind',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      versionsBehind: 1,
+    }),
+  },
+  {
+    actions: [
+      { disabled: true, kind: 'changeVersion' },
+      { disabled: true, kind: 'redeploy' },
+      { disabled: true, kind: 'undeploy' },
+    ],
+    name: 'deploying',
+    row: environmentDeployment({
+      id: 'deploying',
+      name: 'Deploying',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    }),
+  },
+  {
+    actions: [
+      { disabled: true, kind: 'changeVersion' },
+      { disabled: true, kind: 'redeploy' },
+      { disabled: true, kind: 'undeploy' },
+    ],
+    name: 'undeploying',
+    row: environmentDeployment({
+      currentVersion: VERSIONS.qa,
+      id: 'undeploying',
+      name: 'Undeploying',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+    }),
+  },
+  {
+    actions: [
+      { disabled: false, kind: 'retry' },
+      { disabled: false, kind: 'changeVersion' },
+    ],
+    name: 'failed without a previous version',
+    row: environmentDeployment({
+      id: 'failed',
+      latestOperation: deploymentOperation({
+        id: 'failed',
+        status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED,
+        targetVersion: VERSIONS.sprint42,
+      }),
+      name: 'Failed',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+    }),
+  },
+  {
+    actions: [
+      { disabled: false, kind: 'retry' },
+      { disabled: false, kind: 'changeVersion' },
+      { disabled: false, kind: 'undeploy' },
+    ],
+    name: 'running after the latest deployment failed',
+    row: environmentDeployment({
+      currentVersion: VERSIONS.beta,
+      id: 'running-failed',
+      latestOperation: deploymentOperation({
+        id: 'running-failed',
+        status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED,
+        targetVersion: VERSIONS.sprint42,
+      }),
+      name: 'Running failed',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      versionsBehind: 2,
+    }),
+  },
+  {
+    actions: [
+      { disabled: false, kind: 'redeploy' },
+      { disabled: false, kind: 'undeploy' },
+    ],
+    name: 'invalid',
+    row: environmentDeployment({
+      currentVersion: VERSIONS.qa,
+      id: 'invalid',
+      name: 'Invalid',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+    }),
+  },
+  {
+    actions: [
+      { disabled: false, kind: 'redeploy' },
+      { disabled: false, kind: 'undeploy' },
+    ],
+    name: 'unknown',
+    row: environmentDeployment({
+      currentVersion: VERSIONS.qa,
+      id: 'unknown',
+      name: 'Unknown',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED,
+    }),
+  },
+]
+
+const APP_ENVIRONMENTS: AppEnvironment[] = [
+  ...APP_ENVIRONMENT_DEPLOYMENTS.map((row) => ({
+    description: row.environment.description,
+    display_name: row.environment.display_name,
+    id: row.environment.id,
+    in_use: true,
+    status: row.environment.status,
+  })),
+  ...['Testing', 'Dev', 'Demo', 'US-Prod'].map((name) => ({
+    description: '',
+    display_name: name,
+    id: name.toLowerCase(),
+    in_use: false,
+    status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+  })),
+]
+const appEnvironmentsQueryOptions =
+  consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+    input: {
+      params: {
+        app_id: APP_ID,
+      },
+    },
+  })
+const appEnvironmentDeploymentsQueryOptions =
+  consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+    input: {
+      params: {
+        app_id: APP_ID,
+      },
+    },
+  })
+
+function render(
+  ui: ReactElement,
+  {
+    appEnvironments = APP_ENVIRONMENTS,
+    environmentDeployments = APP_ENVIRONMENT_DEPLOYMENTS,
+  }: {
+    appEnvironments?: AppEnvironment[]
+    environmentDeployments?: EnvironmentDeployment[]
+  } = {},
+) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryDefaults(appEnvironmentsQueryOptions.queryKey, {
+    staleTime: Infinity,
+  })
+  queryClient.setQueryDefaults(appEnvironmentDeploymentsQueryOptions.queryKey, {
+    staleTime: Infinity,
+  })
+  queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
+    data: appEnvironments,
+  })
+  queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+    environment_deployments: environmentDeployments,
+  })
+
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 let appPermissionKeys: string[] = [AppACLPermission.Deploy]
 const mockConsoleState = vi.hoisted(() => ({
@@ -52,6 +453,9 @@ vi.mock('react-i18next', async () => {
     'deployments.deployTab.undeployConfirmTitle': 'Undeploy {{name}}?',
     'deployments.deployTab.undeployConfirmWarning':
       'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
+    'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
+    'deployments.studio.environmentsInUse': '{{used}} of {{total}} environments in use',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
@@ -119,7 +523,7 @@ describe('AppDeploy', () => {
     }
   })
 
-  it('renders the built-in environment and mock deployment list', () => {
+  it('renders the built-in environment and contract deployment list', () => {
     render(<AppDeploy />)
 
     expect(
@@ -132,6 +536,33 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('cell', { name: /Canary/ })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: /Preview/ })).toBeInTheDocument()
     expect(screen.getAllByRole('row')).toHaveLength(9)
+    expect(screen.getByText('8 of 12 environments in use')).toBeInTheDocument()
+  })
+
+  it.each(ACTION_MATRIX_CASES)(
+    'provides the designed row actions when $name',
+    ({ actions, row }) => {
+      expect(getEnvironmentDeploymentActions(row)).toEqual(actions)
+    },
+  )
+
+  it('renders version, status, activity, and access from the deployment contract', () => {
+    render(<AppDeploy />)
+
+    const canaryRow = within(screen.getByRole('row', { name: /Canary/ }))
+    expect(canaryRow.getByRole('button', { name: 'Sprint-42' })).toBeInTheDocument()
+    expect(canaryRow.getByText('Running')).toBeInTheDocument()
+    expect(canaryRow.getByText('Deploy Sprint-42 succeeded')).toBeInTheDocument()
+    expect(
+      canaryRow.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      canaryRow.getByRole('button', {
+        name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.inService',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('renders the built-in version, access points, and publisher from live app data', () => {
@@ -233,6 +664,7 @@ describe('AppDeploy', () => {
     expect(screen.getByText('deployments.card.notDeployed')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /US-Prod/ })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Canary/ })).not.toBeInTheDocument()
   })
 
   it('opens the selected environment version picker from the deploy menu', async () => {
@@ -240,7 +672,7 @@ describe('AppDeploy', () => {
     render(<AppDeploy />)
 
     await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
-    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    await user.click(await screen.findByRole('menuitem', { name: /Dev/ }))
 
     const dialog = await screen.findByRole('dialog', {
       name: 'deployments.versions.deployTo:{"name":"Dev"}',
@@ -385,8 +817,18 @@ describe('AppDeploy', () => {
     render(<AppDeploy />)
 
     const canaryRow = screen.getByRole('row', { name: /Canary/ })
+    expect(
+      within(canaryRow).getByRole('button', {
+        name: 'deployments.deployTab.redeploy',
+      }),
+    ).toBeInTheDocument()
     await user.click(
       within(canaryRow).getByRole('button', {
+        name: 'Canary · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(
+      within(screen.getByRole('menu')).getByRole('menuitem', {
         name: 'deployments.studio.changeVersion',
       }),
     )
@@ -400,7 +842,18 @@ describe('AppDeploy', () => {
 
   it('shows the empty deployment state when there are no environments in use', async () => {
     const user = userEvent.setup()
-    render(<EnvironmentTable deployments={[]} />)
+    render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable />
+      </AppDeployStateBoundary>,
+      {
+        appEnvironments: APP_ENVIRONMENTS.map((environment) => ({
+          ...environment,
+          in_use: false,
+        })),
+        environmentDeployments: [],
+      },
+    )
 
     expect(screen.getByText('deployments.list.emptyTitle')).toBeInTheDocument()
     expect(screen.getByText('deployments.studio.emptyDescription')).toBeInTheDocument()
@@ -432,22 +885,81 @@ describe('AppDeploy', () => {
       within(menu).getByRole('menuitem', { name: 'deployments.studio.changeVersion' }),
     ).toBeInTheDocument()
     expect(
-      within(menu).getByRole('menuitem', { name: 'deployments.deployTab.redeploy' }),
-    ).toBeInTheDocument()
-    expect(
       within(menu).getByRole('menuitem', { name: 'deployments.deployTab.undeploy' }),
     ).toBeInTheDocument()
     expect(
       within(menu).queryByRole('menuitem', {
-        name: 'deployments.deployTab.deployOtherVersion',
+        name: 'deployments.deployTab.redeploy',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('exposes only the first action and moves every remaining action into More', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const preReleaseRow = within(screen.getByRole('row', { name: /Pre-release/ }))
+    expect(
+      preReleaseRow.getByRole('button', {
+        name: 'deployments.studio.deployLatest',
+      }),
+    ).toBeInTheDocument()
+
+    await user.click(
+      preReleaseRow.getByRole('button', {
+        name: 'Pre-release · deployments.deployTab.moreActions',
+      }),
+    )
+
+    const menu = within(
+      await screen.findByRole('menu', {
+        name: 'Pre-release · deployments.deployTab.moreActions',
+      }),
+    )
+    expect(
+      menu.getByRole('menuitem', { name: 'deployments.studio.changeVersion' }),
+    ).toBeInTheDocument()
+    expect(
+      menu.getByRole('menuitem', { name: 'deployments.deployTab.redeploy' }),
+    ).toBeInTheDocument()
+    expect(
+      menu.getByRole('menuitem', { name: 'deployments.deployTab.undeploy' }),
+    ).toBeInTheDocument()
+    expect(
+      menu.queryByRole('menuitem', { name: 'deployments.studio.deployLatest' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('disables every row action while deployment is in progress', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const stagingRow = within(screen.getByRole('row', { name: /Staging/ }))
+    expect(
+      stagingRow.getByRole('button', {
+        name: 'deployments.studio.changeVersion',
+      }),
+    ).toBeDisabled()
+
+    await user.click(
+      stagingRow.getByRole('button', {
+        name: 'Staging · deployments.deployTab.moreActions',
+      }),
+    )
+
+    const menuItems = within(await screen.findByRole('menu')).getAllByRole('menuitem')
+    expect(menuItems).toHaveLength(2)
+    for (const item of menuItems) expect(item).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('asks for confirmation before undeploying an environment', async () => {
     const user = userEvent.setup()
     const onUndeploy = vi.fn()
-    render(<EnvironmentTable onUndeploy={onUndeploy} />)
+    render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable onUndeploy={onUndeploy} />
+      </AppDeployStateBoundary>,
+    )
 
     const canaryRow = screen.getByRole('row', { name: /Canary/ })
     await user.click(
@@ -483,7 +995,11 @@ describe('AppDeploy', () => {
   it('undeploys the selected environment after confirmation', async () => {
     const user = userEvent.setup()
     const onUndeploy = vi.fn()
-    render(<EnvironmentTable onUndeploy={onUndeploy} />)
+    render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable onUndeploy={onUndeploy} />
+      </AppDeployStateBoundary>,
+    )
 
     const canaryRow = screen.getByRole('row', { name: /Canary/ })
     await user.click(
@@ -501,20 +1017,23 @@ describe('AppDeploy', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }))
 
     expect(onUndeploy).toHaveBeenCalledOnce()
-    expect(onUndeploy).toHaveBeenCalledWith(expect.objectContaining({ id: 'canary' }))
+    expect(onUndeploy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        environment: expect.objectContaining({ id: 'canary' }),
+      }),
+    )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
-  it('shows publication details and the version description on hover', async () => {
+  it('shows the version description from the deployment contract on hover', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
 
     const canaryRow = screen.getByRole('row', { name: /Canary/ })
     await user.hover(within(canaryRow).getByRole('button', { name: 'Sprint-42' }))
 
-    expect(await screen.findByText('Published 17 days ago by Minco')).toBeInTheDocument()
     expect(
-      screen.getByText(
+      await screen.findByText(
         'Fixed several critical bugs affecting data synchronization and optimized page loading speed. Enhanced system stability and user experience through backend improvements.',
       ),
     ).toBeInTheDocument()

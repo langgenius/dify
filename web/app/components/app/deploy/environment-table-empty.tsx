@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeployMenu } from './environment-deploy-menu'
@@ -314,7 +315,7 @@ function EmptyTableSkeleton() {
 export function EnvironmentTableEmpty({
   onSelectEnvironment,
 }: {
-  onSelectEnvironment?: (environment: string) => void
+  onSelectEnvironment?: (environment: AppEnvironment) => void
 }) {
   const { t } = useTranslation('deployments')
 
