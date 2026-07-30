@@ -26,23 +26,32 @@ const STATUS_DOT: Partial<Record<DeploymentStatusValue, StatusDotStatus>> = {
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_FAILED]: 'error',
 }
 
+function getStatusLabel(
+  status: DeploymentStatusValue,
+  t: ReturnType<typeof useTranslation<'deployments'>>['t'],
+) {
+  switch (status) {
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_DEPLOYING'])
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_READY'])
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING'])
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_FAILED:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_FAILED'])
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_INVALID:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_INVALID'])
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNSPECIFIED:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED'])
+    default:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED'])
+  }
+}
+
 export function DeploymentStatus({ status }: { status?: DeploymentStatusValue }) {
   const { t } = useTranslation('deployments')
   const resolvedStatus = status ?? DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYED
-  const label =
-    resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING
-      ? t(($) => $['status.RUNTIME_INSTANCE_STATUS_DEPLOYING'])
-      : resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING
-        ? t(($) => $['status.RUNTIME_INSTANCE_STATUS_READY'])
-        : resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING
-          ? t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING'])
-          : resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_FAILED
-            ? t(($) => $['status.RUNTIME_INSTANCE_STATUS_FAILED'])
-            : resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_INVALID
-              ? t(($) => $['status.RUNTIME_INSTANCE_STATUS_INVALID'])
-              : resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_UNSPECIFIED
-                ? t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED'])
-                : t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED'])
+  const label = getStatusLabel(resolvedStatus, t)
   const isInProgress =
     resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING ||
     resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING

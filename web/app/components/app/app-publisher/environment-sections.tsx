@@ -1,7 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { MockEnvironmentDeployment, MockVersion } from '@/app/components/app/deploy/mock-data'
+import type { MockEnvironmentDeployment } from '@/app/components/app/deploy/mock-data'
+import type { DeploymentVersion } from '@/app/components/app/deploy/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ import { PublisherTimelineMarker } from './sections'
 type PublisherEnvironmentSummarySectionProps = {
   deployment?: MockEnvironmentDeployment
   environmentTabs: ReactNode
-  latestVersion?: MockVersion
+  latestVersion?: DeploymentVersion
   onDeployLatest: () => void
   onDeployOtherVersion: () => void
   onGoToPublish: () => void

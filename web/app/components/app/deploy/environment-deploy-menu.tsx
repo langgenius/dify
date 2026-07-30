@@ -51,6 +51,11 @@ export function EnvironmentDeployMenu({
           <DropdownMenuLabel className="px-2 py-1 system-xs-medium-uppercase text-text-tertiary">
             {t(($) => $['card.notDeployed'])}
           </DropdownMenuLabel>
+          {undeployedEnvironments.length === 0 && (
+            <p role="status" className="px-2 py-1.5 system-xs-regular text-text-tertiary">
+              {t(($) => $['deployDrawer.noNewEnvironmentAvailable'])}
+            </p>
+          )}
           {undeployedEnvironments.map((environment) => (
             <DropdownMenuItem
               key={environment.id}

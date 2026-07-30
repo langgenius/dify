@@ -1,11 +1,14 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { MockEnvironmentDeployment, MockVersion } from '@/app/components/app/deploy/mock-data'
+import type { MockEnvironmentDeployment } from '@/app/components/app/deploy/mock-data'
+import type { DeploymentVersion } from '@/app/components/app/deploy/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeploymentConfigurationContent } from '@/app/components/app/deploy/deployment-dialog/deployment-configuration'
+import { useDeploymentConfigurationQueries } from '@/app/components/app/deploy/deployment-dialog/use-deployment-configuration-queries'
+import { useDeploymentConfigurationValues } from '@/app/components/app/deploy/deployment-dialog/use-deployment-configuration-values'
 import { VersionChoice } from '@/app/components/app/deploy/deployment-dialog/version-selection'
 import { MOCK_PUBLISHED_VERSIONS } from '@/app/components/app/deploy/mock-data'
 import {
@@ -20,7 +23,7 @@ type PublisherEnvironmentFlowProps = {
   deployment?: MockEnvironmentDeployment
   environmentId: string
   environmentTabs: ReactNode
-  latestVersion?: MockVersion
+  latestVersion?: DeploymentVersion
   onGoToPublish: () => void
 }
 
@@ -42,15 +45,15 @@ function PublisherBackButton({ onClick }: { onClick: () => void }) {
 }
 
 function PublisherVersionSelection({
-  currentVersion,
+  currentVersionId,
   environmentName,
   onBack,
   onSelect,
 }: {
-  currentVersion?: string
+  currentVersionId?: string
   environmentName: string
   onBack: () => void
-  onSelect: (version: MockVersion) => void
+  onSelect: (version: DeploymentVersion) => void
 }) {
   const { t } = useTranslation('deployments')
 
@@ -69,9 +72,9 @@ function PublisherVersionSelection({
         <div className="flex flex-col gap-px">
           {MOCK_PUBLISHED_VERSIONS.map((version) => (
             <VersionChoice
-              key={version.name}
+              key={version.id}
               version={version}
-              current={version.name === currentVersion}
+              current={version.id === currentVersionId}
               onSelect={onSelect}
             />
           ))}
@@ -82,16 +85,20 @@ function PublisherVersionSelection({
 }
 
 function PublisherDeploymentConfiguration({
-  currentVersion,
+  appId,
+  currentVersionId,
+  environmentId,
   environmentName,
   version,
   onBack,
   onCancel,
   onDeploy,
 }: {
-  currentVersion?: string
+  appId?: string
+  currentVersionId?: string
+  environmentId: string
   environmentName: string
-  version: MockVersion
+  version: DeploymentVersion
   onBack: () => void
   onCancel: () => void
   onDeploy: () => void
@@ -99,16 +106,24 @@ function PublisherDeploymentConfiguration({
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const request = {
-    currentVersion,
+    currentVersionId,
     environment: environmentName,
+    environmentId,
     kind: 'deploy' as const,
   }
+  const queryState = useDeploymentConfigurationQueries({
+    appId,
+    environmentId,
+    workflowId: version.id,
+  })
+  const [configurationValues, setConfigurationValues] = useDeploymentConfigurationValues()
 
   return (
     <form
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
+        if (!queryState.canDeploy) return
         onDeploy()
       }}
     >
@@ -123,9 +138,12 @@ function PublisherDeploymentConfiguration({
       </header>
 
       <DeploymentConfigurationContent
-        key={version.name}
+        key={version.id}
         compact
+        onValuesChange={setConfigurationValues}
+        queryState={queryState}
         request={request}
+        values={configurationValues}
         version={version}
       />
 
@@ -133,7 +151,7 @@ function PublisherDeploymentConfiguration({
         <Button type="button" variant="secondary" onClick={onCancel}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" disabled={!queryState.canDeploy}>
           {tCommon(($) => $['appMenus.deploy'])}
         </Button>
       </footer>
@@ -150,15 +168,15 @@ export function PublisherEnvironmentFlow({
   onGoToPublish,
 }: PublisherEnvironmentFlowProps) {
   const [view, setView] = useState<PublisherEnvironmentView>('publisher')
-  const [selectedVersion, setSelectedVersion] = useState<MockVersion>()
+  const [selectedVersion, setSelectedVersion] = useState<DeploymentVersion>()
   const environmentName = deployment?.name ?? environmentId
-  const currentVersion = deployment?.version?.name
+  const currentVersionId = deployment?.version?.id
 
   function openVersionSelection() {
     setView('versions')
   }
 
-  function openConfiguration(version: MockVersion) {
+  function openConfiguration(version: DeploymentVersion) {
     setSelectedVersion(version)
     setView('configuration')
   }
@@ -166,7 +184,9 @@ export function PublisherEnvironmentFlow({
   if (view === 'configuration' && selectedVersion) {
     return (
       <PublisherDeploymentConfiguration
-        currentVersion={currentVersion}
+        appId={appId}
+        currentVersionId={currentVersionId}
+        environmentId={environmentId}
         environmentName={environmentName}
         version={selectedVersion}
         onBack={openVersionSelection}
@@ -179,7 +199,7 @@ export function PublisherEnvironmentFlow({
   if (view !== 'publisher') {
     return (
       <PublisherVersionSelection
-        currentVersion={currentVersion}
+        currentVersionId={currentVersionId}
         environmentName={environmentName}
         onBack={() => setView('publisher')}
         onSelect={openConfiguration}

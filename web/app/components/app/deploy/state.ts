@@ -1,10 +1,12 @@
 'use client'
 
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   EnvironmentDeployment,
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
+import type { DeploymentVersion } from './version'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
@@ -12,11 +14,12 @@ import {
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
-import { atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
 import { consoleQuery } from '@/service/client'
 
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
+const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
 export type EnvironmentDeploymentActionKind =
   | 'changeVersion'
@@ -45,6 +48,109 @@ export function AppDeployStateBoundary({
 
   return children
 }
+
+function toDeploymentVersion(
+  workflow: WorkflowResponse,
+  latestWorkflowId?: string,
+): DeploymentVersion {
+  return {
+    description: workflow.marked_comment || undefined,
+    id: workflow.id,
+    latest: workflow.id === latestWorkflowId,
+    name: workflow.marked_name || workflow.version,
+    publishedAt: workflow.created_at * 1000,
+    publishedBy: workflow.created_by?.name,
+  }
+}
+
+const latestPublishedWorkflowQueryAtom = atomWithQuery((get) => {
+  const appId = get(appDeployAppIdAtom)
+
+  return consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
+    input: appId
+      ? {
+          params: {
+            app_id: appId,
+          },
+        }
+      : skipToken,
+  })
+})
+
+const latestPublishedWorkflowAtom = selectAtom(
+  latestPublishedWorkflowQueryAtom,
+  (query) => query.data,
+)
+
+export const latestAppWorkflowVersionAtom = atom((get) => {
+  const workflow = get(latestPublishedWorkflowAtom)
+  if (!workflow) return
+
+  return toDeploymentVersion(workflow, workflow.id)
+})
+
+const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
+  const appId = get(appDeployAppIdAtom)
+
+  return consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
+    input: appId
+      ? (pageParam) => ({
+          params: {
+            app_id: appId,
+          },
+          query: {
+            limit: WORKFLOW_VERSIONS_PAGE_SIZE,
+            page: Number(pageParam),
+          },
+        })
+      : skipToken,
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+    initialPageParam: 1,
+  })
+})
+
+const appWorkflowVersionsDataAtom = selectAtom(appWorkflowVersionsQueryAtom, (query) => query.data)
+
+export const appWorkflowVersionsAtom = atom((get) => {
+  const latestWorkflowId = get(latestPublishedWorkflowAtom)?.id
+  const pages = get(appWorkflowVersionsDataAtom)?.pages ?? []
+
+  return pages.flatMap((page) =>
+    page.items
+      .filter((workflow) => workflow.version !== 'draft')
+      .map((workflow) => toDeploymentVersion(workflow, latestWorkflowId)),
+  )
+})
+
+export const appWorkflowVersionsErrorAtom = selectAtom(
+  appWorkflowVersionsQueryAtom,
+  (query) => query.error,
+)
+
+export const appWorkflowVersionsFetchNextPageAtom = selectAtom(
+  appWorkflowVersionsQueryAtom,
+  (query) => query.fetchNextPage,
+)
+
+export const appWorkflowVersionsHasNextPageAtom = selectAtom(
+  appWorkflowVersionsQueryAtom,
+  (query) => query.hasNextPage,
+)
+
+export const appWorkflowVersionsIsFetchingAtom = selectAtom(
+  appWorkflowVersionsQueryAtom,
+  (query) => query.isFetching,
+)
+
+export const appWorkflowVersionsIsFetchingNextPageAtom = selectAtom(
+  appWorkflowVersionsQueryAtom,
+  (query) => query.isFetchingNextPage,
+)
+
+export const appWorkflowVersionsIsLoadingAtom = selectAtom(
+  appWorkflowVersionsQueryAtom,
+  (query) => query.isLoading,
+)
 
 const appEnvironmentsQueryAtom = atomWithQuery((get) => {
   const appId = get(appDeployAppIdAtom)
@@ -76,6 +182,17 @@ export const undeployedAppEnvironmentsAtom = atom(
   (get) => get(appEnvironmentsAtom)?.filter((environment) => environment.in_use === false) ?? [],
 )
 
+export function hasInProgressEnvironmentDeployments(deployments: EnvironmentDeployment[]) {
+  return deployments.some((row) => {
+    const status = row.deployment?.status
+
+    return (
+      status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
+      status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
+    )
+  })
+}
+
 const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
   const appId = get(appDeployAppIdAtom)
 
@@ -90,15 +207,9 @@ const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
         : skipToken,
       refetchInterval: (query) => {
         const deployments = query.state.data?.environment_deployments ?? []
-        const hasInProgressDeployment = deployments.some((row) => {
-          const status = row.deployment?.status
-          return (
-            status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-            status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
-          )
-        })
-
-        return hasInProgressDeployment ? DEPLOYMENT_STATUS_POLLING_INTERVAL : false
+        return hasInProgressEnvironmentDeployments(deployments)
+          ? DEPLOYMENT_STATUS_POLLING_INTERVAL
+          : false
       },
     },
   )

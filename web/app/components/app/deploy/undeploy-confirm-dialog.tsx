@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 
 type UndeployConfirmDialogProps = {
   environmentName: string
+  isPending?: boolean
   open: boolean
   onConfirm: () => void
   onOpenChange: (open: boolean) => void
@@ -20,6 +21,7 @@ type UndeployConfirmDialogProps = {
 
 export function UndeployConfirmDialog({
   environmentName,
+  isPending = false,
   open,
   onConfirm,
   onOpenChange,
@@ -28,7 +30,12 @@ export function UndeployConfirmDialog({
   const { t: tCommon } = useTranslation('common')
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) onOpenChange(nextOpen)
+      }}
+    >
       <AlertDialogContent className="w-120">
         <div className="flex flex-col items-start gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -44,10 +51,15 @@ export function UndeployConfirmDialog({
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
-          <AlertDialogCancelButton variant="secondary" className="min-w-20">
+          <AlertDialogCancelButton variant="secondary" className="min-w-20" disabled={isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton className="min-w-20" onClick={onConfirm}>
+          <AlertDialogConfirmButton
+            className="min-w-20"
+            disabled={isPending}
+            loading={isPending}
+            onClick={onConfirm}
+          >
             {t(($) => $['deployTab.confirmUndeploy'])}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

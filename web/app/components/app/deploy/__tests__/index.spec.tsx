@@ -1,18 +1,24 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   AppEnvironment,
   EnvironmentDeployment,
   EnvironmentDeploymentOperation,
+  GetWorkflowDeploymentOptionsResponse,
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
   DeploymentStatus,
   EnvironmentStatus,
+  EnvVarValueSource,
+  EnvVarValueType,
   OperatorType,
+  PluginCategory,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -46,6 +52,127 @@ const VERSIONS = {
   hotfix: workflowVersion('v0.9-hotfix', 'hotfix'),
   beta: workflowVersion('v0.6-beta', 'beta'),
   qa: workflowVersion('v0.3-beta', 'qa-version'),
+}
+
+function publishedWorkflowVersion({
+  comment = '',
+  id,
+  name,
+  publishedBy = 'Alice',
+}: {
+  comment?: string
+  id: string
+  name: string
+  publishedBy?: string
+}): WorkflowResponse {
+  return {
+    conversation_variables: [],
+    created_at: 1_710_000_100,
+    created_by: {
+      email: `${publishedBy.toLowerCase()}@example.com`,
+      id: `user-${publishedBy.toLowerCase()}`,
+      name: publishedBy,
+    },
+    environment_variables: [],
+    features: {},
+    graph: {},
+    hash: `hash-${id}`,
+    id,
+    marked_comment: comment,
+    marked_name: name,
+    rag_pipeline_variables: [],
+    tool_published: false,
+    updated_at: 1_710_000_100,
+    version: `2026-07-30.${id}`,
+  }
+}
+
+const PUBLISHED_WORKFLOW_VERSIONS = [
+  publishedWorkflowVersion({
+    comment: 'Latest production workflow',
+    id: 'workflow-version-7',
+    name: 'Release 7',
+  }),
+  publishedWorkflowVersion({
+    comment: 'Previous production workflow',
+    id: 'workflow-version-6',
+    name: 'Release 6',
+    publishedBy: 'Carol',
+  }),
+  publishedWorkflowVersion({
+    id: 'sprint-42',
+    name: 'Sprint-42',
+    publishedBy: 'Evan',
+  }),
+]
+
+const SUCCESSFUL_WORKFLOW_DEPLOYMENT_PRECHECK = {
+  deployable: true,
+  unsupported_nodes: [],
+  unsupported_tool_providers: [],
+}
+
+const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
+  credential_slots: [
+    {
+      candidates: [
+        {
+          category: PluginCategory.PLUGIN_CATEGORY_MODEL,
+          credential_id: 'enterprise',
+          display_name: 'Enterprise deployment key',
+          from_enterprise: true,
+          provider_id: 'moonshot',
+        },
+        {
+          category: PluginCategory.PLUGIN_CATEGORY_MODEL,
+          credential_id: 'development',
+          display_name: 'Development key',
+          from_enterprise: false,
+          provider_id: 'moonshot',
+        },
+      ],
+      category: PluginCategory.PLUGIN_CATEGORY_MODEL,
+      previous_credential_id: 'enterprise',
+      provider_id: 'moonshot',
+    },
+    {
+      candidates: [
+        {
+          category: PluginCategory.PLUGIN_CATEGORY_TOOL,
+          credential_id: 'github-oauth',
+          display_name: 'GitHub OAuth Key',
+          from_enterprise: false,
+          provider_id: 'github',
+        },
+      ],
+      category: PluginCategory.PLUGIN_CATEGORY_TOOL,
+      previous_credential_id: 'github-oauth',
+      provider_id: 'github',
+    },
+  ],
+  environment_variable_slots: [
+    {
+      description: 'Server port',
+      has_dsl_value: true,
+      has_previous_value: true,
+      key: 'PORT',
+      value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
+    },
+    {
+      description: 'API credential',
+      has_dsl_value: true,
+      has_previous_value: true,
+      key: 'API_KEY',
+      value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
+    },
+    {
+      description: '',
+      has_dsl_value: false,
+      has_previous_value: true,
+      key: 'name',
+      value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
+    },
+  ],
 }
 
 function deploymentOperation({
@@ -378,6 +505,79 @@ const appEnvironmentDeploymentsQueryOptions =
       },
     },
   })
+const latestPublishedWorkflowQueryOptions =
+  consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
+    input: {
+      params: {
+        app_id: APP_ID,
+      },
+    },
+  })
+const appWorkflowVersionsInfiniteQueryOptions =
+  consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
+    input: (pageParam) => ({
+      params: {
+        app_id: APP_ID,
+      },
+      query: {
+        limit: 10,
+        page: Number(pageParam),
+      },
+    }),
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+    initialPageParam: 1,
+  })
+
+function workflowDeploymentPrecheckQueryOptions(workflowId: string) {
+  return consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions(
+    {
+      input: {
+        params: {
+          app_id: APP_ID,
+          workflow_id: workflowId,
+        },
+      },
+      retry: false,
+    },
+  )
+}
+
+function workflowDeploymentOptionsQueryOptions(workflowId: string, environmentId: string) {
+  return consoleQuery.enterprise.appDeploy.deploymentService.getWorkflowDeploymentOptions.queryOptions(
+    {
+      input: {
+        params: {
+          app_id: APP_ID,
+          environment_id: environmentId,
+          workflow_id: workflowId,
+        },
+      },
+      retry: false,
+    },
+  )
+}
+
+function seedWorkflowDeploymentConfigurationQueries(queryClient: QueryClient) {
+  const workflowIds = new Set([
+    ...PUBLISHED_WORKFLOW_VERSIONS.map((workflow) => workflow.id),
+    ...Object.values(VERSIONS).map((version) => version.id),
+  ])
+
+  workflowIds.forEach((workflowId) => {
+    const precheckQuery = workflowDeploymentPrecheckQueryOptions(workflowId)
+    queryClient.setQueryDefaults(precheckQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(precheckQuery.queryKey, SUCCESSFUL_WORKFLOW_DEPLOYMENT_PRECHECK)
+
+    APP_ENVIRONMENTS.forEach((environment) => {
+      const deploymentOptionsQuery = workflowDeploymentOptionsQueryOptions(
+        workflowId,
+        environment.id,
+      )
+      queryClient.setQueryDefaults(deploymentOptionsQuery.queryKey, { staleTime: Infinity })
+      queryClient.setQueryData(deploymentOptionsQuery.queryKey, WORKFLOW_DEPLOYMENT_OPTIONS)
+    })
+  })
+}
 
 function render(
   ui: ReactElement,
@@ -402,6 +602,22 @@ function render(
   queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
     environment_deployments: environmentDeployments,
   })
+  queryClient.setQueryData(
+    latestPublishedWorkflowQueryOptions.queryKey,
+    PUBLISHED_WORKFLOW_VERSIONS[0],
+  )
+  queryClient.setQueryData(appWorkflowVersionsInfiniteQueryOptions.queryKey, {
+    pageParams: [1],
+    pages: [
+      {
+        has_more: false,
+        items: PUBLISHED_WORKFLOW_VERSIONS,
+        limit: 10,
+        page: 1,
+      },
+    ],
+  })
+  seedWorkflowDeploymentConfigurationQueries(queryClient)
 
   return renderWithConsoleQuery(ui, { queryClient })
 }
@@ -431,6 +647,7 @@ const mockBuiltInEnvironment = vi.hoisted(() => ({
     graph: {
       nodes: [{ data: { type: 'start' }, id: 'start' }],
     },
+    id: 'workflow-version-7',
     marked_comment: 'Production-ready workflow',
     marked_name: 'Release 7',
     updated_at: 1_710_000_200,
@@ -521,6 +738,10 @@ describe('AppDeploy', () => {
       id: 'user-3',
       name: 'Bob',
     }
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders the built-in environment and contract deployment list', () => {
@@ -667,6 +888,23 @@ describe('AppDeploy', () => {
     expect(screen.queryByRole('menuitem', { name: /Canary/ })).not.toBeInTheDocument()
   })
 
+  it('shows an empty hint when every environment is already deployed', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />, {
+      appEnvironments: APP_ENVIRONMENTS.map((environment) => ({
+        ...environment,
+        in_use: true,
+      })),
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'deployments.deployDrawer.noNewEnvironmentAvailable',
+    )
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
+  })
+
   it('opens the selected environment version picker from the deploy menu', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
@@ -678,8 +916,11 @@ describe('AppDeploy', () => {
       name: 'deployments.versions.deployTo:{"name":"Dev"}',
     })
     expect(within(dialog).getByText('deployments.studio.chooseVersionToDeploy')).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: /#6/ })).toBeEnabled()
-    expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: /Release 7/ })).toBeEnabled()
+    expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeEnabled()
+    expect(within(dialog).queryByText('deployments.studio.current')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Latest production workflow')).toBeInTheDocument()
+    expect(within(dialog).getByText('Published 17 days ago by Alice')).toBeInTheDocument()
   })
 
   it('continues from version selection to deployment configuration', async () => {
@@ -691,16 +932,19 @@ describe('AppDeploy', () => {
     const versionDialog = await screen.findByRole('dialog', {
       name: 'deployments.versions.deployTo:{"name":"Dev"}',
     })
-    await user.click(within(versionDialog).getByRole('button', { name: /#5/ }))
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
 
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
-    expect(within(configurationDialog).getByText('#5')).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('Release 6')).toBeInTheDocument()
     expect(within(configurationDialog).getByText('Dev')).toBeInTheDocument()
     expect(
       within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }),
-    ).toHaveTextContent('Enterprise key')
+    ).toHaveTextContent('Enterprise deployment key')
+    expect(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    ).toBeEnabled()
 
     const portSource = within(configurationDialog).getByRole('combobox', { name: /PORT/ })
     expect(portSource).toHaveTextContent('deployments.studio.configureValue')
@@ -742,6 +986,352 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
+  it('deploys the selected workflow configuration and refreshes the deployment list', async () => {
+    const user = userEvent.setup()
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      requests.push(request.clone())
+
+      if (request.url.includes('/deployment:deploy')) {
+        return new Response(
+          JSON.stringify({
+            operation: {
+              id: 'operation-dev',
+              status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+              type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+            },
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      if (request.url.includes('/workflows/environment-deployments')) {
+        return new Response(
+          JSON.stringify({
+            environment_deployments: [
+              ...APP_ENVIRONMENT_DEPLOYMENTS,
+              environmentDeployment({
+                id: 'dev',
+                latestOperation: deploymentOperation({
+                  id: 'operation-dev',
+                  status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+                  targetVersion: workflowVersion('Release 6', 'workflow-version-6'),
+                }),
+                name: 'Dev',
+                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+              }),
+            ],
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      if (
+        new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments')
+      ) {
+        return new Response(
+          JSON.stringify({
+            data: APP_ENVIRONMENTS.map((environment) =>
+              environment.id === 'dev' ? { ...environment, in_use: true } : environment,
+            ),
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
+    render(<AppDeploy />)
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    await user.click(within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }))
+    await user.click(await screen.findByRole('option', { name: 'Development key' }))
+    await user.click(within(configurationDialog).getByRole('combobox', { name: /PORT/ }))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    )
+    await user.type(within(configurationDialog).getByRole('spinbutton', { name: 'PORT' }), '3000')
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    )
+
+    expect(
+      await screen.findByRole('row', {
+        name: /Dev/,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('9 of 12 environments in use')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'deployments.studio.deployConfiguration',
+      }),
+    ).not.toBeInTheDocument()
+
+    const deployRequest = requests.find((request) => request.url.includes('/deployment:deploy'))
+    if (!deployRequest) throw new Error('Expected the workflow deployment request.')
+
+    expect(deployRequest.method).toBe('POST')
+    expect(new URL(deployRequest.url).pathname).toBe(
+      '/console/api/enterprise/app-deploy/apps/app-1/workflows/workflow-version-6/environments/dev/deployment:deploy',
+    )
+    expect(await deployRequest.json()).toEqual({
+      credentials: [
+        {
+          category: PluginCategory.PLUGIN_CATEGORY_MODEL,
+          credential_id: 'development',
+          provider_id: 'moonshot',
+        },
+        {
+          category: PluginCategory.PLUGIN_CATEGORY_TOOL,
+          credential_id: 'github-oauth',
+          provider_id: 'github',
+        },
+      ],
+      environment_variables: [
+        {
+          key: 'PORT',
+          value: '3000',
+          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+        },
+        {
+          key: 'API_KEY',
+          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL,
+        },
+        {
+          key: 'name',
+          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_PREVIOUS,
+        },
+      ],
+    })
+    expect(
+      requests.filter((request) => request.url.includes('/workflows/environment-deployments')),
+    ).toHaveLength(1)
+    expect(
+      requests.filter((request) =>
+        new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('undeploys the current workflow version and refreshes the environment data', async () => {
+    const user = userEvent.setup()
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      requests.push(request.clone())
+
+      if (request.url.includes('/deployment:undeploy')) {
+        return new Response(
+          JSON.stringify({
+            operation: {
+              id: 'operation-canary-undeploy',
+              status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+              type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
+            },
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      if (request.url.includes('/workflows/environment-deployments')) {
+        return new Response(
+          JSON.stringify({
+            environment_deployments: APP_ENVIRONMENT_DEPLOYMENTS.map((deployment) =>
+              deployment.environment.id === 'canary'
+                ? environmentDeployment({
+                    currentVersion: VERSIONS.sprint42,
+                    id: 'canary',
+                    latestOperation: deploymentOperation({
+                      id: 'operation-canary-undeploy',
+                      status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+                      type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
+                    }),
+                    name: 'Canary',
+                    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+                  })
+                : deployment,
+            ),
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      if (
+        new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments')
+      ) {
+        return new Response(
+          JSON.stringify({
+            data: APP_ENVIRONMENTS.map((environment) =>
+              environment.id === 'canary' ? { ...environment, in_use: false } : environment,
+            ),
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
+    render(<AppDeploy />)
+
+    const canaryRow = screen.getByRole('row', { name: /Canary/ })
+    await user.click(
+      within(canaryRow).getByRole('button', {
+        name: 'Canary · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(
+      within(screen.getByRole('menu')).getByRole('menuitem', {
+        name: 'deployments.deployTab.undeploy',
+      }),
+    )
+    const dialog = await screen.findByRole('alertdialog', { name: 'Undeploy Canary?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }))
+
+    expect(await screen.findByText('7 of 12 environments in use')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+
+    const undeployRequest = requests.find((request) => request.url.includes('/deployment:undeploy'))
+    if (!undeployRequest) throw new Error('Expected the workflow undeployment request.')
+
+    expect(undeployRequest.method).toBe('POST')
+    expect(new URL(undeployRequest.url).pathname).toBe(
+      '/console/api/enterprise/app-deploy/apps/app-1/workflows/sprint-42/environments/canary/deployment:undeploy',
+    )
+    expect(
+      requests.filter((request) => request.url.includes('/workflows/environment-deployments')),
+    ).toHaveLength(1)
+    expect(
+      requests.filter((request) =>
+        new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('refreshes all environments after deployment polling finishes', async () => {
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      requests.push(request.clone())
+
+      if (
+        new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments')
+      ) {
+        return new Response(
+          JSON.stringify({
+            data: APP_ENVIRONMENTS.map((environment) =>
+              environment.id === 'canary' ? { ...environment, in_use: false } : environment,
+            ),
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
+    const view = render(<AppDeploy />, {
+      environmentDeployments: [
+        environmentDeployment({
+          currentVersion: VERSIONS.sprint42,
+          id: 'canary',
+          latestOperation: deploymentOperation({
+            id: 'operation-canary-undeploy',
+            status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+            type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
+          }),
+          name: 'Canary',
+          status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+        }),
+      ],
+    })
+    expect(screen.getByText('8 of 12 environments in use')).toBeInTheDocument()
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [],
+      })
+    })
+
+    expect(await screen.findByText('7 of 12 environments in use')).toBeInTheDocument()
+    expect(
+      requests.filter((request) =>
+        new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('blocks deployment when the selected workflow fails precheck', async () => {
+    const user = userEvent.setup()
+    const view = render(<AppDeploy />)
+    const precheckQuery = workflowDeploymentPrecheckQueryOptions('workflow-version-6')
+    const deploymentOptionsQuery = workflowDeploymentOptionsQueryOptions(
+      'workflow-version-6',
+      'dev',
+    )
+    view.queryClient.setQueryData(precheckQuery.queryKey, {
+      deployable: false,
+      unsupported_nodes: [{ id: 'node-1', type: 'human-input' }],
+      unsupported_tool_providers: [],
+    })
+    view.queryClient.removeQueries({
+      exact: true,
+      queryKey: deploymentOptionsQuery.queryKey,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    expect(await within(configurationDialog).findByRole('alert')).toHaveTextContent(
+      'human-input · node-1',
+    )
+    expect(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    ).toBeDisabled()
+    expect(within(configurationDialog).queryByRole('combobox', { name: 'Moonshot' })).toBeNull()
+    expect(view.queryClient.getQueryState(deploymentOptionsQuery.queryKey)?.fetchStatus).not.toBe(
+      'fetching',
+    )
+  })
+
   it('opens the latest version configuration and allows choosing another version', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
@@ -756,7 +1346,7 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
-    expect(within(configurationDialog).getByText('#6')).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('Release 7')).toBeInTheDocument()
     expect(within(configurationDialog).getByText('Pre-release')).toBeInTheDocument()
 
     await user.click(

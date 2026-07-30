@@ -2,7 +2,11 @@ import type { MockEnvironmentDeployment } from '@/app/components/app/deploy/mock
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MOCK_PUBLISHED_VERSIONS } from '@/app/components/app/deploy/mock-data'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import { PublisherEnvironmentFlow } from '../environment-deployment-flow'
 
 vi.mock('react-i18next', async () => {
@@ -46,6 +50,7 @@ function createDeployment({
     status: 'running',
     version: {
       behind: latest ? undefined : 1,
+      id: 'sprint-42',
       latest,
       name: 'Sprint-42',
       publishedAt: Date.now(),
@@ -55,6 +60,45 @@ function createDeployment({
 }
 
 function renderFlow(deployment = createDeployment()) {
+  const queryClient = createConsoleQueryClient()
+  MOCK_PUBLISHED_VERSIONS.forEach((version) => {
+    const precheckQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions({
+        input: {
+          params: {
+            app_id: 'app-1',
+            workflow_id: version.id,
+          },
+        },
+        retry: false,
+      })
+    const deploymentOptionsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.getWorkflowDeploymentOptions.queryOptions(
+        {
+          input: {
+            params: {
+              app_id: 'app-1',
+              environment_id: deployment.id,
+              workflow_id: version.id,
+            },
+          },
+          retry: false,
+        },
+      )
+
+    queryClient.setQueryDefaults(precheckQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(precheckQuery.queryKey, {
+      deployable: true,
+      unsupported_nodes: [],
+      unsupported_tool_providers: [],
+    })
+    queryClient.setQueryDefaults(deploymentOptionsQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
+      credential_slots: [],
+      environment_variable_slots: [],
+    })
+  })
+
   return render(
     <PublisherEnvironmentFlow
       appId="app-1"
@@ -64,6 +108,7 @@ function renderFlow(deployment = createDeployment()) {
       latestVersion={latestVersion}
       onGoToPublish={vi.fn()}
     />,
+    { queryClient },
   )
 }
 

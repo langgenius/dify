@@ -1,15 +1,28 @@
 'use client'
 
-import type { MockVersion } from '../mock-data'
+import type {
+  CredentialSlot,
+  EnvironmentVariableSlot,
+  GetWorkflowDeploymentOptionsResponse,
+  PrecheckWorkflowDeploymentResponse,
+  WorkflowDeploymentInput,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { Dispatch, SetStateAction } from 'react'
+import type { DeploymentVersion } from '../version'
 import type { DeploymentDialogRequest } from './types'
+import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
+import type { DeploymentConfigurationValues } from './use-deployment-configuration-values'
+import { EnvVarValueSource as EnvVarValueSourceEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { MOCK_DEPLOYMENT_CREDENTIALS, MOCK_ENVIRONMENT_VARIABLES } from '../mock-data'
+import { consoleQuery } from '@/service/client'
 import { CredentialField } from './credential-field'
 import { EnvironmentVariableField } from './environment-variable-field'
+import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
+import { useDeploymentConfigurationValues } from './use-deployment-configuration-values'
 
 function SectionHeading({ title, description }: { title: string; description: string }) {
   return (
@@ -20,33 +33,167 @@ function SectionHeading({ title, description }: { title: string; description: st
   )
 }
 
+function credentialSlotKey(slot: CredentialSlot) {
+  return `${slot.provider_id}:${slot.category}`
+}
+
+function defaultCredentialId(slot: CredentialSlot) {
+  if (
+    slot.previous_credential_id &&
+    slot.candidates.some((candidate) => candidate.credential_id === slot.previous_credential_id)
+  ) {
+    return slot.previous_credential_id
+  }
+
+  return slot.candidates.length === 1 ? slot.candidates[0]?.credential_id : undefined
+}
+
+function defaultEnvironmentVariableSelection(
+  slot: EnvironmentVariableSlot,
+): DeploymentConfigurationValues['environmentVariables'][string] {
+  if (slot.has_dsl_value) {
+    return {
+      customValue: '',
+      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL,
+    }
+  }
+
+  if (slot.has_previous_value) {
+    return {
+      customValue: '',
+      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS,
+    }
+  }
+
+  return {
+    customValue: '',
+    source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM,
+  }
+}
+
+function workflowDeploymentInput(
+  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
+  values: DeploymentConfigurationValues,
+): WorkflowDeploymentInput | undefined {
+  const credentials: NonNullable<WorkflowDeploymentInput['credentials']> = []
+
+  for (const slot of deploymentOptions.credential_slots) {
+    const credentialId = values.credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)
+    if (!credentialId) return
+
+    credentials.push({
+      category: slot.category,
+      credential_id: credentialId,
+      provider_id: slot.provider_id,
+    })
+  }
+
+  return {
+    credentials,
+    environment_variables: deploymentOptions.environment_variable_slots.map((slot) => {
+      const selection =
+        values.environmentVariables[slot.key] ?? defaultEnvironmentVariableSelection(slot)
+
+      return {
+        key: slot.key,
+        value_source: selection.source,
+        ...(selection.source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
+          ? { value: selection.customValue }
+          : {}),
+      }
+    }),
+  }
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message.trim()
+  ) {
+    return error.message.trim()
+  }
+
+  return fallback
+}
+
+function precheckIssueMessages(precheck: PrecheckWorkflowDeploymentResponse) {
+  return [
+    ...precheck.unsupported_nodes.map((node) => `${node.type} · ${node.id}`),
+    ...precheck.unsupported_tool_providers.map(
+      (provider) => `${provider.provider_name} · ${provider.tool_name} (${provider.provider_type})`,
+    ),
+  ]
+}
+
+function ConfigurationError({ messages }: { messages: string[] }) {
+  const { t } = useTranslation('common')
+
+  return (
+    <div
+      role="alert"
+      className="flex gap-2 rounded-xl border border-components-panel-border-subtle bg-components-badge-status-light-error-bg p-3 text-text-destructive"
+    >
+      <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0" />
+      <div className="min-w-0">
+        <p className="system-sm-semibold">{t(($) => $.error)}</p>
+        <ul className="mt-1 list-disc space-y-1 pl-4 system-xs-regular">
+          {messages.map((message) => (
+            <li key={message} className="wrap-break-word">
+              {message}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function ConfigurationLoading({ label }: { label: string }) {
+  return (
+    <div role="status" className="flex items-center justify-center gap-2 py-8 text-text-tertiary">
+      <span
+        aria-hidden
+        className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
+      />
+      <span className="system-xs-regular">{label}</span>
+    </div>
+  )
+}
+
 export function DeploymentConfigurationContent({
   compact = false,
+  deploymentError,
+  onValuesChange,
+  queryState,
   request,
+  values,
   version,
 }: {
   compact?: boolean
+  deploymentError?: unknown
+  onValuesChange: Dispatch<SetStateAction<DeploymentConfigurationValues>>
+  queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
-  version: MockVersion
+  values: DeploymentConfigurationValues
+  version: DeploymentVersion
 }) {
   const { t } = useTranslation('deployments')
-  const [credentials, setCredentials] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      MOCK_DEPLOYMENT_CREDENTIALS.map((credential) => [credential.id, credential.selectedValue]),
-    ),
-  )
-  const [environmentVariables, setEnvironmentVariables] = useState(() =>
-    Object.fromEntries(
-      MOCK_ENVIRONMENT_VARIABLES.map((variable) => [
-        variable.key,
-        {
-          customValue: variable.customValue,
-          source: variable.source,
-        },
-      ]),
-    ),
-  )
+  const { t: tCommon } = useTranslation('common')
   const horizontalPaddingClassName = compact ? 'px-4' : 'px-6'
+  const {
+    deploymentOptions,
+    deploymentOptionsError,
+    isLoadingDeploymentOptions,
+    isPrecheckBlocked,
+    isPrechecking,
+    precheck,
+    precheckError,
+  } = queryState
+  const precheckMessages = precheck ? precheckIssueMessages(precheck) : []
+  const showConfiguration = Boolean(deploymentOptions)
 
   return (
     <>
@@ -74,96 +221,218 @@ export function DeploymentConfigurationContent({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <section className={cn('flex flex-col gap-4 py-4', horizontalPaddingClassName)}>
-          <SectionHeading
-            title={t(($) => $['deployDrawer.runtimeCredentials'])}
-            description={t(($) => $['deployDrawer.bindingSelectionHint'])}
-          />
-          {MOCK_DEPLOYMENT_CREDENTIALS.map((credential) => (
-            <CredentialField
-              key={credential.id}
-              credential={credential}
-              value={credentials[credential.id] ?? credential.selectedValue}
-              onChange={(value) =>
-                setCredentials((current) => ({
-                  ...current,
-                  [credential.id]: value,
-                }))
+      <div
+        aria-busy={isPrechecking || isLoadingDeploymentOptions}
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
+        {isPrechecking && (
+          <ConfigurationLoading label={t(($) => $['versions.checkingReleaseContent'])} />
+        )}
+        {!isPrechecking && precheckError && (
+          <div className={cn('py-4', horizontalPaddingClassName)}>
+            <ConfigurationError
+              messages={[
+                errorMessage(
+                  precheckError,
+                  tCommon(($) => $.error),
+                ),
+              ]}
+            />
+          </div>
+        )}
+        {!isPrechecking && !precheckError && isPrecheckBlocked && (
+          <div className={cn('py-4', horizontalPaddingClassName)}>
+            <ConfigurationError
+              messages={
+                precheckMessages.length > 0
+                  ? precheckMessages
+                  : [t(($) => $['unsupportedDslNodes.description'])]
               }
             />
-          ))}
-        </section>
-
-        <section
-          className={cn(
-            'flex flex-col gap-4 border-t border-divider-regular py-4',
-            horizontalPaddingClassName,
-          )}
-        >
-          <SectionHeading
-            title={t(($) => $['deployDrawer.envVars'])}
-            description={t(($) => $['studio.environmentVariablesDescription'])}
-          />
-          {MOCK_ENVIRONMENT_VARIABLES.map((variable) => {
-            const selection = environmentVariables[variable.key] ?? {
-              customValue: variable.customValue,
-              source: variable.source,
-            }
-
-            return (
-              <EnvironmentVariableField
-                key={variable.key}
-                variable={variable}
-                source={selection.source}
-                customValue={selection.customValue}
-                onSourceChange={(source) =>
-                  setEnvironmentVariables((current) => ({
-                    ...current,
-                    [variable.key]: {
-                      ...selection,
-                      source,
-                    },
-                  }))
-                }
-                onCustomValueChange={(customValue) =>
-                  setEnvironmentVariables((current) => ({
-                    ...current,
-                    [variable.key]: {
-                      ...selection,
-                      customValue,
-                    },
-                  }))
-                }
+          </div>
+        )}
+        {isLoadingDeploymentOptions && <ConfigurationLoading label={tCommon(($) => $.loading)} />}
+        {!isLoadingDeploymentOptions && deploymentOptionsError && (
+          <div className={cn('py-4', horizontalPaddingClassName)}>
+            <ConfigurationError
+              messages={[
+                errorMessage(
+                  deploymentOptionsError,
+                  t(($) => $['deployDrawer.bindingOptionsFailed']),
+                ),
+              ]}
+            />
+          </div>
+        )}
+        {Boolean(deploymentError) && (
+          <div className={cn('pt-4', horizontalPaddingClassName)}>
+            <ConfigurationError
+              messages={[
+                errorMessage(
+                  deploymentError,
+                  t(($) => $['deployDrawer.deployFailed']),
+                ),
+              ]}
+            />
+          </div>
+        )}
+        {showConfiguration && (
+          <>
+            <section className={cn('flex flex-col gap-4 py-4', horizontalPaddingClassName)}>
+              <SectionHeading
+                title={t(($) => $['deployDrawer.runtimeCredentials'])}
+                description={t(($) => $['deployDrawer.bindingSelectionHint'])}
               />
-            )
-          })}
-        </section>
+              {deploymentOptions?.credential_slots.map((slot) => {
+                const slotKey = credentialSlotKey(slot)
+
+                return (
+                  <CredentialField
+                    key={slotKey}
+                    slot={slot}
+                    value={values.credentials[slotKey] ?? defaultCredentialId(slot)}
+                    onChange={(value) =>
+                      onValuesChange((current) => ({
+                        ...current,
+                        credentials: {
+                          ...current.credentials,
+                          [slotKey]: value,
+                        },
+                      }))
+                    }
+                  />
+                )
+              })}
+            </section>
+
+            <section
+              className={cn(
+                'flex flex-col gap-4 border-t border-divider-regular py-4',
+                horizontalPaddingClassName,
+              )}
+            >
+              <SectionHeading
+                title={t(($) => $['deployDrawer.envVars'])}
+                description={t(($) => $['studio.environmentVariablesDescription'])}
+              />
+              {deploymentOptions?.environment_variable_slots.map((slot) => {
+                const selection =
+                  values.environmentVariables[slot.key] ?? defaultEnvironmentVariableSelection(slot)
+
+                return (
+                  <EnvironmentVariableField
+                    key={slot.key}
+                    slot={slot}
+                    source={selection.source}
+                    customValue={selection.customValue}
+                    onSourceChange={(source) =>
+                      onValuesChange((current) => ({
+                        ...current,
+                        environmentVariables: {
+                          ...current.environmentVariables,
+                          [slot.key]: {
+                            ...selection,
+                            source,
+                          },
+                        },
+                      }))
+                    }
+                    onCustomValueChange={(customValue) =>
+                      onValuesChange((current) => ({
+                        ...current,
+                        environmentVariables: {
+                          ...current.environmentVariables,
+                          [slot.key]: {
+                            ...selection,
+                            customValue,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                )
+              })}
+            </section>
+          </>
+        )}
       </div>
     </>
   )
 }
 
 export function DeploymentConfiguration({
+  appId,
   request,
   version,
   onBack,
   onClose,
 }: {
+  appId: string
   request: DeploymentDialogRequest
-  version: MockVersion
+  version: DeploymentVersion
   onBack?: () => void
   onClose: () => void
 }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
+  const queryClient = useQueryClient()
+  const [configurationValues, setConfigurationValues] = useDeploymentConfigurationValues()
+  const queryState = useDeploymentConfigurationQueries({
+    appId,
+    environmentId: request.environmentId,
+    workflowId: version.id,
+  })
+  const deploymentInput = queryState.deploymentOptions
+    ? workflowDeploymentInput(queryState.deploymentOptions, configurationValues)
+    : undefined
+  const deployMutation = useMutation(
+    consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions({
+      context: { silent: true },
+      onSuccess: async () => {
+        const appEnvironmentsQuery =
+          consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+            input: {
+              params: {
+                app_id: appId,
+              },
+            },
+          })
+        const environmentDeploymentsQuery =
+          consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
+            {
+              input: {
+                params: {
+                  app_id: appId,
+                },
+              },
+            },
+          )
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey }),
+          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQuery.queryKey }),
+        ])
+        onClose()
+      },
+    }),
+  )
+  const canDeploy = queryState.canDeploy && Boolean(deploymentInput) && !deployMutation.isPending
 
   return (
     <form
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
-        onClose()
+        if (!canDeploy || !deploymentInput) return
+
+        deployMutation.mutate({
+          body: deploymentInput,
+          params: {
+            app_id: appId,
+            environment_id: request.environmentId,
+            workflow_id: version.id,
+          },
+        })
       }}
     >
       <DialogCloseButton
@@ -192,13 +461,25 @@ export function DeploymentConfiguration({
         </DialogDescription>
       </header>
 
-      <DeploymentConfigurationContent request={request} version={version} />
+      <DeploymentConfigurationContent
+        deploymentError={deployMutation.error}
+        onValuesChange={setConfigurationValues}
+        queryState={queryState}
+        request={request}
+        values={configurationValues}
+        version={version}
+      />
 
       <footer className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
         <Button type="button" variant="secondary" onClick={onClose}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
-        <Button type="submit" variant="primary">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!canDeploy}
+          loading={deployMutation.isPending}
+        >
           {tCommon(($) => $['appMenus.deploy'])}
         </Button>
       </footer>

@@ -1,15 +1,17 @@
-import type { MockVersion } from '../mock-data'
+import type { DeploymentVersion } from '../version'
 
 type VersionSelectionRequest = {
-  currentVersion?: string
+  currentVersionId?: string
   environment: string
+  environmentId: string
   kind: 'changeVersion' | 'deploy'
 }
 
 type ConfigurationRequest = {
-  currentVersion?: string
+  currentVersionId?: string
   environment: string
-  initialVersion: MockVersion
+  environmentId: string
+  initialVersion: DeploymentVersion
   kind: 'deployLatest' | 'redeploy'
 }
 

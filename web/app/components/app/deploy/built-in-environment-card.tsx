@@ -38,6 +38,7 @@ export function BuiltInEnvironmentCard() {
   const liveVersion = publishedWorkflow
     ? {
         description: publishedWorkflow.marked_comment || undefined,
+        id: publishedWorkflow.id,
         latest: true,
         name: publishedWorkflow.marked_name || publishedWorkflow.version,
         publishedAt: publishedWorkflow.created_at * 1000,

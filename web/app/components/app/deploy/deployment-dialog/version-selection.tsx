@@ -1,13 +1,23 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { MockVersion } from '../mock-data'
+import type { DeploymentVersion } from '../version'
 import type { DeploymentDialogRequest } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { MOCK_PUBLISHED_VERSIONS } from '../mock-data'
+import { useInfiniteScroll } from '../hooks/use-infinite-scroll'
+import {
+  appWorkflowVersionsAtom,
+  appWorkflowVersionsErrorAtom,
+  appWorkflowVersionsFetchNextPageAtom,
+  appWorkflowVersionsHasNextPageAtom,
+  appWorkflowVersionsIsFetchingAtom,
+  appWorkflowVersionsIsFetchingNextPageAtom,
+  appWorkflowVersionsIsLoadingAtom,
+} from '../state'
 
 function VersionBadge({ children }: { children: ReactNode }) {
   return (
@@ -30,9 +40,9 @@ export function VersionChoice({
   current,
   onSelect,
 }: {
-  version: MockVersion
+  version: DeploymentVersion
   current: boolean
-  onSelect: (version: MockVersion) => void
+  onSelect: (version: DeploymentVersion) => void
 }) {
   const { t } = useTranslation('deployments')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -83,10 +93,25 @@ export function VersionSelection({
   onSelect,
 }: {
   request: DeploymentDialogRequest
-  onSelect: (version: MockVersion) => void
+  onSelect: (version: DeploymentVersion) => void
 }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
+  const versions = useAtomValue(appWorkflowVersionsAtom)
+  const versionsError = useAtomValue(appWorkflowVersionsErrorAtom)
+  const fetchNextPage = useAtomValue(appWorkflowVersionsFetchNextPageAtom)
+  const hasNextPage = useAtomValue(appWorkflowVersionsHasNextPageAtom)
+  const isFetching = useAtomValue(appWorkflowVersionsIsFetchingAtom)
+  const isFetchingNextPage = useAtomValue(appWorkflowVersionsIsFetchingNextPageAtom)
+  const isLoading = useAtomValue(appWorkflowVersionsIsLoadingAtom)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
+    error: versionsError,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isLoading,
+  })
   const title =
     request.kind === 'deploy'
       ? t(($) => $['versions.deployTo'], { name: request.environment })
@@ -105,17 +130,52 @@ export function VersionSelection({
           {t(($) => $['studio.chooseVersionToDeploy'])}
         </DialogDescription>
       </header>
-      <div className="min-h-0 overflow-y-auto px-4 pt-2 pb-4">
+      <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">
         <div className="flex flex-col gap-px">
-          {MOCK_PUBLISHED_VERSIONS.map((version) => (
+          {versions.map((version) => (
             <VersionChoice
-              key={version.name}
+              key={version.id}
               version={version}
-              current={version.name === request.currentVersion}
+              current={version.id === request.currentVersionId}
               onSelect={onSelect}
             />
           ))}
         </div>
+        {isLoading && (
+          <div
+            role="status"
+            aria-label={tCommon(($) => $.loading)}
+            className="flex h-20 items-center justify-center"
+          >
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+            />
+          </div>
+        )}
+        {!isLoading && versionsError && versions.length === 0 && (
+          <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
+            {tCommon(($) => $.error)}
+          </p>
+        )}
+        {!isLoading && !versionsError && versions.length === 0 && (
+          <p className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
+            {t(($) => $['studio.accessPoint.noPublishedTitle'])}
+          </p>
+        )}
+        {isFetchingNextPage && versions.length > 0 && (
+          <div
+            role="status"
+            aria-label={tCommon(($) => $.loading)}
+            className="flex h-8 items-center justify-center"
+          >
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+            />
+          </div>
+        )}
+        <div ref={sentinelRef} aria-hidden className="h-px" />
       </div>
     </>
   )

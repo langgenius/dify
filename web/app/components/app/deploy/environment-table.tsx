@@ -118,6 +118,8 @@ const ROW_ACTION_ICON_CLASS_NAMES: Record<EnvironmentDeploymentAction['kind'], s
   undeploy: 'i-ri-logout-circle-r-line',
 }
 
+type UndeployHandler = (deployment: EnvironmentDeployment) => Promise<void> | void
+
 function RowActions({
   row,
   onChangeVersion,
@@ -129,10 +131,11 @@ function RowActions({
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
   onRedeploy?: (deployment: EnvironmentDeployment) => void
-  onUndeploy?: (deployment: EnvironmentDeployment) => void
+  onUndeploy?: UndeployHandler
 }) {
   const { t } = useTranslation('deployments')
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
+  const [isUndeploying, setIsUndeploying] = useState(false)
   const actions = getEnvironmentDeploymentActions(row)
   const primaryAction = actions[0]
   const moreActions = actions.slice(1)
@@ -160,10 +163,19 @@ function RowActions({
     [onChangeVersion, onDeployLatest, onRedeploy, row],
   )
 
-  const handleUndeploy = useCallback(() => {
-    onUndeploy?.(row)
-    setShowUndeployConfirm(false)
-  }, [onUndeploy, row])
+  const handleUndeploy = useCallback(async () => {
+    if (isUndeploying) return
+
+    setIsUndeploying(true)
+    try {
+      await onUndeploy?.(row)
+      setShowUndeployConfirm(false)
+    } catch {
+      // The request layer reports the error; keep the dialog open so the user can retry.
+    } finally {
+      setIsUndeploying(false)
+    }
+  }, [isUndeploying, onUndeploy, row])
 
   if (!primaryAction) return null
 
@@ -223,6 +235,7 @@ function RowActions({
       </div>
       <UndeployConfirmDialog
         environmentName={row.environment.display_name}
+        isPending={isUndeploying}
         open={showUndeployConfirm}
         onConfirm={handleUndeploy}
         onOpenChange={setShowUndeployConfirm}
@@ -242,7 +255,7 @@ function EnvironmentRow({
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
   onRedeploy?: (deployment: EnvironmentDeployment) => void
-  onUndeploy?: (deployment: EnvironmentDeployment) => void
+  onUndeploy?: UndeployHandler
 }) {
   const isAccessPointActive = (accessPoint: AccessPoint) => {
     if (accessPoint === 'webApp') return row.access.enable_site
@@ -303,7 +316,7 @@ type EnvironmentTableProps = {
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
   onDeployToEnvironment?: (environment: AppEnvironment) => void
   onRedeploy?: (deployment: EnvironmentDeployment) => void
-  onUndeploy?: (deployment: EnvironmentDeployment) => void
+  onUndeploy?: UndeployHandler
 }
 
 export function EnvironmentTable({

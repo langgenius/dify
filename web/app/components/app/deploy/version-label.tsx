@@ -1,7 +1,7 @@
 'use client'
 
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { MockVersion } from './mock-data'
+import type { DeploymentVersion } from './version'
 import {
   Popover,
   PopoverContent,
@@ -13,7 +13,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
-function isWorkflowVersion(version: MockVersion | WorkflowVersion): version is WorkflowVersion {
+function isWorkflowVersion(
+  version: DeploymentVersion | WorkflowVersion,
+): version is WorkflowVersion {
   return 'marked_name' in version
 }
 
@@ -21,7 +23,7 @@ export function VersionLabel({
   version,
   versionsBehind,
 }: {
-  version?: MockVersion | WorkflowVersion
+  version?: DeploymentVersion | WorkflowVersion
   versionsBehind?: number
 }) {
   const { t } = useTranslation('deployments')

@@ -1,6 +1,13 @@
 'use client'
 
-import type { MockEnvironmentVariable, MockEnvironmentVariableValueSource } from '../mock-data'
+import type {
+  EnvironmentVariableSlot,
+  EnvVarValueSource,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import {
+  EnvVarValueSource as EnvVarValueSourceEnum,
+  EnvVarValueType,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -12,50 +19,49 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 
-const ENVIRONMENT_VARIABLE_SOURCES: MockEnvironmentVariableValueSource[] = [
-  'custom',
-  'configured',
-  'lastDeployed',
-]
-
 export function EnvironmentVariableField({
-  variable,
+  slot,
   source,
   customValue,
   onSourceChange,
   onCustomValueChange,
 }: {
-  variable: MockEnvironmentVariable
-  source: MockEnvironmentVariableValueSource
+  slot: EnvironmentVariableSlot
+  source: EnvVarValueSource
   customValue: string
-  onSourceChange: (source: MockEnvironmentVariableValueSource) => void
+  onSourceChange: (source: EnvVarValueSource) => void
   onCustomValueChange: (value: string) => void
 }) {
   const { t } = useTranslation('deployments')
-  const sourceLabels: Record<MockEnvironmentVariableValueSource, string> = {
-    configured: t(($) => $['studio.configureValue']),
-    custom: t(($) => $['deployDrawer.envVarSource.literal']),
-    lastDeployed: t(($) => $['deployDrawer.envVarSource.lastDeployment']),
+  const sourceLabels: Partial<Record<EnvVarValueSource, string>> = {
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL]: t(($) => $['studio.configureValue']),
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM]: t(
+      ($) => $['deployDrawer.envVarSource.literal'],
+    ),
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS]: t(
+      ($) => $['deployDrawer.envVarSource.lastDeployment'],
+    ),
   }
-  const valueTypeLabels: Record<MockEnvironmentVariable['valueType'], string> = {
-    number: t(($) => $['deployDrawer.envVarType.number']),
-    secret: t(($) => $['deployDrawer.envVarType.secret']),
-    string: t(($) => $['deployDrawer.envVarType.string']),
-  }
-  const inputId = `deployment-env-${variable.key}`
-  const editable = source === 'custom'
-  const value =
-    source === 'configured'
-      ? variable.configuredValue
-      : source === 'lastDeployed'
-        ? variable.lastDeployedValue
-        : customValue
+  const availableSources = [
+    ...(slot.has_previous_value ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS] : []),
+    ...(slot.has_dsl_value ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL] : []),
+    EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM,
+  ]
+  const valueTypeLabel =
+    slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER
+      ? t(($) => $['deployDrawer.envVarType.number'])
+      : slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
+        ? t(($) => $['deployDrawer.envVarType.secret'])
+        : t(($) => $['deployDrawer.envVarType.string'])
+  const inputId = `deployment-env-${slot.key}`
+  const editable = source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
   const inputType =
-    editable && variable.valueType === 'secret'
+    editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
       ? 'password'
-      : editable && variable.valueType === 'number'
+      : editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER
         ? 'number'
         : 'text'
+  const sourceLabel = sourceLabels[source] ?? t(($) => $['deployDrawer.envVarSource.literal'])
 
   return (
     <div className="flex flex-col gap-1">
@@ -66,12 +72,10 @@ export function EnvironmentVariableField({
             className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600"
           />
           <label htmlFor={inputId} className="truncate system-sm-medium text-text-primary">
-            {variable.key}
+            {slot.key}
           </label>
-          <span className="shrink-0 system-xs-regular text-text-tertiary">
-            {valueTypeLabels[variable.valueType]}
-          </span>
-          {variable.valueType === 'secret' && (
+          <span className="shrink-0 system-xs-regular text-text-tertiary">{valueTypeLabel}</span>
+          {slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET && (
             <span aria-hidden className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary" />
           )}
         </div>
@@ -83,15 +87,15 @@ export function EnvironmentVariableField({
         >
           <SelectTrigger
             aria-label={t(($) => $['deployDrawer.envVarSource.ariaLabel'], {
-              key: variable.key,
+              key: slot.key,
             })}
             size="small"
             className="h-7 w-auto max-w-48 shrink-0 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:bg-components-button-secondary-bg"
           >
-            {sourceLabels[source]}
+            {sourceLabel}
           </SelectTrigger>
           <SelectContent placement="bottom-end" popupClassName="w-52">
-            {ENVIRONMENT_VARIABLE_SOURCES.map((option) => (
+            {availableSources.map((option) => (
               <SelectItem key={option} value={option}>
                 <SelectItemText>{sourceLabels[option]}</SelectItemText>
                 <SelectItemIndicator />
@@ -103,13 +107,14 @@ export function EnvironmentVariableField({
       <Input
         id={inputId}
         type={inputType}
-        value={value}
+        value={editable ? customValue : ''}
+        placeholder={editable ? undefined : sourceLabel}
         disabled={!editable}
         autoComplete="off"
         onChange={(event) => onCustomValueChange(event.target.value)}
       />
-      {variable.description && (
-        <p className="system-xs-regular text-text-tertiary">{variable.description}</p>
+      {slot.description && (
+        <p className="system-xs-regular text-text-tertiary">{slot.description}</p>
       )}
     </div>
   )

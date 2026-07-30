@@ -5,68 +5,112 @@ import type {
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
-import type { MockVersion } from './mock-data'
+import type { DeploymentVersion } from './version'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
-import { BUILT_IN_ENVIRONMENT, MOCK_PUBLISHED_VERSIONS } from './mock-data'
-import { AppDeployStateBoundary, getWorkflowVersionName } from './state'
+import {
+  AppDeployStateBoundary,
+  getWorkflowVersionName,
+  latestAppWorkflowVersionAtom,
+} from './state'
+import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
 
-function toDialogVersion(version: WorkflowVersion): MockVersion {
+function toDialogVersion(version: WorkflowVersion): DeploymentVersion {
   return {
     description: version.marked_comment || undefined,
+    id: version.id,
     name: getWorkflowVersionName(version) ?? version.version,
   }
 }
 
-export default function AppDeploy() {
+function AppDeployContent({ appId }: { appId: string }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
-  const appDetail = useAppStore((state) => state.appDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
-    workspacePermissionKeys,
-  }).canDeploy
-  const latestVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)
+  const latestVersion = useAtomValue(latestAppWorkflowVersionAtom)
+  const queryClient = useQueryClient()
+  useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
+  const { mutateAsync: undeployWorkflow } = useMutation(
+    consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions({
+      onSuccess: async () => {
+        const appEnvironmentsQuery =
+          consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+            input: {
+              params: {
+                app_id: appId,
+              },
+            },
+          })
+        const environmentDeploymentsQuery =
+          consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
+            {
+              input: {
+                params: {
+                  app_id: appId,
+                },
+              },
+            },
+          )
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey }),
+          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQuery.queryKey }),
+        ])
+      },
+    }),
+  )
 
   const handleRedeploy = (deployment: EnvironmentDeployment) => {
     const deploymentState = deployment.deployment
     const version =
       deploymentState?.latest_operation?.target_version ?? deploymentState?.current_version
     const environment = deployment.environment.display_name
+    const environmentId = deployment.environment.id
 
     if (!version) {
       setDeploymentRequest({
         environment,
+        environmentId,
         kind: 'changeVersion',
       })
       return
     }
 
     setDeploymentRequest({
-      currentVersion: getWorkflowVersionName(deploymentState?.current_version),
+      currentVersionId: deploymentState?.current_version?.id,
       environment,
+      environmentId,
       initialVersion: toDialogVersion(version),
       kind: 'redeploy',
     })
   }
 
-  if (appDetail?.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
+  const handleUndeploy = async (deployment: EnvironmentDeployment) => {
+    const workflowId = deployment.deployment?.current_version?.id
+    if (!workflowId) return
+
+    await undeployWorkflow({
+      params: {
+        app_id: appId,
+        environment_id: deployment.environment.id,
+        workflow_id: workflowId,
+      },
+    })
+  }
 
   return (
-    <AppDeployStateBoundary appId={appDetail.id}>
+    <>
       <main className="flex h-full flex-col bg-components-panel-bg">
         <header className="shrink-0 px-6 pt-3 pb-2">
           <h1 className="title-xl-semi-bold text-text-primary">
@@ -91,15 +135,16 @@ export default function AppDeploy() {
           <EnvironmentTable
             onDeployToEnvironment={(environment) =>
               setDeploymentRequest({
-                currentVersion: BUILT_IN_ENVIRONMENT.version.name,
                 environment: environment.display_name,
+                environmentId: environment.id,
                 kind: 'deploy',
               })
             }
             onChangeVersion={(deployment) =>
               setDeploymentRequest({
-                currentVersion: getWorkflowVersionName(deployment.deployment?.current_version),
+                currentVersionId: deployment.deployment?.current_version?.id,
                 environment: deployment.environment.display_name,
+                environmentId: deployment.environment.id,
                 kind: 'changeVersion',
               })
             }
@@ -107,21 +152,42 @@ export default function AppDeploy() {
               if (!latestVersion) return
 
               setDeploymentRequest({
-                currentVersion: getWorkflowVersionName(deployment.deployment?.current_version),
+                currentVersionId: deployment.deployment?.current_version?.id,
                 environment: deployment.environment.display_name,
+                environmentId: deployment.environment.id,
                 initialVersion: latestVersion,
                 kind: 'deployLatest',
               })
             }}
             onRedeploy={handleRedeploy}
-            onUndeploy={() => {}}
+            onUndeploy={handleUndeploy}
           />
         </div>
       </main>
       <DeploymentDialog
+        appId={appId}
         request={deploymentRequest}
         onClose={() => setDeploymentRequest(undefined)}
       />
+    </>
+  )
+}
+
+export default function AppDeploy() {
+  const appDetail = useAppStore((state) => state.appDetail)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canDeploy
+
+  if (appDetail?.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
+
+  return (
+    <AppDeployStateBoundary appId={appDetail.id}>
+      <AppDeployContent appId={appDetail.id} />
     </AppDeployStateBoundary>
   )
 }
