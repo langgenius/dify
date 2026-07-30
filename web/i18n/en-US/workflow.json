@@ -362,6 +362,7 @@
   "error.startNodeRequired": "Please add a start node first before {{operation}}",
   "errorMsg.authRequired": "Authorization is required",
   "errorMsg.configureModel": "Configure a model",
+  "errorMsg.conflictingOutputVariableTypes": "Output node variable \"{{variable}}\" is declared as {{types}} on branches that never run together. Output nodes reusing a variable name must declare the same type, because the published output keeps one definition per name.",
   "errorMsg.duplicateOutputVariable": "Duplicate Output node variable \"{{variable}}\". Output node variable names must be unique.",
   "errorMsg.fieldRequired": "{{field}} is required",
   "errorMsg.fields.code": "Code",

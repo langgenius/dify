@@ -61,7 +61,7 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
-import { getDuplicateEndOutputVariables } from '../utils/end-output-conflicts'
+import { getEndOutputConflicts } from '../utils/end-output-conflicts'
 import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
@@ -109,14 +109,20 @@ const getDuplicateEndOutputMessages = (
 ) => {
   const nodeMessages = new Map<string, string[]>()
 
-  getDuplicateEndOutputVariables(
+  getEndOutputConflicts(
     nodes.filter((node) => node.type === CUSTOM_NODE),
     edges,
-  ).forEach((variables, nodeId) => {
+  ).forEach((conflicts, nodeId) => {
     nodeMessages.set(
       nodeId,
-      variables.map((variable) =>
-        t(($) => $['errorMsg.duplicateOutputVariable'], { ns: 'workflow', variable }),
+      conflicts.map(({ variable, kind, types }) =>
+        kind === 'conflictingTypes'
+          ? t(($) => $['errorMsg.conflictingOutputVariableTypes'], {
+              ns: 'workflow',
+              variable,
+              types: (types ?? []).join(', '),
+            })
+          : t(($) => $['errorMsg.duplicateOutputVariable'], { ns: 'workflow', variable }),
       ),
     )
   })

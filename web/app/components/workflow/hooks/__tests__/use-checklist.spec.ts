@@ -608,6 +608,59 @@ describe('useChecklist', () => {
     expect(result.current).toEqual([])
   })
 
+  it('should report conflicting output types on exclusive branches', () => {
+    mockNodesMap[BlockEnum.IfElse] = {
+      checkValid: () => ({ errorMessage: '' }),
+      metaData: { isStart: false, isRequired: false },
+    }
+
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const ifElseNode = createNode({
+      id: 'if-else',
+      data: { type: BlockEnum.IfElse, title: 'If/Else' },
+    })
+    const firstEndNode = createNode({
+      id: 'end-1',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 1',
+        outputs: [{ variable: 'result', value_type: 'string', value_selector: ['sys', 'result'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-2',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 2',
+        outputs: [{ variable: 'result', value_type: 'object', value_selector: ['sys', 'result'] }],
+      },
+    })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'if-else' }),
+      createEdge({ source: 'if-else', target: 'end-1', sourceHandle: 'true' }),
+      createEdge({ source: 'if-else', target: 'end-2', sourceHandle: 'false' }),
+    ]
+
+    const { result } = renderWorkflowHook(() =>
+      useChecklist([startNode, ifElseNode, firstEndNode, secondEndNode], edges),
+    )
+
+    const secondWarning = result.current.find((item: ChecklistItem) => item.id === 'end-2')
+    const firstWarning = result.current.find((item: ChecklistItem) => item.id === 'end-1')
+
+    expect(
+      firstWarning?.errorMessages.some((message) =>
+        message.includes('conflictingOutputVariableTypes'),
+      ),
+    ).toBe(true)
+    expect(
+      secondWarning?.errorMessages.some((message) =>
+        message.includes('conflictingOutputVariableTypes'),
+      ),
+    ).toBe(true)
+  })
+
   it('should sync checklist items to the workflow store without render phase update warnings', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

@@ -1,7 +1,7 @@
 import type { Edge, Node } from '../../types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
-import { BlockEnum } from '../../types'
-import { getDuplicateEndOutputVariables } from '../end-output-conflicts'
+import { BlockEnum, VarType } from '../../types'
+import { getEndOutputConflicts } from '../end-output-conflicts'
 
 beforeEach(() => {
   resetFixtureCounters()
@@ -22,13 +22,46 @@ const end = (id: string, variables: string[]) =>
     },
   })
 
+const typedEnd = (id: string, outputs: [string, VarType][]) =>
+  createNode({
+    id,
+    data: {
+      type: BlockEnum.End,
+      title: id,
+      outputs: outputs.map(([variable, valueType]) => ({
+        variable,
+        value_type: valueType,
+        value_selector: ['sys', variable],
+      })),
+    },
+  })
+
 const link = (source: string, target: string, sourceHandle?: string) =>
   createEdge({ source, target, ...(sourceHandle ? { sourceHandle } : {}) })
 
+/** Conflicting variable names per Output node, ignoring the kind. */
 const conflictsOf = (nodes: Node[], edges: Edge[]) =>
-  Object.fromEntries(getDuplicateEndOutputVariables(nodes, edges))
+  Object.fromEntries(
+    [...getEndOutputConflicts(nodes, edges)].map(([nodeId, conflicts]) => [
+      nodeId,
+      conflicts.map((conflict) => conflict.variable),
+    ]),
+  )
 
-describe('getDuplicateEndOutputVariables', () => {
+const detailedConflictsOf = (nodes: Node[], edges: Edge[]) =>
+  Object.fromEntries(getEndOutputConflicts(nodes, edges))
+
+/** `start → if/else`, with each branch ending in its own Output node. */
+const exclusiveBranches = (first: Node, second: Node) => ({
+  nodes: [start(), ifElse('branch'), first, second],
+  edges: [
+    link('start', 'branch'),
+    link('branch', first.id, 'true'),
+    link('branch', second.id, 'false'),
+  ],
+})
+
+describe('getEndOutputConflicts', () => {
   it('should report nothing when output variable names are unique', () => {
     const nodes = [start(), end('end-1', ['a']), end('end-2', ['b'])]
     const edges = [link('start', 'end-1'), link('start', 'end-2')]
@@ -229,6 +262,59 @@ describe('getDuplicateEndOutputVariables', () => {
     const edges = [link('start-a', 'end-1'), link('start-b', 'end-2')]
 
     expect(conflictsOf(nodes, edges)).toEqual({})
+  })
+
+  it('should report conflicting types when exclusive branches declare the same name as string and object', () => {
+    const { nodes, edges } = exclusiveBranches(
+      typedEnd('end-1', [['result', VarType.string]]),
+      typedEnd('end-2', [['result', VarType.object]]),
+    )
+
+    expect(detailedConflictsOf(nodes, edges)).toEqual({
+      'end-1': [{ variable: 'result', kind: 'conflictingTypes', types: ['object', 'string'] }],
+      'end-2': [{ variable: 'result', kind: 'conflictingTypes', types: ['object', 'string'] }],
+    })
+  })
+
+  it('should allow exclusive branches to reuse a name when the declared types match', () => {
+    const { nodes, edges } = exclusiveBranches(
+      typedEnd('end-1', [['result', VarType.string]]),
+      typedEnd('end-2', [['result', VarType.string]]),
+    )
+
+    expect(detailedConflictsOf(nodes, edges)).toEqual({})
+  })
+
+  it('should treat any as compatible with every declared type', () => {
+    const { nodes, edges } = exclusiveBranches(
+      typedEnd('end-1', [['result', VarType.any]]),
+      typedEnd('end-2', [['result', VarType.object]]),
+    )
+
+    expect(detailedConflictsOf(nodes, edges)).toEqual({})
+  })
+
+  it('should not claim a type conflict when one side has no declared type', () => {
+    const { nodes, edges } = exclusiveBranches(
+      end('end-1', ['result']),
+      typedEnd('end-2', [['result', VarType.object]]),
+    )
+
+    expect(detailedConflictsOf(nodes, edges)).toEqual({})
+  })
+
+  it('should report the lost value rather than the type when the Output nodes also run together', () => {
+    const nodes = [
+      start(),
+      typedEnd('end-1', [['result', VarType.string]]),
+      typedEnd('end-2', [['result', VarType.object]]),
+    ]
+    const edges = [link('start', 'end-1'), link('start', 'end-2')]
+
+    expect(detailedConflictsOf(nodes, edges)).toEqual({
+      'end-1': [{ variable: 'result', kind: 'duplicateName' }],
+      'end-2': [{ variable: 'result', kind: 'duplicateName' }],
+    })
   })
 
   it('should report a variable declared twice by the same Output node', () => {
