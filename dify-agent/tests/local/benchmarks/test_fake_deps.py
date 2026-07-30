@@ -203,12 +203,8 @@ def test_fake_config_ledgers_remain_isolated_when_requests_interleave() -> None:
                 )
             await client.get("/inner/api/agent-config/config-a/skills/skill-0/pull")
             await client.get("/inner/api/agent-config/config-b/files/file-0.bin/pull")
-            ledger_a = FakeDependencyLedger.model_validate(
-                (await client.get("/__bench/ledgers/config-a")).json()
-            )
-            ledger_b = FakeDependencyLedger.model_validate(
-                (await client.get("/__bench/ledgers/config-b")).json()
-            )
+            ledger_a = FakeDependencyLedger.model_validate((await client.get("/__bench/ledgers/config-a")).json())
+            ledger_b = FakeDependencyLedger.model_validate((await client.get("/__bench/ledgers/config-b")).json())
 
         assert ledger_a.stub_calls == {"config_skill_pull": 1}
         assert ledger_b.stub_calls == {"config_file_pull": 1}
@@ -222,9 +218,7 @@ def test_fake_config_ledgers_remain_isolated_when_requests_interleave() -> None:
 def test_fake_signed_file_roundtrip_matches_capability_ledger() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        scenario_value = load_scenario_manifest(profile="capability").get(
-            "capability_file_roundtrip_16m_c1"
-        )
+        scenario_value = load_scenario_manifest(profile="capability").get("capability_file_roundtrip_16m_c1")
         assert isinstance(scenario_value, CapabilityBenchmarkScenario)
         payload = bytes(range(256)) * (scenario_value.payload_bytes // 256)
         async with httpx.AsyncClient(transport=transport, base_url="http://fake") as client:
@@ -264,9 +258,7 @@ def test_fake_signed_file_roundtrip_matches_capability_ledger() -> None:
             )
             download_url = download_request.json()["data"]["download_url"]
             downloaded = await client.get(urlparse(download_url).path)
-            ledger = FakeDependencyLedger.model_validate(
-                (await client.get("/__bench/ledgers/file-run")).json()
-            )
+            ledger = FakeDependencyLedger.model_validate((await client.get("/__bench/ledgers/file-run")).json())
 
         assert downloaded.content == payload
         assert validate_capability_ledger(ledger=ledger, scenario=scenario_value)

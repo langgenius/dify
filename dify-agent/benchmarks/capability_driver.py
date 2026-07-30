@@ -246,10 +246,7 @@ async def _cleanup_drive(
 ) -> bool:
     if scenario.workload != "drive_pull":
         return True
-    targets = [
-        f"/mnt/drive/agent-{observation.sample.benchmark_run_id}"
-        for observation in observations
-    ]
+    targets = [f"/mnt/drive/agent-{observation.sample.benchmark_run_id}" for observation in observations]
     if not targets:
         return True
     try:
@@ -294,11 +291,7 @@ async def _delete_all_runtime_jobs(runtime_client: httpx.AsyncClient) -> bool:
             return True
         if not isinstance(jobs, list):
             return False
-        job_ids = [
-            job["job_id"]
-            for job in jobs
-            if isinstance(job, dict) and isinstance(job.get("job_id"), str)
-        ]
+        job_ids = [job["job_id"] for job in jobs if isinstance(job, dict) and isinstance(job.get("job_id"), str)]
         if not job_ids:
             return True
         anchor_response = await runtime_client.post(
@@ -672,10 +665,10 @@ def build_capability_run_request(
         {"name": "execution_context", "type": "dify.execution_context", "config": execution_context},
     ]
     shell_layer: dict[str, object] = {
-            "name": "shell",
-            "type": "dify.shell",
-            "deps": {"execution_context": "execution_context"},
-            "config": {"agent_stub_drive_ref": f"agent-{benchmark_run_id}"},
+        "name": "shell",
+        "type": "dify.shell",
+        "deps": {"execution_context": "execution_context"},
+        "config": {"agent_stub_drive_ref": f"agent-{benchmark_run_id}"},
     }
     if binding_ref is not None:
         layers.append(
@@ -858,8 +851,11 @@ def validate_capability_ledger(
         and ledger.stub_calls == expected_calls
         and len(ledger.stub_elapsed_ms) == sum(expected_calls.values())
         and ledger.payload_bytes == expected_payload_bytes
-        and len(ledger.payload_sha256) == sum(
-            count for name, count in expected_calls.items() if name in {"config_skill_pull", "config_file_pull", "drive_download", "signed_upload", "signed_download"}
+        and len(ledger.payload_sha256)
+        == sum(
+            count
+            for name, count in expected_calls.items()
+            if name in {"config_skill_pull", "config_file_pull", "drive_download", "signed_upload", "signed_download"}
         )
         and ledger.dependency_budget_ms == scenario.dependency_budget_ms
     )
