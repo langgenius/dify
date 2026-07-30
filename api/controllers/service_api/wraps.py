@@ -28,7 +28,8 @@ from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, DatasetApiTokenBinding
+from models.model import ApiToken, App
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
@@ -312,12 +313,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         # A bound key may only call endpoints carrying one of its dataset ids; endpoints
         # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
         # per request (not cached) so scope changes take effect immediately.
-        bound_dataset_ids = {
-            str(bound_id)
-            for bound_id in db.session.scalars(
-                select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_token.id)
-            ).all()
-        }
+        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(db.session, api_token.id)
         if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
             raise Forbidden("The API key is not authorized to access this knowledge base.")
 

@@ -46,10 +46,11 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from libs.url_utils import normalize_api_base_url
-from models import Account, ApiToken, App, Dataset, DatasetApiTokenBinding, Document, DocumentSegment, UploadFile
+from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache
 from services.app_service import AppService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -1085,14 +1086,7 @@ class DatasetApiKeyApi(Resource):
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
         token_ids = [str(key.id) for key in keys]
-        bindings_by_token: dict[str, list[str]] = {}
-        if token_ids:
-            for token_id, dataset_id in session.execute(
-                select(DatasetApiTokenBinding.api_token_id, DatasetApiTokenBinding.dataset_id).where(
-                    DatasetApiTokenBinding.api_token_id.in_(token_ids)
-                )
-            ).all():
-                bindings_by_token.setdefault(str(token_id), []).append(str(dataset_id))
+        bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, token_ids)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys, bindings_by_token))
 
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
@@ -1114,13 +1108,7 @@ class DatasetApiKeyApi(Resource):
         dataset_ids = list(dict.fromkeys(raw_dataset_ids))
 
         if dataset_ids:
-            existing_ids = {
-                str(dataset_id)
-                for dataset_id in session.scalars(
-                    select(Dataset.id).where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == current_tenant_id)
-                ).all()
-            }
-            unknown = [dataset_id for dataset_id in dataset_ids if dataset_id not in existing_ids]
+            unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, current_tenant_id)
             if unknown:
                 console_ns.abort(400, message=f"Unknown knowledge base id(s): {', '.join(unknown)}")
 
@@ -1147,8 +1135,7 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         session.add(api_token)
         session.flush()
-        for dataset_id in dataset_ids:
-            session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=dataset_id))
+        dataset_api_key_service.bind_datasets(session, api_token.id, dataset_ids)
         session.flush()
 
         # Reveal-once: the create response carries the full secret and its bound scope.
