@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "Política de Privacidade",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "Insira o link da política de privacidade",
   "overview.appInfo.settings.more.privacyPolicyTip": "Ajuda os visitantes a entender os dados coletados pelo aplicativo, consulte a <privacyPolicyLink>Política de Privacidade</privacyPolicyLink> do Dify.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "As configurações do aplicativo web se aplicam a todos os ambientes.",
   "overview.appInfo.settings.sso.description": "Todos os usuários devem fazer login com SSO antes de usar o web app",
   "overview.appInfo.settings.sso.label": "Autenticação SSO",
   "overview.appInfo.settings.sso.title": "web app SSO",

@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "गोपनीयता नीति",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "गोपनीयता नीति लिंक दर्ज करें",
   "overview.appInfo.settings.more.privacyPolicyTip": "आगंतुकों को यह समझने में मदद करता है कि एप्लिकेशन कौन सा डेटा एकत्र करता है, देखें Dify की <privacyPolicyLink>गोपनीयता नीति</privacyPolicyLink>।",
+  "overview.appInfo.settings.multiEnvironmentNotice": "वेब ऐप सेटिंग सभी परिवेशों पर लागू होती हैं।",
   "overview.appInfo.settings.sso.description": "web app का उपयोग करने से पहले सभी उपयोगकर्ताओं को SSO के साथ लॉगिन करना आवश्यक है",
   "overview.appInfo.settings.sso.label": "SSO प्रमाणीकरण",
   "overview.appInfo.settings.sso.title": "वेबएप एसएसओ",

@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "Kebijakan Privasi",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "Masukkan tautan kebijakan privasi",
   "overview.appInfo.settings.more.privacyPolicyTip": "Membantu pengunjung memahami data yang dikumpulkan aplikasi, lihat <privacyPolicyLink>Kebijakan Privasi Dify</privacyPolicyLink>.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "Pengaturan aplikasi web berlaku untuk semua lingkungan.",
   "overview.appInfo.settings.sso.description": "Semua pengguna diharuskan masuk dengan SSO sebelum menggunakan aplikasi web",
   "overview.appInfo.settings.sso.label": "Penegakan SSO",
   "overview.appInfo.settings.sso.title": "aplikasi web SSO",

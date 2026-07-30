@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "นโยบายความเป็นส่วนตัว",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "ป้อนลิงก์นโยบายความเป็นส่วนตัว",
   "overview.appInfo.settings.more.privacyPolicyTip": "ช่วยให้ผู้เยี่ยมชมเข้าใจข้อมูลที่แอปพลิเคชันรวบรวม โปรดดูนโยบาย<privacyPolicyLink>ความเป็นส่วนตัว</privacyPolicyLink>ของ Dify",
+  "overview.appInfo.settings.multiEnvironmentNotice": "การตั้งค่าเว็บแอปจะมีผลกับทุกสภาพแวดล้อม",
   "overview.appInfo.settings.sso.description": "ผู้ใช้ทุกคนต้องเข้าสู่ระบบด้วย SSO ก่อนใช้ web app",
   "overview.appInfo.settings.sso.label": "การรับรองความถูกต้องของ SSO",
   "overview.appInfo.settings.sso.title": "เว็บแอป SSO",

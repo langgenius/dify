@@ -1,4 +1,5 @@
 'use client'
+import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import type { CreateApiKeyResponse } from '@/models/app'
 import {
   AlertDialog,
@@ -12,6 +13,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +23,7 @@ import Loading from '@/app/components/base/loading'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { createApikey as createAppApikey, delApikey as delAppApikey } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import {
   createApikey as createDatasetApikey,
   delApikey as delDatasetApikey,
@@ -34,12 +37,20 @@ type ISecretKeyModalProps = {
   isShow: boolean
   appId?: string
   canManage: boolean
+  environmentId?: string
   onClose: () => void
 }
 
-const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKeyModalProps) => {
+const SecretKeyModal = ({
+  isShow = false,
+  appId,
+  canManage,
+  environmentId,
+  onClose,
+}: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
+  const queryClient = useQueryClient()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
@@ -47,13 +58,43 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
   const invalidateAppApiKeys = useInvalidateAppApiKeys()
   const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
   const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useAppApiKeys(appId, {
-    enabled: !!appId && isShow,
+    enabled: !!appId && !environmentId && isShow,
   })
   const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({
     enabled: !appId && isShow,
   })
-  const apiKeysList = appId ? appApiKeys : datasetApiKeys
-  const isApiKeysLoading = appId ? isAppApiKeysLoading : isDatasetApiKeysLoading
+  const environmentParams =
+    appId && environmentId
+      ? {
+          app_id: appId,
+          environment_id: environmentId,
+        }
+      : undefined
+  const environmentApiKeysQueryOptions =
+    consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+      input: environmentParams ? { params: environmentParams } : skipToken,
+    })
+  const environmentApiKeysQuery = useQuery({
+    ...environmentApiKeysQueryOptions,
+    enabled: Boolean(environmentParams) && isShow,
+  })
+  const createEnvironmentApiKeyMutation = useMutation(
+    consoleQuery.enterprise.appDeploy.accessService.createEnvironmentApiKey.mutationOptions(),
+  )
+  const deleteEnvironmentApiKeyMutation = useMutation(
+    consoleQuery.enterprise.appDeploy.accessService.deleteEnvironmentApiKey.mutationOptions(),
+  )
+  const isEnvironmentScope = Boolean(environmentParams)
+  const apiKeysList = isEnvironmentScope
+    ? environmentApiKeysQuery.data
+    : appId
+      ? appApiKeys
+      : datasetApiKeys
+  const isApiKeysLoading = isEnvironmentScope
+    ? environmentApiKeysQuery.isLoading
+    : appId
+      ? isAppApiKeysLoading
+      : isDatasetApiKeysLoading
 
   const [delKeyID, setDelKeyId] = useState('')
 
@@ -61,6 +102,28 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
     setShowConfirmDelete(false)
     if (!canManage) return
     if (!delKeyID) return
+
+    if (environmentParams) {
+      deleteEnvironmentApiKeyMutation.mutate(
+        {
+          params: {
+            ...environmentParams,
+            api_key_id: delKeyID,
+          },
+        },
+        {
+          onSuccess: () => {
+            setDelKeyId('')
+            void invalidateEnvironmentApiKeys(
+              queryClient,
+              environmentParams,
+              environmentApiKeysQueryOptions.queryKey,
+            )
+          },
+        },
+      )
+      return
+    }
 
     const delApikey = appId ? delAppApikey : delDatasetApikey
     const params = appId
@@ -73,6 +136,24 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
 
   const onCreate = async () => {
     if (!currentWorkspace.id || !canManage) return
+
+    if (environmentParams) {
+      createEnvironmentApiKeyMutation.mutate(
+        { params: environmentParams },
+        {
+          onSuccess: (createdKey) => {
+            setIsVisible(true)
+            setNewKey(createdKey)
+            void invalidateEnvironmentApiKeys(
+              queryClient,
+              environmentParams,
+              environmentApiKeysQueryOptions.queryKey,
+            )
+          },
+        },
+      )
+      return
+    }
 
     const params = appId
       ? { url: `/apps/${appId}/api-keys`, body: {} }
@@ -199,7 +280,10 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
             <Button
               className={`mt-4 flex shrink-0 ${s.autoWidth}`}
               onClick={onCreate}
-              disabled={!currentWorkspace.id || !canManage}
+              disabled={
+                !currentWorkspace.id || !canManage || createEnvironmentApiKeyMutation.isPending
+              }
+              loading={createEnvironmentApiKeyMutation.isPending}
             >
               <span className="mr-1 i-heroicons-plus-20-solid flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">
@@ -221,7 +305,10 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton onClick={onDel}>
+                <AlertDialogConfirmButton
+                  loading={deleteEnvironmentApiKeyMutation.isPending}
+                  onClick={onDel}
+                >
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
@@ -242,3 +329,21 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
 }
 
 export default SecretKeyModal
+
+async function invalidateEnvironmentApiKeys(
+  queryClient: QueryClient,
+  params: {
+    app_id: string
+    environment_id: string
+  },
+  apiKeysQueryKey: QueryKey,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: apiKeysQueryKey }),
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+        input: { params },
+      }).queryKey,
+    }),
+  ])
+}

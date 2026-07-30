@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "Politica de confidențialitate",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "Introduceți link-ul politicii de confidențialitate",
   "overview.appInfo.settings.more.privacyPolicyTip": "Ajută vizitatorii să înțeleagă datele pe care le colectează aplicația, consultați <privacyPolicyLink>Politica de confidențialitate</privacyPolicyLink> a Dify.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "Setările aplicației web se aplică tuturor mediilor.",
   "overview.appInfo.settings.sso.description": "Toți utilizatorii trebuie să se conecteze cu SSO înainte de a utiliza web app",
   "overview.appInfo.settings.sso.label": "Autentificare SSO",
   "overview.appInfo.settings.sso.title": "web app SSO",

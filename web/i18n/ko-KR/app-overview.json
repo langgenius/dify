@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "개인정보 처리방침",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "개인정보 처리방침 링크를 입력하세요",
   "overview.appInfo.settings.more.privacyPolicyTip": "방문자가 애플리케이션이 수집하는 데이터를 이해하고, Dify 의 <privacyPolicyLink>개인정보 처리방침</privacyPolicyLink>을 참조할 수 있도록 합니다.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "웹 앱 설정은 모든 환경에 적용됩니다.",
   "overview.appInfo.settings.sso.description": "모든 사용자는 WebApp 을 사용하기 전에 SSO 로 로그인해야 합니다.",
   "overview.appInfo.settings.sso.label": "SSO 인증",
   "overview.appInfo.settings.sso.title": "웹앱 SSO",

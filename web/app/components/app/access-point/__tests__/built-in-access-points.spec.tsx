@@ -61,6 +61,7 @@ vi.mock('@/service/use-workflow', () => ({
 vi.mock('@/utils/permission', () => ({
   getAppACLCapabilities: () => ({
     canEdit: false,
+    canDeploy: true,
     canReleaseAndVersion: false,
   }),
 }))
@@ -129,7 +130,7 @@ describe('BuiltInAccessPoints', () => {
     expect(screen.getByTestId('mcp-card')).toBeInTheDocument()
     expect(screen.getByTestId('trigger-card')).toBeInTheDocument()
     expect(mocks.webCard).toHaveBeenCalledWith(
-      expect.objectContaining({ availability: 'unavailable', canEdit: false }),
+      expect.objectContaining({ availability: 'unavailable', canDeploy: true, canEdit: false }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable', canEdit: false }),

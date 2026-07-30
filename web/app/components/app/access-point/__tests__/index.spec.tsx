@@ -54,8 +54,25 @@ vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
 }))
 
 vi.mock('@/app/components/app/access-point/deployed-environment-access-points', () => ({
-  DeployedEnvironmentAccessPoints: ({ environmentId }: { environmentId: string }) => (
-    <div data-testid="deployed-environment-access-points">{environmentId}</div>
+  DeployedEnvironmentAccessPoints: ({
+    appId,
+    canEdit,
+    canManage,
+    environmentId,
+  }: {
+    appId: string
+    canEdit: boolean
+    canManage: boolean
+    environmentId: string
+  }) => (
+    <div
+      data-testid="deployed-environment-access-points"
+      data-app-id={appId}
+      data-can-edit={String(canEdit)}
+      data-can-manage={String(canManage)}
+    >
+      {environmentId}
+    </div>
   ),
 }))
 
@@ -149,12 +166,24 @@ describe('AccessPoint', () => {
     )
   })
 
-  it('shows a read-only deployed environment view for non-built-in tabs', () => {
+  it('shows the selected deployed environment with deploy permissions', () => {
     renderAccessPoint({
       searchParams: '?environment=canary',
     })
 
     expect(screen.getByTestId('deployed-environment-access-points')).toHaveTextContent('canary')
+    expect(screen.getByTestId('deployed-environment-access-points')).toHaveAttribute(
+      'data-app-id',
+      'app-1',
+    )
+    expect(screen.getByTestId('deployed-environment-access-points')).toHaveAttribute(
+      'data-can-edit',
+      'false',
+    )
+    expect(screen.getByTestId('deployed-environment-access-points')).toHaveAttribute(
+      'data-can-manage',
+      'true',
+    )
     expect(screen.queryByTestId('built-in-access-points')).not.toBeInTheDocument()
   })
 

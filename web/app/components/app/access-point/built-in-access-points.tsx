@@ -97,9 +97,9 @@ export function BuiltInAccessPoints({ appId }: BuiltInAccessPointsProps) {
       <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
         <WebAppAccessPointCard
           appInfo={appInfo}
-          workflow={workflow}
           availability={appCardAvailability}
           canEdit={capabilities.canEdit}
+          canDeploy={capabilities.canDeploy}
           canManageAccess={capabilities.canReleaseAndVersion}
           showAccessControl={systemFeatures.webapp_auth.enabled}
           onChangeStatus={actions.changeSiteStatus}

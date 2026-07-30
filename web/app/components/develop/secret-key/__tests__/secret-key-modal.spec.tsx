@@ -1,11 +1,68 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
 import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import SecretKeyModal from '../secret-key-modal'
 
+const environmentMocks = vi.hoisted(() => ({
+  createApiKey: vi.fn().mockResolvedValue({
+    created_at: '1700000001',
+    id: 'environment-key-2',
+    token: 'env-created-secret-key-abcdefghijklmnopqrst',
+  }),
+  deleteApiKey: vi.fn().mockResolvedValue(undefined),
+  listApiKeys: vi.fn().mockResolvedValue({
+    data: [
+      {
+        created_at: '1700000000',
+        id: 'environment-key-1',
+        last_used_at: undefined,
+        token: 'env-existing-secret-key-abcdefghijklmnopqrst',
+        type: 'api',
+      },
+    ],
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      appDeploy: {
+        accessService: {
+          createEnvironmentApiKey: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: environmentMocks.createApiKey,
+              ...options,
+            }),
+          },
+          deleteEnvironmentApiKey: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: environmentMocks.deleteApiKey,
+              ...options,
+            }),
+          },
+          getEnvironmentApi: {
+            queryOptions: () => ({
+              queryKey: ['environment-api'],
+            }),
+          },
+          listEnvironmentApiKeys: {
+            queryOptions: ({ input }: { input: unknown }) => ({
+              queryKey: ['environment-api-keys'],
+              queryFn: () => environmentMocks.listApiKeys(input),
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
+
 async function renderModal(ui: React.ReactElement) {
-  const result = render(ui)
+  const queryClient = createTestQueryClient()
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
   await act(async () => {
     vi.runAllTimers()
   })
@@ -61,12 +118,13 @@ vi.mock('@/service/datasets', () => ({
 const mockAppApiKeysData = vi.fn().mockReturnValue({ data: [] })
 const mockIsAppApiKeysLoading = vi.fn().mockReturnValue(false)
 const mockInvalidateAppApiKeys = vi.fn()
+const mockUseAppApiKeys = vi.fn((_appId: string | undefined, _options: unknown) => ({
+  data: mockAppApiKeysData(),
+  isLoading: mockIsAppApiKeysLoading(),
+}))
 
 vi.mock('@/service/use-apps', () => ({
-  useAppApiKeys: (_appId: string, _options: unknown) => ({
-    data: mockAppApiKeysData(),
-    isLoading: mockIsAppApiKeysLoading(),
-  }),
+  useAppApiKeys: (appId: string | undefined, options: unknown) => mockUseAppApiKeys(appId, options),
   useInvalidateAppApiKeys: () => mockInvalidateAppApiKeys,
 }))
 
@@ -657,6 +715,81 @@ describe('SecretKeyModal', () => {
 
       await waitFor(() => {
         expect(mockInvalidateDatasetApiKeys).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('environment API keys', () => {
+    it('loads environment keys without requesting the built-in app key list', async () => {
+      await renderModal(
+        <SecretKeyModal {...defaultProps} appId="app-123" environmentId="staging" />,
+      )
+
+      expect(await screen.findByText(/^env\.\.\./)).toBeInTheDocument()
+      expect(environmentMocks.listApiKeys).toHaveBeenCalledWith({
+        params: {
+          app_id: 'app-123',
+          environment_id: 'staging',
+        },
+      })
+      expect(mockUseAppApiKeys).toHaveBeenCalledWith('app-123', {
+        enabled: false,
+      })
+    })
+
+    it('creates an environment-scoped API key', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await renderModal(
+        <SecretKeyModal {...defaultProps} appId="app-123" environmentId="staging" />,
+      )
+
+      await act(async () => {
+        await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
+      })
+
+      await waitFor(() => {
+        expect(environmentMocks.createApiKey.mock.calls[0]?.[0]).toEqual({
+          params: {
+            app_id: 'app-123',
+            environment_id: 'staging',
+          },
+        })
+      })
+      expect(await screen.findByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
+    })
+
+    it('deletes an environment-scoped API key', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await renderModal(
+        <SecretKeyModal {...defaultProps} appId="app-123" environmentId="staging" />,
+      )
+
+      await screen.findByText(/^env\.\.\./)
+      const deleteButton = document.body.querySelector('.i-ri-delete-bin-line')?.closest('button')
+      expect(deleteButton).toBeInTheDocument()
+
+      await act(async () => {
+        await user.click(deleteButton!)
+        vi.runAllTimers()
+      })
+      await waitFor(() => {
+        expect(screen.getByText('appApi.actionMsg.deleteConfirmTitle')).toBeInTheDocument()
+      })
+      await flushTransitions()
+
+      await act(async () => {
+        await user.click(screen.getByText('common.operation.confirm'))
+        vi.runAllTimers()
+      })
+
+      await waitFor(() => {
+        expect(environmentMocks.deleteApiKey.mock.calls[0]?.[0]).toEqual({
+          params: {
+            api_key_id: 'environment-key-1',
+            app_id: 'app-123',
+            environment_id: 'staging',
+          },
+        })
       })
     })
   })

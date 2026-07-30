@@ -304,6 +304,7 @@ describe('app-card-sections', () => {
         isApp
         appInfo={appInfo}
         appMode={AppModeEnum.CHAT}
+        canDeploy
         showSettingsModal
         showEmbedded
         showCustomizeModal
@@ -330,6 +331,7 @@ describe('app-card-sections', () => {
         isApp={false}
         appInfo={{} as never}
         appMode={AppModeEnum.CHAT}
+        canDeploy={false}
         showSettingsModal={false}
         showEmbedded={false}
         showCustomizeModal={false}

@@ -26,10 +26,17 @@ type AccessPointProps = {
 }
 
 type AccessPointContentProps = AccessPointProps & {
+  canEdit: boolean
+  canManage: boolean
   showEnvironmentTabs: boolean
 }
 
-function AccessPointContent({ appId, showEnvironmentTabs }: AccessPointContentProps) {
+function AccessPointContent({
+  appId,
+  canEdit,
+  canManage,
+  showEnvironmentTabs,
+}: AccessPointContentProps) {
   const { t } = useTranslation()
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [environment, setEnvironment] = useQueryState('environment', environmentQueryState)
@@ -88,7 +95,12 @@ function AccessPointContent({ appId, showEnvironmentTabs }: AccessPointContentPr
         {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
           <BuiltInAccessPoints appId={appId} />
         ) : (
-          <DeployedEnvironmentAccessPoints environmentId={selectedEnvironment} />
+          <DeployedEnvironmentAccessPoints
+            appId={appId}
+            environmentId={selectedEnvironment}
+            canEdit={canEdit}
+            canManage={canManage}
+          />
         )}
       </div>
     </main>
@@ -99,16 +111,21 @@ export default function AccessPoint({ appId }: AccessPointProps) {
   const appDetail = useAppStore((state) => state.appDetail)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+  const capabilities = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }).canDeploy
-  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && canDeploy
+  })
+  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canDeploy
 
   return (
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
-      <AccessPointContent appId={appId} showEnvironmentTabs={showEnvironmentTabs} />
+      <AccessPointContent
+        appId={appId}
+        canEdit={capabilities.canEdit}
+        canManage={capabilities.canDeploy}
+        showEnvironmentTabs={showEnvironmentTabs}
+      />
     </AccessPointStateBoundary>
   )
 }

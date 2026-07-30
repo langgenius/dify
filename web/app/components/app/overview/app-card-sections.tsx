@@ -444,6 +444,7 @@ export const AppCardDialogs = ({
   isApp,
   appInfo,
   appMode,
+  canDeploy,
   showSettingsModal,
   showEmbedded,
   showCustomizeModal,
@@ -460,6 +461,7 @@ export const AppCardDialogs = ({
   isApp: boolean
   appInfo: AppInfo
   appMode: AppModeEnum
+  canDeploy: boolean
   showSettingsModal: boolean
   showEmbedded: boolean
   showCustomizeModal: boolean
@@ -479,6 +481,7 @@ export const AppCardDialogs = ({
     <>
       <SettingsModal
         isChat={appMode === AppModeEnum.CHAT}
+        canDeploy={canDeploy}
         appInfo={appInfo}
         isShow={showSettingsModal}
         onClose={onCloseSettings}

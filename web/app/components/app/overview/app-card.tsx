@@ -443,6 +443,7 @@ function AppCard({
         isApp={isApp}
         appInfo={appInfo}
         appMode={cardState.appMode}
+        canDeploy={appACLCapabilities.canDeploy}
         showSettingsModal={showSettingsModal}
         showEmbedded={showEmbedded}
         showCustomizeModal={showCustomizeModal}

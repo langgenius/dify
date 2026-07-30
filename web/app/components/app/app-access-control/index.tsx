@@ -1,4 +1,5 @@
 'use client'
+import type { AccessControlSubjectsQuery } from './specific-groups-or-members'
 import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
@@ -20,12 +21,23 @@ import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-grou
 
 type AccessControlProps = {
   app: Pick<App, 'id' | 'access_mode'>
+  adapter?: AccessControlAdapter
   onClose: () => void
   onConfirm?: () => void
 }
 
+export type AccessControlAdapter = {
+  subjectsQuery: AccessControlSubjectsQuery
+  supportedModes?: readonly AccessMode[]
+  updatePending: boolean
+  updateAccessMode: (input: {
+    accessMode: AccessMode
+    subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
+  }) => Promise<void>
+}
+
 export default function AccessControl(props: AccessControlProps) {
-  const { app, onClose, onConfirm } = props
+  const { adapter, app, onClose, onConfirm } = props
   const { id: appId, access_mode: appAccessMode } = app
   const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
@@ -50,14 +62,19 @@ export default function AccessControl(props: AccessControlProps) {
   const { isPending, mutateAsync: updateAccessMode } = useMutation(
     consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
   )
-  const confirmDisabled = isPending || (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
+  const supportedModes = adapter?.supportedModes
+  const updatePending = adapter?.updatePending ?? isPending
+  const currentMenuSupported = !supportedModes || supportedModes.includes(currentMenu)
+  const confirmDisabled =
+    updatePending ||
+    !currentMenuSupported ||
+    (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
   const handleConfirm = useCallback(async () => {
     if (confirmDisabled) return
     const submitData: {
-      appId: string
       accessMode: AccessMode
       subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
-    } = { appId, accessMode: currentMenu }
+    } = { accessMode: currentMenu }
     if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
       const subjects: Pick<Subject, 'subjectId' | 'subjectType'>[] = []
       specificGroups.forEach((group) => {
@@ -71,10 +88,12 @@ export default function AccessControl(props: AccessControlProps) {
       })
       submitData.subjects = subjects
     }
-    await updateAccessMode({ body: submitData })
+    if (adapter) await adapter.updateAccessMode(submitData)
+    else await updateAccessMode({ body: { appId, ...submitData } })
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
   }, [
+    adapter,
     updateAccessMode,
     appId,
     specificGroups,
@@ -106,54 +125,64 @@ export default function AccessControl(props: AccessControlProps) {
               {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
             </p>
           </div>
-          <AccessControlItem type={AccessMode.ORGANIZATION}>
-            <div className="flex items-center p-3">
-              <div className="flex grow items-center gap-x-2">
-                <RiBuildingLine className="size-4 text-text-primary" />
-                <p className="system-sm-medium text-text-primary">
-                  {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
-                </p>
+          {(!supportedModes || supportedModes.includes(AccessMode.ORGANIZATION)) && (
+            <AccessControlItem type={AccessMode.ORGANIZATION}>
+              <div className="flex items-center p-3">
+                <div className="flex grow items-center gap-x-2">
+                  <RiBuildingLine className="size-4 text-text-primary" />
+                  <p className="system-sm-medium text-text-primary">
+                    {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
+                  </p>
+                </div>
               </div>
-            </div>
-          </AccessControlItem>
-          <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
-            <SpecificGroupsOrMembers />
-          </AccessControlItem>
-          <AccessControlItem type={AccessMode.EXTERNAL_MEMBERS}>
-            <div className="flex items-center p-3">
-              <div className="flex grow items-center gap-x-2">
-                <RiVerifiedBadgeLine className="size-4 text-text-primary" />
-                <p className="system-sm-medium text-text-primary">
-                  {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
-                </p>
+            </AccessControlItem>
+          )}
+          {(!supportedModes || supportedModes.includes(AccessMode.SPECIFIC_GROUPS_MEMBERS)) && (
+            <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
+              <SpecificGroupsOrMembers subjectsQuery={adapter?.subjectsQuery} />
+            </AccessControlItem>
+          )}
+          {(!supportedModes || supportedModes.includes(AccessMode.EXTERNAL_MEMBERS)) && (
+            <AccessControlItem type={AccessMode.EXTERNAL_MEMBERS}>
+              <div className="flex items-center p-3">
+                <div className="flex grow items-center gap-x-2">
+                  <RiVerifiedBadgeLine className="size-4 text-text-primary" />
+                  <p className="system-sm-medium text-text-primary">
+                    {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
+                  </p>
+                </div>
+                {!hideTip && <WebAppSSONotEnabledTip />}
               </div>
-              {!hideTip && <WebAppSSONotEnabledTip />}
-            </div>
-          </AccessControlItem>
-          <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
-            <div className="flex items-center gap-x-2 p-3">
-              <RiGlobalLine className="size-4 text-text-primary" />
-              <p className="system-sm-medium text-text-primary">
-                {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
-              </p>
-              {publicAccessDisabled && (
-                <Infotip
-                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                    ns: 'app',
-                  })}
-                  className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
-                >
-                  {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
-                </Infotip>
-              )}
-            </div>
-          </AccessControlItem>
+            </AccessControlItem>
+          )}
+          {(!supportedModes || supportedModes.includes(AccessMode.PUBLIC)) && (
+            <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
+              <div className="flex items-center gap-x-2 p-3">
+                <RiGlobalLine className="size-4 text-text-primary" />
+                <p className="system-sm-medium text-text-primary">
+                  {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
+                </p>
+                {publicAccessDisabled && (
+                  <Infotip
+                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                      ns: 'app',
+                    })}
+                    className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                  >
+                    {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                      ns: 'app',
+                    })}
+                  </Infotip>
+                )}
+              </div>
+            </AccessControlItem>
+          )}
         </RadioGroup>
         <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button
             disabled={confirmDisabled}
-            loading={isPending}
+            loading={updatePending}
             variant="primary"
             onClick={handleConfirm}
           >

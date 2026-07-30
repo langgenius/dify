@@ -37,6 +37,7 @@ import { AppModeEnum } from '@/types/app'
 
 type ISettingsModalProps = {
   isChat: boolean
+  canDeploy?: boolean
   appInfo: SettingsAppInfo
   isShow: boolean
   defaultValue?: string
@@ -175,6 +176,7 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
 
 const SettingsModal: FC<ISettingsModalProps> = ({
   isChat,
+  canDeploy = false,
   appInfo,
   isShow = false,
   onClose,
@@ -365,15 +367,41 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
           </div>
           <Form
-            className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]"
+            className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]"
             onFormSubmit={handleFormSubmit}
           >
+            {canDeploy && (
+              <div className="row-start-1 px-6 py-2">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="relative flex min-h-10 items-start gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
+                >
+                  <div
+                    aria-hidden="true"
+                    className="absolute -inset-px bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-40"
+                  />
+                  <div className="relative flex size-6 shrink-0 items-center justify-center p-1">
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-information-2-fill size-4 text-text-accent"
+                    />
+                  </div>
+                  <p className="relative min-w-0 flex-1 py-1 system-xs-medium wrap-break-word text-text-primary">
+                    {t(($) => $[`${prefixSettings}.multiEnvironmentNotice`], {
+                      ns: 'appOverview',
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
             {/* form body */}
             <ScrollArea
-              className="relative min-h-0"
+              className="relative row-start-2 min-h-0 overflow-hidden"
               slotClassNames={{
-                viewport: 'overscroll-contain',
-                content: 'min-w-0 space-y-5 px-6 py-3',
+                viewport: 'max-h-full overflow-y-auto overscroll-contain',
+                content: 'min-w-0 flex flex-col gap-5 px-6 py-3',
               }}
             >
               {/* name & icon */}
@@ -438,7 +466,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               )}
               {/* language */}
               <div className="flex items-center">
-                <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>
+                <div className={cn('grow py-1 system-sm-medium text-text-secondary')}>
                   {t(($) => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
                 </div>
                 <Select
@@ -466,7 +494,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               {isChat && (
                 <div className="flex items-center">
                   <div className="grow">
-                    <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    <div className={cn('py-1 system-sm-medium text-text-secondary')}>
                       {t(($) => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}
                     </div>
                     <div className="pb-0.5 body-xs-regular text-text-tertiary">
@@ -581,7 +609,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <div className="w-full">
                   <div className="flex items-center">
                     <div className="flex grow items-center">
-                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>
+                      <div className={cn('mr-1 py-1 system-sm-medium text-text-secondary')}>
                         {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                       </div>
                       {/* upgrade button */}
@@ -658,7 +686,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 </div>
                 {/* privacy policy */}
                 <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                  <div className={cn('py-1 system-sm-medium text-text-secondary')}>
                     {t(($) => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}
                   </div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
@@ -693,8 +721,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 </div>
                 {/* custom disclaimer */}
                 <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
-                    {t(($) => $[`${prefixSettings}.more.customDisclaimer`], { ns: 'appOverview' })}
+                  <div className={cn('py-1 system-sm-medium text-text-secondary')}>
+                    {t(($) => $[`${prefixSettings}.more.customDisclaimer`], {
+                      ns: 'appOverview',
+                    })}
                   </div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
                     {t(($) => $[`${prefixSettings}.more.customDisclaimerTip`], {
@@ -720,7 +750,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
             </ScrollArea>
             {/* footer */}
-            <div className="flex shrink-0 justify-end p-6 pt-5">
+            <div className="row-start-3 flex shrink-0 justify-end p-6 pt-5">
               <Button type="button" className="mr-2" onClick={handleClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>

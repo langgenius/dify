@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "Политика конфиденциальности",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "Введите ссылку на политику конфиденциальности",
   "overview.appInfo.settings.more.privacyPolicyTip": "Помогает посетителям понять, какие данные собирает приложение, см. <privacyPolicyLink>Политику конфиденциальности</privacyPolicyLink> Dify.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "Настройки веб-приложения применяются ко всем средам.",
   "overview.appInfo.settings.sso.description": "Все пользователи должны войти в систему с помощью SSO перед использованием web app",
   "overview.appInfo.settings.sso.label": "SSO аутентификация",
   "overview.appInfo.settings.sso.title": "web app SSO",

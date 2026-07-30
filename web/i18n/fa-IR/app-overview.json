@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "سیاست حفظ حریم خصوصی",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "لینک سیاست حفظ حریم خصوصی را وارد کنید",
   "overview.appInfo.settings.more.privacyPolicyTip": "به بازدیدکنندگان کمک می‌کند تا بفهمند برنامه چه داده‌هایی را جمع‌آوری می‌کند، به سیاست حفظ حریم خصوصی Dify نگاه کنید <privacyPolicyLink>Privacy Policy</privacyPolicyLink>.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "تنظیمات برنامه وب برای همه محیط‌ها اعمال می‌شود.",
   "overview.appInfo.settings.sso.description": "همه کاربران باید قبل از استفاده از web app با SSO وارد شوند",
   "overview.appInfo.settings.sso.label": "احراز هویت SSO",
   "overview.appInfo.settings.sso.title": "web app SSO",

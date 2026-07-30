@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "Polityka prywatności",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "Wprowadź link do polityki prywatności",
   "overview.appInfo.settings.more.privacyPolicyTip": "Pomaga odwiedzającym zrozumieć, jakie dane zbiera aplikacja, zobacz <privacyPolicyLink>Politykę prywatności Dify</privacyPolicyLink>.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "Ustawienia aplikacji internetowej dotyczą wszystkich środowisk.",
   "overview.appInfo.settings.sso.description": "Wszyscy użytkownicy muszą zalogować się za pomocą logowania jednokrotnego przed użyciem aplikacji internetowej",
   "overview.appInfo.settings.sso.label": "Uwierzytelnianie logowania jednokrotnego",
   "overview.appInfo.settings.sso.title": "Logowanie jednokrotne w aplikacji internetowej",

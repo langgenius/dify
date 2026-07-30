@@ -4,6 +4,7 @@ import { render } from '@/test/console/render'
 import { ApiSecretKeyButton } from '../api-secret-key-button'
 
 const mocks = vi.hoisted(() => ({
+  appApiKeysArgs: [] as unknown[][],
   apiKeysQuery: {
     data: {
       data: [
@@ -17,27 +18,36 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/service/use-apps', () => ({
-  useAppApiKeys: () => mocks.apiKeysQuery,
+  useAppApiKeys: (...args: unknown[]) => {
+    mocks.appApiKeysArgs.push(args)
+    return mocks.apiKeysQuery
+  },
 }))
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({
     appId,
     canManage,
+    environmentId,
     isShow,
   }: {
     appId?: string
     canManage: boolean
+    environmentId?: string
     isShow: boolean
   }) =>
     isShow ? (
       <div role="dialog" aria-label="API key management">
-        {appId}:{String(canManage)}
+        {appId}:{environmentId}:{String(canManage)}
       </div>
     ) : null,
 }))
 
 describe('ApiSecretKeyButton', () => {
+  beforeEach(() => {
+    mocks.appApiKeysArgs.length = 0
+  })
+
   it('shows the current API key count and opens key management', async () => {
     const user = userEvent.setup()
     render(<ApiSecretKeyButton appId="app-1" canManage />)
@@ -50,7 +60,24 @@ describe('ApiSecretKeyButton', () => {
     await user.click(button)
 
     expect(screen.getByRole('dialog', { name: 'API key management' })).toHaveTextContent(
-      'app-1:true',
+      'app-1::true',
+    )
+  })
+
+  it('uses the environment API key count and opens environment-scoped key management', async () => {
+    const user = userEvent.setup()
+    render(<ApiSecretKeyButton appId="app-1" environmentId="staging" apiKeyCount={5} canManage />)
+
+    const button = screen.getByRole('button', {
+      name: 'appApi.apiKeyModal.apiSecretKey 5',
+    })
+    expect(button).toBeEnabled()
+    expect(mocks.appApiKeysArgs[0]?.[0]).toBeUndefined()
+
+    await user.click(button)
+
+    expect(screen.getByRole('dialog', { name: 'API key management' })).toHaveTextContent(
+      'app-1:staging:true',
     )
   })
 

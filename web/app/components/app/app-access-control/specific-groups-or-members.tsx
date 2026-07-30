@@ -11,17 +11,32 @@ import { Infotip } from '../../base/infotip'
 import Loading from '../../base/loading'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
-export default function SpecificGroupsOrMembers() {
+export type AccessControlSubjects = {
+  groups: AccessControlGroup[]
+  members: AccessControlAccount[]
+}
+
+export type AccessControlSubjectsQuery = {
+  data?: AccessControlSubjects
+  isPending: boolean
+}
+
+type SpecificGroupsOrMembersProps = {
+  subjectsQuery?: AccessControlSubjectsQuery
+}
+
+export default function SpecificGroupsOrMembers({ subjectsQuery }: SpecificGroupsOrMembersProps) {
   const currentMenu = useAccessControlStore((s) => s.currentMenu)
   const appId = useAccessControlStore((s) => s.appId)
   const setSpecificGroups = useAccessControlStore((s) => s.setSpecificGroups)
   const setSpecificMembers = useAccessControlStore((s) => s.setSpecificMembers)
   const { t } = useTranslation()
 
-  const { isPending, data } = useAppWhiteListSubjects(
+  const builtInSubjectsQuery = useAppWhiteListSubjects(
     appId,
-    Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    !subjectsQuery && Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
+  const { isPending, data } = subjectsQuery ?? builtInSubjectsQuery
   useEffect(() => {
     setSpecificGroups(data?.groups ?? [])
     setSpecificMembers(data?.members ?? [])

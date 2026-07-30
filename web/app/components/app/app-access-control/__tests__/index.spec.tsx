@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import type { AccessControlAdapter } from '../index'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -151,6 +152,62 @@ describe('AccessControl', () => {
     rerender(<AccessControl app={{ ...app }} onClose={vi.fn()} />)
 
     expect(organization).toBeChecked()
+  })
+
+  it('should reuse the built-in dialog with an alternate subjects and update adapter', async () => {
+    const updateAccessMode = vi.fn().mockResolvedValue(undefined)
+    const adapter = {
+      subjectsQuery: {
+        data: {
+          groups: [{ id: 'group-1', name: 'Environment Group', groupSize: 2 }],
+          members: [
+            {
+              id: 'member-1',
+              name: 'Environment Member',
+              email: 'member@example.com',
+              avatar: '',
+              avatarUrl: '',
+            },
+          ],
+        },
+        isPending: false,
+      },
+      supportedModes: [
+        AccessMode.ORGANIZATION,
+        AccessMode.SPECIFIC_GROUPS_MEMBERS,
+        AccessMode.PUBLIC,
+      ],
+      updatePending: false,
+      updateAccessMode,
+    } satisfies AccessControlAdapter
+
+    render(
+      <AccessControl
+        app={{ id: 'environment-app', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }}
+        adapter={adapter}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.queryByText('app.accessControlDialog.accessItems.external'),
+    ).not.toBeInTheDocument()
+    expect(await screen.findByText('Environment Group')).toBeInTheDocument()
+    expect(screen.getByText('Environment Member')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.operation.confirm'))
+
+    await waitFor(() => {
+      expect(updateAccessMode).toHaveBeenCalledWith({
+        accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+        subjects: [
+          { subjectId: 'group-1', subjectType: 'group' },
+          { subjectId: 'member-1', subjectType: 'account' },
+        ],
+      })
+    })
+    expect(mockMutateAsync).not.toHaveBeenCalled()
+    expect(mockUseAppWhiteListSubjects).toHaveBeenCalledWith('environment-app', false)
   })
 
   describe('public access control', () => {

@@ -1,7 +1,7 @@
 'use client'
 
 import type { SelectorParam } from 'i18next'
-import type { AccessPointAppInfo, PublishedWorkflow } from './utils'
+import type { AccessPointAppInfo } from './utils'
 import type { ConfigParams } from '@/app/components/app/overview/settings'
 import {
   AlertDialog,
@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
 import CustomizeModal from '@/app/components/app/overview/customize'
@@ -25,7 +25,7 @@ import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access
 import { AppModeEnum } from '@/types/app'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
-import { getBuiltInAccessUrls, getHiddenStartInputs } from './utils'
+import { getBuiltInAccessUrls } from './utils'
 
 type Availability = 'available' | 'loading' | 'unavailable'
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
@@ -46,9 +46,9 @@ type WebAppAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: Availability
   canEdit: boolean
+  canDeploy: boolean
   canManageAccess: boolean
   showAccessControl: boolean
-  workflow: PublishedWorkflow
   onChangeStatus: (enabled: boolean) => Promise<void>
   onRefreshApp: () => Promise<void>
   onRegenerate: () => Promise<void>
@@ -59,13 +59,13 @@ export function WebAppAccessPointCard({
   appInfo,
   availability,
   canEdit,
+  canDeploy,
   canManageAccess,
   onChangeStatus,
   onRefreshApp,
   onRegenerate,
   onSaveSiteConfig,
   showAccessControl,
-  workflow,
 }: WebAppAccessPointCardProps) {
   const { t } = useTranslation()
   const [showSettings, setShowSettings] = useState(false)
@@ -78,7 +78,6 @@ export function WebAppAccessPointCard({
   const running = availability === 'available' && appInfo.enable_site
   const accessIcon = ACCESS_MODE_ICON_MAP[appInfo.access_mode]
   const accessLabel = ACCESS_MODE_LABEL_MAP[appInfo.access_mode]
-  const hiddenInputs = useMemo(() => getHiddenStartInputs(workflow), [workflow])
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appInfo.id,
     showAccessControl &&
@@ -128,15 +127,17 @@ export function WebAppAccessPointCard({
         onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
         actions={
           <>
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
-              disabled={!running}
-              onClick={() => setShowEmbedded(true)}
-            >
-              <span aria-hidden className="i-ri-window-line size-4" />
-              {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
-            </Button>
+            {appInfo.mode !== AppModeEnum.WORKFLOW && (
+              <Button
+                className="flex items-center gap-1 px-3"
+                variant="secondary"
+                disabled={!running}
+                onClick={() => setShowEmbedded(true)}
+              >
+                <span aria-hidden className="i-ri-window-line size-4" />
+                {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
+              </Button>
+            )}
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
@@ -225,19 +226,21 @@ export function WebAppAccessPointCard({
 
       <SettingsModal
         isChat={appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW}
+        canDeploy={canDeploy}
         appInfo={appInfo}
         isShow={showSettings}
         onClose={() => setShowSettings(false)}
         onSave={onSaveSiteConfig}
       />
-      <EmbeddedModal
-        siteInfo={appInfo.site}
-        isShow={showEmbedded}
-        onClose={() => setShowEmbedded(false)}
-        appBaseUrl={appInfo.site?.app_base_url}
-        accessToken={appInfo.site?.access_token}
-        hiddenInputs={hiddenInputs}
-      />
+      {appInfo.mode !== AppModeEnum.WORKFLOW && (
+        <EmbeddedModal
+          siteInfo={appInfo.site}
+          isShow={showEmbedded}
+          onClose={() => setShowEmbedded(false)}
+          appBaseUrl={appInfo.site?.app_base_url}
+          accessToken={appInfo.site?.access_token}
+        />
+      )}
       <CustomizeModal
         isShow={showCustomize}
         onClose={() => setShowCustomize(false)}

@@ -10,19 +10,29 @@ import { useAppApiKeys } from '@/service/use-apps'
 type ApiSecretKeyButtonProps = {
   appId: string
   canManage: boolean
+  apiKeyCount?: number
   disabled?: boolean
+  environmentId?: string
 }
 
 export function ApiSecretKeyButton({
   appId,
   canManage,
+  apiKeyCount: environmentApiKeyCount,
   disabled = false,
+  environmentId,
 }: ApiSecretKeyButtonProps) {
   const { t } = useTranslation()
   const [modalOpen, setModalOpen] = useState(false)
-  const apiKeysQuery = useAppApiKeys(appId)
-  const apiKeyCount = apiKeysQuery.data?.data.length ?? 0
-  const buttonDisabled = disabled || !canManage || apiKeysQuery.isPending || apiKeysQuery.isError
+  const isEnvironmentScope = Boolean(environmentId)
+  const apiKeysQuery = useAppApiKeys(isEnvironmentScope ? undefined : appId)
+  const apiKeyCount = isEnvironmentScope
+    ? (environmentApiKeyCount ?? 0)
+    : (apiKeysQuery.data?.data.length ?? 0)
+  const buttonDisabled =
+    disabled ||
+    !canManage ||
+    (!isEnvironmentScope && (apiKeysQuery.isPending || apiKeysQuery.isError))
 
   return (
     <>
@@ -47,6 +57,7 @@ export function ApiSecretKeyButton({
 
       <SecretKeyModal
         appId={appId}
+        environmentId={environmentId}
         canManage={canManage}
         isShow={modalOpen}
         onClose={() => setModalOpen(false)}
