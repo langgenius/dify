@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
@@ -98,6 +100,11 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          goldenQuestions: {
+            get: {
+              key: () => ['quality', 'golden'],
+            },
+          },
           researchTasks: {
             byTaskId: {
               partials: {
@@ -131,6 +138,22 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return {
+    queryClient,
+    ...render(<RetrievalTestPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
+  }
+}
+
 describe('RetrievalTestPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -158,6 +181,7 @@ describe('RetrievalTestPage', () => {
     apiMock.streamQuery.mockResolvedValue(undefined)
     apiMock.queryAdmission.mockResolvedValue({})
     apiMock.createBadCase.mockResolvedValue({ id: 'bad-case-1' })
+    apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
     apiMock.documentReferences = {}
     apiMock.evidence = undefined
     apiMock.traceDetail = undefined
@@ -167,7 +191,7 @@ describe('RetrievalTestPage', () => {
 
   it('starts research from the segmented composer with the planned budget', async () => {
     const user = userEvent.setup()
-    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+    renderPage()
 
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.retrievalTest.title' }),
@@ -218,7 +242,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+    renderPage()
 
     await user.click(screen.getByText('Why did retrieval miss the refund exception?'))
     await user.click(
@@ -243,6 +267,55 @@ describe('RetrievalTestPage', () => {
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
+  it('invalidates the quality list after keeping a golden question', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What is useEffect?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {
+            score: 0.9,
+            text: 'useEffect synchronizes a component with an external system.',
+          },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await user.click(screen.getByText('What is useEffect?'))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.keepGoldenQuestion',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['quality', 'golden'],
+      }),
+    )
+    expect(
+      screen.getByText('dataset.newKnowledge.retrievalTest.savedGoldenQuestion'),
+    ).toBeInTheDocument()
+  })
+
   it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
     navigationMock.trace = 'trace-old'
     apiMock.traceDetail = {
@@ -256,7 +329,7 @@ describe('RetrievalTestPage', () => {
       stages: [],
     }
     const user = userEvent.setup()
-    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+    renderPage()
 
     expect(
       screen.getByRole('heading', {
@@ -314,7 +387,7 @@ describe('RetrievalTestPage', () => {
       'asset-1': { id: 'document-1', title: 'refund-policy.txt' },
     }
     const user = userEvent.setup()
-    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+    renderPage()
 
     await user.click(screen.getByText('What is the refund policy?'))
 
@@ -327,7 +400,7 @@ describe('RetrievalTestPage', () => {
   it('keeps a failed run in Records and renders the failure inline', async () => {
     apiMock.streamQuery.mockRejectedValueOnce(new Error('provider timed out'))
     const user = userEvent.setup()
-    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+    renderPage()
 
     await user.type(
       screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
@@ -347,7 +420,7 @@ describe('RetrievalTestPage', () => {
       new Response('Published runtime snapshot unavailable', { status: 503 }),
     )
     const user = userEvent.setup()
-    render(<RetrievalTestPage knowledgeSpaceId="space-1" />)
+    renderPage()
 
     await user.type(
       screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),

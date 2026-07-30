@@ -13,7 +13,7 @@ import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
@@ -483,6 +483,7 @@ function RecordButton({
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const linkedTraceId = searchParams?.get('trace')
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<RetrievalTestMode>('fast')
@@ -700,6 +701,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
             tags: ['retrieval-test'],
           },
           params: { control_space_id: knowledgeSpaceId },
+        })
+        await queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
+            input: { params: { control_space_id: knowledgeSpaceId } },
+            type: 'infinite',
+          }),
         })
       }
       setQualityDecisions((current) => ({ ...current, [resultKey]: decision }))
