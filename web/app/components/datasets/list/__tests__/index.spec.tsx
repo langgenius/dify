@@ -126,15 +126,6 @@ const renderList = (
 const render = (ui: ReactElement) => renderList(ui)
 const renderWithNuqs = renderList
 
-// Mock external api panel context
-const mockSetShowExternalApiPanel = vi.fn()
-vi.mock('@/context/external-api-panel-context', () => ({
-  useExternalApiPanel: () => ({
-    showExternalApiPanel: false,
-    setShowExternalApiPanel: mockSetShowExternalApiPanel,
-  }),
-}))
-
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
@@ -336,6 +327,24 @@ describe('List', () => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
     })
 
+    it('should reset each view panel when its owning list unmounts', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      renderWithNuqs(<List />)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }))
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
+    })
+
     it('should restore the New Knowledge view from the URL', () => {
       mockConsoleState.knowledgeFsEnabled = true
 
@@ -435,6 +444,7 @@ describe('List', () => {
       render(<List />)
 
       expect(screen.queryByText(/externalAPIPanelTitle/)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
   })
 
@@ -483,7 +493,7 @@ describe('List', () => {
       const button = screen.getByText(/externalAPIPanelTitle/)
       fireEvent.click(button)
 
-      expect(mockSetShowExternalApiPanel).toHaveBeenCalledWith(true)
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
     })
 
     it('should update search input value', () => {
@@ -654,67 +664,13 @@ describe('List', () => {
       }
     })
 
-    it('should show ExternalAPIPanel when showExternalApiPanel is true', async () => {
-      // Re-mock to show external API panel
-      vi.doMock('@/context/external-api-panel-context', () => ({
-        useExternalApiPanel: () => ({
-          showExternalApiPanel: true,
-          setShowExternalApiPanel: mockSetShowExternalApiPanel,
-        }),
-      }))
+    it('should close ExternalAPIPanel when onClose is called', () => {
+      render(<List />)
 
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('external-api-panel')).toHaveAttribute(
-        'data-can-manage-external-knowledge-api',
-        'true',
-      )
-    })
-
-    it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
-      mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
-        isCurrentWorkspaceOwner: true,
-        knowledgeFsEnabled: false,
-        workspacePermissionKeys: ['dataset.create_and_management'],
-      }
-      vi.doMock('@/context/external-api-panel-context', () => ({
-        useExternalApiPanel: () => ({
-          showExternalApiPanel: true,
-          setShowExternalApiPanel: mockSetShowExternalApiPanel,
-        }),
-      }))
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
+      fireEvent.click(screen.getByText(/externalAPIPanelTitle/))
+      fireEvent.click(screen.getByText('Close Panel'))
 
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
-    })
-
-    it('should close ExternalAPIPanel when onClose is called', async () => {
-      vi.doMock('@/context/external-api-panel-context', () => ({
-        useExternalApiPanel: () => ({
-          showExternalApiPanel: true,
-          setShowExternalApiPanel: mockSetShowExternalApiPanel,
-        }),
-      }))
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      const closeButton = screen.getByText('Close Panel')
-      fireEvent.click(closeButton)
-
-      expect(mockSetShowExternalApiPanel).toHaveBeenCalledWith(false)
     })
 
     it('should show TagManagementModal when tag management is opened', () => {

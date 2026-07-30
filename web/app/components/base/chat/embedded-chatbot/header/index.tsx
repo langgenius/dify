@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Theme } from '../theme/theme-context'
+import type { Theme } from '../theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
