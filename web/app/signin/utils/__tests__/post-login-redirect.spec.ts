@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolvePostLoginRedirect, setPostLoginRedirect } from '../post-login-redirect'
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'http://localhost:3000',
+}))
+
 describe('post-login redirect utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -46,6 +51,29 @@ describe('post-login redirect utilities', () => {
         searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
       ),
     ).toEqual({ kind: 'absolute', href: redirectUrl })
+  })
+
+  it('should allow an absolute target on the configured Marketplace origin', () => {
+    const redirectUrl = 'http://localhost:3000/plugin/langgenius/openai?tab=reviews#rating'
+    const searchParams = new URLSearchParams({ redirect_url: redirectUrl })
+
+    expect(
+      resolvePostLoginRedirect(
+        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
+      ),
+    ).toEqual({ kind: 'absolute', href: redirectUrl })
+  })
+
+  it('should reject a target that only resembles the configured Marketplace origin', () => {
+    const searchParams = new URLSearchParams({
+      redirect_url: 'http://localhost:3002/plugin/langgenius/openai',
+    })
+
+    expect(
+      resolvePostLoginRedirect(
+        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
+      ),
+    ).toEqual({ kind: 'internal', href: '/' })
   })
 
   it('should use the default target instead of a stored device target when the query target is invalid', () => {

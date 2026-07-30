@@ -59,6 +59,18 @@ describe('resolveLoginRedirectTarget', () => {
         }),
       ).toEqual({ kind: 'absolute', href: 'https://self-hosted.example:8443/apps' })
     })
+
+    it('should allow an explicitly configured absolute origin', () => {
+      expect(
+        resolveLoginRedirectTarget('http://localhost:3001/plugin/langgenius/openai?tab=reviews', {
+          allowedAbsoluteOrigins: ['http://localhost:3001'],
+          currentOrigin,
+        }),
+      ).toEqual({
+        kind: 'absolute',
+        href: 'http://localhost:3001/plugin/langgenius/openai?tab=reviews',
+      })
+    })
   })
 
   describe('legacy encoding compatibility', () => {
@@ -136,6 +148,15 @@ describe('resolveLoginRedirectTarget', () => {
         resolveLoginRedirectTarget('https://self-hosted.example/apps', {
           allowSameOriginAbsolute: true,
           currentOrigin: 'not an origin',
+        }),
+      ).toBeNull()
+    })
+
+    it('should reject a different port from an explicitly configured origin', () => {
+      expect(
+        resolveLoginRedirectTarget('http://localhost:3002/apps', {
+          allowedAbsoluteOrigins: ['http://localhost:3001'],
+          currentOrigin,
         }),
       ).toBeNull()
     })
