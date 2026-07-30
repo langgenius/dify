@@ -33,8 +33,13 @@ from .sync_reconciliation import IMSyncRun, ReconciliationPlan, ReconciliationSn
 class ActiveRunDecisionKind(StrEnum):
     """Outcome of Integration-locked sync run creation."""
 
+    # No active run existed and a new revision-bound synchronization run was committed.
     CREATED = "created"
+
+    # An active run already exists, so the repository returns it instead of creating a duplicate.
     EXISTING_ACTIVE = "existing_active"
+
+    # The captured Integration revision is no longer current and no new run may be created from it.
     STALE_REVISION = "stale_revision"
 
 
@@ -50,8 +55,13 @@ class ActiveRunDecision:
 class ApplyReconciliationStatus(StrEnum):
     """Stable outcome of one idempotent revision-guarded apply."""
 
+    # The plan was applied to current state and its append-only result facts were committed.
     APPLIED = "applied"
+
+    # This completed run was applied earlier; persisted facts are returned for idempotent replay.
     ALREADY_APPLIED = "already_applied"
+
+    # Integration configuration changed after capture, so the plan cannot mutate current state.
     STALE_REVISION = "stale_revision"
 
 
@@ -66,6 +76,10 @@ class ApplyReconciliationResult:
 
 class IMControlPlaneRepository(Protocol):
     """Atomic persistence capabilities required by the IM domain."""
+
+    def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
+        """Load the exact tenant or deployment-owned current configuration."""
+        ...
 
     def create_integration(self, integration: IMIntegration) -> IMIntegration:
         """Create the first integration configuration for its owner scope."""
