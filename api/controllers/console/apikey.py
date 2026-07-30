@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from uuid import UUID
 
@@ -17,7 +18,6 @@ from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account
-from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache
@@ -39,6 +39,9 @@ class ApiKeyItem(ResponseModel):
     id: str
     type: str
     token: str
+    # Dataset keys only: the knowledge bases this key is bound to. Empty = the key can
+    # access every dataset in the tenant (default). App keys are always empty.
+    dataset_ids: list[str] = []
     last_used_at: int | None = None
     created_at: int | None = None
 
@@ -53,6 +56,38 @@ class ApiKeyList(ResponseModel):
 
 
 register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
+
+
+def mask_api_token(token: str) -> str:
+    """Mask a secret token for list responses.
+
+    Reveal-once: the full secret is only returned by the create endpoint. List
+    endpoints expose just enough (prefix + last 4) to identify a key, never the
+    full value, so an existing key's secret cannot be retrieved after creation.
+    """
+    if len(token) <= 8:
+        return "***"
+    return f"{token[:5]}...{token[-4:]}"
+
+
+def build_masked_api_key_list(
+    api_tokens: Iterable[ApiToken],
+    bindings_by_token: Mapping[str, list[str]] | None = None,
+) -> ApiKeyList:
+    """Build an ApiKeyList from ORM tokens with their secrets masked.
+
+    ``bindings_by_token`` maps an api_token id to the dataset ids it is bound to
+    (from DatasetApiTokenBinding); tokens absent from the map are unbound (empty =
+    access all). App-key lists omit it entirely.
+    """
+    bindings_by_token = bindings_by_token or {}
+    items: list[ApiKeyItem] = []
+    for api_token in api_tokens:
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.token = mask_api_token(item.token)
+        item.dataset_ids = bindings_by_token.get(str(api_token.id), [])
+        items.append(item)
+    return ApiKeyList(data=items)
 
 
 def _get_resource(resource_id, tenant_id, resource_model, *, session: Session):
@@ -91,7 +126,7 @@ class BaseApiKeyListResource(Resource):
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
             )
         ).all()
-        return ApiKeyList.model_validate({"data": keys}, from_attributes=True)
+        return build_masked_api_key_list(keys)
 
     @edit_permission_required
     @with_session
@@ -261,71 +296,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     resource_id_field = "app_id"
 
 
-@console_ns.route("/datasets/<uuid:resource_id>/api-keys")
-class DatasetApiKeyListResource(BaseApiKeyListResource):
-    @console_ns.doc("get_dataset_api_keys")
-    @console_ns.doc(description="Get all API keys for a dataset")
-    @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
-        """Get all API keys for a dataset"""
-        return dump_response(
-            ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
-        )
-
-    @console_ns.doc("create_dataset_api_key")
-    @console_ns.doc(description="Create a new API key for a dataset")
-    @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
-    @console_ns.response(400, "Maximum keys exceeded")
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
-        """Create a new API key for a dataset"""
-        return dump_response(
-            ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
-        ), 201
-
-    resource_type = ApiTokenType.DATASET
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
-    token_prefix = "ds-"
-
-
-@console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
-class DatasetApiKeyResource(BaseApiKeyResource):
-    @console_ns.doc("delete_dataset_api_key")
-    @console_ns.doc(description="Delete an API key for a dataset")
-    @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
-    @console_ns.response(204, "API key deleted successfully")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
-    @with_session
-    def delete(
-        self,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        resource_id: UUID,
-        api_key_id: UUID,
-    ) -> tuple[str, int]:
-        """Delete an API key for a dataset"""
-        self._delete_api_key(
-            str(resource_id),
-            str(api_key_id),
-            current_tenant_id,
-            current_user,
-            session=session,
-        )
-        return "", 204
-
-    resource_type = ApiTokenType.DATASET
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
+# Dataset service-API keys are managed at the workspace level (create with a set of
+# knowledge bases, list, delete) by DatasetApiKeyApi in
+# controllers/console/datasets/datasets.py, using DatasetApiTokenBinding for scoping.
+# There is deliberately no per-dataset api-key route here.

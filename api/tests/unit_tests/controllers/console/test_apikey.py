@@ -55,7 +55,7 @@ def test_list_api_keys_uses_injected_session_and_tenant_id() -> None:
     api_key = SimpleNamespace(
         id="key-1",
         type=ApiTokenType.APP,
-        token="app-token",
+        token="app-1234567890abcdef",
         last_used_at=None,
         created_at=None,
     )
@@ -65,12 +65,14 @@ def test_list_api_keys_uses_injected_session_and_tenant_id() -> None:
 
     session.execute.assert_called_once()
     session.scalars.assert_called_once()
+    # reveal-once: the list returns a masked token, never the full secret
     assert result == {
         "data": [
             {
                 "id": "key-1",
                 "type": "app",
-                "token": "app-token",
+                "token": "app-1...cdef",
+                "dataset_ids": [],
                 "last_used_at": None,
                 "created_at": None,
             }

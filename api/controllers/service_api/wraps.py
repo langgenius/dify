@@ -28,7 +28,7 @@ from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App
+from models.model import ApiToken, App, DatasetApiTokenBinding
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
@@ -306,12 +306,19 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
 
-        # A dataset-bound token (non-NULL dataset_id) may only call endpoints that
-        # carry its own dataset id; endpoints without one (e.g. list/create datasets)
-        # are rejected outright. Workspace-scoped tokens (dataset_id IS NULL) keep
-        # tenant-wide access, which preserves behavior for all keys created before
-        # per-dataset scoping existed.
-        if api_token.dataset_id and (not dataset_id or str(dataset_id) != str(api_token.dataset_id)):
+        # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
+        #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
+        #   N rows   -> the key is limited to exactly those datasets
+        # A bound key may only call endpoints carrying one of its dataset ids; endpoints
+        # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
+        # per request (not cached) so scope changes take effect immediately.
+        bound_dataset_ids = {
+            str(bound_id)
+            for bound_id in db.session.scalars(
+                select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_token.id)
+            ).all()
+        }
+        if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
             raise Forbidden("The API key is not authorized to access this knowledge base.")
 
         if dataset_id:
