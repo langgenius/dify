@@ -118,7 +118,7 @@ export default function AddMemberOrGroupDialog() {
         aria-label={t(($) => $['operation.add'], { ns: 'common' })}
         icon={false}
         size="small"
-        className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
+        className="h-6 w-auto min-w-13 shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
       >
         <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
           <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
@@ -304,7 +304,7 @@ function GroupItem({ group, subject }: GroupItemProps) {
           <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
             <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
               <RiOrganizationChart
-                className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0"
+                className="h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
                 aria-hidden="true"
               />
             </div>
@@ -321,7 +321,7 @@ function GroupItem({ group, subject }: GroupItemProps) {
         onPointerDown={(event) => event.preventDefault()}
         onClick={handleExpandClick}
       >
-        <span className="px-[3px]">
+        <span className="px-0.75">
           {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
         </span>
         <RiArrowRightSLine className="size-4" aria-hidden="true" />

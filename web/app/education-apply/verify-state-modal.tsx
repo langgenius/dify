@@ -1,6 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RiExternalLinkLine } from '@remixicon/react'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -45,11 +44,18 @@ function Confirm({
       }}
       disablePointerDismissal={!maskClosable}
     >
-      <DialogContent className="w-full max-w-[481px]! overflow-hidden! border-none bg-transparent p-0! shadow-none">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-full max-w-120.25 overflow-hidden border-none bg-transparent p-0 shadow-none"
+      >
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
           <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-            <div className="w-full system-md-regular text-text-tertiary">{content}</div>
+            {content != null && (
+              <DialogDescription className="w-full system-md-regular text-text-tertiary">
+                {content}
+              </DialogDescription>
+            )}
           </div>
           {email && (
             <div className="w-full space-y-1 px-6 py-3">
@@ -70,11 +76,11 @@ function Confirm({
                     href={eduDocLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer system-xs-regular text-text-accent"
+                    className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   >
                     {t(($) => $.learn, { ns: 'education' })}
+                    <span className="i-ri-external-link-line size-3 text-text-accent"></span>
                   </a>
-                  <RiExternalLinkLine className="size-3 text-text-accent" />
                 </>
               )}
             </div>

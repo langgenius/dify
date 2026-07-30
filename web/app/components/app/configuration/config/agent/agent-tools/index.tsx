@@ -183,7 +183,7 @@ const AgentTools: FC = () => {
         }
         headerRight={
           <div className="flex items-center">
-            <div className="text-xs leading-[18px] font-normal text-text-tertiary">
+            <div className="text-xs leading-4.5 font-normal text-text-tertiary">
               {tools.filter((item) => !!item.enabled).length}/{tools.length}
               &nbsp;
               {t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}

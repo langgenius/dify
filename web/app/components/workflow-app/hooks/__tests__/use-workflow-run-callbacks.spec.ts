@@ -124,13 +124,15 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
 
-    callbacks.onError?.({ error: 'failed', node_type: 'llm' } as never)
+    callbacks.onError?.('LLM provider and model are required.')
     expect(clearAbortController).toHaveBeenCalled()
-    expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
+    expect(handlers.handleWorkflowFailed).toHaveBeenCalledWith(
+      'LLM provider and model are required.',
+    )
     expect(userOnError).toHaveBeenCalled()
     expect(getWorkflowRunningData).toHaveBeenCalled()
     expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
-      { error: 'failed', node_type: 'llm' },
+      'LLM provider and model are required.',
       workflowData,
     )
 

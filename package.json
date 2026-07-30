@@ -10,6 +10,8 @@
     "lint:oxlint": "vp lint",
     "lint:oxlint:fix": "vp lint --fix",
     "lint:oxlint:quiet": "vp lint --quiet",
+    "lint:tailwind": "TAILWIND_CANONICAL_CLASSES=true vp lint web packages/dify-ui",
+    "lint:tailwind:fix": "TAILWIND_CANONICAL_CLASSES=true vp lint --fix web packages/dify-ui",
     "lint:eslint": "eslint --concurrency=auto",
     "lint:eslint:fix": "eslint --fix --concurrency=auto",
     "lint:eslint:quiet": "eslint --quiet --concurrency=auto"
@@ -27,6 +29,7 @@
     "eslint": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-antfu": "catalog:",
+    "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
     "eslint-plugin-erasable-syntax-only": "catalog:",
     "eslint-plugin-hyoban": "catalog:",

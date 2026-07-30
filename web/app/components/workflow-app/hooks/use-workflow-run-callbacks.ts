@@ -11,7 +11,7 @@ type ContainerSize = {
 type WorkflowRunEventHandlers = {
   handleWorkflowStarted: NonNullable<IOtherOptions['onWorkflowStarted']>
   handleWorkflowFinished: NonNullable<IOtherOptions['onWorkflowFinished']>
-  handleWorkflowFailed: () => void
+  handleWorkflowFailed: (error?: string) => void
   handleWorkflowNodeStarted: (
     params: Parameters<NonNullable<IOtherOptions['onNodeStarted']>>[0],
     containerParams: ContainerSize,
@@ -151,7 +151,7 @@ export const createBaseWorkflowRunCallbacks = ({
 
   const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
     clearAbortController()
-    handleWorkflowFailed()
+    handleWorkflowFailed(params)
     const workflowData = getWorkflowRunningData()
     invalidateRunHistory(runHistoryUrl)
     clearListeningState()
@@ -363,7 +363,7 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onError: (params, code) => {
       clearAbortController()
-      handleWorkflowFailed()
+      handleWorkflowFailed(params)
       const workflowData = getWorkflowRunningData()
       invalidateRunHistory(runHistoryUrl)
       clearListeningState()

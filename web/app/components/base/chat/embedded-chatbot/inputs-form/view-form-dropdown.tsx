@@ -23,7 +23,7 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
             state={open ? ActionButtonState.Hover : ActionButtonState.Default}
             data-testid="view-form-dropdown-trigger"
           >
-            <div className={cn('i-ri-chat-settings-line h-[18px] w-[18px] shrink-0', iconColor)} />
+            <div className={cn('i-ri-chat-settings-line h-4.5 w-4.5 shrink-0', iconColor)} />
           </ActionButton>
         }
       />
@@ -35,7 +35,7 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
       >
         <div
           data-testid="view-form-dropdown-content"
-          className="w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs"
+          className="w-100 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs"
         >
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />

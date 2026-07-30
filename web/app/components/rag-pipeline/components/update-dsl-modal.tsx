@@ -37,18 +37,18 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           if (!open) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
+        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
           <div className="mb-3 flex items-center justify-between">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['common.importDSL'], { ns: 'workflow' })}
             </div>
             <button
               type="button"
-              className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="flex h-5.5 w-5.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
-              <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+              <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
             </button>
           </div>
           <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
@@ -63,7 +63,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
                 <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                  <div className="flex items-center justify-center gap-1 px-[3px]">
+                  <div className="flex items-center justify-center gap-1 px-0.75">
                     {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
                   </div>
                 </Button>

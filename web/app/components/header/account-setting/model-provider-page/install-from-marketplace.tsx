@@ -38,7 +38,7 @@ const InstallFromMarketplace = ({
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-[146px]" payload={plugin} />
+    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
   }, [])
 
   return (
@@ -47,7 +47,7 @@ const InstallFromMarketplace = ({
       <div className="relative flex flex-col gap-2">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[174px]"
+          className="pointer-events-none absolute inset-x-0 top-0 h-43.5"
           data-step-by-step-tour-target={stepByStepTourTarget}
         />
         <div className="flex h-5 items-center justify-between">

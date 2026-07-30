@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,9 +15,11 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
@@ -374,11 +377,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     [handleNodeDataUpdateWithSyncDraft, id],
   )
 
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   const { appendNodeInspectVars } = useInspectVarsCrud()
 
@@ -537,7 +540,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
       className={cn(
         'relative mr-1 h-full',
         showMessageLogModal &&
-          'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+          'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {

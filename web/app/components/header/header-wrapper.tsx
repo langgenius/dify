@@ -34,7 +34,7 @@ const HeaderWrapper = ({ children }: HeaderWrapperProps) => {
   return (
     <div
       className={cn(
-        'sticky top-0 right-0 left-0 z-30 flex min-h-[56px] shrink-0 grow-0 basis-auto flex-col',
+        'sticky top-0 right-0 left-0 z-30 flex min-h-14 shrink-0 grow-0 basis-auto flex-col',
         s.header,
         isBordered ? 'border-b border-divider-regular' : '',
         hideHeader && (inWorkflowCanvas || isPipelineCanvas) && 'hidden',

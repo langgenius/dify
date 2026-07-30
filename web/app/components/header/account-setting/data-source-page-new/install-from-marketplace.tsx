@@ -36,7 +36,7 @@ const InstallFromMarketplace = ({
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-[146px]" payload={plugin} />
+    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
   }, [])
 
   return (

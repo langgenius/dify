@@ -53,7 +53,7 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
           <div className="h-[0.5px] bg-divider-subtle" />
           <div
             className={cn(
-              'rounded-br-[8px] rounded-bl-[8px] bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent',
+              'rounded-br-lg rounded-bl-lg bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent',
               destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover',
             )}
           >

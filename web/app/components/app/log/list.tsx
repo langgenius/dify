@@ -501,7 +501,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
         {!isChatMode ? (
           <div className="px-6 py-4">
-            <div className="flex h-[18px] items-center space-x-3">
+            <div className="flex h-4.5 items-center space-x-3">
               <div className="system-xs-semibold-uppercase text-text-tertiary">
                 {t(($) => $['table.header.output'], { ns: 'appLog' })}
               </div>
@@ -906,7 +906,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   return (
     <div className="relative mt-2 grow overflow-x-auto">
-      <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
+      <table className={cn('w-full min-w-110 border-collapse border-0')}>
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
             <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
@@ -967,12 +967,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                     </div>
                   )}
                 </td>
-                <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
                   {renderTdValue(leftValue, isLeftEmpty, isChatMode && log.annotated)}
                 </td>
                 <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                 {isChatflow && (
-                  <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                  <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
                     {statusTdRender(log.status_count)}
                   </td>
                 )}
@@ -1024,13 +1024,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                     </>
                   )}
                 </td>
-                <td className="w-[160px] p-3 pr-2">
+                <td className="w-40 p-3 pr-2">
                   {formatTime(
                     log.updated_at,
                     t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
                   )}
                 </td>
-                <td className="w-[160px] p-3 pr-2">
+                <td className="w-40 p-3 pr-2">
                   {formatTime(
                     log.created_at,
                     t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
@@ -1052,7 +1052,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <DrawerPortal>
           <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
           <DrawerViewport>
-            <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+            <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <DrawerContext.Provider
                   value={{

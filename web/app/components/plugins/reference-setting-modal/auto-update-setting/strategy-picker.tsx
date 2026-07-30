@@ -28,7 +28,7 @@ const StrategyPicker = ({ value, onChange }: Props) => {
   return (
     <SegmentedControl<AUTO_UPDATE_STRATEGY>
       aria-label={t(($) => $['autoUpdate.automaticUpdates'], { ns: 'plugin' })}
-      className="w-[326px]"
+      className="w-81.5"
       value={[value]}
       onValueChange={(nextValue) => {
         const selectedValue = nextValue[0]

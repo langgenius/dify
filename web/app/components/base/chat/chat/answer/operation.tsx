@@ -220,7 +220,7 @@ function Operation({
           'absolute flex justify-end gap-1',
           hasWorkflowProcess && 'right-2 -bottom-4',
           !positionRight && 'right-2 -bottom-4',
-          !hasWorkflowProcess && positionRight && 'top-[9px]!',
+          !hasWorkflowProcess && positionRight && 'top-2.25!',
         )}
         style={!hasWorkflowProcess && positionRight ? { left: contentWidth + 8 } : {}}
         data-testid="operation-bar"

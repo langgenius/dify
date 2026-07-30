@@ -69,7 +69,7 @@ const StatusContainer: FC<Props> = ({ status, children }) => {
     >
       <div
         className={cn(
-          'absolute top-0 left-0 h-[50px] w-[65%] bg-no-repeat',
+          'absolute top-0 left-0 h-12.5 w-[65%] bg-no-repeat',
           theme === Theme.light && 'bg-[url(~@/app/components/workflow/run/assets/highlight.svg)]',
           theme === Theme.dark &&
             'bg-[url(~@/app/components/workflow/run/assets/highlight-dark.svg)]',

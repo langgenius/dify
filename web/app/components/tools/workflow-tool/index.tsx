@@ -269,7 +269,7 @@ export function WorkflowToolDrawer({
                 onChange={(e) => setName(e.target.value)}
               />
               {!isWorkflowToolNameValid(name) && (
-                <div className="text-xs leading-[18px] text-red-500">
+                <div className="text-xs leading-4.5 text-red-500">
                   {t(($) => $['createTool.nameForToolCallTip'], { ns: 'tools' })}
                 </div>
               )}
@@ -294,13 +294,13 @@ export function WorkflowToolDrawer({
                 {t(($) => $['createTool.toolInput.title'], { ns: 'tools' })}
               </div>
               <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
+                <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-[156px] p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 pl-3 font-medium">
                         {t(($) => $['createTool.toolInput.name'], { ns: 'tools' })}
                       </th>
-                      <th className="w-[102px] p-2 pl-3 font-medium">
+                      <th className="w-25.5 p-2 pl-3 font-medium">
                         {t(($) => $['createTool.toolInput.method'], { ns: 'tools' })}
                       </th>
                       <th className="p-2 pl-3 font-medium">
@@ -311,13 +311,13 @@ export function WorkflowToolDrawer({
                   <tbody>
                     {parameters.map((item, index) => (
                       <tr key={index} className="border-b border-divider-regular last:border-0">
-                        <td className="max-w-[156px] p-2 pl-3">
-                          <div className="text-[13px] leading-[18px]">
+                        <td className="max-w-39 p-2 pl-3">
+                          <div className="text-[13px] leading-4.5">
                             <div className="flex">
                               <span className="truncate font-medium text-text-primary">
                                 {item.name}
                               </span>
-                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">
+                              <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
                                 {item.required
                                   ? t(($) => $['createTool.toolInput.required'], { ns: 'tools' })
                                   : ''}
@@ -330,12 +330,12 @@ export function WorkflowToolDrawer({
                           {item.name === '__image' && (
                             <div
                               className={cn(
-                                'flex h-9 min-h-[56px] cursor-default items-center gap-1 bg-transparent px-3 py-2',
+                                'flex h-9 min-h-14 cursor-default items-center gap-1 bg-transparent px-3 py-2',
                               )}
                             >
                               <div
                                 className={cn(
-                                  'grow truncate text-[13px] leading-[18px] text-text-secondary',
+                                  'grow truncate text-[13px] leading-4.5 text-text-secondary',
                                 )}
                               >
                                 {t(($) => $['createTool.toolInput.methodParameter'], {
@@ -351,10 +351,10 @@ export function WorkflowToolDrawer({
                             />
                           )}
                         </td>
-                        <td className="w-[236px] p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 pl-3 text-text-tertiary">
                           <input
                             type="text"
-                            className="w-full appearance-none bg-transparent text-[13px] leading-[18px] font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
+                            className="w-full appearance-none bg-transparent text-[13px] leading-4.5 font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
                             placeholder={t(
                               ($) => $['createTool.toolInput.descriptionPlaceholder'],
                               {
@@ -379,10 +379,10 @@ export function WorkflowToolDrawer({
                 {t(($) => $['createTool.toolOutput.title'], { ns: 'tools' })}
               </div>
               <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
+                <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-[156px] p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 pl-3 font-medium">
                         {t(($) => $['createTool.name'], { ns: 'tools' })}
                       </th>
                       <th className="p-2 pl-3 font-medium">
@@ -393,13 +393,13 @@ export function WorkflowToolDrawer({
                   <tbody>
                     {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
                       <tr key={index} className="border-b border-divider-regular last:border-0">
-                        <td className="max-w-[156px] p-2 pl-3">
-                          <div className="text-[13px] leading-[18px]">
+                        <td className="max-w-39 p-2 pl-3">
+                          <div className="text-[13px] leading-4.5">
                             <div className="flex items-center">
                               <span className="truncate font-medium text-text-primary">
                                 {item.name}
                               </span>
-                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">
+                              <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
                                 {item.reserved
                                   ? t(($) => $['createTool.toolOutput.reserved'], { ns: 'tools' })
                                   : ''}
@@ -419,7 +419,7 @@ export function WorkflowToolDrawer({
                                     }
                                   />
                                   <TooltipContent>
-                                    <div className="w-[180px]">
+                                    <div className="w-45">
                                       {t(
                                         ($) =>
                                           $['createTool.toolOutput.reservedParameterDuplicateTip'],
@@ -433,8 +433,8 @@ export function WorkflowToolDrawer({
                             <div className="text-text-tertiary">{item.type}</div>
                           </div>
                         </td>
-                        <td className="w-[236px] p-2 pl-3 text-text-tertiary">
-                          <span className="text-[13px] leading-[18px] font-normal text-text-secondary">
+                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                          <span className="text-[13px] leading-4.5 font-normal text-text-secondary">
                             {item.description}
                           </span>
                         </td>

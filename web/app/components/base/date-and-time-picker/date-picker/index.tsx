@@ -244,7 +244,7 @@ const DatePicker = ({
             })
           ) : (
             <div
-              className="group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
+              className="group flex w-63 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
               onClick={handleClickTrigger}
               data-testid="date-picker-trigger"
             >
@@ -281,7 +281,7 @@ const DatePicker = ({
         sideOffset={0}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
+        <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
           {view === ViewType.date ? (
             <DatePickerHeader

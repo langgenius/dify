@@ -42,6 +42,9 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
 | `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
+| `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify/.dify-agent-materialized-homes` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
+| `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/home/dify/.dify-agent-workspaces` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
+| `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.dify-agent-home-snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT` | empty | Enterprise Gateway endpoint required by configuration. Default-Home Bindings are supported; immutable Home Snapshot operations remain unsupported. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_AUTH_TOKEN` | empty | Optional `X-Inner-Api-Key` sent to the Enterprise Gateway. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT` | `30` | Enterprise control-plane timeout in seconds. |
@@ -78,6 +81,10 @@ DIFY_AGENT_INNER_API_KEY=replace-with-dify-inner-api-key-for-plugin
 DIFY_AGENT_RUNTIME_BACKEND=local
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
 DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
+# Set these when shellctl runs directly on a host that does not have /home/dify.
+DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
+DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
+DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
@@ -90,7 +97,7 @@ DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 accepted only as legacy aliases for the two Local settings. New deployments
 must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
-the removed shell-provider selector or Shell-owned Home root.
+the removed shell-provider selector.
 
 The example above is for a standalone Dify Agent process, where the byte limit
 can be set directly. In a Docker deployment, set `PLUGIN_MAX_FILE_SIZE` in

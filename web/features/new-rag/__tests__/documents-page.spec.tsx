@@ -2499,7 +2499,7 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const error = await screen.findByText('Parser failed at line 400 with complete server context')
-    expect(error).toHaveClass('whitespace-pre-wrap', 'break-words')
+    expect(error).toHaveClass('whitespace-pre-wrap', 'wrap-break-word')
     expect(error).not.toHaveClass('truncate')
   })
 

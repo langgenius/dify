@@ -1,17 +1,30 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import AppNavItem from '../index'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import AppNavItem from '../app-nav-item'
 
 const baseProps = {
-  name: 'My App',
-  id: 'app-123',
-  icon_type: 'emoji' as const,
-  icon: '🤖',
-  icon_background: '#fff',
-  icon_url: '',
+  app: {
+    id: 'app-123',
+    app_owner_tenant_id: 'tenant-1',
+    editable: true,
+    is_pinned: false,
+    last_used_at: null,
+    uninstallable: false,
+    app: {
+      id: 'source-app-123',
+      name: 'My App',
+      description: 'Description',
+      mode: 'chat',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#fff',
+      icon_url: null,
+      use_icon_as_answer_icon: false,
+    },
+  } satisfies InstalledAppResponse,
   isSelected: false,
-  isPinned: false,
-  togglePin: vi.fn(),
-  uninstallable: false,
+  onTogglePin: vi.fn(),
   onDelete: vi.fn(),
 }
 
@@ -59,20 +72,40 @@ describe('AppNavItem', () => {
     })
 
     it('should call onDelete with app id when delete action is clicked', async () => {
+      const user = userEvent.setup()
       render(<AppNavItem {...baseProps} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(baseProps.onDelete).toHaveBeenCalledWith('app-123')
+    })
+
+    it('should request the next pin state', async () => {
+      const user = userEvent.setup()
+      render(<AppNavItem {...baseProps} />)
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(await screen.findByText('explore.sidebar.action.pin'))
+
+      expect(baseProps.onTogglePin).toHaveBeenCalledWith('app-123', true)
     })
   })
 
   describe('Edge Cases', () => {
-    it('should not render delete action when app is uninstallable', () => {
-      render(<AppNavItem {...baseProps} uninstallable />)
+    it('should not render delete action when app is uninstallable', async () => {
+      const user = userEvent.setup()
+      render(
+        <AppNavItem
+          {...baseProps}
+          app={{
+            ...baseProps.app,
+            uninstallable: true,
+          }}
+        />,
+      )
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.queryByText('explore.sidebar.action.delete')).not.toBeInTheDocument()
     })
