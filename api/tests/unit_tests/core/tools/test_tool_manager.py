@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -732,8 +733,11 @@ def test_get_tool_label_loads_cache_and_handles_missing():
         assert ToolManager.get_tool_label("missing") is None
 
 
+@pytest.mark.parametrize("database_scheme", ["mysql", "postgresql"])
 def test_list_default_builtin_providers_uses_persisted_defaults(
-    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
+    monkeypatch: pytest.MonkeyPatch,
+    tool_database: _ToolDatabase,
+    database_scheme: str,
 ):
     tenant_id = "00000000-0000-0000-0000-000000000001"
     default_provider = _builtin_provider(
@@ -760,12 +764,50 @@ def test_list_default_builtin_providers_uses_persisted_defaults(
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     monkeypatch.setattr(
         "core.tools.tool_manager.dify_config",
-        SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME="mysql"),
+        SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME=database_scheme),
     )
 
-    providers = ToolManager.list_default_builtin_providers(tenant_id)
+    postgresql_statements = []
+
+    def translate_postgresql_distinct_on(_connection, _cursor, statement, parameters, _context, _executemany):
+        if "SELECT DISTINCT ON (tenant_id, provider) id" not in statement:
+            return statement, parameters
+
+        postgresql_statements.append(statement)
+        sqlite_statement = """
+            SELECT id FROM (
+                SELECT id,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY tenant_id, provider
+                           ORDER BY is_default DESC, created_at DESC
+                       ) AS rn
+                FROM tool_builtin_providers
+                WHERE tenant_id = ?
+            ) ranked WHERE rn = 1
+        """
+        return sqlite_statement, parameters
+
+    if database_scheme == "postgresql":
+        event.listen(
+            tool_database.engine,
+            "before_cursor_execute",
+            translate_postgresql_distinct_on,
+            retval=True,
+        )
+
+    try:
+        providers = ToolManager.list_default_builtin_providers(tenant_id)
+    finally:
+        if database_scheme == "postgresql":
+            event.remove(
+                tool_database.engine,
+                "before_cursor_execute",
+                translate_postgresql_distinct_on,
+            )
 
     assert [provider.id for provider in providers] == [default_provider.id]
+    if database_scheme == "postgresql":
+        assert postgresql_statements
 
 
 def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(
