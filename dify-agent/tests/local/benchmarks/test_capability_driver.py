@@ -1,8 +1,12 @@
+import json
+
 import httpx
 import pytest
 
 from benchmarks.capability_driver import (
     _create_binding,
+    _managed_binding_pool,
+    _worker_binding_context,
     build_capability_run_request,
     summarize_capability_outcomes,
     validate_capability_ledger,
@@ -98,6 +102,46 @@ async def test_capability_binding_detection_falls_back_on_legacy_agent() -> None
     assert workspace_ref is None
 
 
+@pytest.mark.anyio
+async def test_binding_pool_cleans_successful_allocations_when_one_worker_creation_fails() -> None:
+    create_count = 0
+    destroyed: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal create_count
+        if request.url.path == "/execution-bindings":
+            create_count += 1
+            if create_count == 2:
+                return httpx.Response(status_code=503)
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "binding_ref": f"binding-{create_count}",
+                    "workspace_ref": f"workspace-{create_count}",
+                },
+            )
+        if request.url.path == "/execution-bindings/destroy":
+            payload = json.loads(request.content)
+            destroyed.append(payload["binding_ref"])
+            return httpx.Response(status_code=200, json={"destroyed": True})
+        return httpx.Response(status_code=404)
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+        base_url="http://agent",
+    ) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            async with _managed_binding_pool(
+                client,
+                block_id="partial-pool",
+                binding_pool_size=3,
+            ):
+                pytest.fail("pool creation should have failed")
+
+    assert create_count == 3
+    assert sorted(destroyed) == ["binding-1", "binding-3"]
+
+
 def test_capability_ledger_validates_file_roundtrip_control_and_data_plane() -> None:
     scenario = _capability_scenario("capability_file_roundtrip_16m_c1")
     ledger = FakeDependencyLedger(
@@ -149,3 +193,17 @@ def test_capability_outcomes_expose_useful_payload_throughput() -> None:
     assert outcomes.successful_operations_per_second == 0.25
     assert outcomes.useful_payload_mib_per_second == 4
     assert outcomes.service_time_mean_ms == 50
+
+
+def test_capacity_workers_receive_distinct_binding_contexts() -> None:
+    bindings: list[str | None] = ["binding-0", "binding-1", "binding-2"]
+    snapshots: list[dict[str, object] | None] = [{"worker": 0}, {"worker": 1}, {"worker": 2}]
+
+    assert [
+        _worker_binding_context(
+            worker,
+            binding_refs=bindings,
+            session_snapshots=snapshots,
+        )
+        for worker in range(3)
+    ] == list(zip(bindings, snapshots, strict=True))

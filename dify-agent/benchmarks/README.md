@@ -33,6 +33,9 @@ make -C dify-agent bench-docker-runtime-ab
 # Agent -> Runtime capability profile
 make -C dify-agent bench-docker-capability-smoke
 make -C dify-agent bench-docker-capability-ab
+
+# Single-version Local capacity curve (24 workload/concurrency points)
+make -C dify-agent bench-docker-capacity TARGET_REF=1.16.1
 ```
 
 All A/B commands accept `BASE_REF`, `CANDIDATE_REF`, `BENCH_SCENARIO`,
@@ -122,3 +125,51 @@ non-zero status.
 Only compare baseline and candidate from the same invocation. Local Docker
 results are deterministic code A/B evidence, not an E2B cost or SaaS capacity
 forecast.
+
+## V2 capacity and real E2B calibration
+
+Capacity mode is separate from the v3 A/B result schema. It writes a v1
+single-target curve for concurrency `1/5/10/20`. A full Local point uses three
+blocks; every block runs for at least 60 seconds and completes at least 100
+successful operations, with a five-minute maximum. `BENCH_QUICK=1` verifies
+wiring only and always writes `reference_valid=false`.
+
+Run real E2B calibration only after the Local result exists:
+
+```bash
+export BENCH_E2B_API_KEY=<secret>
+export BENCH_E2B_TEMPLATE=<template>
+export BENCH_E2B_MAX_CONCURRENCY=<vendor-limit>
+export BENCH_E2B_MAX_INVENTORY=<approved-inventory-limit>
+export BENCH_PILOT_TENANT_COUNT=<count>
+
+make -C dify-agent bench-e2b-capacity TARGET_REF=1.16.1
+```
+
+The API key is accepted only through the environment. It is excluded from
+settings representations, result JSON, environment fingerprints, and persisted
+driver/service logs. The command fails before Docker startup when any required
+E2B input is missing. `CAPACITY_RESULTS_DIR=<path>` can select a specific Local
+capacity directory; otherwise the latest Local capacity pointer is used.
+
+The E2B command first runs a one-operation lifecycle contract smoke, then
+measures two five-wave lifecycle blocks and two Agent-through-E2B service
+blocks at every concurrency level. Every worker owns one Binding/Sandbox and
+reuses only that Binding during warm measurements. All registered resources are
+destroyed through an idempotent cleanup path on success or failure.
+
+The completed capacity directory contains:
+
+- `local-capacity.json` and `e2b-capacity.json`
+- `unit-consumption.json` normalized per 1,000 successful Runs
+- `quota-recommendation.json` using the fixed 50% launch headroom policy
+- `capacity-report.md`, combined samples, environment fingerprints, and logs
+
+`e2b_active_seconds_per_1000_runs` is a measured active wall-time window, not
+vendor-billed seconds. Local Runtime CPU/memory is never converted into E2B or
+SaaS cost. Binding inventory remains independent of Run count:
+`e2b_inventory_units_per_1000_bindings` is always 1,000.
+
+High-concurrency throttle, timeout, or completion loss is reported as
+`saturated`; c1 correctness, event/ledger damage, startup failure, or incomplete
+cleanup returns non-zero. Quick/smoke evidence never generates a launch quota.

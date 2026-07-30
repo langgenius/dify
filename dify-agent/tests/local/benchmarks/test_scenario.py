@@ -66,3 +66,11 @@ def test_capability_manifest_uses_capability_specific_schema() -> None:
     file_scenario = manifest.get("capability_file_roundtrip_16m_c1")
     assert isinstance(file_scenario, CapabilityBenchmarkScenario)
     assert file_scenario.payload_bytes == 16 * 1024 * 1024
+
+
+def test_e2b_profile_reuses_the_versioned_capability_workloads() -> None:
+    manifest = load_scenario_manifest(profile="e2b")
+
+    assert manifest.profile == "e2b"
+    assert len(manifest.scenarios) == 6
+    assert all(isinstance(scenario, CapabilityBenchmarkScenario) for scenario in manifest.scenarios)

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import ClassVar, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-BenchmarkProfile = Literal["agent", "runtime", "capability"]
+BenchmarkProfile = Literal["agent", "runtime", "capability", "e2b"]
 ScenarioExecutionMode = Literal["fixed", "timed"]
 
 
@@ -168,6 +169,7 @@ class ScenarioManifest(BaseModel):
             "agent": AgentBenchmarkScenario,
             "runtime": RuntimeBenchmarkScenario,
             "capability": CapabilityBenchmarkScenario,
+            "e2b": CapabilityBenchmarkScenario,
         }[self.profile]
         if any(not isinstance(scenario, expected_type) for scenario in self.scenarios):
             raise ValueError(f"{self.profile} manifest contains a scenario for another profile")
@@ -187,9 +189,17 @@ def load_scenario_manifest(
     profile: BenchmarkProfile = "agent",
 ) -> ScenarioManifest:
     """Load one checked-in profile manifest."""
-    manifest_name = "scenarios.json" if profile == "agent" else f"{profile}_scenarios.json"
+    manifest_name = {
+        "agent": "scenarios.json",
+        "runtime": "runtime_scenarios.json",
+        "capability": "capability_scenarios.json",
+        "e2b": "capability_scenarios.json",
+    }[profile]
     resolved_path = path or Path(__file__).with_name(manifest_name)
-    return ScenarioManifest.model_validate_json(resolved_path.read_text())
+    payload = json.loads(resolved_path.read_text())
+    if path is None and profile == "e2b" and isinstance(payload, dict):
+        payload["profile"] = "e2b"
+    return ScenarioManifest.model_validate(payload)
 
 
 # Compatibility name retained for existing Agent benchmark imports.

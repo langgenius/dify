@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import hashlib
 import json
@@ -10,7 +12,7 @@ import os
 from pathlib import Path
 import shlex
 import time
-from typing import cast
+from typing import Literal, cast
 from uuid import uuid4
 
 import httpx
@@ -41,6 +43,7 @@ _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 
 @dataclass(slots=True, frozen=True)
 class CapabilityDriverSettings:
+    profile: Literal["capability", "e2b"]
     agent_url: str
     runtime_url: str
     fake_deps_url: str
@@ -56,13 +59,24 @@ class CapabilityDriverSettings:
     trial_runs: int | None
     warmup_seconds: float | None
     duration_seconds: float | None
+    result_scenario_id: str | None = None
+    concurrency: int | None = None
+    minimum_successful_runs: int | None = None
+    maximum_duration_seconds: float | None = None
+    binding_pool_size: int | None = None
+    warmup_once_per_worker: bool = False
+    external_runtime: bool = False
 
     @classmethod
     def from_environment(cls) -> "CapabilityDriverSettings":
         target = os.environ.get("BENCH_TARGET", "candidate")
         if target not in {"baseline", "candidate"}:
             raise ValueError("BENCH_TARGET must be baseline or candidate")
+        profile = os.environ.get("BENCH_PROFILE", "capability")
+        if profile not in {"capability", "e2b"}:
+            raise ValueError("BENCH_PROFILE must be capability or e2b")
         return cls(
+            profile=cast(Literal["capability", "e2b"], profile),
             agent_url=os.environ.get("BENCH_AGENT_URL", "http://agent:5050").rstrip("/"),
             runtime_url=os.environ.get("BENCH_RUNTIME_URL", "http://runtime:5004").rstrip("/"),
             fake_deps_url=os.environ.get("BENCH_FAKE_DEPS_URL", "http://fake-deps:5002").rstrip("/"),
@@ -78,6 +92,13 @@ class CapabilityDriverSettings:
             trial_runs=_optional_int_environment("BENCH_TRIAL_RUNS"),
             warmup_seconds=_optional_float_environment("BENCH_WARMUP_SECONDS"),
             duration_seconds=_optional_float_environment("BENCH_DURATION_SECONDS"),
+            result_scenario_id=os.environ.get("BENCH_RESULT_SCENARIO_ID") or None,
+            concurrency=_optional_int_environment("BENCH_CONCURRENCY"),
+            minimum_successful_runs=_optional_int_environment("BENCH_MIN_SUCCESSFUL_RUNS"),
+            maximum_duration_seconds=_optional_float_environment("BENCH_MAX_DURATION_SECONDS"),
+            binding_pool_size=_optional_int_environment("BENCH_BINDING_POOL_SIZE"),
+            warmup_once_per_worker=os.environ.get("BENCH_WARMUP_ONCE_PER_WORKER") == "1",
+            external_runtime=os.environ.get("BENCH_EXTERNAL_RUNTIME") == "1",
         )
 
 
@@ -111,18 +132,33 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
     timeout = httpx.Timeout(connect=10, read=180, write=180, pool=10)
     limits = httpx.Limits(max_connections=max(30, scenario.concurrency * 5), max_keepalive_connections=30)
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    binding_pool_size = settings.binding_pool_size or 1
+    if binding_pool_size not in {1, scenario.concurrency}:
+        raise ValueError("BENCH_BINDING_POOL_SIZE must be 1 or match BENCH_CONCURRENCY")
     async with (
         httpx.AsyncClient(base_url=settings.agent_url, timeout=timeout, limits=limits) as agent_client,
         httpx.AsyncClient(base_url=settings.runtime_url, timeout=timeout, limits=limits) as runtime_client,
         httpx.AsyncClient(base_url=settings.fake_deps_url, timeout=timeout, limits=limits) as fake_client,
+        _managed_binding_pool(
+            agent_client,
+            block_id=settings.block_id,
+            binding_pool_size=binding_pool_size,
+        ) as allocations,
     ):
-        binding_ref, workspace_ref = await _create_binding(agent_client, settings.block_id)
-        session_snapshot = await _prepare_resume_snapshot(
-            scenario=scenario,
-            settings=settings,
-            agent_client=agent_client,
-            fake_client=fake_client,
-            binding_ref=binding_ref,
+        binding_refs = [allocation[0] for allocation in allocations]
+        session_snapshots = list(
+            await asyncio.gather(
+                *(
+                    _prepare_resume_snapshot(
+                        scenario=scenario,
+                        settings=settings,
+                        agent_client=agent_client,
+                        fake_client=fake_client,
+                        binding_ref=binding_ref,
+                    )
+                    for binding_ref in binding_refs
+                )
+            )
         )
         await _reset(redis, fake_client)
         await _run_warmup(
@@ -131,10 +167,11 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
             agent_client=agent_client,
             runtime_client=runtime_client,
             fake_client=fake_client,
-            binding_ref=binding_ref,
-            session_snapshot=session_snapshot,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
+            external_runtime=settings.external_runtime,
         )
-        if not await _delete_all_runtime_jobs(runtime_client):
+        if not settings.external_runtime and not await _delete_all_runtime_jobs(runtime_client):
             raise RuntimeError("failed to clean capability warmup Runtime jobs")
         await _reset(redis, fake_client)
         redis_before = await capture_redis_snapshot(redis)
@@ -147,8 +184,8 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
             settings=settings,
             agent_client=agent_client,
             fake_client=fake_client,
-            binding_ref=binding_ref,
-            session_snapshot=session_snapshot,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
             tracker=tracker,
         )
         elapsed_seconds = (time.perf_counter_ns() - started_perf_ns) / 1_000_000_000
@@ -162,20 +199,21 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
             fake_client=fake_client,
         )
         redis_after.storage_bytes = await calculate_storage_bytes(redis, prefix=settings.redis_prefix)
-        drive_cleaned = await _cleanup_drive(runtime_client, observations, scenario=scenario)
-        await _destroy_binding(
-            agent_client,
-            binding_ref=binding_ref,
-            workspace_ref=workspace_ref,
-        )
-        runtime_jobs_cleaned = await _delete_all_runtime_jobs(runtime_client)
-        jobs_response = await runtime_client.get("/v1/jobs", params={"limit": 200})
-        jobs_response.raise_for_status()
-        jobs = jobs_response.json().get("jobs")
-        jobs_empty = runtime_jobs_cleaned and (jobs is None or (isinstance(jobs, list) and not jobs))
-        (settings.results_dir / "runtime-jobs-after.json").write_text(
-            json.dumps(jobs_response.json(), indent=2, sort_keys=True)
-        )
+        drive_cleaned = settings.external_runtime or await _cleanup_drive(runtime_client, observations, scenario=scenario)
+        if settings.external_runtime:
+            jobs_empty = True
+            (settings.results_dir / "runtime-jobs-after.json").write_text(
+                json.dumps({"external_runtime": True}, indent=2, sort_keys=True)
+            )
+        else:
+            runtime_jobs_cleaned = await _delete_all_runtime_jobs(runtime_client)
+            jobs_response = await runtime_client.get("/v1/jobs", params={"limit": 200})
+            jobs_response.raise_for_status()
+            jobs = jobs_response.json().get("jobs")
+            jobs_empty = runtime_jobs_cleaned and (jobs is None or (isinstance(jobs, list) and not jobs))
+            (settings.results_dir / "runtime-jobs-after.json").write_text(
+                json.dumps(jobs_response.json(), indent=2, sort_keys=True)
+            )
         await redis.aclose()
 
     samples = [observation.sample for observation in observations]
@@ -194,10 +232,10 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
     )
     behavior_counts = _behavior_counts(observations, outcomes.successful_runs)
     result = BlockResult(
-        profile="capability",
+        profile=settings.profile,
         target=settings.target,
         target_id=settings.target_id,
-        scenario_id=scenario.id,
+        scenario_id=settings.result_scenario_id or scenario.id,
         scenario_version=scenario.version,
         block_id=settings.block_id,
         pair_index=settings.pair_index,
@@ -211,6 +249,7 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
         cleanup={
             "jobs_empty": jobs_empty,
             "binding_destroyed": True,
+            "bindings_destroyed": True,
             "drive_cleaned": drive_cleaned,
         },
         valid=not invalid_reasons,
@@ -364,6 +403,42 @@ async def _destroy_binding(
     response.raise_for_status()
 
 
+@asynccontextmanager
+async def _managed_binding_pool(
+    agent_client: httpx.AsyncClient,
+    *,
+    block_id: str,
+    binding_pool_size: int,
+) -> AsyncIterator[list[tuple[str | None, str | None]]]:
+    """Register every allocation immediately and destroy it on every exit path."""
+    allocations: list[tuple[str | None, str | None]] = []
+
+    async def create(worker_index: int) -> None:
+        allocation = await _create_binding(agent_client, f"{block_id}-worker-{worker_index}")
+        allocations.append(allocation)
+
+    try:
+        await asyncio.gather(*(create(worker_index) for worker_index in range(binding_pool_size)))
+        yield allocations
+    finally:
+        cleanup_results = await asyncio.gather(
+            *(
+                _destroy_binding(
+                    agent_client,
+                    binding_ref=binding_ref,
+                    workspace_ref=workspace_ref,
+                )
+                for binding_ref, workspace_ref in allocations
+            ),
+            return_exceptions=True,
+        )
+        cleanup_errors = [result for result in cleanup_results if isinstance(result, BaseException)]
+        if cleanup_errors:
+            raise RuntimeError(
+                f"failed to destroy {len(cleanup_errors)} of {len(allocations)} benchmark bindings"
+            ) from cleanup_errors[0]
+
+
 async def _prepare_resume_snapshot(
     *,
     scenario: CapabilityBenchmarkScenario,
@@ -397,10 +472,22 @@ async def _run_warmup(
     agent_client: httpx.AsyncClient,
     runtime_client: httpx.AsyncClient,
     fake_client: httpx.AsyncClient,
-    binding_ref: str | None,
-    session_snapshot: dict[str, object] | None,
+    binding_refs: list[str | None],
+    session_snapshots: list[dict[str, object] | None],
+    external_runtime: bool,
 ) -> None:
-    if scenario.trial_runs is not None:
+    if settings.warmup_once_per_worker:
+        observations = await _run_fixed(
+            count=scenario.concurrency,
+            scenario=scenario,
+            settings=settings,
+            agent_client=agent_client,
+            fake_client=fake_client,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
+            tracker=None,
+        )
+    elif scenario.trial_runs is not None:
         count = settings.warmup_runs if settings.warmup_runs is not None else scenario.warmup_runs or 0
         observations = await _run_fixed(
             count=count,
@@ -408,8 +495,8 @@ async def _run_warmup(
             settings=settings,
             agent_client=agent_client,
             fake_client=fake_client,
-            binding_ref=binding_ref,
-            session_snapshot=session_snapshot,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
             tracker=None,
         )
     else:
@@ -420,11 +507,11 @@ async def _run_warmup(
             settings=settings,
             agent_client=agent_client,
             fake_client=fake_client,
-            binding_ref=binding_ref,
-            session_snapshot=session_snapshot,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
             tracker=None,
         )
-    if not await _cleanup_drive(runtime_client, observations, scenario=scenario):
+    if not external_runtime and not await _cleanup_drive(runtime_client, observations, scenario=scenario):
         raise RuntimeError("failed to clean capability warmup drive artifacts")
 
 
@@ -434,8 +521,8 @@ async def _run_measurement(
     settings: CapabilityDriverSettings,
     agent_client: httpx.AsyncClient,
     fake_client: httpx.AsyncClient,
-    binding_ref: str | None,
-    session_snapshot: dict[str, object] | None,
+    binding_refs: list[str | None],
+    session_snapshots: list[dict[str, object] | None],
     tracker: ActiveRunTracker,
 ) -> list[CapabilityObservation]:
     if scenario.trial_runs is not None:
@@ -446,8 +533,8 @@ async def _run_measurement(
             settings=settings,
             agent_client=agent_client,
             fake_client=fake_client,
-            binding_ref=binding_ref,
-            session_snapshot=session_snapshot,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
             tracker=tracker,
         )
     duration = settings.duration_seconds if settings.duration_seconds is not None else scenario.duration_seconds or 0
@@ -457,9 +544,11 @@ async def _run_measurement(
         settings=settings,
         agent_client=agent_client,
         fake_client=fake_client,
-        binding_ref=binding_ref,
-        session_snapshot=session_snapshot,
+        binding_refs=binding_refs,
+        session_snapshots=session_snapshots,
         tracker=tracker,
+        minimum_successful_runs=settings.minimum_successful_runs,
+        maximum_duration_seconds=settings.maximum_duration_seconds,
     )
 
 
@@ -470,14 +559,19 @@ async def _run_fixed(
     settings: CapabilityDriverSettings,
     agent_client: httpx.AsyncClient,
     fake_client: httpx.AsyncClient,
-    binding_ref: str | None,
-    session_snapshot: dict[str, object] | None,
+    binding_refs: list[str | None],
+    session_snapshots: list[dict[str, object] | None],
     tracker: ActiveRunTracker | None,
 ) -> list[CapabilityObservation]:
     semaphore = asyncio.Semaphore(scenario.concurrency)
 
     async def guarded(index: int) -> CapabilityObservation:
         async with semaphore:
+            binding_ref, session_snapshot = _worker_binding_context(
+                index,
+                binding_refs=binding_refs,
+                session_snapshots=session_snapshots,
+            )
             return await _run_once(
                 sequence=index,
                 scenario=scenario,
@@ -499,18 +593,35 @@ async def _run_timed(
     settings: CapabilityDriverSettings,
     agent_client: httpx.AsyncClient,
     fake_client: httpx.AsyncClient,
-    binding_ref: str | None,
-    session_snapshot: dict[str, object] | None,
+    binding_refs: list[str | None],
+    session_snapshots: list[dict[str, object] | None],
     tracker: ActiveRunTracker | None,
+    minimum_successful_runs: int | None = None,
+    maximum_duration_seconds: float | None = None,
 ) -> list[CapabilityObservation]:
-    deadline = time.perf_counter() + duration_seconds
+    started = time.perf_counter()
+    minimum_deadline = started + duration_seconds
+    maximum_deadline = started + (maximum_duration_seconds or duration_seconds)
     observations: list[CapabilityObservation] = []
     lock = asyncio.Lock()
 
     async def worker(index: int) -> None:
         await asyncio.sleep(index * 0.005)
         sequence = index
-        while time.perf_counter() < deadline:
+        binding_ref, session_snapshot = _worker_binding_context(
+            index,
+            binding_refs=binding_refs,
+            session_snapshots=session_snapshots,
+        )
+        while True:
+            now = time.perf_counter()
+            successful = sum(
+                observation.sample.terminal_status == "succeeded"
+                for observation in observations
+            )
+            minimum_met = minimum_successful_runs is None or successful >= minimum_successful_runs
+            if (now >= minimum_deadline and minimum_met) or now >= maximum_deadline:
+                break
             observation = await _run_once(
                 sequence=sequence,
                 scenario=scenario,
@@ -527,6 +638,18 @@ async def _run_timed(
 
     await asyncio.gather(*(worker(index) for index in range(scenario.concurrency)))
     return observations
+
+
+def _worker_binding_context(
+    worker_index: int,
+    *,
+    binding_refs: Sequence[str | None],
+    session_snapshots: Sequence[dict[str, object] | None],
+) -> tuple[str | None, dict[str, object] | None]:
+    if not binding_refs or len(binding_refs) != len(session_snapshots):
+        raise ValueError("binding refs and session snapshots must be non-empty and aligned")
+    pool_index = worker_index % len(binding_refs)
+    return binding_refs[pool_index], session_snapshots[pool_index]
 
 
 async def _run_once(
@@ -552,9 +675,9 @@ async def _run_once(
     )
     prepare.raise_for_status()
     sample = RunSample(
-        profile="capability",
+        profile=settings.profile,
         target=settings.target,
-        scenario_id=scenario.id,
+        scenario_id=settings.result_scenario_id or scenario.id,
         block_id=settings.block_id,
         pair_index=settings.pair_index,
         benchmark_run_id=benchmark_run_id,
@@ -953,6 +1076,8 @@ def _apply_overrides(
         updates.update(warmup_runs=settings.warmup_runs, warmup_seconds=None)
     if settings.warmup_seconds is not None:
         updates.update(warmup_seconds=settings.warmup_seconds, warmup_runs=None)
+    if settings.concurrency is not None:
+        updates["concurrency"] = settings.concurrency
     return CapabilityBenchmarkScenario.model_validate(scenario.model_dump() | updates)
 
 
