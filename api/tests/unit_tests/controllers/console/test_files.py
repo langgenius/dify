@@ -5,6 +5,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
 from controllers.common.errors import (
     BlockedFileExtensionError,
@@ -92,6 +93,7 @@ class TestFileApiGet:
         assert status == 200
         assert "file_size_limit" in data
         assert "batch_count_limit" in data
+        assert data["skill_file_size_limit"] == dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT
 
 
 class TestFileApiPost:
