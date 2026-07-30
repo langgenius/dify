@@ -396,7 +396,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
 
   return (
-    <main className="relative min-h-full px-8 pt-8 pb-20">
+    <main className="relative min-h-full min-w-0 flex-1 px-8 pt-8 pb-20">
       <header>
         <h1 className="title-md-semi-bold text-text-primary">
           {t(($) => $['newKnowledge.qualityPage.title'])}
@@ -455,8 +455,8 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
       {activeTab === 'golden' &&
         (goldenQuestions.length ? (
-          <div className="mt-3 min-w-298">
-            <div className="grid h-8 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+          <div className="mt-3 w-full overflow-x-auto">
+            <div className="grid h-8 min-w-298 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <Checkbox
                 aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
                 checked={allSelected}
@@ -472,7 +472,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {goldenQuestions.map((item) => (
               <div
                 key={item.id}
-                className="grid h-12 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 border-t border-divider-subtle"
+                className="grid h-12 min-w-298 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 border-t border-divider-subtle"
               >
                 <Checkbox
                   aria-label={t(($) => $['newKnowledge.qualityPage.selectQuestion'], {
@@ -546,7 +546,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </div>
             ))}
             {goldenQuery.hasNextPage && (
-              <div className="flex justify-center border-t border-divider-subtle py-4">
+              <div className="flex min-w-298 justify-center border-t border-divider-subtle py-4">
                 <Button
                   loading={goldenQuery.isFetchingNextPage}
                   disabled={goldenQuery.isFetchingNextPage}
@@ -581,8 +581,8 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
       {activeTab === 'bad' &&
         (badCases.length ? (
-          <div className="mt-3 min-w-298">
-            <div className="grid h-8 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+          <div className="mt-3 w-full overflow-x-auto">
+            <div className="grid h-8 min-w-298 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.reason'])}</span>
@@ -592,7 +592,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {badCases.map((item) => (
               <div
                 key={item.id}
-                className="grid h-12 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle"
+                className="grid h-12 min-w-298 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle"
               >
                 <span className="truncate system-sm-medium text-text-primary">{item.question}</span>
                 <Status status={item.status} />
@@ -677,7 +677,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </div>
             ))}
             {badCaseQuery.hasNextPage && (
-              <div className="flex justify-center border-t border-divider-subtle py-4">
+              <div className="flex min-w-298 justify-center border-t border-divider-subtle py-4">
                 <Button
                   loading={badCaseQuery.isFetchingNextPage}
                   disabled={badCaseQuery.isFetchingNextPage}
