@@ -47,6 +47,7 @@ describe('MCPModal', () => {
     it('should render create title when no data is provided', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('tools.mcp.modal.title')
     })
 
     it('should render edit title when data is provided', () => {
@@ -186,6 +187,15 @@ describe('MCPModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
       expect(onHide).toHaveBeenCalled()
+    })
+
+    it('should call onHide when the dialog requests close', () => {
+      const onHide = vi.fn()
+      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(onHide).toHaveBeenCalledTimes(1)
     })
 
     it('should have confirm button disabled when form is empty', () => {
