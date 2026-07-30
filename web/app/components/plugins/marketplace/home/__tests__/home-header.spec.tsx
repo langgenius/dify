@@ -1,18 +1,27 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HomeHeader from '../home-header'
+
+const mocks = vi.hoisted(() => ({
+  useDocLink: vi.fn(() => () => 'https://docs.dify.ai/en/home'),
+}))
 
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
     useTranslation: () => ({
+      i18n: {
+        language: 'en-US',
+      },
       t: withSelectorKey((key: string) => key),
     }),
   }
 })
 
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => () => 'https://docs.dify.ai/en/home',
+  defaultDocBaseUrl: 'https://docs.dify.ai',
+  getDocHomePath: () => '/home',
+  useDocLink: mocks.useDocLink,
 }))
 
 vi.mock('../home-sticky-state-provider', () => ({
@@ -20,6 +29,10 @@ vi.mock('../home-sticky-state-provider', () => ({
 }))
 
 describe('HomeHeader', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('links the Guide action to Dify documentation', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
@@ -40,6 +53,17 @@ describe('HomeHeader', () => {
     expect(guideLink).toHaveAttribute('href', 'https://docs.dify.ai/en/home')
     expect(guideLink).toHaveAttribute('target', '_blank')
     expect(guideLink).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(mocks.useDocLink).not.toHaveBeenCalled()
+  })
+
+  it('uses the Dify deployment-aware documentation link inside Dify', () => {
+    render(<HomeHeader isMarketplacePlatform={false} />)
+
+    expect(screen.getByRole('link', { name: 'marketplace.home.guide' })).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/en/home',
+    )
+    expect(mocks.useDocLink).toHaveBeenCalledOnce()
   })
 
   it('shows Templates as the active compact tab on the Templates catalog', () => {
