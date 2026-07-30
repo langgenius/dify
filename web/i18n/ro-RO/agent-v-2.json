@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Încărcarea abilității a eșuat.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Încărcați un fișier .zip sau .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Pachetul de abilitate trebuie să aibă cel mult {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "Abilitate încărcată.",
   "agentDetail.configure.skills.upload.title": "Încarcă abilitate",
   "agentDetail.configure.skills.upload.warning.files": "Dacă trebuie doar să folosești fișiere Markdown, încarcă-le în Fișiere și menționează-le în promptul tău.",

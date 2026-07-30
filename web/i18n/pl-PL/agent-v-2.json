@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Nie udało się przesłać umiejętności.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Prześlij plik .zip lub .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Pakiet umiejętności nie może być większy niż {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "Umiejętność przesłana.",
   "agentDetail.configure.skills.upload.title": "Prześlij umiejętność",
   "agentDetail.configure.skills.upload.warning.files": "Jeśli chcesz używać tylko plików Markdown, prześlij je do sekcji Pliki i odwołaj się do nich w swoim prompcie.",
