@@ -142,6 +142,7 @@ function LoadedDocumentRevisionContent({
           !chunksQuery.isFetchNextPageError
         }
         document={document}
+        isLoadingMore={chunksQuery.isFetchingNextPage}
         locale={locale}
         revision={revision}
         selectedChunkId={selectedChunk?.id}

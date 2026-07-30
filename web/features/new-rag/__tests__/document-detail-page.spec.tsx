@@ -477,6 +477,10 @@ describe('DocumentDetailPage', () => {
     queryClient.invalidateQueries.mockResolvedValue(undefined)
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('loads the document, revisions, chunks, and task status through generated contracts', async () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -695,7 +699,8 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentChunksLoadError',
     )
-    expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
+    expect(screen.queryByText('dataset.newKnowledge.documentContentIncomplete')).toBeNull()
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'false')
     const indexInformation = screen
       .getByRole('heading', { name: 'dataset.newKnowledge.indexInformation' })
       .closest('section')
@@ -891,52 +896,74 @@ describe('DocumentDetailPage', () => {
     expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps remaining chunk pages user-controlled and marks partial document statistics', async () => {
-    const user = userEvent.setup()
-    chunksQuery.data = {
-      pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
-    }
-    chunksQuery.hasNextPage = true
+  it('automatically loads every remaining chunk page without showing a loading notice', async () => {
+    const intersectionCallbacks: IntersectionObserverCallback[] = []
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback) {
+          intersectionCallbacks.push(callback)
+        }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-
-    expect(chunksQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'First chunk' }).closest('section')).toHaveClass(
-      '[content-visibility:auto]',
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
-    expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
-  })
-
-  it('moves focus to newly loaded tree content when the last load-more control disappears', async () => {
-    const user = userEvent.setup()
     chunksQuery.data = {
       pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
     }
     chunksQuery.hasNextPage = true
+
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(chunksQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'false')
+    expect(screen.queryByText('dataset.newKnowledge.documentContentIncomplete')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'First chunk' }).closest('section')).toHaveClass(
+      '[content-visibility:auto]',
+    )
+    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' })).toBeNull()
+
+    await waitFor(() => expect(intersectionCallbacks.length).toBeGreaterThan(0))
+    const firstObserverCount = intersectionCallbacks.length
+    act(() => {
+      intersectionCallbacks.at(-1)?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
+
     chunksQuery.isFetchingNextPage = true
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText('dataset.newKnowledge.documentContentIncomplete')).toBeNull()
+
     chunksQuery.data = {
       pages: [
         { items: [chunk({ id: 'first', text: 'First chunk' })] },
         { items: [chunk({ id: 'second', ordinal: 2, text: 'Second chunk' })] },
       ],
     }
-    chunksQuery.hasNextPage = false
     chunksQuery.isFetchingNextPage = false
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    const tree = screen.getByRole('tree')
-    await waitFor(() => expect(tree).toHaveFocus())
-    expect(tree).toHaveAttribute('aria-activedescendant', 'document-chunk-treeitem-second')
-    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' })).toBeNull()
+    await waitFor(() => expect(intersectionCallbacks.length).toBeGreaterThan(firstObserverCount))
+    act(() => {
+      intersectionCallbacks.at(-1)?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(chunksQuery.fetchNextPage).toHaveBeenCalledTimes(2)
+
+    chunksQuery.hasNextPage = false
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'false')
+    expect(screen.queryByText('dataset.newKnowledge.documentContentIncomplete')).toBeNull()
   })
 
   it('distinguishes missing, restricted, and retryable document failures', async () => {
@@ -1607,30 +1634,5 @@ describe('DocumentDetailPage', () => {
     )
     fireEvent.keyDown(tree, { key: 'Home' })
     expect(tree).toHaveAttribute('aria-activedescendant', 'document-chunk-treeitem-chunk-0')
-  })
-
-  it('keeps focus on a failed chunk load-more retry', async () => {
-    const user = userEvent.setup()
-    chunksQuery.data = {
-      pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
-    }
-    chunksQuery.hasNextPage = true
-    const rendered = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-    )
-    const loadMore = screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' })
-    expect(screen.getByRole('treeitem', { name: 'First chunk' })).toHaveAttribute(
-      'aria-setsize',
-      '-1',
-    )
-
-    await user.click(loadMore)
-    chunksQuery.isFetchingNextPage = true
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    chunksQuery.isFetchingNextPage = false
-    chunksQuery.isFetchNextPageError = true
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-
-    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toHaveFocus()
   })
 })

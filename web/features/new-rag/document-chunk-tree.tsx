@@ -4,13 +4,50 @@ import type { DocumentChunkTree } from './document-detail-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
 
 const VIRTUALIZATION_THRESHOLD = 80
 const TREE_ROW_HEIGHT = 32
+
+function AutomaticChunkPageLoader({
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
+}: {
+  fetchNextPage: () => Promise<unknown>
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
+}) {
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const handleIntersection = useEffectEvent((entry: IntersectionObserverEntry) => {
+    if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) void fetchNextPage()
+  })
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (
+      !hasNextPage ||
+      isFetchingNextPage ||
+      !sentinel ||
+      typeof IntersectionObserver === 'undefined'
+    )
+      return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) handleIntersection(entry)
+      },
+      { rootMargin: '0px 0px 200px 0px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage])
+
+  return <div ref={sentinelRef} aria-hidden className="h-px" />
+}
 
 export function DocumentChunkTreePanel({
   chunkCount,
@@ -43,9 +80,6 @@ export function DocumentChunkTreePanel({
   const [focusedChunkId, setFocusedChunkId] = useState<string>()
   const [treeHasFocus, setTreeHasFocus] = useState(false)
   const treeScrollRef = useRef<HTMLDivElement>(null)
-  const loadMoreRequestedRef = useRef(false)
-  const chunkIdsBeforeLoadRef = useRef<Set<string>>(new Set())
-  const wasFetchingNextPageRef = useRef(false)
   const expandedChunkIds = useMemo(
     () => new Set([...tree.byId.keys()].filter((id) => !collapsedChunkIds.has(id))),
     [collapsedChunkIds, tree.byId],
@@ -71,8 +105,6 @@ export function DocumentChunkTreePanel({
       return indexes.sort((left, right) => left - right)
     },
   })
-  const rowVirtualizerRef = useRef(rowVirtualizer)
-  rowVirtualizerRef.current = rowVirtualizer
   const virtualRows = rowVirtualizer.getVirtualItems()
 
   const toggleExpanded = (chunkId: string) => {
@@ -115,36 +147,6 @@ export function DocumentChunkTreePanel({
     event.preventDefault()
     if (nextId) focusChunk(nextId)
   }
-
-  const handleLoadMore = () => {
-    if (isFetchingNextPage) return
-    chunkIdsBeforeLoadRef.current = new Set(tree.byId.keys())
-    loadMoreRequestedRef.current = true
-    void fetchNextPage()
-  }
-
-  useEffect(() => {
-    if (isFetchingNextPage) wasFetchingNextPageRef.current = true
-    if (isFetchingNextPage || !wasFetchingNextPageRef.current || !loadMoreRequestedRef.current)
-      return
-    wasFetchingNextPageRef.current = false
-    loadMoreRequestedRef.current = false
-    if (isFetchNextPageError) return
-    const firstNewNode = visibleNodes.find(
-      (item) => !chunkIdsBeforeLoadRef.current.has(item.node.chunk.id),
-    )
-    requestAnimationFrame(() => {
-      if (!firstNewNode) {
-        treeScrollRef.current?.focus()
-        return
-      }
-      const chunkId = firstNewNode.node.chunk.id
-      const index = visibleNodes.findIndex((item) => item.node.chunk.id === chunkId)
-      setFocusedChunkId(chunkId)
-      if (shouldVirtualize) rowVirtualizerRef.current.scrollToIndex(index, { align: 'auto' })
-      treeScrollRef.current?.focus()
-    })
-  }, [isFetchNextPageError, isFetchingNextPage, shouldVirtualize, visibleNodes])
 
   const renderTreeItem = (item: (typeof visibleNodes)[number], style?: React.CSSProperties) => {
     const { depth, node, positionInSet, setSize } = item
@@ -254,23 +256,35 @@ export function DocumentChunkTreePanel({
           )}
         </div>
       )}
-      {(hasNextPage || isFetchNextPageError) && (
+      {isFetchNextPageError ? (
         <div className="border-t border-divider-subtle p-3 text-center">
-          {isFetchNextPageError && (
-            <p className="mb-2 system-xs-regular text-text-destructive" role="alert">
-              {t(($) => $['newKnowledge.documentChunksLoadMoreError'])}
-            </p>
-          )}
+          <p className="mb-2 system-xs-regular text-text-destructive" role="alert">
+            {t(($) => $['newKnowledge.documentChunksLoadMoreError'])}
+          </p>
           <Button
             disabled={isFetchingNextPage}
             loading={isFetchingNextPage}
-            onClick={handleLoadMore}
+            onClick={() => void fetchNextPage()}
           >
-            {isFetchNextPageError
-              ? tCommon(($) => $['operation.retry'])
-              : t(($) => $['newKnowledge.loadMore'])}
+            {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>
+      ) : (
+        (hasNextPage || isFetchingNextPage) && (
+          <div className="border-t border-divider-subtle p-3">
+            {isFetchingNextPage ? (
+              <div aria-hidden>
+                <Loading />
+              </div>
+            ) : (
+              <AutomaticChunkPageLoader
+                fetchNextPage={fetchNextPage}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+              />
+            )}
+          </div>
+        )
       )}
     </aside>
   )

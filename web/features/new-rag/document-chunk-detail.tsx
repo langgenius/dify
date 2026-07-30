@@ -44,6 +44,7 @@ export function DocumentChunkDetail({
   document,
   chunks,
   chunksComplete,
+  isLoadingMore,
   locale,
   revision,
   selectedChunkId,
@@ -51,6 +52,7 @@ export function DocumentChunkDetail({
   document: LogicalDocument
   chunks: DocumentRevisionChunk[]
   chunksComplete: boolean
+  isLoadingMore: boolean
   locale: string
   revision?: Exclude<LogicalDocumentRevision, null>
   selectedChunkId?: string
@@ -86,17 +88,9 @@ export function DocumentChunkDetail({
   return (
     <>
       <article
-        aria-busy={!chunksComplete}
+        aria-busy={isLoadingMore}
         className="min-h-72 min-w-0 overflow-hidden bg-background-default xl:px-7"
       >
-        {!chunksComplete && (
-          <p
-            className="border-b border-divider-subtle bg-state-accent-hover px-5 py-2 system-xs-regular text-text-accent"
-            role="status"
-          >
-            {t(($) => $['newKnowledge.documentContentIncomplete'])}
-          </p>
-        )}
         {chunks.length ? (
           <div
             className="max-h-[70vh] space-y-6 overflow-auto px-2 py-1 xl:px-0"
