@@ -217,7 +217,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
-    use_egressproxy: bool = False
 
     @classmethod
     @override
@@ -233,14 +232,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         shell_redact_patterns: list[str] | None = None,
         agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
-        use_egressproxy: bool = False,
     ) -> Self:
         return cls(
             config=config,
             shell_redact_patterns=shell_redact_patterns or [],
             agent_stub_api_base_url=agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
-            use_egressproxy=use_egressproxy,
         )
 
     @property
@@ -520,7 +517,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
             session_id=None,
-            use_egressproxy=self.use_egressproxy,
         )
         if agent_stub_env is None:
             if not require_agent_stub_env:
@@ -531,8 +527,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     async def _prepare_credentials(self) -> None:
         """Register credentials with the sandbox egress proxy (once per session)."""
-        if not self.use_egressproxy:
-            return
         execution_context_layer = self.deps.execution_context
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
         if self.agent_stub_api_base_url is None or execution_context is None or self.agent_stub_token_factory is None:

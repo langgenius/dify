@@ -71,7 +71,6 @@ def create_default_layer_providers(
     shell_redact_patterns: list[str] | None = None,
     agent_stub_api_base_url: str | None = None,
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
-    use_egressproxy: bool = False,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers."""
     providers: list[DifyAgentLayerProvider] = [
@@ -96,7 +95,6 @@ def create_default_layer_providers(
                 shell_redact_patterns=shell_redact_patterns or [],
                 agent_stub_api_base_url=agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
-                use_egressproxy=use_egressproxy,
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
