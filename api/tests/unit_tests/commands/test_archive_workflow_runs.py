@@ -247,7 +247,9 @@ def test_safe_remove_scoped_session_recovers_from_real_closed_connection(
     maker = sessionmaker(bind=sqlite_engine)
     registry = scoped_session(maker)
     registry().execute(text("select 1"))
-    sqlite_engine.dispose()
+    dbapi_connection = registry().connection().connection.dbapi_connection
+    assert dbapi_connection is not None
+    dbapi_connection.close()
     monkeypatch.setattr(retention, "db", SimpleNamespace(session=registry, engine=sqlite_engine))
 
     with caplog.at_level(logging.WARNING, logger="commands.retention"):
