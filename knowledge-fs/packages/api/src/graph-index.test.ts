@@ -140,10 +140,14 @@ function createFakeGraphExecutor() {
       input.operation === "select" &&
       input.sql.includes("canonical_key")
     ) {
-      const [knowledgeSpaceId, canonicalKey, publicationGenerationId] = input.params;
-      const row = entities.get(scopedKey(knowledgeSpaceId, publicationGenerationId, canonicalKey));
+      const [knowledgeSpaceId, publicationGenerationId, ...canonicalKeys] = input.params;
+      const rows = canonicalKeys
+        .map((canonicalKey) =>
+          entities.get(scopedKey(knowledgeSpaceId, publicationGenerationId, canonicalKey)),
+        )
+        .filter((row): row is Record<string, unknown> => row !== undefined);
 
-      return { rows: row ? [row] : [], rowsAffected: 0 };
+      return { rows, rowsAffected: 0 };
     }
 
     if (input.tableName === "graph_relations" && input.operation === "insert") {
@@ -201,26 +205,29 @@ function createFakeGraphExecutor() {
       input.operation === "select" &&
       input.sql.includes("subject_entity_id")
     ) {
-      const [
-        knowledgeSpaceId,
-        subjectEntityId,
-        type,
-        objectEntityId,
-        extractionVersion,
-        publicationGenerationId,
-      ] = input.params;
-      const row = relations.get(
-        scopedKey(
-          knowledgeSpaceId,
-          publicationGenerationId,
-          subjectEntityId,
-          type,
-          objectEntityId,
-          extractionVersion,
-        ),
-      );
+      const [knowledgeSpaceId, publicationGenerationId, ...tupleParams] = input.params;
+      const rows: Record<string, unknown>[] = [];
+      for (let index = 0; index < tupleParams.length; index += 4) {
+        const [subjectEntityId, type, objectEntityId, extractionVersion] = tupleParams.slice(
+          index,
+          index + 4,
+        );
+        const row = relations.get(
+          scopedKey(
+            knowledgeSpaceId,
+            publicationGenerationId,
+            subjectEntityId,
+            type,
+            objectEntityId,
+            extractionVersion,
+          ),
+        );
+        if (row) {
+          rows.push(row);
+        }
+      }
 
-      return { rows: row ? [row] : [], rowsAffected: 0 };
+      return { rows, rowsAffected: 0 };
     }
 
     return { rows: [], rowsAffected: 0 };
@@ -1015,6 +1022,10 @@ describe("graph index persistence", () => {
       "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
       '["tenant-1"]',
       '["tenant-1"]',
+      "entity-root",
+      "space-1",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
+      "entity-root",
       "space-1",
       "entity-root",
       "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
@@ -2138,16 +2149,16 @@ describe("graph index persistence", () => {
     expect(fake.calls[0]?.sql).toContain("ON DUPLICATE KEY UPDATE");
     expect(fake.calls[0]?.sql).not.toContain("ON CONFLICT");
     expect(fake.calls[1]?.sql).toContain("`publication_generation_id` <=> ?");
-    expect(fake.calls[1]?.params).toEqual(["space-1", "policy:refund policy", null]);
+    expect(fake.calls[1]?.params).toEqual(["space-1", null, "policy:refund policy"]);
     expect(fake.calls[2]?.sql).toContain("ON DUPLICATE KEY UPDATE");
     expect(fake.calls[3]?.sql).toContain("`publication_generation_id` <=> ?");
     expect(fake.calls[3]?.params).toEqual([
       "space-1",
+      null,
       "entity-acme",
       "references",
       "entity-policy",
       3,
-      null,
     ]);
   });
 

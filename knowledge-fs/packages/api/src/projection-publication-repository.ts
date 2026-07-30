@@ -1075,20 +1075,35 @@ async function materializeDatabaseLogicalDocumentChunks(
     throw new ProjectionSetPublicationCandidateSnapshotConflictError();
   }
 
-  for (const node of parentFirstNodes) {
-    const { row } = node;
-    const text = stringColumn(row, "text");
-    const systemMetadata = {
-      endOffset: numberColumn(row, "end_offset"),
-      kind: node.kind,
-      nodeMetadata: node.metadata,
-      sourceLocation: jsonObjectColumn(row, "source_location"),
-      startOffset: numberColumn(row, "start_offset"),
-    };
-    await transaction.execute({
-      maxRows: 0,
-      operation: "insert",
-      params: [
+  const chunkColumns = [
+    "id",
+    "tenant_id",
+    "knowledge_space_id",
+    "document_id",
+    "document_revision",
+    "parent_chunk_id",
+    "ordinal",
+    "token_count",
+    "text",
+    "system_metadata",
+    "user_metadata",
+    "created_at",
+  ];
+  const chunkColumnList = chunkColumns
+    .map((column) => quoteDatabaseIdentifier(database, column))
+    .join(", ");
+  for (const batch of chunkNodeBatches(parentFirstNodes, logicalDocumentChunkInsertBatchSize)) {
+    const params = batch.flatMap((node) => {
+      const { row } = node;
+      const text = stringColumn(row, "text");
+      const systemMetadata = {
+        endOffset: numberColumn(row, "end_offset"),
+        kind: node.kind,
+        nodeMetadata: node.metadata,
+        sourceLocation: jsonObjectColumn(row, "source_location"),
+        startOffset: numberColumn(row, "start_offset"),
+      };
+      return [
         stringColumn(row, "id"),
         input.tenantId,
         input.knowledgeSpaceId,
@@ -1101,28 +1116,45 @@ async function materializeDatabaseLogicalDocumentChunks(
         JSON.stringify(systemMetadata),
         JSON.stringify({}),
         createdAt,
-      ],
-      sql: `INSERT INTO ${quoteDatabaseIdentifier(database, "document_revision_chunks")} (${[
-        "id",
-        "tenant_id",
-        "knowledge_space_id",
-        "document_id",
-        "document_revision",
-        "parent_chunk_id",
-        "ordinal",
-        "token_count",
-        "text",
-        "system_metadata",
-        "user_metadata",
-        "created_at",
-      ]
-        .map((column) => quoteDatabaseIdentifier(database, column))
-        .join(
-          ", ",
-        )}) VALUES (${databasePlaceholder(database, 1)}, ${databasePlaceholder(database, 2)}, ${databasePlaceholder(database, 3)}, ${databasePlaceholder(database, 4)}, ${databasePlaceholder(database, 5)}, ${databasePlaceholder(database, 6)}, ${databasePlaceholder(database, 7)}, ${databasePlaceholder(database, 8)}, ${databasePlaceholder(database, 9)}, ${jsonInsertPlaceholder(database, 10, undefined)}, ${jsonInsertPlaceholder(database, 11, undefined)}, ${databasePlaceholder(database, 12)});`,
+      ];
+    });
+    const valuesSql = batch
+      .map(
+        (_node, rowIndex) =>
+          `(${chunkColumns
+            .map((_column, columnIndex) =>
+              databasePlaceholder(database, rowIndex * chunkColumns.length + columnIndex + 1),
+            )
+            .join(", ")})`,
+      )
+      .join(", ");
+    await transaction.execute({
+      maxRows: 0,
+      operation: "insert",
+      params,
+      sql: `INSERT INTO ${quoteDatabaseIdentifier(
+        database,
+        "document_revision_chunks",
+      )} (${chunkColumnList}) VALUES ${valuesSql};`,
       tableName: "document_revision_chunks",
     });
   }
+}
+
+// document_revision_chunks has 12 columns per row; 1000 rows keeps the bind-parameter
+// count (12k) well under the Postgres/TiDB per-statement limit while collapsing what was a
+// per-chunk INSERT round trip into one statement per batch.
+const logicalDocumentChunkInsertBatchSize = 1_000;
+
+function chunkNodeBatches(
+  nodes: readonly LogicalDocumentChunkNode[],
+  size: number,
+): readonly (readonly LogicalDocumentChunkNode[])[] {
+  const result: LogicalDocumentChunkNode[][] = [];
+  for (let index = 0; index < nodes.length; index += size) {
+    result.push(nodes.slice(index, index + size));
+  }
+  return result;
 }
 
 async function activateDatabaseDocumentChunkMutation(

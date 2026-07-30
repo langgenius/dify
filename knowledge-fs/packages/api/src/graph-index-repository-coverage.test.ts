@@ -492,7 +492,7 @@ describe("database graph index repository coverage", () => {
 
       const [call] = calls;
       expect(call?.params).toContain('["tenant-1","role:auditor"]');
-      expect(call?.params).toHaveLength(kind === "postgres" ? 6 : 10);
+      expect(call?.params).toHaveLength(kind === "postgres" ? 6 : 13);
       expect(call?.sql).toContain("candidate_entity");
       expect(call?.sql).toContain("permission_scope");
       if (kind === "postgres") {

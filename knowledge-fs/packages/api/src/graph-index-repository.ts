@@ -872,20 +872,28 @@ async function databaseWriteGraphEntityBatch({
     return result.rows.length > 0 ? result.rows.map(mapGraphEntityRow) : [...entities];
   }
 
-  const persisted: GraphEntity[] = [];
-  for (const entity of entities) {
-    const row = await getGraphEntityByLogicalKey({ database, entity, executor, tableName });
+  const persistedByKey = await getGraphEntitiesByLogicalKeys({
+    database,
+    entities,
+    executor,
+    tableName,
+  });
+  return entities.map((entity) => {
+    const logicalKey = graphEntityStorageKey(entity);
+    const row = persistedByKey.get(logicalKey);
+    if (!row) {
+      throw new Error("Graph entity upsert did not persist its logical row");
+    }
     if (immutable) {
       assertExactGenerationReplay({
         componentType: "graph-entity",
         incoming: entity,
-        logicalKey: graphEntityStorageKey(entity),
+        logicalKey,
         persisted: row,
       });
     }
-    persisted.push(row);
-  }
-  return persisted;
+    return row;
+  });
 }
 
 async function databaseUpsertGraphRelations({
@@ -1023,144 +1031,191 @@ async function databaseWriteGraphRelationBatch({
     return result.rows.length > 0 ? result.rows.map(mapGraphRelationRow) : [...relations];
   }
 
-  const persisted: GraphRelation[] = [];
-  for (const relation of relations) {
-    const row = await getGraphRelationByLogicalKey({ database, executor, relation, tableName });
+  const persistedByKey = await getGraphRelationsByLogicalKeys({
+    database,
+    executor,
+    relations,
+    tableName,
+  });
+  return relations.map((relation) => {
+    const logicalKey = graphRelationStorageKey(relation);
+    const row = persistedByKey.get(logicalKey);
+    if (!row) {
+      throw new Error("Graph relation upsert did not persist its logical row");
+    }
     if (immutable) {
       assertExactGenerationReplay({
         componentType: "graph-relation",
         incoming: relation,
-        logicalKey: graphRelationStorageKey(relation),
+        logicalKey,
         persisted: row,
       });
     }
-    persisted.push(row);
-  }
-  return persisted;
+    return row;
+  });
 }
 
-async function getGraphEntityByLogicalKey({
+// A single write batch always shares one (knowledge_space_id, publication_generation_id) scope,
+// but grouping keeps the read-back correct even if that ever changes. Sub-batching the IN-list caps
+// the bind-parameter count so one indexed query per group replaces the former per-row round trip.
+const graphEntityReadbackChunkSize = 1_000;
+const graphRelationReadbackChunkSize = 500;
+
+function graphLogicalKeyGroups<T>(
+  items: readonly T[],
+  scopeOf: (item: T) => { knowledgeSpaceId: string; publicationGenerationId: string | undefined },
+): {
+  knowledgeSpaceId: string;
+  publicationGenerationId: string | undefined;
+  items: T[];
+}[] {
+  const groups = new Map<
+    string,
+    { knowledgeSpaceId: string; publicationGenerationId: string | undefined; items: T[] }
+  >();
+  for (const item of items) {
+    const scope = scopeOf(item);
+    const groupKey = `${scope.knowledgeSpaceId}:${scope.publicationGenerationId ?? "legacy"}`;
+    const group = groups.get(groupKey);
+    if (group) {
+      group.items.push(item);
+    } else {
+      groups.set(groupKey, {
+        items: [item],
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        publicationGenerationId: scope.publicationGenerationId,
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
+function chunkArray<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function getGraphEntitiesByLogicalKeys({
   database,
-  entity,
+  entities,
   executor,
   tableName,
 }: {
   readonly database: DatabaseAdapter;
-  readonly entity: GraphEntity;
+  readonly entities: readonly GraphEntity[];
   readonly executor: DatabaseExecutor;
   readonly tableName: string;
-}): Promise<GraphEntity> {
-  const result = await executor.execute({
-    maxRows: 2,
-    operation: "select",
-    params: [entity.knowledgeSpaceId, entity.canonicalKey, entity.publicationGenerationId ?? null],
-    sql: `SELECT * FROM ${quoteDatabaseIdentifier(database, tableName)} WHERE ${quoteDatabaseIdentifier(
-      database,
-      "knowledge_space_id",
-    )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
-      database,
-      "canonical_key",
-    )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
-      database,
-      "publication_generation_id",
-    )} ${database.dialect === "postgres" ? "IS NOT DISTINCT FROM" : "<=>"} ${databasePlaceholder(
-      database,
-      3,
-    )}${database.dialect === "postgres" ? "::uuid" : ""} LIMIT 2;`,
-    tableName,
-  });
+}): Promise<Map<string, GraphEntity>> {
+  const q = (identifier: string) => quoteDatabaseIdentifier(database, identifier);
+  const p = (position: number) => databasePlaceholder(database, position);
+  const generationMatch = database.dialect === "postgres" ? "IS NOT DISTINCT FROM" : "<=>";
+  const generationCast = database.dialect === "postgres" ? "::uuid" : "";
+  const incomingKeys = new Set(entities.map((entity) => graphEntityStorageKey(entity)));
+  const persisted = new Map<string, GraphEntity>();
 
-  const [row, duplicate] = result.rows;
-
-  if (!row) {
-    throw new Error("Graph entity upsert did not persist its logical row");
-  }
-
-  if (duplicate) {
-    throw new Error("Graph entity upsert resolved multiple persisted logical rows");
-  }
-
-  const persisted = mapGraphEntityRow(row);
-
-  if (
-    persisted.knowledgeSpaceId !== entity.knowledgeSpaceId ||
-    persisted.publicationGenerationId !== entity.publicationGenerationId ||
-    persisted.canonicalKey !== entity.canonicalKey
-  ) {
-    throw new Error("Graph entity upsert resolved a mismatched persisted logical row");
+  for (const group of graphLogicalKeyGroups(entities, (entity) => ({
+    knowledgeSpaceId: entity.knowledgeSpaceId,
+    publicationGenerationId: entity.publicationGenerationId,
+  }))) {
+    for (const chunk of chunkArray(group.items, graphEntityReadbackChunkSize)) {
+      const canonicalKeys = chunk.map((entity) => entity.canonicalKey);
+      const result = await executor.execute({
+        maxRows: chunk.length + 1,
+        operation: "select",
+        params: [group.knowledgeSpaceId, group.publicationGenerationId ?? null, ...canonicalKeys],
+        sql: `SELECT * FROM ${q(tableName)} WHERE ${q("knowledge_space_id")} = ${p(
+          1,
+        )} AND ${q("publication_generation_id")} ${generationMatch} ${p(
+          2,
+        )}${generationCast} AND ${q("canonical_key")} IN (${canonicalKeys
+          .map((_key, index) => p(index + 3))
+          .join(", ")});`,
+        tableName,
+      });
+      for (const row of result.rows) {
+        const mapped = mapGraphEntityRow(row);
+        const logicalKey = graphEntityStorageKey(mapped);
+        if (!incomingKeys.has(logicalKey)) {
+          throw new Error("Graph entity upsert resolved a mismatched persisted logical row");
+        }
+        if (persisted.has(logicalKey)) {
+          throw new Error("Graph entity upsert resolved multiple persisted logical rows");
+        }
+        persisted.set(logicalKey, mapped);
+      }
+    }
   }
 
   return persisted;
 }
 
-async function getGraphRelationByLogicalKey({
+async function getGraphRelationsByLogicalKeys({
   database,
   executor,
-  relation,
+  relations,
   tableName,
 }: {
   readonly database: DatabaseAdapter;
   readonly executor: DatabaseExecutor;
-  readonly relation: GraphRelation;
+  readonly relations: readonly GraphRelation[];
   readonly tableName: string;
-}): Promise<GraphRelation> {
-  const result = await executor.execute({
-    maxRows: 2,
-    operation: "select",
-    params: [
-      relation.knowledgeSpaceId,
-      relation.subjectEntityId,
-      relation.type,
-      relation.objectEntityId,
-      relation.extractionVersion,
-      relation.publicationGenerationId ?? null,
-    ],
-    sql: `SELECT * FROM ${quoteDatabaseIdentifier(database, tableName)} WHERE ${quoteDatabaseIdentifier(
-      database,
-      "knowledge_space_id",
-    )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
-      database,
-      "subject_entity_id",
-    )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
-      database,
-      "type",
-    )} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(
-      database,
-      "object_entity_id",
-    )} = ${databasePlaceholder(database, 4)} AND ${quoteDatabaseIdentifier(
-      database,
-      "extraction_version",
-    )} = ${databasePlaceholder(database, 5)} AND ${quoteDatabaseIdentifier(
-      database,
-      "publication_generation_id",
-    )} ${database.dialect === "postgres" ? "IS NOT DISTINCT FROM" : "<=>"} ${databasePlaceholder(
-      database,
-      6,
-    )}${database.dialect === "postgres" ? "::uuid" : ""} LIMIT 2;`,
-    tableName,
-  });
+}): Promise<Map<string, GraphRelation>> {
+  const q = (identifier: string) => quoteDatabaseIdentifier(database, identifier);
+  const p = (position: number) => databasePlaceholder(database, position);
+  const generationMatch = database.dialect === "postgres" ? "IS NOT DISTINCT FROM" : "<=>";
+  const generationCast = database.dialect === "postgres" ? "::uuid" : "";
+  const incomingKeys = new Set(relations.map((relation) => graphRelationStorageKey(relation)));
+  const persisted = new Map<string, GraphRelation>();
 
-  const [row, duplicate] = result.rows;
-
-  if (!row) {
-    throw new Error("Graph relation upsert did not persist its logical row");
-  }
-
-  if (duplicate) {
-    throw new Error("Graph relation upsert resolved multiple persisted logical rows");
-  }
-
-  const persisted = mapGraphRelationRow(row);
-
-  if (
-    persisted.knowledgeSpaceId !== relation.knowledgeSpaceId ||
-    persisted.publicationGenerationId !== relation.publicationGenerationId ||
-    persisted.subjectEntityId !== relation.subjectEntityId ||
-    persisted.type !== relation.type ||
-    persisted.objectEntityId !== relation.objectEntityId ||
-    persisted.extractionVersion !== relation.extractionVersion
-  ) {
-    throw new Error("Graph relation upsert resolved a mismatched persisted logical row");
+  for (const group of graphLogicalKeyGroups(relations, (relation) => ({
+    knowledgeSpaceId: relation.knowledgeSpaceId,
+    publicationGenerationId: relation.publicationGenerationId,
+  }))) {
+    for (const chunk of chunkArray(group.items, graphRelationReadbackChunkSize)) {
+      const params: DatabaseQueryValue[] = [
+        group.knowledgeSpaceId,
+        group.publicationGenerationId ?? null,
+      ];
+      for (const relation of chunk) {
+        params.push(
+          relation.subjectEntityId,
+          relation.type,
+          relation.objectEntityId,
+          relation.extractionVersion,
+        );
+      }
+      const tuples = chunk
+        .map((_relation, index) => {
+          const base = index * 4 + 3;
+          return `(${p(base)}, ${p(base + 1)}, ${p(base + 2)}, ${p(base + 3)})`;
+        })
+        .join(", ");
+      const result = await executor.execute({
+        maxRows: chunk.length + 1,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM ${q(tableName)} WHERE ${q("knowledge_space_id")} = ${p(
+          1,
+        )} AND ${q("publication_generation_id")} ${generationMatch} ${p(2)}${generationCast} AND (${q(
+          "subject_entity_id",
+        )}, ${q("type")}, ${q("object_entity_id")}, ${q("extraction_version")}) IN (${tuples});`,
+        tableName,
+      });
+      for (const row of result.rows) {
+        const mapped = mapGraphRelationRow(row);
+        const logicalKey = graphRelationStorageKey(mapped);
+        if (!incomingKeys.has(logicalKey)) {
+          throw new Error("Graph relation upsert resolved a mismatched persisted logical row");
+        }
+        if (persisted.has(logicalKey)) {
+          throw new Error("Graph relation upsert resolved multiple persisted logical rows");
+        }
+        persisted.set(logicalKey, mapped);
+      }
+    }
   }
 
   return persisted;
@@ -1955,11 +2010,17 @@ function graphTraversalParams(
     ];
   }
 
+  // TiDB uses positional placeholders, so each value is repeated in the exact textual order the
+  // `?` markers appear. The reachable-subject seed filter appended to the relation_fanout CTE adds
+  // `start, space, [generation], start` immediately after that CTE's own predicates.
   return generation === undefined
     ? [
         input.knowledgeSpaceId,
         permissionScope,
         permissionScope,
+        input.startEntityId,
+        input.knowledgeSpaceId,
+        input.startEntityId,
         input.knowledgeSpaceId,
         input.startEntityId,
         permissionScope,
@@ -1974,6 +2035,10 @@ function graphTraversalParams(
         generation,
         permissionScope,
         permissionScope,
+        input.startEntityId,
+        input.knowledgeSpaceId,
+        generation,
+        input.startEntityId,
         input.knowledgeSpaceId,
         input.startEntityId,
         generation,
@@ -2226,6 +2291,7 @@ function graphTraversalSql(database: DatabaseAdapter, hasPublicationGeneration: 
   const candidateEntity = "candidate_entity";
   const relationRow = "relation_row";
   const rootEntity = "root_entity";
+  const seedRelation = "seed_relation";
 
   return `WITH RECURSIVE ${relationFanout} AS (SELECT ${relationRow}.${q(
     "id",
@@ -2271,7 +2337,18 @@ function graphTraversalSql(database: DatabaseAdapter, hasPublicationGeneration: 
     database,
     `${candidateEntity}.${q("permission_scope")}`,
     6,
-  )}), ${graphWalk} AS (SELECT ${rootEntity}.${q(
+  )} AND (${relationRow}.${q("subject_entity_id")} = ${p(2)} OR ${relationRow}.${q(
+    "subject_entity_id",
+  )} IN (SELECT ${seedRelation}.${q("object_entity_id")} FROM ${q(
+    "graph_relations",
+  )} ${seedRelation} WHERE ${seedRelation}.${q("knowledge_space_id")} = ${p(
+    1,
+  )} AND ${graphGenerationScopeSql(
+    database,
+    `${seedRelation}.${q("publication_generation_id")}`,
+    7,
+    hasPublicationGeneration,
+  )} AND ${seedRelation}.${q("subject_entity_id")} = ${p(2)}))), ${graphWalk} AS (SELECT ${rootEntity}.${q(
     "knowledge_space_id",
   )} AS ${q("knowledge_space_id")}, ${rootEntity}.${q(
     "publication_generation_id",

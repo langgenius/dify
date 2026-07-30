@@ -2238,14 +2238,11 @@ async function promoteProfileMigrationPageIndexes(
   publication: PublicationRecord,
   updatedAt: string,
 ): Promise<void> {
-  const members = await executor.execute({
-    maxRows: 100_001,
+  const memberScope = await executor.execute({
+    maxRows: 1,
     operation: "select",
     params: [publication.tenantId, publication.knowledgeSpaceId, publication.id],
-    sql: `SELECT ${q(database, "component_key")}, ${q(
-      database,
-      "generation_id",
-    )}, ${q(database, "document_asset_id")} FROM ${q(
+    sql: `SELECT COUNT(*) AS ${q(database, "total")} FROM ${q(
       database,
       "projection_set_publication_members",
     )} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(
@@ -2254,66 +2251,108 @@ async function promoteProfileMigrationPageIndexes(
     )} = ${p(database, 2)} AND ${q(database, "publication_id")} = ${p(
       database,
       3,
-    )} AND ${q(database, "component_type")} = 'document-outline' ORDER BY ${q(
-      database,
-      "component_key",
-    )} ASC;`,
+    )} AND ${q(database, "component_type")} = 'document-outline';`,
     tableName: "projection_set_publication_members",
   });
-  if (members.rows.length > 100_000) {
+  const outlineMemberCount = Number(memberScope.rows[0]?.total ?? 0);
+  if (outlineMemberCount > 100_000) {
     throw transition(
       "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_PAGE_INDEX_INVALID",
       "Candidate publication PageIndex outline snapshot exceeds the safety bound",
     );
   }
-  for (const member of members.rows) {
-    const outlineId = UuidSchema.parse(stringColumn(member, "component_key"));
-    const generationId = UuidSchema.parse(stringColumn(member, "generation_id"));
-    const documentAssetId = UuidSchema.parse(stringColumn(member, "document_asset_id"));
-    const manifest = await executor.execute({
-      maxRows: 1,
-      operation: "select",
-      params: [publication.knowledgeSpaceId, outlineId, generationId, documentAssetId],
-      sql: `SELECT ${q(database, "id")}, ${q(database, "status")} FROM ${q(
-        database,
-        "page_index_manifests",
-      )} WHERE ${q(database, "knowledge_space_id")} = ${p(database, 1)} AND ${q(
-        database,
-        "document_outline_id",
-      )} = ${p(database, 2)} AND ${q(database, "publication_generation_id")} = ${p(
-        database,
-        3,
-      )} AND ${q(database, "document_asset_id")} = ${p(database, 4)} LIMIT 1 FOR UPDATE;`,
-      tableName: "page_index_manifests",
-    });
-    const row = manifest.rows[0];
-    if (!row || !["building", "ready"].includes(stringColumn(row, "status"))) {
-      throw transition(
-        "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_PAGE_INDEX_INVALID",
-        `Candidate outline ${outlineId} has no complete PageIndex manifest`,
-      );
-    }
-    if (stringColumn(row, "status") === "building") {
-      const promoted = await executor.execute({
-        maxRows: 0,
-        operation: "update",
-        params: [updatedAt, UuidSchema.parse(stringColumn(row, "id"))],
-        sql: `UPDATE ${q(database, "page_index_manifests")} SET ${q(
-          database,
-          "status",
-        )} = 'ready', ${q(database, "updated_at")} = ${p(database, 1)} WHERE ${q(
-          database,
-          "id",
-        )} = ${p(database, 2)} AND ${q(database, "status")} = 'building';`,
-        tableName: "page_index_manifests",
-      });
-      if (promoted.rowsAffected !== 1) {
-        throw transition(
-          "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_PAGE_INDEX_INVALID",
-          `Candidate outline ${outlineId} PageIndex promotion lost its fence`,
-        );
-      }
-    }
+  if (outlineMemberCount === 0) {
+    return;
+  }
+
+  // Promote every candidate outline's still-building PageIndex manifest to ready in a single
+  // statement, scoped to this publication's outline snapshot via the member subquery. Both the
+  // manifest key columns and the member columns are UUID/CHAR(36), so the tuple match is type-safe
+  // on Postgres and TiDB alike.
+  await executor.execute({
+    maxRows: 0,
+    operation: "update",
+    params: [
+      updatedAt,
+      publication.knowledgeSpaceId,
+      publication.tenantId,
+      publication.knowledgeSpaceId,
+      publication.id,
+    ],
+    sql: `UPDATE ${q(database, "page_index_manifests")} SET ${q(
+      database,
+      "status",
+    )} = 'ready', ${q(database, "updated_at")} = ${p(database, 1)} WHERE ${q(
+      database,
+      "knowledge_space_id",
+    )} = ${p(database, 2)} AND ${q(database, "status")} = 'building' AND (${q(
+      database,
+      "document_outline_id",
+    )}, ${q(database, "publication_generation_id")}, ${q(
+      database,
+      "document_asset_id",
+    )}) IN (SELECT ${q(database, "component_key")}, ${q(
+      database,
+      "generation_id",
+    )}, ${q(database, "document_asset_id")} FROM ${q(
+      database,
+      "projection_set_publication_members",
+    )} WHERE ${q(database, "tenant_id")} = ${p(database, 3)} AND ${q(
+      database,
+      "knowledge_space_id",
+    )} = ${p(database, 4)} AND ${q(database, "publication_id")} = ${p(
+      database,
+      5,
+    )} AND ${q(database, "component_type")} = 'document-outline');`,
+    tableName: "page_index_manifests",
+  });
+
+  // Fence: after promotion every candidate outline must resolve to a ready manifest. Any member
+  // without one means its PageIndex was never completed (missing, still failed, or otherwise not
+  // ready), so the candidate publication is invalid.
+  const incomplete = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [publication.tenantId, publication.knowledgeSpaceId, publication.id],
+    sql: `SELECT member.${q(database, "component_key")} AS ${q(database, "outline_id")} FROM ${q(
+      database,
+      "projection_set_publication_members",
+    )} member WHERE member.${q(database, "tenant_id")} = ${p(
+      database,
+      1,
+    )} AND member.${q(database, "knowledge_space_id")} = ${p(
+      database,
+      2,
+    )} AND member.${q(database, "publication_id")} = ${p(database, 3)} AND member.${q(
+      database,
+      "component_type",
+    )} = 'document-outline' AND NOT EXISTS (SELECT 1 FROM ${q(
+      database,
+      "page_index_manifests",
+    )} manifest WHERE manifest.${q(
+      database,
+      "knowledge_space_id",
+    )} = member.${q(database, "knowledge_space_id")} AND manifest.${q(
+      database,
+      "document_outline_id",
+    )} = member.${q(database, "component_key")} AND manifest.${q(
+      database,
+      "publication_generation_id",
+    )} = member.${q(database, "generation_id")} AND manifest.${q(
+      database,
+      "document_asset_id",
+    )} = member.${q(database, "document_asset_id")} AND manifest.${q(
+      database,
+      "status",
+    )} = 'ready') LIMIT 1;`,
+    tableName: "projection_set_publication_members",
+  });
+  const missingOutline = incomplete.rows[0];
+  if (missingOutline) {
+    throw transition(
+      "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_PAGE_INDEX_INVALID",
+      `Candidate outline ${stringColumn(missingOutline, "outline_id")} has no complete PageIndex manifest`,
+    );
   }
 }
 

@@ -1518,41 +1518,25 @@ function fakeDatabase(
       return mutation();
     }
     if (input.tableName === "projection_set_publication_members") {
-      if (options.outlineMemberOverflow) {
-        const row = {
-          component_key: outlineId,
-          document_asset_id: documentAssetId,
-          generation_id: outlineGenerationId,
-        };
-        return { rows: Array.from({ length: 100_001 }, () => row), rowsAffected: 100_001 };
+      if (input.sql.includes("COUNT(*)")) {
+        const total = options.outlineMemberOverflow ? 100_001 : options.noOutlineMembers ? 0 : 1;
+        return { rows: [{ total }], rowsAffected: 1 };
       }
-      return options.noOutlineMembers
-        ? { rows: [], rowsAffected: 0 }
-        : {
-            rows: [
-              {
-                component_key: outlineId,
-                document_asset_id: documentAssetId,
-                generation_id: outlineGenerationId,
-              },
-            ],
-            rowsAffected: 1,
-          };
+      // Completeness fence: a candidate outline whose PageIndex manifest never reached ready (missing,
+      // still failed, or a promotion that did not stick) surfaces here as a missing outline row.
+      const incompletePageIndex = Boolean(
+        options.missingPageIndexManifest ||
+          options.invalidPageIndexManifest ||
+          options.failPageIndexPromotion,
+      );
+      return incompletePageIndex && !options.noOutlineMembers
+        ? { rows: [{ outline_id: outlineId }], rowsAffected: 1 }
+        : { rows: [], rowsAffected: 0 };
     }
     if (input.tableName === "page_index_manifests") {
-      if (input.operation === "update") {
-        return options.failPageIndexPromotion ? { rows: [], rowsAffected: 0 } : mutation();
-      }
-      if (options.missingPageIndexManifest) return { rows: [], rowsAffected: 0 };
-      return {
-        rows: [
-          {
-            id: pageIndexManifestId,
-            status: options.invalidPageIndexManifest ? "failed" : "building",
-          },
-        ],
-        rowsAffected: 1,
-      };
+      // The set-based promotion updates every still-building manifest for the candidate's outlines in
+      // a single statement; the completeness fence (member query) decides validity.
+      return input.operation === "update" ? mutation() : { rows: [], rowsAffected: 0 };
     }
     if (input.tableName === "knowledge_space_profile_migration_runs") {
       if (input.operation === "update" && options.failMigrationRunCompletion) {

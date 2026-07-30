@@ -593,7 +593,15 @@ describe.each(["postgres", "tidb"] as const)(
         (call) =>
           call.input.tableName === "document_revision_chunks" && call.input.operation === "insert",
       );
-      expect(chunkInserts.map((call) => call.input.params.slice(0, 7))).toEqual([
+      // Chunks are written as one batched multi-row INSERT; split the flat parameter list back into
+      // per-row groups (12 columns each) to assert the parent-first ordering and parent pointers.
+      expect(chunkInserts).toHaveLength(1);
+      const chunkParams = chunkInserts[0]?.input.params ?? [];
+      const chunkRows: unknown[][] = [];
+      for (let index = 0; index < chunkParams.length; index += 12) {
+        chunkRows.push(chunkParams.slice(index, index + 7));
+      }
+      expect(chunkRows).toEqual([
         [documentSummaryNodeId, tenantId, knowledgeSpaceId, logicalDocumentId, 1, null, 2],
         [
           sectionSummaryNodeId,
@@ -614,7 +622,6 @@ describe.each(["postgres", "tidb"] as const)(
           0,
         ],
       ]);
-      expect(chunkInserts).toHaveLength(3);
       expect(chunkInserts.every((call) => !call.input.sql.includes(", NULL,"))).toBe(true);
     });
 

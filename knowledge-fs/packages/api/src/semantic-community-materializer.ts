@@ -388,8 +388,12 @@ async function loadGraphRelationPairs({
   readonly permissionScope: readonly string[];
 }): Promise<SemanticCommunityRelationPair[]> {
   const entityIds = new Set(entities.map((entity) => entity.id));
-  const traversals = await Promise.all(
-    entities.map((entity) =>
+  // One graph traversal runs per entity; cap concurrency so a large run does not fan out an
+  // unbounded burst of recursive-CTE queries that exhausts the tenant's database connection pool.
+  const traversals = await mapWithConcurrency(
+    entities,
+    graphRelationPairTraversalConcurrency,
+    (entity) =>
       graph.traverse({
         fanout: 20,
         knowledgeSpaceId,
@@ -399,7 +403,6 @@ async function loadGraphRelationPairs({
         startEntityId: entity.id,
         timeoutMs: 250,
       }),
-    ),
   );
 
   return traversals.flatMap((traversal) =>
@@ -419,6 +422,35 @@ async function loadGraphRelationPairs({
         : [],
     ),
   );
+}
+
+const graphRelationPairTraversalConcurrency = 8;
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      results[index] = await fn(items[index] as T, index);
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  return results;
 }
 
 function collectComponent(
