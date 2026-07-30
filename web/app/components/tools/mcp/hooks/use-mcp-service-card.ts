@@ -38,13 +38,13 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const canManageMCP = useMemo(
+  const { canEdit: canManageMCP, canReleaseAndVersion: canRegenerateMCPServerCode } = useMemo(
     () =>
       getAppACLCapabilities(appInfo.permission_keys, {
         currentUserId,
         resourceMaintainer: appInfo.maintainer,
         workspacePermissionKeys,
-      }).canEdit,
+      }),
     [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
@@ -120,11 +120,11 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
 
   // Handlers
   const handleGenCode = useCallback(async () => {
-    if (!canManageMCP) return
+    if (!canRegenerateMCPServerCode) return
 
-    await refreshMCPServerCode(detail?.id || '')
+    await refreshMCPServerCode(appId)
     invalidateMCPServerDetail(appId)
-  }, [canManageMCP, refreshMCPServerCode, detail?.id, invalidateMCPServerDetail, appId])
+  }, [canRegenerateMCPServerCode, refreshMCPServerCode, invalidateMCPServerDetail, appId])
 
   const handleStatusChange = useCallback(
     async (state: boolean) => {
@@ -155,10 +155,10 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   }, [])
 
   const openConfirmDelete = useCallback(() => {
-    if (!canManageMCP) return
+    if (!canRegenerateMCPServerCode) return
 
     setShowConfirmDelete(true)
-  }, [canManageMCP])
+  }, [canRegenerateMCPServerCode])
   const closeConfirmDelete = useCallback(() => setShowConfirmDelete(false), [])
   const openServerModal = useCallback(() => {
     if (!canManageMCP) return
@@ -183,6 +183,7 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
 
     // Permission & validation flags
     canManageMCP,
+    canRegenerateMCPServerCode,
     toggleDisabled,
     isMinimalState,
     appUnpublished,
