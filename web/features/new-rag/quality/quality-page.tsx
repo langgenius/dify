@@ -711,7 +711,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         ))}
 
       {activeTab === 'golden' && selected.size > 0 && (
-        <div className="fixed bottom-6 left-[calc(var(--new-rag-sidebar-width)+50%)] flex h-12 -translate-x-1/2 items-center gap-3 rounded-xl border border-components-panel-border bg-components-panel-bg px-4 shadow-xl">
+        <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-3 rounded-xl border border-components-panel-border bg-components-panel-bg px-4 shadow-xl">
           <span className="system-sm-medium text-text-primary">
             {t(
               ($) =>

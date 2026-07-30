@@ -352,7 +352,7 @@ export function CreateKnowledgePage() {
             <span aria-hidden className="i-ri-close-line size-5" />
           </Button>
 
-          <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
+          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-r">
             <div className="min-h-6 w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
               className="flex max-h-full min-h-0 w-full max-w-190 flex-col"

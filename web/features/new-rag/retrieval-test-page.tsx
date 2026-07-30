@@ -825,19 +825,19 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   }
 
   return (
-    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg">
-      <header className="shrink-0 border-b border-divider-subtle px-6 py-5">
-        <h1 className="title-2xl-semi-bold text-text-primary">
+    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg p-5">
+      <header className="shrink-0">
+        <h1 className="title-xl-semi-bold leading-6 text-text-primary">
           {t(($) => $['newKnowledge.retrievalTest.title'])}
         </h1>
-        <p className="mt-1 max-w-3xl body-sm-regular text-text-tertiary">
+        <p className="mt-1 w-full system-xs-regular text-text-tertiary">
           {t(($) => $['newKnowledge.retrievalTest.description'])}
         </p>
       </header>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
-        <section className="flex min-h-0 w-full shrink-0 flex-col border-b border-divider-subtle lg:w-117 lg:border-r lg:border-b-0">
-          <div className="shrink-0 p-4 pr-6">
+      <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+        <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
+          <div className="shrink-0">
             <div className="overflow-hidden rounded-xl border border-components-input-border-active bg-components-input-bg-active shadow-xs">
               <label className="sr-only" htmlFor="retrieval-test-query">
                 {t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
@@ -918,7 +918,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           </div>
         </section>
 
-        <section className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-background-body">
+        <section className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl bg-background-body">
           {!selected && (
             <EmptyState
               title={t(($) => $['newKnowledge.retrievalTest.emptyTitle'])}
