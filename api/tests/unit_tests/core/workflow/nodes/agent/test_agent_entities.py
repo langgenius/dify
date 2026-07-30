@@ -1,8 +1,7 @@
-from typing import Any
-
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.agent.entities import AgentNodeData
+
 from graphon.entities import GraphInitParams
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
@@ -21,7 +20,7 @@ def test_agent_node_data_unconfigured_defaults() -> None:
 
 
 def test_unconfigured_disconnected_agent_does_not_block_workflow() -> None:
-    graph_config: dict[str, Any] = {
+    graph_config: dict[str, object] = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
             {"id": "agent", "data": {"type": "agent", "title": "Agent", "tool_node_version": "2"}},
