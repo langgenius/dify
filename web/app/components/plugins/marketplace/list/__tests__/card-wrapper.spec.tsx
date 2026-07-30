@@ -45,10 +45,26 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permis
   useOptionalPluginInstallPermission: () => ({ canInstallPlugin: true }),
 }))
 
+vi.mock('../../detail-dialog', () => ({
+  default: ({
+    open,
+    onOpenChange,
+  }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+  }) => open
+    ? (
+        <div role="dialog" aria-label="marketplace detail">
+          <button type="button" onClick={() => onOpenChange(false)}>
+            close detail
+          </button>
+        </div>
+      )
+    : null,
+}))
+
 vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
-  getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) =>
-    `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
 }))
 
 const plugin = {
@@ -122,18 +138,15 @@ describe('CardWrapper', () => {
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
 
-  it('opens marketplace detail from the detail action', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
+  it('opens and closes marketplace detail dialog from the detail action', async () => {
+    const user = userEvent.setup()
     renderCardWrapper({ showInstallButton: true })
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
 
-    expect(openSpy).toHaveBeenCalledWith(
-      '/marketplace/dify/plugin-a?language=en-US&theme=system',
-      '_blank',
-      'noopener,noreferrer',
-    )
+    await user.click(screen.getByRole('button', { name: 'close detail' }))
+    expect(screen.queryByRole('dialog', { name: 'marketplace detail' })).not.toBeInTheDocument()
   })
 
   it('opens and closes install modal from install action', () => {
