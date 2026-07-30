@@ -12008,6 +12008,14 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 
+### [GET] /workspaces/current/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CurrentWorkspaceSummaryResponse](#currentworkspacesummaryresponse)<br> |
+| 409 | Current workspace is archived |  |
+
 ### [GET] /workspaces/current/tool-labels
 #### Responses
 
@@ -16560,6 +16568,16 @@ Model class for credential form schema.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CredentialType | string |  |  |
+
+#### CurrentWorkspaceSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plan | string |  | Yes |
+| role | string |  | Yes |
 
 #### CustomConfigurationResponse
 

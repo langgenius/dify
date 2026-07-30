@@ -28,6 +28,7 @@ from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
+from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -105,6 +106,14 @@ class TenantInfoResponse(ResponseModel):
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None):
         return to_timestamp(value)
+
+
+class CurrentWorkspaceSummaryResponse(ResponseModel):
+    id: str
+    name: str
+    role: str
+    plan: str | None
+    credits: int | None = Field(description="Remaining credits in the effective pool; -1 means unlimited.")
 
 
 class TenantListItemResponse(ResponseModel):
@@ -203,6 +212,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    CurrentWorkspaceSummaryResponse,
     TenantInfoResponse,
     TenantListItemResponse,
     TenantListResponse,
@@ -324,6 +334,35 @@ class TenantApi(Resource):
 
         return (
             dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, session=session)),
+            HTTPStatus.OK,
+        )
+
+
+@console_ns.route("/workspaces/current/summary")
+class CurrentWorkspaceSummaryApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "Success",
+        console_ns.models[CurrentWorkspaceSummaryResponse.__name__],
+    )
+    @console_ns.response(HTTPStatus.CONFLICT, "Current workspace is archived")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_session(write=False)
+    def get(self, session: Session, current_user: Account):
+        tenant = current_user.current_tenant
+        if not tenant:
+            raise ValueError("No current tenant")
+        if tenant.status == TenantStatus.ARCHIVE:
+            raise CurrentWorkspaceArchivedError()
+
+        return (
+            dump_response(
+                CurrentWorkspaceSummaryResponse,
+                WorkspaceService.get_current_workspace_summary(tenant, current_user.id, session=session),
+            ),
             HTTPStatus.OK,
         )
 

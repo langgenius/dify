@@ -646,6 +646,14 @@ export type WorkspaceAccessMatrix = {
   pagination?: Pagination | null
 }
 
+export type CurrentWorkspaceSummaryResponse = {
+  credits: number | null
+  id: string
+  name: string
+  plan: string | null
+  role: string
+}
+
 export type ToolLabelListResponse = Array<ToolLabel>
 
 export type ApiToolProviderAddPayload = {
@@ -4705,6 +4713,24 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse =
   GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
+
+export type GetWorkspacesCurrentSummaryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/summary'
+}
+
+export type GetWorkspacesCurrentSummaryErrors = {
+  409: unknown
+}
+
+export type GetWorkspacesCurrentSummaryResponses = {
+  200: CurrentWorkspaceSummaryResponse
+}
+
+export type GetWorkspacesCurrentSummaryResponse =
+  GetWorkspacesCurrentSummaryResponses[keyof GetWorkspacesCurrentSummaryResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never
