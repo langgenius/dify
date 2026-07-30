@@ -322,8 +322,8 @@ export function EnvironmentTable({
               <col className="w-44" />
             </colgroup>
             <thead>
-              <tr className="sticky top-0 z-10 h-7 rounded-lg bg-background-section-burn">
-                <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <tr className="sticky top-0 z-10 h-7 bg-background-section-burn">
+                <th className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['deployTab.col.environment'])}
                 </th>
                 <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
@@ -338,7 +338,7 @@ export function EnvironmentTable({
                 <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['studio.accessPoints'])}
                 </th>
-                <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+                <th className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['deployTab.col.actions'])}
                 </th>
               </tr>
