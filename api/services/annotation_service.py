@@ -230,12 +230,12 @@ class AppAnnotationService:
             escaped_keyword = escape_like_pattern(keyword)
             stmt = (
                 select(MessageAnnotation)
-                .where(MessageAnnotation.app_id == app_id)
                 .where(
+                    MessageAnnotation.app_id == app_id,
                     or_(
                         MessageAnnotation.question.ilike(f"%{escaped_keyword}%", escape="\\"),
                         MessageAnnotation.content.ilike(f"%{escaped_keyword}%", escape="\\"),
-                    )
+                    ),
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             )
