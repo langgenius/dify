@@ -11,9 +11,48 @@ const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const EMBEDDABLE_PATH_PREFIXES = ['/chat', '/workflow', '/completion', '/webapp-signin']
 const EMBEDDABLE_PATH_SEGMENTS = ['/agent']
-const MARKETPLACE_FRAME_ORIGIN = env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
-  ? new URL(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX).origin
-  : ''
+
+type MarketplaceOAuthFrameConfig = {
+  edition: 'CLOUD' | 'SELF_HOSTED'
+  marketplaceClientId: string
+  marketplaceUrlPrefix: string
+}
+
+const marketplaceOAuthFrameConfig: MarketplaceOAuthFrameConfig = {
+  edition: env.NEXT_PUBLIC_EDITION,
+  marketplaceClientId: env.NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID || '',
+  marketplaceUrlPrefix: env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX || '',
+}
+const MARKETPLACE_FRAME_ORIGIN = (() => {
+  try {
+    return marketplaceOAuthFrameConfig.marketplaceUrlPrefix
+      ? new URL(marketplaceOAuthFrameConfig.marketplaceUrlPrefix).origin
+      : ''
+  } catch {
+    return ''
+  }
+})()
+
+export const getMarketplaceOAuthFrameOrigin = (
+  url: Pick<URL, 'pathname' | 'searchParams'>,
+  frameConfig = marketplaceOAuthFrameConfig,
+) => {
+  if (
+    frameConfig.edition !== 'CLOUD' ||
+    url.pathname !== '/account/oauth/authorize' ||
+    url.searchParams.get('flow') !== 'marketplace' ||
+    !frameConfig.marketplaceClientId ||
+    url.searchParams.get('client_id') !== frameConfig.marketplaceClientId ||
+    !frameConfig.marketplaceUrlPrefix
+  )
+    return ''
+
+  try {
+    return new URL(frameConfig.marketplaceUrlPrefix).origin
+  } catch {
+    return ''
+  }
+}
 
 export const canEmbedPath = (pathname: string) =>
   EMBEDDABLE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
@@ -21,7 +60,26 @@ export const canEmbedPath = (pathname: string) =>
     (segment) => pathname === segment || pathname.startsWith(`${segment}/`),
   )
 
-const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string) => {
+const appendFrameAncestors = (response: NextResponse, frameOrigin: string) => {
+  const existingCsp = response.headers.get('Content-Security-Policy')
+  if (existingCsp?.includes('frame-ancestors')) return
+  response.headers.set(
+    'Content-Security-Policy',
+    `${existingCsp ? `${existingCsp} ` : ''}frame-ancestors ${frameOrigin};`,
+  )
+}
+
+const wrapResponseWithFrameOptions = (
+  response: NextResponse,
+  pathname: string,
+  marketplaceFrameOrigin: string,
+) => {
+  if (marketplaceFrameOrigin) {
+    response.headers.delete('X-Frame-Options')
+    appendFrameAncestors(response, marketplaceFrameOrigin)
+    return response
+  }
+
   // prevent clickjacking: https://owasp.org/www-community/attacks/Clickjacking
   // Chatbot page should be allowed to be embedded in iframe. It's a feature
   if (env.NEXT_PUBLIC_ALLOW_EMBED !== true && !canEmbedPath(pathname))
@@ -31,6 +89,7 @@ const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string)
 }
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+  const marketplaceFrameOrigin = getMarketplaceOAuthFrameOrigin(request.nextUrl)
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(CURRENT_PATHNAME_HEADER, pathname)
   requestHeaders.set(CURRENT_SEARCH_HEADER, search)
@@ -43,7 +102,7 @@ export function proxy(request: NextRequest) {
         headers: requestHeaders,
       },
     })
-    return wrapResponseWithXFrameOptions(response, pathname)
+    return wrapResponseWithFrameOptions(response, pathname, marketplaceFrameOrigin)
   }
 
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
@@ -65,6 +124,7 @@ export function proxy(request: NextRequest) {
     object-src 'none';
     base-uri 'self';
     form-action 'self';
+    ${marketplaceFrameOrigin ? `frame-ancestors ${marketplaceFrameOrigin};` : ''}
     upgrade-insecure-requests;
 `
   // Replace newline characters and spaces
@@ -82,7 +142,7 @@ export function proxy(request: NextRequest) {
 
   response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue)
 
-  return wrapResponseWithXFrameOptions(response, pathname)
+  return wrapResponseWithFrameOptions(response, pathname, marketplaceFrameOrigin)
 }
 
 export const config = {
