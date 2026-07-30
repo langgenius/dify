@@ -6,6 +6,7 @@ from flask import Flask
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 import controllers.files.upload_file_delivery as module
+from controllers.common.file_response import INERT_DOCUMENT_CSP
 from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
 from services.upload_file_delivery_service import (
     UploadFileDelivery,
@@ -55,6 +56,24 @@ class TestImagePreviewApi:
         )
 
     @patch.object(module, "application_services")
+    def test_svg_is_served_inert(self, mock_application_services, app: Flask):
+        """A stored SVG must not render as a document in the app origin."""
+        service = mock_application_services.return_value.upload_file_delivery
+        service.get_signed_image_preview.return_value = _delivery(
+            content=b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>",
+            mime_type="image/svg+xml",
+            name="payload.svg",
+            extension="svg",
+        )
+
+        with app.test_request_context(_SIGNED_QUERY):
+            response = module.ImagePreviewApi().get("file-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "application_services")
     def test_not_found(self, mock_application_services, app: Flask):
         service = mock_application_services.return_value.upload_file_delivery
         service.get_signed_image_preview.side_effect = UploadFileDeliveryNotFoundError(
@@ -85,9 +104,9 @@ class TestImagePreviewApi:
 
 
 class TestFilePreviewApi:
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_served_file")
     @patch.object(module, "application_services")
-    def test_inline_preview_uses_file_metadata(self, mock_application_services, mock_enforce, app: Flask):
+    def test_inline_preview_uses_file_metadata(self, mock_application_services, mock_harden, app: Flask):
         service = mock_application_services.return_value.upload_file_delivery
         service.get_signed_file_preview.return_value = _delivery(
             mime_type="application/pdf",
@@ -103,7 +122,7 @@ class TestFilePreviewApi:
         assert response.headers["Content-Type"] == "application/pdf"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
-        mock_enforce.assert_called_once_with(
+        mock_harden.assert_called_once_with(
             response,
             mime_type="application/pdf",
             filename="doc.pdf",
@@ -223,6 +242,23 @@ class TestWorkspaceWebappLogoApi:
 
         assert response.mimetype == "image/png"
         service.get_workspace_webapp_logo.assert_called_once_with(workspace_id="workspace-id")
+
+    @patch.object(module, "application_services")
+    def test_svg_logo_is_served_inert(self, mock_application_services):
+        """The logo endpoint is public, so a stored SVG must be inert there too."""
+        service = mock_application_services.return_value.upload_file_delivery
+        service.get_workspace_webapp_logo.return_value = _delivery(
+            content=b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>",
+            mime_type="image/svg+xml",
+            name="logo.svg",
+            extension="svg",
+        )
+
+        response = unwrap(module.WorkspaceWebappLogoApi().get)("workspace-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module, "application_services")
     def test_logo_not_configured(self, mock_application_services):

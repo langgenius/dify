@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import BinaryFileResponse
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
@@ -156,7 +156,7 @@ class FilePreviewApi(Resource):
             # Override content-type for downloads to force download
             response.headers["Content-Type"] = "application/octet-stream"
 
-        enforce_download_for_html(
+        harden_served_file(
             response,
             mime_type=file.mime_type,
             filename=file.name,
