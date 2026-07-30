@@ -434,6 +434,8 @@ export type {
   AutocompleteCollectionProps,
   AutocompleteContentProps,
   AutocompleteEmptyProps,
+  AutocompleteFlatProps,
+  AutocompleteGroupedProps,
   AutocompleteGroupLabelProps,
   AutocompleteGroupProps,
   AutocompleteIconProps,
