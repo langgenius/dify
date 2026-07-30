@@ -8,6 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  createDenseVectorProjectionBuilder,
   createFtsProjectionBuilder,
   createVisualEmbeddingProjectionBuilder,
 } from "./index-projection-builders";
@@ -494,6 +495,140 @@ describe("incremental reindexer", () => {
         type: "fts",
       }),
     ).resolves.toMatchObject({ building: 0, failed: 1, ready: 0, total: 1 });
+  });
+
+  it("replaces failed generation projections when retrying from the outline checkpoint", async () => {
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
+    const nodes = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 4,
+      maxListLimit: 4,
+      maxNodes: 4,
+    });
+    const projections = createInMemoryIndexProjectionRepository({
+      maxBatchSize: 4,
+      maxListLimit: 4,
+      maxProjections: 8,
+    });
+    let embeddingCalls = 0;
+    const reindexer = createIncrementalReindexer({
+      artifacts,
+      compute: computeRuntime(),
+      denseBuilder: createDenseVectorProjectionBuilder({
+        embeddings: {
+          embed: async () => {
+            embeddingCalls += 1;
+            if (embeddingCalls === 1) {
+              throw new Error("dify model runtime timeout");
+            }
+            return {
+              dense: [[0.25, 0.75]],
+              metadata: { dimension: 2, model: "dense-v1", provider: "dify-model-runtime" },
+              model: "dense-v1",
+            };
+          },
+          kind: "dify-model-runtime",
+          models: async () => [],
+        },
+        maxBatchSize: 4,
+        projections,
+      }),
+      ftsBuilder: createFtsProjectionBuilder({ maxBatchSize: 4, projections }),
+      maxNodes: 4,
+      nodes,
+      projections,
+    });
+    const signal = new AbortController().signal;
+    const input = {
+      chunkConfig: { maxChunkChars: 512, overlapChars: 64 },
+      denseModel: "dense-v1",
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      language: "zh-CN",
+      parseArtifact: parseArtifact(),
+      projectionVersion: 1,
+      publicationGenerationId: PUBLICATION_GENERATION_ID,
+      signal,
+      tenantId: "tenant-1",
+    } as const;
+
+    await expect(reindexer.reindex(input)).rejects.toThrow("dify model runtime timeout");
+    await expect(
+      reindexer.getCanonicalArtifact?.({
+        documentAssetId: DOCUMENT_ASSET_ID,
+        version: 1,
+      }),
+    ).resolves.toMatchObject({ id: parseArtifact().id });
+    await expect(
+      reindexer.getCanonicalArtifact?.({
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2cff",
+        version: 1,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      projections.summarizeVersion({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        projectionVersion: 1,
+        publicationGenerationId: PUBLICATION_GENERATION_ID,
+        type: "fts",
+      }),
+    ).resolves.toMatchObject({ building: 0, failed: 1, total: 1 });
+
+    await expect(
+      reindexer.reindex({
+        ...input,
+        resetFailedProjections: true,
+      }),
+    ).resolves.toMatchObject({
+      nodesCreated: 1,
+      projectionsCreated: 2,
+      status: "rebuilt",
+    });
+    await expect(
+      projections.summarizeVersion({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        projectionVersion: 1,
+        publicationGenerationId: PUBLICATION_GENERATION_ID,
+        type: "fts",
+      }),
+    ).resolves.toMatchObject({ building: 1, failed: 0, total: 1 });
+    await expect(
+      projections.summarizeVersion({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        projectionVersion: 1,
+        publicationGenerationId: PUBLICATION_GENERATION_ID,
+        type: "dense-vector",
+      }),
+    ).resolves.toMatchObject({ building: 1, failed: 0, total: 1 });
+    expect(embeddingCalls).toBe(2);
+  });
+
+  it("requires a generation and projection repository before resetting failed projections", async () => {
+    const baseOptions = {
+      artifacts: createInMemoryParseArtifactRepository({ maxArtifacts: 4 }),
+      compute: computeRuntime(),
+      maxNodes: 4,
+      nodes: createInMemoryKnowledgeNodeRepository({
+        maxBatchSize: 4,
+        maxListLimit: 4,
+        maxNodes: 4,
+      }),
+    };
+    const reindexer = createIncrementalReindexer(baseOptions);
+    const input = {
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: parseArtifact(),
+      projectionVersion: 1,
+      resetFailedProjections: true,
+    } as const;
+
+    await expect(reindexer.reindex(input)).rejects.toThrow(
+      "can reset failed projections only for a publication generation",
+    );
+    await expect(
+      reindexer.reindex({
+        ...input,
+        publicationGenerationId: PUBLICATION_GENERATION_ID,
+      }),
+    ).rejects.toThrow("requires a projection repository to reset failed projections");
   });
 
   it("can fail the whole candidate after a batched publication throws partway through", async () => {

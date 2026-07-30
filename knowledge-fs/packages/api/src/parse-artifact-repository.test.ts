@@ -34,6 +34,78 @@ const artifact = ParseArtifactSchema.parse({
 }) satisfies ParseArtifact;
 
 describe("parse artifact repositories", () => {
+  it("keeps generated element ids bound to the first persisted artifact on retry", async () => {
+    const retryArtifactId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
+    const first = ParseArtifactSchema.parse({
+      ...artifact,
+      elements: [
+        {
+          ...artifact.elements[0],
+          id: `${artifact.id}:element-1`,
+        },
+      ],
+    });
+    const retry = ParseArtifactSchema.parse({
+      ...first,
+      createdAt: "2026-05-09T11:01:01.000Z",
+      elements: [
+        {
+          ...first.elements[0],
+          id: `${retryArtifactId}:element-1`,
+        },
+      ],
+      id: retryArtifactId,
+    });
+    const memory = createInMemoryParseArtifactRepository({ maxArtifacts: 2 });
+    const fake = createFakeParseArtifactExecutor();
+    const database = createDatabaseParseArtifactRepository({
+      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+    });
+
+    for (const repository of [memory, database]) {
+      await repository.create(first);
+
+      await expect(repository.create(retry)).resolves.toMatchObject({
+        createdAt: first.createdAt,
+        elements: [{ id: `${first.id}:element-1` }],
+        id: first.id,
+      });
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: first.documentAssetId,
+          version: first.version,
+        }),
+      ).resolves.toMatchObject({
+        elements: [{ id: `${first.id}:element-1` }],
+        id: first.id,
+      });
+      await expect(repository.getById({ id: retryArtifactId })).resolves.toBeNull();
+    }
+  });
+
+  it("fails closed when a concurrent row change prevents generated id repair", async () => {
+    const retryArtifactId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
+    const first = ParseArtifactSchema.parse({
+      ...artifact,
+      elements: [{ ...artifact.elements[0], id: `${artifact.id}:element-1` }],
+    });
+    const fake = createFakeParseArtifactExecutor({ failUpdates: true });
+    const repository = createDatabaseParseArtifactRepository({
+      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+    });
+    await repository.create(first);
+
+    const retry = ParseArtifactSchema.parse({
+      ...first,
+      elements: [{ ...first.elements[0], id: `${retryArtifactId}:element-1` }],
+      id: retryArtifactId,
+    });
+
+    await expect(repository.create(retry)).rejects.toThrow(
+      "generated element ids could not be canonicalized",
+    );
+  });
+
   it("stores clone-isolated artifacts and bounds in-memory capacity", async () => {
     const repository = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
 
@@ -205,7 +277,9 @@ describe("parse artifact repositories", () => {
   });
 });
 
-function createFakeParseArtifactExecutor() {
+function createFakeParseArtifactExecutor({
+  failUpdates = false,
+}: { readonly failUpdates?: boolean } = {}) {
   const calls: DatabaseExecuteInput[] = [];
   const rows = new Map<string, DatabaseRow>();
   const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
@@ -238,9 +312,20 @@ function createFakeParseArtifactExecutor() {
         version: Number(version),
       } satisfies DatabaseRow;
 
-      rows.set(`${row.document_asset_id}:${row.version}`, row);
+      const key = `${row.document_asset_id}:${row.version}`;
+      const existing = rows.get(key);
+      rows.set(
+        key,
+        existing
+          ? {
+              ...row,
+              created_at: existing.created_at,
+              id: existing.id,
+            }
+          : row,
+      );
 
-      return { rows: [{ ...row }], rowsAffected: 1 };
+      return { rows: [{ ...(rows.get(key) ?? row) }], rowsAffected: 1 };
     }
 
     if (input.operation === "select") {
@@ -251,6 +336,24 @@ function createFakeParseArtifactExecutor() {
           : rows.get(`${String(first)}:${Number(version)}`);
 
       return { rows: row ? [{ ...row }] : [], rowsAffected: row ? 1 : 0 };
+    }
+
+    if (input.operation === "update") {
+      if (failUpdates) {
+        return { rows: [], rowsAffected: 0 };
+      }
+      const [elements, id, documentAssetId, version] = input.params;
+      const key = `${String(documentAssetId)}:${Number(version)}`;
+      const row = rows.get(key);
+      if (!row || row.id !== String(id)) {
+        return { rows: [], rowsAffected: 0 };
+      }
+      rows.set(key, {
+        ...row,
+        elements: typeof elements === "string" ? JSON.parse(elements) : elements,
+      });
+
+      return { rows: [], rowsAffected: 1 };
     }
 
     return { rows: [], rowsAffected: 0 };

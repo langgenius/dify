@@ -96,6 +96,30 @@ export function cloneParseArtifact(artifact: ParseArtifact): ParseArtifact {
   return ParseArtifactSchema.parse(JSON.parse(JSON.stringify(artifact)) as unknown);
 }
 
+function bindGeneratedElementIdsToArtifact(
+  artifact: ParseArtifact,
+  canonicalArtifactId: string,
+): ParseArtifact {
+  const generatedElementIds = artifact.elements.every((element, index) => {
+    const match = element.id.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}:element-(\d+)$/iu,
+    );
+
+    return match?.[1] === String(index + 1);
+  });
+
+  return cloneParseArtifact({
+    ...artifact,
+    elements: generatedElementIds
+      ? artifact.elements.map((element, index) => ({
+          ...element,
+          id: `${canonicalArtifactId}:element-${index + 1}`,
+        }))
+      : artifact.elements,
+    id: canonicalArtifactId,
+  });
+}
+
 export function createInMemoryParseArtifactRepository({
   maxArtifacts,
 }: InMemoryParseArtifactRepositoryOptions): ParseArtifactRepository {
@@ -115,9 +139,10 @@ export function createInMemoryParseArtifactRepository({
         throw new ParseArtifactCapacityExceededError(maxArtifacts);
       }
 
-      const stored = existing
-        ? cloneParseArtifact({ ...artifact, createdAt: existing.createdAt, id: existing.id })
-        : artifact;
+      const stored = bindGeneratedElementIdsToArtifact(
+        existing ? { ...artifact, createdAt: existing.createdAt } : artifact,
+        existing?.id ?? artifact.id,
+      );
       artifacts.set(key, stored);
 
       return cloneParseArtifact(stored);
@@ -176,6 +201,46 @@ export function createDatabaseParseArtifactRepository({
   database,
 }: DatabaseParseArtifactRepositoryOptions): ParseArtifactRepository {
   const tableName = "parse_artifacts";
+  const repairGeneratedElementIds = async (persisted: ParseArtifact): Promise<ParseArtifact> => {
+    const canonical = bindGeneratedElementIdsToArtifact(persisted, persisted.id);
+    if (JSON.stringify(canonical.elements) === JSON.stringify(persisted.elements)) {
+      return canonical;
+    }
+
+    const repaired = await database.execute({
+      maxRows: 1,
+      operation: "update",
+      params: [
+        JSON.stringify(canonical.elements),
+        canonical.id,
+        canonical.documentAssetId,
+        canonical.version,
+      ],
+      sql: `UPDATE ${quoteDatabaseIdentifier(database, tableName)} SET ${quoteDatabaseIdentifier(
+        database,
+        "elements",
+      )} = ${jsonInsertPlaceholder(
+        database,
+        1,
+        "elements",
+      )} WHERE ${quoteDatabaseIdentifier(database, "id")} = ${databasePlaceholder(
+        database,
+        2,
+      )} AND ${quoteDatabaseIdentifier(
+        database,
+        "document_asset_id",
+      )} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(
+        database,
+        "version",
+      )} = ${databasePlaceholder(database, 4)};`,
+      tableName,
+    });
+    if (repaired.rowsAffected !== 1) {
+      throw new Error("Parse artifact generated element ids could not be canonicalized");
+    }
+
+    return canonical;
+  };
 
   return {
     create: async (input) => {
@@ -247,7 +312,7 @@ export function createDatabaseParseArtifactRepository({
       });
 
       if (result.rows[0]) {
-        return mapParseArtifactRow(result.rows[0]);
+        return repairGeneratedElementIds(mapParseArtifactRow(result.rows[0]));
       }
 
       const stored = await database.execute({
@@ -283,7 +348,7 @@ export function createDatabaseParseArtifactRepository({
         throw new Error("Parse artifact upsert resolved a mismatched persisted logical row");
       }
 
-      return persisted;
+      return repairGeneratedElementIds(persisted);
     },
     getByDocumentVersion: async ({ documentAssetId, version }) => {
       const result = await database.execute({

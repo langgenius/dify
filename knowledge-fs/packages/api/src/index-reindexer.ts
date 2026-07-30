@@ -20,7 +20,11 @@ import type { IndexProjectionRepository } from "./index-projection-repository";
 import { isPlainObject } from "./json-utils";
 import type { KnowledgeFsOperationLeaseCoordinator } from "./knowledge-fs-operation-leases";
 import { type KnowledgeNodeRepository, cloneKnowledgeNode } from "./knowledge-node-repository";
-import { type ParseArtifactRepository, cloneParseArtifact } from "./parse-artifact-repository";
+import {
+  type ParseArtifactLookupInput,
+  type ParseArtifactRepository,
+  cloneParseArtifact,
+} from "./parse-artifact-repository";
 
 export interface IncrementalReindexInput {
   readonly chunkConfig?: ChunkConfig | undefined;
@@ -37,6 +41,8 @@ export interface IncrementalReindexInput {
   readonly projectionStatus?: ProjectionBuildStatus | undefined;
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
+  /** Removes failed projections from an unpublished generation before rebuilding a retry. */
+  readonly resetFailedProjections?: boolean | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
   readonly visualModel?: string | undefined;
@@ -67,6 +73,7 @@ export interface UpdateIncrementalReindexProjectionStatusInput {
 export interface IncrementalReindexer {
   canonicalizeArtifact?(artifact: ParseArtifact): Promise<ParseArtifact>;
   failProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
+  getCanonicalArtifact?(input: ParseArtifactLookupInput): Promise<ParseArtifact | null>;
   publishProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
   reindex(input: IncrementalReindexInput): Promise<IncrementalReindexResult>;
 }
@@ -140,6 +147,13 @@ export function createIncrementalReindexer({
       cloneParseArtifact(
         await artifacts.create(cloneParseArtifact(ParseArtifactSchema.parse(artifact))),
       ),
+    getCanonicalArtifact: async (input: ParseArtifactLookupInput) => {
+      const persisted = await artifacts.getByDocumentVersion(input);
+
+      return persisted
+        ? cloneParseArtifact(await artifacts.create(cloneParseArtifact(persisted)))
+        : null;
+    },
     ...(canUpdateProjectionStatuses
       ? {
           failProjections: async (input: UpdateIncrementalReindexProjectionStatusInput) => {
@@ -167,6 +181,16 @@ export function createIncrementalReindexer({
         input.publicationGenerationId === undefined
           ? undefined
           : PublicationGenerationIdSchema.parse(input.publicationGenerationId);
+      if (input.resetFailedProjections && !publicationGenerationId) {
+        throw new Error(
+          "Incremental reindexer can reset failed projections only for a publication generation",
+        );
+      }
+      if (input.resetFailedProjections && !projections) {
+        throw new Error(
+          "Incremental reindexer requires a projection repository to reset failed projections",
+        );
+      }
       const reindex = async (): Promise<IncrementalReindexResult> => {
         input.signal?.throwIfAborted();
         const storedArtifact = await artifacts.create(parseArtifact);
@@ -205,6 +229,16 @@ export function createIncrementalReindexer({
           chunkedNodes.length > 0
             ? await nodes.upsertMany(chunkedNodes.map(cloneKnowledgeNode))
             : [];
+        input.signal?.throwIfAborted();
+        if (input.resetFailedProjections && projections) {
+          for (const nodeBatch of chunkNodes(storedNodes, projectionBatchSize)) {
+            await projections.deleteByNodeIds({
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              maxProjections: nodeBatch.length * 3,
+              nodeIds: nodeBatch.map((node) => node.id),
+            });
+          }
+        }
         input.signal?.throwIfAborted();
         const projectionIds: string[] = [];
         const observedVectorSpaces = new Map<

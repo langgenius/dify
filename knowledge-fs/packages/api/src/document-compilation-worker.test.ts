@@ -12,6 +12,7 @@ import {
 import {
   createDocumentCompilationJobStateMachine,
   createDocumentCompilationWorker,
+  createDocumentMultimodalManifestBuilder,
   createDocumentOutlineBuilder,
   createDocumentOutlineSummaryEnhancer,
   createInMemoryDocumentAssetRepository,
@@ -589,6 +590,226 @@ describe("createDocumentCompilationWorker lease integration", () => {
     await expect(
       assets.get({ id: asset.id, knowledgeSpaceId: asset.knowledgeSpaceId }),
     ).resolves.toMatchObject({ parserStatus: "pending" });
+  });
+
+  it("resumes an outline-built generation without reparsing or regenerating LLM summaries", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const assets = createInMemoryDocumentAssetRepository({
+      maxAssets: 1,
+      now: () => "2026-07-30T15:16:20.000Z",
+    });
+    const asset = await assets.create({
+      filename: "Retry.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7001",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/spaces/space/documents/asset/Retry.md",
+      sha256: "a".repeat(64),
+      sizeBytes: 7,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("# Retry"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const generationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f7002";
+    const canonicalArtifact = ParseArtifactSchema.parse({
+      artifactHash: "b".repeat(64),
+      contentType: "text",
+      createdAt: "2026-07-30T15:16:21.000Z",
+      documentAssetId: asset.id,
+      elements: [
+        {
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7003:element-1",
+          metadata: {},
+          sectionPath: ["Retry"],
+          text: "Retry content",
+          type: "heading",
+        },
+      ],
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7003",
+      metadata: {},
+      parser: "native-markdown",
+      version: asset.version,
+    });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 2 });
+    await artifacts.create(canonicalArtifact);
+    const outlines = createInMemoryDocumentOutlineRepository({ maxOutlines: 2 });
+    const outlineBuilder = createDocumentOutlineBuilder({
+      maxElements: 10,
+      maxNodes: 10,
+      maxSummaryChars: 200,
+      now: () => "2026-07-30T15:16:22.000Z",
+    });
+    const persistedOutline = await outlines.upsert(
+      outlineBuilder.build({
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        parseArtifact: canonicalArtifact,
+        publicationGenerationId: generationId,
+      }),
+    );
+    const multimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 2,
+    });
+    const persistedManifest = await multimodalManifests.upsert(
+      createDocumentMultimodalManifestBuilder().build({
+        artifact: canonicalArtifact,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        publicationGenerationId: generationId,
+      }),
+    );
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-outline-retry-1",
+      generatePublicationGenerationId: () => generationId,
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    await compilationJobs.advance(compilationJob.id, "parsed");
+    await compilationJobs.advance(compilationJob.id, "outline_built");
+    let parserCalls = 0;
+    let summaryCalls = 0;
+    let canonicalArtifactAvailable = false;
+    let manifestCheckpoint: "invalid" | "missing" | "valid" = "missing";
+    const receipts: unknown[] = [];
+    const resetFailedProjectionFlags: Array<boolean | undefined> = [];
+    const checkpointManifests = {
+      ...multimodalManifests,
+      getByDocumentVersion: async (
+        input: Parameters<typeof multimodalManifests.getByDocumentVersion>[0],
+      ) => {
+        const manifest = await multimodalManifests.getByDocumentVersion(input);
+        if (manifestCheckpoint === "missing" || !manifest) {
+          return null;
+        }
+
+        return manifestCheckpoint === "invalid"
+          ? { ...manifest, artifactHash: "c".repeat(64) }
+          : manifest;
+      },
+    };
+    const workerWithoutCheckpointLoader = createDocumentCompilationWorker({
+      assets,
+      candidateComposer: { compose: async () => undefined },
+      failureManagement: "caller",
+      generateKnowledgePathId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f7004",
+      jobs: compilationJobs,
+      knowledgePaths: createInMemoryKnowledgePathRepository({
+        maxListLimit: 20,
+        maxPaths: 20,
+      }),
+      multimodalManifests,
+      objectStorage: adapter.objectStorage,
+      outlineBuilder,
+      outlines,
+      pageIndexBuild: {
+        materializeBuilding: async () => {
+          throw new Error("PageIndex must not run without a checkpoint artifact loader");
+        },
+      },
+      parser: parser(),
+      reindexer: {
+        reindex: async () => {
+          throw new Error("reindex must not run without a checkpoint artifact loader");
+        },
+      },
+    });
+    const payload = {
+      documentAssetId: asset.id,
+      documentCompilationJobId: compilationJob.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      publicationGenerationId: generationId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    } as const;
+
+    await expect(
+      workerWithoutCheckpointLoader.process({
+        ...payload,
+        documentCompilationJobId: "missing-document-compilation-job",
+      }),
+    ).rejects.toThrow("Document compilation job not found");
+    await expect(workerWithoutCheckpointLoader.process(payload)).rejects.toThrow(
+      "cannot load its parse artifact",
+    );
+
+    const worker = createDocumentCompilationWorker({
+      assets,
+      candidateComposer: {
+        compose: async (input) => {
+          receipts.push(input);
+        },
+      },
+      failureManagement: "caller",
+      generateKnowledgePathId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f7004",
+      jobs: compilationJobs,
+      knowledgePaths: createInMemoryKnowledgePathRepository({
+        maxListLimit: 20,
+        maxPaths: 20,
+      }),
+      multimodalManifests: checkpointManifests,
+      objectStorage: adapter.objectStorage,
+      outlineBuilder,
+      outlineSummaryEnhancer: {
+        enhance: async () => {
+          summaryCalls += 1;
+          throw new Error("outline summary must not be regenerated");
+        },
+      },
+      outlines,
+      pageIndexBuild: {
+        materializeBuilding: async () => {
+          throw new Error("PageIndex must not be regenerated");
+        },
+      },
+      parser: {
+        kind: "native-markdown",
+        parse: async () => {
+          parserCalls += 1;
+          throw new Error("document must not be reparsed");
+        },
+      },
+      reindexer: {
+        getCanonicalArtifact: async (input) =>
+          canonicalArtifactAvailable ? artifacts.getByDocumentVersion(input) : null,
+        reindex: async (input) => {
+          resetFailedProjectionFlags.push(input.resetFailedProjections);
+          return {
+            artifact: input.parseArtifact,
+            nodeIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f7005"],
+            nodesCreated: 1,
+            projectionIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f7006"],
+            projectionsCreated: 1,
+            status: "rebuilt",
+          };
+        },
+      },
+    });
+
+    await expect(worker.process(payload)).rejects.toThrow("parse artifact is missing");
+    canonicalArtifactAvailable = true;
+    await expect(worker.process(payload)).rejects.toThrow("derived components are missing");
+    manifestCheckpoint = "invalid";
+    await expect(worker.process(payload)).rejects.toThrow("derived component lineage is invalid");
+    manifestCheckpoint = "valid";
+    await expect(worker.process(payload)).resolves.toMatchObject({ stage: "projection_built" });
+    expect(parserCalls).toBe(0);
+    expect(summaryCalls).toBe(0);
+    expect(resetFailedProjectionFlags).toEqual([true]);
+    expect(receipts).toEqual([
+      expect.objectContaining({
+        componentReceipt: expect.objectContaining({
+          documentOutlines: [{ componentKey: persistedOutline.id, generationId }],
+          multimodalManifests: [{ componentKey: persistedManifest.id, generationId }],
+        }),
+      }),
+    ]);
   });
 
   it("builds retry derivatives from the canonical artifact returned by reindexing", async () => {

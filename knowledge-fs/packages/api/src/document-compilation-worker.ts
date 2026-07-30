@@ -1,9 +1,14 @@
 import { z } from "@hono/zod-openapi";
 import type { ChunkConfig } from "@knowledge/compute";
 import {
+  type DocumentAsset,
+  type DocumentMultimodalManifest,
+  type DocumentOutline,
   type JobPayload,
+  type KnowledgePath,
   type KnowledgeSpaceEmbeddingProfile,
   type KnowledgeSpaceRetrievalProfile,
+  type ParseArtifact,
   type PlatformAdapter,
   PublicationGenerationIdSchema,
   TenantIdSchema,
@@ -291,56 +296,85 @@ export function createDocumentCompilationWorker({
               })
             : objectStorage;
         const compile = async () => {
-          const body = await objectStorage.getObject(activeAsset.objectKey);
-
-          if (!body) {
-            throw new Error("Document compilation object not found");
+          const initialJob = await jobs.get(input.documentCompilationJobId);
+          if (!initialJob) {
+            throw new Error("Document compilation job not found");
           }
+          const resumeParsedGeneration =
+            publicationGenerationId !== undefined &&
+            hasReachedCompilationStage(initialJob.stage, "parsed");
+          const resumeOutlineGeneration =
+            publicationGenerationId !== undefined &&
+            hasReachedCompilationStage(initialJob.stage, "outline_built");
+          let canonicalArtifact: ParseArtifact;
+          if (resumeParsedGeneration) {
+            if (!reindexer.getCanonicalArtifact) {
+              throw new Error(
+                `Document compilation checkpoint=${initialJob.stage} cannot load its parse artifact`,
+              );
+            }
+            const persistedArtifact = await reindexer.getCanonicalArtifact({
+              documentAssetId: activeAsset.id,
+              version: activeAsset.version,
+            });
+            if (!persistedArtifact) {
+              throw new Error(
+                `Document compilation checkpoint=${initialJob.stage} parse artifact is missing`,
+              );
+            }
+            canonicalArtifact = persistedArtifact;
+          } else {
+            const body = await objectStorage.getObject(activeAsset.objectKey);
 
-          const parsedArtifact = await parser.parse({
-            body,
-            documentAssetId: activeAsset.id,
-            filename: activeAsset.filename,
-            mimeType: activeAsset.mimeType,
-            ...(signal ? { signal } : {}),
-            version: activeAsset.version,
-          });
-          await assertWritable();
-          const rasterized = await rasterizeDocumentPdfMultimodalAssets({
-            artifact: parsedArtifact,
-            documentBody: body,
-            documentMimeType: activeAsset.mimeType,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            ...(multimodalMaxPdfRasterizedAssets
-              ? { maxRasterizedAssets: multimodalMaxPdfRasterizedAssets }
-              : {}),
-            objectStorage: multimodalObjectStorage,
-            ...(pdfRasterizer ? { rasterizer: pdfRasterizer } : {}),
-            tenantId: input.tenantId,
-          });
-          await assertWritable();
-          const { artifact } = await extractDocumentMultimodalAssets({
-            ...(multimodalLocalAssetAllowlist
-              ? { allowLocalAssetPaths: multimodalLocalAssetAllowlist }
-              : {}),
-            artifact: rasterized.artifact,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            ...(multimodalMaxExtractedAssets
-              ? { maxExtractedAssets: multimodalMaxExtractedAssets }
-              : {}),
-            ...(multimodalMaxLocalAssetBytes
-              ? { maxLocalAssetBytes: multimodalMaxLocalAssetBytes }
-              : {}),
-            ...(multimodalImageVariantGenerator
-              ? { imageVariantGenerator: multimodalImageVariantGenerator }
-              : {}),
-            objectStorage: multimodalObjectStorage,
-            tenantId: input.tenantId,
-          });
-          await assertWritable();
-          const canonicalArtifact = reindexer.canonicalizeArtifact
-            ? await reindexer.canonicalizeArtifact(artifact)
-            : artifact;
+            if (!body) {
+              throw new Error("Document compilation object not found");
+            }
+
+            const parsedArtifact = await parser.parse({
+              body,
+              documentAssetId: activeAsset.id,
+              filename: activeAsset.filename,
+              mimeType: activeAsset.mimeType,
+              ...(signal ? { signal } : {}),
+              version: activeAsset.version,
+            });
+            await assertWritable();
+            const rasterized = await rasterizeDocumentPdfMultimodalAssets({
+              artifact: parsedArtifact,
+              documentBody: body,
+              documentMimeType: activeAsset.mimeType,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              ...(multimodalMaxPdfRasterizedAssets
+                ? { maxRasterizedAssets: multimodalMaxPdfRasterizedAssets }
+                : {}),
+              objectStorage: multimodalObjectStorage,
+              ...(pdfRasterizer ? { rasterizer: pdfRasterizer } : {}),
+              tenantId: input.tenantId,
+            });
+            await assertWritable();
+            const { artifact } = await extractDocumentMultimodalAssets({
+              ...(multimodalLocalAssetAllowlist
+                ? { allowLocalAssetPaths: multimodalLocalAssetAllowlist }
+                : {}),
+              artifact: rasterized.artifact,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              ...(multimodalMaxExtractedAssets
+                ? { maxExtractedAssets: multimodalMaxExtractedAssets }
+                : {}),
+              ...(multimodalMaxLocalAssetBytes
+                ? { maxLocalAssetBytes: multimodalMaxLocalAssetBytes }
+                : {}),
+              ...(multimodalImageVariantGenerator
+                ? { imageVariantGenerator: multimodalImageVariantGenerator }
+                : {}),
+              objectStorage: multimodalObjectStorage,
+              tenantId: input.tenantId,
+            });
+            await assertWritable();
+            canonicalArtifact = reindexer.canonicalizeArtifact
+              ? await reindexer.canonicalizeArtifact(artifact)
+              : artifact;
+          }
           const documentIndexOverrides = indexOverrides
             ? await indexOverrides.resolve({
                 compilationAttemptId: input.documentCompilationJobId,
@@ -350,95 +384,98 @@ export function createDocumentCompilationWorker({
                 tenantId: input.tenantId,
               })
             : {};
-          await assertWritable();
-          await jobs.advance(input.documentCompilationJobId, "parsed");
-          const multimodalManifest = createDocumentMultimodalManifestBuilder().build({
-            artifact: canonicalArtifact,
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            ...(publicationGenerationId ? { publicationGenerationId } : {}),
-          });
           let documentOutlineIds: readonly string[] = [];
           let knowledgePathIds: readonly string[] = [];
-          if (outlineBuilder && outlines) {
-            const deterministicOutline = outlineBuilder.build({
+          let persistedManifest: DocumentMultimodalManifest;
+          if (resumeOutlineGeneration && publicationGenerationId) {
+            const [persistedOutline, resumedManifest] = await Promise.all([
+              outlines?.getByDocumentVersion({
+                documentAssetId: activeAsset.id,
+                publicationGenerationId,
+                version: activeAsset.version,
+              }),
+              multimodalManifests.getByDocumentVersion({
+                documentAssetId: activeAsset.id,
+                publicationGenerationId,
+                version: activeAsset.version,
+              }),
+            ]);
+            if (!persistedOutline || !resumedManifest) {
+              throw new Error(
+                `Document compilation checkpoint=${initialJob.stage} derived components are missing`,
+              );
+            }
+            assertResumableCompilationComponents({
+              artifact: canonicalArtifact,
+              asset: activeAsset,
+              manifest: resumedManifest,
+              outline: persistedOutline,
+              publicationGenerationId,
+            });
+            persistedManifest = resumedManifest;
+            documentOutlineIds = [persistedOutline.id];
+            knowledgePathIds = buildCompilationKnowledgePaths({
+              asset: activeAsset,
+              generateId: () => publicationGenerationId,
+              manifest: persistedManifest,
+              outline: persistedOutline,
+              publicationGenerationId,
+              tenantId: input.tenantId,
+            }).map((path) => path.id);
+          } else {
+            await assertWritable();
+            await jobs.advance(input.documentCompilationJobId, "parsed");
+            const multimodalManifest = createDocumentMultimodalManifestBuilder().build({
+              artifact: canonicalArtifact,
               knowledgeSpaceId: input.knowledgeSpaceId,
-              parseArtifact: canonicalArtifact,
               ...(publicationGenerationId ? { publicationGenerationId } : {}),
             });
-            const outline = outlineSummaryEnhancer
-              ? await outlineSummaryEnhancer.enhance({
-                  outline: deterministicOutline,
-                  parseArtifact: canonicalArtifact,
-                  ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
-                  ...(signal ? { signal } : {}),
-                  tenantId: input.tenantId,
-                })
-              : deterministicOutline;
-            await assertWritable();
-            const persistedOutline = await outlines.upsert(outline);
-            if (publicationGenerationId && documentIndexOverrides.enablePageIndex !== false) {
-              await assertWritable();
-              await pageIndexBuild?.materializeBuilding({
-                builtAt: persistedOutline.updatedAt ?? persistedOutline.createdAt,
-                outline: persistedOutline,
-                tenantId: input.tenantId,
+            if (outlineBuilder && outlines) {
+              const deterministicOutline = outlineBuilder.build({
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                parseArtifact: canonicalArtifact,
+                ...(publicationGenerationId ? { publicationGenerationId } : {}),
               });
-            }
-            documentOutlineIds = [persistedOutline.id];
-            if (knowledgePaths && generateKnowledgePathId) {
+              const outline = outlineSummaryEnhancer
+                ? await outlineSummaryEnhancer.enhance({
+                    outline: deterministicOutline,
+                    parseArtifact: canonicalArtifact,
+                    ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
+                    ...(signal ? { signal } : {}),
+                    tenantId: input.tenantId,
+                  })
+                : deterministicOutline;
               await assertWritable();
-              const persistedPaths = await knowledgePaths.upsertMany([
-                ...(publicationGenerationId
-                  ? [
-                      buildDocumentKnowledgePath({
-                        asset: activeAsset,
-                        id: generateKnowledgePathId(),
-                        publicationGenerationId,
-                        tenantId: input.tenantId,
-                      }),
-                    ]
-                  : []),
-                buildDocumentMultimodalManifestKnowledgePath({
-                  asset: activeAsset,
-                  id: generateKnowledgePathId(),
-                  ...(publicationGenerationId ? { publicationGenerationId } : {}),
-                  tenantId: input.tenantId,
-                }),
-                ...buildDocumentMultimodalAssetKnowledgePaths({
-                  asset: activeAsset,
-                  generateId: generateKnowledgePathId,
-                  manifest: multimodalManifest,
-                  ...(publicationGenerationId ? { publicationGenerationId } : {}),
-                  tenantId: input.tenantId,
-                }),
-                ...buildDocumentMultimodalResourceKnowledgePaths({
-                  asset: activeAsset,
-                  generateId: generateKnowledgePathId,
-                  manifest: multimodalManifest,
-                  ...(publicationGenerationId ? { publicationGenerationId } : {}),
-                  tenantId: input.tenantId,
-                }),
-                buildDocumentOutlineKnowledgePath({
-                  asset: activeAsset,
-                  id: generateKnowledgePathId(),
-                  ...(publicationGenerationId ? { publicationGenerationId } : {}),
-                  tenantId: input.tenantId,
-                }),
-                ...buildDocumentSectionKnowledgePaths({
-                  asset: activeAsset,
-                  generateId: generateKnowledgePathId,
+              const persistedOutline = await outlines.upsert(outline);
+              if (publicationGenerationId && documentIndexOverrides.enablePageIndex !== false) {
+                await assertWritable();
+                await pageIndexBuild?.materializeBuilding({
+                  builtAt: persistedOutline.updatedAt ?? persistedOutline.createdAt,
                   outline: persistedOutline,
-                  ...(publicationGenerationId ? { publicationGenerationId } : {}),
                   tenantId: input.tenantId,
-                }),
-              ]);
-              knowledgePathIds = persistedPaths.map((path) => path.id);
+                });
+              }
+              documentOutlineIds = [persistedOutline.id];
+              if (knowledgePaths && generateKnowledgePathId) {
+                await assertWritable();
+                const persistedPaths = await knowledgePaths.upsertMany(
+                  buildCompilationKnowledgePaths({
+                    asset: activeAsset,
+                    generateId: generateKnowledgePathId,
+                    manifest: multimodalManifest,
+                    outline: persistedOutline,
+                    ...(publicationGenerationId ? { publicationGenerationId } : {}),
+                    tenantId: input.tenantId,
+                  }),
+                );
+                knowledgePathIds = persistedPaths.map((path) => path.id);
+              }
             }
+            await assertWritable();
+            persistedManifest = await multimodalManifests.upsert(multimodalManifest);
+            await assertWritable();
+            await jobs.advance(input.documentCompilationJobId, "outline_built");
           }
-          await assertWritable();
-          const persistedManifest = await multimodalManifests.upsert(multimodalManifest);
-          await assertWritable();
-          await jobs.advance(input.documentCompilationJobId, "outline_built");
 
           const resolvedEmbedding = frozenEmbeddingProfile
             ? frozenEmbeddingProfile
@@ -473,6 +510,7 @@ export function createDocumentCompilationWorker({
               publicationGenerationId || legacyStagedProjectionPublication ? "building" : "ready",
             projectionVersion: input.version,
             ...(publicationGenerationId ? { publicationGenerationId } : {}),
+            ...(initialJob.stage === "outline_built" ? { resetFailedProjections: true } : {}),
             ...(signal ? { signal } : {}),
             tenantId: input.tenantId,
             ...(visualEmbeddingModel ? { visualModel: visualEmbeddingModel } : {}),
@@ -764,6 +802,121 @@ function createDeletionFencedCompilationObjectStorage({
       return stored;
     },
   };
+}
+
+const resumableCompilationStages: readonly DocumentCompilationJob["stage"][] = [
+  "queued",
+  "parsed",
+  "outline_built",
+  "nodes_generated",
+  "projection_built",
+  "smoke_eval_passed",
+  "published",
+];
+
+function hasReachedCompilationStage(
+  current: DocumentCompilationJob["stage"],
+  expected: DocumentCompilationJob["stage"],
+): boolean {
+  const currentIndex = resumableCompilationStages.indexOf(current);
+  const expectedIndex = resumableCompilationStages.indexOf(expected);
+
+  return currentIndex >= expectedIndex && expectedIndex >= 0;
+}
+
+function assertResumableCompilationComponents({
+  artifact,
+  asset,
+  manifest,
+  outline,
+  publicationGenerationId,
+}: {
+  readonly artifact: ParseArtifact;
+  readonly asset: DocumentAsset;
+  readonly manifest: DocumentMultimodalManifest;
+  readonly outline: DocumentOutline;
+  readonly publicationGenerationId: string;
+}): void {
+  const hasArtifactLineage =
+    artifact.documentAssetId === asset.id &&
+    artifact.version === asset.version &&
+    outline.documentAssetId === asset.id &&
+    outline.knowledgeSpaceId === asset.knowledgeSpaceId &&
+    outline.version === asset.version &&
+    outline.parseArtifactId === artifact.id &&
+    outline.artifactHash === artifact.artifactHash &&
+    outline.publicationGenerationId === publicationGenerationId &&
+    manifest.documentAssetId === asset.id &&
+    manifest.knowledgeSpaceId === asset.knowledgeSpaceId &&
+    manifest.version === asset.version &&
+    manifest.parseArtifactId === artifact.id &&
+    manifest.artifactHash === artifact.artifactHash &&
+    manifest.publicationGenerationId === publicationGenerationId;
+  if (!hasArtifactLineage) {
+    throw new Error("Document compilation checkpoint derived component lineage is invalid");
+  }
+}
+
+function buildCompilationKnowledgePaths({
+  asset,
+  generateId,
+  manifest,
+  outline,
+  publicationGenerationId,
+  tenantId,
+}: {
+  readonly asset: DocumentAsset;
+  readonly generateId: () => string;
+  readonly manifest: DocumentMultimodalManifest;
+  readonly outline: DocumentOutline;
+  readonly publicationGenerationId?: string | undefined;
+  readonly tenantId: string;
+}): KnowledgePath[] {
+  return [
+    ...(publicationGenerationId
+      ? [
+          buildDocumentKnowledgePath({
+            asset,
+            id: generateId(),
+            publicationGenerationId,
+            tenantId,
+          }),
+        ]
+      : []),
+    buildDocumentMultimodalManifestKnowledgePath({
+      asset,
+      id: generateId(),
+      ...(publicationGenerationId ? { publicationGenerationId } : {}),
+      tenantId,
+    }),
+    ...buildDocumentMultimodalAssetKnowledgePaths({
+      asset,
+      generateId,
+      manifest,
+      ...(publicationGenerationId ? { publicationGenerationId } : {}),
+      tenantId,
+    }),
+    ...buildDocumentMultimodalResourceKnowledgePaths({
+      asset,
+      generateId,
+      manifest,
+      ...(publicationGenerationId ? { publicationGenerationId } : {}),
+      tenantId,
+    }),
+    buildDocumentOutlineKnowledgePath({
+      asset,
+      id: generateId(),
+      ...(publicationGenerationId ? { publicationGenerationId } : {}),
+      tenantId,
+    }),
+    ...buildDocumentSectionKnowledgePaths({
+      asset,
+      generateId,
+      outline,
+      ...(publicationGenerationId ? { publicationGenerationId } : {}),
+      tenantId,
+    }),
+  ];
 }
 
 function componentReferences(
