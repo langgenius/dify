@@ -53,6 +53,7 @@ const (
 	EnvEgressProxyCACert = "SHELLCTL_EGRESSPROXY_CA_CERT"
 
 	// EnvEgressProxyUpstream overrides the upstream proxy URL (empty = direct).
+	// IMPORTANT: always enable this in docker compose environment
 	EnvEgressProxyUpstream = "SHELLCTL_EGRESSPROXY_UPSTREAM"
 
 	// EnvEgressProxySystemCredentialsDir points to a directory of credential

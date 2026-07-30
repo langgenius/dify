@@ -88,3 +88,39 @@ func TestConfigNoEgressProxySystemCredentialsDir(t *testing.T) {
 		t.Errorf("expected empty system credentials dir, got %q", cfg.EgressProxySystemCredentialsDir)
 	}
 }
+
+// TestConfigEgressProxyUpstreamFromEnv is a regression test: without wiring
+// SHELLCTL_EGRESSPROXY_UPSTREAM into Config.EgressProxyUpstream, the credproxy
+// silently falls back to direct dialing (no upstream chaining), which breaks
+// resolution of hostnames only reachable through the upstream SSRF proxy.
+func TestConfigEgressProxyUpstreamFromEnv(t *testing.T) {
+	t.Setenv(envvar.EnvEgressProxyUpstream, "http://agent_ssrf_proxy:3128")
+	cfg := DefaultConfig()
+	if cfg.EgressProxyUpstream != "http://agent_ssrf_proxy:3128" {
+		t.Errorf("expected upstream proxy from env, got %q", cfg.EgressProxyUpstream)
+	}
+}
+
+func TestConfigNoEgressProxyUpstream(t *testing.T) {
+	t.Setenv(envvar.EnvEgressProxyUpstream, "")
+	cfg := DefaultConfig()
+	if cfg.EgressProxyUpstream != "" {
+		t.Errorf("expected empty upstream proxy, got %q", cfg.EgressProxyUpstream)
+	}
+}
+
+func TestConfigEgressProxyAddrFromEnv(t *testing.T) {
+	t.Setenv(envvar.EnvEgressProxyAddr, "127.0.0.1:19090")
+	cfg := DefaultConfig()
+	if cfg.EgressProxyAddr != "127.0.0.1:19090" {
+		t.Errorf("expected egress proxy addr from env, got %q", cfg.EgressProxyAddr)
+	}
+}
+
+func TestConfigEgressProxyCADirFromEnv(t *testing.T) {
+	t.Setenv(envvar.EnvEgressProxyCADir, "/etc/shellctl/ca")
+	cfg := DefaultConfig()
+	if cfg.EgressProxyCADir != "/etc/shellctl/ca" {
+		t.Errorf("expected egress proxy CA dir from env, got %q", cfg.EgressProxyCADir)
+	}
+}

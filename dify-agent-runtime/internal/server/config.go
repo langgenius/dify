@@ -106,6 +106,15 @@ func DefaultConfig() *Config {
 	if v := os.Getenv(envvar.EnvEgressProxySystemCredentialsFile); v != "" {
 		cfg.EgressProxySystemCredentials = v
 	}
+	if v := os.Getenv(envvar.EnvEgressProxyUpstream); v != "" {
+		cfg.EgressProxyUpstream = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxyAddr); v != "" {
+		cfg.EgressProxyAddr = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxyCADir); v != "" {
+		cfg.EgressProxyCADir = v
+	}
 
 	return cfg
 }
