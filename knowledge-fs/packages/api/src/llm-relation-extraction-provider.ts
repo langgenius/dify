@@ -4,6 +4,7 @@ import type {
   RelationExtractionProvider,
   RelationExtractionProviderInput,
 } from "./relation-extraction-flow";
+import { semanticExtractionModelRequestGate } from "./semantic-extraction-concurrency";
 
 export interface LlmRelationExtractionMessage {
   readonly content: string;
@@ -34,15 +35,21 @@ export interface RelationExtractionTextProvider {
 
 export interface LlmRelationExtractionProviderOptions {
   readonly maxOutputTokens?: number | undefined;
+  readonly maxRetries?: number | undefined;
   readonly provider: RelationExtractionTextProvider;
   readonly temperature?: number | undefined;
 }
 
 export function createLlmRelationExtractionProvider({
   maxOutputTokens = 1_500,
+  maxRetries = 2,
   provider,
   temperature = 0,
 }: LlmRelationExtractionProviderOptions): RelationExtractionProvider {
+  if (!Number.isInteger(maxRetries) || maxRetries < 0) {
+    throw new Error("LLM relation extraction maxRetries must be a non-negative integer");
+  }
+
   if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1) {
     throw new Error("LLM relation extraction maxOutputTokens must be at least 1");
   }
@@ -53,14 +60,37 @@ export function createLlmRelationExtractionProvider({
 
   return {
     extract: async (input) => {
-      const result = await provider.generate({
-        maxOutputTokens,
-        messages: relationExtractionMessages(input),
-        model: input.model,
-        temperature,
-        ...(input.tenantId ? { tenantId: input.tenantId } : {}),
-      });
-      const parsed = parseLlmRelationExtractionJson(result.text);
+      let messages = relationExtractionMessages(input);
+      let result: GenerateRelationExtractionTextResult | undefined;
+      let parsed: LlmRelationExtractionOutput | undefined;
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+          result = await semanticExtractionModelRequestGate.run(() =>
+            provider.generate({
+              maxOutputTokens,
+              messages,
+              model: input.model,
+              temperature,
+              ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+            }),
+          );
+          parsed = parseLlmRelationExtractionJson(result.text);
+          break;
+        } catch (error) {
+          if (attempt >= maxRetries) {
+            throw error;
+          }
+          if (result) {
+            messages = relationExtractionCorrectionMessages(messages, result.text);
+            result = undefined;
+          } else if (!isRetryableModelError(error)) {
+            throw error;
+          }
+        }
+      }
+      if (!result || !parsed) {
+        throw new Error("LLM relation extraction format retry did not produce a result");
+      }
 
       return {
         metadata: {
@@ -104,10 +134,30 @@ function relationExtractionMessages(
   ];
 }
 
-function parseLlmRelationExtractionJson(text: string): LlmRelationExtractionOutput {
-  const parsed = tryParseJsonObject(text);
+function isRetryableModelError(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && "retryable" in error && error.retryable === true
+  );
+}
 
+function relationExtractionCorrectionMessages(
+  messages: readonly LlmRelationExtractionMessage[],
+  invalidText: string,
+): readonly LlmRelationExtractionMessage[] {
+  return [
+    ...messages,
+    { content: invalidText.slice(0, 8_000), role: "assistant" },
+    {
+      content:
+        "The previous response is invalid JSON or does not match the required schema. Return a corrected complete JSON object only.",
+      role: "user",
+    },
+  ];
+}
+
+function parseLlmRelationExtractionJson(text: string): LlmRelationExtractionOutput {
   try {
+    const parsed = tryParseJsonObject(text);
     return LlmRelationExtractionOutputSchema.parse(parsed);
   } catch (error) {
     throw new Error("LLM relation extraction provider returned invalid relation JSON", {

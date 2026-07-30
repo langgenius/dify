@@ -1,5 +1,6 @@
 import { type KnowledgeNode, PublicationGenerationIdSchema } from "@knowledge/core";
 
+import { mapWithConcurrency } from "./bounded-concurrency";
 import { ENTITY_EXTRACTION_TYPES, type EntityExtractionType } from "./extraction-types";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import { type KnowledgeNodeRepository, cloneKnowledgeNode } from "./knowledge-node-repository";
@@ -31,6 +32,7 @@ export interface EntityExtractionProvider {
 
 export interface EntityExtractionFlowOptions {
   readonly maxBatchSize: number;
+  readonly maxConcurrency?: number | undefined;
   readonly maxEntitiesPerNode?: number | undefined;
   readonly model: string;
   readonly nodes: KnowledgeNodeRepository;
@@ -58,6 +60,7 @@ export interface EntityExtractionFlow {
 
 export function createEntityExtractionFlow({
   maxBatchSize,
+  maxConcurrency = 4,
   maxEntitiesPerNode = 100,
   model,
   nodes,
@@ -67,6 +70,10 @@ export function createEntityExtractionFlow({
 }: EntityExtractionFlowOptions): EntityExtractionFlow {
   if (!Number.isInteger(maxBatchSize) || maxBatchSize < 1) {
     throw new Error("Entity extraction maxBatchSize must be at least 1");
+  }
+
+  if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
+    throw new Error("Entity extraction maxConcurrency must be at least 1");
   }
 
   if (!Number.isInteger(maxEntitiesPerNode) || maxEntitiesPerNode < 1) {
@@ -110,32 +117,30 @@ export function createEntityExtractionFlow({
         };
       }
 
-      const generated = await Promise.all(
-        orderedNodes.map(async (node) => {
-          const result = await provider.extract({
-            maxEntities: maxEntitiesPerNode,
-            model,
-            node: cloneKnowledgeNode(node),
-            prompt: entityExtractionPrompt(node),
-            promptVersion,
-            ...(tenantId ? { tenantId } : {}),
-          });
-          const entities = validateExtractedEntities(result.entities, maxEntitiesPerNode);
+      const generated = await mapWithConcurrency(orderedNodes, maxConcurrency, async (node) => {
+        const result = await provider.extract({
+          maxEntities: maxEntitiesPerNode,
+          model,
+          node: cloneKnowledgeNode(node),
+          prompt: entityExtractionPrompt(node),
+          promptVersion,
+          ...(tenantId ? { tenantId } : {}),
+        });
+        const entities = validateExtractedEntities(result.entities, maxEntitiesPerNode);
 
-          return {
-            id: node.id,
-            metadata: entityExtractionMetadata({
-              entities,
-              metadata: result.metadata,
-              model,
-              node,
-              now,
-              promptVersion,
-              traceId,
-            }),
-          };
-        }),
-      );
+        return {
+          id: node.id,
+          metadata: entityExtractionMetadata({
+            entities,
+            metadata: result.metadata,
+            model,
+            node,
+            now,
+            promptVersion,
+            traceId,
+          }),
+        };
+      });
       const extractedNodes = await nodes.updateMetadataMany({
         knowledgeSpaceId,
         patches: generated,
@@ -188,13 +193,7 @@ function validateExtractedEntities(
   entities: readonly ExtractedEntity[],
   maxEntitiesPerNode: number,
 ): ExtractedEntity[] {
-  if (entities.length > maxEntitiesPerNode) {
-    throw new Error(
-      `Entity extraction provider returned ${entities.length} entities over maxEntitiesPerNode=${maxEntitiesPerNode}`,
-    );
-  }
-
-  return entities.map((entity) => {
+  const validated = entities.map((entity, index) => {
     if (!ENTITY_EXTRACTION_TYPES.has(entity.type)) {
       throw new Error("Entity extraction entity type is unsupported");
     }
@@ -208,12 +207,22 @@ function validateExtractedEntities(
     }
 
     return {
-      confidence: entity.confidence,
-      ...(entity.metadata ? { metadata: cloneJsonObject(entity.metadata) } : {}),
-      text: entity.text.trim(),
-      type: entity.type,
+      entity: {
+        confidence: entity.confidence,
+        ...(entity.metadata ? { metadata: cloneJsonObject(entity.metadata) } : {}),
+        text: entity.text.trim(),
+        type: entity.type,
+      },
+      index,
     };
   });
+
+  return validated
+    .sort(
+      (left, right) => right.entity.confidence - left.entity.confidence || left.index - right.index,
+    )
+    .slice(0, maxEntitiesPerNode)
+    .map(({ entity }) => entity);
 }
 
 function entityExtractionMetadata({

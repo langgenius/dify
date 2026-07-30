@@ -232,6 +232,18 @@ export function createDifyModelRuntimeClient(
           }
           yield unwrapEnvelope(envelope.data);
         }
+      } catch (cause) {
+        if (deadline.signal.aborted) {
+          throw deadlineError(deadline.signal.reason);
+        }
+        if (cause instanceof DifyModelRuntimeError) {
+          throw cause;
+        }
+        throw new DifyModelRuntimeError("Dify model runtime stream failed", {
+          cause,
+          code: "dify_model_runtime_request_failed",
+          retryable: true,
+        });
       } finally {
         deadline.cleanup();
       }

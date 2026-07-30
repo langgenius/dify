@@ -476,6 +476,57 @@ describe("createDifyModelRuntimeClient", () => {
     });
   });
 
+  it("converts LLM stream read timeouts into retryable runtime errors", async () => {
+    const client = createDifyModelRuntimeClient({
+      apiKey: "inner-secret",
+      baseUrl: "http://api:5001",
+      fetch: vi.fn(async (_input, init) => {
+        const signal = init?.signal;
+        if (!signal) {
+          throw new Error("missing signal");
+        }
+
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              signal.addEventListener("abort", () => controller.error(signal.reason), {
+                once: true,
+              });
+            },
+          }),
+        );
+      }),
+      requestTimeoutMs: 5,
+    });
+
+    await expect(collect(client.invokeLlm(llmInput()))).rejects.toMatchObject({
+      code: "dify_model_runtime_timeout",
+      retryable: true,
+    });
+  });
+
+  it("converts LLM stream transport failures into retryable request errors", async () => {
+    const client = createDifyModelRuntimeClient({
+      apiKey: "inner-secret",
+      baseUrl: "http://api:5001",
+      fetch: vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.error(new TypeError("terminated"));
+              },
+            }),
+          ),
+      ),
+    });
+
+    await expect(collect(client.invokeLlm(llmInput()))).rejects.toMatchObject({
+      code: "dify_model_runtime_request_failed",
+      retryable: true,
+    });
+  });
+
   it("rejects missing, malformed, and oversized unary response bodies", async () => {
     const cases: ReadonlyArray<[Response, number | undefined, string]> = [
       [new Response(null), undefined, "dify_model_runtime_response_invalid"],

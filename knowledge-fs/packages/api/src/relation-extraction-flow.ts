@@ -1,5 +1,6 @@
 import { type KnowledgeNode, PublicationGenerationIdSchema } from "@knowledge/core";
 
+import { mapWithConcurrency } from "./bounded-concurrency";
 import { type ExtractedEntity, extractedEntitiesFromNodeMetadata } from "./entity-extraction-flow";
 import { RELATION_EXTRACTION_TYPES, type RelationExtractionType } from "./extraction-types";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
@@ -34,6 +35,7 @@ export interface RelationExtractionProvider {
 
 export interface RelationExtractionFlowOptions {
   readonly maxBatchSize: number;
+  readonly maxConcurrency?: number | undefined;
   readonly maxRelationsPerNode?: number | undefined;
   readonly model: string;
   readonly nodes: KnowledgeNodeRepository;
@@ -61,6 +63,7 @@ export interface RelationExtractionFlow {
 
 export function createRelationExtractionFlow({
   maxBatchSize,
+  maxConcurrency = 4,
   maxRelationsPerNode = 100,
   model,
   nodes,
@@ -70,6 +73,10 @@ export function createRelationExtractionFlow({
 }: RelationExtractionFlowOptions): RelationExtractionFlow {
   if (!Number.isInteger(maxBatchSize) || maxBatchSize < 1) {
     throw new Error("Relation extraction maxBatchSize must be at least 1");
+  }
+
+  if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
+    throw new Error("Relation extraction maxConcurrency must be at least 1");
   }
 
   if (!Number.isInteger(maxRelationsPerNode) || maxRelationsPerNode < 1) {
@@ -113,34 +120,32 @@ export function createRelationExtractionFlow({
         };
       }
 
-      const generated = await Promise.all(
-        orderedNodes.map(async (node) => {
-          const entities = extractedEntitiesFromNodeMetadata(node);
-          const result = await provider.extract({
-            entities,
-            maxRelations: maxRelationsPerNode,
-            model,
-            node: cloneKnowledgeNode(node),
-            prompt: relationExtractionPrompt(node, entities),
-            promptVersion,
-            ...(tenantId ? { tenantId } : {}),
-          });
-          const relations = validateExtractedRelations(result.relations, maxRelationsPerNode);
+      const generated = await mapWithConcurrency(orderedNodes, maxConcurrency, async (node) => {
+        const entities = extractedEntitiesFromNodeMetadata(node);
+        const result = await provider.extract({
+          entities,
+          maxRelations: maxRelationsPerNode,
+          model,
+          node: cloneKnowledgeNode(node),
+          prompt: relationExtractionPrompt(node, entities),
+          promptVersion,
+          ...(tenantId ? { tenantId } : {}),
+        });
+        const relations = validateExtractedRelations(result.relations, maxRelationsPerNode);
 
-          return {
-            id: node.id,
-            metadata: relationExtractionMetadata({
-              metadata: result.metadata,
-              model,
-              node,
-              now,
-              promptVersion,
-              relations,
-              traceId,
-            }),
-          };
-        }),
-      );
+        return {
+          id: node.id,
+          metadata: relationExtractionMetadata({
+            metadata: result.metadata,
+            model,
+            node,
+            now,
+            promptVersion,
+            relations,
+            traceId,
+          }),
+        };
+      });
       const extractedNodes = await nodes.updateMetadataMany({
         knowledgeSpaceId,
         patches: generated,
@@ -193,13 +198,7 @@ function validateExtractedRelations(
   relations: readonly ExtractedRelation[],
   maxRelationsPerNode: number,
 ): ExtractedRelation[] {
-  if (relations.length > maxRelationsPerNode) {
-    throw new Error(
-      `Relation extraction provider returned ${relations.length} relations over maxRelationsPerNode=${maxRelationsPerNode}`,
-    );
-  }
-
-  return relations.map((relation) => {
+  const validated = relations.map((relation, index) => {
     if (!RELATION_EXTRACTION_TYPES.has(relation.type)) {
       throw new Error("Relation extraction relation type is unsupported");
     }
@@ -221,13 +220,24 @@ function validateExtractedRelations(
     }
 
     return {
-      confidence: relation.confidence,
-      ...(relation.metadata ? { metadata: cloneJsonObject(relation.metadata) } : {}),
-      object: relation.object.trim(),
-      subject: relation.subject.trim(),
-      type: relation.type,
+      index,
+      relation: {
+        confidence: relation.confidence,
+        ...(relation.metadata ? { metadata: cloneJsonObject(relation.metadata) } : {}),
+        object: relation.object.trim(),
+        subject: relation.subject.trim(),
+        type: relation.type,
+      },
     };
   });
+
+  return validated
+    .sort(
+      (left, right) =>
+        right.relation.confidence - left.relation.confidence || left.index - right.index,
+    )
+    .slice(0, maxRelationsPerNode)
+    .map(({ relation }) => relation);
 }
 
 function relationExtractionMetadata({

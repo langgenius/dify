@@ -12,6 +12,10 @@ import {
 import { createExtractionQualityControlFlow } from "./extraction-quality-control-flow";
 import { createInMemoryGraphIndexRepository } from "./graph-index-repository";
 import { createInMemoryKnowledgeNodeRepository } from "./knowledge-node-repository";
+import {
+  type RelationExtractionProvider,
+  createRelationExtractionFlow,
+} from "./relation-extraction-flow";
 import { createSemanticIngestionPostProcessor } from "./semantic-ingestion-postprocessor";
 
 const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
@@ -233,6 +237,86 @@ describe("createSemanticIngestionPostProcessor", () => {
         parseArtifact: { id: parseArtifactId },
       }),
     ).rejects.toThrow("Semantic ingestion node count exceeds maxNodesPerArtifact=1");
+  });
+
+  it("bounds concurrent entity and relation model requests", async () => {
+    const nodes = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 10,
+      maxListLimit: 10,
+      maxNodes: 10,
+    });
+    const graph = createInMemoryGraphIndexRepository({
+      maxBatchSize: 10,
+      maxEntities: 20,
+      maxRelations: 20,
+    });
+    await nodes.createMany(
+      Array.from({ length: 6 }, (_, index) =>
+        semanticNode(
+          `018f0d60-7a49-7cc2-9c1b-5b36f18f2c${String(index + 1).padStart(2, "0")}`,
+          index * 10,
+        ),
+      ),
+    );
+    let activeEntityCalls = 0;
+    let maxActiveEntityCalls = 0;
+    let activeRelationCalls = 0;
+    let maxActiveRelationCalls = 0;
+    const entityProvider: EntityExtractionProvider = {
+      extract: async () => {
+        activeEntityCalls += 1;
+        maxActiveEntityCalls = Math.max(maxActiveEntityCalls, activeEntityCalls);
+        await Promise.resolve();
+        activeEntityCalls -= 1;
+
+        return {
+          entities: [{ confidence: 0.9, text: "Acme", type: "organization" }],
+        };
+      },
+    };
+    const relationProvider: RelationExtractionProvider = {
+      extract: async () => {
+        activeRelationCalls += 1;
+        maxActiveRelationCalls = Math.max(maxActiveRelationCalls, activeRelationCalls);
+        await Promise.resolve();
+        activeRelationCalls -= 1;
+
+        return { relations: [] };
+      },
+    };
+    const processor = createSemanticIngestionPostProcessor({
+      entityExtraction: createEntityExtractionFlow({
+        maxBatchSize: 10,
+        maxConcurrency: 2,
+        model: "entity-llm",
+        nodes,
+        provider: entityProvider,
+      }),
+      extractionQuality: createExtractionQualityControlFlow({
+        maxBatchSize: 10,
+        nodes,
+      }),
+      graph,
+      maxNodesPerArtifact: 10,
+      nodes,
+      relationExtraction: createRelationExtractionFlow({
+        maxBatchSize: 10,
+        maxConcurrency: 2,
+        model: "relation-llm",
+        nodes,
+        provider: relationProvider,
+      }),
+    });
+
+    await expect(
+      processor.process({
+        knowledgeSpaceId,
+        parseArtifact: { id: parseArtifactId },
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ nodesScanned: 6, nodesUpdated: 6 });
+    expect(maxActiveEntityCalls).toBe(2);
+    expect(maxActiveRelationCalls).toBe(2);
   });
 });
 

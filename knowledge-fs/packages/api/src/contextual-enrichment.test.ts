@@ -945,7 +945,7 @@ describe("entity extraction", () => {
     });
   });
 
-  it("rejects invalid or unbounded entity extraction inputs and provider output", async () => {
+  it("rejects invalid entity extraction inputs and bounds provider output", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 2,
       maxListLimit: 2,
@@ -961,8 +961,8 @@ describe("entity extraction", () => {
       provider: {
         extract: async () => ({
           entities: [
-            { confidence: 0.9, text: "Refund Policy", type: "policy" },
             { confidence: 0.8, text: "Acme", type: "organization" },
+            { confidence: 0.9, text: "Refund Policy", type: "policy" },
           ],
         }),
       },
@@ -979,7 +979,21 @@ describe("entity extraction", () => {
         knowledgeSpaceId: first.knowledgeSpaceId,
         nodeIds: [first.id],
       }),
-    ).rejects.toThrow("Entity extraction provider returned 2 entities over maxEntitiesPerNode=1");
+    ).resolves.toMatchObject({
+      extractedNodes: [
+        {
+          metadata: {
+            extractedEntities: [
+              {
+                confidence: 0.9,
+                text: "Refund Policy",
+                type: "policy",
+              },
+            ],
+          },
+        },
+      ],
+    });
     await expect(
       createEntityExtractionFlow({
         maxBatchSize: 1,
@@ -1248,7 +1262,7 @@ describe("relation extraction", () => {
     });
   });
 
-  it("rejects invalid or unbounded relation extraction inputs and provider output", async () => {
+  it("rejects invalid relation extraction inputs and bounds provider output", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 2,
       maxListLimit: 2,
@@ -1264,8 +1278,8 @@ describe("relation extraction", () => {
       provider: {
         extract: async () => ({
           relations: [
-            { confidence: 0.9, object: "B", subject: "A", type: "mentions" },
             { confidence: 0.8, object: "D", subject: "C", type: "references" },
+            { confidence: 0.9, object: "B", subject: "A", type: "mentions" },
           ],
         }),
       },
@@ -1282,9 +1296,22 @@ describe("relation extraction", () => {
         knowledgeSpaceId: first.knowledgeSpaceId,
         nodeIds: [first.id],
       }),
-    ).rejects.toThrow(
-      "Relation extraction provider returned 2 relations over maxRelationsPerNode=1",
-    );
+    ).resolves.toMatchObject({
+      extractedNodes: [
+        {
+          metadata: {
+            extractedRelations: [
+              {
+                confidence: 0.9,
+                object: "B",
+                subject: "A",
+                type: "mentions",
+              },
+            ],
+          },
+        },
+      ],
+    });
     await expect(
       createRelationExtractionFlow({
         maxBatchSize: 1,
