@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
+import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
-let mockChecklistItems = [
+let mockChecklistItems: ChecklistItem[] = [
   {
     id: 'plugin-1',
     type: BlockEnum.Tool,
@@ -23,6 +25,7 @@ let mockChecklistItems = [
 ]
 
 const mockHandleNodeSelect = vi.fn()
+const mockSetOpenInlineAgentPanelNodeId = vi.fn()
 
 type PopoverProps = {
   children: ReactNode
@@ -48,6 +51,17 @@ vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),
+}))
+
+vi.mock('../../../store', () => ({
+  useStore: (
+    selector: (state: {
+      setOpenInlineAgentPanelNodeId: typeof mockSetOpenInlineAgentPanelNodeId
+    }) => unknown,
+  ) =>
+    selector({
+      setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
+    }),
 }))
 
 vi.mock('../../../hooks-store/store', () => ({
@@ -129,6 +143,7 @@ describe('WorkflowChecklist', () => {
     fireEvent.click(screen.getByTestId('node-group-Broken Node'))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(mockSetOpenInlineAgentPanelNodeId).not.toHaveBeenCalled()
   })
 
   it('should use the custom item click handler when provided', () => {
@@ -139,6 +154,22 @@ describe('WorkflowChecklist', () => {
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
+  })
+
+  it('should open the inline agent editor after selecting an inline agent reference warning', async () => {
+    const user = userEvent.setup()
+    mockChecklistItems[1] = {
+      ...mockChecklistItems[1]!,
+      type: BlockEnum.AgentV2,
+      title: 'Inline Agent',
+      openInlineAgentPanel: true,
+    }
+    render(<WorkflowChecklist disabled={false} />)
+
+    await user.click(screen.getByTestId('node-group-Inline Agent'))
+
+    expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('node-1')
   })
 
   it('should render the resolved state when there are no checklist warnings', () => {

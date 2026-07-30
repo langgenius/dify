@@ -10,6 +10,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
@@ -331,45 +333,34 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
 
 
 def test_get_published_workflows_serializes_items_before_session_closes(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    session_state = {"open": False}
-
-    class _SessionContext:
-        def __enter__(self):
-            session_state["open"] = True
-            return object()
-
-        def __exit__(self, exc_type, exc, tb):
-            session_state["open"] = False
-            return False
-
-    class _SessionMaker:
-        def begin(self):
-            return _SessionContext()
-
     base_workflow = _make_workflow()
 
     class _Workflow:
+        def __init__(self, session: Session) -> None:
+            self._session = session
+
         def __getattr__(self, name):
             return getattr(base_workflow, name)
 
         @property
         def id(self):
-            assert session_state["open"] is True
+            assert self._session.in_transaction()
             return "w1"
 
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(workflow_module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
+    def get_all_published_workflow(*, session: Session, **_kwargs):
+        assert isinstance(session, Session)
+        return [_Workflow(session)], False
+
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(
-            get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False),
-        ),
+        lambda: SimpleNamespace(get_all_published_workflow=get_all_published_workflow),
     )
 
     with app.test_request_context(

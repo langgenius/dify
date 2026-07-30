@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -108,11 +106,7 @@ class TestWorkflowAppQueueManager:
 
             graph_engine_manager.return_value.send_stop_command.assert_not_called()
 
-    @pytest.mark.parametrize(
-        "pause_event",
-        [QueueWorkflowPausedEvent(), QueueWorkflowMaintenancePausedEvent()],
-    )
-    def test_pause_is_local_execution_segment_terminal(self, pause_event):
+    def test_workflow_pause_does_not_abort_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
             patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
@@ -124,16 +118,55 @@ class TestWorkflowAppQueueManager:
                 invoke_from=InvokeFrom.DEBUGGER,
                 app_mode="workflow",
             )
+            manager.publish(QueueWorkflowPausedEvent(), PublishFrom.APPLICATION_MANAGER)
+            listener = manager.listen()
+
+            assert isinstance(next(listener).event, QueueWorkflowPausedEvent)
+            listener.close()
+
+            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+
+    def test_maintenance_pause_without_durable_ack_aborts_execution(self):
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
+            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+        ):
+            redis_client.get.return_value = None
+            manager = WorkflowAppQueueManager(
+                task_id="task",
+                user_id="user",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_mode="workflow",
+            )
+            pause_event = QueueWorkflowMaintenancePausedEvent()
 
             manager.publish(pause_event, PublishFrom.APPLICATION_MANAGER)
             messages = list(manager.listen())
 
             assert len(messages) == 1
             assert messages[0].event is pause_event
-            if isinstance(pause_event, QueueWorkflowMaintenancePausedEvent):
-                graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
-                    "task",
-                    reason="Client response stream closed before app execution completed",
-                )
-            else:
-                graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+                "task",
+                reason="Client response stream closed before app execution completed",
+            )
+
+    def test_maintenance_pause_with_durable_ack_does_not_abort_execution(self):
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
+            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+        ):
+            redis_client.get.return_value = None
+            manager = WorkflowAppQueueManager(
+                task_id="task",
+                user_id="user",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_mode="workflow",
+            )
+            manager.publish(QueueWorkflowMaintenancePausedEvent(), PublishFrom.APPLICATION_MANAGER)
+            listener = manager.listen()
+
+            assert isinstance(next(listener).event, QueueWorkflowMaintenancePausedEvent)
+            manager.mark_execution_terminal()
+            listener.close()
+
+            graph_engine_manager.return_value.send_stop_command.assert_not_called()
