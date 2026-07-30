@@ -72,7 +72,7 @@ export type ApiKeyList = {
 
 export type ApiKeyItem = {
   created_at?: number | null
-  dataset_id?: string | null
+  dataset_ids?: Array<string>
   id: string
   last_used_at?: number | null
   token: string
@@ -2481,56 +2481,3 @@ export type GetDatasetsByDatasetIdUseCheckResponses = {
 
 export type GetDatasetsByDatasetIdUseCheckResponse =
   GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
-
-export type GetDatasetsByResourceIdApiKeysData = {
-  body?: never
-  path: {
-    resource_id: string
-  }
-  query?: never
-  url: '/datasets/{resource_id}/api-keys'
-}
-
-export type GetDatasetsByResourceIdApiKeysResponses = {
-  200: ApiKeyList
-}
-
-export type GetDatasetsByResourceIdApiKeysResponse =
-  GetDatasetsByResourceIdApiKeysResponses[keyof GetDatasetsByResourceIdApiKeysResponses]
-
-export type PostDatasetsByResourceIdApiKeysData = {
-  body?: never
-  path: {
-    resource_id: string
-  }
-  query?: never
-  url: '/datasets/{resource_id}/api-keys'
-}
-
-export type PostDatasetsByResourceIdApiKeysErrors = {
-  400: unknown
-}
-
-export type PostDatasetsByResourceIdApiKeysResponses = {
-  201: ApiKeyItem
-}
-
-export type PostDatasetsByResourceIdApiKeysResponse =
-  PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
-
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
-  body?: never
-  path: {
-    api_key_id: string
-    resource_id: string
-  }
-  query?: never
-  url: '/datasets/{resource_id}/api-keys/{api_key_id}'
-}
-
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse =
-  DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]
