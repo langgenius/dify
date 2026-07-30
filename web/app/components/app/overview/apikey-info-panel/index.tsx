@@ -4,12 +4,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
@@ -21,7 +24,7 @@ const APIKeyInfoPanel: FC = () => {
   const isCloud = deploymentEdition === 'CLOUD'
 
   const { isAPIKeySet } = useProviderContext()
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   const { t } = useTranslation()
 
@@ -67,7 +70,7 @@ const APIKeyInfoPanel: FC = () => {
       <Button
         variant="primary"
         className="mt-2 space-x-2"
-        onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+        onClick={() => setSettingsDestination('provider')}
       >
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
@@ -76,7 +79,7 @@ const APIKeyInfoPanel: FC = () => {
       </Button>
       {!isCloud && (
         <a
-          className="mt-2 flex h-[26px] items-center space-x-1 p-1 text-xs font-medium text-[#155EEF]"
+          className="mt-2 flex h-6.5 items-center space-x-1 p-1 text-xs font-medium text-primary-600"
           href="https://cloud.dify.ai/apps"
           target="_blank"
           rel="noopener noreferrer"

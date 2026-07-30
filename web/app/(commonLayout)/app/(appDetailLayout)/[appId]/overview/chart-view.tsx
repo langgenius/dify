@@ -112,7 +112,7 @@ function ChartViewContent({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="h-[106px] shrink-0">
+      <div className="h-26.5 shrink-0">
         <div className="px-6 pt-3">
           <div className="flex h-6 items-center">
             <h1 className="title-2xl-semi-bold text-text-primary">

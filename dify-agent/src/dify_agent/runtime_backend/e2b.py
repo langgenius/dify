@@ -30,7 +30,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingDestroySpec,
     FileSystem,
     HomeSnapshotCreateSpec,
-    InitializeHomeSnapshotSpec,
     RuntimeLayout,
     RuntimeLease,
 )
@@ -163,44 +162,12 @@ class E2BSDKControlPlane:
 class E2BHomeSnapshotBackend:
     """Implement immutable Home Snapshot operations with E2B snapshots.
 
-    Initialization snapshots the prepared deployment template and releases its
-    temporary E2B resource. Build Apply snapshots the E2B resource behind the
-    supplied ``RuntimeLease``. Dify API stores the returned value as an opaque
-    backend ref; this adapter keeps no cross-request state.
+    Build Apply snapshots the E2B resource behind the supplied ``RuntimeLease``.
+    Dify API stores the returned value as an opaque backend ref; this adapter
+    keeps no cross-request state.
     """
 
     control_plane: E2BControlPlane
-    template: str
-    active_timeout_seconds: int
-    home_dir: str = "/home/dify"
-
-    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
-        sandbox: _E2BSandbox | None = None
-        try:
-            sandbox = await self.control_plane.create(
-                self.template,
-                timeout=self.active_timeout_seconds,
-                metadata={
-                    "dify.resource": "home-snapshot-initialize",
-                    "dify.tenant_id": spec.tenant_id,
-                    "dify.agent_id": spec.agent_id,
-                    "dify.home_snapshot_id": spec.home_snapshot_id,
-                },
-                on_timeout="kill",
-            )
-            _ = await sandbox.files.make_dir(self.home_dir)
-            snapshot = await sandbox.create_snapshot()
-            return snapshot.snapshot_id
-        except BaseException as exc:
-            if isinstance(exc, Exception):
-                raise HomeSnapshotCreateError(str(exc)) from exc
-            raise
-        finally:
-            if sandbox is not None:
-                try:
-                    _ = await sandbox.kill()
-                except BaseException:
-                    pass
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
         """Create an immutable E2B snapshot from the source Binding's active lease."""
@@ -236,6 +203,7 @@ class E2BExecutionBindingBackend:
     """
 
     control_plane: E2BControlPlane
+    template: str
     active_timeout_seconds: int
     shellctl_auth_token: str = ""
     shellctl_port: int = 5004
@@ -244,13 +212,13 @@ class E2BExecutionBindingBackend:
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
-        """Create one paused E2B resource from an immutable Home Snapshot ref."""
+        """Create one paused E2B resource from a snapshot or deployment template."""
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current E2B backend cannot attach to an existing Workspace")
         sandbox: _E2BSandbox | None = None
         try:
             sandbox = await self.control_plane.create(
-                spec.home_snapshot_ref,
+                self.template if spec.home_snapshot_ref is None else spec.home_snapshot_ref,
                 timeout=self.active_timeout_seconds,
                 metadata={
                     "dify.resource": "runtime-sandbox",
@@ -274,7 +242,7 @@ class E2BExecutionBindingBackend:
                 except BaseException:
                     pass
             if isinstance(exc, Exception):
-                if isinstance(exc, (BindingCreateError, SharedWorkspaceUnsupportedError)):
+                if isinstance(exc, BindingCreateError):
                     raise
                 raise BindingCreateError(str(exc)) from exc
             raise

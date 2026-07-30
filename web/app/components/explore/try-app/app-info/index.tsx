@@ -88,7 +88,7 @@ const AppInfo: FC<Props> = ({
               {appDetail.name}
             </div>
           </div>
-          <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
+          <div className="flex items-center text-2xs leading-4.5 font-medium text-text-tertiary">
             {mode === 'advanced-chat' && (
               <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
@@ -118,7 +118,7 @@ const AppInfo: FC<Props> = ({
         </div>
       </div>
       {appDetail.description && (
-        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">
+        <div className="mt-3.5 shrink-0 system-sm-regular text-text-secondary">
           {appDetail.description}
         </div>
       )}

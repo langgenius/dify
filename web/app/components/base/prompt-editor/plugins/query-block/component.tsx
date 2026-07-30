@@ -17,7 +17,7 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({ nodeKey }) => {
       className={`inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pr-0.5 pl-1 hover:bg-[#FFEAD5] ${isSelected && 'border-[#FD853A]!'} `}
       ref={ref}
     >
-      <UserEdit02 className="mr-1 h-[14px] w-[14px] text-[#FD853A]" />
+      <UserEdit02 className="mr-1 h-3.5 w-3.5 text-[#FD853A]" />
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'{{'}</div>
       <div className="text-xs font-medium text-[#EC4A0A]">
         {t(($) => $['promptEditor.query.item.title'], { ns: 'common' })}

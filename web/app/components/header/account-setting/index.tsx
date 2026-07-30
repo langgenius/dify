@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
@@ -21,11 +21,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
-import { ApiBasedExtensionPage } from './api-based-extension-page'
-import DataSourcePage from './data-source-page-new'
 import MembersPage from './members-page'
-import ModelProviderPage from './model-provider-page'
-import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
@@ -54,7 +50,6 @@ export default function AccountSetting({
   activeTab,
   onTabChangeAction,
 }: IAccountSettingProps) {
-  const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -67,34 +62,22 @@ export default function AccountSetting({
   const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
-  // Keep legacy `language` deep links opening Preferences during the tab rename migration.
-  const normalizedActiveTab =
-    activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
   const activeMenu = (() => {
-    if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
+    if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
-    if (
-      normalizedActiveTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES &&
-      !canViewWorkflowLogArchives
-    )
+    if (activeTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
       return ACCOUNT_SETTING_TAB.MEMBERS
     if (
-      (normalizedActiveTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS ||
-        normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) &&
+      (activeTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS ||
+        activeTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) &&
       !canManageWorkspaceRoles
     )
       return ACCOUNT_SETTING_TAB.MEMBERS
-    return normalizedActiveTab
+    return activeTab
   })()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const settingItems: GroupItem[] = [
-    {
-      key: ACCOUNT_SETTING_TAB.PROVIDER,
-      name: t(($) => $['settings.provider'], { ns: 'common' }),
-      icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
-    },
     {
       key: ACCOUNT_SETTING_TAB.MEMBERS,
       name: t(($) => $['settings.members'], { ns: 'common' }),
@@ -127,18 +110,6 @@ export default function AccountSetting({
       description: t(($) => $['archives.description'], { ns: 'appLog' }),
       icon: <span className={cn('i-ri-archive-drawer-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-archive-drawer-fill', iconClassName)} />,
-    },
-    {
-      key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-      name: t(($) => $['settings.dataSource'], { ns: 'common' }),
-      icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
-    },
-    {
-      key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-      name: t(($) => $['settings.customEndpoint'], { ns: 'common' }),
-      icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.CUSTOM,
@@ -193,39 +164,23 @@ export default function AccountSetting({
     },
   ]
 
-  const [searchValue, setSearchValue] = useState<string>('')
-
-  const handleTabChange = useCallback(
-    (tab: AccountSettingTab) => {
-      if (tab === ACCOUNT_SETTING_TAB.PROVIDER) resetModelProviderListExpanded()
-
-      onTabChangeAction(tab)
-    },
-    [onTabChangeAction, resetModelProviderListExpanded],
-  )
-
-  const handleClose = useCallback(() => {
-    resetModelProviderListExpanded()
-    onCancelAction()
-  }, [onCancelAction, resetModelProviderListExpanded])
-
   return (
-    <MenuDialog show onClose={handleClose}>
+    <MenuDialog show onClose={onCancelAction}>
       <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
         <Button
           variant="tertiary"
           size="large"
           className="px-2"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={handleClose}
+          onClick={onCancelAction}
         >
           <span className="i-ri-close-line size-5" />
         </Button>
         <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
       </div>
-      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-[232px]">
-        <div className="flex w-[44px] shrink-0 flex-col pr-6 pl-4 sm:w-[224px]">
-          <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
+      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
+        <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
+          <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
             {t(($) => $['settings.settings'], { ns: 'common' })}
           </div>
           <div className="w-full">
@@ -257,7 +212,7 @@ export default function AccountSetting({
                       aria-label={item.name}
                       title={item.name}
                       onClick={() => {
-                        handleTabChange(item.key)
+                        onTabChangeAction(item.key)
                       }}
                     >
                       {activeMenu === item.key ? item.activeIcon : item.icon}
@@ -269,7 +224,7 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px] min-w-0">
+        <div className="relative flex min-h-0 w-206 min-w-0">
           <ScrollArea
             ref={scrollContainerRef}
             className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
@@ -278,7 +233,7 @@ export default function AccountSetting({
               content: 'min-h-full min-w-0 w-full max-w-full pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
+            <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
               <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
                 {activeItem?.title ?? activeItem?.name}
                 {activeItem?.description && (
@@ -289,9 +244,6 @@ export default function AccountSetting({
               </div>
             </div>
             <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
-                <ModelProviderPage searchText={searchValue} onSearchTextChange={setSearchValue} />
-              )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
                 <PermissionsPage containerRef={scrollContainerRef} />
@@ -301,8 +253,6 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                 <WorkflowLogArchivesPage />
               )}
-              {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
             </div>

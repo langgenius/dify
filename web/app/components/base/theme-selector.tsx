@@ -48,7 +48,7 @@ export default function ThemeSelector() {
         render={
           <ActionButton
             aria-label={t(($) => $['theme.theme'], { ns: 'common' })}
-            className="h-8 w-8 p-[6px] data-popup-open:bg-state-base-hover"
+            className="h-8 w-8 p-1.5 data-popup-open:bg-state-base-hover"
           />
         }
       >

@@ -54,7 +54,7 @@ export default function SpecificGroupsOrMembers() {
         </div>
       </div>
       <div className="px-1 pb-1">
-        <div className="flex max-h-[400px] flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2">
+        <div className="flex max-h-100 flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2">
           {isPending ? <Loading /> : <RenderGroupsAndMembers />}
         </div>
       </div>
@@ -114,7 +114,7 @@ function GroupItem({ group }: GroupItemProps) {
   return (
     <BaseItem
       icon={
-        <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />
+        <RiOrganizationChart className="h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0" />
       }
       onRemove={handleRemoveGroup}
     >
@@ -165,7 +165,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         onClick={onRemove}
       >
-        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" aria-hidden="true" />
+        <RiCloseCircleFill className="h-3.5 w-3.5 text-text-quaternary" aria-hidden="true" />
       </button>
     </div>
   )

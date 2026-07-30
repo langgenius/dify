@@ -9,13 +9,14 @@ import pytest
 
 from dify_agent.runtime_backend import (
     BindingAcquireError,
+    BindingCreateError,
     BindingDestroyError,
     BindingLostError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
-    InitializeHomeSnapshotSpec,
     RuntimeLease,
+    SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
 from dify_agent.runtime_backend.enterprise import (
@@ -282,23 +283,55 @@ async def test_enterprise_destroy_propagates_gateway_failure(
 
 
 @pytest.mark.anyio
-async def test_enterprise_allocation_and_home_snapshots_remain_explicitly_not_implemented() -> None:
-    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="https://gateway", auth_token="secret")
-    bindings = EnterpriseExecutionBindingBackend(gateway_endpoint="https://gateway", auth_token="secret")
+async def test_enterprise_default_binding_creates_gateway_sandbox_and_layout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
 
-    with pytest.raises(NotImplementedError, match="Execution Binding protocol"):
-        _ = await snapshots.initialize(
-            InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/v1/sandboxes":
+            assert json.loads(request.content) == {"tenantId": "tenant-1"}
+            return httpx.Response(201, json={"sandboxId": "sandbox-1", "status": "running"})
+        if request.url.path == "/proxy/v1/jobs/run":
+            assert request.headers["X-Sandbox-Id"] == "sandbox-1"
+            payload = cast(dict[str, object], json.loads(request.content))
+            script = payload["script"]
+            assert isinstance(script, str)
+            assert "mkdir -p /home/dify" in script
+            assert "rm -rf -- /home/dify/workspace" in script
+            return _job_response()
+        return httpx.Response(200, json={"job_id": "job-1"})
+
+    clients = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    allocation = await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref=None,
         )
-    with pytest.raises(NotImplementedError, match="Execution Binding protocol"):
-        _ = await snapshots.create_from_runtime(
-            spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
-            source=cast(RuntimeLease, object()),
-        )
-    with pytest.raises(NotImplementedError, match="Execution Binding protocol"):
-        await snapshots.delete("snapshot-1")
-    with pytest.raises(NotImplementedError, match="Execution Binding protocol"):
-        _ = await bindings.create_binding(
+    )
+
+    assert allocation.binding_ref == allocation.workspace_ref == "sandbox-1"
+    assert requests[0].headers["X-Inner-Api-Key"] == "secret"
+    assert all(client.is_closed for client in clients)
+
+
+@pytest.mark.anyio
+async def test_enterprise_binding_rejects_snapshot_and_shared_workspace_before_gateway_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+    _ = _mock_http(monkeypatch, lambda request: requests.append(request) or httpx.Response(500))
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(BindingCreateError, match="immutable Home Snapshot"):
+        await backend.create_binding(
             ExecutionBindingCreateSpec(
                 tenant_id="tenant-1",
                 agent_id="agent-1",
@@ -308,3 +341,63 @@ async def test_enterprise_allocation_and_home_snapshots_remain_explicitly_not_im
                 home_snapshot_ref="snapshot-1",
             )
         )
+    with pytest.raises(SharedWorkspaceUnsupportedError):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref="workspace-1",
+                home_snapshot_ref=None,
+            )
+        )
+
+    assert requests == []
+
+
+@pytest.mark.anyio
+async def test_enterprise_binding_create_deletes_new_sandbox_when_layout_setup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/v1/sandboxes":
+            return httpx.Response(201, json={"sandboxId": "sandbox-1"})
+        if request.url.path == "/proxy/v1/jobs/run":
+            return _job_response(exit_code=1)
+        if request.method == "DELETE":
+            return httpx.Response(204)
+        return httpx.Response(200, json={"job_id": "job-1"})
+
+    _ = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(BindingCreateError):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+
+    assert any(request.method == "DELETE" and request.url.path == "/v1/sandboxes/sandbox-1" for request in requests)
+
+
+@pytest.mark.anyio
+async def test_enterprise_home_snapshots_remain_explicitly_not_implemented() -> None:
+    snapshots = EnterpriseHomeSnapshotBackend()
+
+    with pytest.raises(NotImplementedError, match="immutable Home Snapshot"):
+        _ = await snapshots.create_from_runtime(
+            spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+            source=cast(RuntimeLease, object()),
+        )
+    with pytest.raises(NotImplementedError, match="immutable Home Snapshot"):
+        await snapshots.delete("snapshot-1")

@@ -8,7 +8,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
@@ -40,9 +39,14 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
+
 describe('Compliance', () => {
   const mockSetShowPricingModal = vi.fn()
-  const mockSetShowAccountSettingModal = vi.fn()
   const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
   const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
   let queryClient: QueryClient
@@ -66,7 +70,6 @@ describe('Compliance', () => {
     })
     vi.mocked(useModalContext).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
   })
 
@@ -224,9 +227,7 @@ describe('Compliance', () => {
       fireEvent.click(upgradeBadges[0]!)
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.BILLING,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('billing')
     })
 
     // isPending branches: spinner visible, loading button contract, guard blocks second call

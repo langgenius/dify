@@ -10,7 +10,6 @@ from dify_agent.runtime_backend import (
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
-    InitializeHomeSnapshotSpec,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
@@ -86,7 +85,7 @@ class _ControlPlane:
         sandbox = _Sandbox(sandbox_id=sandbox_id, pause_error=self.pause_error)
         self.sandboxes[sandbox_id] = sandbox
         self.created.append((template, on_timeout))
-        assert metadata["dify.resource"] in {"home-snapshot-initialize", "runtime-sandbox"}
+        assert metadata["dify.resource"] == "runtime-sandbox"
         return sandbox
 
     async def connect(self, handle: str, *, timeout: int) -> _Sandbox:
@@ -103,49 +102,57 @@ class _ControlPlane:
 
 
 @pytest.mark.anyio
-async def test_e2b_profile_uses_snapshot_as_runtime_template_and_couples_refs() -> None:
+async def test_e2b_binding_uses_default_template_or_exact_snapshot_and_couples_refs() -> None:
     control = _ControlPlane()
     snapshots = E2BHomeSnapshotBackend(
+        control_plane=control,  # pyright: ignore[reportArgumentType]
+    )
+    bindings = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
         template="prepared-template",
         active_timeout_seconds=3600,
     )
-    bindings = E2BExecutionBindingBackend(
-        control_plane=control,  # pyright: ignore[reportArgumentType]
-        active_timeout_seconds=3600,
-    )
 
-    snapshot_ref = await snapshots.initialize(
-        InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
-    )
-    allocation = await bindings.create_binding(
+    default_allocation = await bindings.create_binding(
         ExecutionBindingCreateSpec(
             tenant_id="tenant-1",
             agent_id="agent-1",
             binding_id="binding-1",
             workspace_id="workspace-1",
             existing_workspace_ref=None,
-            home_snapshot_ref=snapshot_ref,
+            home_snapshot_ref=None,
+        )
+    )
+    snapshot_allocation = await bindings.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-2",
+            workspace_id="workspace-2",
+            existing_workspace_ref=None,
+            home_snapshot_ref="snapshot-1",
         )
     )
 
-    assert control.created == [("prepared-template", "kill"), (snapshot_ref, "pause")]
-    assert allocation.binding_ref == allocation.workspace_ref
-    runtime = control.sandboxes[allocation.binding_ref]
+    assert control.created == [("prepared-template", "pause"), ("snapshot-1", "pause")]
+    assert default_allocation.binding_ref == default_allocation.workspace_ref
+    assert snapshot_allocation.binding_ref == snapshot_allocation.workspace_ref
+    runtime = control.sandboxes[default_allocation.binding_ref]
     assert runtime.files.paths == {"/home/dify/workspace"}
     assert runtime.pauses == [True]
 
-    await bindings.destroy_binding(
-        ExecutionBindingDestroySpec(
-            binding_ref=allocation.binding_ref,
-            workspace_ref=allocation.workspace_ref,
-            destroy_workspace=True,
+    for allocation in (default_allocation, snapshot_allocation):
+        await bindings.destroy_binding(
+            ExecutionBindingDestroySpec(
+                binding_ref=allocation.binding_ref,
+                workspace_ref=allocation.workspace_ref,
+                destroy_workspace=True,
+            )
         )
-    )
-    await snapshots.delete(snapshot_ref)
+    await snapshots.delete("snapshot-1")
 
-    assert control.killed == [allocation.binding_ref]
-    assert control.deleted_snapshots == [snapshot_ref]
+    assert control.killed == [default_allocation.binding_ref, snapshot_allocation.binding_ref]
+    assert control.deleted_snapshots == ["snapshot-1"]
 
 
 @pytest.mark.anyio
@@ -153,6 +160,7 @@ async def test_e2b_rejects_shared_workspace_and_binding_only_destroy() -> None:
     control = _ControlPlane()
     backend = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
+        template="prepared-template",
         active_timeout_seconds=3600,
     )
     spec = ExecutionBindingCreateSpec(
@@ -177,6 +185,7 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
     control = _ControlPlane(pause_error=RuntimeError("pause failed"))
     backend = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
+        template="prepared-template",
         active_timeout_seconds=3600,
     )
 
@@ -197,6 +206,36 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
 
 
 @pytest.mark.anyio
+async def test_e2b_missing_explicit_snapshot_does_not_fall_back_to_template() -> None:
+    class _FailingControlPlane(_ControlPlane):
+        async def create(self, template: str, *, timeout: int, metadata: dict[str, str], on_timeout: str) -> _Sandbox:
+            del timeout, metadata
+            self.created.append((template, on_timeout))
+            raise RuntimeError("snapshot unavailable")
+
+    control = _FailingControlPlane()
+    backend = E2BExecutionBindingBackend(
+        control_plane=control,  # pyright: ignore[reportArgumentType]
+        template="prepared-template",
+        active_timeout_seconds=3600,
+    )
+
+    with pytest.raises(BindingCreateError, match="snapshot unavailable"):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref="missing-snapshot",
+            )
+        )
+
+    assert control.created == [("missing-snapshot", "pause")]
+
+
+@pytest.mark.anyio
 async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
     control = _ControlPlane()
     source_sandbox = _Sandbox(sandbox_id="source")
@@ -206,8 +245,6 @@ async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
     )
     backend = E2BHomeSnapshotBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
-        template="prepared-template",
-        active_timeout_seconds=3600,
     )
 
     snapshot_ref = await backend.create_from_runtime(

@@ -29,7 +29,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
     <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
       <div
         className={cn(
-          'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
+          'w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
           collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
         )}
       >
@@ -90,7 +90,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
         )}
       </div>
       {collapsed && (
-        <div className="flex w-full max-w-[720px] items-center py-4">
+        <div className="flex w-full max-w-180 items-center py-4">
           <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
           <Divider bgStyle="gradient" className="h-px basis-1/2" />
         </div>

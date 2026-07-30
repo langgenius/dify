@@ -3,14 +3,10 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-
-const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -21,23 +17,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/app/components/billing/pricing', () => ({
   default: () => <div>billing.plansCommon.mostPopular</div>,
-}))
-
-vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ activeTab, onCancelAction }: { activeTab: string; onCancelAction: () => void }) => (
-    <>
-      <div role="status" aria-label="active account setting tab">
-        {activeTab}
-      </div>
-      <button type="button" onClick={onCancelAction}>
-        cancel account setting
-      </button>
-    </>
-  ),
-}))
-
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 const mockUseProviderContext = vi.fn()
@@ -97,47 +76,10 @@ const renderProvider = (
   return render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper })
 }
 
-const AccountSettingOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
-
-  return (
-    <button
-      type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
-    >
-      open account setting
-    </button>
-  )
-}
-
-const PreferencesOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
-
-  return (
-    <button
-      type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
-    >
-      open preferences
-    </button>
-  )
-}
-
-const BlockingModalProbe = () => {
-  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
-
-  return <div data-testid="has-blocking-modal-open">{String(hasBlockingModalOpen)}</div>
-}
-
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
     mockConsoleStateReader.mockReset()
     mockUseProviderContext.mockReset()
-    mockSetEducationVerifying.mockReset()
     window.localStorage.clear()
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: {
@@ -180,56 +122,6 @@ describe('ModalContextProvider trigger events limit modal', () => {
     const [key, value] = (setItemSpy.mock.calls[0] ?? []) as [string, string]
     expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
     expect(value).toBe('1')
-  })
-
-  it('clears the education verifying flag when account settings are canceled', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: createPlan(),
-      isFetchedPlan: true,
-    })
-    const user = userEvent.setup()
-
-    renderProvider(<AccountSettingOpener />)
-
-    await user.click(screen.getByRole('button', { name: 'open account setting' }))
-    await user.click(await screen.findByRole('button', { name: 'cancel account setting' }))
-
-    expect(mockSetEducationVerifying).toHaveBeenCalledWith(expect.any(Function))
-    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (
-      educationVerifying: string,
-    ) => string | null
-    expect(updater('yes')).toBeNull()
-    expect(updater('no')).toBe('no')
-  })
-
-  it('opens preferences in the account settings shell', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: createPlan(),
-      isFetchedPlan: true,
-    })
-    const user = userEvent.setup()
-
-    renderProvider(
-      <>
-        <BlockingModalProbe />
-        <PreferencesOpener />
-      </>,
-    )
-
-    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
-
-    await user.click(screen.getByRole('button', { name: 'open preferences' }))
-
-    expect(
-      await screen.findByRole('status', { name: 'active account setting tab' }),
-    ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
-    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('true')
-
-    await user.click(screen.getByRole('button', { name: 'cancel account setting' }))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
-    })
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

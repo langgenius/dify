@@ -975,11 +975,45 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.publishDraft()).rejects.toThrow(
-      'Failed to save agent composer draft.',
-    )
+    await expect(result.current.publishDraft()).rejects.toThrow('save failed')
 
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('save failed')
+  })
+
+  it('should show the API error message when publishing fails', async () => {
+    const responseError = new Response(
+      JSON.stringify({
+        code: 'invalid_model_credentials',
+        message: 'Model credential validation failed',
+        status: 400,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 400,
+        statusText: 'Bad Request',
+      },
+    )
+    publishAgentMutationFn.mockRejectedValueOnce(responseError)
+    const { result } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    await expect(result.current.publishDraft()).rejects.toBe(responseError)
+
+    expect(toastMock.error).toHaveBeenCalledWith('Model credential validation failed')
+  })
+
+  it('should show the default error when publish rejection has no message', async () => {
+    publishAgentMutationFn.mockRejectedValueOnce({ code: 'publish_failed' })
+    const { result } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    await expect(result.current.publishDraft()).rejects.toEqual({ code: 'publish_failed' })
+
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
@@ -1249,6 +1283,7 @@ describe('useAgentConfigureSync', () => {
 
     expect(result.current.isPublishing).toBe(false)
     expect(toastMock.error).toHaveBeenCalledTimes(1)
+    expect(toastMock.error).toHaveBeenCalledWith('publish failed')
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({

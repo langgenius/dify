@@ -25,7 +25,9 @@ import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { TIME_PERIOD_MAPPING } from '../filter'
 import Logs from '../index'
 
@@ -124,7 +126,15 @@ const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<
 // ============================================================================
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  return renderWithConsoleQuery(ui)
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return render(ui, { wrapper })
 }
 
 // ============================================================================

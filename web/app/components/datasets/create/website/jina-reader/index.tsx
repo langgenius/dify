@@ -2,11 +2,14 @@
 import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -44,12 +47,10 @@ const JinaReader: FC<Props> = ({
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
   const checkValid = useCallback(
     (url: string) => {
       let errorMsg = ''
@@ -211,7 +212,7 @@ const JinaReader: FC<Props> = ({
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative left-[-16px] mt-3 w-[calc(100%+32px)] rounded-b-xl">
+          <div className="relative -left-4 mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning && (
               <Crawling
                 className="mt-2"

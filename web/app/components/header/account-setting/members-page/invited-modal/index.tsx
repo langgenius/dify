@@ -50,11 +50,11 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
         if (!open) onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="w-[480px] p-8">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
         <DialogCloseButton className="top-8 right-8" />
         <div className="mb-3 flex justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
-            <div className="i-heroicons-check-circle-solid h-[22px] w-[22px] text-[#039855]" />
+            <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
           </div>
         </div>
         <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
@@ -134,7 +134,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
           </>
         )}
         <div className="flex justify-end">
-          <Button className="w-[96px]" onClick={onCancel} variant="primary">
+          <Button className="w-24" onClick={onCancel} variant="primary">
             {t(($) => $['members.ok'], { ns: 'common' })}
           </Button>
         </div>

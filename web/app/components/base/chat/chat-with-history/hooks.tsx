@@ -1,6 +1,6 @@
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
 import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
-import type { InstalledApp } from '@/models/explore'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -128,7 +128,7 @@ function getFormattedChatList(messages: any[]) {
   })
   return newChatList
 }
-export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
+export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const appInfo = useWebAppStore((s) => s.appInfo)
@@ -150,7 +150,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           title: app.name,
           description: app.description,
           icon_type: app.icon_type,
-          icon: app.icon,
+          icon: app.icon ?? undefined,
           icon_background: app.icon_background,
           icon_url: app.icon_url,
           prompt_public: false,
@@ -158,9 +158,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           show_workflow_steps: true,
           use_icon_as_answer_icon: app.use_icon_as_answer_icon,
         },
-        plan: 'basic',
         custom_config: null,
-      } as AppData
+      } satisfies AppData
     }
     return appInfo
   }, [isInstalledApp, installedAppInfo, appInfo])
@@ -539,7 +538,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       handleUpdateConversationList()
     },
     [
-      isInstalledApp,
+      appSourceType,
       appId,
       t,
       handleUpdateConversationList,
@@ -575,7 +574,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         setConversationRenaming(false)
       }
     },
-    [isInstalledApp, appId, t, conversationRenaming, originConversationList],
+    [appSourceType, appId, t, conversationRenaming, originConversationList],
   )
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {

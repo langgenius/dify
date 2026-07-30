@@ -51,7 +51,7 @@ function DeploymentActionsMenuContent({
       role="presentation"
       className={cn(
         className,
-        '[&:has([data-popup-open])]:pointer-events-auto [&:has([data-popup-open])]:opacity-100',
+        'has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
       )}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}

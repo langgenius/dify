@@ -16,6 +16,7 @@ def _scope(
     *,
     kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
     build_draft_id: str | None = None,
+    home_snapshot_id: str | None = "home-1",
 ) -> AgentAppSessionScope:
     return AgentAppSessionScope(
         tenant_id="tenant-1",
@@ -23,7 +24,7 @@ def _scope(
         conversation_id="conversation-1",
         agent_id="agent-1",
         agent_config_snapshot_id="config-1",
-        home_snapshot_id="home-1",
+        home_snapshot_id=home_snapshot_id,
         agent_config_version_kind=kind,
         build_draft_id=build_draft_id,
     )
@@ -54,7 +55,8 @@ def test_scope_selects_conversation_or_build_draft_workspace_owner() -> None:
     assert build_owner.owner_id == "build-draft-1"
 
 
-def test_load_or_create_persists_new_binding_on_caller(monkeypatch) -> None:
+@pytest.mark.parametrize("home_snapshot_id", ["home-1", None])
+def test_load_or_create_persists_new_binding_on_caller(monkeypatch, home_snapshot_id: str | None) -> None:
     caller = SimpleNamespace(agent_workspace_binding_id=None)
     context = MagicMock()
     session = context.__enter__.return_value
@@ -64,13 +66,14 @@ def test_load_or_create_persists_new_binding_on_caller(monkeypatch) -> None:
     monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
-    stored = store.load_or_create(_scope())
+    stored = store.load_or_create(_scope(home_snapshot_id=home_snapshot_id))
 
     assert stored.binding_id == "binding-1"
     assert stored.workspace_id == "workspace-1"
     assert stored.backend_binding_ref == "backend-binding-1"
     assert caller.agent_workspace_binding_id == "binding-1"
     assert create.call_args.kwargs["session"] is session
+    assert create.call_args.kwargs["base_home_snapshot_id"] == home_snapshot_id
     session.commit.assert_called_once_with()
 
 

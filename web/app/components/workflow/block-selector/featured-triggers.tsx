@@ -393,7 +393,7 @@ function FeaturedTriggerPreviewCard({ payload }: FeaturedTriggerPreviewCardProps
         toolIcon={payload.plugin.icon}
       />
       <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
-      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+      <div className="text-xs leading-4.5 wrap-break-word text-text-secondary">
         {payload.description}
       </div>
     </BlockSelectorPreviewCardContent>

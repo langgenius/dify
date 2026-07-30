@@ -88,7 +88,7 @@ const ChatRecord = () => {
 
   return (
     <div
-      className="flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-chatbot-bg shadow-xl"
+      className="flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-chatbot-bg shadow-xl"
       // style={{
       //   background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
       // }}

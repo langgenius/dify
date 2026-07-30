@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Generator, Mapping
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
@@ -36,6 +37,7 @@ from tasks.app_generate.workflow_execute_task import (
 class _StreamEventModel(BaseModel):
     event: object | None = None
     task_id: object | None = None
+    message: object | None = None
 
 
 def _build_advanced_chat_generate_entity(conversation_id: str | None) -> AdvancedChatAppGenerateEntity:
@@ -246,6 +248,21 @@ def test_get_event_name(event: object, expected: str | None):
 )
 def test_get_task_id(event: object, expected: str | None):
     assert workflow_execute_task_module._get_task_id(event) == expected
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        ({"message": "workflow error"}, "workflow error"),
+        (_StreamEventModel(message="workflow error"), "workflow error"),
+        ({"message": ""}, None),
+        ({"message": 123}, None),
+        ({}, None),
+        ("workflow error", None),
+    ],
+)
+def test_get_error_message(event: str | Mapping[str, object] | BaseModel, expected: str | None):
+    assert workflow_execute_task_module._get_error_message(event) == expected
 
 
 @pytest.fixture
@@ -484,6 +501,38 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     assert payloads[1]["data"]["error"] == "Workflow stream ended without a terminal event"
     assert "workflow-run-id" in caplog.text
     assert "ended without a terminal event" in caplog.text
+
+
+def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_topic: MagicMock):
+    def response_stream() -> Generator[str | Mapping[str, object] | BaseModel, None, None]:
+        yield {
+            "event": "error",
+            "workflow_run_id": "workflow-run-id",
+            "code": "invalid_param",
+            "message": "LLM provider and model are required.",
+            "status": 400,
+        }
+
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=AppMode.WORKFLOW,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    error_payload = payloads[0]
+    finished_payload = payloads[-1]
+    assert isinstance(error_payload, dict)
+    assert isinstance(finished_payload, dict)
+    assert error_payload["status"] == 400
+    assert error_payload["message"] == "LLM provider and model are required."
+    finished_data = finished_payload["data"]
+    assert isinstance(finished_data, dict)
+    assert finished_data["status"] == WorkflowExecutionStatus.FAILED
+    assert finished_data["error"] == "LLM provider and model are required."
 
 
 def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(mock_topic: MagicMock):

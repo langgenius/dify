@@ -148,7 +148,7 @@ export default function AccountPage() {
             imageUrl={icon_url}
           />
         </div>
-        <div className="mt-[3px] system-sm-medium text-text-secondary">{item.name}</div>
+        <div className="mt-0.75 system-sm-medium text-text-secondary">{item.name}</div>
       </div>
     )
   }
@@ -276,7 +276,7 @@ export default function AccountPage() {
         open={editPasswordModalVisible}
         onOpenChange={(open) => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}
       >
-        <DialogContent className="w-[420px]! p-6!">
+        <DialogContent className="w-105! p-6!">
           <div className="mb-6 title-2xl-semi-bold text-text-primary">
             {userProfile.is_password_set
               ? t(($) => $['account.resetPassword'], { ns: 'common' })

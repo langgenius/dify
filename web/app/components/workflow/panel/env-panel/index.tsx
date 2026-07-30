@@ -266,7 +266,7 @@ const EnvPanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">

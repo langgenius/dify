@@ -46,7 +46,6 @@ from .home_snapshot import (
     CreateHomeSnapshotFromBindingRequest,
     DeleteHomeSnapshotRequest,
     HomeSnapshotResponse,
-    InitializeHomeSnapshotRequest,
 )
 from .workspace import (
     WorkspaceFileEntry,
@@ -79,7 +78,6 @@ __all__ = [
     "EmptyRunEventData",
     "LayerExitSignals",
     "HomeSnapshotResponse",
-    "InitializeHomeSnapshotRequest",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
     "RunCancelledEvent",

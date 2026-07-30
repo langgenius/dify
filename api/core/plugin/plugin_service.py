@@ -1152,10 +1152,11 @@ class PluginService:
         return result
 
     @staticmethod
-    def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
+    def uninstall(tenant_id: str, plugin_installation_id: str, *, preserve_credentials: bool = False) -> bool:
+        """Uninstall a plugin and optionally retain model-provider credentials for replacement."""
         manager = PluginInstaller()
 
-        # Get plugin info before uninstalling to delete associated credentials
+        # Resolve the trusted plugin ID before the daemon removes the installation record.
         plugins = manager.list_plugins(tenant_id)
         plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
 
@@ -1172,59 +1173,74 @@ class PluginService:
                     plugin_unique_identifier=plugin.plugin_unique_identifier,
                 )
             )
-        with Session(db.engine) as session, session.begin():
+
+        result = manager.uninstall(tenant_id, plugin_installation_id)
+        if not result:
+            return False
+
+        if preserve_credentials:
+            logger.info("Preserving credentials while replacing plugin: %s", plugin.plugin_id)
+        else:
             plugin_id = plugin.plugin_id
-            logger.info("Deleting credentials for plugin: %s", plugin_id)
+            logger.info("Deleting credentials after uninstalling plugin: %s", plugin_id)
+            provider_ids: Sequence[str] = []
 
-            session.execute(
-                delete(TenantPreferredModelProvider).where(
-                    TenantPreferredModelProvider.tenant_id == tenant_id,
-                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+            with Session(db.engine) as session, session.begin():
+                session.execute(
+                    delete(TenantPreferredModelProvider).where(
+                        TenantPreferredModelProvider.tenant_id == tenant_id,
+                        TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+                    )
                 )
-            )
 
-            # Delete provider credentials that match this plugin
-            credential_ids = session.scalars(
-                select(ProviderCredential.id).where(
-                    ProviderCredential.tenant_id == tenant_id,
-                    ProviderCredential.provider_name.like(f"{plugin_id}/%"),
-                )
-            ).all()
-
-            if not credential_ids:
-                logger.info("No credentials found for plugin: %s", plugin_id)
-            else:
-                provider_ids = session.scalars(
-                    select(Provider.id).where(
-                        Provider.tenant_id == tenant_id,
-                        Provider.provider_name.like(f"{plugin_id}/%"),
-                        Provider.credential_id.in_(credential_ids),
+                credential_ids = session.scalars(
+                    select(ProviderCredential.id).where(
+                        ProviderCredential.tenant_id == tenant_id,
+                        ProviderCredential.provider_name.like(f"{plugin_id}/%"),
                     )
                 ).all()
 
-                session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+                if not credential_ids:
+                    logger.info("No credentials found for plugin: %s", plugin_id)
+                else:
+                    provider_ids = session.scalars(
+                        select(Provider.id).where(
+                            Provider.tenant_id == tenant_id,
+                            Provider.provider_name.like(f"{plugin_id}/%"),
+                            Provider.credential_id.in_(credential_ids),
+                        )
+                    ).all()
 
-                for provider_id in provider_ids:
-                    ProviderCredentialsCache(
-                        tenant_id=tenant_id,
-                        identity_id=provider_id,
-                        cache_type=ProviderCredentialsCacheType.PROVIDER,
-                    ).delete()
-
-                session.execute(
-                    delete(ProviderCredential).where(
-                        ProviderCredential.id.in_(credential_ids),
+                    session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+                    session.execute(
+                        delete(ProviderCredential).where(
+                            ProviderCredential.id.in_(credential_ids),
+                        )
                     )
-                )
 
-                logger.info(
-                    "Completed deleting credentials and cleaning provider associations for plugin: %s",
-                    plugin_id,
-                )
+                    logger.info(
+                        "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                        plugin_id,
+                    )
 
-        result = manager.uninstall(tenant_id, plugin_installation_id)
-        if result:
-            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+            for provider_id in provider_ids:
+                ProviderCredentialsCache(
+                    tenant_id=tenant_id,
+                    identity_id=provider_id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+                ).delete()
+
+            from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+
+            ProviderManager.invalidate_configurations_cache(
+                tenant_id,
+                sources=(
+                    ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS,
+                    ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,
+                ),
+            )
+
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
 
     @staticmethod

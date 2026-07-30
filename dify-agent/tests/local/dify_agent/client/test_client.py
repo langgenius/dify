@@ -28,7 +28,6 @@ from dify_agent.protocol import (
     CreateHomeSnapshotFromBindingRequest,
     CreateRunRequest,
     DestroyExecutionBindingRequest,
-    InitializeHomeSnapshotRequest,
     RUN_EVENT_ADAPTER,
     RunCancelledEvent,
     RunEvent,
@@ -311,14 +310,6 @@ def test_async_workspace_methods_post_dtos_and_parse_responses() -> None:
     asyncio.run(scenario())
 
 
-def _initialize_home_snapshot_request() -> InitializeHomeSnapshotRequest:
-    return InitializeHomeSnapshotRequest(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        home_snapshot_id="home-1",
-    )
-
-
 def test_sync_execution_binding_client_uses_private_binding_routes() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         payload = cast(dict[str, object], json.loads(request.content))
@@ -368,12 +359,9 @@ def _create_home_snapshot_from_binding_request() -> CreateHomeSnapshotFromBindin
     )
 
 
-def test_sync_home_snapshot_client_parses_initialize_checkpoint_and_delete() -> None:
+def test_sync_home_snapshot_client_parses_checkpoint_and_delete() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
-            if request.url.path == "/home-snapshots/initialize":
-                assert json.loads(request.content) == _initialize_home_snapshot_request().model_dump(mode="json")
-                return httpx.Response(201, json={"snapshot_ref": "initial-home"})
             if request.url.path == "/home-snapshots/from-binding":
                 assert json.loads(request.content) == _create_home_snapshot_from_binding_request().model_dump(
                     mode="json"
@@ -387,20 +375,16 @@ def test_sync_home_snapshot_client_parses_initialize_checkpoint_and_delete() -> 
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
     client = Client(base_url="http://testserver", sync_http_client=http_client)
 
-    initialized = client.initialize_home_snapshot_sync(_initialize_home_snapshot_request())
     created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
     client.delete_home_snapshot_sync(created.snapshot_ref)
 
-    assert initialized.snapshot_ref == "initial-home"
     assert created.snapshot_ref == "team/home 1"
     http_client.close()
 
 
-def test_async_home_snapshot_client_parses_initialize_checkpoint_and_delete() -> None:
+def test_async_home_snapshot_client_parses_checkpoint_and_delete() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
-            if request.url.path == "/home-snapshots/initialize":
-                return httpx.Response(201, json={"snapshot_ref": "initial-home"})
             if request.url.path == "/home-snapshots/from-binding":
                 return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
             assert request.url.path == "/home-snapshots/delete"
@@ -411,11 +395,9 @@ def test_async_home_snapshot_client_parses_initialize_checkpoint_and_delete() ->
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
-        initialized = await client.initialize_home_snapshot(_initialize_home_snapshot_request())
         created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
         await client.delete_home_snapshot(created.snapshot_ref)
 
-        assert initialized.snapshot_ref == "initial-home"
         assert created.snapshot_ref == "team/home 1"
         await http_client.aclose()
 
@@ -430,7 +412,7 @@ def test_home_snapshot_client_maps_sync_validation_and_async_http_errors() -> No
     )
 
     with pytest.raises(DifyAgentValidationError):
-        _ = sync_client.initialize_home_snapshot_sync(_initialize_home_snapshot_request())
+        _ = sync_client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
     sync_http_client.close()
 
     async def scenario() -> None:

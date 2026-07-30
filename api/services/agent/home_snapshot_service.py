@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from dify_agent.client import Client, DifyAgentNotFoundError
-from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest, InitializeHomeSnapshotRequest
+from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,34 +35,6 @@ class AgentHomeSnapshotUnavailableError(RuntimeError):
 
 class AgentHomeSnapshotService:
     """Create, retire, and collect Agent-owned immutable Home Snapshots."""
-
-    @classmethod
-    def create_initial(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-    ) -> AgentHomeSnapshot:
-        home_snapshot_id = str(uuidv7())
-        with cls._client() as client:
-            response = client.initialize_home_snapshot_sync(
-                InitializeHomeSnapshotRequest(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    home_snapshot_id=home_snapshot_id,
-                )
-            )
-        home_snapshot = AgentHomeSnapshot(
-            id=home_snapshot_id,
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            snapshot_ref=response.snapshot_ref,
-            status=AgentWorkingResourceStatus.ACTIVE,
-        )
-        session.add(home_snapshot)
-        session.flush()
-        return home_snapshot
 
     @classmethod
     def create_for_build_apply(
@@ -211,7 +183,9 @@ class AgentHomeSnapshotService:
         return Client(base_url=base_url)
 
 
-def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str) -> None:
+def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str | None) -> None:
+    if home_snapshot_id is None:
+        return
     _require_owned_home_snapshot(session=session, agent=agent, home_snapshot_id=home_snapshot_id)
 
 

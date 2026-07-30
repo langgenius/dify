@@ -35,7 +35,7 @@ const MobileOperationDropdown = ({
             size="l"
             state={open ? ActionButtonState.Hover : ActionButtonState.Default}
           >
-            <div className="i-ri-more-fill h-[18px] w-[18px]" aria-hidden="true" />
+            <div className="i-ri-more-fill h-4.5 w-4.5" aria-hidden="true" />
           </ActionButton>
         }
       />
