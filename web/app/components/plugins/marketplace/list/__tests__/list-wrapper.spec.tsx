@@ -101,4 +101,14 @@ describe('ListWrapper', () => {
 
     expect(screen.getAllByTestId('loading')).toHaveLength(1)
   })
+
+  it('keeps the supplied layout constraint while category results are loading', () => {
+    mockMarketplaceData.isLoading = true
+    mockMarketplaceData.page = 1
+
+    const { container } = render(<ListWrapper className="catalog-content-min-height" />)
+
+    expect(container.firstElementChild).toHaveClass('catalog-content-min-height')
+    expect(screen.getByTestId('loading')).toBeInTheDocument()
+  })
 })
