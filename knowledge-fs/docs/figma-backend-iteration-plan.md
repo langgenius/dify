@@ -16,7 +16,7 @@
 - Embedding 维度由用户选择的 plugin-daemon 模型实际能力决定，禁止写死为 1536。
 - 每个 Knowledge Space 先独立持久化用户选择的 embedding route；首次激活后再持久化由该模型实际响应派生的 vector-space 标识、维度与 revision。
 - `Fast` 使用普通混合检索 + rerank。
-- `Research` 使用 Summary / Outline / PageIndex。
+- `Research` 使用 semantic Value Search + LLM PageIndex tree scoring。
 - `Deep` 使用普通混合检索 + Graph + rerank。
 - Graph 不进入 Research 路由，Outline/PageIndex 不进入 Deep 路由。
 - Hono API 是业务、鉴权和产品状态的唯一服务边界；任何前端或 BFF 集成都属于仓库外调用方。
@@ -254,8 +254,8 @@ type RetrievalProfile = {
   或凭据；用户可修改 pending config 后由下次 durable attempt 重试。
 - 已发布空间保持旧 active tuple 可用，模型/检索设置变更走 capability validation + durable candidate migration，不得用
   pending selection 直接覆盖当前 profile/publication。
-- Research 的索引/检索契约是 Summary/Outline/PageIndex，首次模型激活与 query-time 检索都不依赖 Graph；Fast/Deep
-  才要求已验证 embedding，Deep 在普通混合召回后使用 Graph 扩展。
+- Research 的索引/检索契约是 semantic Value Search + LLM PageIndex tree scoring，首次模型激活与 query-time
+  检索都不依赖 Graph；三种模式都要求已验证 embedding，Deep 在普通混合召回后使用 Graph 扩展。
 
 ### 7.4 Embedding 原子迁移
 
@@ -801,9 +801,10 @@ shadow/fail-closed 边界；历史记录保留用于说明迁移过程，当前�
   rerank 一次。TiDB 使用
   `index_projection_fts_postings` 的 term-hash lookup index；PostgreSQL 保留 GIN `tsvector`。两种 dialect
   均在 publication/member/generation/document/ACL 条件内召回。
-- Research 直接查询 flattened published PageIndex，不再先运行 dense/FTS hybrid。exact term posting 在 SQL
-  内按 outline node 聚合 normalized `[0,1]` score，完整 closure 与 ACL 在 relevance ordering/final LIMIT
-  之前验证；threshold、Top K 后 bounded 打开 leaf evidence。Graph 与普通 reranker调用数为 0。
+- Research 不运行 dense/FTS hybrid，而是在 immutable publication、vector space 与服务端 ACL 范围内
+  执行 bounded dense semantic Value Search；应用层再次校验 metadata/permission 后，按文档与 section path
+  还原 PageIndex 候选树，由 frozen reasoning model 为每个 candidate 严格返回 `[0,1]` 最终相关性分数。
+  threshold、Top K 应用于该 LLM 分数；Graph、FTS、fusion 与普通 reranker 调用数为 0。
 - Deep 先运行 published dense/FTS normalized score fusion，再从同一 publication 的 Graph entity/relation/source-node closure
   扩展和二次召回，合并后统一 rerank 一次。Graph capability 缺失只阻断 Deep，Fast/Research 不受影响。
 - Candidate runtime、candidate-only evaluation、publication processor 与 coordinator 已接入 durable
@@ -952,9 +953,9 @@ I6 已完成：
 检索模式最终不变量：
 
 1. Fast：published dense + indexed FTS → node 去重/per-leg normalized score fusion → 可选的一次最终 rerank → threshold → Top K；启用 rerank 时按 reranker score 排序，关闭时按 normalized final score 排序。
-2. Research：published Summary/Outline/PageIndex exact-term + tree navigation → threshold → Top K；普通 hybrid、Graph 和
-   普通 reranker 调用均为 0。Reasoning model 用于最终回答和 ingestion-time Summary/Outline enhancer，不是 query-time
-   PageIndex planner。
+2. Research：published dense semantic Value Search → 按文档/section path 构建候选树 → frozen reasoning model 为每个
+   candidate 返回严格 `[0,1]` score/reason → threshold → Top K；FTS、fusion、Graph 和普通 reranker 调用均为 0。
+   Reasoning model 同时用于 query-time tree scoring、最终回答和 ingestion-time Summary/Outline enhancer。
 3. Deep：published dense + indexed FTS normalized score fusion → published Graph expansion + second recall → 全部候选合并 → 可选的一次统一 rerank → threshold → Top K；启用 rerank 时按 reranker score 排序，关闭时按 normalized final score 排序；不是只查 Graph。
 4. 三种模式都从同一个 frozen published content/profile tuple 读取，并在入口校验 membership/API Access、在候选层
    使用服务端 grants；Top K、Score Threshold 与模型配置分别在上述正确阶段应用。Async Research 在入队前按
@@ -1005,8 +1006,9 @@ I6 已完成：
 - 已发布 Space 不走首文档快速激活；Embedding 变更仍执行 full-vector-space rebuild/evaluation，Reasoning 变更仍
   重建 PageIndex Summary/Outline，其余 retrieval settings 通过 successor publication/migration 联合切换，失败保留旧
   profile/publication tuple。
-- 模式边界保持不变：Fast = dense + indexed FTS 混合召回→合并→一次 rerank；Research = Summary/Outline/PageIndex，
-  不依赖 Graph 且不调用普通 reranker；Deep = 普通混合召回 + Graph 扩展→合并→一次统一 rerank。
+- 模式边界更新为：Fast = dense + indexed FTS 混合召回→合并→一次 rerank；Research = semantic Value Search +
+  LLM PageIndex tree score，不依赖 FTS/Graph 且不调用普通 reranker；Deep = 普通混合召回 + Graph 扩展→合并→一次
+  统一 rerank。
 
 定向验收以 `knowledge-space-provisioning-repository.test.ts`、`gateway-knowledge-space.test.ts`、
 `document-compilation-initial-profile-coordinator.test.ts`、`document-compilation-attempt-repository.test.ts`、

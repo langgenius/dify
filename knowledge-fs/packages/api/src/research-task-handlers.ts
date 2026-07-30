@@ -820,7 +820,7 @@ async function resolveResearchTaskPlan({
   if (profileError) {
     throw new KnowledgeSpaceRetrievalProfileModeError(profileError.mode);
   }
-  if (plan.retrievalPlan.resolvedMode !== "research" && !frozenRuntime.embeddingProfile) {
+  if (!frozenRuntime.embeddingProfile) {
     throw new PublishedProjectionReadUnavailableError({ knowledgeSpaceId, tenantId });
   }
   try {

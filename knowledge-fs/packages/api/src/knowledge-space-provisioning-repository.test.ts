@@ -297,7 +297,7 @@ describe.each(["postgres", "tidb"] as const)(
           slugSource: legacyResearchRequest.slugSource,
           tenantId: legacyResearchRequest.tenantId,
         }),
-      ).resolves.toMatchObject({ configurationStatus: "ready", replayed: true });
+      ).resolves.toMatchObject({ configurationStatus: "setup-required", replayed: true });
 
       await expect(
         afterDeploy.provision({

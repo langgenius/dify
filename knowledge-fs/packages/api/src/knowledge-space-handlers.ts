@@ -209,10 +209,10 @@ export function registerKnowledgeSpaceHandlers({
         );
       }
       const selectedEmbedding = embeddingProfile;
-      if (retrievalProfile && retrievalProfile.defaultMode !== "research" && !selectedEmbedding) {
+      if (retrievalProfile && !selectedEmbedding) {
         throw new ModelCapabilityPreflightError(
           "MODEL_CAPABILITY_MISMATCH",
-          "Fast/Deep retrieval requires an embedding model for this knowledge space",
+          "All retrieval modes require an embedding model for this knowledge space",
         );
       }
       const pendingModelConfiguration =
@@ -488,11 +488,11 @@ export function registerKnowledgeSpaceHandlers({
         400,
       );
     }
-    if (retrievalProfile?.defaultMode !== "research" && !embeddingSelection) {
+    if (retrievalProfile && !embeddingSelection) {
       return context.json(
         {
           code: "EMBEDDING_MODEL_REQUIRED",
-          error: "Fast/Deep retrieval requires an embedding model for this knowledge space",
+          error: "All retrieval modes require an embedding model for this knowledge space",
         },
         409,
       );
@@ -983,15 +983,6 @@ export function registerKnowledgeSpaceHandlers({
         );
       }
       const embeddingSelection = currentManifest.pendingModelConfiguration?.embeddingSelection;
-      if (body.profile.defaultMode !== "research" && !embeddingSelection) {
-        return context.json(
-          {
-            code: "EMBEDDING_MODEL_REQUIRED",
-            error: "Fast/Deep retrieval requires an embedding model for this knowledge space",
-          },
-          409,
-        );
-      }
       if (!authorization) {
         return context.json(
           {
@@ -1001,33 +992,6 @@ export function registerKnowledgeSpaceHandlers({
           503,
         );
       }
-      const currentPendingConfiguration = currentManifest.pendingModelConfiguration;
-      if (currentPendingConfiguration?.state !== "validation-failed") {
-        const idempotentCandidate = createKnowledgeSpacePendingModelConfiguration({
-          ...(embeddingSelection ? { embeddingSelection } : {}),
-          retrievalProfile: body.profile,
-          revision: currentPendingConfiguration?.revision ?? 1,
-        });
-        if (
-          currentPendingConfiguration &&
-          idempotentCandidate.digest === currentPendingConfiguration.digest
-        ) {
-          return context.json(
-            {
-              configurationStatus: "pending-validation" as const,
-              digest: currentPendingConfiguration.digest,
-              operation: "initial-validation-pending" as const,
-              revision: currentPendingConfiguration.revision,
-            },
-            202,
-          );
-        }
-      }
-      const pendingModelConfiguration = createKnowledgeSpacePendingModelConfiguration({
-        ...(embeddingSelection ? { embeddingSelection } : {}),
-        retrievalProfile: body.profile,
-        revision: (currentManifest.pendingModelConfiguration?.revision ?? 0) + 1,
-      });
       const mutationTimestamp = now();
       const authenticatedApiKey = context.get("authenticatedApiKey");
       let permissionSnapshot: Awaited<ReturnType<typeof issueKnowledgeSpaceDurablePermission>>;
@@ -1051,6 +1015,42 @@ export function registerKnowledgeSpaceHandlers({
         }
         throw error;
       }
+      if (!embeddingSelection) {
+        return context.json(
+          {
+            code: "EMBEDDING_MODEL_REQUIRED",
+            error: "All retrieval modes require an embedding model for this knowledge space",
+          },
+          409,
+        );
+      }
+      const currentPendingConfiguration = currentManifest.pendingModelConfiguration;
+      if (currentPendingConfiguration?.state !== "validation-failed") {
+        const idempotentCandidate = createKnowledgeSpacePendingModelConfiguration({
+          embeddingSelection,
+          retrievalProfile: body.profile,
+          revision: currentPendingConfiguration?.revision ?? 1,
+        });
+        if (
+          currentPendingConfiguration &&
+          idempotentCandidate.digest === currentPendingConfiguration.digest
+        ) {
+          return context.json(
+            {
+              configurationStatus: "pending-validation" as const,
+              digest: currentPendingConfiguration.digest,
+              operation: "initial-validation-pending" as const,
+              revision: currentPendingConfiguration.revision,
+            },
+            202,
+          );
+        }
+      }
+      const pendingModelConfiguration = createKnowledgeSpacePendingModelConfiguration({
+        embeddingSelection,
+        retrievalProfile: body.profile,
+        revision: (currentPendingConfiguration?.revision ?? 0) + 1,
+      });
       const updated = await manifests.update({
         expectedManifestVersion: currentManifest.manifestVersion,
         knowledgeSpaceId,
@@ -2037,6 +2037,9 @@ export async function ensureLegacyPublishedProfileTuple({
 
   const missingEmbedding = !embeddingHead && manifest.embeddingProfile;
   const missingRetrieval = !retrievalHead ? manifest.retrievalProfile : undefined;
+  // Keep historical Research-only manifests readable so an already-bound tuple can be
+  // reconciled. New profile-publication bindings reject a missing embedding profile, and the
+  // runtime snapshot resolver will not make this legacy tuple query-ready.
   if (
     !embeddingHead &&
     !manifest.embeddingProfile &&
@@ -2436,9 +2439,7 @@ async function resolveKnowledgeSpaceConfigurationStatus({
   const retrievalProfile = profiles
     ? KnowledgeSpaceRetrievalProfileSchema.safeParse(retrievalHead?.profile.snapshot).data
     : manifest.retrievalProfile;
-  const activeReady = Boolean(
-    retrievalProfile && (retrievalProfile.defaultMode === "research" || embeddingProfile),
-  );
+  const activeReady = Boolean(retrievalProfile && embeddingProfile);
   const pendingResult = readPendingModelConfiguration(manifest);
   const pendingModelConfiguration =
     pendingResult.kind === "valid" ? pendingResult.configuration : undefined;

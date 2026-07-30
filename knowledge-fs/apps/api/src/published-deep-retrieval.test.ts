@@ -85,6 +85,7 @@ describe("production published Deep stage order", () => {
       embeddingEnabled: true,
       graph: { traverse: legacyTraverse } as unknown as GraphIndexRepository,
       pageIndex,
+      pageIndexSemanticTreeSearch: { score: async () => [] },
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       publishedGraph,
       repository: {
@@ -177,6 +178,14 @@ describe("production published Deep stage order", () => {
     const retriever = createApiRetriever({
       embeddingEnabled: true,
       pageIndex,
+      pageIndexSemanticTreeSearch: {
+        score: async (input) =>
+          input.candidates.map((candidate) => ({
+            candidateId: candidate.candidateId,
+            reason: "semantic match",
+            score: 0.8,
+          })),
+      },
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       repository: {
         publishedMembershipEnforced: true,
@@ -186,12 +195,21 @@ describe("production published Deep stage order", () => {
       strictPublishedReads: true,
     });
     const baseInput = {
+      denseProjectionModel: "embedding-space-v1",
       knowledgeSpaceId: SPACE_ID,
       limit: 2,
       permissionScope: ["team:camera"],
       projectionSnapshot: publishedSnapshot(),
       query: "camera warranty policy",
       queryVector: [0.1, 0.2],
+      retrievalProfile: {
+        defaultMode: "fast" as const,
+        reasoningModel: { model: "chat", pluginId: "vendor/chat", provider: "vendor" },
+        rerank: { enabled: false as const },
+        revision: 1,
+        scoreThreshold: { enabled: false as const, stage: "mode-final" as const },
+        topK: 2,
+      },
       tenantId: TENANT_ID,
       topK: 2,
     } as const;
@@ -200,14 +218,14 @@ describe("production published Deep stage order", () => {
       items: [{ nodeId: BASE_NODE_ID }],
     });
     await expect(retriever.retrieve({ ...baseInput, mode: "research" })).resolves.toMatchObject({
-      items: [],
+      items: [{ nodeId: BASE_NODE_ID }],
     });
     const callsBeforeDeep = dense.mock.calls.length + fts.mock.calls.length;
     await expect(retriever.retrieve({ ...baseInput, mode: "deep" })).rejects.toBeInstanceOf(
       DeepGraphCapabilityUnavailableError,
     );
     expect(dense.mock.calls.length + fts.mock.calls.length).toBe(callsBeforeDeep);
-    expect(pageIndex.searchSections).toHaveBeenCalledOnce();
+    expect(pageIndex.searchSections).not.toHaveBeenCalled();
     expect(pageIndex.listOutlines).not.toHaveBeenCalled();
   });
 });

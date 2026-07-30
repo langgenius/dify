@@ -92,12 +92,15 @@ describe("first-document model profile activation", () => {
     );
   });
 
-  it("activates Research with reasoning only and never probes embedding, rerank, or graph", async () => {
+  it("activates Research with embedding-backed semantic Value Search and reasoning", async () => {
     const harness = createHarness("research");
 
     await harness.coordinator.ensureReady(harness.execution);
 
-    expect(harness.preflight.verify).toHaveBeenCalledTimes(1);
+    expect(harness.preflight.verify).toHaveBeenCalledTimes(2);
+    expect(harness.preflight.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "embedding" }),
+    );
     expect(harness.preflight.verify).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "reasoning" }),
     );
@@ -109,8 +112,8 @@ describe("first-document model profile activation", () => {
         }),
       }),
     );
-    expect(harness.activations.activateInitialTuple.mock.calls[0]?.[0].embedding).toBeUndefined();
-    expect(harness.bound?.embeddingProfile).toBeUndefined();
+    expect(harness.activations.activateInitialTuple.mock.calls[0]?.[0].embedding).toBeDefined();
+    expect(harness.bound?.embeddingProfile).toBeDefined();
   });
 
   it("persists a safe terminal validation state without creating a profile head", async () => {
@@ -205,7 +208,7 @@ function createHarness(mode: "fast" | "research") {
     knowledgeSpaceId,
     pendingModelConfiguration: {
       digest: "a".repeat(64),
-      ...(mode === "fast" ? { embeddingSelection } : {}),
+      embeddingSelection,
       retrievalProfile: {
         defaultMode: mode,
         reasoningModel: reasoningSelection,

@@ -4,6 +4,7 @@ import {
   type GraphIndexRepository,
   type HybridRetrievalItem,
   type HybridRetrievalRepository,
+  type PageIndexSemanticTreeSearch,
   type ProjectionSetPublicationMemberRepository,
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
@@ -56,8 +57,10 @@ export interface ApiRetrieverOptions {
   readonly metrics?: RetrievalOperationalMetrics | undefined;
   /** PageIndex-style document outline traversal, used only by research mode. */
   readonly outlines?: DocumentOutlineRepository | undefined;
-  /** Strict publication-member scoped PageIndex used by production Research. */
+  /** Strict publication-member scoped PageIndex capability used by production Research. */
   readonly pageIndex?: PublishedPageIndexRepository | undefined;
+  /** Profile-scoped LLM scorer for semantic Value Search candidates. */
+  readonly pageIndexSemanticTreeSearch?: PageIndexSemanticTreeSearch | undefined;
   /**
    * Mode-aware planner. Optional for compatibility with the underlying
    * `createBasicHybridRetriever`; when omitted the basic retriever falls back to
@@ -86,29 +89,25 @@ export interface ApiRetrieverOptions {
 }
 
 /**
- * Stable fail-closed signal for Fast/Deep requests when the text embedding
- * capability is unavailable. Those modes promise dense + FTS hybrid recall;
- * silently substituting FTS-only retrieval would change their product
- * semantics. Research is intentionally exempt because it opens PageIndex
- * Summary/Outline data without a query embedding.
+ * Stable fail-closed signal when the text embedding capability is unavailable.
+ * Fast/Deep use dense hybrid recall, while Research uses the same immutable
+ * dense projections as its semantic Value Search leg.
  */
 export class HybridEmbeddingCapabilityUnavailableError extends Error {
   constructor() {
-    super("Fast and Deep retrieval require the configured text embedding capability");
+    super("Fast, Deep, and Research retrieval require the configured text embedding capability");
     this.name = "HybridEmbeddingCapabilityUnavailableError";
   }
 }
 
 /**
  * Builds the wired retrieval stack: final-rerank -> graph-expansion ->
- * document-outline -> image-ocr -> table -> visual-dense + text-hybrid. The
- * mode gates keep graph expansion in deep mode and PageIndex-style
- * outline/summary traversal in research mode. Final reranking runs once for
- * fast/deep after all candidate extensions have been merged; research
- * intentionally skips it. `SummaryTree` is intentionally not composed here:
- * PageIndex summaries live on DocumentOutline nodes, while the separate
- * synthetic summary KnowledgeNode pipeline is not maintained by production
- * ingestion.
+ * PageIndex semantic tree search -> image-ocr -> table -> visual-dense +
+ * text-hybrid. The mode gates keep graph expansion in deep mode and semantic
+ * Value Search plus reasoning-model tree scoring in research mode. Final
+ * reranking runs once for fast/deep after all candidate extensions have been
+ * merged; research intentionally skips the ordinary reranker because the
+ * reasoning model assigns its final comparable score.
  *
  * The `planner` is threaded into the basic hybrid retriever so the requested
  * mode actually changes recall depth / fusion width / rerank gating. Without it
@@ -123,6 +122,7 @@ export function createApiRetriever({
   metrics,
   outlines,
   pageIndex,
+  pageIndexSemanticTreeSearch,
   planner,
   publishedGraph,
   publishedProjectionMembership,
@@ -173,22 +173,20 @@ export function createApiRetriever({
   });
   let stack = multimodalStack;
   if (pageIndex) {
+    if (!pageIndexSemanticTreeSearch) {
+      throw new Error("Published PageIndex retrieval requires semantic LLM tree search");
+    }
     const pageIndexPlanner = planner;
     if (!pageIndexPlanner) {
       throw new Error("Published PageIndex retrieval requires a mode-aware planner");
     }
     stack = createPublishedPageIndexRetrievalPath({
-      maxConcurrentLeafOpens: 8,
-      maxLeafEvidenceItems: 512,
-      maxOutlineNodesScanned: 100_000,
-      maxOutlinesScanned: 10_000,
-      // RetrievalProfile.topK is bounded at 100. Keep the structural PageIndex selection budget
-      // at least as wide so Research topK=100 is not capped by an unrelated internal default.
-      maxSelectedSections: 100,
-      outlinePageSize: 100,
-      pageIndex,
+      // Research's planner already caps semantic recall at RETRIEVAL_MAX_TOP_K.
+      maxSemanticCandidates: 100,
       planner: pageIndexPlanner,
       retriever: multimodalStack,
+      semanticTreeSearch: pageIndexSemanticTreeSearch,
+      valueSearch: repository,
     });
   } else if (outlines) {
     stack = createDocumentOutlineRetrievalPath({
@@ -246,7 +244,7 @@ export function createApiRetriever({
           traceId: input.traceId,
         }).resolvedMode ?? (input.mode === "research" ? "research" : "fast");
 
-      if (!embeddingEnabled && resolvedMode !== "research") {
+      if (!embeddingEnabled) {
         throw new HybridEmbeddingCapabilityUnavailableError();
       }
 

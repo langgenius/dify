@@ -172,31 +172,25 @@ export function createDatabasePublishedKnowledgeSpaceRuntimeSnapshotResolver({
         ? KnowledgeSpaceEmbeddingProfileSchema.parse(embeddingJson)
         : undefined;
       const embeddingCapability = optionalJsonObjectColumn(row, "embedding_capability");
-      if (embeddingProfile) {
-        verifyDigest(row, "embedding_snapshot_digest", embeddingProfile);
-        if (
-          numberColumn(row, "embedding_head_revision") !== embeddingProfile.revision ||
-          !embeddingCapability
-        ) {
-          throw new PublishedProjectionReadUnavailableError(input);
-        }
-        verifyDigest(row, "embedding_capability_digest", embeddingCapability);
-      } else if (embeddingCapability) {
+      if (!embeddingProfile || !embeddingCapability) {
         throw new PublishedProjectionReadUnavailableError(input);
       }
+      verifyDigest(row, "embedding_snapshot_digest", embeddingProfile);
+      if (numberColumn(row, "embedding_head_revision") !== embeddingProfile.revision) {
+        throw new PublishedProjectionReadUnavailableError(input);
+      }
+      verifyDigest(row, "embedding_capability_digest", embeddingCapability);
 
       try {
         assertRetrievalCapabilityMatchesProfile(retrievalCapability, retrievalProfile);
-        if (embeddingProfile && embeddingCapability) {
-          await assertEmbeddingCapabilityMatchesProfile(embeddingCapability, embeddingProfile);
-        }
+        await assertEmbeddingCapabilityMatchesProfile(embeddingCapability, embeddingProfile);
       } catch {
         throw new PublishedProjectionReadUnavailableError(input);
       }
 
       return Object.freeze({
-        ...(embeddingCapability ? { embeddingCapabilitySnapshot: embeddingCapability } : {}),
-        ...(embeddingProfile ? { embeddingProfile } : {}),
+        embeddingCapabilitySnapshot: embeddingCapability,
+        embeddingProfile,
         projectionSnapshot: Object.freeze({
           fingerprint: stringColumn(row, "publication_fingerprint"),
           headRevision: numberColumn(row, "publication_head_revision"),

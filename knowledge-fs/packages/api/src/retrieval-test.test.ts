@@ -137,15 +137,25 @@ describe("createRetrievalTestExecutor", () => {
     });
   });
 
-  it("runs Research through Summary/Outline/PageIndex without embedding, ordinary recall, Graph, or rerank", async () => {
-    const embed = vi.fn();
+  it("runs Research through semantic Value Search and LLM PageIndex scoring without FTS, Graph, or rerank", async () => {
+    const embed = vi.fn(async () => ({
+      dense: [[0.1, 0.2, 0.3]],
+      metadata: {
+        dimension: 3,
+        model: embeddingSelection.model,
+        provider: "dify-model-runtime" as const,
+      },
+      model: embeddingSelection.model,
+    }));
     const calls: RetrieveHybridInput[] = [];
     const executor = createRetrievalTestExecutor({
-      embeddings: { embed, kind: "static", models: async () => [] },
+      embeddingModel: embeddingSelection.model,
+      embeddings: { embed, kind: "dify-model-runtime", models: async () => [] },
       retriever: recordingRetriever("research", calls, researchMetrics()),
     });
 
     const result = await executor.execute({
+      embeddingProfile,
       knowledgeSpaceId: SPACE_ID,
       mode: "research",
       permissionScope: ["tenant:tenant-1"],
@@ -156,24 +166,29 @@ describe("createRetrievalTestExecutor", () => {
       traceId: "trace-research",
     });
 
-    expect(embed).not.toHaveBeenCalled();
+    expect(embed).toHaveBeenCalledOnce();
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ mode: "research", queryVector: [0] });
+    expect(calls[0]).toMatchObject({
+      denseProjectionModel: embeddingProfile.vectorSpaceId,
+      mode: "research",
+      queryVector: [0.1, 0.2, 0.3],
+    });
     expect(result.plan).toMatchObject({
-      denseTopK: 0,
+      denseTopK: 30,
       ftsTopK: 0,
       fusionLimit: 0,
       rerankCandidateLimit: 0,
       resolvedMode: "research",
     });
     expect(stageStatuses(result)).toMatchObject({
-      dense: "skipped",
+      dense: "executed",
+      embedding: "executed",
       fts: "skipped",
       graph: "skipped",
       outline: "executed",
       pageindex: "executed",
       rerank: "skipped",
-      summary: "executed",
+      summary: "skipped",
     });
   });
 
@@ -323,9 +338,23 @@ describe("assertRetrievalTestRuntimeCapabilities", () => {
     ).toThrow(RetrievalTestUnavailableError);
   });
 
-  it("lets Research omit embedding and rerank capabilities but still requires reasoning", () => {
+  it("requires Research embedding and reasoning capabilities while keeping rerank unnecessary", () => {
     expect(() =>
       assertRetrievalTestRuntimeCapabilities({
+        mode: "research",
+        retrievalCapabilitySnapshot: {
+          reasoning: capability("reasoning", reasoningSelection),
+          rerank: null,
+          verification: "verified",
+        },
+        retrievalProfile,
+      }),
+    ).toThrow("verified embedding profile");
+
+    expect(() =>
+      assertRetrievalTestRuntimeCapabilities({
+        embeddingCapabilitySnapshot: capability("embedding", embeddingSelection, 3),
+        embeddingProfile,
         mode: "research",
         retrievalCapabilitySnapshot: {
           reasoning: capability("reasoning", reasoningSelection),
@@ -338,6 +367,8 @@ describe("assertRetrievalTestRuntimeCapabilities", () => {
 
     expect(() =>
       assertRetrievalTestRuntimeCapabilities({
+        embeddingCapabilitySnapshot: capability("embedding", embeddingSelection, 3),
+        embeddingProfile,
         mode: "research",
         retrievalCapabilitySnapshot: { verification: "verified" },
         retrievalProfile,
@@ -404,8 +435,8 @@ function ordinaryMetrics({
 
 function researchMetrics(): HybridRetrievalMetrics {
   return {
-    denseCandidates: 0,
-    denseMs: 0,
+    denseCandidates: 4,
+    denseMs: 2,
     documentOutlineMatchedItems: 1,
     ftsCandidates: 0,
     ftsMs: 0,
@@ -413,9 +444,9 @@ function researchMetrics(): HybridRetrievalMetrics {
     fusionMs: 0,
     pageIndexMatchedNodes: 4,
     pageIndexOpenedRanges: 1,
-    pageIndexScoreVersion: "pageindex-score-v1",
+    pageIndexScoreVersion: "pageindex-semantic-llm-v1",
     scoreThresholdFilteredCandidates: 2,
-    summaryCandidates: 3,
+    summaryCandidates: 0,
     summarySelectedSections: 1,
     totalMs: 5,
   };

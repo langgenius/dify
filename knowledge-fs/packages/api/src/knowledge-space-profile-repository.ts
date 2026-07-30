@@ -2013,10 +2013,10 @@ function normalizeInitialTupleInput(
     );
   }
   const retrievalSnapshot = KnowledgeSpaceRetrievalProfileSchema.parse(retrieval.snapshot);
-  if (retrievalSnapshot.defaultMode !== "research" && !embedding) {
+  if (!embedding) {
     throw unpublishedActivationError(
       "KNOWLEDGE_SPACE_INITIAL_PROFILE_TUPLE_INVALID",
-      "Fast/Deep initial profile activation requires an embedding profile",
+      "Initial profile activation requires an embedding profile for semantic retrieval",
     );
   }
   return {

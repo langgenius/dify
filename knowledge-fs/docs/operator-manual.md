@@ -143,8 +143,10 @@ The service has three retrieval pipelines and one optional public router:
 
 - **Fast** runs ordinary dense + FTS hybrid recall, candidate fusion, and the configured final
   rerank.
-- **Research** uses published Summary/Outline/PageIndex navigation. It does not run ordinary
-  hybrid recall, Graph expansion, or the ordinary candidate reranker.
+- **Research** embeds the query, runs published dense semantic Value Search, rebuilds the bounded
+  candidates into their document/section hierarchy, and asks the space's frozen reasoning model
+  to score every candidate through PageIndex-style tree reasoning. It does not run FTS, Graph
+  expansion, or the ordinary candidate reranker.
 - **Deep** runs ordinary hybrid recall, adds permission-scoped Graph expansion, merges both
   candidate sets, and then runs one unified final rerank.
 - An explicit `mode: "auto"` asks the knowledge space's published `reasoningModel` through the

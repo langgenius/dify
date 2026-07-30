@@ -128,10 +128,14 @@ function buildRetrievalPlan({
   readonly topK: number;
 }): RetrievalPlan {
   const multipliers = retrievalModeMultipliers(resolvedMode);
-  const pageIndexOnly = resolvedMode === "research";
-  const denseTopK = pageIndexOnly ? 0 : boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
-  const ftsTopK = pageIndexOnly ? 0 : boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
-  const fusionLimit = pageIndexOnly ? 0 : boundedRetrievalFanout(topK, multipliers.fusion, maxTopK);
+  const semanticTreeSearch = resolvedMode === "research";
+  const denseTopK = boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
+  const ftsTopK = semanticTreeSearch
+    ? 0
+    : boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
+  const fusionLimit = semanticTreeSearch
+    ? 0
+    : boundedRetrievalFanout(topK, multipliers.fusion, maxTopK);
 
   return {
     denseTopK,
@@ -139,9 +143,9 @@ function buildRetrievalPlan({
     fusionLimit,
     queryLanguage,
     requestedMode,
-    // Fast and deep both finish with a single rerank pass. Research is the
-    // PageIndex/outline path and intentionally does not depend on reranking.
-    rerankCandidateLimit: pageIndexOnly ? 0 : fusionLimit,
+    // Fast and deep both finish with a single rerank pass. Research uses dense
+    // semantic Value Search followed by profile-scoped LLM tree scoring.
+    rerankCandidateLimit: semanticTreeSearch ? 0 : fusionLimit,
     resolvedMode,
     strategyVersion: "retrieval-planner-v1",
     topK,

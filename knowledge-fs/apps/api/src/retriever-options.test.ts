@@ -2,6 +2,7 @@ import {
   type DocumentOutlineRepository,
   type GraphIndexRepository,
   type PublishedPageIndexRepository,
+  type ScorePageIndexSemanticCandidatesInput,
   createRetrievalPlanner,
 } from "@knowledge/api";
 import type {
@@ -21,7 +22,7 @@ const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
  * The bug: `createBasicHybridRetriever` was wired without a `planner`, so every
  * request fell back to `defaultRetrievalPlan` ("fast"), making fast/deep/research
  * identical. With the planner threaded in, Deep expands dense recall while Research
- * bypasses ordinary dense/FTS entirely in favor of independent PageIndex retrieval.
+ * reserves a wider dense fanout for semantic Value Search and skips FTS/fusion.
  */
 async function maxDenseTopKForMode(mode: "deep" | "fast" | "research"): Promise<number> {
   const denseTopKs: number[] = [];
@@ -53,14 +54,14 @@ describe("createApiRetriever planner wiring", () => {
   it("scales dense recall with the requested mode (topK=10, cap=100)", async () => {
     expect(await maxDenseTopKForMode("fast")).toBe(10);
     expect(await maxDenseTopKForMode("deep")).toBe(50);
-    expect(await maxDenseTopKForMode("research")).toBe(0);
+    expect(await maxDenseTopKForMode("research")).toBe(100);
   });
 
-  it("does not collapse Deep expansion or Research bypass into the Fast plan", async () => {
+  it("does not collapse Deep or Research semantic expansion into the Fast plan", async () => {
     const fast = await maxDenseTopKForMode("fast");
 
     expect(await maxDenseTopKForMode("deep")).toBeGreaterThan(fast);
-    expect(await maxDenseTopKForMode("research")).toBe(0);
+    expect(await maxDenseTopKForMode("research")).toBeGreaterThan(fast);
   });
 
   it("emits one sanitized result metric for an Auto request at the outer retrieval boundary", async () => {
@@ -104,7 +105,7 @@ describe("createApiRetriever planner wiring", () => {
 });
 
 describe("createApiRetriever embedding capability", () => {
-  it.each(["fast", "deep"] as const)(
+  it.each(["fast", "deep", "research"] as const)(
     "fails %s closed before retrieval when dense embeddings are unavailable",
     async (mode) => {
       const searchDense = vi.fn(async () => []);
@@ -129,29 +130,6 @@ describe("createApiRetriever embedding capability", () => {
       expect(searchFts).not.toHaveBeenCalled();
     },
   );
-
-  it("keeps Research independent from the dense embedding capability", async () => {
-    const searchDense = vi.fn(async () => []);
-    const searchFts = vi.fn(async () => []);
-    const retriever = createApiRetriever({
-      embeddingEnabled: false,
-      planner: createRetrievalPlanner({ maxTopK: 100 }),
-      repository: { searchDense, searchFts },
-    });
-
-    await expect(
-      retriever.retrieve({
-        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
-        limit: 5,
-        mode: "research",
-        query: "policy renewal",
-        queryVector: [0],
-        topK: 10,
-      }),
-    ).resolves.toMatchObject({ items: [] });
-    expect(searchDense).not.toHaveBeenCalled();
-    expect(searchFts).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe("createApiRetriever TiDB FTS readiness defense", () => {
@@ -516,6 +494,7 @@ describe("createApiRetriever dense and visual wiring", () => {
           throw new Error("unused");
         },
       },
+      pageIndexSemanticTreeSearch: { score: async () => [] },
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       publishedProjectionMembership: {
         filterComponentKeys: async (input) =>
@@ -777,106 +756,32 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     expect(outlineLookups).toHaveLength(1);
   });
 
-  it("uses independent published PageIndex for Research and calls no hybrid, Graph, or reranker leg", async () => {
-    const dense = vi.fn(async () => []);
+  it("uses published semantic Value Search plus LLM PageIndex scoring without FTS, Graph, or reranking", async () => {
+    const denseCandidate = {
+      ...candidateWithGraphSeed(),
+      metadata: { text: "Published camera warranty evidence" },
+      score: 0.92,
+    };
+    const dense = vi.fn(async () => [denseCandidate]);
     const fts = vi.fn(async () => []);
     const rerankCalls: string[][] = [];
     const traverse = vi.fn(async () => ({ entities: [], relations: [], timedOut: false }));
     const graph = { traverse } as unknown as GraphIndexRepository;
-    const outlineId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d81";
-    const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
-    const generationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d82";
-    const outline = {
-      artifactHash: "a".repeat(64),
-      createdAt: "2026-07-14T00:00:00.000Z",
-      documentAssetId,
-      id: outlineId,
-      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
-      metadata: {},
-      nodes: [
-        {
-          childNodeIds: [],
-          children: [],
-          endOffset: 100,
-          id: "outline-warranty",
-          level: 1,
-          metadata: {},
-          sectionPath: ["Warranty"],
-          sourceElementIds: [],
-          sourceNodeIds: [],
-          startOffset: 0,
-          summary: "Camera warranty and sensor policy",
-          title: "Warranty",
-          tocSource: "parser-heading" as const,
-        },
-      ],
-      outlineVersion: "document-outline-v1",
-      parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
-      publicationGenerationId: generationId,
-      version: 1,
-    };
-    const pageIndex = {
-      listOutlines: vi.fn(async () => ({
-        items: [{ documentAssetId, generationId, outline, publicationId: "publication-1" }],
+    const pageIndex = {} as PublishedPageIndexRepository;
+    const score = vi.fn(async (input: ScorePageIndexSemanticCandidatesInput) =>
+      input.candidates.map((candidate) => ({
+        candidateId: candidate.candidateId,
+        reason: "Direct warranty evidence",
+        score: 0.96,
       })),
-      searchSections: vi.fn(async () => ({
-        items: [
-          {
-            documentAssetId,
-            documentVersion: 1,
-            generationId,
-            node: outline.nodes[0],
-            outlineId,
-            outlineVersion: outline.outlineVersion,
-            score: 1,
-            visitedNodeIds: ["outline-warranty"],
-          },
-        ],
-        tokenizerVersion: "pageindex-nfkc-exact-v1" as const,
-        truncated: false,
-      })),
-      openLeafEvidence: vi.fn(async () => ({
-        items: [
-          {
-            citation: {
-              artifactHash: "a".repeat(64),
-              documentAssetId,
-              documentVersion: 1,
-              endOffset: 80,
-              sectionPath: ["Warranty"],
-              startOffset: 10,
-            },
-            node: {
-              artifactHash: "a".repeat(64),
-              documentAssetId,
-              endOffset: 80,
-              id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
-              kind: "chunk" as const,
-              knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
-              metadata: {},
-              parseArtifactId: outline.parseArtifactId,
-              permissionScope: [],
-              publicationGenerationId: generationId,
-              sourceLocation: { sectionPath: ["Warranty"] },
-              startOffset: 10,
-              text: "Published warranty evidence",
-            },
-            outlineId,
-            outlineNodeId: "outline-warranty",
-            projections: [{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44" }],
-          },
-        ],
-        openedRange: { endOffset: 100, startOffset: 0 },
-        outline,
-        selectedNode: outline.nodes[0],
-      })),
-    } as unknown as PublishedPageIndexRepository;
+    );
     const retriever = createApiRetriever({
       embeddingEnabled: true,
       graph,
       pageIndex,
+      pageIndexSemanticTreeSearch: { score },
       planner: createRetrievalPlanner({ maxTopK: 100 }),
-      repository: { searchDense: dense, searchFts: fts },
+      repository: { publishedMembershipEnforced: true, searchDense: dense, searchFts: fts },
       rerankerOptions: {
         model: "rerank-model",
         provider: preferredReranker("irrelevant", rerankCalls),
@@ -884,6 +789,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     });
 
     const result = await retriever.retrieve({
+      denseProjectionModel: "embedding-space-v1",
       knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
       limit: 5,
       mode: "research",
@@ -897,7 +803,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
         tenantId: "tenant-1",
       },
       query: "camera warranty sensor",
-      queryVector: [0],
+      queryVector: [0.1, 0.2],
       retrievalProfile: {
         defaultMode: "research",
         reasoningModel: { model: "chat", pluginId: "vendor/chat", provider: "vendor" },
@@ -913,13 +819,20 @@ describe("createApiRetriever PageIndex outline wiring", () => {
       topK: 5,
     });
 
-    expect(dense).not.toHaveBeenCalled();
+    expect(dense).toHaveBeenCalledOnce();
+    expect(score).toHaveBeenCalledOnce();
     expect(fts).not.toHaveBeenCalled();
     expect(traverse).not.toHaveBeenCalled();
     expect(rerankCalls).toEqual([]);
     expect(result.items[0]).toMatchObject({
-      metadata: { pageIndex: { scoreVersion: "pageindex-lexical-v2" } },
-      sources: ["pageindex"],
+      metadata: {
+        pageIndex: {
+          llmReason: "Direct warranty evidence",
+          scoreVersion: "pageindex-semantic-llm-v1",
+        },
+      },
+      score: 0.96,
+      sources: ["dense", "pageindex"],
     });
   });
 });

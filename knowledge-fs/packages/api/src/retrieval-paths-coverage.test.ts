@@ -608,11 +608,11 @@ describe("retrieval paths branch coverage", () => {
       topK: 2,
     });
 
-    // Published Research no longer advertises hybrid fanout. This legacy compatibility path may
-    // inspect only the already-bounded caller window; production uses indexed PageIndex instead.
+    // The legacy outline compatibility path still inspects only the already-bounded caller
+    // window; the production Research path uses dense Value Search with a wider semantic fanout.
     expect(baseLimits).toEqual([1]);
     expect(result.plan).toMatchObject({
-      denseTopK: 0,
+      denseTopK: 20,
       ftsTopK: 0,
       fusionLimit: 0,
       rerankCandidateLimit: 0,

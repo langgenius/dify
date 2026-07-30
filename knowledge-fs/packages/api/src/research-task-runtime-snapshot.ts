@@ -89,7 +89,7 @@ export async function captureResearchTaskRuntimeSnapshotPayload({
     );
   }
   await resolver.assertReady({ knowledgeSpaceId, resolvedMode, tenantId });
-  if (resolvedMode !== "research" && !snapshot.embeddingProfile) {
+  if (!snapshot.embeddingProfile) {
     throw new PublishedProjectionReadUnavailableError({
       knowledgeSpaceId,
       resolvedMode,

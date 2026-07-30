@@ -98,26 +98,20 @@ export function createHybridQueryGenerator({
       const retrievalProfileMetadata = queryRetrievalProfileMetadata(input.retrievalProfile);
       const projectionSnapshotMetadata = queryProjectionSnapshotMetadata(input.projectionSnapshot);
       const embedStartedAt = Date.now();
-      // Research is an independent published PageIndex path. It must not
-      // depend on, call, or observe the dense embedding capability.
-      const requiresQueryEmbedding = input.mode !== "research";
-      const resolvedEmbedding =
-        requiresQueryEmbedding && embeddingResolver
-          ? await embeddingResolver.resolve({
-              ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              tenantId,
-            })
-          : null;
-      const queryEmbedding = requiresQueryEmbedding
-        ? await embedQueryVector({
-            model: resolvedEmbedding?.model ?? effectiveEmbeddingModel,
-            profile: resolvedEmbedding,
-            provider: resolvedEmbedding?.providerInstance ?? effectiveEmbeddingProvider,
-            query: input.query,
+      const resolvedEmbedding = embeddingResolver
+        ? await embeddingResolver.resolve({
+            ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
+            knowledgeSpaceId: input.knowledgeSpaceId,
             tenantId,
           })
-        : { vector: [0] as readonly number[] };
+        : null;
+      const queryEmbedding = await embedQueryVector({
+        model: resolvedEmbedding?.model ?? effectiveEmbeddingModel,
+        profile: resolvedEmbedding,
+        provider: resolvedEmbedding?.providerInstance ?? effectiveEmbeddingProvider,
+        query: input.query,
+        tenantId,
+      });
       if (resolvedEmbedding) {
         if (input.embeddingProfile) {
           assertObservedEmbeddingDimension({
@@ -135,7 +129,7 @@ export function createHybridQueryGenerator({
         }
       }
 
-      if (requiresQueryEmbedding && (resolvedEmbedding || effectiveEmbeddingProvider)) {
+      if (resolvedEmbedding || effectiveEmbeddingProvider) {
         yield traceStepEvent("query.embed", embedStartedAt, "ok", {
           ...(queryEmbedding.embeddingModel ? { model: queryEmbedding.embeddingModel } : {}),
           dimension: queryEmbedding.vector.length,

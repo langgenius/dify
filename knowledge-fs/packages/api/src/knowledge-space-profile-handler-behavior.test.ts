@@ -30,6 +30,7 @@ import {
   createInMemoryKnowledgeSpaceRepository,
   createKnowledgeGateway,
   createKnowledgeSpaceAccessService,
+  createKnowledgeSpacePendingModelConfiguration,
   createStaticAuthVerifier,
 } from "./index";
 import { ensureLegacyPublishedProfileTuple } from "./knowledge-space-handlers";
@@ -1625,6 +1626,23 @@ describe("knowledge-space profile failure behavior", () => {
     };
     const app = profileApp({ knowledgeSpaceManifests: manifests });
     await createSpace(app);
+    const manifest = await baseManifests.get({
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: "tenant-1",
+    });
+    if (!manifest) throw new Error("test manifest missing");
+    await baseManifests.update({
+      expectedManifestVersion: manifest.manifestVersion,
+      knowledgeSpaceId: SPACE_ID,
+      patch: {
+        manifestVersion: manifest.manifestVersion + 1,
+        pendingModelConfiguration: createKnowledgeSpacePendingModelConfiguration({
+          embeddingSelection: EMBEDDING_V1,
+        }),
+        updatedAt: NOW,
+      },
+      tenantId: "tenant-1",
+    });
     rejectUpdates = true;
 
     const embedding = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
@@ -2312,7 +2330,7 @@ describe("knowledge-space configuration status behavior", () => {
     });
   });
 
-  it("keeps a research-only active head ready without inventing an embedding profile", async () => {
+  it("marks a legacy research-only active head as setup-required", async () => {
     const profiles = profileRepository();
     const app = profileApp({ knowledgeSpaceProfiles: profiles });
     await createSpace(app);
@@ -2351,8 +2369,8 @@ describe("knowledge-space configuration status behavior", () => {
     await expect(response.json()).resolves.toMatchObject({
       configuration: {
         activeProfiles: { retrievalRevision: 1 },
-        availableModes: ["research"],
-        status: "ready",
+        availableModes: [],
+        status: "setup-required",
       },
     });
   });

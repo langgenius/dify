@@ -37,7 +37,7 @@ describe("retrieval planner", () => {
       }),
     ).toEqual(
       expect.objectContaining({
-        denseTopK: 0,
+        denseTopK: 40,
         ftsTopK: 0,
         fusionLimit: 0,
         queryLanguage: "mixed-cjk-latin",
@@ -66,7 +66,7 @@ describe("retrieval planner", () => {
       },
       {
         attributes: {
-          denseTopK: 0,
+          denseTopK: 40,
           ftsTopK: 0,
           fusionLimit: 0,
           queryLanguage: "mixed-cjk-latin",
@@ -120,7 +120,7 @@ describe("retrieval planner", () => {
       }),
     ).toEqual(
       expect.objectContaining({
-        denseTopK: 0,
+        denseTopK: 100,
         ftsTopK: 0,
         fusionLimit: 0,
         requestedMode: "research",

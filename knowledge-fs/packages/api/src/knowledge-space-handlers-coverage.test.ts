@@ -402,7 +402,11 @@ describe("knowledge space operator handlers coverage", () => {
     });
 
     const retrievalUpdate = await app.request(`/knowledge-spaces/${spaceId}/product-settings`, {
-      body: JSON.stringify({ expectedRevision: 1, retrieval }),
+      body: JSON.stringify({
+        embedding: { model: "embedding", pluginId: "plugin", provider: "provider" },
+        expectedRevision: 1,
+        retrieval,
+      }),
       headers: json(writeToken),
       method: "PATCH",
     });
@@ -463,7 +467,11 @@ describe("knowledge space operator handlers coverage", () => {
     const conflict = await conflictApp.request(
       `/knowledge-spaces/${conflictSpaceId}/product-settings`,
       {
-        body: JSON.stringify({ expectedRevision: 1, retrieval }),
+        body: JSON.stringify({
+          embedding: { model: "embedding", pluginId: "plugin", provider: "provider" },
+          expectedRevision: 1,
+          retrieval,
+        }),
         headers: json(writeToken),
         method: "PATCH",
       },
