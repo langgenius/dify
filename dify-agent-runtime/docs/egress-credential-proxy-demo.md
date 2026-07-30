@@ -64,7 +64,7 @@ credentials:
       type: http-header
       http_header:
         name: Authorization
-        expr: "Bearer {{.Value}}"
+        expr: 'Bearer {{.Value}}'
         domains:
           - api.tavily.com
 ```
