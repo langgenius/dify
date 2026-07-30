@@ -43,6 +43,14 @@ function formatDateOnly(value: string | undefined, locale: string) {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date)
 }
 
+function ChunkMarker({ label }: { label: string }) {
+  return (
+    <span className="mt-0.75 inline-flex shrink-0 rounded bg-background-section-burn px-1 py-0.5 system-2xs-medium text-text-tertiary">
+      {label}
+    </span>
+  )
+}
+
 export function DocumentChunkDetail({
   document,
   chunks,
@@ -69,6 +77,23 @@ export function DocumentChunkDetail({
   const averageChunkLength = chunks.length ? Math.round(characterCount / chunks.length) : 0
   const childChunkCount = chunks.filter((chunk) => chunk.parentChunkId).length
   const parentChunkCount = chunks.length - childChunkCount
+  const chunkMarkerLabels = useMemo(() => {
+    const parentChunkIds = new Set(
+      chunks.flatMap((chunk) => (chunk.parentChunkId ? [chunk.parentChunkId] : [])),
+    )
+    const positionsByParent = new Map<string, number>()
+    const labels = new Map<string, string>()
+
+    for (const chunk of chunks) {
+      if (parentChunkIds.has(chunk.id)) continue
+      const parentId = chunk.parentChunkId ?? ''
+      const position = (positionsByParent.get(parentId) ?? 0) + 1
+      positionsByParent.set(parentId, position)
+      labels.set(chunk.id, `C-${position}`)
+    }
+
+    return labels
+  }, [chunks])
   const sizeBytes = revision?.sizeBytes ?? document.active?.sizeBytes
   const sourceName =
     typeof document.userMetadata.sourceName === 'string'
@@ -90,30 +115,31 @@ export function DocumentChunkDetail({
     <>
       <article
         aria-busy={isLoadingMore}
-        className="min-h-72 min-w-0 overflow-hidden bg-background-default xl:px-7"
+        className="min-h-72 min-w-0 overflow-hidden bg-background-default xl:px-6"
       >
         {chunks.length ? (
           <div
-            className="max-h-[70vh] space-y-6 overflow-auto px-2 py-1 xl:px-0"
+            className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:px-0"
             data-testid="chunk-content-scroll"
           >
             {chunks.map((chunk) => {
               const content = chunkContentParts(chunk.text)
+              const markerLabel = chunkMarkerLabels.get(chunk.id)
               return (
                 <section
                   key={chunk.id}
                   id={`document-chunk-${chunk.id}`}
-                  className="group scroll-mt-4 rounded-lg px-3 py-4 [contain-intrinsic-size:auto_160px] [content-visibility:auto] xl:px-0"
+                  className="group scroll-mt-4 rounded-lg px-3 pt-2 [contain-intrinsic-size:auto_160px] [content-visibility:auto] first:pt-3 xl:px-0"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="system-sm-semibold wrap-break-word text-text-primary">
-                        {content.heading ||
-                          t(($) => $['newKnowledge.chunkHeading'], { position: chunk.ordinal })}
-                      </h3>
-                      <p className="mt-1 system-2xs-regular text-text-tertiary">
-                        {t(($) => $['newKnowledge.chunkLocation'], { position: chunk.ordinal })}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-1">
+                        {!content.body && markerLabel && <ChunkMarker label={markerLabel} />}
+                        <h3 className="system-sm-semibold wrap-break-word text-text-primary">
+                          {content.heading ||
+                            t(($) => $['newKnowledge.chunkHeading'], { position: chunk.ordinal })}
+                        </h3>
+                      </div>
                     </div>
                     <Button
                       aria-label={tCommon(($) => $['operation.copy'])}
@@ -129,13 +155,16 @@ export function DocumentChunkDetail({
                     </Button>
                   </div>
                   {content.body && (
-                    <Markdown
-                      className="mt-3 body-md-regular wrap-break-word text-text-primary"
-                      content={content.body}
-                    />
+                    <div className="mt-3 flex items-start gap-1">
+                      {markerLabel && <ChunkMarker label={markerLabel} />}
+                      <Markdown
+                        className="min-w-0 flex-1 text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
+                        content={content.body}
+                      />
+                    </div>
                   )}
                   {!chunk.text && (
-                    <p className="mt-3 body-md-regular text-text-tertiary">
+                    <p className="mt-3 text-[13px] leading-5.5 text-text-tertiary">
                       {t(($) => $['newKnowledge.emptyChunk'])}
                     </p>
                   )}

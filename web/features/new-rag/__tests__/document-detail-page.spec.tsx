@@ -655,6 +655,48 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText(/\[Learn more\]\(/)).not.toBeInTheDocument()
   })
 
+  it('labels flat document chunks by their visible order', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({ id: 'first', ordinal: 0, text: 'First chunk' }),
+            chunk({ id: 'second', ordinal: 1, text: 'Second chunk' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const article = screen.getByRole('article')
+    expect(within(article).getByText('C-1')).toBeInTheDocument()
+    expect(within(article).getByText('C-2')).toBeInTheDocument()
+  })
+
+  it('restarts child chunk labels for each parent chunk', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({ id: 'parent-a', ordinal: 0, text: 'Parent A' }),
+            chunk({ id: 'child-a-1', ordinal: 1, parentChunkId: 'parent-a', text: 'Child A1' }),
+            chunk({ id: 'child-a-2', ordinal: 2, parentChunkId: 'parent-a', text: 'Child A2' }),
+            chunk({ id: 'parent-b', ordinal: 3, text: 'Parent B' }),
+            chunk({ id: 'child-b-1', ordinal: 4, parentChunkId: 'parent-b', text: 'Child B1' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const article = screen.getByRole('article')
+    expect(within(article).getAllByText('C-1')).toHaveLength(2)
+    expect(within(article).getByText('C-2')).toBeInTheDocument()
+    expect(within(article).queryByText('C-3')).not.toBeInTheDocument()
+  })
+
   it('expands the parent-child tree without mixing selected chunk metadata into document facts', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
