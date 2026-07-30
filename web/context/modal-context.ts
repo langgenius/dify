@@ -12,7 +12,6 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
@@ -51,7 +50,6 @@ export type ModalContextState = {
   setShowExternalKnowledgeAPIModal: Dispatch<
     SetStateAction<ModalState<CreateExternalAPIReq> | null>
   >
-  setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowOpeningModal: Dispatch<
     SetStateAction<ModalState<
       OpeningStatement & {
@@ -75,7 +73,6 @@ export const ModalContext = createContext<ModalContextState>({
   setShowAnnotationFullModal: noop,
   setShowModelModal: noop,
   setShowExternalKnowledgeAPIModal: noop,
-  setShowModelLoadBalancingModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
   setShowTriggerEventsLimitModal: noop,
