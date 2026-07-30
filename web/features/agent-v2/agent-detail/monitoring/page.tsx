@@ -251,7 +251,7 @@ function AgentMonitoringSourceFilter({
 
 function AgentMonitoringState({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-[316px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-6 py-8 text-center system-sm-regular text-text-tertiary">
+    <div className="flex h-79 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-6 py-8 text-center system-sm-regular text-text-tertiary">
       {children}
     </div>
   )
@@ -264,7 +264,7 @@ function AgentMonitoringSkeletonGrid() {
         <article
           key={index}
           aria-hidden="true"
-          className="flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg"
+          className="flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg"
         >
           <div className="flex h-11 items-end px-6 pb-1">
             <div className="h-4 w-40 rounded-sm bg-text-quaternary opacity-20" />

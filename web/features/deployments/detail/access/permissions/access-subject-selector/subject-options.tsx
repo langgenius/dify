@@ -125,9 +125,9 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
         <SelectionBox checked={isChecked} />
         <ComboboxItemText className="flex grow items-center px-0">
           <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-            <div className="flex size-full items-center justify-center bg-[image:var(--color-access-app-icon-mask-bg)]">
+            <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
               <span
-                className="i-ri-organization-chart h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0"
+                className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
                 aria-hidden="true"
               />
             </div>
@@ -144,7 +144,7 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => onExpandGroup(group)}
       >
-        <span className="px-[3px]">
+        <span className="px-0.75">
           {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
         </span>
         <span className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />
@@ -168,7 +168,7 @@ function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
       <SelectionBox checked={isChecked} />
       <ComboboxItemText className="flex grow items-center px-0">
         <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-          <div className="flex size-full items-center justify-center bg-[image:var(--color-access-app-icon-mask-bg)]">
+          <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
             <Avatar size="xxs" avatar={null} name={member.name} />
           </div>
         </div>

@@ -173,7 +173,7 @@ function AgentSkillPackageUploader({
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
               {file.name}
             </span>
-            <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+            <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
               <span>{t(($) => $['agentDetail.configure.skills.upload.fileType'])}</span>
               <span className="text-text-quaternary">·</span>
               <span>{formatFileSize(file.size)}</span>

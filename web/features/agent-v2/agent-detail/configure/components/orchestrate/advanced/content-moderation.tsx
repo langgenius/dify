@@ -161,7 +161,7 @@ function AgentContentModerationSettingsContent() {
             </div>
             <div className="truncate system-xs-regular text-text-secondary">{providerContent}</div>
           </div>
-          <div className="h-[27px] w-px shrink-0 rotate-12 bg-divider-subtle" />
+          <div className="h-6.75 w-px shrink-0 rotate-12 bg-divider-subtle" />
           <div className="min-w-0">
             <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
               {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}

@@ -48,7 +48,7 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
       <div className="flex grow items-center justify-center p-3 pr-0">
         <WorkflowPreview {...pipelineTemplateInfo.graph} className="overflow-hidden rounded-2xl" />
       </div>
-      <div className="relative flex w-[360px] shrink-0 flex-col">
+      <div className="relative flex w-90 shrink-0 flex-col">
         <button
           type="button"
           className="absolute top-4 right-4 z-10 flex size-8 items-center justify-center"

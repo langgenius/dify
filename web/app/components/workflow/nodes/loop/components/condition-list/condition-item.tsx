@@ -269,7 +269,7 @@ const ConditionItem = ({
                     >
                       <div className="flex h-6 items-center justify-between">
                         <div className="flex h-full items-center">
-                          <Variable02 className="mr-[5px] h-3.5 w-3.5 text-text-accent" />
+                          <Variable02 className="mr-1.25 h-3.5 w-3.5 text-text-accent" />
                           <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
                             {option.name}
                           </SelectItemText>
@@ -304,7 +304,7 @@ const ConditionItem = ({
           !isNotInput &&
           condition.varType !== VarType.number &&
           condition.varType !== VarType.boolean && (
-            <div className="max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
+            <div className="max-h-25 overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
                 disabled={disabled}
                 value={condition.value as string}
@@ -322,7 +322,7 @@ const ConditionItem = ({
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
           condition.varType === VarType.number && (
-            <div className="border-t border-t-divider-subtle px-2 py-1 pt-[3px]">
+            <div className="border-t border-t-divider-subtle px-2 py-1 pt-0.75">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
                 onNumberVarTypeChange={handleUpdateConditionNumberVarType}

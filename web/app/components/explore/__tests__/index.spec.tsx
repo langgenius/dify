@@ -5,7 +5,6 @@ import Explore from '../index'
 
 const mockReplace = vi.fn()
 const mockPush = vi.fn()
-const mockInstalledAppsData = { installed_apps: [] as const }
 type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
 let mockMediaType: MediaTypeValue = MediaType.pc
@@ -26,19 +25,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
     tablet: 'tablet',
     pc: 'pc',
   },
-}))
-
-vi.mock('@/service/use-explore', () => ({
-  useGetInstalledApps: () => ({
-    isPending: false,
-    data: mockInstalledAppsData,
-  }),
-  useUninstallApp: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useUpdateAppPinStatus: () => ({
-    mutateAsync: vi.fn(),
-  }),
 }))
 
 describe('Explore', () => {

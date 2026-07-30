@@ -43,7 +43,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
         render={
           <div
             data-testid="popup-trigger"
-            className="flex h-7 max-w-[240px] items-center rounded-lg bg-components-button-secondary-bg px-2"
+            className="flex h-7 max-w-60 items-center rounded-lg bg-components-button-secondary-bg px-2"
           >
             <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
             <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
@@ -58,10 +58,10 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
       >
         <div
           data-testid="popup-content"
-          className="max-w-[360px] rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]"
+          className="max-w-90 rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]"
         >
           <div className="px-4 pt-3 pb-2">
-            <div className="flex h-[18px] items-center">
+            <div className="flex h-4.5 items-center">
               <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
@@ -80,7 +80,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
               </div>
             </div>
           </div>
-          <div className="max-h-[450px] overflow-y-auto rounded-lg bg-components-panel-bg px-4 py-0.5">
+          <div className="max-h-112.5 overflow-y-auto rounded-lg bg-components-panel-bg px-4 py-0.5">
             <div className="w-full">
               {data.sources.map((source, index) => {
                 const itemKey = source.document_id
@@ -107,7 +107,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                         {showHitInfo && (
                           <Link
                             href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                            className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
+                            className="hidden h-4.5 items-center text-xs text-text-accent group-hover:flex"
                           >
                             {t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })}
                             <i

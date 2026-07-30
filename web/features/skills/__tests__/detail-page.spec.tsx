@@ -1094,6 +1094,66 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('displays an unnamed version by its per-skill sequence number', async () => {
+    const user = userEvent.setup()
+    const version = createSkillVersion({
+      id: 'version-2',
+      version_number: 2,
+      version_name: '',
+      publish_note: 'Release note only',
+    })
+    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-versions', options],
+      queryFn: async () => ({
+        data: [version],
+      }),
+    }))
+    mocks.skillVersionDetailQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-version-detail', options],
+      queryFn: async () => ({
+        ...version,
+        files: [
+          {
+            id: 'version-file-1',
+            path: 'SKILL.md',
+            kind: 'file',
+            storage: 'text',
+            mime_type: 'text/markdown',
+            content:
+              '---\nname: github-actions-failure-debugging\ndescription: Old description.\n---\n# Rollback instructions\n',
+            tool_file_id: null,
+            size: 120,
+            hash: 'version-hash-1',
+          },
+        ],
+      }),
+    }))
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'agentV2.skillManagement.detail.versionHistory' }),
+    )
+    await user.click(await screen.findByRole('button', { name: /#2/ }))
+
+    expect(await screen.findAllByText('#2')).toHaveLength(2)
+
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.skillManagement.detail.restoreVersion' }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.restoreSkillMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            version_id: 'version-2',
+            version_name: '',
+          },
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
   it('inserts a reference file from source editor slash picker', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({

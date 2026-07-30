@@ -161,7 +161,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
             if (!open) hideModal()
           }}
         >
-          <DialogContent className="w-[400px]! max-w-[400px]! overflow-hidden! border-none p-4! text-left align-middle">
+          <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflow' })}
             </DialogTitle>
@@ -236,7 +236,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                   })}
                 >
                   <>
-                    <div className="mb-1.5 text-xs leading-[18px] font-normal text-text-tertiary">
+                    <div className="mb-1.5 text-xs leading-4.5 font-normal text-text-tertiary">
                       {t(($) => $[`${i18nPrefix}.addExtractParameterContent.requiredContent`], {
                         ns: 'workflow',
                       })}
@@ -250,10 +250,10 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                 </Field>
               </div>
               <div className="mt-4 flex justify-end space-x-2">
-                <Button className="w-[95px]!" onClick={hideModal}>
+                <Button className="w-23.75!" onClick={hideModal}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
-                <Button className="w-[95px]!" variant="primary" onClick={handleSave}>
+                <Button className="w-23.75!" variant="primary" onClick={handleSave}>
                   {isAdd
                     ? t(($) => $['operation.add'], { ns: 'common' })
                     : t(($) => $['operation.save'], { ns: 'common' })}

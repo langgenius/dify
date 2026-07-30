@@ -251,13 +251,13 @@ const Install: FC<Props> = ({
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch">
             {!canInstall && (
-              <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+              <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             )}
             <Button
               variant="primary"
-              className="flex min-w-[72px] space-x-0.5"
+              className="flex min-w-18 space-x-0.5"
               disabled={
                 !canInstall ||
                 isInstalling ||

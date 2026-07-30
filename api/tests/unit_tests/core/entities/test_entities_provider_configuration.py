@@ -1156,6 +1156,41 @@ def test_get_custom_model_record_supports_plugin_id_alias() -> None:
     assert result is custom_model_record
 
 
+def test_model_type_db_values_includes_pre_1_15_aliases() -> None:
+    from core.entities.provider_configuration import _model_type_db_values
+
+    assert _model_type_db_values(ModelType.LLM) == ("llm", "text-generation")
+    assert _model_type_db_values(ModelType.TEXT_EMBEDDING) == ("text-embedding", "embeddings")
+    assert _model_type_db_values(ModelType.RERANK) == ("rerank", "reranking")
+    assert _model_type_db_values(ModelType.TTS) == ("tts",)
+
+
+def test_get_custom_model_record_uses_legacy_aware_model_type_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression for #39559: lookups must include pre-1.15 model_type aliases."""
+    import core.entities.provider_configuration as provider_configuration_module
+
+    captured: dict[str, tuple[str, ...]] = {}
+    original = provider_configuration_module._model_type_db_values
+
+    def _capture(model_type: ModelType) -> tuple[str, ...]:
+        values = original(model_type)
+        captured["values"] = values
+        return values
+
+    monkeypatch.setattr(provider_configuration_module, "_model_type_db_values", _capture)
+
+    configuration = _build_provider_configuration(provider_name="langgenius/ollama/ollama")
+    session = Mock()
+    session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(id="legacy-model")
+
+    result = configuration._get_custom_model_record(ModelType.LLM, "llama3", session)
+
+    assert result.id == "legacy-model"
+    assert captured["values"] == ("llm", "text-generation")
+
+
 def test_get_specific_custom_model_credential_success_and_not_found() -> None:
     configuration = _build_provider_configuration()
     configuration.provider.model_credential_schema = _build_secret_model_schema()

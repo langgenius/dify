@@ -104,7 +104,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
     >
       <div
         className={cn(
-          'w-[200px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary',
+          'w-50 shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary',
           editAlignTop && 'pt-1',
         )}
       >

@@ -168,7 +168,8 @@ def test_get_client_handles_full_text_index_creation_error(matrixone_module, mon
 def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
-    monkeypatch.setattr(matrixone_module.uuid, "uuid4", lambda: "generated-uuid")
+    generated_ids = iter(["generated-id-b", "generated-id-c"])
+    monkeypatch.setattr(matrixone_module.uuid, "uuid4", lambda: next(generated_ids))
     docs = [
         Document(page_content="a", metadata={"doc_id": "doc-a", "document_id": "d-1"}),
         Document(page_content="b", metadata={"document_id": "d-2"}),
@@ -177,18 +178,15 @@ def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pyte
 
     ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
 
-    # For current prod code, only docs with metadata get ids, so only two ids
-    assert ids == ["doc-a", "generated-uuid"]
+    assert ids == ["doc-a", "generated-id-b", "generated-id-c"]
     vector.client.insert.assert_called_once()
     insert_kwargs = vector.client.insert.call_args.kwargs
-    # All lists passed to insert should be the same length
     texts = insert_kwargs["texts"]
     embeddings = insert_kwargs["embeddings"]
     metadatas = insert_kwargs["metadatas"]
     ids_insert = insert_kwargs["ids"]
-    assert len(texts) == len(embeddings) == len(metadatas) == len(docs)
-    # ids may be shorter than docs for current prod code, but should match number of docs with metadata
-    assert ids_insert == ["doc-a", "generated-uuid"]
+    assert len(ids_insert) == len(texts) == len(embeddings) == len(metadatas) == len(docs)
+    assert ids_insert == ids
 
 
 def test_delete_and_metadata_methods(matrixone_module):

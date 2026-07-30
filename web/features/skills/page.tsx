@@ -1,6 +1,7 @@
 'use client'
 
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { UIEvent } from 'react'
 import {
   AlertDialog,
@@ -51,8 +52,16 @@ const placeholderCardIds = Array.from(
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const SKILLS_PAGE_SIZE = 20
 
-function skillsListQueryKey() {
-  return consoleQuery.workspaces.current.skills.get.key({ type: 'query' })
+function skillsListQueryKey(type: 'infinite' | 'query') {
+  return consoleQuery.workspaces.current.skills.get.key({ type })
+}
+
+function invalidateSkillListQueries(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: skillsListQueryKey('query') })
+  void queryClient.invalidateQueries({ queryKey: skillsListQueryKey('infinite') })
+  void queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
+  })
 }
 
 function SkillIcon({ icon }: { icon?: string }) {
@@ -237,10 +246,7 @@ function DeleteSkillDialog({
       {
         onSuccess: () => {
           toast.success(t(($) => $['skillManagement.deleteSuccess']))
-          void queryClient.invalidateQueries({ queryKey: skillsListQueryKey() })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-          })
+          invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
         onError: () => {
@@ -313,10 +319,7 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
       {
         onSuccess: () => {
           toast.success(t(($) => $['skillManagement.duplicateSuccess']))
-          void queryClient.invalidateQueries({ queryKey: skillsListQueryKey() })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-          })
+          invalidateSkillListQueries(queryClient)
         },
         onError: () => {
           toast.error(t(($) => $['skillManagement.duplicateFailed']))
@@ -642,13 +645,6 @@ export default function SkillsPage() {
 
   useDocumentTitle(t(($) => $['skillManagement.title']))
 
-  const invalidateSkills = () => {
-    void queryClient.invalidateQueries({ queryKey: skillsListQueryKey() })
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-    })
-  }
-
   const handleCreate = () => {
     if (createMutation.isPending) return
 
@@ -659,7 +655,7 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           toast.success(t(($) => $['skillManagement.createSuccess']))
-          invalidateSkills()
+          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: () => {
@@ -681,7 +677,7 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           toast.success(t(($) => $['skillManagement.importSuccess']))
-          invalidateSkills()
+          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: () => {

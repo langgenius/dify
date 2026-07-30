@@ -1313,7 +1313,8 @@ def test_list_versions_includes_publisher_name_and_version_detail_files() -> Non
         detail = service.get_version(tenant_id=TENANT, skill_id=created["id"], version_id=version["id"])
 
     assert versions["data"][0]["published_by_name"] == "Li Wei"
-    assert versions["data"][0]["version_name"] == "Updated approval threshold"
+    assert versions["data"][0]["version_name"] == ""
+    assert versions["data"][0]["version_number"] == 1
     assert versions["data"][0]["is_latest"] is True
     assert detail["published_by_name"] == "Li Wei"
     assert detail["publish_note"] == "Updated approval threshold"
@@ -1341,6 +1342,34 @@ def test_update_version_renames_version() -> None:
 
     assert updated["version_name"] == "Approval threshold"
     assert updated["is_latest"] is True
+
+
+def test_publish_version_numbers_are_scoped_to_each_skill() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    first_skill = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    second_skill = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="support-sop"))
+
+    first_skill_version = service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=first_skill["id"],
+        payload=SkillPublishPayload(version_name="Finance v1"),
+    )
+    service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=first_skill["id"],
+        payload=SkillPublishPayload(version_name="Finance v2"),
+    )
+    second_skill_version = service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=second_skill["id"],
+        payload=SkillPublishPayload(version_name="Support v1"),
+    )
+
+    assert first_skill_version["version_number"] == 1
+    assert second_skill_version["version_number"] == 1
 
 
 def test_delete_latest_version_promotes_next_latest_then_clears_when_empty() -> None:

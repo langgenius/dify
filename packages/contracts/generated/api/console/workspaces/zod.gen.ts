@@ -321,6 +321,7 @@ export const zPluginReadmeResponse = z.object({
  */
 export const zParserUninstall = z.object({
   plugin_installation_id: z.string(),
+  preserve_credentials: z.boolean().optional().default(false),
 })
 
 /**

@@ -4,7 +4,7 @@ import type { PluginPageTab } from './context'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiBugLine, RiDragDropLine, RiEqualizer2Line } from '@remixicon/react'
+import { RiBookOpenLine, RiBugLine, RiDragDropLine, RiEqualizer2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -13,8 +13,10 @@ import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import { PluginInstallPermissionProvider } from '../install-plugin/components/plugin-install-permission-provider'
@@ -75,6 +77,7 @@ type PluginPanelPermissionProps = {
 }
 const PluginPage = ({ plugins, marketplace }: PluginPageProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { replace } = useRouter()
 
   const {
@@ -170,58 +173,85 @@ const PluginPage = ({ plugins, marketplace }: PluginPageProps) => {
         isPluginsTab ? 'rounded-t-xl bg-components-panel-bg' : 'bg-background-body',
       )}
     >
-      {isPluginsTab && (
-        <div className="sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2">
-          <div className="flex w-full items-center justify-between">
-            <div className="flex-1">
-              <TabSlider
-                value={PLUGIN_PAGE_TABS_MAP.plugins}
-                onChange={(nextTab) => {
-                  if (isPluginPageTab(nextTab)) setActiveTab(nextTab)
-                }}
-                options={options}
-              />
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <PluginTasks />
-              {(canInstallPlugin || isPermissionLoading) && (
-                <InstallPluginDropdown
-                  disabled={isPermissionLoading || !canInstallPlugin}
-                  onSwitchToMarketplaceTab={() => setActiveTab('discover')}
-                />
-              )}
-              {canDebugger && <DebugInfo />}
-              {isPermissionLoading && (
-                <Button
-                  className="h-full w-full p-2 text-components-button-secondary-text"
-                  disabled
-                  loading
+      <div
+        className={cn(
+          'sticky top-0 z-10 flex min-h-15 items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
+          isExploringMarketplace && 'bg-background-body',
+        )}
+      >
+        <div className="flex w-full items-center justify-between">
+          <div className="flex-1">
+            <TabSlider
+              value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
+              onChange={(nextTab) => {
+                if (isPluginPageTab(nextTab)) setActiveTab(nextTab)
+              }}
+              options={options}
+            />
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {isExploringMarketplace && (
+              <>
+                <Link
+                  href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                  target="_blank"
                 >
-                  <RiBugLine className="h-4 w-4" />
-                </Button>
-              )}
-              {(canSetPermissions || canSetPluginPreferences) && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        aria-label={t(($) => $['privilege.title'], { ns: 'plugin' })}
-                        className="group size-full p-2 text-components-button-secondary-text"
-                        disabled={isReferenceSettingLoading || !referenceSetting}
-                        loading={isReferenceSettingLoading}
-                        onClick={setShowPluginSettingModal}
-                      >
-                        <RiEqualizer2Line className="size-4" aria-hidden="true" />
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>{t(($) => $['privilege.title'], { ns: 'plugin' })}</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
+                  <Button variant="ghost" className="text-text-tertiary">
+                    {t(($) => $.requestAPlugin, { ns: 'plugin' })}
+                  </Button>
+                </Link>
+                <Link
+                  href={docLink(
+                    '/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace',
+                  )}
+                  target="_blank"
+                >
+                  <Button className="px-3" variant="secondary-accent">
+                    <RiBookOpenLine className="mr-1 size-4" />
+                    {t(($) => $.publishPlugins, { ns: 'plugin' })}
+                  </Button>
+                </Link>
+                <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
+              </>
+            )}
+            <PluginTasks />
+            {(canInstallPlugin || isPermissionLoading) && (
+              <InstallPluginDropdown
+                disabled={isPermissionLoading || !canInstallPlugin}
+                onSwitchToMarketplaceTab={() => setActiveTab('discover')}
+              />
+            )}
+            {canDebugger && <DebugInfo />}
+            {isPermissionLoading && (
+              <Button
+                className="h-full w-full p-2 text-components-button-secondary-text"
+                disabled
+                loading
+              >
+                <RiBugLine className="h-4 w-4" />
+              </Button>
+            )}
+            {(canSetPermissions || canSetPluginPreferences) && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      aria-label={t(($) => $['privilege.title'], { ns: 'plugin' })}
+                      className="group size-full p-2 text-components-button-secondary-text"
+                      disabled={isReferenceSettingLoading || !referenceSetting}
+                      loading={isReferenceSettingLoading}
+                      onClick={setShowPluginSettingModal}
+                    >
+                      <RiEqualizer2Line className="size-4" aria-hidden="true" />
+                    </Button>
+                  }
+                />
+                <TooltipContent>{t(($) => $['privilege.title'], { ns: 'plugin' })}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
-      )}
+      </div>
       {isPluginsTab && (
         <>
           <PluginInstallPermissionProvider

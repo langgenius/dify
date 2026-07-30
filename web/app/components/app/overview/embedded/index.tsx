@@ -382,10 +382,7 @@ const Embedded = ({
       }}
     >
       <DialogContent
-        className={cn(
-          'flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!',
-          className,
-        )}
+        className={cn('flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!', className)}
       >
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}

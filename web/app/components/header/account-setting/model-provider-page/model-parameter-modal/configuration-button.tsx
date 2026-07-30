@@ -18,10 +18,10 @@ const ConfigurationButton = ({ modelProvider, handleOpenModal }: ConfigurationBu
         handleOpenModal(modelProvider, ConfigurationMethodEnum.predefinedModel, undefined)
       }}
     >
-      <div className="flex items-center justify-center gap-1 px-[3px]">
+      <div className="flex items-center justify-center gap-1 px-0.75">
         {t(($) => $['nodes.agent.notAuthorized'], { ns: 'workflow' })}
       </div>
-      <div className="flex h-[14px] w-[14px] items-center justify-center">
+      <div className="flex h-3.5 w-3.5 items-center justify-center">
         <StatusDot status="warning" />
       </div>
     </Button>

@@ -65,7 +65,7 @@ const VarItem: FC<Props> = ({
         />
         <div
           title={payload.variable}
-          className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
+          className="max-w-32.5 shrink-0 truncate text-[13px] font-medium text-text-secondary"
         >
           {payload.variable}
         </div>
@@ -74,7 +74,7 @@ const VarItem: FC<Props> = ({
             <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
             <div
               title={payload.label as string}
-              className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
+              className="max-w-32.5 truncate text-[13px] font-medium text-text-tertiary"
             >
               {payload.label as string}
             </div>

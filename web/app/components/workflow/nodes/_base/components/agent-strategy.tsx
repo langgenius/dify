@@ -157,7 +157,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               tooltip={def.tooltip && renderI18nObject(def.tooltip)}
               inline
             >
-              <Fieldset className="flex w-[200px] items-center gap-3">
+              <Fieldset className="flex w-50 items-center gap-3">
                 <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
                 <Slider
                   value={value}

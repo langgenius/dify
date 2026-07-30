@@ -335,6 +335,7 @@ describe('SkillsPage', () => {
 
   it('creates a placeholder skill and navigates to its detail page', async () => {
     const user = userEvent.setup()
+    const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     renderSkillsPage()
 
     await user.click(await screen.findByRole('button', { name: 'agentV2.skillManagement.create' }))
@@ -348,11 +349,18 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.createSuccess')
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['skill-tags', { type: 'query' }],
+    })
     expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill')
+    invalidateQueries.mockRestore()
   })
 
   it('imports a package file and navigates to the imported skill', async () => {
     const user = userEvent.setup()
+    const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     const { container } = renderSkillsPage()
 
     const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
@@ -372,7 +380,13 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.importSuccess')
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['skill-tags', { type: 'query' }],
+    })
     expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill')
+    invalidateQueries.mockRestore()
   })
 
   it('duplicates a skill from the card action menu', async () => {
