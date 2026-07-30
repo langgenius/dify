@@ -41,6 +41,10 @@ function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id}`.toLowerCase()
 }
 
+function isSameApp(app: App, selectedApp: App) {
+  return app.id === selectedApp.id
+}
+
 function SourceAppTrigger({ app }: { app?: SourceAppPickerValue }) {
   const { t } = useTranslation('deployments')
 
@@ -144,6 +148,7 @@ export function SourceAppPicker({
   const sourceAppsIsFetching = useAtomValue(createReleaseSourceAppsIsFetchingAtom)
   const sourceAppsIsFetchingNextPage = useAtomValue(createReleaseSourceAppsIsFetchingNextPageAtom)
   const sourceAppsIsLoading = useAtomValue(createReleaseSourceAppsIsLoadingAtom)
+  const selectedApp = apps.find((app) => app.id === value?.id) ?? null
   const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(
     {
       error: sourceAppsError,
@@ -163,8 +168,10 @@ export function SourceAppPicker({
   return (
     <Combobox<App>
       items={apps}
+      value={selectedApp}
       open={!disabled && isShow}
       inputValue={searchText}
+      isItemEqualToValue={isSameApp}
       onOpenChange={(open) => {
         setIsShow(disabled ? false : open)
       }}

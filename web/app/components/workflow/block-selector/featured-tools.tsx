@@ -60,7 +60,7 @@ const FeaturedTools = ({
 }: FeaturedToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedToolPreviewPayload>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<FeaturedToolPreviewPayload>())
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
   const [isCollapsed, setIsCollapsed] = useFeaturedToolsCollapsed()

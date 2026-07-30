@@ -89,10 +89,7 @@ function Popup({
   )
   const { theme } = useTheme()
   const language = useLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<ModelSelectorPreviewPayload>(),
-    [],
-  )
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<ModelSelectorPreviewPayload>())
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
   const { modelProviders } = useProviderContext()
