@@ -174,13 +174,9 @@ class E2BCapacityOptions:
         if min(self.max_concurrency, self.max_inventory, self.pilot_tenant_count) < 1:
             raise ValueError("E2B vendor limits and pilot tenant count must be positive")
         if self.max_concurrency < 20:
-            raise ValueError(
-                "BENCH_E2B_MAX_CONCURRENCY must be at least 20 for the fixed capacity matrix"
-            )
+            raise ValueError("BENCH_E2B_MAX_CONCURRENCY must be at least 20 for the fixed capacity matrix")
         if self.max_inventory < 20:
-            raise ValueError(
-                "BENCH_E2B_MAX_INVENTORY must be at least 20 for the fixed capacity matrix"
-            )
+            raise ValueError("BENCH_E2B_MAX_INVENTORY must be at least 20 for the fixed capacity matrix")
 
 
 def _fake_dependency_cpu_saturated(resources: ResourceSummary) -> bool:
@@ -390,10 +386,7 @@ def run_local_capacity(options: CapacityOptions) -> Path:
             "mode": "local_capacity",
             "target_ref": options.target_ref,
             "reference_valid": not options.quick,
-            "profiles": {
-                profile: environment.model_dump(mode="json")
-                for profile, environment in environments.items()
-            },
+            "profiles": {profile: environment.model_dump(mode="json") for profile, environment in environments.items()},
         },
     )
     blocks_by_scenario: dict[str, list[BlockResult]] = {}
@@ -462,10 +455,7 @@ def run_local_capacity(options: CapacityOptions) -> Path:
         "mode": "local_capacity",
         "target_ref": options.target_ref,
         "reference_valid": not options.quick,
-        "identities": {
-            profile: identity.model_dump(mode="json")
-            for profile, identity in identities.items()
-        },
+        "identities": {profile: identity.model_dump(mode="json") for profile, identity in identities.items()},
         "points": [point.model_dump(mode="json") for point in points],
     }
     _write_json(invocation_dir / "local-capacity.json", local_payload)
@@ -473,10 +463,7 @@ def run_local_capacity(options: CapacityOptions) -> Path:
         invocation_dir / "unit-consumption.json",
         {
             "schema_version": 1,
-            "units": [
-                unit.model_dump(mode="json")
-                for unit in build_unit_consumption(points)
-            ],
+            "units": [unit.model_dump(mode="json") for unit in build_unit_consumption(points)],
         },
     )
     _write_json(
@@ -520,8 +507,7 @@ def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
     invocation_dir = _resolve_capacity_results_dir(root, options)
     local_payload = json.loads((invocation_dir / "local-capacity.json").read_text())
     local_points = [
-        CapacityPoint.model_validate(point)
-        for point in cast(list[object], local_payload.get("points", []))
+        CapacityPoint.model_validate(point) for point in cast(list[object], local_payload.get("points", []))
     ]
     if not local_points:
         raise BenchmarkCommandError(f"no Local capacity points found in {invocation_dir}")
@@ -568,9 +554,7 @@ def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
     if smoke_log.exists():
         shutil.copyfile(smoke_log, invocation_dir / "logs" / f"{smoke_block_id}.log")
     block_position += 1
-    if not smoke_samples or any(
-        not sample.success or sample.cleanup_error for sample in smoke_samples
-    ):
+    if not smoke_samples or any(not sample.success or sample.cleanup_error for sample in smoke_samples):
         _write_e2b_capacity_artifacts(
             invocation_dir=invocation_dir,
             target_ref=options.target_ref,
@@ -583,9 +567,7 @@ def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
             options=options,
             quota=None,
         )
-        raise BenchmarkCommandError(
-            f"real E2B lifecycle contract smoke failed; inspect {invocation_dir}"
-        )
+        raise BenchmarkCommandError(f"real E2B lifecycle contract smoke failed; inspect {invocation_dir}")
     lifecycle_block_count = 1 if options.quick else 2
     lifecycle_waves = 1 if options.quick else 5
     for concurrency in (1, 5, 10, 20):
@@ -640,9 +622,7 @@ def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
                 options=options,
                 quota=None,
             )
-            raise BenchmarkCommandError(
-                f"real E2B c1 lifecycle contract failed; inspect {invocation_dir}"
-            )
+            raise BenchmarkCommandError(f"real E2B c1 lifecycle contract failed; inspect {invocation_dir}")
 
     service_blocks: list[BlockResult] = []
     service_points: list[CapacityPoint] = []
@@ -687,9 +667,7 @@ def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
                     environment_overrides=overrides,
                 )
             except BenchmarkCommandError as exc:
-                raise BenchmarkCommandError(
-                    str(exc).replace(options.api_key, "[redacted]")
-                ) from exc
+                raise BenchmarkCommandError(str(exc).replace(options.api_key, "[redacted]")) from exc
             finally:
                 _redact_secret_in_directory(block_dir, options.api_key)
             point_blocks.append(block)
@@ -728,9 +706,7 @@ def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
                 options=options,
                 quota=None,
             )
-            raise BenchmarkCommandError(
-                f"real E2B c1 service contract failed; inspect {invocation_dir}"
-            )
+            raise BenchmarkCommandError(f"real E2B c1 service contract failed; inspect {invocation_dir}")
 
     e2b_points = [*lifecycle_points, *service_points]
     quota = build_quota_recommendation(
@@ -765,14 +741,10 @@ def _resolve_capacity_results_dir(root: Path, options: E2BCapacityOptions) -> Pa
         results_root = options.results_root or root / "dify-agent" / "benchmarks" / "results"
         pointer = results_root / "latest-capacity.txt"
         if not pointer.is_file():
-            raise BenchmarkCommandError(
-                "Local capacity result is required; run bench-docker-capacity first"
-            )
+            raise BenchmarkCommandError("Local capacity result is required; run bench-docker-capacity first")
         invocation_dir = Path(pointer.read_text().strip()).resolve()
     if not (invocation_dir / "local-capacity.json").is_file():
-        raise BenchmarkCommandError(
-            f"{invocation_dir} does not contain local-capacity.json"
-        )
+        raise BenchmarkCommandError(f"{invocation_dir} does not contain local-capacity.json")
     (invocation_dir / "logs").mkdir(exist_ok=True)
     return invocation_dir
 
@@ -786,22 +758,14 @@ def _verify_capacity_target_matches(
         raise BenchmarkCommandError(f"invalid Local capacity payload in {invocation_dir}")
     identities = local_payload.get("identities")
     agent_identity = identities.get("agent") if isinstance(identities, dict) else None
-    components = (
-        agent_identity.get("components") if isinstance(agent_identity, dict) else None
-    )
+    components = agent_identity.get("components") if isinstance(agent_identity, dict) else None
     agent_component = components.get("agent") if isinstance(components, dict) else None
-    local_commit = (
-        agent_component.get("commit") if isinstance(agent_component, dict) else None
-    )
+    local_commit = agent_component.get("commit") if isinstance(agent_component, dict) else None
     if not isinstance(local_commit, str):
-        raise BenchmarkCommandError(
-            f"Local capacity identity is incomplete in {invocation_dir}"
-        )
+        raise BenchmarkCommandError(f"Local capacity identity is incomplete in {invocation_dir}")
     e2b_commit = identity.components["agent"].commit
     if local_commit != e2b_commit:
-        raise BenchmarkCommandError(
-            f"Local capacity Agent commit {local_commit} differs from E2B target {e2b_commit}"
-        )
+        raise BenchmarkCommandError(f"Local capacity Agent commit {local_commit} differs from E2B target {e2b_commit}")
 
 
 def _verify_capacity_environment_matches(
@@ -812,13 +776,9 @@ def _verify_capacity_environment_matches(
     payload = json.loads(environment_path.read_text())
     profiles = payload.get("profiles") if isinstance(payload, dict) else None
     agent_payload = profiles.get("agent") if isinstance(profiles, dict) else None
-    capability_payload = (
-        profiles.get("capability") if isinstance(profiles, dict) else None
-    )
+    capability_payload = profiles.get("capability") if isinstance(profiles, dict) else None
     if not isinstance(agent_payload, dict) or not isinstance(capability_payload, dict):
-        raise BenchmarkCommandError(
-            f"Local environment fingerprints are incomplete in {environment_path}"
-        )
+        raise BenchmarkCommandError(f"Local environment fingerprints are incomplete in {environment_path}")
     agent_environment = EnvironmentFingerprint.model_validate(agent_payload)
     capability_environment = EnvironmentFingerprint.model_validate(capability_payload)
     mismatches: list[str] = []
@@ -827,10 +787,7 @@ def _verify_capacity_environment_matches(
         capability_environment.harness_hash,
     } != {e2b_environment.harness_hash}:
         mismatches.append("harness hash")
-    if (
-        capability_environment.scenario_manifest_hash
-        != e2b_environment.scenario_manifest_hash
-    ):
+    if capability_environment.scenario_manifest_hash != e2b_environment.scenario_manifest_hash:
         mismatches.append("capability scenario manifest")
     for name, local_value, e2b_value in (
         ("OS", agent_environment.os, e2b_environment.os),
@@ -872,10 +829,7 @@ def _verify_capacity_environment_matches(
         if local_value != e2b_value:
             mismatches.append(name)
     if mismatches:
-        raise BenchmarkCommandError(
-            "Local and E2B capacity evidence is not comparable: "
-            + ", ".join(mismatches)
-        )
+        raise BenchmarkCommandError("Local and E2B capacity evidence is not comparable: " + ", ".join(mismatches))
 
 
 def _run_e2b_lifecycle_block(
@@ -934,9 +888,7 @@ def _run_e2b_lifecycle_block(
         (block_dir / "driver.log").write_text(driver_log)
         result_path = block_dir / "e2b-lifecycle.json"
         if not result_path.is_file():
-            raise BenchmarkCommandError(
-                f"E2B lifecycle driver did not write {result_path}\n{driver_log}"
-            )
+            raise BenchmarkCommandError(f"E2B lifecycle driver did not write {result_path}\n{driver_log}")
         payload = json.loads(result_path.read_text())
         samples_raw = payload.get("samples")
         if not isinstance(samples_raw, list):
@@ -971,9 +923,7 @@ def _write_e2b_capacity_artifacts(
     quota: QuotaRecommendation | None,
 ) -> None:
     reference_valid = bool(
-        local_points
-        and e2b_points
-        and all(point.reference_valid for point in [*local_points, *e2b_points])
+        local_points and e2b_points and all(point.reference_valid for point in [*local_points, *e2b_points])
     )
     _write_json(
         invocation_dir / "e2b-capacity.json",
@@ -990,10 +940,7 @@ def _write_e2b_capacity_artifacts(
         invocation_dir / "unit-consumption.json",
         {
             "schema_version": 1,
-            "units": [
-                unit.model_dump(mode="json")
-                for unit in build_unit_consumption([*local_points, *e2b_points])
-            ],
+            "units": [unit.model_dump(mode="json") for unit in build_unit_consumption([*local_points, *e2b_points])],
         },
     )
     if quota is None:
@@ -1018,9 +965,7 @@ def _write_e2b_capacity_artifacts(
         )
     )
     environment_path = invocation_dir / "environment.json"
-    existing_environment = (
-        json.loads(environment_path.read_text()) if environment_path.is_file() else {}
-    )
+    existing_environment = json.loads(environment_path.read_text()) if environment_path.is_file() else {}
     if not isinstance(existing_environment, dict):
         existing_environment = {}
     profiles = existing_environment.setdefault("profiles", {})
@@ -1045,10 +990,7 @@ def _write_e2b_capacity_artifacts(
             except json.JSONDecodeError:
                 retained_lines.append(line)
                 continue
-            if isinstance(record, dict) and (
-                record.get("kind") == "e2b_lifecycle"
-                or record.get("profile") == "e2b"
-            ):
+            if isinstance(record, dict) and (record.get("kind") == "e2b_lifecycle" or record.get("profile") == "e2b"):
                 continue
             retained_lines.append(line)
     with samples_path.open("w") as output:
@@ -2221,15 +2163,9 @@ def _parse_args() -> tuple[str, RunOptions | CapacityOptions | E2BCapacityOption
             target_ref=args.target_ref,
             api_key=_required_orchestrator_environment("BENCH_E2B_API_KEY"),
             template=_required_orchestrator_environment("BENCH_E2B_TEMPLATE"),
-            max_concurrency=int(
-                _required_orchestrator_environment("BENCH_E2B_MAX_CONCURRENCY")
-            ),
-            max_inventory=int(
-                _required_orchestrator_environment("BENCH_E2B_MAX_INVENTORY")
-            ),
-            pilot_tenant_count=int(
-                _required_orchestrator_environment("BENCH_PILOT_TENANT_COUNT")
-            ),
+            max_concurrency=int(_required_orchestrator_environment("BENCH_E2B_MAX_CONCURRENCY")),
+            max_inventory=int(_required_orchestrator_environment("BENCH_E2B_MAX_INVENTORY")),
+            pilot_tenant_count=int(_required_orchestrator_environment("BENCH_PILOT_TENANT_COUNT")),
             keep_containers=args.keep_containers,
             quick=args.quick,
             capacity_results_dir=args.capacity_results_dir,

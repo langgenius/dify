@@ -244,15 +244,12 @@ def aggregate_e2b_lifecycle_point(
     if not reference_valid:
         reasons.append("quick or smoke measurement is not capacity evidence")
     if block_count < expected_blocks:
-        reasons.append(
-            f"expected {expected_blocks} real E2B lifecycle blocks but found {block_count}"
-        )
+        reasons.append(f"expected {expected_blocks} real E2B lifecycle blocks but found {block_count}")
     if attempted < expected_samples:
         reasons.append(f"expected {expected_samples} lifecycle samples but found {attempted}")
     if not enough_concurrency:
         reasons.append(
-            f"observed max active {observed_max_active} was below 90% of requested concurrency "
-            f"{requested_concurrency}"
+            f"observed max active {observed_max_active} was below 90% of requested concurrency {requested_concurrency}"
         )
     if successful != attempted:
         reasons.append("not every E2B lifecycle operation succeeded")
@@ -294,9 +291,7 @@ def aggregate_e2b_lifecycle_point(
         e2b_first_output_ms=_latency([sample.first_output_ms for sample in samples]),
         e2b_release_pause_ms=_latency([sample.release_pause_ms for sample in samples]),
         e2b_destroy_kill_ms=_latency([sample.destroy_kill_ms for sample in samples]),
-        e2b_active_window_seconds_per_operation=_mean(
-            [sample.active_window_seconds for sample in samples]
-        ),
+        e2b_active_window_seconds_per_operation=_mean([sample.active_window_seconds for sample in samples]),
         e2b_create_calls_per_operation=1,
         e2b_resume_calls_per_operation=1,
         e2b_pause_calls_per_operation=2,
@@ -353,8 +348,7 @@ def aggregate_local_capacity_point(
     successful = sum(block.outcomes.successful_runs for block in blocks)
     terminal = sum(block.outcomes.terminal_runs for block in blocks)
     elapsed_seconds = sum(
-        max(0, block.measurement_ended_at_ns - block.measurement_started_at_ns) / 1_000_000_000
-        for block in blocks
+        max(0, block.measurement_ended_at_ns - block.measurement_started_at_ns) / 1_000_000_000 for block in blocks
     )
     timeout_count = sum(1 for sample in samples if sample.error and "timeout" in sample.error.lower())
     throttle_count = sum(
@@ -362,13 +356,7 @@ def aggregate_local_capacity_point(
         for sample in samples
         if sample.error and any(token in sample.error.lower() for token in ("throttle", "quota", "429"))
     )
-    reasons = list(
-        dict.fromkeys(
-            reason
-            for block in blocks
-            for reason in block.invalid_reasons
-        )
-    )
+    reasons = list(dict.fromkeys(reason for block in blocks for reason in block.invalid_reasons))
     fatal = any(
         token in reason.lower()
         for reason in reasons
@@ -387,16 +375,10 @@ def aggregate_local_capacity_point(
     enough_concurrency = observed >= math.ceil(0.9 * requested_concurrency)
     enough_samples = len(samples) >= minimum_samples
     minimum_samples_per_block = math.ceil(minimum_samples / expected_blocks)
-    blocks_have_enough_samples = all(
-        len(block.samples) >= minimum_samples_per_block for block in blocks
-    )
+    blocks_have_enough_samples = all(len(block.samples) >= minimum_samples_per_block for block in blocks)
     complete = attempted > 0 and successful == attempted and terminal == attempted
     correctness_valid = (
-        len(blocks) >= expected_blocks
-        and enough_samples
-        and blocks_have_enough_samples
-        and complete
-        and not reasons
+        len(blocks) >= expected_blocks and enough_samples and blocks_have_enough_samples and complete and not reasons
     )
     measurement_valid = correctness_valid and enough_concurrency
     if reference_valid and measurement_valid:
@@ -416,19 +398,11 @@ def aggregate_local_capacity_point(
     if not blocks_have_enough_samples:
         reasons.append(f"each block must contain at least {minimum_samples_per_block} samples")
     if not enough_concurrency:
-        reasons.append(
-            f"observed max active {observed} was below 90% of requested concurrency {requested_concurrency}"
-        )
+        reasons.append(f"observed max active {observed} was below 90% of requested concurrency {requested_concurrency}")
     if not complete:
         reasons.append("not every attempted operation completed successfully")
-    agent_resources = [
-        (block.resources.components.get("agent"), block.outcomes.successful_runs)
-        for block in blocks
-    ]
-    redis_resources = [
-        (block.resources.components.get("redis"), block.outcomes.successful_runs)
-        for block in blocks
-    ]
+    agent_resources = [(block.resources.components.get("agent"), block.outcomes.successful_runs) for block in blocks]
+    redis_resources = [(block.resources.components.get("redis"), block.outcomes.successful_runs) for block in blocks]
     return CapacityPoint(
         profile=profile,
         workload=workload,
@@ -499,56 +473,39 @@ def enrich_e2b_service_point(
     if point.profile != "e2b":
         raise ValueError("only E2B service points can be enriched")
     successful_samples = [
-        sample
-        for block in blocks
-        for sample in block.samples
-        if sample.terminal_status == "succeeded"
+        sample for block in blocks for sample in block.samples if sample.terminal_status == "succeeded"
     ]
     successful = len(successful_samples)
     transfer_multiplier = 2 if workload == "file_roundtrip_16m" else 1
     updated = point.model_copy(deep=True)
     updated.workload = workload
     updated.e2b_active_window_seconds_per_operation = _mean(
-        [
-            sample.terminal_e2e_ms / 1000
-            for sample in successful_samples
-            if sample.terminal_e2e_ms is not None
-        ]
+        [sample.terminal_e2e_ms / 1000 for sample in successful_samples if sample.terminal_e2e_ms is not None]
     )
     updated.e2b_create_calls_per_operation = 0
     updated.e2b_resume_calls_per_operation = 1 if successful else 0
     updated.e2b_pause_calls_per_operation = 1 if successful else 0
     updated.e2b_kill_calls_per_operation = 0
     updated.e2b_transfer_bytes_per_operation = (
-        sum(sample.payload_bytes for sample in successful_samples)
-        * transfer_multiplier
-        / successful
+        sum(sample.payload_bytes for sample in successful_samples) * transfer_multiplier / successful
         if successful
         else 0
     )
     updated.e2b_not_found_errors = sum(
         sample.error is not None
-        and any(
-            token in sample.error.lower()
-            for token in ("notfound", "not found", "no longer exists")
-        )
+        and any(token in sample.error.lower() for token in ("notfound", "not found", "no longer exists"))
         for block in blocks
         for sample in block.samples
     )
     updated.e2b_throttle_errors = sum(
-        sample.error is not None
-        and any(token in sample.error.lower() for token in ("throttle", "429"))
+        sample.error is not None and any(token in sample.error.lower() for token in ("throttle", "429"))
         for block in blocks
         for sample in block.samples
     )
     updated.e2b_quota_errors = sum(
-        sample.error is not None and "quota" in sample.error.lower()
-        for block in blocks
-        for sample in block.samples
+        sample.error is not None and "quota" in sample.error.lower() for block in blocks for sample in block.samples
     )
-    updated.e2b_cleanup_errors = sum(
-        not sample.cleanup_valid for block in blocks for sample in block.samples
-    )
+    updated.e2b_cleanup_errors = sum(not sample.cleanup_valid for block in blocks for sample in block.samples)
     return updated
 
 
@@ -640,9 +597,7 @@ def render_capacity_markdown(
                 *(_e2b_point_row(point) for point in e2b_points),
             ]
         )
-        lifecycle_points = [
-            point for point in e2b_points if point.workload == "binding_create_pause"
-        ]
+        lifecycle_points = [point for point in e2b_points if point.workload == "binding_create_pause"]
         if lifecycle_points:
             lines.extend(
                 [
@@ -670,8 +625,7 @@ def render_capacity_markdown(
                 f"- Global Binding inventory: `{quota.global_binding_quota}`",
                 f"- Tenant Binding inventory: `{quota.tenant_binding_quota}`",
                 (
-                    "- Suggested Binding creates/s: "
-                    f"`{quota.suggested_create_operations_per_second:.3f}`"
+                    f"- Suggested Binding creates/s: `{quota.suggested_create_operations_per_second:.3f}`"
                     if quota.suggested_create_operations_per_second is not None
                     else "- Suggested Binding creates/s: `unavailable`"
                 ),
