@@ -8,7 +8,7 @@ from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from extensions.ext_database import db
@@ -68,7 +68,9 @@ class ImagePreviewApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        response = Response(generator, mimetype=mimetype)
+        harden_served_file(response, mime_type=mimetype, filename=None)
+        return response
 
 
 @files_ns.route("/<uuid:file_id>/file-preview")
@@ -134,7 +136,7 @@ class FilePreviewApi(Resource):
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
         response.headers["Content-Type"] = "application/octet-stream"
 
-        enforce_download_for_html(
+        harden_served_file(
             response,
             mime_type=upload_file.mime_type,
             filename=upload_file.name,
@@ -176,4 +178,6 @@ class WorkspaceWebappLogoApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        response = Response(generator, mimetype=mimetype)
+        harden_served_file(response, mime_type=mimetype, filename=None)
+        return response

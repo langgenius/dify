@@ -5,7 +5,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from extensions.ext_database import db
@@ -65,5 +65,5 @@ class AgentDriveArchiveMemberApi(Resource):
         if args.as_attachment and filename:
             encoded_filename = quote(filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
-        enforce_download_for_html(response, mime_type=mime_type, filename=filename, extension="")
+        harden_served_file(response, mime_type=mime_type, filename=filename, extension="")
         return response

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
@@ -85,7 +85,7 @@ class ToolFileApi(Resource):
             encoded_filename = quote(filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
-        enforce_download_for_html(
+        harden_served_file(
             response,
             mime_type=mime_type,
             filename=filename,
