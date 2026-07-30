@@ -5,6 +5,19 @@ import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { KnowledgeSettingsPage } from '../knowledge-settings-page'
 
+const useQueryOptionsMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
+      useQueryOptionsMock(options)
+      return actual.useQuery(options)
+    },
+  }
+})
+
 const membersQueryMock = vi.hoisted(() => ({
   data: undefined as { accounts: [] } | undefined,
   isError: false,
@@ -92,6 +105,7 @@ describe('KnowledgeSettingsPage', () => {
     membersQueryMock.isError = false
     membersQueryMock.isPending = true
     membersQueryMock.refetch.mockClear()
+    useQueryOptionsMock.mockClear()
   })
 
   it('keeps the settings form gated while workspace members are loading', async () => {
@@ -114,5 +128,32 @@ describe('KnowledgeSettingsPage', () => {
 
     expect(membersQueryMock.refetch).toHaveBeenCalledOnce()
     expect(screen.queryByText('settings-form')).not.toBeInTheDocument()
+  })
+
+  it('polls settings while model validation is pending', async () => {
+    membersQueryMock.data = { accounts: [] }
+    membersQueryMock.isPending = false
+    renderPage()
+
+    expect(await screen.findByText('settings-form')).toBeInTheDocument()
+
+    const settingsOptions = useQueryOptionsMock.mock.calls
+      .map(([options]) => options)
+      .find((options) => options.queryKey?.[1] === 'settings') as {
+      refetchInterval: (query: {
+        state: { data?: { configuration_state?: 'active' | 'pending-validation' } }
+      }) => false | number
+    }
+
+    expect(
+      settingsOptions.refetchInterval({
+        state: { data: { configuration_state: 'pending-validation' } },
+      }),
+    ).toBe(2000)
+    expect(
+      settingsOptions.refetchInterval({
+        state: { data: { configuration_state: 'active' } },
+      }),
+    ).toBe(false)
   })
 })

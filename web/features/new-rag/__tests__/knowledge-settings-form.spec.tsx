@@ -343,13 +343,12 @@ describe('KnowledgeSettingsForm', () => {
     })
   })
 
-  it('requires confirmation before disabling API access and preserves unrelated channels', async () => {
+  it('disables API access directly and preserves unrelated channels', async () => {
     const user = userEvent.setup()
     renderForm()
 
     await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }))
-    const dialog = await screen.findByRole('alertdialog')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.saveChanges',
@@ -436,7 +435,7 @@ describe('KnowledgeSettingsForm', () => {
     await user.type(nameInput, 'Camera specs draft')
     await user.click(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
     await user.click(
@@ -487,7 +486,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     const topKInput = screen.getByRole('spinbutton', {
-      name: 'appDebug.datasetConfig.top_k',
+      name: 'dataset.newKnowledge.settings.topKLabel',
     })
     await user.clear(topKInput)
     await user.type(topKInput, '99')
@@ -523,13 +522,13 @@ describe('KnowledgeSettingsForm', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
 
     expect(
       screen.getByRole('button', {
-        name: 'datasetSettings.form.embeddingModel',
+        name: 'dataset.newKnowledge.settings.embeddingModelLabel',
       }),
     ).toBeDisabled()
   })
@@ -559,11 +558,11 @@ describe('KnowledgeSettingsForm', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
     const embeddingSelector = screen.getByRole('button', {
-      name: 'datasetSettings.form.embeddingModel',
+      name: 'dataset.newKnowledge.settings.embeddingModelLabel',
     })
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
@@ -586,6 +585,25 @@ describe('KnowledgeSettingsForm', () => {
         expect.anything(),
       ),
     )
+  })
+
+  it('keeps API access available while model validation is pending', () => {
+    renderForm({
+      settings: {
+        ...settings,
+        configuration_state: 'pending-validation',
+      },
+    })
+
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.apiAgentAccess',
+    })
+
+    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(apiAccessSwitch).toHaveAccessibleDescription(
+      'dataset.newKnowledge.settings.apiAccessDescription',
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows a recovery alert when initial model validation fails', () => {
@@ -656,7 +674,7 @@ describe('KnowledgeSettingsForm', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     ).toBeInTheDocument()
   })
@@ -667,7 +685,7 @@ describe('KnowledgeSettingsForm', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
     await user.click(
@@ -729,7 +747,7 @@ describe('KnowledgeSettingsForm', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
     await user.click(
@@ -785,7 +803,7 @@ describe('KnowledgeSettingsForm', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'common.modelProvider.systemReasoningModel.key',
+        name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
     await user.click(
