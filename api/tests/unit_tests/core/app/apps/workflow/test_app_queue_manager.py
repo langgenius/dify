@@ -42,7 +42,7 @@ class TestWorkflowAppQueueManager:
 
         manager._publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
 
-    def test_listener_close_aborts_unfinished_execution(self):
+    def test_listener_close_does_not_abort_unfinished_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
@@ -61,11 +61,10 @@ class TestWorkflowAppQueueManager:
             assert isinstance(next(listener).event, QueuePingEvent)
             listener.close()
 
-            execution_redis.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
-            graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
-                "task",
-                reason="Client response stream closed before app execution completed",
-            )
+            assert manager.execution_state is AppExecutionState.RUNNING
+            execution_redis.setex.assert_not_called()
+            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            manager._execution_coordinator.mark_terminal()
 
     def test_execution_timeout_aborts_graph_before_stop_event(self):
         with (

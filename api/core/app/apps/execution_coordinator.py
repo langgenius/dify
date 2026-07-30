@@ -32,7 +32,9 @@ class AppExecutionCoordinator:
 
     A resumed workflow creates a new coordinator even when it reuses the stable
     task ID. Listener segments only report lifecycle observations here; they do
-    not send cancellation commands themselves.
+    not send cancellation commands themselves. Response detachment is not an
+    execution cancellation signal: streaming workflow execution may continue in
+    another process and publish durable events for a later subscriber.
     """
 
     def __init__(
@@ -105,7 +107,11 @@ class AppExecutionCoordinator:
         if segment_completed:
             return
 
-        self.request_abort("Client response stream closed before app execution completed")
+        logger.info(
+            "App response listener detached while execution continues task=%s attempt=%s",
+            self._task_id,
+            self._attempt_id,
+        )
 
     def request_abort(self, reason: str) -> bool:
         watchdog: threading.Timer | None = None
@@ -119,6 +125,12 @@ class AppExecutionCoordinator:
         if watchdog is not None:
             watchdog.cancel()
 
+        logger.info(
+            "Aborting app execution task=%s attempt=%s reason=%s",
+            self._task_id,
+            self._attempt_id,
+            reason,
+        )
         self._abort_execution(reason)
         return True
 
