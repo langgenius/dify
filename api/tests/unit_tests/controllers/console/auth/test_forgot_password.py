@@ -88,8 +88,8 @@ class TestForgotPasswordSendEmailApi:
     @patch("controllers.console.auth.forgot_password.extract_remote_ip", return_value="127.0.0.1")
     def test_send_passes_explicit_account_id(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
+        _mock_extract_ip,  # noqa: PT019
+        _mock_is_ip_limit,  # noqa: PT019
         mock_send_email,
         mock_get_account,
         app: Flask,
@@ -102,8 +102,15 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-456"
 
-        wraps_features = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
-        controller_features = SystemFeatureModel(is_allow_register=True)
+        wraps_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
+        controller_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            is_allow_register=True,
+        )
         with (
             patch(
                 "controllers.console.auth.forgot_password.FeatureService.get_system_features",
