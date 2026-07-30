@@ -55,6 +55,7 @@ describe('value-content sections', () => {
     single_chunk_attachment_limit: 10,
     attachment_image_file_size_limit: 2,
     file_size_limit: 15,
+    skill_file_size_limit: 50,
     file_upload_limit: 5,
     workflow_file_upload_limit: 5,
   })
