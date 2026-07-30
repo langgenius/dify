@@ -34,7 +34,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   }
 
   return (
-    <div className="relative max-w-full shrink-0">
+    <div className="relative flex max-w-full shrink-0">
       <SegmentedControl
         className="max-w-full rounded-md p-px"
         aria-label={t(($) => $['newKnowledge.viewLabel'])}
