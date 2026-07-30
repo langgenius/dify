@@ -2,24 +2,21 @@
 
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getPluginLinkInMarketplace } from '../utils'
 
 type MarketplaceDetailDialogProps = {
+  isInstalled: boolean
   open: boolean
   plugin: Plugin
   onOpenChange: (open: boolean) => void
 }
 
 function MarketplaceDetailDialog({
+  isInstalled,
   open,
   plugin,
   onOpenChange,
@@ -31,6 +28,7 @@ function MarketplaceDetailDialog({
   const pluginLabel = plugin.label[locale] ?? plugin.label['en-US'] ?? plugin.name
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
   const detailURL = getPluginLinkInMarketplace(plugin, {
+    installed: String(isInstalled),
     language: locale,
     source: globalThis.location?.origin,
     theme,
@@ -38,16 +36,13 @@ function MarketplaceDetailDialog({
   })
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen)
-      setIsLoading(true)
+    if (!nextOpen) setIsLoading(true)
     onOpenChange(nextOpen)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className="h-[min(800px,calc(100dvh-48px))] max-h-none! w-[min(1200px,calc(100vw-48px))] max-w-none! overflow-hidden! border-0 p-0 shadow-xl"
-      >
+      <DialogContent className="h-[min(800px,calc(100dvh-48px))] max-h-none! w-[min(1200px,calc(100vw-48px))] max-w-none! overflow-hidden! border-0 p-0 shadow-xl">
         <DialogTitle className="sr-only">
           {pluginLabel}
           {' · '}

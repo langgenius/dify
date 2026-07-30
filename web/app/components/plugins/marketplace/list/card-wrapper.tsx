@@ -44,10 +44,8 @@ const CardWrapperComponent = ({
     [plugin.tags, getTagLabel],
   )
   const handleMarketplaceDetailOpenChange = (open: boolean) => {
-    if (open)
-      showMarketplaceDetail()
-    else
-      hideMarketplaceDetail()
+    if (open) showMarketplaceDetail()
+    else hideMarketplaceDetail()
   }
   const showInstallAction = !!showInstallButton && canInstallPlugin
 
@@ -93,6 +91,7 @@ const CardWrapperComponent = ({
           />
         )}
         <MarketplaceDetailDialog
+          isInstalled={isInstalled}
           open={isShowMarketplaceDetail}
           plugin={plugin}
           onOpenChange={handleMarketplaceDetailOpenChange}

@@ -9,8 +9,9 @@ import MarketplaceDetailDialog from '../index'
 vi.mock('../../utils', () => ({
   getPluginLinkInMarketplace: (
     plugin: Plugin,
-    params: { language: string; source?: string; theme?: string; view: string },
-  ) => `about:blank?plugin=${plugin.org}/${plugin.name}&language=${params.language}&source=${params.source}&theme=${params.theme}&view=${params.view}`,
+    params: { installed: string; language: string; source?: string; theme?: string; view: string },
+  ) =>
+    `about:blank?plugin=${plugin.org}/${plugin.name}&installed=${params.installed}&language=${params.language}&source=${params.source}&theme=${params.theme}&view=${params.view}`,
 }))
 
 const plugin = {
@@ -44,18 +45,14 @@ describe('MarketplaceDetailDialog', () => {
 
     render(
       <ThemeProvider forcedTheme="dark">
-        <MarketplaceDetailDialog
-          open
-          plugin={plugin}
-          onOpenChange={onOpenChange}
-        />
+        <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={onOpenChange} />
       </ThemeProvider>,
     )
 
     const frame = screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')
     expect(frame).toHaveAttribute(
       'src',
-      'about:blank?plugin=dify/plugin-a&language=en-US&source=http://localhost:3000&theme=system&view=modal',
+      'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=system&view=modal',
     )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
