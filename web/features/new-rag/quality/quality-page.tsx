@@ -582,7 +582,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       {activeTab === 'bad' &&
         (badCases.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-298 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.reason'])}</span>
@@ -592,7 +592,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {badCases.map((item) => (
               <div
                 key={item.id}
-                className="grid h-12 min-w-298 grid-cols-[624px_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle"
+                className="grid h-12 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle"
               >
                 <span className="truncate system-sm-medium text-text-primary">{item.question}</span>
                 <Status status={item.status} />
@@ -677,7 +677,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </div>
             ))}
             {badCaseQuery.hasNextPage && (
-              <div className="flex min-w-298 justify-center border-t border-divider-subtle py-4">
+              <div className="flex min-w-202 justify-center border-t border-divider-subtle py-4">
                 <Button
                   loading={badCaseQuery.isFetchingNextPage}
                   disabled={badCaseQuery.isFetchingNextPage}
