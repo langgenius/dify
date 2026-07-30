@@ -3,6 +3,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { currentCandidateGrants } from "./candidate-content-authorization";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
+import { ReasoningCapabilityUnavailableError } from "./profile-aware-query-generator";
 import {
   SemanticCandidateClosureUnavailableError,
   SemanticCandidateVisibilityDeniedError,
@@ -174,8 +175,9 @@ export function registerSemanticOperatorHandlers({
 
 function isSemanticConfigurationError(error: unknown): error is Error {
   return (
-    error instanceof Error &&
-    error.message === "Semantic entity extraction requires an LLM provider"
+    error instanceof ReasoningCapabilityUnavailableError ||
+    (error instanceof Error &&
+      error.message === "Semantic entity extraction requires an LLM provider")
   );
 }
 

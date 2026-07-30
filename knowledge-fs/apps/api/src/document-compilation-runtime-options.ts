@@ -58,21 +58,18 @@ import {
   createDocumentRevisionRollbackCoordinator,
   createDocumentSettingsChangeCoordinator,
   createDurableDocumentCompilationJobStateMachine,
-  createEntityExtractionFlow,
-  createExtractionQualityControlFlow,
   createFtsProjectionBuilder,
   createIncrementalReindexer,
   createKnowledgeSpaceProfileMigrationRuntime,
+  createKnowledgeSpaceSemanticIngestionPostProcessor,
   createLegacySpacePublicationBootstrapRuntime,
   createLegacySpacePublicationBootstrapService,
   createPageIndexUpgradeBackfillRuntime,
   createPageIndexUpgradeBackfillService,
-  createRelationExtractionFlow,
   createRepositoryDocumentCompilationCandidateEvaluator,
   createRepositoryDocumentCompilationFingerprintMaterialResolver,
   createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder,
   createRepositoryKnowledgeSpaceProfileMigrationEvaluator,
-  createSemanticIngestionPostProcessor,
   createSourceCompilationPublicationExecutor,
   createVisualEmbeddingProjectionBuilder,
 } from "@knowledge/api";
@@ -146,11 +143,9 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         KnowledgeGatewayOptions,
         | "semanticEntityExtractionMaxEntitiesPerNode"
         | "semanticEntityExtractionMaxNodesPerRun"
-        | "semanticEntityExtractionModel"
-        | "semanticEntityExtractionProvider"
         | "semanticRelationExtractionMaxRelationsPerNode"
-        | "semanticRelationExtractionModel"
-        | "semanticRelationExtractionProvider"
+        | "semanticReasoningMaxOutputTokens"
+        | "semanticReasoningProviderFactory"
       >
     | undefined;
   readonly visual?:
@@ -438,6 +433,7 @@ export function createApiDocumentCompilationRuntime({
       : undefined;
   const semanticPostProcessor = createCandidateSemanticPostProcessor({
     graph: repositories.graph,
+    manifests: repositories.manifests,
     nodes: repositories.nodes,
     semantic,
   });
@@ -620,14 +616,16 @@ export function createApiDocumentCompilationRuntime({
 
 function createCandidateSemanticPostProcessor({
   graph,
+  manifests,
   nodes,
   semantic,
 }: {
   readonly graph?: GraphIndexRepository | undefined;
+  readonly manifests: KnowledgeSpaceManifestRepository;
   readonly nodes: KnowledgeNodeRepository;
   readonly semantic: CreateApiDocumentCompilationRuntimeOptions["semantic"];
 }) {
-  if (!semantic?.semanticEntityExtractionProvider) {
+  if (!semantic?.semanticReasoningProviderFactory) {
     return undefined;
   }
   if (!graph) {
@@ -636,41 +634,16 @@ function createCandidateSemanticPostProcessor({
     );
   }
   const maxNodes = semantic.semanticEntityExtractionMaxNodesPerRun ?? 100;
-  const entityExtraction = createEntityExtractionFlow({
-    maxBatchSize: maxNodes,
-    maxEntitiesPerNode: semantic.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
-    model: semantic.semanticEntityExtractionModel ?? "gpt-4.1-mini",
-    nodes,
-    now: () => new Date().toISOString(),
-    provider: semantic.semanticEntityExtractionProvider,
-  });
-  const extractionQuality = createExtractionQualityControlFlow({
-    maxBatchSize: maxNodes,
-    maxEligibleEntitiesPerNode: semantic.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
-    nodes,
-    now: () => new Date().toISOString(),
-  });
-  const relationExtraction = semantic.semanticRelationExtractionProvider
-    ? createRelationExtractionFlow({
-        maxBatchSize: maxNodes,
-        maxRelationsPerNode: semantic.semanticRelationExtractionMaxRelationsPerNode ?? 50,
-        model:
-          semantic.semanticRelationExtractionModel ??
-          semantic.semanticEntityExtractionModel ??
-          "gpt-4.1-mini",
-        nodes,
-        now: () => new Date().toISOString(),
-        provider: semantic.semanticRelationExtractionProvider,
-      })
-    : undefined;
-
-  return createSemanticIngestionPostProcessor({
-    entityExtraction,
-    extractionQuality,
+  return createKnowledgeSpaceSemanticIngestionPostProcessor({
     graph,
+    manifests,
+    maxEntitiesPerNode: semantic.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
     maxNodesPerArtifact: maxNodes,
+    maxOutputTokens: semantic.semanticReasoningMaxOutputTokens ?? 1_500,
+    maxRelationsPerNode: semantic.semanticRelationExtractionMaxRelationsPerNode ?? 50,
     nodes,
-    ...(relationExtraction ? { relationExtraction } : {}),
+    now: () => new Date().toISOString(),
+    providerFactory: semantic.semanticReasoningProviderFactory,
   });
 }
 

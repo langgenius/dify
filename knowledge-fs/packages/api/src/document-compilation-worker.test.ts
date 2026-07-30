@@ -1098,6 +1098,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
       {
         knowledgeSpaceId: asset.knowledgeSpaceId,
         parseArtifact: expect.objectContaining({ documentAssetId: asset.id }),
+        retrievalProfile: frozenRetrievalProfile,
         tenantId: "tenant-1",
       },
     ]);

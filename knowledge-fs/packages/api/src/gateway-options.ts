@@ -65,6 +65,7 @@ import type {
 import type { KnowledgeSpaceProvisioningRepository } from "./knowledge-space-provisioning-repository";
 import type { IntegratedKnowledgeSpaceProvisioningRepository } from "./knowledge-space-provisioning-repository";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
+import type { KnowledgeSpaceSemanticIngestionPostProcessorOptions } from "./knowledge-space-semantic-ingestion-postprocessor";
 import type { LegacySpacePublicationBootstrapRepository } from "./legacy-space-publication-bootstrap";
 import type { LegacySpacePublicationBootstrapService } from "./legacy-space-publication-bootstrap-runtime";
 import type {
@@ -310,6 +311,13 @@ export interface KnowledgeGatewayOptions {
   semanticRelationExtractionMaxRelationsPerNode?: number;
   semanticRelationExtractionModel?: string;
   semanticRelationExtractionProvider?: RelationExtractionProvider;
+  /**
+   * Profile-scoped provider resolution for automatic entity/relation graph ingestion. This path
+   * uses each space's persisted reasoning model and supersedes the legacy fixed extraction
+   * provider for document ingestion.
+   */
+  semanticReasoningMaxOutputTokens?: number;
+  semanticReasoningProviderFactory?: KnowledgeSpaceSemanticIngestionPostProcessorOptions["providerFactory"];
   semanticCommunitySummaryModel?: string;
   semanticCommunitySummaryProvider?: SemanticCommunitySummaryProvider;
   sessions?: SessionContextRepository;

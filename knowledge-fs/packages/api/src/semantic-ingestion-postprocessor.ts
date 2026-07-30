@@ -1,4 +1,8 @@
-import { type ParseArtifact, PublicationGenerationIdSchema } from "@knowledge/core";
+import {
+  type KnowledgeSpaceRetrievalProfile,
+  type ParseArtifact,
+  PublicationGenerationIdSchema,
+} from "@knowledge/core";
 
 import {
   type EntityExtractionFlow,
@@ -25,6 +29,11 @@ export interface ProcessSemanticIngestionInput {
   readonly knowledgeSpaceId: string;
   readonly parseArtifact: Pick<ParseArtifact, "id">;
   readonly publicationGenerationId?: string | undefined;
+  /**
+   * Exact profile snapshot owned by a durable compilation attempt. Profile-aware processors use
+   * this instead of rereading a mutable manifest while the candidate is being built.
+   */
+  readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { createApiSemanticEntityExtractionOptions } from "./llm-options";
+import {
+  createApiKnowledgeSpaceSemanticIngestionOptions,
+  createApiSemanticEntityExtractionOptions,
+} from "./llm-options";
 
 const PLUGIN_ENV = {
   KNOWLEDGE_ENTITY_EXTRACTION_MODEL: "entity-model",
@@ -10,6 +13,28 @@ const PLUGIN_ENV = {
 } as const;
 
 describe("createApiSemanticEntityExtractionOptions", () => {
+  it("configures profile-scoped graph ingestion without a deployment provider switch", () => {
+    const providerFactory = () => ({ generate: async () => ({ text: "{}" }) });
+
+    expect(
+      createApiKnowledgeSpaceSemanticIngestionOptions({
+        env: {
+          KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE: "25",
+          KNOWLEDGE_ENTITY_EXTRACTION_MAX_NODES_PER_RUN: "10",
+          KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS: "512",
+          KNOWLEDGE_RELATION_EXTRACTION_MAX_RELATIONS_PER_NODE: "12",
+        },
+        providerFactory,
+      }),
+    ).toEqual({
+      semanticEntityExtractionMaxEntitiesPerNode: 25,
+      semanticEntityExtractionMaxNodesPerRun: 10,
+      semanticReasoningMaxOutputTokens: 512,
+      semanticReasoningProviderFactory: providerFactory,
+      semanticRelationExtractionMaxRelationsPerNode: 12,
+    });
+  });
+
   it("keeps semantic entity extraction disabled until Dify model runtime is selected", () => {
     expect(createApiSemanticEntityExtractionOptions({})).toEqual({});
     expect(

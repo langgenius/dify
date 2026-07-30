@@ -521,6 +521,7 @@ export function createDocumentCompilationWorker({
               knowledgeSpaceId: input.knowledgeSpaceId,
               parseArtifact: canonicalArtifact,
               ...(publicationGenerationId ? { publicationGenerationId } : {}),
+              ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
               tenantId: input.tenantId,
             });
             const semanticResult = publicationGenerationId

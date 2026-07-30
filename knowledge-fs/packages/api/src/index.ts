@@ -252,6 +252,7 @@ export * from "./knowledge-space-embedding-resolver";
 export * from "./knowledge-space-handlers";
 export * from "./knowledge-space-manifest-repository";
 export * from "./knowledge-space-outline-summary-enhancer";
+export * from "./knowledge-space-semantic-ingestion-postprocessor";
 export * from "./knowledge-space-overview";
 export * from "./knowledge-space-overview-database-repository";
 export * from "./knowledge-space-overview-handlers";
@@ -524,6 +525,10 @@ import {
   type KnowledgeSpaceRepository,
   createInMemoryKnowledgeSpaceRepository,
 } from "./knowledge-space-repository";
+import {
+  createKnowledgeSpaceSemanticExtractionFlowResolver,
+  createKnowledgeSpaceSemanticIngestionPostProcessor,
+} from "./knowledge-space-semantic-ingestion-postprocessor";
 import { registerLegacySpacePublicationBootstrapHandlers } from "./legacy-space-publication-bootstrap-handlers";
 import { createLocalNodeQueryGenerator } from "./local-node-query-generator";
 import { registerLogicalDocumentHandlers } from "./logical-document-handlers";
@@ -776,6 +781,8 @@ export function createKnowledgeGateway({
   semanticRelationExtractionMaxRelationsPerNode = 50,
   semanticRelationExtractionModel = semanticEntityExtractionModel,
   semanticRelationExtractionProvider,
+  semanticReasoningMaxOutputTokens = 1_500,
+  semanticReasoningProviderFactory,
   semanticCommunitySummaryProvider,
   sessions,
   inlineSourceCredentialsAllowed = true,
@@ -1218,7 +1225,7 @@ export function createKnowledgeGateway({
       ? { summaryProvider: semanticCommunitySummaryProvider }
       : {}),
   });
-  const semanticPostProcessor =
+  const legacySemanticPostProcessor =
     semanticEntityExtraction && semanticExtractionQuality
       ? createSemanticIngestionPostProcessor({
           communityMaterializer: semanticCommunityMaterializer,
@@ -1230,9 +1237,38 @@ export function createKnowledgeGateway({
           ...(semanticRelationExtraction ? { relationExtraction: semanticRelationExtraction } : {}),
         })
       : undefined;
+  const semanticPostProcessor = semanticReasoningProviderFactory
+    ? createKnowledgeSpaceSemanticIngestionPostProcessor({
+        communityMaterializer: semanticCommunityMaterializer,
+        graph: graphRepository,
+        manifests,
+        maxEntitiesPerNode: semanticEntityExtractionMaxEntitiesPerNode,
+        maxNodesPerArtifact: semanticEntityExtractionMaxNodesPerRun,
+        maxOutputTokens: semanticReasoningMaxOutputTokens,
+        maxRelationsPerNode: semanticRelationExtractionMaxRelationsPerNode,
+        nodes,
+        now,
+        providerFactory: semanticReasoningProviderFactory,
+      })
+    : legacySemanticPostProcessor;
+  const semanticExtractionFlowResolver = semanticReasoningProviderFactory
+    ? createKnowledgeSpaceSemanticExtractionFlowResolver({
+        manifests,
+        maxEntitiesPerNode: semanticEntityExtractionMaxEntitiesPerNode,
+        maxNodesPerArtifact: semanticEntityExtractionMaxNodesPerRun,
+        maxOutputTokens: semanticReasoningMaxOutputTokens,
+        maxRelationsPerNode: semanticRelationExtractionMaxRelationsPerNode,
+        nodes,
+        now,
+        providerFactory: semanticReasoningProviderFactory,
+      })
+    : undefined;
   const semanticOperator = createSemanticOperator({
     assets,
     ...(semanticEntityExtraction ? { entityExtraction: semanticEntityExtraction } : {}),
+    ...(semanticExtractionFlowResolver
+      ? { extractionFlowResolver: semanticExtractionFlowResolver }
+      : {}),
     ...(semanticExtractionQuality ? { extractionQuality: semanticExtractionQuality } : {}),
     generatePathId: randomUUID,
     graph: graphRepository,

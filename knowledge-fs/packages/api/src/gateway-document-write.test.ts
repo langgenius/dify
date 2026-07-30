@@ -982,6 +982,31 @@ describe("document write gateway integration", () => {
       slug: "uploads",
       tenantId: "tenant-1",
     });
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    await manifests.create({
+      ...createDefaultKnowledgeSpaceManifest({
+        createdAt: "2026-05-09T10:00:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c49",
+        knowledgeSpaceId: space.id,
+        tenantId: "tenant-1",
+        updatedAt: "2026-05-09T10:00:00.000Z",
+      }),
+      retrievalProfile: {
+        defaultMode: "research",
+        reasoningModel: {
+          model: "space-operator-reasoning",
+          pluginId: "vendor/chat",
+          provider: "vendor",
+        },
+        rerank: { enabled: false },
+        revision: 1,
+        scoreThreshold: { enabled: false, stage: "mode-final" },
+        topK: 5,
+      },
+    });
     await assets.create({
       filename: "Renewal Policy.md",
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
@@ -1007,27 +1032,37 @@ describe("document write gateway integration", () => {
         text: "Acme Renewal Policy requires 95% coverage by 2026 for renewal operations.",
       }),
     ]);
+    const semanticRequests: Array<{ model: string; tenantId?: string | undefined }> = [];
     const app = createKnowledgeGateway({
       adapter: createNodePlatformAdapter({ env: {} }),
       auth: createTestAuthVerifier(),
       documentAssets: assets,
       knowledgeNodes: nodes,
       knowledgeSpaceAccess: await createTestSpaceAccess(space.id),
+      knowledgeSpaceManifests: manifests,
       knowledgeSpaces: spaces,
       semanticEntityExtractionMaxNodesPerRun: 10,
-      semanticEntityExtractionProvider: {
-        extract: async () => ({
-          entities: [
-            {
-              confidence: 0.95,
-              metadata: { canonicalName: "Acme Renewal Policy" },
-              text: "Acme Renewal Policy",
-              type: "policy",
-            },
-          ],
-          metadata: { provider: "test-llm" },
-        }),
-      },
+      semanticReasoningProviderFactory: () => ({
+        generate: async (input) => {
+          semanticRequests.push({ model: input.model, tenantId: input.tenantId });
+
+          return {
+            model: input.model,
+            text: input.messages[0]?.content.includes("graph relations")
+              ? JSON.stringify({ relations: [] })
+              : JSON.stringify({
+                  entities: [
+                    {
+                      canonicalName: "Acme Renewal Policy",
+                      confidence: 0.95,
+                      text: "Acme Renewal Policy",
+                      type: "policy",
+                    },
+                  ],
+                }),
+          };
+        },
+      }),
     });
 
     const topicResponse = await app.request(
@@ -1068,6 +1103,10 @@ describe("document write gateway integration", () => {
       nodesScanned: 1,
       nodesUpdated: 1,
     });
+    expect(semanticRequests).toEqual([
+      { model: "space-operator-reasoning", tenantId: "tenant-1" },
+      { model: "space-operator-reasoning", tenantId: "tenant-1" },
+    ]);
     const entityList = await app.request(
       `/knowledge-spaces/${space.id}/fs/ls?path=/knowledge/by-entity&limit=10`,
       { headers: bearer(readToken) },
@@ -1614,6 +1653,11 @@ describe("document write gateway integration", () => {
       maxEntities: 10,
       maxRelations: 10,
     });
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const semanticModels: string[] = [];
     const app = createKnowledgeGateway({
       adapter: createNodePlatformAdapter({ env: {} }),
       auth: createTestAuthVerifier(),
@@ -1627,6 +1671,7 @@ describe("document write gateway integration", () => {
       embeddingProvider: embeddings.provider,
       generateDocumentAssetId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
       knowledgeNodes: nodes,
+      knowledgeSpaceManifests: manifests,
       knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
         generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         maxListLimit: 10,
@@ -1637,28 +1682,67 @@ describe("document write gateway integration", () => {
       parseArtifacts,
       parser: parser.parser,
       projections,
-      semanticEntityExtractionProvider: {
-        extract: async () => ({
-          entities: [
-            {
-              confidence: 0.97,
-              metadata: { canonicalName: "Acme Corp" },
-              text: "Acme Corp",
-              type: "organization",
-            },
-            { confidence: 0.93, text: "Parsed upload", type: "term" },
-          ],
-          metadata: { provider: "llm-test" },
-        }),
+      semanticReasoningMaxOutputTokens: 256,
+      semanticReasoningProviderFactory: (selection) => {
+        semanticModels.push(selection.model);
+
+        return {
+          kind: "plugin-daemon",
+          generate: async (input) => ({
+            model: input.model,
+            text: input.messages[0]?.content.includes("graph relations")
+              ? JSON.stringify({
+                  relations: [
+                    {
+                      confidence: 0.92,
+                      object: "Parsed upload",
+                      subject: "Acme Corp",
+                      type: "references",
+                    },
+                  ],
+                })
+              : JSON.stringify({
+                  entities: [
+                    {
+                      canonicalName: "Acme Corp",
+                      confidence: 0.97,
+                      text: "Acme Corp",
+                      type: "organization",
+                    },
+                    { confidence: 0.93, text: "Parsed upload", type: "term" },
+                  ],
+                }),
+          }),
+        };
       },
       semanticEntityExtractionMaxNodesPerRun: 10,
       traces,
     });
 
-    await app.request("/knowledge-spaces", {
+    const createdSpace = await app.request("/knowledge-spaces", {
       body: JSON.stringify({ name: "Uploads", slug: "uploads" }),
       headers: { ...bearer(writeToken), "content-type": "application/json" },
       method: "POST",
+    });
+    expect(createdSpace.status).toBe(201);
+    await manifests.update({
+      expectedManifestVersion: 1,
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      patch: {
+        retrievalProfile: {
+          defaultMode: "research",
+          reasoningModel: {
+            model: "space-system-reasoning",
+            pluginId: "vendor/chat",
+            provider: "vendor",
+          },
+          rerank: { enabled: false },
+          revision: 1,
+          scoreThreshold: { enabled: false, stage: "mode-final" },
+          topK: 5,
+        },
+      },
+      tenantId: "tenant-1",
     });
 
     const form = new FormData();
@@ -1766,6 +1850,23 @@ describe("document write gateway integration", () => {
         texts: ["Parsed upload"],
       },
     ]);
+    expect(semanticModels).toEqual(["space-system-reasoning"]);
+    await expect(
+      nodes.listByArtifact({
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        limit: 10,
+        parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45",
+      }),
+    ).resolves.toMatchObject({
+      items: [
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            entityExtraction: expect.objectContaining({ model: "space-system-reasoning" }),
+            relationExtraction: expect.objectContaining({ model: "space-system-reasoning" }),
+          }),
+        }),
+      ],
+    });
     await expect(
       graph.listEntities({
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",

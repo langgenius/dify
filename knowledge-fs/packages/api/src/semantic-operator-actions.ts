@@ -29,6 +29,7 @@ import {
 } from "./knowledge-fs-path-utils";
 import { type KnowledgeNodeRepository, cloneKnowledgeNode } from "./knowledge-node-repository";
 import { type KnowledgePathRepository, cloneKnowledgePath } from "./knowledge-path-repository";
+import type { KnowledgeSpaceSemanticExtractionFlowResolver } from "./knowledge-space-semantic-ingestion-postprocessor";
 import type { RelationExtractionFlow } from "./relation-extraction-flow";
 import {
   SemanticCandidateClosureUnavailableError,
@@ -44,6 +45,7 @@ import {
 export interface SemanticOperatorOptions {
   readonly assets: DocumentAssetRepository;
   readonly entityExtraction?: EntityExtractionFlow | undefined;
+  readonly extractionFlowResolver?: KnowledgeSpaceSemanticExtractionFlowResolver | undefined;
   readonly extractionQuality?: ExtractionQualityControlFlow | undefined;
   readonly generatePathId: () => string;
   readonly graph: GraphIndexRepository;
@@ -118,6 +120,7 @@ type NormalizedExtractSemanticEntitiesInput = ExtractSemanticEntitiesInput & {
 export function createSemanticOperator({
   assets,
   entityExtraction,
+  extractionFlowResolver,
   extractionQuality,
   generatePathId,
   graph,
@@ -159,8 +162,12 @@ export function createSemanticOperator({
       : undefined);
 
   return {
-    extractEntities: async (input) =>
-      extractSemanticEntities({
+    extractEntities: async (input) => {
+      const resolvedFlows = extractionFlowResolver
+        ? await extractionFlowResolver.resolve(input)
+        : undefined;
+
+      return extractSemanticEntities({
         assets,
         graph,
         graphWriter,
@@ -171,10 +178,11 @@ export function createSemanticOperator({
         maxNodesPerRun,
         nodes,
         now,
-        providerFlow: entityExtraction,
-        qualityFlow: defaultQualityFlow,
-        relationFlow: relationExtraction,
-      }),
+        providerFlow: resolvedFlows?.entityExtraction ?? entityExtraction,
+        qualityFlow: resolvedFlows?.extractionQuality ?? defaultQualityFlow,
+        relationFlow: resolvedFlows?.relationExtraction ?? relationExtraction,
+      });
+    },
     materializeCommunities: async (input) =>
       materializeSemanticCommunities({
         communityMaterializer,
@@ -481,6 +489,7 @@ async function extractProviderSemanticEntities({
   const extracted = await providerFlow.extract({
     knowledgeSpaceId: input.knowledgeSpaceId,
     nodeIds,
+    tenantId: input.tenantId,
     traceId: input.traceId,
   });
   const relationNodes = relationFlow
@@ -488,6 +497,7 @@ async function extractProviderSemanticEntities({
         await relationFlow.extract({
           knowledgeSpaceId: input.knowledgeSpaceId,
           nodeIds: extracted.extractedNodes.map((node) => node.id),
+          tenantId: input.tenantId,
           traceId: input.traceId,
         })
       ).extractedNodes

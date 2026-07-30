@@ -59,7 +59,10 @@ import {
 import { createApiEmbeddingOptions } from "./embedding-options";
 import { createApiGraphExpansionOptions } from "./graph-expansion-options";
 import { createApiKnowledgeSpaceProfileBackfillAssembly } from "./knowledge-space-profile-backfill-options";
-import { createApiSemanticEntityExtractionOptions } from "./llm-options";
+import {
+  createApiKnowledgeSpaceSemanticIngestionOptions,
+  createApiSemanticEntityExtractionOptions,
+} from "./llm-options";
 import { createApiMultimodalAnswerOptions } from "./multimodal-answer-options";
 import { createApiMultimodalEnrichmentOptions } from "./multimodal-enrichment-options";
 import { createApiMultimodalOptions } from "./multimodal-options";
@@ -144,6 +147,9 @@ const multimodalEnrichmentOptions = createApiMultimodalEnrichmentOptions({
 const rerankerOptions = createApiRerankerOptions();
 const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions();
 const profileReasoningCapability = createApiProfileReasoningCapability();
+const knowledgeSpaceSemanticIngestionOptions = createApiKnowledgeSpaceSemanticIngestionOptions({
+  providerFactory: profileReasoningCapability.providerFactory,
+});
 const modelCapabilityCatalog = createDifyModelCapabilityCatalog({
   client: createApiDifyModelRuntimeClient(process.env),
 });
@@ -440,7 +446,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
       ? { tasks: repositoryOptions.documentProcessingTasks }
       : {}),
   },
-  semantic: semanticEntityExtractionOptions,
+  semantic: knowledgeSpaceSemanticIngestionOptions,
   ...(visualEmbeddingOptions
     ? { visual: { model: visualEmbeddingOptions.model, provider: visualEmbeddingOptions.provider } }
     : {}),
@@ -820,6 +826,7 @@ const app = createKnowledgeGateway({
   ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
   ...multimodalEnrichmentOptions,
   ...semanticEntityExtractionOptions,
+  ...knowledgeSpaceSemanticIngestionOptions,
   ...websiteCrawlOptions,
   ...onlineDocumentOptions,
   ...onlineDriveOptions,

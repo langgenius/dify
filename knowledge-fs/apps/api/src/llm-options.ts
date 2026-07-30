@@ -31,6 +31,51 @@ export interface ApiSemanticEntityExtractionEnv extends DifyModelRuntimeClientEn
   readonly KNOWLEDGE_COMMUNITY_SUMMARY_MODEL?: string | undefined;
 }
 
+export function createApiKnowledgeSpaceSemanticIngestionOptions({
+  env = process.env,
+  providerFactory,
+}: {
+  readonly env?: ApiSemanticEntityExtractionEnv | undefined;
+  readonly providerFactory: NonNullable<
+    KnowledgeGatewayOptions["semanticReasoningProviderFactory"]
+  >;
+}): Pick<
+  KnowledgeGatewayOptions,
+  | "semanticEntityExtractionMaxEntitiesPerNode"
+  | "semanticEntityExtractionMaxNodesPerRun"
+  | "semanticReasoningMaxOutputTokens"
+  | "semanticReasoningProviderFactory"
+  | "semanticRelationExtractionMaxRelationsPerNode"
+> {
+  return {
+    semanticEntityExtractionMaxEntitiesPerNode: positiveIntegerEnv(
+      env.KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE,
+      50,
+      "KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE",
+    ),
+    semanticEntityExtractionMaxNodesPerRun: positiveIntegerEnv(
+      env.KNOWLEDGE_ENTITY_EXTRACTION_MAX_NODES_PER_RUN,
+      100,
+      "KNOWLEDGE_ENTITY_EXTRACTION_MAX_NODES_PER_RUN",
+    ),
+    semanticReasoningMaxOutputTokens: positiveIntegerEnv(
+      env.KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS,
+      1_500,
+      "KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS",
+    ),
+    semanticReasoningProviderFactory: providerFactory,
+    semanticRelationExtractionMaxRelationsPerNode: positiveIntegerEnv(
+      env.KNOWLEDGE_RELATION_EXTRACTION_MAX_RELATIONS_PER_NODE,
+      50,
+      "KNOWLEDGE_RELATION_EXTRACTION_MAX_RELATIONS_PER_NODE",
+    ),
+  };
+}
+
+/**
+ * Legacy fixed-provider wiring retained for explicit compatibility. Automatic document graph
+ * ingestion and repair actions resolve the owning knowledge space's reasoning model instead.
+ */
 export function createApiSemanticEntityExtractionOptions(
   env: ApiSemanticEntityExtractionEnv = process.env,
 ): Partial<KnowledgeGatewayOptions> {
