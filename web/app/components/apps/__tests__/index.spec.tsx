@@ -107,7 +107,7 @@ vi.mock('../list', () => {
     onCreateLearnDify?: (app: App) => void
     onTryLearnDify?: (params: TryAppSelection) => void
   }) => {
-    const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
+    const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
     return React.createElement(
       'div',
       { 'data-testid': 'apps-list' },
@@ -117,7 +117,7 @@ vi.mock('../list', () => {
         {
           'data-testid': 'open-preview',
           onClick: () =>
-            setShowTryAppPanel(true, {
+            openTryAppPanel({
               appId: mockTemplateApp.app_id,
               app: mockTemplateApp,
             }),
