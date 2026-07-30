@@ -14,6 +14,7 @@ from core.human_input_v2.channel_management import (
     ChannelOperation,
     ChannelOperationResult,
     ChannelProvider,
+    ChannelRef,
     DeleteChannelCommand,
     DingTalkIMCandidate,
     FeishuIMCandidate,
@@ -34,6 +35,13 @@ _OPERATION_CAPABILITY = {
     ChannelOperation.DELETE: ChannelCapability.DELETE,
 }
 
+_CHANNEL_PRODUCT_ORDER = {
+    ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND): 0,
+    ChannelRef(ChannelKind.IM, ChannelProvider.SLACK): 1,
+    ChannelRef(ChannelKind.IM, ChannelProvider.FEISHU): 2,
+    ChannelRef(ChannelKind.IM, ChannelProvider.DING_TALK): 3,
+}
+
 
 class HumanInputChannelManagementService:
     """Dispatch trusted commands without observing credentials or persistence."""
@@ -42,7 +50,12 @@ class HumanInputChannelManagementService:
         self._registry = registry
 
     def list_channels(self, context: HumanInputChannelManagementContext) -> ChannelCollectionResult:
-        handlers = self._registry.handlers()
+        handlers = tuple(
+            sorted(
+                self._registry.handlers(),
+                key=lambda handler: _CHANNEL_PRODUCT_ORDER.get(handler.ref, len(_CHANNEL_PRODUCT_ORDER)),
+            )
+        )
         if not handlers:
             return ChannelCollectionResult(())
         channels = []

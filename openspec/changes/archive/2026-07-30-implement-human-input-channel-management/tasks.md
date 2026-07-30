@@ -44,7 +44,7 @@
 
 ## 6. Validate And Handoff
 
-- [ ] 6.1 **Deferred to the console API change:** Rewire future-facing Email provider management consumers to the common facade while preserving compatibility imports required by current stubs.
+- [x] 6.1 Record future-facing controller rewiring as follow-up change `implement-human-input-channel-management-api` and preserve compatibility imports until that change lands.
 - [x] 6.2 Audit the implementation to confirm no schema migration, generic Channel repository, concrete provider client, frontend, controller or runtime delivery change entered this change.
 - [x] 6.3 Run focused common-channel, Email domain/handler, Email repository, encryption and IM delegation tests; document PostgreSQL suites that remain CI-only.
 - [x] 6.4 Run backend formatting, linting and type checking for every affected file and resolve introduced failures.
