@@ -258,9 +258,11 @@ def test_fake_signed_file_roundtrip_matches_capability_ledger() -> None:
             )
             download_url = download_request.json()["data"]["download_url"]
             downloaded = await client.get(urlparse(download_url).path)
+            released = await client.get(urlparse(download_url).path)
             ledger = FakeDependencyLedger.model_validate((await client.get("/__bench/ledgers/file-run")).json())
 
         assert downloaded.content == payload
+        assert released.status_code == 404
         assert validate_capability_ledger(ledger=ledger, scenario=scenario_value)
 
     import asyncio

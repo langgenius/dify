@@ -126,7 +126,7 @@ def test_probe_redacts_secret_and_balances_active_count_when_acquire_fails() -> 
         )
     )
 
-    assert observed_max_active == 1
+    assert observed_max_active == 0
     assert all(not sample.success for sample in samples)
     assert all(sample.throttle for sample in samples)
     assert all(sample.quota for sample in samples)

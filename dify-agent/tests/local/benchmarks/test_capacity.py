@@ -184,6 +184,8 @@ def test_quota_rejects_quick_or_smoke_reference_points() -> None:
     assert recommendation.reference_valid is False
     assert recommendation.status == "no_launch_recommendation"
     assert recommendation.launch_global_concurrency is None
+    assert recommendation.global_binding_quota is None
+    assert recommendation.tenant_binding_quota is None
     assert "quick or smoke" in " ".join(recommendation.reasons)
 
 
@@ -400,6 +402,7 @@ def test_e2b_warm_binding_units_exclude_pool_setup_and_count_file_transfer_both_
     assert enriched.e2b_pause_calls_per_operation == 1
     assert enriched.e2b_kill_calls_per_operation == 0
     assert enriched.e2b_transfer_bytes_per_operation == 32 * 1024 * 1024
+    assert enriched.e2b_active_window_seconds_per_operation is None
 
 
 def test_e2b_lifecycle_point_requires_two_clean_five_wave_blocks() -> None:
