@@ -19,6 +19,9 @@ const EMBEDDABLE_PATH_SEGMENTS = [
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
 const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+const MARKETPLACE_FRAME_ORIGIN = env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
+  ? new URL(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX).origin
+  : ''
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
@@ -75,6 +78,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
+    frame-src 'self' ${scheme_source} ${whiteList} ${MARKETPLACE_FRAME_ORIGIN};
     img-src * data: blob:;
     font-src 'self';
     object-src 'none';
