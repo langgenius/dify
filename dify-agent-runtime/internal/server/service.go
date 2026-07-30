@@ -61,10 +61,8 @@ func (s *Service) Initialize() error {
 	if err := s.PrepareRuntime(); err != nil {
 		return err
 	}
-	if s.config.EgressProxyEnabled {
-		if err := s.initEgressProxy(); err != nil {
-			return fmt.Errorf("egress proxy: %w", err)
-		}
+	if err := s.initEgressProxy(); err != nil {
+		return fmt.Errorf("egress proxy: %w", err)
 	}
 	if err := s.Reconcile(); err != nil {
 		return err

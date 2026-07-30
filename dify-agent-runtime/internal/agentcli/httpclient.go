@@ -49,7 +49,7 @@ func NewHTTPClientWithTimeout(env *Environment, timeout time.Duration) *HTTPClie
 // "http keep-alive target changed" failures.
 func noKeepAliveTransport() *http.Transport {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.DisableKeepAlives = true
+	//transport.DisableKeepAlives = true
 	return transport
 }
 

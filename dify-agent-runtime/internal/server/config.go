@@ -57,8 +57,6 @@ type Config struct {
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
 
-	// Egress proxy settings
-	EgressProxyEnabled              bool
 	EgressProxyAddr                 string
 	EgressProxyCADir                string
 	EgressProxyUpstream             string
