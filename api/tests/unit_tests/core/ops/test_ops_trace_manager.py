@@ -312,9 +312,7 @@ def test_decrypted_config_reads_real_trace_and_app_rows(
     assert OpsTraceManager.get_decrypted_tracing_config(app.id, "missing") is None
 
     null_config_app = _app(database, app_id="app-null-config")
-    database.add(
-        TraceAppConfig(app_id=null_config_app.id, tracing_provider="dummy", tracing_config=None)
-    )
+    database.add(TraceAppConfig(app_id=null_config_app.id, tracing_provider="dummy", tracing_config=None))
     database.commit()
     with pytest.raises(ValueError, match="Tracing config cannot be None"):
         OpsTraceManager.get_decrypted_tracing_config(null_config_app.id, "dummy")
