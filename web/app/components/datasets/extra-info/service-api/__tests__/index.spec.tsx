@@ -35,9 +35,7 @@ describe('ServiceApi', () => {
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }))
 
     expect(screen.getByText('secret key modal')).toBeInTheDocument()
   })
@@ -59,9 +57,7 @@ describe('ServiceApi', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
 
-    expect(
-      screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
     ).toBeDisabled()

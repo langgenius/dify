@@ -14,7 +14,12 @@ type CardProps = {
   canManageSecretKey?: boolean
 }
 
-const Card = ({ apiBaseUrl, onOpenSecretKeyModal, onOpenAddModal, canManageSecretKey = false }: CardProps) => {
+const Card = ({
+  apiBaseUrl,
+  onOpenSecretKeyModal,
+  onOpenAddModal,
+  canManageSecretKey = false,
+}: CardProps) => {
   const { t } = useTranslation()
 
   const apiReferenceUrl = useDatasetApiAccessUrl()

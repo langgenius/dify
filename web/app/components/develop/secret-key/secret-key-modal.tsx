@@ -177,7 +177,10 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
                       {appId ? generateToken(api.token) : api.token}
                     </div>
                     {!appId && (
-                      <div className="min-w-0 flex-[1.3] truncate px-3" title={getScopeLabel(api.dataset_ids)}>
+                      <div
+                        className="min-w-0 flex-[1.3] truncate px-3"
+                        title={getScopeLabel(api.dataset_ids)}
+                      >
                         {getScopeLabel(api.dataset_ids)}
                       </div>
                     )}

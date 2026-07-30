@@ -28,7 +28,16 @@ describe('AddApiKeyModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseInfiniteDatasets.mockReturnValue({
-      data: { pages: [{ data: [{ id: 'kb-1', name: 'KB One' }, { id: 'kb-2', name: 'KB Two' }] }] },
+      data: {
+        pages: [
+          {
+            data: [
+              { id: 'kb-1', name: 'KB One' },
+              { id: 'kb-2', name: 'KB Two' },
+            ],
+          },
+        ],
+      },
     })
   })
 
@@ -37,7 +46,9 @@ describe('AddApiKeyModal', () => {
 
     expect(screen.getByText('appApi.apiKeyModal.addTitle')).toBeInTheDocument()
     // The specific-scope select area is hidden until "Specific" is chosen.
-    expect(screen.queryByText('appApi.apiKeyModal.noKnowledgeBasesSelected')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('appApi.apiKeyModal.noKnowledgeBasesSelected'),
+    ).not.toBeInTheDocument()
   })
 
   it('creates an unscoped key with an empty dataset_ids list', async () => {
