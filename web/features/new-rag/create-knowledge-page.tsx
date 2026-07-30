@@ -489,7 +489,7 @@ export function CreateKnowledgePage() {
                     />
                     <StartMode
                       value="source"
-                      icon="i-custom-vender-solid-development-api-connection-mod"
+                      icon="i-custom-public-new-rag-connect-source"
                       selected={startMode === 'source'}
                       title={t(($) => $['newKnowledge.connectSource'])}
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
