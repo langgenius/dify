@@ -110,24 +110,14 @@ def _persist_message(
     return message
 
 
-def _persist_workflow(database: Session, app: App, *, node_type: str) -> Workflow:
+def _persist_workflow(database: Session, app: App, *, node_type: str | None) -> Workflow:
+    nodes = [] if node_type is None else [{"id": "node", "data": {"type": node_type}}]
     workflow = Workflow.new(
         tenant_id=app.tenant_id,
         app_id=app.id,
         type="workflow",
         version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(
-            {
-                "graph": {
-                    "nodes": [
-                        {
-                            "id": "node",
-                            "data": {"type": node_type},
-                        }
-                    ]
-                }
-            }
-        ),
+        graph=json.dumps({"graph": {"nodes": nodes}}),
         features="{}",
         created_by=str(uuid4()),
         environment_variables=[],
@@ -145,6 +135,7 @@ def _persist_node_execution(
     workflow: Workflow,
     *,
     agent_log: list[dict[str, object]],
+    inputs: dict[str, object] | None = None,
 ) -> WorkflowNodeExecutionModel:
     execution = WorkflowNodeExecutionModel(
         id=str(uuid4()),
@@ -159,7 +150,7 @@ def _persist_node_execution(
         node_id="node",
         node_type="llm",
         title="LLM",
-        inputs=json.dumps({}),
+        inputs=json.dumps(inputs or {}),
         process_data=None,
         outputs=None,
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -577,13 +568,11 @@ class TestLLMGenerator:
     def test_instruction_modify_legacy_without_last_run_uses_real_empty_query(
         self,
         database: Session,
-        mock_model_instance: MagicMock,
+        recording_model_instance: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
-        response = MagicMock()
-        response.message.get_text_content.return_value = '{"modified": "prompt"}'
-        mock_model_instance.invoke_llm.return_value = response
+        recording_model_instance.invoke_llm.return_value = _llm_result('{"modified": "prompt"}')
 
         result = LLMGenerator.instruction_modify_legacy(
             app.tenant_id,
@@ -595,7 +584,7 @@ class TestLLMGenerator:
         )
 
         assert result == {"modified": "prompt"}
-        user_payload = json.loads(mock_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        user_payload = json.loads(recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
         assert "null" in user_payload["instruction"]
         assert "current_val" in user_payload["instruction"]
 
@@ -640,10 +629,24 @@ class TestLLMGenerator:
         assert "older question" not in json.dumps(user_payload)
         assert "other tenant question" not in json.dumps(user_payload)
 
-    def test_instruction_modify_workflow_app_not_found(self, database: Session):
+    def test_instruction_modify_workflow_app_not_found(
+        self,
+        database: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        model_config_entity: ModelConfig,
+    ):
+        workflow_service = WorkflowService(sqlite_session_factory)
+
         with pytest.raises(ValueError, match="App not found"):
             LLMGenerator.instruction_modify_workflow(
-                str(uuid4()), str(uuid4()), "node", "current", "instruction", MagicMock(), "ideal", MagicMock()
+                str(uuid4()),
+                str(uuid4()),
+                "node",
+                "current",
+                "instruction",
+                model_config_entity,
+                "ideal",
+                workflow_service,
             )
 
     def test_instruction_modify_workflow_rejects_app_from_another_tenant(
@@ -667,10 +670,14 @@ class TestLLMGenerator:
                 workflow_service,
             )
 
-    def test_instruction_modify_workflow_requires_draft_workflow(self, database: Session):
+    def test_instruction_modify_workflow_requires_draft_workflow(
+        self,
+        database: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        model_config_entity: ModelConfig,
+    ):
         app = _persist_app(database)
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = None
+        workflow_service = WorkflowService(sqlite_session_factory)
 
         with pytest.raises(ValueError, match="Workflow not found"):
             LLMGenerator.instruction_modify_workflow(
@@ -679,36 +686,28 @@ class TestLLMGenerator:
                 "node",
                 "current",
                 "instruction",
-                MagicMock(),
+                model_config_entity,
                 "ideal",
                 workflow_service,
             )
 
-        passed_session = workflow_service.get_draft_workflow.call_args.kwargs["session"]
-        assert isinstance(passed_session, Session)
-        assert passed_session.get_bind() is database.get_bind()
-
     def test_instruction_modify_workflow_uses_last_run(
         self,
         database: Session,
-        mock_model_instance: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        recording_model_instance: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
-        workflow = MagicMock(graph_dict={"graph": {"nodes": [{"id": "node", "data": {"type": "llm"}}]}})
-        last_run = MagicMock(
-            node_type="llm",
-            status="succeeded",
-            error="",
-            execution_metadata_dict={"agent_log": [{"status": "s", "error": "", "data": {"step": 1}}]},
+        workflow = _persist_workflow(database, app, node_type="llm")
+        _persist_node_execution(
+            database,
+            app,
+            workflow,
+            inputs={"input": "value"},
+            agent_log=[{"status": "s", "error": "", "data": {"step": 1}}],
         )
-        last_run.load_full_inputs.return_value = {"input": "value"}
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = workflow
-        workflow_service.get_node_last_run.return_value = last_run
-        response = MagicMock()
-        response.message.get_text_content.return_value = '{"modified": "workflow"}'
-        mock_model_instance.invoke_llm.return_value = response
+        workflow_service = WorkflowService(sqlite_session_factory)
 
         result = LLMGenerator.instruction_modify_workflow(
             app.tenant_id,
@@ -722,11 +721,7 @@ class TestLLMGenerator:
         )
 
         assert result == {"modified": "workflow"}
-        passed_session, passed_storage = last_run.load_full_inputs.call_args.args
-        assert isinstance(passed_session, Session)
-        assert passed_session.get_bind() is database.get_bind()
-        assert passed_storage is llm_generator_module.storage
-        user_payload = json.loads(mock_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        user_payload = json.loads(recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
         assert user_payload["last_run"]["inputs"] == {"input": "value"}
         assert user_payload["last_run"]["agent_log"][0]["data"] == {"step": 1}
 
@@ -758,26 +753,24 @@ class TestLLMGenerator:
         assert user_payload["last_run"]["agent_log"] == []
 
     @pytest.mark.parametrize(
-        "graph",
+        "node_type",
         [
-            {"graph": {"nodes": [{"id": "node", "data": {"type": "code"}}]}},
-            {"graph": {"nodes": []}},
+            "code",
+            None,
         ],
     )
     def test_instruction_modify_workflow_falls_back_without_last_run(
         self,
         database: Session,
-        mock_model_instance: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        recording_model_instance: Mock,
         model_config_entity: ModelConfig,
-        graph: dict,
+        node_type: str | None,
     ):
         app = _persist_app(database)
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = MagicMock(graph_dict=graph)
-        workflow_service.get_node_last_run.return_value = None
-        response = MagicMock()
-        response.message.get_text_content.return_value = '{"modified": "fallback"}'
-        mock_model_instance.invoke_llm.return_value = response
+        _persist_workflow(database, app, node_type=node_type)
+        workflow_service = WorkflowService(sqlite_session_factory)
+        recording_model_instance.invoke_llm.return_value = _llm_result('{"modified": "fallback"}')
 
         result = LLMGenerator.instruction_modify_workflow(
             app.tenant_id,
