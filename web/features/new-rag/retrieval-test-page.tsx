@@ -69,13 +69,14 @@ function useClock(enabled: boolean) {
 function ScorePill({ score }: { score: number }) {
   const normalized = Math.max(0, Math.min(1, score))
   return (
-    <span className="bg-components-badge-bg relative inline-flex h-6 min-w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-components-panel-border px-2 system-xs-semibold text-text-secondary">
-      Score {normalized.toFixed(2)}
+    <span className="relative inline-flex h-5 min-w-5 shrink-0 items-center justify-center gap-0.75 overflow-hidden rounded-md border border-components-progress-bar-border bg-util-colors-blue-brand-blue-brand-50 px-1.25 text-util-colors-blue-brand-blue-brand-700">
       <span
         aria-hidden
-        className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-util-colors-blue-blue-500"
-        style={{ transform: `scaleX(${normalized})` }}
+        className="absolute inset-y-0 left-0 border-r-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
+        style={{ width: `${normalized * 100}%` }}
       />
+      <span className="relative system-2xs-medium">Score</span>
+      <span className="relative system-xs-semibold">{normalized.toFixed(2)}</span>
     </span>
   )
 }
@@ -123,50 +124,63 @@ function EvidenceCard({
     : undefined
 
   return (
-    <article className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
-      <div className="flex items-start gap-3 px-4 pt-4">
-        <h3 className="min-w-0 flex-1 truncate system-md-semibold text-text-primary">
-          {evidence.title || `Chunk ${index + 1}`}
+    <article className="overflow-hidden rounded-xl bg-components-panel-bg">
+      <div className="flex items-center gap-2 px-3 pt-3">
+        <h3 className="flex min-w-0 flex-1 items-center gap-0.5 truncate system-xs-medium text-text-tertiary">
+          <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
+          <span className="truncate">{evidence.title || `Chunk ${index + 1}`}</span>
         </h3>
         {evidence.score !== undefined && <ScorePill score={evidence.score} />}
       </div>
-      <p className="px-4 pt-2 pb-3 body-sm-regular whitespace-pre-wrap text-text-secondary">
-        {evidence.text}
+      <p className="px-3 pt-1 pb-2 body-sm-regular text-text-secondary">
+        <span className="line-clamp-2 whitespace-pre-wrap">{evidence.text}</span>
       </p>
       {evidence.images.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto px-4 pb-3">
-          {evidence.images.map((image) => (
-            <img
-              key={image}
-              src={image}
-              alt=""
-              className="size-20 shrink-0 rounded-lg border border-components-panel-border object-cover"
-            />
+        <div className="flex gap-1 overflow-hidden px-3 py-1">
+          {evidence.images.slice(0, 4).map((image) => (
+            <span key={image} className="flex size-8 shrink-0 items-center justify-center p-0.5">
+              <img
+                src={image}
+                alt=""
+                className="size-7.5 border-2 border-effects-image-frame object-cover shadow-xs"
+              />
+            </span>
           ))}
+          {evidence.images.length > 4 && (
+            <span className="flex h-8 shrink-0 items-center px-0.5 py-1">
+              <span className="flex size-7 items-center justify-center rounded-sm border-[1.5px] border-components-panel-bg bg-divider-regular system-xs-regular text-text-tertiary">
+                +{evidence.images.length - 4}
+              </span>
+            </span>
+          )}
         </div>
       )}
-      <footer className="flex min-h-11 items-center gap-2 border-t border-divider-subtle px-4 text-text-tertiary">
+      <footer className="flex min-h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
         <span
           aria-hidden
           className="i-ri-file-pdf-2-fill size-4 shrink-0 text-util-colors-red-red-500"
         />
-        <span className="min-w-0 flex-1 truncate system-xs-medium">
+        <span className="min-w-0 truncate system-sm-regular text-text-secondary">
           {documentReference?.title ?? evidence.documentName ?? evidence.title}
         </span>
         {evidence.revision && (
-          <span className="shrink-0 system-xs-regular">{evidence.revision}</span>
+          <span className="shrink-0 rounded-xs bg-divider-subtle px-1.25 py-px system-xs-regular text-text-tertiary">
+            {evidence.revision}
+          </span>
         )}
         {evidence.page !== undefined && (
-          <span className="shrink-0 system-xs-regular">
+          <span className="shrink-0 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.retrievalTest.page'], { page: evidence.page })}
           </span>
         )}
+        <span className="min-w-0 flex-1" />
         {openHref && (
           <Link
             href={openHref}
-            className="ml-1 shrink-0 rounded-md px-1 py-0.5 system-xs-semibold text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             {t(($) => $['newKnowledge.retrievalTest.open'])}
+            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
           </Link>
         )}
       </footer>
@@ -276,22 +290,24 @@ function QualityActions({
     )
   }
   return (
-    <div className="flex min-h-16 items-center justify-end gap-2 border-t border-divider-subtle px-5">
+    <div className="flex shrink-0 items-center justify-end gap-3 border-t border-divider-regular pt-4 pb-1">
       <Button
         disabled={pending}
         loading={pending}
         variant={noResults ? 'primary' : 'ghost'}
         onClick={() => void onDecision('bad-case')}
       >
+        <span aria-hidden className="mr-1 i-ri-thumb-down-line size-4" />
         {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
       </Button>
       {!noResults && (
         <Button
           disabled={pending}
           loading={pending}
-          variant="primary"
+          variant="secondary"
           onClick={() => void onDecision('golden')}
         >
+          <span aria-hidden className="mr-1 i-ri-thumb-up-line size-4" />
           {t(($) => $['newKnowledge.retrievalTest.keepGoldenQuestion'])}
         </Button>
       )}
@@ -436,10 +452,12 @@ function ResearchProcess({
 
 function RecordButton({
   active,
+  index,
   onClick,
   record,
 }: {
   active: boolean
+  index: number
   onClick: () => void
   record: RetrievalTestRecord
 }) {
@@ -449,31 +467,27 @@ function RecordButton({
       type="button"
       aria-pressed={active}
       className={cn(
-        'flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        active && 'bg-state-accent-hover',
+        'flex h-16 w-full items-center px-3 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:rounded-lg focus-visible:ring-1 focus-visible:ring-state-accent-solid/30 focus-visible:ring-inset',
+        index > 1 && 'border-t border-divider-subtle',
+        active &&
+          'rounded-lg bg-state-accent-hover ring-1 ring-state-accent-solid/30 ring-inset hover:bg-state-accent-hover',
       )}
       onClick={onClick}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'mt-0.5 size-4 shrink-0',
-          record.status === 'running' &&
-            'i-ri-loader-4-line animate-spin text-text-accent motion-reduce:animate-none',
-          record.status === 'completed' && 'i-ri-checkbox-circle-line text-text-success',
-          record.status === 'failed' && 'i-ri-error-warning-line text-text-destructive',
-          record.status === 'canceled' && 'i-ri-stop-circle-line text-text-tertiary',
-        )}
-      />
       <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 system-sm-medium text-text-primary">{record.query}</span>
-        <span className="mt-1 block system-xs-regular text-text-tertiary">
-          {t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])}
-          {' · '}
-          {new Intl.DateTimeFormat(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          }).format(record.createdAt)}
+        <span className="line-clamp-1 system-sm-semibold text-text-secondary">{record.query}</span>
+        <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
+          <span className="min-w-0 flex-1 truncate">
+            {t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])}
+          </span>
+          <span className="shrink-0 text-[11px] leading-4 text-text-primary opacity-30">
+            {new Intl.DateTimeFormat(undefined, {
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              month: 'short',
+            }).format(record.createdAt)}
+          </span>
         </span>
       </span>
     </button>
@@ -856,7 +870,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
         <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
           <div className="shrink-0">
-            <div className="overflow-hidden rounded-xl border border-components-input-border-active bg-components-input-bg-active shadow-xs">
+            <div className="overflow-hidden rounded-xl border-2 border-components-input-border-active-prompt-2 bg-components-input-bg-active shadow-xs">
               <label className="sr-only" htmlFor="retrieval-test-query">
                 {t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
               </label>
@@ -865,7 +879,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 value={query}
                 maxLength={2000}
                 placeholder={t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
-                className="block h-36 w-full resize-none bg-transparent px-4 py-3 body-md-regular text-text-primary outline-hidden placeholder:text-text-quaternary"
+                className="block h-36 w-full resize-none bg-transparent p-3.5 body-md-regular text-text-primary outline-hidden placeholder:text-text-quaternary"
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
@@ -874,7 +888,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   }
                 }}
               />
-              <div className="flex min-h-13 items-center justify-between gap-3 border-t border-divider-subtle px-2.5">
+              <div className="flex min-h-13 items-center justify-between gap-3 p-2.5">
                 <div
                   role="group"
                   aria-label="Retrieval mode"
@@ -896,6 +910,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   ))}
                 </div>
                 <Button variant="primary" disabled={!query.trim()} onClick={run}>
+                  <span aria-hidden className="mr-1 i-ri-play-circle-line size-4" />
                   {t(($) =>
                     mode === 'research'
                       ? $['newKnowledge.retrievalTest.startResearch']
@@ -906,21 +921,19 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
-            <div className="flex h-9 shrink-0 items-center px-3">
-              <h2 className="system-xs-semibold-uppercase text-text-tertiary">
+          <div className="flex min-h-0 flex-1 flex-col pt-6">
+            <div className="flex shrink-0 items-center pb-2 pl-3">
+              <h2 className="system-xs-medium text-text-tertiary">
                 {t(($) => $['newKnowledge.retrievalTest.records'])}
               </h2>
-              <span className="ml-2 system-xs-regular text-text-quaternary">
-                {displayRecords.length}
-              </span>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {displayRecords.length > 0 ? (
-                <div className="space-y-1">
-                  {displayRecords.map((record) => (
+                <div>
+                  {displayRecords.map((record, index) => (
                     <RecordButton
                       key={`${record.kind}:${record.id}`}
+                      index={index}
                       record={record}
                       active={selected?.kind === record.kind && selected.id === record.id}
                       onClick={() => selectRecord(record)}
@@ -936,7 +949,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           </div>
         </section>
 
-        <section className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-2xl bg-background-body">
+        <section className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-background-body p-5">
           {!selected && (
             <EmptyState
               title={t(($) => $['newKnowledge.retrievalTest.emptyTitle'])}
@@ -944,9 +957,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
             />
           )}
           {selected && (
-            <div className="mx-auto flex min-h-full max-w-4xl flex-col">
-              <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-divider-subtle px-5">
-                <h2 className="min-w-0 flex-1 truncate title-md-semi-bold text-text-primary">
+            <div className="flex h-full min-h-0 flex-col gap-3">
+              <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden pl-3">
+                <h2 className="shrink-0 system-sm-semibold text-text-primary">
                   {selected?.kind === 'research'
                     ? t(($) => $['newKnowledge.retrievalTest.researchResult'])
                     : t(($) => $['newKnowledge.retrievalTest.result'], {
@@ -955,19 +968,17 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                           : '',
                       })}
                 </h2>
-                <span className="bg-components-badge-bg rounded-md px-2 py-1 system-xs-semibold text-text-secondary capitalize">
+                <span className="shrink-0 rounded-md bg-divider-regular px-1.5 py-0.5 text-[11px] leading-4 font-medium text-text-tertiary capitalize">
                   {selectedMode
                     ? t(($) => $[`newKnowledge.settings.retrievalMode.${selectedMode}`])
                     : ''}
                 </span>
-                {selected?.kind === 'research' && (
-                  <span className="system-xs-regular text-text-tertiary">
-                    {t(($) => $['newKnowledge.retrievalTest.justNow'])}
-                  </span>
-                )}
+                <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
+                  {t(($) => $['newKnowledge.retrievalTest.justNow'])}
+                </span>
               </div>
 
-              <div className="min-h-0 flex-1 p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 {selectedResearchTask && (
                   <ResearchProcess
                     task={selectedResearchTask}
@@ -1047,20 +1058,24 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                         </div>
                       )}
                     </div>
-                    {!showAll && currentEvidence.length > 3 && (
-                      <button
-                        type="button"
-                        className="mx-auto mt-4 flex rounded-lg px-3 py-2 system-sm-semibold text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                        onClick={() => setShowAll(true)}
-                      >
-                        {t(($) => $['newKnowledge.retrievalTest.showAllChunks'], {
-                          count: currentEvidence.length,
-                        })}
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
+
+              {!showAll && currentEvidence.length > 3 && (
+                <div className="shrink-0 pl-1">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    onClick={() => setShowAll(true)}
+                  >
+                    {t(($) => $['newKnowledge.retrievalTest.showAllChunks'], {
+                      count: currentEvidence.length,
+                    })}
+                    <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
+                  </button>
+                </div>
+              )}
 
               {!selectedIsLoading &&
                 !selectedFailed &&

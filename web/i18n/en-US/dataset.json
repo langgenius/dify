@@ -528,7 +528,7 @@
   "newKnowledge.retrievalTest.queryPlaceholder": "Enter a query to test retrieval…",
   "newKnowledge.retrievalTest.records": "Records",
   "newKnowledge.retrievalTest.researchResult": "Research result",
-  "newKnowledge.retrievalTest.result": "{{mode}} result",
+  "newKnowledge.retrievalTest.result": "Retrieval result",
   "newKnowledge.retrievalTest.retrieving": "Retrieve evidence",
   "newKnowledge.retrievalTest.retry": "Retry",
   "newKnowledge.retrievalTest.run": "Run",
