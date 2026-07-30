@@ -10,6 +10,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine } from '@remixicon/react'
@@ -198,9 +199,7 @@ const FormItem: FC<Props> = ({
             }}
           >
             <SelectTrigger className="w-full">
-              {String(
-                value || payload.default || t(($) => $['placeholder.select'], { ns: 'common' }),
-              )}
+              <SelectValue placeholder={t(($) => $['placeholder.select'], { ns: 'common' })} />
             </SelectTrigger>
             <SelectContent>
               {(payload.options || []).map((option) => (
