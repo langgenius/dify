@@ -10,6 +10,7 @@ import {
 const TENANT_ID = "tenant-overview";
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40";
 const QUERY_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c41";
+const OTHER_QUERY_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const NOW = "2026-07-14T14:00:00.000Z";
 
 describe("in-memory knowledge-space Overview repository", () => {
@@ -109,7 +110,6 @@ describe("in-memory knowledge-space Overview repository", () => {
       candidateGrants: ["team:camera"],
       knowledgeSpaceId: SPACE_ID,
       now: NOW,
-      subjectId: "member-1",
       tenantId: TENANT_ID,
     });
     expect(stats.windows["24h"]).toMatchObject({
@@ -121,7 +121,6 @@ describe("in-memory knowledge-space Overview repository", () => {
       candidateGrants: [],
       knowledgeSpaceId: SPACE_ID,
       now: NOW,
-      subjectId: "member-1",
       tenantId: TENANT_ID,
     });
     expect(hidden.windows["24h"]).toMatchObject({
@@ -131,7 +130,7 @@ describe("in-memory knowledge-space Overview repository", () => {
     });
   });
 
-  it("buckets a retried query once and keeps outcome categories mutually exclusive", async () => {
+  it("buckets queries across actors and keeps outcome categories mutually exclusive", async () => {
     const repository = createInMemoryKnowledgeSpaceOverviewRepository({
       maxEvents: 20,
       maxListLimit: 10,
@@ -141,16 +140,18 @@ describe("in-memory knowledge-space Overview repository", () => {
       action: "query.completed" | "query.failed" | "query.requested",
       occurredAt: string,
       details: Readonly<Record<string, unknown>> = {},
+      resourceId = QUERY_ID,
+      actorId = "member-1",
     ) =>
       repository.appendActivity({
         action,
-        actor: { id: "member-1", type: "member" },
+        actor: { id: actorId, type: "member" },
         details,
         id,
         knowledgeSpaceId: SPACE_ID,
         occurredAt,
         requiredPermissionScope: ["team:camera"],
-        resource: { id: QUERY_ID, type: "query" },
+        resource: { id: resourceId, type: "query" },
         result:
           action === "query.requested"
             ? "pending"
@@ -182,24 +183,39 @@ describe("in-memory knowledge-space Overview repository", () => {
       "2026-07-14T13:32:00.000Z",
       { reasonCode: "no-evidence" },
     );
+    await append(
+      "00000000-0000-4000-8000-000000000015",
+      "query.requested",
+      "2026-07-14T13:35:00.000Z",
+      {},
+      OTHER_QUERY_ID,
+      "member-2",
+    );
+    await append(
+      "00000000-0000-4000-8000-000000000016",
+      "query.completed",
+      "2026-07-14T13:36:00.000Z",
+      {},
+      OTHER_QUERY_ID,
+      "member-2",
+    );
 
     const outcomes = await repository.getQueryOutcomes({
       candidateGrants: ["team:camera"],
       knowledgeSpaceId: SPACE_ID,
       now: NOW,
-      subjectId: "member-1",
       tenantId: TENANT_ID,
       window: "24h",
     });
 
     expect(outcomes.current).toMatchObject({
-      answerRate: 0,
-      answered: 0,
+      answerRate: 0.5,
+      answered: 1,
       lowConfidence: 0,
       noEvidence: 1,
-      queryCount: 1,
+      queryCount: 2,
     });
-    expect(outcomes.buckets.filter((bucket) => bucket.queryCount > 0)).toHaveLength(1);
+    expect(outcomes.buckets.filter((bucket) => bucket.queryCount > 0)).toHaveLength(2);
   });
 
   it("round-trips opaque activity cursors and rejects malformed input", () => {

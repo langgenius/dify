@@ -276,7 +276,6 @@ export interface KnowledgeSpaceOverviewRepository {
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
     readonly now: string;
-    readonly subjectId: string;
     readonly tenantId: string;
     readonly window: KnowledgeSpaceOverviewWindowKey;
   }): Promise<KnowledgeSpaceOverviewQueryOutcomes>;
@@ -284,7 +283,6 @@ export interface KnowledgeSpaceOverviewRepository {
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
     readonly now: string;
-    readonly subjectId: string;
     readonly tenantId: string;
   }): Promise<KnowledgeSpaceOverviewStats>;
   listActivity(input: ListKnowledgeSpaceActivityInput): Promise<ListKnowledgeSpaceActivityResult>;
@@ -373,7 +371,6 @@ export function createInMemoryKnowledgeSpaceOverviewRepository(options: {
           (event) =>
             event.tenantId === input.tenantId &&
             event.knowledgeSpaceId === input.knowledgeSpaceId &&
-            event.actor.id === input.subjectId &&
             candidatePermissionScopeAllows(event.requiredPermissionScope, input.candidateGrants),
         ),
         input.knowledgeSpaceId,
@@ -386,7 +383,6 @@ export function createInMemoryKnowledgeSpaceOverviewRepository(options: {
           (event) =>
             event.tenantId === input.tenantId &&
             event.knowledgeSpaceId === input.knowledgeSpaceId &&
-            event.actor.id === input.subjectId &&
             candidatePermissionScopeAllows(event.requiredPermissionScope, input.candidateGrants),
         ),
         input.knowledgeSpaceId,

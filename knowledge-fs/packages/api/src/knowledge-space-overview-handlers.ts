@@ -53,7 +53,6 @@ export function registerKnowledgeSpaceOverviewHandlers(input: {
         candidateGrants: scope.candidateGrants,
         knowledgeSpaceId: scope.knowledgeSpaceId,
         now: input.now(),
-        subjectId: scope.subject.subjectId,
         tenantId: scope.subject.tenantId,
       }),
       200,
@@ -69,7 +68,6 @@ export function registerKnowledgeSpaceOverviewHandlers(input: {
       candidateGrants: scope.candidateGrants,
       knowledgeSpaceId: scope.knowledgeSpaceId,
       now: input.now(),
-      subjectId: scope.subject.subjectId,
       tenantId: scope.subject.tenantId,
       window: context.req.valid("query").window,
     });

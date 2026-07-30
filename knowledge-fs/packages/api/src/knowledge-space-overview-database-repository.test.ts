@@ -141,7 +141,7 @@ describe.each(["postgres", "tidb"] as const)(
       );
     });
 
-    it("uses distinct request identities, request-before-completion linkage, and clamps corrupt aggregates", async () => {
+    it("uses space-wide request identities, request-before-completion linkage, and clamps corrupt aggregates", async () => {
       const calls: DatabaseExecuteInput[] = [];
       const database = testDatabase(dialect, async (input) => {
         calls.push(input);
@@ -188,7 +188,6 @@ describe.each(["postgres", "tidb"] as const)(
         candidateGrants: ["team:camera"],
         knowledgeSpaceId: SPACE_ID,
         now: NOW,
-        subjectId: "member-1",
         tenantId: TENANT_ID,
       });
       expect(stats.windows["24h"]).toMatchObject({
@@ -204,15 +203,14 @@ describe.each(["postgres", "tidb"] as const)(
       expect(activitySql).toContain("query.completed");
       expect(activitySql).toContain("answer_traces");
       expect(activitySql).toMatch(/answer_trace\.[`"]completed[`"] = TRUE/u);
-      expect(activitySql).toMatch(
-        /answer_trace\.[`"]subject_id[`"] = event\.[`"]actor_subject_id[`"]/u,
-      );
+      expect(activitySql).not.toContain("actor_subject_id");
+      expect(activitySql).not.toContain("subject_id");
       expect(activitySql).toMatch(
         /answer_trace\.[`"]created_at[`"] >= event\.[`"]occurred_at[`"]/u,
       );
     });
 
-    it("returns requester-scoped query outcomes with a bounded current/previous series", async () => {
+    it("returns space-wide query outcomes with a bounded current/previous series", async () => {
       let select: DatabaseExecuteInput | undefined;
       const database = testDatabase(dialect, async (input) => {
         select = input;
@@ -253,7 +251,6 @@ describe.each(["postgres", "tidb"] as const)(
         candidateGrants: ["team:camera"],
         knowledgeSpaceId: SPACE_ID,
         now: NOW,
-        subjectId: "member-1",
         tenantId: TENANT_ID,
         window: "24h",
       });
@@ -281,21 +278,23 @@ describe.each(["postgres", "tidb"] as const)(
         startAt: "2026-07-13T14:00:00.000Z",
       });
       expect(select?.maxRows).toBe(48);
-      expect(select?.params.slice(0, 4)).toEqual([
+      expect(select?.params.slice(0, 3)).toEqual([
         TENANT_ID,
         SPACE_ID,
-        "member-1",
         JSON.stringify(["team:camera"]),
       ]);
       const sql = select?.sql ?? "";
-      expect(sql).toContain("actor_subject_id");
       expect(sql).toContain("answer_traces");
       expect(sql).toContain("failed_queries");
       expect(sql).toContain("low-confidence");
       expect(sql).toContain("no-retrieval-evidence");
-      expect(sql).toContain("requested_by_subject_id");
+      expect(sql).not.toContain("actor_subject_id");
+      expect(sql).not.toContain("requested_by_subject_id");
+      expect(sql).not.toContain("subject_id");
       expect(sql).toContain(dialect === "postgres" ? "::jsonb @>" : "JSON_CONTAINS");
-      expect(sql.indexOf("actor_subject_id")).toBeLessThan(sql.indexOf("GROUP BY"));
+      expect(sql).toMatch(
+        /outcome_trace\.[`"]tenant_id[`"] IS NULL OR outcome_trace\.[`"]tenant_id[`"] = event\.[`"]tenant_id[`"]/u,
+      );
     });
 
     it("aggregates visible source, graph, and active-slice inventory without new storage", async () => {
@@ -695,7 +694,6 @@ describe.each(["postgres", "tidb"] as const)(
           candidateGrants: ["team:camera"],
           knowledgeSpaceId: SPACE_ID,
           now: NOW,
-          subjectId: "member-1",
           tenantId: TENANT_ID,
         }),
       ).resolves.toMatchObject({

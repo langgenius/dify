@@ -323,7 +323,6 @@ async function getQueryOutcomes(
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
     readonly now: string;
-    readonly subjectId: string;
     readonly tenantId: string;
     readonly window: KnowledgeSpaceOverviewWindowKey;
   },
@@ -336,7 +335,7 @@ async function getQueryOutcomes(
   const previousSince = new Date(previousSinceMs).toISOString();
   const since = new Date(sinceMs).toISOString();
   const grants = JSON.stringify(input.candidateGrants);
-  const bucketIndex = overviewBucketIndexSql(database, "event", 5, bucketMs);
+  const bucketIndex = overviewBucketIndexSql(database, "event", 4, bucketMs);
   const completed = overviewCompletedTracePredicate(database, "event");
   const noEvidence = overviewFailedTracePredicate(database, "event", "no-evidence");
   const lowQuality = overviewFailedTracePredicate(database, "event", "low-confidence");
@@ -345,15 +344,8 @@ async function getQueryOutcomes(
   const result = await database.execute({
     maxRows: config.buckets * 2,
     operation: "select",
-    params: [
-      input.tenantId,
-      input.knowledgeSpaceId,
-      input.subjectId,
-      grants,
-      previousSince,
-      input.now,
-    ],
-    sql: `SELECT ${bucketIndex} AS ${q(database, "bucket_index")}, ${countDistinctCase(database, "TRUE", `event.${q(database, "resource_id")}`)} AS ${q(database, "query_count")}, ${countDistinctCase(database, answered, `event.${q(database, "resource_id")}`)} AS ${q(database, "answered")}, ${countDistinctCase(database, lowConfidence, `event.${q(database, "resource_id")}`)} AS ${q(database, "low_confidence")}, ${countDistinctCase(database, noEvidence, `event.${q(database, "resource_id")}`)} AS ${q(database, "no_evidence")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND event.${q(database, "actor_subject_id")} = ${p(database, 3)} AND event.${q(database, "action")} = 'query.requested' AND event.${q(database, "resource_type")} = 'query' AND event.${q(database, "resource_id")} IS NOT NULL AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 4))} AND event.${q(database, "occurred_at")} >= ${p(database, 5)} AND event.${q(database, "occurred_at")} < ${p(database, 6)} GROUP BY ${bucketIndex} ORDER BY ${bucketIndex} ASC;`,
+    params: [input.tenantId, input.knowledgeSpaceId, grants, previousSince, input.now],
+    sql: `SELECT ${bucketIndex} AS ${q(database, "bucket_index")}, ${countDistinctCase(database, "TRUE", `event.${q(database, "resource_id")}`)} AS ${q(database, "query_count")}, ${countDistinctCase(database, answered, `event.${q(database, "resource_id")}`)} AS ${q(database, "answered")}, ${countDistinctCase(database, lowConfidence, `event.${q(database, "resource_id")}`)} AS ${q(database, "low_confidence")}, ${countDistinctCase(database, noEvidence, `event.${q(database, "resource_id")}`)} AS ${q(database, "no_evidence")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND event.${q(database, "action")} = 'query.requested' AND event.${q(database, "resource_type")} = 'query' AND event.${q(database, "resource_id")} IS NOT NULL AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 3))} AND event.${q(database, "occurred_at")} >= ${p(database, 4)} AND event.${q(database, "occurred_at")} < ${p(database, 5)} GROUP BY ${bucketIndex} ORDER BY ${bucketIndex} ASC;`,
     tableName: "knowledge_space_activity_events",
   });
   const counts = Array.from({ length: config.buckets * 2 }, () => ({
@@ -505,7 +497,6 @@ async function getStats(
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
     readonly now: string;
-    readonly subjectId: string;
     readonly tenantId: string;
   },
 ): Promise<KnowledgeSpaceOverviewStats> {
@@ -517,16 +508,8 @@ async function getStats(
   const activity = await database.execute({
     maxRows: 1,
     operation: "select",
-    params: [
-      input.tenantId,
-      input.knowledgeSpaceId,
-      input.subjectId,
-      grants,
-      since24h,
-      since7d,
-      since30d,
-    ],
-    sql: `SELECT ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 5)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_24h")}, ${countDistinctCase(database, answerPredicate(database, 5), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_24h")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 6)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_7d")}, ${countDistinctCase(database, answerPredicate(database, 6), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_7d")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 7)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_30d")}, ${countDistinctCase(database, answerPredicate(database, 7), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_30d")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND event.${q(database, "actor_subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 4))} AND event.${q(database, "occurred_at")} >= ${p(database, 7)};`,
+    params: [input.tenantId, input.knowledgeSpaceId, grants, since24h, since7d, since30d],
+    sql: `SELECT ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 4)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_24h")}, ${countDistinctCase(database, answerPredicate(database, 4), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_24h")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 5)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_7d")}, ${countDistinctCase(database, answerPredicate(database, 5), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_7d")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 6)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_30d")}, ${countDistinctCase(database, answerPredicate(database, 6), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_30d")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 3))} AND event.${q(database, "occurred_at")} >= ${p(database, 6)};`,
     tableName: "knowledge_space_activity_events",
   });
   const knowledge = await database.execute({
@@ -1311,7 +1294,7 @@ function overviewBucketIndexSql(
 }
 
 function overviewCompletedTracePredicate(database: DatabaseAdapter, eventAlias: string): string {
-  return `EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} outcome_trace WHERE outcome_trace.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_trace.${q(database, "knowledge_space_id")} = ${eventAlias}.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "outcome_trace", "id")} = ${eventAlias}.${q(database, "resource_id")} AND outcome_trace.${q(database, "subject_id")} = ${p(database, 3)} AND outcome_trace.${q(database, "completed")} = TRUE AND outcome_trace.${q(database, "created_at")} >= ${eventAlias}.${q(database, "occurred_at")})`;
+  return `EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} outcome_trace WHERE (outcome_trace.${q(database, "tenant_id")} IS NULL OR outcome_trace.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")}) AND outcome_trace.${q(database, "knowledge_space_id")} = ${eventAlias}.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "outcome_trace", "id")} = ${eventAlias}.${q(database, "resource_id")} AND outcome_trace.${q(database, "completed")} = TRUE AND outcome_trace.${q(database, "created_at")} >= ${eventAlias}.${q(database, "occurred_at")})`;
 }
 
 function overviewFailedTracePredicate(
@@ -1323,11 +1306,11 @@ function overviewFailedTracePredicate(
     outcome === "low-confidence"
       ? "('low-confidence', 'low-score')"
       : "('no-retrieval-evidence', 'no-evidence', 'missing-evidence')";
-  return `EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} outcome_trace JOIN ${q(database, "failed_queries")} outcome_failure ON outcome_failure.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_failure.${q(database, "knowledge_space_id")} = outcome_trace.${q(database, "knowledge_space_id")} AND outcome_failure.${q(database, "answer_trace_id")} = outcome_trace.${q(database, "id")} AND outcome_failure.${q(database, "requested_by_subject_id")} = ${p(database, 3)} AND outcome_failure.${q(database, "trigger")} IN ${triggers} AND ${permissionScopeSql(database, `outcome_failure.${q(database, "required_permission_scope")}`, p(database, 4))} WHERE outcome_trace.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_trace.${q(database, "knowledge_space_id")} = ${eventAlias}.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "outcome_trace", "id")} = ${eventAlias}.${q(database, "resource_id")} AND outcome_trace.${q(database, "subject_id")} = ${p(database, 3)} AND outcome_trace.${q(database, "completed")} = TRUE AND outcome_trace.${q(database, "created_at")} >= ${eventAlias}.${q(database, "occurred_at")})`;
+  return `EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} outcome_trace JOIN ${q(database, "failed_queries")} outcome_failure ON outcome_failure.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_failure.${q(database, "knowledge_space_id")} = outcome_trace.${q(database, "knowledge_space_id")} AND outcome_failure.${q(database, "answer_trace_id")} = outcome_trace.${q(database, "id")} AND outcome_failure.${q(database, "trigger")} IN ${triggers} AND ${permissionScopeSql(database, `outcome_failure.${q(database, "required_permission_scope")}`, p(database, 3))} WHERE (outcome_trace.${q(database, "tenant_id")} IS NULL OR outcome_trace.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")}) AND outcome_trace.${q(database, "knowledge_space_id")} = ${eventAlias}.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "outcome_trace", "id")} = ${eventAlias}.${q(database, "resource_id")} AND outcome_trace.${q(database, "completed")} = TRUE AND outcome_trace.${q(database, "created_at")} >= ${eventAlias}.${q(database, "occurred_at")})`;
 }
 
 function answerPredicate(database: DatabaseAdapter, sincePosition: number) {
-  return `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, sincePosition)} AND (EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} answer_trace WHERE answer_trace.${q(database, "knowledge_space_id")} = event.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "answer_trace", "id")} = event.${q(database, "resource_id")} AND answer_trace.${q(database, "subject_id")} = event.${q(database, "actor_subject_id")} AND answer_trace.${q(database, "completed")} = TRUE AND answer_trace.${q(database, "created_at")} >= event.${q(database, "occurred_at")}) OR EXISTS (SELECT 1 FROM ${q(database, "knowledge_space_activity_events")} terminal WHERE terminal.${q(database, "tenant_id")} = event.${q(database, "tenant_id")} AND terminal.${q(database, "knowledge_space_id")} = event.${q(database, "knowledge_space_id")} AND terminal.${q(database, "resource_id")} = event.${q(database, "resource_id")} AND terminal.${q(database, "action")} = 'query.completed' AND terminal.${q(database, "result")} = 'success' AND terminal.${q(database, "occurred_at")} >= event.${q(database, "occurred_at")}))`;
+  return `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, sincePosition)} AND (EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} answer_trace WHERE (answer_trace.${q(database, "tenant_id")} IS NULL OR answer_trace.${q(database, "tenant_id")} = event.${q(database, "tenant_id")}) AND answer_trace.${q(database, "knowledge_space_id")} = event.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "answer_trace", "id")} = event.${q(database, "resource_id")} AND answer_trace.${q(database, "completed")} = TRUE AND answer_trace.${q(database, "created_at")} >= event.${q(database, "occurred_at")}) OR EXISTS (SELECT 1 FROM ${q(database, "knowledge_space_activity_events")} terminal WHERE terminal.${q(database, "tenant_id")} = event.${q(database, "tenant_id")} AND terminal.${q(database, "knowledge_space_id")} = event.${q(database, "knowledge_space_id")} AND terminal.${q(database, "resource_id")} = event.${q(database, "resource_id")} AND terminal.${q(database, "action")} = 'query.completed' AND terminal.${q(database, "result")} = 'success' AND terminal.${q(database, "occurred_at")} >= event.${q(database, "occurred_at")}))`;
 }
 
 /**
