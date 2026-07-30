@@ -25,7 +25,7 @@ def test_runtime_scripts_use_unique_workspace_and_validate_deterministic_results
     many_files = _runtime_scenario("runtime_1000_files_4k_c1")
     file_scenario = _runtime_scenario("runtime_file_16m_c1")
 
-    assert _validate_output(noop, f"{_START_MARKER}\r\n{{\"ok\":true}}\r\n")
+    assert _validate_output(noop, f'{_START_MARKER}\r\n{{"ok":true}}\r\n')
     many_files_output = (
         f"{_START_MARKER}\n"
         f'{{"payload_bytes":{many_files.payload_bytes},"sha256":"{_expected_file_hash(many_files)}"}}\n'
