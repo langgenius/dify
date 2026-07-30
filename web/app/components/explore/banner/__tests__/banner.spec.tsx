@@ -15,6 +15,7 @@ const mockAutoplayListeners = {
   play: new Set<() => void>(),
   stop: new Set<() => void>(),
 }
+const mockSelectListeners = new Set<() => void>()
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'account-123',
@@ -40,21 +41,25 @@ const mockAutoplay = {
 
 const mockApi = {
   plugins: () => ({ autoplay: mockAutoplay }),
+  selectedScrollSnap: () => mockSelectedIndex,
   scrollTo: mockScrollTo,
   on: vi.fn((event: string, listener: () => void) => {
     if (event === 'autoplay:play') mockAutoplayListeners.play.add(listener)
     if (event === 'autoplay:stop') mockAutoplayListeners.stop.add(listener)
+    if (event === 'select') mockSelectListeners.add(listener)
     return mockApi
   }),
   off: vi.fn((event: string, listener: () => void) => {
     if (event === 'autoplay:play') mockAutoplayListeners.play.delete(listener)
     if (event === 'autoplay:stop') mockAutoplayListeners.stop.delete(listener)
+    if (event === 'select') mockSelectListeners.delete(listener)
     return mockApi
   }),
 }
 
 const setMockSelectedIndex = (index: number) => {
   mockSelectedIndex = index
+  mockSelectListeners.forEach((listener) => listener())
   mockCarouselListeners.forEach((listener) => listener())
 }
 
@@ -131,12 +136,14 @@ vi.mock('../banner-item', () => ({
     language,
     accountId,
     titleId,
+    imageState,
   }: {
     banner: BannerType
     sort: number
     language: string
     accountId?: string
     titleId?: string
+    imageState: string
   }) => (
     <article
       data-testid="banner-item"
@@ -144,6 +151,7 @@ vi.mock('../banner-item', () => ({
       data-sort={sort}
       data-language={language}
       data-account-id={accountId}
+      data-image-state={imageState}
     >
       <p id={titleId}>{banner.content.title}</p>
     </article>
@@ -175,6 +183,7 @@ describe('Banner', () => {
     mockCarouselListeners.clear()
     mockAutoplayListeners.play.clear()
     mockAutoplayListeners.stop.clear()
+    mockSelectListeners.clear()
     mockConsoleState.userProfile = { id: 'account-123', name: 'Evan' }
   })
 
@@ -186,6 +195,17 @@ describe('Banner', () => {
     expect(screen.getByText('Welcome back, Evan👋')).toBeInTheDocument()
     expect(screen.getByText('What if… this is where your next idea begins.')).toBeInTheDocument()
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+
+  it('reserves the carousel height for the Home server boundary when no banner is available', () => {
+    const { container } = render(
+      <Banner banners={[createMockBanner('1', 'disabled')]} reserveCarouselSpace />,
+    )
+
+    const reservation = container.querySelector('[aria-hidden="true"]')
+
+    expect(reservation).toHaveClass('h-56', '@min-[996px]/banner:h-46')
+    expect(reservation?.parentElement).toHaveClass('@container/banner', 'w-full')
   })
 
   it('labels the carousel and renders only enabled banners', () => {
@@ -220,6 +240,68 @@ describe('Banner', () => {
     expect(firstSlide).not.toHaveAttribute('inert')
     expect(secondSlide).toHaveAttribute('aria-hidden', 'true')
     expect(secondSlide).toHaveAttribute('inert')
+  })
+
+  it('keeps requested images mounted while active and next priorities move forward', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+          createMockBanner('3', 'enabled', 'Third banner'),
+        ]}
+      />,
+    )
+
+    const [firstBanner, secondBanner, thirdBanner] = screen.getAllByTestId('banner-item')
+    expect(firstBanner).toHaveAttribute('data-image-state', 'active')
+    expect(secondBanner).toHaveAttribute('data-image-state', 'next')
+    expect(thirdBanner).toHaveAttribute('data-image-state', 'deferred')
+
+    act(() => setMockSelectedIndex(1))
+    expect(firstBanner).toHaveAttribute('data-image-state', 'requested')
+    expect(secondBanner).toHaveAttribute('data-image-state', 'active')
+    expect(thirdBanner).toHaveAttribute('data-image-state', 'next')
+  })
+
+  it('requests the previous image before a reverse drag changes selection', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+          createMockBanner('3', 'enabled', 'Third banner'),
+        ]}
+      />,
+    )
+
+    const thirdBanner = screen.getAllByTestId('banner-item')[2]
+    expect(thirdBanner).toHaveAttribute('data-image-state', 'deferred')
+
+    fireEvent.pointerDown(screen.getByTestId('carousel-content'))
+
+    expect(thirdBanner).toHaveAttribute('data-image-state', 'requested')
+  })
+
+  it('requests an indicator target before a cross-page selection starts', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+          createMockBanner('3', 'enabled', 'Third banner'),
+          createMockBanner('4', 'enabled', 'Fourth banner'),
+        ]}
+      />,
+    )
+
+    const fourthBanner = screen.getAllByTestId('banner-item')[3]
+    expect(fourthBanner).toHaveAttribute('data-image-state', 'deferred')
+
+    fireEvent.click(screen.getByRole('button', { name: '04 Fourth banner' }))
+
+    expect(fourthBanner).toHaveAttribute('data-image-state', 'requested')
+    expect(mockScrollTo).toHaveBeenCalledWith(3)
   })
 
   it('names each slide with its visible title', () => {

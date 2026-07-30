@@ -27,27 +27,27 @@ type LearnDifyProps = {
 }
 
 type LearnDifyContentProps = LearnDifyProps & {
+  items: App[]
   onHide?: () => void
 }
 
-const LearnDifyContent = ({
+export function LearnDifyContent({
   canCreate = false,
   className,
+  items,
   itemLimit,
-  loadingFallback = null,
   onHide,
   onCreate,
   onTry,
   showDescription = true,
   stepByStepTourTarget,
   title,
-}: LearnDifyContentProps) => {
+}: LearnDifyContentProps) {
   const { t } = useTranslation()
   const [isClosing, setIsClosing] = useState(false)
   const [collapseTransform, setCollapseTransform] = useState<string>()
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const { data: learnDifyItems = [], isLoading } = useLearnDifyAppList()
 
   useEffect(() => {
     return () => {
@@ -80,10 +80,9 @@ const LearnDifyContent = ({
     }, 800)
   }
 
-  const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
+  const visibleItems = itemLimit ? items.slice(0, itemLimit) : items
   const sectionTitle = title ?? t(($) => $['learnDify.title'], { ns: 'explore' })
 
-  if (isLoading) return loadingFallback
   if (visibleItems.length === 0) return null
 
   return (
@@ -143,13 +142,21 @@ const LearnDifyContent = ({
   )
 }
 
+function LearnDifyQueryContent(props: LearnDifyProps & { onHide?: () => void }) {
+  const { data: items = [], isLoading } = useLearnDifyAppList()
+
+  if (isLoading) return props.loadingFallback ?? null
+
+  return <LearnDifyContent {...props} items={items} />
+}
+
 const DismissibleLearnDify = (props: LearnDifyProps) => {
   const hidden = useLearnDifyHiddenValue()
   const setHidden = useSetLearnDifyHidden()
 
   if (hidden) return null
 
-  return <LearnDifyContent {...props} onHide={() => setHidden(true)} />
+  return <LearnDifyQueryContent {...props} onHide={() => setHidden(true)} />
 }
 
 const LearnDify = (props: LearnDifyProps) => {
@@ -157,7 +164,7 @@ const LearnDify = (props: LearnDifyProps) => {
 
   if (!systemFeatures.enable_learn_app) return null
 
-  if (props.dismissible === false || props.forceVisible) return <LearnDifyContent {...props} />
+  if (props.dismissible === false || props.forceVisible) return <LearnDifyQueryContent {...props} />
 
   return <DismissibleLearnDify {...props} />
 }

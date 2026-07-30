@@ -124,27 +124,23 @@ function ExploreAppListSkeletonBody() {
   )
 }
 
-function BannerSkeletonBody() {
+export function MiddleSkeleton() {
+  const { t } = useTranslation()
+
   return (
-    <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
-      <div className="flex w-full flex-col gap-1">
-        <SkeletonRectangle className="my-0 h-6 w-[240px] max-w-full animate-pulse" />
-        <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
-      </div>
-      <SkeletonRectangle className="h-[168px] w-full animate-pulse rounded-2xl" />
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
+      <section className="px-8 pb-5">
+        <RecommendationSectionSkeletonBody />
+      </section>
     </div>
   )
 }
 
-export function ExploreHomeSkeleton({ showBanner }: { showBanner: boolean }) {
+export function TemplatesSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="contents">
-      {showBanner && <BannerSkeletonBody />}
-      <section className="px-8 pb-5">
-        <RecommendationSectionSkeletonBody />
-      </section>
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
       <ExploreHeaderSkeletonBody />
       <div className="relative flex flex-1 shrink-0 grow flex-col pb-6">
         <ExploreAppListSkeletonBody />

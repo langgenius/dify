@@ -1,15 +1,18 @@
-'use client'
-
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { Suspense } from 'react'
 import AppList from '@/app/components/explore/app-list'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { HomeBanner } from '@/app/components/explore/banner/home-banner'
+import { BannerSkeleton } from '@/app/components/explore/banner/skeleton'
+import { HomeTitle } from './home-title'
 
-const Home = () => {
-  const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['mainNav.home'], { ns: 'common' }))
-
-  return <AppList />
+export default function Home() {
+  return (
+    <>
+      <HomeTitle />
+      <AppList>
+        <Suspense fallback={<BannerSkeleton />}>
+          <HomeBanner />
+        </Suspense>
+      </AppList>
+    </>
+  )
 }
-
-export default React.memo(Home)

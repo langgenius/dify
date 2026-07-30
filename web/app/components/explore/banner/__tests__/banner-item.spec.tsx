@@ -28,7 +28,16 @@ const renderBannerItem = (
   banner: Banner = createMockBanner(),
   props: Partial<ComponentProps<typeof BannerItem>> = {},
 ) =>
-  render(<BannerItem banner={banner} sort={1} language="en-US" titleId="banner-title" {...props} />)
+  render(
+    <BannerItem
+      banner={banner}
+      sort={1}
+      language="en-US"
+      titleId="banner-title"
+      imageState="active"
+      {...props}
+    />,
+  )
 
 describe('BannerItem', () => {
   afterEach(() => {
@@ -44,6 +53,64 @@ describe('BannerItem', () => {
     expect(screen.getByText('Test banner description text')).toBeInTheDocument()
     expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/image.png')
     expect(container.querySelector('img')).toHaveAttribute('alt', '')
+  })
+
+  it('loads a responsive active image with high priority', () => {
+    const { container } = renderBannerItem(
+      createMockBanner({
+        content: {
+          category: 'Featured',
+          title: 'Test Banner Title',
+          description: 'Test banner description text',
+          'img-src':
+            'https://assets.dify.ai/cdn-cgi/image/quality=75,format=auto/admin/uploads/banner.png',
+        },
+      }),
+    )
+
+    const image = container.querySelector('img')
+    expect(image).toHaveAttribute(
+      'src',
+      'https://assets.dify.ai/cdn-cgi/image/quality=75,format=auto,width=448/admin/uploads/banner.png',
+    )
+    expect(image).toHaveAttribute(
+      'srcset',
+      'https://assets.dify.ai/cdn-cgi/image/quality=75,format=auto,width=224/admin/uploads/banner.png 224w, https://assets.dify.ai/cdn-cgi/image/quality=75,format=auto,width=448/admin/uploads/banner.png 448w',
+    )
+    expect(image).toHaveAttribute('sizes', '224px')
+    expect(image).toHaveAttribute('loading', 'eager')
+    expect(image).toHaveAttribute('fetchpriority', 'high')
+  })
+
+  it('prepares only the next image at low priority', () => {
+    const { container, rerender } = renderBannerItem(createMockBanner(), {
+      imageState: 'next',
+    })
+
+    expect(container.querySelector('img')).toHaveAttribute('loading', 'eager')
+    expect(container.querySelector('img')).toHaveAttribute('fetchpriority', 'low')
+
+    rerender(
+      <BannerItem
+        banner={createMockBanner()}
+        sort={1}
+        language="en-US"
+        titleId="banner-title"
+        imageState="requested"
+      />,
+    )
+    expect(container.querySelector('img')).toHaveAttribute('fetchpriority', 'low')
+
+    rerender(
+      <BannerItem
+        banner={createMockBanner()}
+        sort={1}
+        language="en-US"
+        titleId="banner-title"
+        imageState="deferred"
+      />,
+    )
+    expect(container.querySelector('img')).not.toBeInTheDocument()
   })
 
   it('uses a native external link for the card navigation', () => {

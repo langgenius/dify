@@ -41,7 +41,7 @@ export const useExploreAppList = (options: { enabled?: boolean } = {}) => {
   })
 }
 
-export const useLearnDifyAppList = () => {
+export const useLearnDifyAppList = (options: { enabled?: boolean } = {}) => {
   const locale = useLocale()
   const learnDifyAppsInput = locale ? { query: { language: locale } } : {}
   const learnDifyAppsLanguage = learnDifyAppsInput?.query?.language
@@ -55,6 +55,7 @@ export const useLearnDifyAppList = () => {
       const { recommended_apps } = await fetchLearnDifyAppList(learnDifyAppsLanguage)
       return [...recommended_apps].sort((a, b) => a.position - b.position)
     },
+    enabled: options.enabled,
   })
 }
 

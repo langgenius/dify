@@ -1,6 +1,4 @@
 import type {
-  BannerListResponse,
-  BannerResponse,
   GetExploreAppsLearnDifyResponse,
   GetExploreAppsResponse,
   RecommendedAppDetailResponse,
@@ -15,7 +13,6 @@ import type {
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
 import type { AppMeta, ToolIcon } from '@/models/share'
 import type { AppIconType } from '@/types/app'
@@ -187,32 +184,6 @@ const normalizeInstalledAppsResponse = (
   return {
     installed_apps: response.installed_apps.map(normalizeInstalledApp),
   }
-}
-
-const normalizeBannerContent = (content: unknown): Banner['content'] => {
-  const record = isRecord(content) ? content : {}
-
-  return {
-    category: getStringProperty(record, 'category'),
-    title: getStringProperty(record, 'title'),
-    description: getStringProperty(record, 'description'),
-    'img-src': getStringProperty(record, 'img-src'),
-  }
-}
-
-const normalizeBanner = (banner: BannerResponse): Banner => {
-  return {
-    id: banner.id,
-    content: normalizeBannerContent(banner.content),
-    link: banner.link ?? '',
-    sort: banner.sort,
-    status: banner.status,
-    created_at: banner.created_at ?? '',
-  }
-}
-
-const normalizeBannersResponse = (response: BannerListResponse): Banner[] => {
-  return response.map(normalizeBanner)
 }
 
 const normalizeToolIcons = (value: unknown) => {
@@ -444,14 +415,4 @@ export const fetchInstalledAppMeta = (appId: string) => {
       params: { installed_app_id: appId },
     })
     .then(normalizeAppMeta)
-}
-
-export const fetchBanners = (language?: string) => {
-  if (!language) return consoleClient.explore.banners.get({}).then(normalizeBannersResponse)
-
-  return consoleClient.explore.banners
-    .get({
-      query: { language },
-    })
-    .then(normalizeBannersResponse)
 }

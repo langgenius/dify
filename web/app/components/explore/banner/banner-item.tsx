@@ -1,16 +1,62 @@
 import type { Banner } from '@/models/app'
 import { trackEvent } from '@/app/components/base/amplitude'
 
+export type BannerImageState = 'active' | 'next' | 'requested' | 'deferred'
+
 type BannerItemProps = {
   banner: Banner
   sort: number
   language: string
   accountId?: string
   titleId: string
+  imageState: BannerImageState
 }
 
-export function BannerItem({ banner, sort, language, accountId, titleId }: BannerItemProps) {
+const BANNER_IMAGE_WIDTH = 224
+const BANNER_IMAGE_MAX_DPR_WIDTH = BANNER_IMAGE_WIDTH * 2
+const CLOUDFLARE_IMAGE_PREFIX = '/cdn-cgi/image/'
+
+function getCloudflareBannerImageUrl(imageUrl: string, width: number) {
+  try {
+    const url = new URL(imageUrl)
+    if (url.hostname !== 'assets.dify.ai') return imageUrl
+
+    if (url.pathname.startsWith(CLOUDFLARE_IMAGE_PREFIX)) {
+      const transformedPath = url.pathname.slice(CLOUDFLARE_IMAGE_PREFIX.length)
+      const optionsEnd = transformedPath.indexOf('/')
+      if (optionsEnd === -1) return imageUrl
+
+      const options = transformedPath
+        .slice(0, optionsEnd)
+        .split(',')
+        .filter((option) => !option.startsWith('width='))
+      options.push(`width=${width}`)
+      url.pathname = `${CLOUDFLARE_IMAGE_PREFIX}${options.join(',')}/${transformedPath.slice(optionsEnd + 1)}`
+      return url.toString()
+    }
+
+    url.pathname = `${CLOUDFLARE_IMAGE_PREFIX}quality=75,format=auto,width=${width}${url.pathname}`
+    return url.toString()
+  } catch {
+    return imageUrl
+  }
+}
+
+export function BannerItem({
+  banner,
+  sort,
+  language,
+  accountId,
+  titleId,
+  imageState,
+}: BannerItemProps) {
   const { category, title, description, 'img-src': imgSrc } = banner.content
+  const shouldLoadImage = imageState !== 'deferred'
+  const responsiveImageSrc = getCloudflareBannerImageUrl(imgSrc, BANNER_IMAGE_MAX_DPR_WIDTH)
+  const responsiveImageSrcSet =
+    responsiveImageSrc === imgSrc
+      ? undefined
+      : `${getCloudflareBannerImageUrl(imgSrc, BANNER_IMAGE_WIDTH)} ${BANNER_IMAGE_WIDTH}w, ${responsiveImageSrc} ${BANNER_IMAGE_MAX_DPR_WIDTH}w`
 
   const handleBannerClick = () => {
     trackEvent('explore_banner_click', {
@@ -50,13 +96,19 @@ export function BannerItem({ banner, sort, language, accountId, titleId }: Banne
       </div>
 
       <div className="pointer-events-none relative z-20 hidden w-60 max-w-60 shrink-0 flex-col items-end justify-center self-stretch p-2 @min-[720px]/banner:flex">
-        <img
-          src={imgSrc}
-          alt=""
-          width={224}
-          height={168}
-          className="aspect-4/3 w-full shrink-0 rounded-xl object-cover"
-        />
+        {shouldLoadImage && (
+          <img
+            src={responsiveImageSrc}
+            srcSet={responsiveImageSrcSet}
+            sizes={responsiveImageSrcSet ? `${BANNER_IMAGE_WIDTH}px` : undefined}
+            alt=""
+            width={BANNER_IMAGE_WIDTH}
+            height={168}
+            loading="eager"
+            fetchPriority={imageState === 'active' ? 'high' : 'low'}
+            className="aspect-4/3 w-full shrink-0 rounded-xl object-cover"
+          />
+        )}
       </div>
 
       {banner.link && (

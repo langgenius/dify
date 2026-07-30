@@ -1,4 +1,7 @@
+'use client'
+
 import type { ComponentProps, FocusEvent } from 'react'
+import type { BannerImageState } from './banner-item'
 import type { Banner as BannerType } from '@/models/app'
 import { useAtomValue } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -26,13 +29,27 @@ type BannerCarouselContentProps = {
 type BannerSlideProps = {
   banner: BannerType
   index: number
-  isActive: boolean
+  imageState: BannerImageState
   accountId?: string
   language: string
 }
 
-function BannerSlide({ banner, index, isActive, accountId, language }: BannerSlideProps) {
+function includeRequestedBanners(
+  requestedIds: Set<string>,
+  banners: BannerType[],
+  indices: number[],
+) {
+  const nextRequestedIds = new Set(requestedIds)
+  indices.forEach((index) => {
+    const banner = banners[index]
+    if (banner) nextRequestedIds.add(banner.id)
+  })
+  return nextRequestedIds.size === requestedIds.size ? requestedIds : nextRequestedIds
+}
+
+function BannerSlide({ banner, index, imageState, accountId, language }: BannerSlideProps) {
   const titleId = useId()
+  const isActive = imageState === 'active'
 
   return (
     <Carousel.Item
@@ -47,6 +64,7 @@ function BannerSlide({ banner, index, isActive, accountId, language }: BannerSli
         language={language}
         accountId={accountId}
         titleId={titleId}
+        imageState={imageState}
       />
     </Carousel.Item>
   )
@@ -56,11 +74,23 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
   const [isPlaying, setIsPlaying] = useState(false)
+  const [requestedBannerIds, setRequestedBannerIds] = useState(
+    () => new Set(banners.slice(0, 2).map((banner) => banner.id)),
+  )
   const trackedBannerKeysRef = useRef(new Set<string>())
   const shouldResumeAfterFocusRef = useRef(false)
   const nextIndex = (selectedIndex + 1) % banners.length
+  const previousIndex = (selectedIndex - 1 + banners.length) % banners.length
   const activeBanner = banners[selectedIndex]
   const trackingKey = accountId && activeBanner ? `${accountId}:${activeBanner.id}` : null
+
+  const requestBanners = (...indices: number[]) => {
+    setRequestedBannerIds((requestedIds) => includeRequestedBanners(requestedIds, banners, indices))
+  }
+
+  const prepareDragTargets = () => {
+    requestBanners(previousIndex, nextIndex)
+  }
 
   const pauseRotationForFocus = () => {
     const autoplay = api?.plugins().autoplay
@@ -80,8 +110,28 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
   const selectBanner = (index: number) => {
     if (!api || index === selectedIndex) return
+    requestBanners(index)
     api.scrollTo(index)
   }
+
+  useEffect(() => {
+    if (!api) return
+
+    const handleSelect = () => {
+      const nextSelectedIndex = api.selectedScrollSnap()
+      setRequestedBannerIds((requestedIds) =>
+        includeRequestedBanners(requestedIds, banners, [
+          nextSelectedIndex,
+          (nextSelectedIndex + 1) % banners.length,
+        ]),
+      )
+    }
+
+    api.on('select', handleSelect)
+    return () => {
+      api.off('select', handleSelect)
+    }
+  }, [api, banners])
 
   useEffect(() => {
     if (!accountId || !activeBanner || !trackingKey) return
@@ -148,13 +198,24 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
   return (
     <>
-      <Carousel.Content aria-live={isPlaying ? 'off' : 'polite'}>
+      <Carousel.Content
+        aria-live={isPlaying ? 'off' : 'polite'}
+        onPointerDownCapture={prepareDragTargets}
+      >
         {banners.map((banner, index) => (
           <BannerSlide
             key={banner.id}
             banner={banner}
             index={index}
-            isActive={index === selectedIndex}
+            imageState={
+              index === selectedIndex
+                ? 'active'
+                : index === nextIndex
+                  ? 'next'
+                  : requestedBannerIds.has(banner.id)
+                    ? 'requested'
+                    : 'deferred'
+            }
             accountId={accountId}
             language={language}
           />
@@ -185,9 +246,10 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
 type BannerProps = {
   banners: BannerType[]
+  reserveCarouselSpace?: boolean
 }
 
-export function Banner({ banners }: BannerProps) {
+export function Banner({ banners, reserveCarouselSpace = false }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const userProfile = useAtomValue(userProfileAtom)
@@ -230,6 +292,10 @@ export function Banner({ banners }: BannerProps) {
             language={locale}
           />
         </Carousel>
+      ) : reserveCarouselSpace ? (
+        <div className="@container/banner w-full">
+          <div aria-hidden="true" className="h-56 w-full @min-[996px]/banner:h-46" />
+        </div>
       ) : null}
     </div>
   )
