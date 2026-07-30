@@ -87,8 +87,8 @@ export type UpdateAppModelConfigResponse = { result: string }
 type ApiKeyItemResponse = {
   id: string
   token: string
-  /** Dataset keys only: the bound dataset id, or null for workspace-scoped keys. */
-  dataset_id?: string | null
+  /** Dataset keys only: bound knowledge base ids. Empty = access all knowledge bases. */
+  dataset_ids?: string[]
   last_used_at: string
   created_at: string
 }
@@ -100,7 +100,7 @@ export type ApiKeysListResponse = {
 export type CreateApiKeyResponse = {
   id: string
   token: string
-  dataset_id?: string | null
+  dataset_ids?: string[]
   created_at: string
 }
 

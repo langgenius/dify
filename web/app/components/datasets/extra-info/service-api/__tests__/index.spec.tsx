@@ -17,6 +17,10 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({ isShow }: { isShow: boolean }) => (isShow ? <div>secret key modal</div> : null),
 }))
 
+vi.mock('@/app/components/develop/secret-key/add-api-key-modal', () => ({
+  default: ({ isShow }: { isShow: boolean }) => (isShow ? <div>add api key modal</div> : null),
+}))
+
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
@@ -31,19 +35,37 @@ describe('ServiceApi', () => {
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
+    )
 
     expect(screen.getByText('secret key modal')).toBeInTheDocument()
   })
 
-  it('prevents secret-key management without workspace permission', async () => {
+  it('opens the add-key dialog from the service API details', async () => {
+    const user = userEvent.setup()
+    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' }))
+
+    expect(screen.getByText('add api key modal')).toBeInTheDocument()
+  })
+
+  it('prevents key management without workspace permission', async () => {
     const user = userEvent.setup()
     mockPermissionKeys = []
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
 
-    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
+    ).toBeDisabled()
     expect(screen.queryByText('secret key modal')).not.toBeInTheDocument()
+    expect(screen.queryByText('add api key modal')).not.toBeInTheDocument()
   })
 })

@@ -10,10 +10,11 @@ import Link from '@/next/link'
 type CardProps = {
   apiBaseUrl: string
   onOpenSecretKeyModal: () => void
+  onOpenAddModal: () => void
   canManageSecretKey?: boolean
 }
 
-const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: CardProps) => {
+const Card = ({ apiBaseUrl, onOpenSecretKeyModal, onOpenAddModal, canManageSecretKey = false }: CardProps) => {
   const { t } = useTranslation()
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
@@ -49,24 +50,42 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
           </div>
         </div>
       </div>
-      {/* Actions */}
-      <div className="flex gap-x-1 border-t-[0.5px] border-divider-subtle p-4">
-        <PopoverClose
-          render={
-            <Button
-              variant="ghost"
-              size="small"
-              className="gap-x-px text-text-tertiary"
-              disabled={!canManageSecretKey}
-              onClick={onOpenSecretKeyModal}
-            >
-              <span className="i-ri-key-2-line size-3.5 shrink-0" />
-              <span className="px-0.75 system-xs-medium">
-                {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
-              </span>
-            </Button>
-          }
-        />
+      {/* Actions: Add / Manage split out; API Reference below */}
+      <div className="flex flex-col gap-y-1 border-t-[0.5px] border-divider-subtle p-4">
+        <div className="flex gap-x-1">
+          <PopoverClose
+            render={
+              <Button
+                variant="ghost"
+                size="small"
+                className="gap-x-px text-text-tertiary"
+                disabled={!canManageSecretKey}
+                onClick={onOpenAddModal}
+              >
+                <span className="i-ri-add-line size-3.5 shrink-0" />
+                <span className="px-0.75 system-xs-medium">
+                  {t(($) => $['serviceApi.card.addApiKey'], { ns: 'dataset' })}
+                </span>
+              </Button>
+            }
+          />
+          <PopoverClose
+            render={
+              <Button
+                variant="ghost"
+                size="small"
+                className="gap-x-px text-text-tertiary"
+                disabled={!canManageSecretKey}
+                onClick={onOpenSecretKeyModal}
+              >
+                <span className="i-ri-key-2-line size-3.5 shrink-0" />
+                <span className="px-0.75 system-xs-medium">
+                  {t(($) => $['serviceApi.card.manageApiKey'], { ns: 'dataset' })}
+                </span>
+              </Button>
+            }
+          />
+        </div>
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="small" className="gap-x-px text-text-tertiary">
             <span className="i-ri-book-open-line size-3.5 shrink-0" />

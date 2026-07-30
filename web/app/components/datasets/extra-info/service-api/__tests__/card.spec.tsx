@@ -17,6 +17,7 @@ describe('Service API card', () => {
         apiBaseUrl="https://api.example.com"
         canManageSecretKey
         onOpenSecretKeyModal={vi.fn()}
+        onOpenAddModal={vi.fn()}
       />,
     )
 
@@ -24,6 +25,23 @@ describe('Service API card', () => {
     expect(
       screen.getByRole('link', { name: 'dataset.serviceApi.card.apiReference' }),
     ).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
+  })
+
+  it('opens the add-key dialog when allowed', async () => {
+    const user = userEvent.setup()
+    const onOpenAddModal = vi.fn()
+    render(
+      <Card
+        apiBaseUrl="https://api.example.com"
+        canManageSecretKey
+        onOpenSecretKeyModal={vi.fn()}
+        onOpenAddModal={onOpenAddModal}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' }))
+
+    expect(onOpenAddModal).toHaveBeenCalledOnce()
   })
 
   it('opens secret-key management when allowed', async () => {
@@ -34,17 +52,27 @@ describe('Service API card', () => {
         apiBaseUrl="https://api.example.com"
         canManageSecretKey
         onOpenSecretKeyModal={onOpenSecretKeyModal}
+        onOpenAddModal={vi.fn()}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }))
 
     expect(onOpenSecretKeyModal).toHaveBeenCalledOnce()
   })
 
-  it('disables secret-key management when it is not allowed', () => {
-    render(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={vi.fn()} />)
+  it('disables key management when it is not allowed', () => {
+    render(
+      <Card
+        apiBaseUrl="https://api.example.com"
+        onOpenSecretKeyModal={vi.fn()}
+        onOpenAddModal={vi.fn()}
+      />,
+    )
 
-    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
+    ).toBeDisabled()
   })
 })
