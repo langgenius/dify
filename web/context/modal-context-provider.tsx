@@ -93,11 +93,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const { plan, isFetchedPlan } = useProviderContext()
-  const {
-    showTriggerEventsLimitModal,
-    setShowTriggerEventsLimitModal,
-    persistTriggerEventsLimitModalDismiss,
-  } = useTriggerEventsLimitModal({
+  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal({
     plan,
     isFetchedPlan,
     currentWorkspaceId,
@@ -204,7 +200,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     showExternalKnowledgeAPIModal ||
     showOpeningModal ||
     showUpdatePluginModal ||
-    showTriggerEventsLimitModal,
+    triggerEventsLimitModal,
   )
 
   return (
@@ -219,7 +215,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         setShowExternalKnowledgeAPIModal,
         setShowOpeningModal,
         setShowUpdatePluginModal,
-        setShowTriggerEventsLimitModal,
       }}
     >
       <>
@@ -298,19 +293,15 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             }}
           />
         )}
-        {!!showTriggerEventsLimitModal && (
+        {!!triggerEventsLimitModal && (
           <TriggerEventsLimitModal
             show
-            usage={showTriggerEventsLimitModal.payload.usage}
-            total={showTriggerEventsLimitModal.payload.total}
-            resetInDays={showTriggerEventsLimitModal.payload.resetInDays}
-            onClose={() => {
-              persistTriggerEventsLimitModalDismiss()
-              setShowTriggerEventsLimitModal(null)
-            }}
+            usage={triggerEventsLimitModal.usage}
+            total={triggerEventsLimitModal.total}
+            resetInDays={triggerEventsLimitModal.resetInDays}
+            onClose={dismissTriggerEventsLimitModal}
             onUpgrade={() => {
-              persistTriggerEventsLimitModalDismiss()
-              setShowTriggerEventsLimitModal(null)
+              dismissTriggerEventsLimitModal()
               handleShowPricingModal()
             }}
           />
