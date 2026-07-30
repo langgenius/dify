@@ -33,6 +33,8 @@ class WorkflowAppQueueManager(AppQueueManager):
 
         self._q.put(message)
 
+        # A paused workflow remains resumable, but the current listener segment is complete.
+        # Treat it as terminal here so listener cleanup does not abort the workflow before it resumes.
         if isinstance(
             event,
             QueueStopEvent
