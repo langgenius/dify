@@ -72,28 +72,32 @@ export function createDatabaseCapabilityGrantProvenanceRepository({
   now = () => new Date().toISOString(),
 }: CreateDatabaseCapabilityGrantProvenanceRepositoryOptions): CapabilityGrantProvenanceRepository {
   return {
-    admit: async (input) =>
-      database.transaction(async (transaction) => {
-        const normalized = normalizeCapabilityGrantAdmission(input);
-        const digest = capabilityGrantClaimsDigest(normalized);
-        const existing = await findGrant(database, transaction, normalized, true);
-        if (existing) {
-          if (existing.claimsDigest !== digest) throw new CapabilityGrantConflictError();
-          return existing.provenance;
-        }
-
-        const timestamp = now();
-        const provenance: CapabilityGrantProvenance = {
-          ...normalized,
-          admittedAt: timestamp,
-          highestRevokeSequence: 0,
-          revision: 1,
-          state: "active",
-          updatedAt: timestamp,
-        };
-        await insertGrant(database, transaction, provenance, digest);
+    admit: async (input) => {
+      const normalized = normalizeCapabilityGrantAdmission(input);
+      const digest = capabilityGrantClaimsDigest(normalized);
+      const timestamp = now();
+      const provenance: CapabilityGrantProvenance = {
+        ...normalized,
+        admittedAt: timestamp,
+        highestRevokeSequence: 0,
+        revision: 1,
+        state: "active",
+        updatedAt: timestamp,
+      };
+      // New random grant ids dominate this path. One autocommit insert avoids BEGIN, a guaranteed
+      // locking miss, and COMMIT; retries retain the locked immutable-claims comparison.
+      if (await insertGrantIfAbsent(database, database, provenance, digest)) {
         return provenance;
-      }),
+      }
+
+      return database.transaction(async (transaction) => {
+        const existing = await findGrant(database, transaction, normalized, true);
+        if (!existing || existing.claimsDigest !== digest) {
+          throw new CapabilityGrantConflictError();
+        }
+        return existing.provenance;
+      });
+    },
     applyGrantRevoke: async (input) =>
       database.transaction(async (transaction) => {
         validateCapabilityGrantRevoke(input);
@@ -213,12 +217,12 @@ async function findGrant(
   return result.rows[0] ? storedGrantFromRow(result.rows[0]) : null;
 }
 
-async function insertGrant(
+async function insertGrantIfAbsent(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
   grant: CapabilityGrantProvenance,
   digest: string,
-): Promise<void> {
+): Promise<boolean> {
   const columns = [
     "tenant_id",
     "knowledge_space_id",
@@ -273,7 +277,7 @@ async function insertGrant(
     grant.admittedAt,
     grant.updatedAt,
   ];
-  await executor.execute({
+  const result = await executor.execute({
     maxRows: 0,
     operation: "insert",
     params,
@@ -285,9 +289,14 @@ async function insertGrant(
           ? jsonPlaceholder(database, index + 1)
           : p(database, index + 1),
       )
-      .join(", ")})`,
+      .join(", ")})${
+      database.dialect === "postgres"
+        ? " ON CONFLICT DO NOTHING"
+        : ` ON DUPLICATE KEY UPDATE ${q(database, "grant_id")} = ${q(database, "grant_id")}`
+    }`,
     tableName: grantTable,
   });
+  return result.rowsAffected === 1;
 }
 
 async function updateGrantRevoke(

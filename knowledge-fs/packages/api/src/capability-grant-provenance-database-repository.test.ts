@@ -19,6 +19,7 @@ const timestamp = "2026-07-21T12:00:00.000Z";
 interface ScriptStep {
   readonly operation: DatabaseExecuteInput["operation"];
   readonly rows: readonly DatabaseRow[];
+  readonly rowsAffected?: number | undefined;
   readonly tableName: string;
 }
 
@@ -26,10 +27,7 @@ describe.each(["postgres", "tidb"] as const)(
   "database capability grant provenance (%s)",
   (dialect) => {
     it("admits and idempotently replays the immutable claims summary", async () => {
-      const first = scriptedDatabase(dialect, [
-        step("capability_grants", "select", []),
-        step("capability_grants", "insert", []),
-      ]);
+      const first = scriptedDatabase(dialect, [step("capability_grants", "insert", [])]);
       const repository = createDatabaseCapabilityGrantProvenanceRepository({
         database: first.database,
         now: () => timestamp,
@@ -41,19 +39,41 @@ describe.each(["postgres", "tidb"] as const)(
         revision: 1,
         state: "active",
       });
-      const insert = first.calls[1];
+      const insert = first.calls[0];
       expect(insert?.params).not.toContain("Bearer secret");
       expect(insert?.sql.toLowerCase()).not.toContain("token");
       expect(insert?.sql).toContain(dialect === "postgres" ? "::jsonb" : " AS JSON");
+      expect(insert?.sql).toContain(
+        dialect === "postgres" ? "ON CONFLICT DO NOTHING" : "ON DUPLICATE KEY UPDATE",
+      );
+      expect(first.transactions.count).toBe(0);
       first.expectDone();
 
-      const replay = scriptedDatabase(dialect, [step("capability_grants", "select", [grantRow()])]);
+      const replay = scriptedDatabase(dialect, [
+        step("capability_grants", "insert", [], 0),
+        step("capability_grants", "select", [grantRow()]),
+      ]);
       await expect(
         createDatabaseCapabilityGrantProvenanceRepository({ database: replay.database }).admit(
           grantInput(),
         ),
       ).resolves.toMatchObject({ grantId, state: "active" });
+      expect(replay.transactions.count).toBe(1);
       replay.expectDone();
+    });
+
+    it("fails closed when a conflicting insert resolves to different immutable claims", async () => {
+      const conflict = scriptedDatabase(dialect, [
+        step("capability_grants", "insert", [], 0),
+        step("capability_grants", "select", [grantRow()]),
+      ]);
+
+      await expect(
+        createDatabaseCapabilityGrantProvenanceRepository({
+          database: conflict.database,
+        }).admit({ ...grantInput(), action: "documents.delete" }),
+      ).rejects.toThrow("different immutable claims");
+      conflict.expectDone();
     });
 
     it("reads PostgreSQL bigint grant counters as safe integers", async () => {
@@ -295,23 +315,33 @@ function scriptedDatabase(
   readonly calls: readonly DatabaseExecuteInput[];
   readonly database: DatabaseAdapter;
   expectDone(): void;
+  readonly transactions: { count: number };
 } {
   let cursor = 0;
   const calls: DatabaseExecuteInput[] = [];
+  const transactions = { count: 0 };
   const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
     calls.push(input);
     const expected = steps[cursor];
     if (!expected) throw new Error(`Unexpected SQL call ${input.operation} ${input.tableName}`);
     cursor += 1;
     expect(input).toMatchObject({ operation: expected.operation, tableName: expected.tableName });
-    return { rows: expected.rows, rowsAffected: input.operation === "select" ? 0 : 1 };
+    return {
+      rows: expected.rows,
+      rowsAffected: expected.rowsAffected ?? (input.operation === "select" ? 0 : 1),
+    };
   };
-  const transaction = async <T>(callback: (executor: DatabaseExecutor) => Promise<T>): Promise<T> =>
-    callback({ execute });
+  const transaction = async <T>(
+    callback: (executor: DatabaseExecutor) => Promise<T>,
+  ): Promise<T> => {
+    transactions.count += 1;
+    return callback({ execute });
+  };
   return {
     calls,
     database: createSchemaDatabaseAdapter({ executor: execute, kind: dialect, transaction }),
     expectDone: () => expect(cursor).toBe(steps.length),
+    transactions,
   };
 }
 
@@ -319,6 +349,7 @@ function step(
   tableName: string,
   operation: DatabaseExecuteInput["operation"],
   rows: readonly DatabaseRow[],
+  rowsAffected?: number,
 ): ScriptStep {
-  return { operation, rows, tableName };
+  return { operation, rows, rowsAffected, tableName };
 }

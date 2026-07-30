@@ -93,7 +93,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteSSEResponse,
 )
-from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
+from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
 
 _MAX_STREAM_CAPABILITY_BYTES = 16 * 1024
 _MAX_STREAM_TRACE_ID_BYTES = 255
@@ -161,7 +161,7 @@ register_response_schema_models(
 def _runtime() -> KnowledgeFSRuntime:
     if not dify_config.KNOWLEDGE_FS_ENABLED:
         raise NotFound()
-    return create_knowledge_fs_runtime(session_factory.get_session_maker())
+    return get_knowledge_fs_runtime(session_factory.get_session_maker())
 
 
 def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:

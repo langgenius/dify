@@ -180,7 +180,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteSSEResponse,
 )
-from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
+from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
 from services.knowledge_fs_capability import (
     KnowledgeFSCapabilityConfigurationError,
     create_configured_knowledge_fs_capability_issuer,
@@ -314,7 +314,7 @@ def _console_services() -> KnowledgeFSRuntime:
     if not dify_config.KNOWLEDGE_FS_ENABLED:
         raise NotFound()
     session_maker = session_factory.get_session_maker()
-    return create_knowledge_fs_runtime(session_maker)
+    return get_knowledge_fs_runtime(session_maker)
 
 
 def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
