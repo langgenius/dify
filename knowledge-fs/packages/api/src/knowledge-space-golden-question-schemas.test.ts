@@ -37,6 +37,15 @@ describe("knowledge-space-golden-question-schemas", () => {
         slug: "camera",
       }),
     ).toMatchObject({ iconRef: "builtin:camera-spec" });
+    expect(
+      UpdateKnowledgeSpaceSchema.parse({
+        expectedRevision: 1,
+        iconRef: "slightly_smiling_face",
+      }),
+    ).toEqual({
+      expectedRevision: 1,
+      iconRef: "slightly_smiling_face",
+    });
     expect(UpdateKnowledgeSpaceSchema.parse({ expectedRevision: 1, iconRef: null })).toEqual({
       expectedRevision: 1,
       iconRef: null,

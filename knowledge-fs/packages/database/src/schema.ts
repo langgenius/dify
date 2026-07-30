@@ -215,9 +215,8 @@ const tables = [
       },
       {
         expression: {
-          postgres:
-            '"icon_ref" IS NULL OR "icon_ref" ~ \'^builtin:[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$\'',
-          tidb: "`icon_ref` IS NULL OR `icon_ref` REGEXP '^builtin:[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$'",
+          postgres: '"icon_ref" IS NULL OR "icon_ref" ~ \'^(builtin:)?[+a-z0-9_-]{1,64}$\'',
+          tidb: "`icon_ref` IS NULL OR `icon_ref` REGEXP '^(builtin:)?[+a-z0-9_-]{1,64}$'",
         },
         name: "knowledge_spaces_icon_ref_ck",
       },

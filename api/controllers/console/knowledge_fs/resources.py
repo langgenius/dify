@@ -331,6 +331,8 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSUpstreamUnavailableHTTPError() from exc
         except KnowledgeFSProductRequestRejectedError as exc:
+            if exc.status_code == HTTPStatus.BAD_REQUEST:
+                raise KnowledgeFSInvalidRequestHTTPError() from exc
             if exc.status_code == HTTPStatus.CONFLICT:
                 raise Conflict() from exc
             if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:

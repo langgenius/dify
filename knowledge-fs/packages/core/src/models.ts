@@ -31,14 +31,18 @@ export const AuthSubjectSchema = z.object({
 });
 export type AuthSubject = z.infer<typeof AuthSubjectSchema>;
 
+// Dify's emoji picker persists Emoji Mart identities such as `grinning`,
+// `slightly_smiling_face`, and `+1`. The optional builtin prefix remains readable for
+// existing KnowledgeFS clients, while the bounded character set rejects URLs/object keys.
+export const KnowledgeSpaceIconRefSchema = z
+  .string()
+  .max(72)
+  .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/);
+
 export const KnowledgeSpaceSchema = z.object({
   createdAt: DateTimeSchema,
   description: z.string().max(2000).optional(),
-  iconRef: z
-    .string()
-    .max(72)
-    .regex(/^builtin:[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/)
-    .optional(),
+  iconRef: KnowledgeSpaceIconRefSchema.optional(),
   id: UuidSchema,
   name: z.string().min(1).max(160),
   revision: z.number().int().positive(),

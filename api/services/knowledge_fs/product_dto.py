@@ -17,6 +17,11 @@ from models.knowledge_fs import (
 )
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 
+KnowledgeFSIconIdentity = Annotated[
+    str,
+    Field(max_length=72, pattern=r"^(?:builtin:)?[+a-z0-9_-]{1,64}$"),
+]
+
 
 class KnowledgeFSModelIntent(BaseModel):
     plugin_id: str = Field(
@@ -91,7 +96,7 @@ class KnowledgeFSRetrievalProfileIntent(BaseModel):
 class KnowledgeFSSpaceCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=40)
     slug: str = Field(min_length=1, max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    icon: str | None = Field(default=None, max_length=255)
+    icon: KnowledgeFSIconIdentity | None = None
     description: str | None = Field(default=None, max_length=2_000)
     visibility: KnowledgeFSControlSpaceVisibility = KnowledgeFSControlSpaceVisibility.ONLY_ME
     embedding: KnowledgeFSModelIntent | None = None
@@ -109,7 +114,7 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
 
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40)
-    icon: str | None = Field(default=None, max_length=255)
+    icon: KnowledgeFSIconIdentity | None = None
     description: str | None = Field(default=None, max_length=2_000)
     visibility: KnowledgeFSControlSpaceVisibility | None = None
 

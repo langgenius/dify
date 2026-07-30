@@ -207,6 +207,43 @@ describe("core domain models", () => {
     expect(asset.updatedAt).toBe(updatedAt);
   });
 
+  it("accepts bounded Dify emoji identities and rejects external icon references", () => {
+    for (const iconRef of ["grinning", "slightly_smiling_face", "+1", "builtin:camera-spec"]) {
+      expect(
+        KnowledgeSpaceSchema.parse({
+          createdAt,
+          iconRef,
+          id: knowledgeSpaceId,
+          name: "Engineering Knowledge",
+          revision: 1,
+          slug: "engineering-knowledge",
+          tenantId: "tenant-1",
+          updatedAt,
+        }).iconRef,
+      ).toBe(iconRef);
+    }
+
+    for (const iconRef of [
+      "https://example.com/icon.png",
+      "builtin:Camera",
+      "contains spaces",
+      "x".repeat(65),
+    ]) {
+      expect(() =>
+        KnowledgeSpaceSchema.parse({
+          createdAt,
+          iconRef,
+          id: knowledgeSpaceId,
+          name: "Engineering Knowledge",
+          revision: 1,
+          slug: "engineering-knowledge",
+          tenantId: "tenant-1",
+          updatedAt,
+        }),
+      ).toThrow();
+    }
+  });
+
   it("rejects identifiers and paths that exceed portable TiDB key bounds", () => {
     expect(() =>
       KnowledgeSpaceSchema.parse({

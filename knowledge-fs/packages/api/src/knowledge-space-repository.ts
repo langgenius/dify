@@ -35,7 +35,7 @@ export interface UpdateKnowledgeSpaceInput {
   readonly actorSubjectId?: string | undefined;
   readonly description?: string | undefined;
   readonly expectedRevision: number;
-  /** null clears the configured built-in icon; undefined preserves it. */
+  /** null clears the configured built-in emoji identity; undefined preserves it. */
   readonly iconRef?: string | null | undefined;
   readonly id: string;
   readonly name?: string | undefined;

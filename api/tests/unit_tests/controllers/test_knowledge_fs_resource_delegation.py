@@ -1166,6 +1166,7 @@ def test_console_request_rejections_preserve_conflict_size_and_validation_contra
     from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
     expected = {
+        HTTPStatus.BAD_REQUEST: KnowledgeFSInvalidRequestHTTPError,
         HTTPStatus.CONFLICT: Conflict,
         HTTPStatus.REQUEST_ENTITY_TOO_LARGE: RequestEntityTooLarge,
         HTTPStatus.UNPROCESSABLE_ENTITY: UnprocessableEntity,

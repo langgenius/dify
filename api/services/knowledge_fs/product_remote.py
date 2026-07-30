@@ -26,7 +26,7 @@ class KnowledgeFSOperationUnavailableError(RuntimeError):
 class KnowledgeFSProductRequestRejectedError(RuntimeError):
     """A bounded product request was rejected locally or by authoritative KFS validation."""
 
-    def __init__(self, *, status_code: Literal[409, 413, 422]) -> None:
+    def __init__(self, *, status_code: Literal[400, 409, 413, 422]) -> None:
         super().__init__(f"KnowledgeFS rejected the product request with HTTP {status_code}")
         self.status_code = status_code
 

@@ -40,6 +40,7 @@ const sourceConnectionCapabilityProvenanceMigrationId =
   "0031_source_connection_capability_provenance";
 const capabilitySourceSyncPoliciesMigrationId = "0032_capability_source_sync_policies";
 const researchTaskFinalAnswersMigrationId = "0033_research_task_final_answers";
+const knowledgeSpaceEmojiIconsMigrationId = "0034_knowledge_space_emoji_icons";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -57,6 +58,7 @@ const migrationsAfterDurableDeletion = [
   sourceConnectionCapabilityProvenanceMigrationId,
   capabilitySourceSyncPoliciesMigrationId,
   researchTaskFinalAnswersMigrationId,
+  knowledgeSpaceEmojiIconsMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

@@ -765,6 +765,7 @@ def test_multipart_remote_maps_network_failure_to_stable_error(monkeypatch: pyte
 @pytest.mark.parametrize(
     ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
+        (400, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 400),
         (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
         (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
         (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),
@@ -939,6 +940,7 @@ def test_remote_maps_network_and_response_limit_failures_to_stable_error(
 @pytest.mark.parametrize(
     ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
+        (400, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 400),
         (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
         (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
         (500, "application/json", b"{}", KnowledgeFSProductRemoteError, None),
@@ -971,6 +973,7 @@ def test_binary_remote_closes_and_maps_all_upstream_response_failures(
 @pytest.mark.parametrize(
     ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
+        (400, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 400),
         (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
         (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
         (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),

@@ -73,8 +73,9 @@ describe("runApiDatabaseMigrations", () => {
         "0031_source_connection_capability_provenance",
         "0032_capability_source_sync_policies",
         "0033_research_task_final_answers",
+        "0034_knowledge_space_emoji_icons",
       ],
-      pendingBeforeRun: 33,
+      pendingBeforeRun: 34,
     });
     expect(operations).toEqual([
       "schema",
@@ -146,8 +147,10 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(33);
+    expect(migrationSql).toHaveLength(34);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');

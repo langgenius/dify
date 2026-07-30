@@ -258,7 +258,7 @@ function createFakeKnowledgeSpaceExecutor(initialRows: readonly KnowledgeSpaceRo
 }
 
 describe("KnowledgeSpace repositories", () => {
-  it("persists and CAS-clears a bounded built-in icon in memory", async () => {
+  it("persists and CAS-clears a bounded built-in emoji identity in memory", async () => {
     const repository = createInMemoryKnowledgeSpaceRepository({
       generateId: () => SPACE_ID_A,
       maxListLimit: 10,
@@ -266,12 +266,12 @@ describe("KnowledgeSpace repositories", () => {
       now: () => "2026-05-11T13:00:00.000Z",
     });
     const created = await repository.create({
-      iconRef: "builtin:camera",
+      iconRef: "grinning",
       name: "Camera",
       slug: "camera",
       tenantId: TENANT_ID,
     });
-    expect(created.iconRef).toBe("builtin:camera");
+    expect(created.iconRef).toBe("grinning");
     const cleared = await repository.update({
       expectedRevision: 1,
       iconRef: null,

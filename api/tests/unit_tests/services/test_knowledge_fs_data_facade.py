@@ -726,7 +726,7 @@ def test_json_facade_uses_kfs_camel_case_body_and_authoritative_revision() -> No
         tenant_id="tenant-1",
         account_id="account-1",
         control_space_id="control-1",
-        payload=KnowledgeFSSpaceUpdatePayload(name="Renamed", icon="builtin:book"),
+        payload=KnowledgeFSSpaceUpdatePayload(name="Renamed", icon="grinning"),
     )
 
     assert research.knowledge_space_id == "space-1"
@@ -740,7 +740,7 @@ def test_json_facade_uses_kfs_camel_case_body_and_authoritative_revision() -> No
     }
     assert remote.requests[1].payload == {
         "expectedRevision": 9,
-        "iconRef": "builtin:book",
+        "iconRef": "grinning",
         "name": "Renamed",
     }
     assert {call["control_space_id"] for call in broker.calls} == {"control-1"}

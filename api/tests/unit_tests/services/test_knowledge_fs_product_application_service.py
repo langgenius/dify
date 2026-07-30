@@ -93,6 +93,12 @@ def test_space_payloads_share_the_40_character_name_limit() -> None:
     with pytest.raises(ValueError):
         KnowledgeFSSpaceUpdatePayload(name="n" * 41)
 
+    for icon in ("grinning", "slightly_smiling_face", "+1", "builtin:camera-spec"):
+        assert KnowledgeFSSpaceUpdatePayload(icon=icon).icon == icon
+    for icon in ("https://example.com/icon.png", "builtin:Camera", "x" * 65):
+        with pytest.raises(ValueError):
+            KnowledgeFSSpaceUpdatePayload(icon=icon)
+
 
 def _application(*, allowed: bool = True):
     product = MagicMock()

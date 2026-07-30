@@ -171,6 +171,8 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
+            if response.status_code == 400:
+                raise KnowledgeFSProductRequestRejectedError(status_code=400)
             if response.status_code == 409:
                 raise KnowledgeFSProductRequestRejectedError(status_code=409)
             if response.status_code == 413:
@@ -252,6 +254,8 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
+            if response.status_code == 400:
+                raise KnowledgeFSProductRequestRejectedError(status_code=400)
             if response.status_code == 409:
                 raise KnowledgeFSProductRequestRejectedError(status_code=409)
             if response.status_code == 413:
@@ -413,6 +417,8 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
+            if response.status_code == 400:
+                raise KnowledgeFSProductRequestRejectedError(status_code=400)
             if response.status_code == 409:
                 raise KnowledgeFSProductRequestRejectedError(status_code=409)
             if response.status_code == 413:
