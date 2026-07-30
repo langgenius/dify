@@ -1,5 +1,4 @@
 import json
-from collections.abc import Iterator
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -8,7 +7,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
 from models.account import Account
@@ -62,34 +61,6 @@ from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
 from services.entities.agent_entities import AgentSoulConfig, ComposerSavePayload, ComposerSaveStrategy, ComposerVariant
-
-_agent_session_factory: sessionmaker[Session] | None = None
-_agent_sessions: list[Session] = []
-
-
-@pytest.fixture(autouse=True)
-def _bind_agent_session_factory(sqlite_session_factory: sessionmaker[Session]) -> Iterator[None]:
-    """Make fresh real SQLite sessions available to orchestration-focused tests."""
-
-    global _agent_session_factory
-    _agent_session_factory = sqlite_session_factory
-    try:
-        yield
-    finally:
-        for session in _agent_sessions:
-            session.close()
-        _agent_sessions.clear()
-        _agent_session_factory = None
-
-
-def _new_session() -> Session:
-    """Return a real Session bound to this test's isolated SQLite database."""
-
-    if _agent_session_factory is None:
-        raise RuntimeError("SQLite session factory is unavailable")
-    session = _agent_session_factory()
-    _agent_sessions.append(session)
-    return session
 
 
 def _agent_soul_with_model() -> AgentSoulConfig:
@@ -210,9 +181,9 @@ def test_agent_soul_has_model():
     assert agent_soul_has_model(AgentSoulConfig()) is False
 
 
-def test_get_published_agent_soul_for_app_uses_active_snapshot():
+def test_get_published_agent_soul_for_app_uses_active_snapshot(sqlite_session: Session):
     agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
-    session = _new_session()
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     version = _snapshot(snapshot_id="version-1", agent_soul=agent_soul)
     agent.active_config_snapshot_id = version.id
@@ -224,17 +195,17 @@ def test_get_published_agent_soul_for_app_uses_active_snapshot():
     assert result == agent_soul
 
 
-def test_get_published_agent_soul_for_app_returns_none_without_backing_agent():
-    service = AgentRosterService(_new_session())
+def test_get_published_agent_soul_for_app_returns_none_without_backing_agent(sqlite_session: Session):
+    service = AgentRosterService(sqlite_session)
 
     result = service.get_published_agent_soul_for_app(tenant_id="tenant-1", app_id="legacy-app-1")
 
     assert result is None
 
 
-def test_peek_authz_app_id_uses_the_parent_app_not_the_hidden_backing_app():
+def test_peek_authz_app_id_uses_the_parent_app_not_the_hidden_backing_app(sqlite_session: Session):
     """A workflow-only Agent is authorized against its parent workflow App."""
-    session = _new_session()
+    session = sqlite_session
     agent = _agent(
         scope=AgentScope.WORKFLOW_ONLY,
         source=AgentSource.WORKFLOW,
@@ -251,8 +222,8 @@ def test_peek_authz_app_id_uses_the_parent_app_not_the_hidden_backing_app():
     assert result == "parent-app-1"
 
 
-def test_peek_authz_app_id_uses_the_roster_agent_app():
-    session = _new_session()
+def test_peek_authz_app_id_uses_the_roster_agent_app(sqlite_session: Session):
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="roster-app-1")
     session.add(agent)
     session.commit()
@@ -262,9 +233,9 @@ def test_peek_authz_app_id_uses_the_roster_agent_app():
     assert result == "roster-app-1"
 
 
-def test_peek_authz_app_id_returns_none_without_creating_a_backing_app():
+def test_peek_authz_app_id_returns_none_without_creating_a_backing_app(sqlite_session: Session):
     """Authorization checks must not materialize the hidden backing App."""
-    session = _new_session()
+    session = sqlite_session
     service = AgentRosterService(session)
 
     result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
@@ -274,8 +245,8 @@ def test_peek_authz_app_id_returns_none_without_creating_a_backing_app():
     assert not session.dirty
 
 
-def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
 
@@ -295,8 +266,8 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPa
     assert files_output["array_item"] == {"type": "file", "description": None, "children": []}
 
 
-def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     binding = SimpleNamespace(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
@@ -327,8 +298,8 @@ def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.
     assert result == {"agent": "agent-1", "version": "version-1"}
 
 
-def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     binding = SimpleNamespace(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
@@ -364,8 +335,8 @@ def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest
     assert result == {"binding_snapshot_id": "binding-version", "version": "preview-version"}
 
 
-def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     binding = SimpleNamespace(
         agent_id="inline-agent-1",
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
@@ -408,8 +379,8 @@ def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest
     assert result == {"agent": "inline-agent-1", "version": "inline-preview-version"}
 
 
-def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     captured: dict[str, object] = {}
 
     class FakeRosterService:
@@ -440,8 +411,10 @@ def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch
     assert captured["commit"] is False
 
 
-def test_workflow_inline_debug_conversation_seed_skips_non_inline(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_workflow_inline_debug_conversation_seed_skips_non_inline(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
 
     class UnexpectedRosterService:
         def __init__(self, session):
@@ -471,8 +444,10 @@ def test_workflow_inline_debug_conversation_seed_skips_non_inline(monkeypatch: p
     )
 
 
-def test_load_workflow_composer_rejects_preview_without_binding(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_load_workflow_composer_rejects_preview_without_binding(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
 
@@ -496,8 +471,8 @@ def test_load_workflow_composer_rejects_preview_without_binding(monkeypatch: pyt
         (ComposerSaveStrategy.SAVE_TO_ROSTER, "_save_to_roster"),
     ],
 )
-def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, helper_name):
-    session = _new_session()
+def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, helper_name, sqlite_session: Session):
+    session = sqlite_session
     binding = SimpleNamespace(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
@@ -554,8 +529,10 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
     assert serialize_calls[0]["account_id"] == "account-1"
 
 
-def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(monkeypatch) -> None:
-    session = _new_session()
+def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
+    monkeypatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     events: list[str] = []
     old_binding = SimpleNamespace(
         agent_id="old-inline-agent",
@@ -617,8 +594,8 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(mo
     assert events == ["commit", "retire", "enqueue"]
 
 
-def test_save_workflow_composer_rejects_agent_app_variant():
-    session = _new_session()
+def test_save_workflow_composer_rejects_agent_app_variant(sqlite_session: Session):
+    session = sqlite_session
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
@@ -678,8 +655,8 @@ def test_publish_save_strategies_run_publish_validation(strategy: ComposerSaveSt
         composer_service._validate_composer_payload_for_strategy(_duplicate_env_secret_payload(strategy))
 
 
-def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     saved_draft = SimpleNamespace(
         id="draft-1",
         home_snapshot_id="home-initial",
@@ -718,8 +695,8 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     assert agent.active_config_is_published is False
 
 
-def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     agent = SimpleNamespace(
         id="agent-1",
         active_config_snapshot_id="version-1",
@@ -746,8 +723,8 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
     assert result["active_config_is_published"] is True
 
 
-def test_save_agent_app_composer_rejects_version_save_strategy():
-    session = _new_session()
+def test_save_agent_app_composer_rejects_version_save_strategy(sqlite_session: Session):
+    session = sqlite_session
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
@@ -766,8 +743,8 @@ def test_save_agent_app_composer_rejects_version_save_strategy():
         )
 
 
-def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     agent.active_config_snapshot_id = "version-1"
     agent.active_config_is_published = True
@@ -814,9 +791,11 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
     assert agent.active_config_is_published is False
 
 
-def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
+def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     agent_soul = _agent_soul_with_model()
-    session = _new_session()
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     agent.active_config_snapshot_id = "version-1"
     agent.active_config_is_published = False
@@ -866,8 +845,8 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     assert result["active_config_is_published"] is True
 
 
-def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -918,8 +897,8 @@ def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.Monke
     assert not session.dirty
 
 
-def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -982,8 +961,9 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
 
 def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1041,8 +1021,10 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
     create_from_build.assert_not_called()
 
 
-def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1156,8 +1138,9 @@ def test_force_build_draft_checkout_collects_retired_binding_after_commit(
     app_id: str,
     backing_app_id: str | None,
     expected_runtime_app_id: str,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1241,8 +1224,9 @@ def test_force_build_draft_checkout_collects_retired_binding_after_commit(
 
 def test_force_build_draft_checkout_rejects_unavailable_pointed_binding(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1296,8 +1280,10 @@ def test_force_build_draft_checkout_rejects_unavailable_pointed_binding(
     enqueue_collection.assert_not_called()
 
 
-def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1375,8 +1361,9 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monk
 
 def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1491,8 +1478,10 @@ def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
     assert lifecycle == ["commit", "enqueue"]
 
 
-def test_build_apply_validates_before_resolving_or_snapshotting_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_apply_validates_before_resolving_or_snapshotting_sandbox(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1534,8 +1523,9 @@ def test_build_apply_validates_before_resolving_or_snapshotting_sandbox(monkeypa
 
 def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_draft(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1596,8 +1586,10 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
     assert result == {"result": "success", "draft": {"id": "draft-1"}}
 
 
-def test_build_apply_requires_retained_sandbox_before_creating_home(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_apply_requires_retained_sandbox_before_creating_home(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1641,8 +1633,10 @@ def test_build_apply_requires_retained_sandbox_before_creating_home(monkeypatch:
     assert session.get(AgentConfigDraft, build_draft.id) is not None
 
 
-def test_build_apply_fails_when_locked_source_cannot_be_retired(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_apply_fails_when_locked_source_cannot_be_retired(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1700,8 +1694,10 @@ def test_build_apply_fails_when_locked_source_cannot_be_retired(monkeypatch: pyt
     enqueue_collection.assert_not_called()
 
 
-def test_build_apply_home_create_failure_leaves_drafts_untouched(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_apply_home_create_failure_leaves_drafts_untouched(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1760,8 +1756,9 @@ def test_build_apply_home_create_failure_leaves_drafts_untouched(monkeypatch: py
 
 def test_build_apply_commit_failure_rolls_back_and_preserves_physical_home(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1827,7 +1824,9 @@ def test_build_apply_commit_failure_rolls_back_and_preserves_physical_home(
     enqueue_collection.assert_not_called()
 
 
-def test_build_draft_save_and_discard_do_not_manage_home_resources(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_draft_save_and_discard_do_not_manage_home_resources(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1855,7 +1854,7 @@ def test_build_draft_save_and_discard_do_not_manage_home_resources(monkeypatch: 
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **_kwargs: agent)
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: build_draft)
     monkeypatch.setattr(AgentComposerService, "_serialize_build_draft_state", lambda draft: {"id": draft.id})
-    save_session = _new_session()
+    save_session = sqlite_session
 
     AgentComposerService.save_agent_app_build_draft(
         session=save_session,
@@ -1868,7 +1867,7 @@ def test_build_draft_save_and_discard_do_not_manage_home_resources(monkeypatch: 
             agent_soul=AgentSoulConfig(),
         ),
     )
-    discard_session = _new_session()
+    discard_session = sqlite_session
     discard_session.add(build_draft)
     discard_session.commit()
     AgentComposerService.discard_agent_app_build_draft(
@@ -1882,8 +1881,10 @@ def test_build_draft_save_and_discard_do_not_manage_home_resources(monkeypatch: 
     delete_home.assert_not_called()
 
 
-def test_build_discard_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_discard_retires_then_commits_before_enqueue(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     build_draft = AgentConfigDraft(
         id="build-1",
@@ -1928,8 +1929,10 @@ def test_build_discard_retires_then_commits_before_enqueue(monkeypatch: pytest.M
     assert events == ["retire", "commit", "enqueue"]
 
 
-def test_build_discard_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_discard_commit_failure_does_not_enqueue(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     build_draft = AgentConfigDraft(
         id="build-1",
@@ -1971,8 +1974,10 @@ def test_build_discard_commit_failure_does_not_enqueue(monkeypatch: pytest.Monke
     enqueue_collection.assert_not_called()
 
 
-def test_build_discard_rejects_unavailable_pointed_binding(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_build_discard_rejects_unavailable_pointed_binding(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     build_draft = AgentConfigDraft(
         id="build-1",
@@ -2017,8 +2022,9 @@ def test_build_discard_rejects_unavailable_pointed_binding(monkeypatch: pytest.M
 def test_load_agent_soul_for_debug_selects_requested_draft(
     draft_type: AgentConfigDraftType,
     account_id: str | None,
+    sqlite_session: Session,
 ):
-    session = _new_session()
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -2052,8 +2058,8 @@ def test_load_agent_soul_for_debug_selects_requested_draft(
     assert result == agent_soul
 
 
-def test_load_agent_soul_for_debug_requires_existing_build_draft():
-    session = _new_session()
+def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session: Session):
+    session = sqlite_session
 
     with pytest.raises(AgentVersionNotFoundError):
         AgentComposerService.load_agent_soul_for_debug(
@@ -2065,8 +2071,10 @@ def test_load_agent_soul_for_debug_requires_existing_build_draft():
         )
 
 
-def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -2138,8 +2146,8 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
     )
 
 
-def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     bindings = [
         WorkflowAgentNodeBinding(
             tenant_id="tenant-1",
@@ -2189,8 +2197,10 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatc
     assert impact["bindings"][1]["node_id"] == "node-2"
 
 
-def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_serialize_workflow_state_changes_lock_and_save_options(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         id="binding-1",
         tenant_id="tenant-1",
@@ -2233,8 +2243,10 @@ def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch: pyt
     assert effective_names == ["text", "files", "json"]
 
 
-def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         id="binding-1",
         tenant_id="tenant-1",
@@ -2272,8 +2284,9 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
 
 def test_serialize_workflow_state_includes_inline_debug_conversation_message_state(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ):
-    session = _new_session()
+    session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         id="binding-1",
         tenant_id="tenant-1",
@@ -2319,8 +2332,8 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
     assert state["debug_conversation_message_count"] == 2
 
 
-def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     workflow_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
     roster_agent = SimpleNamespace(
         id="roster-agent-1",
@@ -2464,8 +2477,8 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     ]
 
 
-def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     inline_agent = SimpleNamespace(
         id="inline-agent-1",
         scope=AgentScope.WORKFLOW_ONLY,
@@ -2565,8 +2578,8 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     assert normal_draft.updated_by == "account-1"
 
 
-def test_get_or_create_normal_agent_draft_rebases_stale_workflow_only_draft():
-    session = _new_session()
+def test_get_or_create_normal_agent_draft_rebases_stale_workflow_only_draft(sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="inline-agent-1",
         tenant_id="tenant-1",
@@ -2617,8 +2630,8 @@ def test_get_or_create_normal_agent_draft_rebases_stale_workflow_only_draft():
     assert resolved.updated_by == "account-2"
 
 
-def test_get_or_create_normal_agent_draft_keeps_roster_draft_edits():
-    session = _new_session()
+def test_get_or_create_normal_agent_draft_keeps_roster_draft_edits(sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="roster-agent-1",
         tenant_id="tenant-1",
@@ -2655,8 +2668,10 @@ def test_get_or_create_normal_agent_draft_keeps_roster_draft_edits():
     assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "local edit"
 
 
-def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_node_job_only_switches_roster_binding_to_inline_agent(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     created_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
     captured: dict[str, object] = {}
 
@@ -2713,8 +2728,8 @@ def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pyte
     assert captured["agent_soul"].prompt.system_prompt == "start from scratch"
 
 
-def test_node_job_only_rejects_start_from_scratch_with_existing_inline_binding_id():
-    session = _new_session()
+def test_node_job_only_rejects_start_from_scratch_with_existing_inline_binding_id(sqlite_session: Session):
+    session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -2750,8 +2765,10 @@ def test_node_job_only_rejects_start_from_scratch_with_existing_inline_binding_i
         )
 
 
-def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     current_snapshot = AgentConfigSnapshot(
         id="inline-version-1",
         tenant_id="tenant-1",
@@ -2799,8 +2816,9 @@ def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypat
 
 def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_node_job(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ):
-    session = _new_session()
+    session = sqlite_session
     workflow = SimpleNamespace(id="workflow-1")
     node_job = WorkflowNodeJobConfig(workflow_prompt="keep this node task")
     binding = WorkflowAgentNodeBinding(
@@ -2905,8 +2923,10 @@ def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_n
     assert drive_kwargs["target_agent_id"] == "inline-agent-1"
 
 
-def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(
         AgentComposerService,
@@ -2964,8 +2984,10 @@ def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(monkey
         )
 
 
-def test_copy_workflow_composer_from_roster_rejects_unpublished_source(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_copy_workflow_composer_from_roster_rejects_unpublished_source(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -3008,7 +3030,9 @@ def test_copy_workflow_composer_from_roster_rejects_unpublished_source(monkeypat
     assert not session.dirty
 
 
-def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(monkeypatch: pytest.MonkeyPatch):
+def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     inline_binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -3036,7 +3060,7 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(mo
         config_snapshot='{"prompt":{"system_prompt":"inline"}}',
     )
     serialize_calls = []
-    session = _new_session()
+    session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: inline_binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: inline_agent)
@@ -3102,8 +3126,9 @@ def test_copy_workflow_composer_from_roster_rejects_invalid_source_binding(
     source_scope: AgentScope,
     source_status: AgentStatus,
     expected_message: str,
+    sqlite_session: Session,
 ):
-    session = _new_session()
+    session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -3139,8 +3164,8 @@ def test_copy_workflow_composer_from_roster_rejects_invalid_source_binding(
         )
 
 
-def test_copy_agent_drive_rows_copies_skill_prefix_and_files(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_copy_agent_drive_rows_copies_skill_prefix_and_files(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     skill_row = AgentDriveFile(
         tenant_id="tenant-1",
         agent_id="roster-agent-1",
@@ -3217,8 +3242,10 @@ def test_copy_agent_drive_rows_copies_skill_prefix_and_files(monkeypatch: pytest
     assert copied_by_key["files/qna.pdf"].value_owned_by_drive is False
 
 
-def test_copy_agent_drive_rows_skips_when_no_referenced_drive_keys(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_copy_agent_drive_rows_skips_when_no_referenced_drive_keys(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "No drive mentions."}})
 
     AgentComposerService._copy_agent_drive_rows(
@@ -3233,8 +3260,8 @@ def test_copy_agent_drive_rows_skips_when_no_referenced_drive_keys(monkeypatch: 
     assert not session.new
 
 
-def test_copy_agent_drive_rows_skips_existing_target_keys(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_copy_agent_drive_rows_skips_existing_target_keys(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     source_row = AgentDriveFile(
         tenant_id="tenant-1",
         agent_id="roster-agent-1",
@@ -3324,8 +3351,9 @@ def test_drive_copy_scopes_include_declared_output_benchmark_files():
 
 def test_composer_create_agents_syncs_active_config_has_model(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = _new_session()
+    session = sqlite_session
     created_apps = []
     hidden_backing_apps = []
     backing_agent = Agent(
@@ -3408,8 +3436,8 @@ def test_composer_create_agents_syncs_active_config_has_model(
     assert created_account.id == "account-1"
 
 
-def test_composer_require_account():
-    session = _new_session()
+def test_composer_require_account(sqlite_session: Session):
+    session = sqlite_session
     account = Account(name="Tester", email="tester@example.com")
     account.id = "account-1"
     session.add(account)
@@ -3418,13 +3446,15 @@ def test_composer_require_account():
     assert AgentComposerService._require_account(session=session, account_id="account-1") is account
 
 
-def test_composer_require_account_raises_when_missing():
+def test_composer_require_account_raises_when_missing(sqlite_session: Session):
     with pytest.raises(ValueError, match="Account not found"):
-        AgentComposerService._require_account(session=_new_session(), account_id="missing-account")
+        AgentComposerService._require_account(session=sqlite_session, account_id="missing-account")
 
 
-def test_composer_create_roster_agent_maps_name_conflict_without_owning_rollback(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_composer_create_roster_agent_maps_name_conflict_without_owning_rollback(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     transaction = session.begin()
 
     class FakeAppService:
@@ -3448,8 +3478,10 @@ def test_composer_create_roster_agent_maps_name_conflict_without_owning_rollback
     assert transaction.is_active
 
 
-def test_composer_create_roster_agent_raises_when_backing_agent_missing(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_composer_create_roster_agent_raises_when_backing_agent_missing(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
 
     class FakeAppService:
         def create_app(self, tenant_id, params, account, *, session):
@@ -3478,7 +3510,9 @@ def test_composer_create_roster_agent_raises_when_backing_agent_missing(monkeypa
         )
 
 
-def test_agent_app_draft_match_does_not_mark_create_version_as_published(monkeypatch: pytest.MonkeyPatch):
+def test_agent_app_draft_match_does_not_mark_create_version_as_published(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     agent_soul = AgentSoulConfig()
     agent = Agent(
         id="agent-1",
@@ -3487,7 +3521,7 @@ def test_agent_app_draft_match_does_not_mark_create_version_as_published(monkeyp
         active_config_snapshot_id="snapshot-1",
     )
     snapshot = SimpleNamespace(config_snapshot_dict=agent_soul, home_snapshot_id="home-1")
-    session = _new_session()
+    session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
 
     assert (
@@ -3502,7 +3536,9 @@ def test_agent_app_draft_match_does_not_mark_create_version_as_published(monkeyp
     )
 
 
-def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monkeypatch: pytest.MonkeyPatch):
+def test_agent_app_draft_match_marks_publish_visible_revision_as_published(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     agent_soul = AgentSoulConfig()
     agent = Agent(
         id="agent-1",
@@ -3511,7 +3547,7 @@ def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monke
         active_config_snapshot_id="snapshot-1",
     )
     snapshot = SimpleNamespace(config_snapshot_dict=agent_soul, home_snapshot_id="home-1")
-    session = _new_session()
+    session = sqlite_session
     session.add(
         AgentConfigRevision(
             tenant_id=agent.tenant_id,
@@ -3536,8 +3572,8 @@ def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monke
     )
 
 
-def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     agent = _agent()
     initial_snapshot = _snapshot(snapshot_id="version-1")
     initial_revision = AgentConfigRevision(
@@ -3610,8 +3646,8 @@ def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPa
     assert workflow.id == "workflow-1"
 
 
-def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
@@ -3668,8 +3704,8 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
         )
 
 
-def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     updated_at = datetime(2026, 1, 3, 3, 4, 5, tzinfo=UTC)
     version_created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
@@ -3761,8 +3797,8 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
 
 
-def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     configured_agent = Agent(
         id="agent-2",
         tenant_id="tenant-1",
@@ -3803,7 +3839,7 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
     assert [item["id"] for item in result["data"]] == ["agent-2"]
 
 
-def test_active_config_is_published_flags_use_stored_agent_state():
+def test_active_config_is_published_flags_use_stored_agent_state(sqlite_session: Session):
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -3840,7 +3876,7 @@ def test_active_config_is_published_flags_use_stored_agent_state():
         active_config_snapshot_id="version-3",
         active_config_is_published=False,
     )
-    service = AgentRosterService(_new_session())
+    service = AgentRosterService(sqlite_session)
 
     flags = service.load_active_config_is_published_by_agent_id(
         tenant_id="tenant-1", agents=[agent, draft_agent, dirty_agent]
@@ -3848,13 +3884,13 @@ def test_active_config_is_published_flags_use_stored_agent_state():
 
     assert flags == {"agent-1": True, "agent-2": False, "agent-3": False}
     assert service.active_config_is_published(tenant_id="tenant-1", agent=agent) is True
-    assert AgentRosterService(_new_session()).load_active_config_is_published_by_agent_id(
+    assert AgentRosterService(sqlite_session).load_active_config_is_published_by_agent_id(
         tenant_id="tenant-1",
         agents=[draft_agent],
     ) == {"agent-2": False}
 
 
-def test_active_config_is_published_skips_empty_agent_ids():
+def test_active_config_is_published_skips_empty_agent_ids(sqlite_session: Session):
     empty_id_agent = Agent(
         id="",
         tenant_id="tenant-1",
@@ -3866,7 +3902,7 @@ def test_active_config_is_published_skips_empty_agent_ids():
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id=None,
     )
-    session = _new_session()
+    session = sqlite_session
 
     assert (
         AgentRosterService(session).load_active_config_is_published_by_agent_id(
@@ -3877,8 +3913,8 @@ def test_active_config_is_published_skips_empty_agent_ids():
     )
 
 
-def test_load_app_backing_agents_skips_empty_agent_ids():
-    session = _new_session()
+def test_load_app_backing_agents_skips_empty_agent_ids(sqlite_session: Session):
+    session = sqlite_session
     valid_agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -3912,8 +3948,8 @@ def test_load_app_backing_agents_skips_empty_agent_ids():
     assert result == {"app-1": valid_agent}
 
 
-def test_published_references_include_app_display_fields_and_sort_by_updated_at():
-    session = _new_session()
+def test_published_references_include_app_display_fields_and_sort_by_updated_at(sqlite_session: Session):
+    session = sqlite_session
     recent_updated_at = datetime(2026, 1, 7, 3, 4, 5, tzinfo=UTC)
     stale_updated_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
     bindings = [
@@ -3966,8 +4002,8 @@ def test_published_references_include_app_display_fields_and_sort_by_updated_at(
     assert references[0]["workflow_version"] == "published-recent"
 
 
-def test_reference_counts_include_draft_and_published_bindings_once_per_app():
-    session = _new_session()
+def test_reference_counts_include_draft_and_published_bindings_once_per_app(sqlite_session: Session):
+    session = sqlite_session
     bindings = [
         WorkflowAgentNodeBinding(
             tenant_id="tenant-1",
@@ -4021,8 +4057,8 @@ def test_reference_counts_include_draft_and_published_bindings_once_per_app():
     assert result == {"agent-1": 1}
 
 
-def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     listed_version = AgentConfigSnapshot(
         id="version-4",
         tenant_id="tenant-1",
@@ -4113,8 +4149,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
 
 
-def test_roster_archive_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_roster_archive_retires_then_commits_before_enqueue(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     service = AgentRosterService(session)
     agent = _agent()
     binding = AgentWorkspaceBinding(
@@ -4152,8 +4190,10 @@ def test_roster_archive_retires_then_commits_before_enqueue(monkeypatch: pytest.
     assert events == ["retire-binding", "retire-home", "commit", "enqueue"]
 
 
-def test_roster_archive_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = _new_session()
+def test_roster_archive_commit_failure_does_not_enqueue(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     service = AgentRosterService(session)
     session.add(_agent())
     session.commit()
@@ -4172,8 +4212,8 @@ def test_roster_archive_commit_failure_does_not_enqueue(monkeypatch: pytest.Monk
     enqueue_collection.assert_not_called()
 
 
-def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    session = sqlite_session
     service = AgentRosterService(session)
     monkeypatch.setattr(
         AgentRosterService,
@@ -4233,8 +4273,8 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     assert loaded_versions[created.active_config_snapshot_id].agent_id == created.id
 
 
-def test_get_agent_runtime_app_model_creates_hidden_backing_app_for_existing_inline_agent():
-    session = _new_session()
+def test_get_agent_runtime_app_model_creates_hidden_backing_app_for_existing_inline_agent(sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4262,8 +4302,8 @@ def test_get_agent_runtime_app_model_creates_hidden_backing_app_for_existing_inl
     assert session.get(App, resolved_app.id) is resolved_app
 
 
-def test_agent_app_build_conversation_create_reuse_and_recreate():
-    session = _new_session()
+def test_agent_app_build_conversation_create_reuse_and_recreate(sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4321,8 +4361,8 @@ def test_agent_app_build_conversation_create_reuse_and_recreate():
     assert session.get(Conversation, recreated_id) is not None
 
 
-def test_agent_app_debug_conversations_are_isolated_by_draft_type():
-    session = _new_session()
+def test_agent_app_debug_conversations_are_isolated_by_draft_type(sqlite_session: Session):
+    session = sqlite_session
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4357,8 +4397,8 @@ def test_agent_app_debug_conversations_are_isolated_by_draft_type():
     }
 
 
-def test_agent_app_debug_conversation_message_count():
-    session = _new_session()
+def test_agent_app_debug_conversation_message_count(sqlite_session: Session):
+    session = sqlite_session
     for index in range(3):
         session.add(
             Message(
@@ -4387,7 +4427,7 @@ def test_agent_app_debug_conversation_message_count():
     assert count == 3
 
 
-def test_agent_app_debug_conversation_requires_app_binding():
+def test_agent_app_debug_conversation_requires_app_binding(sqlite_session: Session):
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4400,15 +4440,15 @@ def test_agent_app_debug_conversation_requires_app_binding():
     )
 
     with pytest.raises(roster_service.AgentNotFoundError):
-        AgentRosterService(_new_session())._get_or_create_agent_app_debug_conversation(
+        AgentRosterService(sqlite_session)._get_or_create_agent_app_debug_conversation(
             agent=agent,
             account_id="account-1",
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
         )
 
 
-def test_load_or_create_build_conversations_supports_runtime_backed_agents():
-    session = _new_session()
+def test_load_or_create_build_conversations_supports_runtime_backed_agents(sqlite_session: Session):
+    session = sqlite_session
     valid_agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4479,8 +4519,10 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in roster_operations
 
 
-def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_restore_roster_agent_version_switches_active_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     service = AgentRosterService(session)
     agent = Agent(
         id="agent-1",
@@ -4539,8 +4581,10 @@ def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pyte
     assert draft.updated_by == "account-1"
 
 
-def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_restore_roster_agent_version_rejects_invisible_versions(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     service = AgentRosterService(session)
     agent = Agent(
         id="agent-1",
@@ -4575,15 +4619,15 @@ def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: py
     assert session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent.id)) is None
 
 
-def test_app_list_all_excludes_agent_apps_by_default():
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="all"), _new_session())
+def test_app_list_all_excludes_agent_apps_by_default(sqlite_session: Session):
+    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="all"), sqlite_session)
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "apps.mode != :mode_1" in sql
 
 
-def test_app_list_agent_mode_requires_visible_roster_backing_agent():
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="agent"), _new_session())
+def test_app_list_agent_mode_requires_visible_roster_backing_agent(sqlite_session: Session):
+    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="agent"), sqlite_session)
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "EXISTS" in sql
@@ -4783,8 +4827,10 @@ class TestAgentAppBackingAgent:
     ``Agent.app_id``. ``AppService.create_app`` builds the backing agent inside
     its own transaction, so the helper must add+flush without committing."""
 
-    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(self, monkeypatch: pytest.MonkeyPatch):
-        session = _new_session()
+    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        session = sqlite_session
         transaction = session.begin()
         service = AgentRosterService(session)
         agent = service.create_backing_agent_for_app(
@@ -4838,8 +4884,8 @@ class TestAgentAppBackingAgent:
         # Caller (AppService.create_app) owns the commit — helper must not commit.
         assert transaction.is_active
 
-    def test_get_app_backing_agent_queries_active_agent_app_agent(self):
-        session = _new_session()
+    def test_get_app_backing_agent_queries_active_agent_app_agent(self, sqlite_session: Session):
+        session = sqlite_session
         agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
         session.add(agent)
         session.commit()
@@ -4849,14 +4895,14 @@ class TestAgentAppBackingAgent:
 
         assert result is agent
 
-    def test_get_app_backing_agent_returns_none_when_unbound(self):
-        session = _new_session()
+    def test_get_app_backing_agent_returns_none_when_unbound(self, sqlite_session: Session):
+        session = sqlite_session
         service = AgentRosterService(session)
 
         assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None
 
-    def test_get_agent_app_model_resolves_app_backing_agent(self):
-        session = _new_session()
+    def test_get_agent_app_model_resolves_app_backing_agent(self, sqlite_session: Session):
+        session = sqlite_session
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -4875,15 +4921,15 @@ class TestAgentAppBackingAgent:
 
         assert service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-1") is app
 
-    def test_get_agent_app_model_rejects_unbound_agent(self):
-        session = _new_session()
+    def test_get_agent_app_model_rejects_unbound_agent(self, sqlite_session: Session):
+        session = sqlite_session
         service = AgentRosterService(session)
 
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
 
-    def test_reset_build_conversation_creates_mapping(self):
-        session = _new_session()
+    def test_reset_build_conversation_creates_mapping(self, sqlite_session: Session):
+        session = sqlite_session
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -4922,8 +4968,10 @@ class TestAgentAppBackingAgent:
         assert mappings[0].draft_type == AgentConfigDraftType.DEBUG_BUILD
         assert mappings[0].conversation_id == conversation_id
 
-    def test_rotate_preview_conversation_retires_exact_binding(self, monkeypatch: pytest.MonkeyPatch):
-        session = _new_session()
+    def test_rotate_preview_conversation_retires_exact_binding(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        session = sqlite_session
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -4983,8 +5031,10 @@ class TestAgentAppBackingAgent:
             binding_id="binding-1",
         )
 
-    def test_reset_build_conversation_retires_build_draft_binding(self, monkeypatch: pytest.MonkeyPatch):
-        session = _new_session()
+    def test_reset_build_conversation_retires_build_draft_binding(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        session = sqlite_session
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -5044,8 +5094,10 @@ class TestAgentAppBackingAgent:
             binding_ids=("binding-1",),
         )
 
-    def test_preview_rotation_commit_failure_rolls_back_before_enqueue(self, monkeypatch: pytest.MonkeyPatch):
-        session = _new_session()
+    def test_preview_rotation_commit_failure_rolls_back_before_enqueue(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        session = sqlite_session
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -5093,8 +5145,10 @@ class TestAgentAppBackingAgent:
         assert session.get(AgentDebugConversation, mapping.id).conversation_id == "old-conversation"
         enqueue_collection.assert_not_called()
 
-    def test_build_reset_commit_failure_rolls_back_before_enqueue(self, monkeypatch: pytest.MonkeyPatch):
-        session = _new_session()
+    def test_build_reset_commit_failure_rolls_back_before_enqueue(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        session = sqlite_session
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -5163,7 +5217,9 @@ class TestAgentAppBackingAgent:
         )
         enqueue_collection.assert_not_called()
 
-    def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):
+    def test_duplicate_agent_app_copies_app_config_and_active_soul(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
         source_config = SimpleNamespace(
             opening_statement="hello",
             suggested_questions='["q1"]',
@@ -5239,7 +5295,7 @@ class TestAgentAppBackingAgent:
             version_note="v1",
             created_by="account-1",
         )
-        session = _new_session()
+        session = sqlite_session
         service = AgentRosterService(session)
         captured: dict[str, object] = {}
 
@@ -5324,7 +5380,9 @@ class TestAgentAppBackingAgent:
         assert target_agent.updated_by == "account-1"
         assert session.get(Agent, target_agent.id) is target_agent
 
-    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_duplicate_agent_app_inherits_webapp_access_mode(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
         source_app = SimpleNamespace(
             id="source-app",
             tenant_id="tenant-1",
@@ -5343,7 +5401,7 @@ class TestAgentAppBackingAgent:
         )
         source_agent = SimpleNamespace(id="source-agent", role="Analyst")
         target_app = SimpleNamespace(id="target-app")
-        session = _new_session()
+        session = sqlite_session
         service = AgentRosterService(session)
         monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
         monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
@@ -5388,7 +5446,9 @@ class TestAgentAppBackingAgent:
         assert captured["params"].agent_role == "Custom Analyst"
         assert access_mode_updates == [("target-app", "private")]
 
-    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_duplicate_agent_app_falls_back_to_public_access_mode(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
         source_app = SimpleNamespace(
             id="source-app",
             tenant_id="tenant-1",
@@ -5407,7 +5467,7 @@ class TestAgentAppBackingAgent:
         )
         source_agent = SimpleNamespace(id="source-agent", role="Analyst")
         target_app = SimpleNamespace(id="target-app")
-        session = _new_session()
+        session = sqlite_session
         service = AgentRosterService(session)
         monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
         monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
@@ -5453,8 +5513,8 @@ class TestAgentAppBackingAgent:
 
 
 class TestListWorkflowsReferencingAppAgent:
-    def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
-        session = _new_session()
+    def test_groups_bindings_by_workflow_app_and_sorts_by_name(self, sqlite_session: Session):
+        session = sqlite_session
         agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
         bindings = [
             WorkflowAgentNodeBinding(
@@ -5507,22 +5567,22 @@ class TestListWorkflowsReferencingAppAgent:
         assert beta["workflow_id"] == "wf-1"
         assert beta["workflow_version"] == "v1"
 
-    def test_returns_empty_when_no_backing_agent(self):
-        session = _new_session()  # scalar() -> None
+    def test_returns_empty_when_no_backing_agent(self, sqlite_session: Session):
+        session = sqlite_session  # scalar() -> None
         service = AgentRosterService(session)
 
         assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-x") == []
 
-    def test_returns_empty_when_no_bindings(self):
-        session = _new_session()
+    def test_returns_empty_when_no_bindings(self, sqlite_session: Session):
+        session = sqlite_session
         session.add(_agent(source=AgentSource.AGENT_APP, app_id="app-1"))
         session.commit()
         service = AgentRosterService(session)
 
         assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
 
-    def test_skips_orphaned_binding_whose_app_is_gone(self):
-        session = _new_session()
+    def test_skips_orphaned_binding_whose_app_is_gone(self, sqlite_session: Session):
+        session = sqlite_session
         agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
         binding = WorkflowAgentNodeBinding(
             tenant_id="tenant-1",
@@ -5541,8 +5601,8 @@ class TestListWorkflowsReferencingAppAgent:
 
         assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
 
-    def test_skips_historical_published_workflow_versions(self):
-        session = _new_session()
+    def test_skips_historical_published_workflow_versions(self, sqlite_session: Session):
+        session = sqlite_session
         agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
         bindings = [
             WorkflowAgentNodeBinding(
@@ -5643,6 +5703,7 @@ class TestWorkflowAgentDraftBindingSync:
         *,
         agent_task: str,
         existing_ref_selectors: list[list[str]] | None = None,
+        sqlite_session: Session,
     ) -> WorkflowNodeJobConfig:
         workflow = _workflow()
         workflow.graph = json.dumps(
@@ -5673,7 +5734,7 @@ class TestWorkflowAgentDraftBindingSync:
             status=AgentStatus.ACTIVE,
             active_config_snapshot_id="snapshot-2",
         )
-        session = _new_session()
+        session = sqlite_session
         existing_binding = None
         if existing_ref_selectors is not None:
             existing_binding = WorkflowAgentNodeBinding(
@@ -5710,8 +5771,8 @@ class TestWorkflowAgentDraftBindingSync:
         assert binding is not None
         return WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
 
-    def test_publish_validation_rejects_agent_soul_publish_only_errors(self):
-        session = _new_session()
+    def test_publish_validation_rejects_agent_soul_publish_only_errors(self, sqlite_session: Session):
+        session = sqlite_session
         binding = self._agent_binding()
         agent_soul = AgentSoulConfig.model_validate(
             {
@@ -5735,8 +5796,8 @@ class TestWorkflowAgentDraftBindingSync:
                 draft_workflow=self._agent_workflow(),
             )
 
-    def test_publish_validation_rejects_dangling_agent_soul_drive_refs(self):
-        session = _new_session()
+    def test_publish_validation_rejects_dangling_agent_soul_drive_refs(self, sqlite_session: Session):
+        session = sqlite_session
         binding = self._agent_binding()
         agent_soul = AgentSoulConfig.model_validate(
             {
@@ -5781,8 +5842,8 @@ class TestWorkflowAgentDraftBindingSync:
         with pytest.raises(InvalidComposerConfigError, match="config_asset_missing.*skill:research.*file:guide.txt"):
             ComposerConfigValidator.validate_publish_payload(payload)
 
-    def test_projects_binding_declared_outputs_to_draft_graph_response(self):
-        session = _new_session()
+    def test_projects_binding_declared_outputs_to_draft_graph_response(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -5862,8 +5923,8 @@ class TestWorkflowAgentDraftBindingSync:
         assert profile_output["children"][1]["array_item"]["children"][0]["name"] == "city"
         assert "agent_declared_outputs" not in workflow.graph_dict["nodes"][0]["data"]
 
-    def test_projects_inline_binding_over_pending_inline_graph_response(self):
-        session = _new_session()
+    def test_projects_inline_binding_over_pending_inline_graph_response(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -5916,8 +5977,8 @@ class TestWorkflowAgentDraftBindingSync:
             "binding_type": "inline_agent",
         }
 
-    def test_keeps_pending_inline_graph_response_over_existing_roster_binding(self):
-        session = _new_session()
+    def test_keeps_pending_inline_graph_response_over_existing_roster_binding(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -5965,8 +6026,8 @@ class TestWorkflowAgentDraftBindingSync:
             "binding_type": "inline_agent",
         }
 
-    def test_creates_roster_binding_from_agent_node_graph(self):
-        session = _new_session()
+    def test_creates_roster_binding_from_agent_node_graph(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6035,34 +6096,37 @@ class TestWorkflowAgentDraftBindingSync:
             ],
         ).model_dump(mode="json")
 
-    def test_creates_roster_binding_deriving_previous_node_refs_from_agent_task(self):
+    def test_creates_roster_binding_deriving_previous_node_refs_from_agent_task(self, sqlite_session: Session):
         node_job = self._sync_roster_agent_task_refs(
             agent_task="Review {{#previous-node.report#}} for {{#sys.query#}}.",
+            sqlite_session=sqlite_session,
         )
 
         assert node_job.workflow_prompt == "Review {{#previous-node.report#}} for {{#sys.query#}}."
         assert [ref.selector for ref in node_job.previous_node_output_refs] == [["previous-node", "report"]]
 
-    def test_updates_existing_roster_binding_clearing_legacy_only_previous_node_refs(self):
+    def test_updates_existing_roster_binding_clearing_legacy_only_previous_node_refs(self, sqlite_session: Session):
         node_job = self._sync_roster_agent_task_refs(
             agent_task="Review [§node_output:previous-node.report:PREV/report§].",
             existing_ref_selectors=[["previous-node", "report"]],
+            sqlite_session=sqlite_session,
         )
 
         assert node_job.workflow_prompt == "Review [§node_output:previous-node.report:PREV/report§]."
         assert node_job.previous_node_output_refs == []
 
-    def test_updates_existing_roster_binding_clearing_stale_previous_node_refs(self):
+    def test_updates_existing_roster_binding_clearing_stale_previous_node_refs(self, sqlite_session: Session):
         node_job = self._sync_roster_agent_task_refs(
             agent_task="Review the current request without upstream context.",
             existing_ref_selectors=[["previous-node", "report"]],
+            sqlite_session=sqlite_session,
         )
 
         assert node_job.workflow_prompt == "Review the current request without upstream context."
         assert node_job.previous_node_output_refs == []
 
-    def test_creates_inline_binding_from_agent_node_graph(self):
-        session = _new_session()
+    def test_creates_inline_binding_from_agent_node_graph(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6128,8 +6192,8 @@ class TestWorkflowAgentDraftBindingSync:
             workflow_prompt="Use the current node context.",
         ).model_dump(mode="json")
 
-    def test_keeps_pending_inline_binding_in_draft_graph_without_db_binding(self):
-        session = _new_session()
+    def test_keeps_pending_inline_binding_in_draft_graph_without_db_binding(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6176,8 +6240,8 @@ class TestWorkflowAgentDraftBindingSync:
         assert session.get(WorkflowAgentNodeBinding, existing_binding.id) is existing_binding
         assert not session.new
 
-    def test_clones_inline_binding_for_agent_owned_by_another_node(self, monkeypatch):
-        session = _new_session()
+    def test_clones_inline_binding_for_agent_owned_by_another_node(self, monkeypatch, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6234,8 +6298,8 @@ class TestWorkflowAgentDraftBindingSync:
         assert binding.agent_id == "cloned-agent"
         assert binding.current_snapshot_id == "cloned-snapshot"
 
-    def test_rejects_agent_node_graph_binding_with_unsupported_type(self):
-        session = _new_session()
+    def test_rejects_agent_node_graph_binding_with_unsupported_type(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6267,8 +6331,8 @@ class TestWorkflowAgentDraftBindingSync:
                 account_id="account-1",
             )
 
-    def test_treats_partial_inline_binding_as_pending_draft_state(self):
-        session = _new_session()
+    def test_treats_partial_inline_binding_as_pending_draft_state(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6301,8 +6365,8 @@ class TestWorkflowAgentDraftBindingSync:
 
         assert session.scalar(select(WorkflowAgentNodeBinding)) is None
 
-    def test_rejects_inline_binding_with_missing_snapshot(self):
-        session = _new_session()
+    def test_rejects_inline_binding_with_missing_snapshot(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6350,8 +6414,8 @@ class TestWorkflowAgentDraftBindingSync:
                 account_id="account-1",
             )
 
-    def test_updates_existing_roster_binding_prompt_from_agent_node_graph(self):
-        session = _new_session()
+    def test_updates_existing_roster_binding_prompt_from_agent_node_graph(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6417,8 +6481,8 @@ class TestWorkflowAgentDraftBindingSync:
         assert [output.name for output in node_job.declared_outputs] == ["summary"]
         assert existing_binding.current_snapshot_id == "snapshot-2"
 
-    def test_updates_existing_roster_binding_declared_outputs_from_agent_node_graph(self):
-        session = _new_session()
+    def test_updates_existing_roster_binding_declared_outputs_from_agent_node_graph(self, sqlite_session: Session):
+        session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -6695,7 +6759,7 @@ class TestWorkflowAgentDraftBindingSync:
         assert retirement_candidates == {"inline-removed", "inline-old-roster", "inline-old-inline"}
 
 
-def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch):
+def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     """Mention ids are user-editable text: a non-UUID id must read as missing
     (placeholder semantics), never reach the UUID-typed dataset query (E2E 500)."""
     captured = {}
@@ -6711,18 +6775,20 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch):
 
     valid = "550e8400-e29b-41d4-a716-446655440000"
     rows = get_tenant_knowledge_dataset_rows(
-        session=_new_session(), tenant_id="tenant-1", dataset_ids=["9999dead-beef", valid]
+        session=sqlite_session, tenant_id="tenant-1", dataset_ids=["9999dead-beef", valid]
     )
     assert rows == {}
     assert captured["ids"] == [valid]
 
     # all-malformed input never touches the DB
     captured.clear()
-    assert get_tenant_knowledge_dataset_rows(session=_new_session(), tenant_id="tenant-1", dataset_ids=["nope"]) == {}
+    assert get_tenant_knowledge_dataset_rows(session=sqlite_session, tenant_id="tenant-1", dataset_ids=["nope"]) == {}
     assert captured == {}
 
 
-def test_composer_save_rejects_malformed_knowledge_dataset_ids(monkeypatch: pytest.MonkeyPatch):
+def test_composer_save_rejects_malformed_knowledge_dataset_ids(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     captured = {"calls": 0}
 
     def fake_get_datasets_by_ids(ids, tenant_id, *, session):
@@ -6753,13 +6819,15 @@ def test_composer_save_rejects_malformed_knowledge_dataset_ids(monkeypatch: pyte
 
     with pytest.raises(InvalidComposerConfigError, match="not-a-uuid"):
         AgentComposerService.validate_knowledge_datasets(
-            session=_new_session(), tenant_id="tenant-1", agent_soul=agent_soul
+            session=sqlite_session, tenant_id="tenant-1", agent_soul=agent_soul
         )
 
     assert captured == {"calls": 0}
 
 
-def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(monkeypatch: pytest.MonkeyPatch):
+def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     captured = {}
     missing_dataset_id = "550e8400-e29b-41d4-a716-446655440000"
 
@@ -6790,14 +6858,16 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(monkey
 
     with pytest.raises(InvalidComposerConfigError, match=missing_dataset_id):
         AgentComposerService.validate_knowledge_datasets(
-            session=_new_session(), tenant_id="tenant-1", agent_soul=agent_soul
+            session=sqlite_session, tenant_id="tenant-1", agent_soul=agent_soul
         )
 
     assert captured == {"ids": [missing_dataset_id], "tenant_id": "tenant-1"}
 
 
-def test_save_agent_composer_allows_incomplete_knowledge_draft(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_save_agent_composer_allows_incomplete_knowledge_draft(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     agent = _agent(
         source=AgentSource.AGENT_APP,
         app_id="app-1",
@@ -6938,8 +7008,8 @@ def _drive_soul(**overrides):
     return AgentSoulConfig.model_validate(base)
 
 
-def _session_with_drive_keys(existing_keys: list[str]) -> Session:
-    session = _new_session()
+def _session_with_drive_keys(sqlite_session: Session, existing_keys: list[str]) -> Session:
+    session = sqlite_session
     session.add_all(
         [
             AgentDriveFile(
@@ -6957,8 +7027,8 @@ def _session_with_drive_keys(existing_keys: list[str]) -> Session:
     return session
 
 
-def test_drive_mention_findings_reports_missing_keys():
-    session = _session_with_drive_keys(["tender-analyzer/SKILL.md"])
+def test_drive_mention_findings_reports_missing_keys(sqlite_session: Session):
+    session = _session_with_drive_keys(sqlite_session, ["tender-analyzer/SKILL.md"])
 
     findings = AgentComposerService._drive_mention_findings(
         session=session,
@@ -6972,8 +7042,11 @@ def test_drive_mention_findings_reports_missing_keys():
     assert str(findings[0]["message"]).startswith("file 'sample.pdf' has no drive entry")
 
 
-def test_drive_mention_findings_clean_when_all_keys_exist():
-    session = _session_with_drive_keys(["tender-analyzer/SKILL.md", "files/sample.pdf"])
+def test_drive_mention_findings_clean_when_all_keys_exist(sqlite_session: Session):
+    session = _session_with_drive_keys(
+        sqlite_session,
+        ["tender-analyzer/SKILL.md", "files/sample.pdf"],
+    )
 
     assert (
         AgentComposerService._drive_mention_findings(
@@ -6986,8 +7059,8 @@ def test_drive_mention_findings_clean_when_all_keys_exist():
     )
 
 
-def test_drive_mention_findings_skips_prompt_without_drive_mentions():
-    session = _new_session()
+def test_drive_mention_findings_skips_prompt_without_drive_mentions(sqlite_session: Session):
+    session = sqlite_session
     # No drive-backed mention at all -> no DB roundtrip, no findings.
     soul = _drive_soul(prompt={"system_prompt": "Use [§knowledge:kb-1:Docs§]."})
     findings = AgentComposerService._drive_mention_findings(
@@ -6999,10 +7072,12 @@ def test_drive_mention_findings_skips_prompt_without_drive_mentions():
     assert findings == []
 
 
-def test_collect_validation_findings_appends_drive_mention_findings_with_agent_context():
+def test_collect_validation_findings_appends_drive_mention_findings_with_agent_context(
+    sqlite_session: Session,
+):
     from services.entities.agent_entities import ComposerSavePayload
 
-    session = _session_with_drive_keys([])
+    session = _session_with_drive_keys(sqlite_session, [])
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "agent_app",
@@ -7031,8 +7106,8 @@ def test_collect_validation_findings_appends_drive_mention_findings_with_agent_c
 # ── ENG-623/625: resolver helpers + save-path drive guard ────────────────────
 
 
-def test_resolve_bound_agent_id_queries_active_roster_agent():
-    session = _new_session()
+def test_resolve_bound_agent_id_queries_active_roster_agent(sqlite_session: Session):
+    session = sqlite_session
     session.add(
         _agent(
             agent_id="agent-9",
@@ -7045,8 +7120,10 @@ def test_resolve_bound_agent_id_queries_active_roster_agent():
     assert AgentComposerService.resolve_bound_agent_id(session=session, tenant_id="t-1", app_id="app-1") == "agent-9"
 
 
-def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(monkeypatch: pytest.MonkeyPatch):
-    session = _new_session()
+def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    session = sqlite_session
     from types import SimpleNamespace
 
     def boom(cls, **kwargs):
@@ -7078,7 +7155,9 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(mon
     )
 
 
-def test_save_workflow_composer_reports_drive_mentions_for_inline_node_job_only(monkeypatch: pytest.MonkeyPatch):
+def test_save_workflow_composer_reports_drive_mentions_for_inline_node_job_only(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -7097,7 +7176,7 @@ def test_save_workflow_composer_reports_drive_mentions_for_inline_node_job_only(
         agent_id="agent-1",
         current_snapshot_id="version-1",
     )
-    session = _new_session()
+    session = sqlite_session
     monkeypatch.setattr(
         AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
     )
@@ -7141,7 +7220,9 @@ def test_save_workflow_composer_reports_drive_mentions_for_inline_node_job_only(
     assert guarded == {"tenant_id": "t-1", "agent_id": "agent-1"}
 
 
-def test_save_workflow_composer_reports_drive_mentions_for_roster_node_job_only(monkeypatch: pytest.MonkeyPatch):
+def test_save_workflow_composer_reports_drive_mentions_for_roster_node_job_only(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -7160,7 +7241,7 @@ def test_save_workflow_composer_reports_drive_mentions_for_roster_node_job_only(
         agent_id="agent-1",
         current_snapshot_id="version-1",
     )
-    session = _new_session()
+    session = sqlite_session
     monkeypatch.setattr(
         AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
     )
