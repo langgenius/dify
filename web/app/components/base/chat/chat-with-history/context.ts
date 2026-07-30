@@ -34,7 +34,9 @@ export type ChatWithHistoryContextValue = {
   chatShouldReloadKey: string
   isMobile: boolean
   isInstalledApp: boolean
+  isUserIdResolved?: boolean
   appId?: string
+  chatInputDraftKey?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
@@ -76,6 +78,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
+  isUserIdResolved: true,
   handleFeedback: noop,
   currentChatInstanceRef: { current: { handleStop: noop } },
   sidebarCollapseState: false,

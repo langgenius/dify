@@ -81,6 +81,7 @@ export type ChatProps = {
   sendOnEnter?: boolean
   speechToTextTarget?: SpeechToTextTarget
   onBeforeSpeechToText?: () => Promise<unknown>
+  chatInputDraftKey?: string
   renderAgentContent?: (props: {
     item: ChatItem
     responding?: boolean
@@ -142,6 +143,7 @@ const Chat: FC<ChatProps> = ({
   sendOnEnter,
   speechToTextTarget,
   onBeforeSpeechToText,
+  chatInputDraftKey,
   renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
@@ -283,6 +285,7 @@ const Chat: FC<ChatProps> = ({
             {hasTryToAsk && <TryToAsk suggestedQuestions={suggestedQuestions} onSend={onSend} />}
             {!noChatInput && (
               <ChatInputArea
+                key={chatInputDraftKey}
                 botName={inputPlaceholderBotName || appData?.site?.title || 'Bot'}
                 customPlaceholder={inputPlaceholder ?? appData?.site?.input_placeholder}
                 disabled={inputDisabled}
@@ -295,6 +298,7 @@ const Chat: FC<ChatProps> = ({
                 speechToTextConfig={config?.speech_to_text}
                 speechToTextTarget={speechToTextTarget}
                 onBeforeSpeechToText={onBeforeSpeechToText}
+                draftKey={chatInputDraftKey}
                 onSend={onSend}
                 inputs={inputs}
                 inputsForm={inputsForm}

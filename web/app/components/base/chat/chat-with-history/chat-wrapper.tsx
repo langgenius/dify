@@ -35,6 +35,7 @@ const ChatWrapper = () => {
     appParams,
     appPrevChatTree,
     currentConversationId,
+    chatInputDraftKey,
     currentConversationItem,
     currentConversationInputs,
     inputsForms,
@@ -460,6 +461,7 @@ const ChatWrapper = () => {
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}
+        chatInputDraftKey={chatInputDraftKey}
         renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url ? (

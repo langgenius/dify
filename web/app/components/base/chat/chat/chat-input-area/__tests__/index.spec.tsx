@@ -326,6 +326,125 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('User Interaction', () => {
+    it('should restore an unsent draft after the composer remounts', async () => {
+      const draftKey = 'chat-input-draft-persistence'
+      const user = userEvent.setup({ delay: null })
+      sessionStorage.removeItem(draftKey)
+
+      const view = render(<ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} />)
+      await user.type(getTextarea()!, 'Keep this draft')
+      view.unmount()
+
+      const restoredView = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} />,
+      )
+      expect(getTextarea()!).toHaveValue('Keep this draft')
+
+      restoredView.unmount()
+      sessionStorage.removeItem(draftKey)
+    })
+
+    it('should persist the latest draft after typing settles or the page is hidden', () => {
+      const draftKey = 'chat-input-draft-pagehide'
+      sessionStorage.removeItem(draftKey)
+      vi.useFakeTimers()
+
+      try {
+        const view = render(<ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} />)
+        const textarea = getTextarea()!
+
+        fireEvent.change(textarea, { target: { value: 'First draft' } })
+        act(() => vi.advanceTimersByTime(300))
+        expect(sessionStorage.getItem(draftKey)).toBe('First draft')
+
+        fireEvent.change(textarea, { target: { value: 'Latest draft' } })
+        window.dispatchEvent(new Event('pagehide'))
+        expect(sessionStorage.getItem(draftKey)).toBe('Latest draft')
+
+        view.unmount()
+      } finally {
+        sessionStorage.removeItem(draftKey)
+        vi.useRealTimers()
+      }
+    })
+
+    it('should keep drafts isolated between conversations', async () => {
+      const user = userEvent.setup({ delay: null })
+      const firstDraftKey = 'chat-input-draft-conversation-a'
+      const secondDraftKey = 'chat-input-draft-conversation-b'
+      sessionStorage.removeItem(firstDraftKey)
+      sessionStorage.removeItem(secondDraftKey)
+
+      const firstView = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={firstDraftKey} />,
+      )
+      await user.type(getTextarea()!, 'Draft for conversation A')
+      firstView.unmount()
+
+      const secondView = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={secondDraftKey} />,
+      )
+      await user.type(getTextarea()!, 'Draft for conversation B')
+      secondView.unmount()
+
+      const restoredFirstView = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={firstDraftKey} />,
+      )
+      expect(getTextarea()!).toHaveValue('Draft for conversation A')
+      restoredFirstView.unmount()
+
+      const restoredSecondView = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={secondDraftKey} />,
+      )
+      expect(getTextarea()!).toHaveValue('Draft for conversation B')
+      restoredSecondView.unmount()
+
+      sessionStorage.removeItem(firstDraftKey)
+      sessionStorage.removeItem(secondDraftKey)
+    })
+
+    it('should keep a draft when an asynchronous send is rejected', async () => {
+      const draftKey = 'chat-input-draft-rejected-send'
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn().mockResolvedValue(false)
+      sessionStorage.removeItem(draftKey)
+
+      const view = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} onSend={onSend} />,
+      )
+      await user.type(getTextarea()!, 'Retry this draft')
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+      await waitFor(() => expect(onSend).toHaveBeenCalled())
+      view.unmount()
+
+      const restoredView = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} />,
+      )
+      expect(getTextarea()!).toHaveValue('Retry this draft')
+
+      restoredView.unmount()
+      sessionStorage.removeItem(draftKey)
+    })
+
+    it('should clear the persisted draft after a message is accepted', async () => {
+      const draftKey = 'chat-input-draft-cleared-after-send'
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn()
+      sessionStorage.setItem(draftKey, 'Send this draft')
+
+      const view = render(
+        <ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} onSend={onSend} />,
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+      expect(onSend).toHaveBeenCalledWith('Send this draft', [])
+      view.unmount()
+
+      render(<ChatInputArea visionConfig={mockVisionConfig} draftKey={draftKey} />)
+      expect(getTextarea()!).toHaveValue('')
+
+      sessionStorage.removeItem(draftKey)
+    })
+
     it('should update textarea value as the user types', async () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea visionConfig={mockVisionConfig} />)

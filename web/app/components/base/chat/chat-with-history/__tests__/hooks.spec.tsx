@@ -299,6 +299,71 @@ describe('useChatWithHistory', () => {
 
   // Scenario: conversation id updates persist to localStorage.
   describe('Conversation id persistence', () => {
+    it('should wait for user identity resolution before creating a chat input draft key', async () => {
+      const { getProcessedSystemVariablesFromUrlParams } = await import('../../utils')
+      let resolveUserId: ((value: { user_id: string }) => void) | undefined
+      vi.mocked(getProcessedSystemVariablesFromUrlParams).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveUserId = resolve
+          }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      expect(result!.current.chatInputDraftKey).toBeUndefined()
+
+      await act(async () => {
+        resolveUserId?.({ user_id: 'user-1' })
+      })
+
+      await waitFor(() => {
+        expect(result!.current.chatInputDraftKey).toBe(
+          `chat-input-draft:${JSON.stringify([
+            AppSourceType.webApp,
+            'app-1',
+            'user-1',
+            'conversation-1',
+          ])}`,
+        )
+      })
+    })
+
+    it('should scope the chat input draft to the current application, user, and conversation', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.chatInputDraftKey).toBe(
+          `chat-input-draft:${JSON.stringify([
+            AppSourceType.webApp,
+            'app-1',
+            'user-1',
+            'conversation-1',
+          ])}`,
+        )
+      })
+
+      act(() => {
+        result!.current.handleChangeConversation('conversation-2')
+      })
+
+      await waitFor(() => {
+        expect(result!.current.chatInputDraftKey).toBe(
+          `chat-input-draft:${JSON.stringify([
+            AppSourceType.webApp,
+            'app-1',
+            'user-1',
+            'conversation-2',
+          ])}`,
+        )
+      })
+    })
+
     it('should store new conversation id in localStorage after completion', async () => {
       // Arrange
       const listData = createConversationData({
