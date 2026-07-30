@@ -18,11 +18,50 @@ const EMBEDDABLE_PATH_SEGMENTS = [
   '/workflow',
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
-const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+const FRAME_ANCESTORS_NONE = "'none'"
 const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
-const MARKETPLACE_FRAME_ORIGIN = env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
-  ? new URL(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX).origin
-  : ''
+
+type MarketplaceOAuthFrameConfig = {
+  edition: 'CLOUD' | 'SELF_HOSTED'
+  marketplaceClientId: string
+  marketplaceUrlPrefix: string
+}
+
+const marketplaceOAuthFrameConfig: MarketplaceOAuthFrameConfig = {
+  edition: env.NEXT_PUBLIC_EDITION,
+  marketplaceClientId: env.NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID || '',
+  marketplaceUrlPrefix: env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX || '',
+}
+const MARKETPLACE_FRAME_ORIGIN = (() => {
+  try {
+    return marketplaceOAuthFrameConfig.marketplaceUrlPrefix
+      ? new URL(marketplaceOAuthFrameConfig.marketplaceUrlPrefix).origin
+      : ''
+  } catch {
+    return ''
+  }
+})()
+
+export const getMarketplaceOAuthFrameOrigin = (
+  url: Pick<URL, 'pathname' | 'searchParams'>,
+  frameConfig = marketplaceOAuthFrameConfig,
+) => {
+  if (
+    frameConfig.edition !== 'CLOUD' ||
+    url.pathname !== '/account/oauth/authorize' ||
+    url.searchParams.get('flow') !== 'marketplace' ||
+    !frameConfig.marketplaceClientId ||
+    url.searchParams.get('client_id') !== frameConfig.marketplaceClientId ||
+    !frameConfig.marketplaceUrlPrefix
+  )
+    return ''
+
+  try {
+    return new URL(frameConfig.marketplaceUrlPrefix).origin
+  } catch {
+    return ''
+  }
+}
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
@@ -30,7 +69,26 @@ const matchesPathSegment = (pathname: string, segments: string[]) =>
 export const canEmbedPath = (pathname: string) =>
   matchesPathSegment(pathname, EMBEDDABLE_PATH_SEGMENTS)
 
-const wrapResponseWithFrameProtection = (response: NextResponse, pathname: string) => {
+const appendFrameAncestors = (response: NextResponse, frameOrigin: string) => {
+  const existingCsp = response.headers.get('Content-Security-Policy')
+  if (existingCsp?.includes('frame-ancestors')) return
+  response.headers.set(
+    'Content-Security-Policy',
+    `${existingCsp ? `${existingCsp} ` : ''}frame-ancestors ${frameOrigin};`,
+  )
+}
+
+const wrapResponseWithFrameProtection = (
+  response: NextResponse,
+  pathname: string,
+  marketplaceFrameOrigin: string,
+) => {
+  if (marketplaceFrameOrigin) {
+    response.headers.delete('X-Frame-Options')
+    appendFrameAncestors(response, marketplaceFrameOrigin)
+    return response
+  }
+
   // Published app routes are intentionally embeddable; all other routes default to clickjacking protection.
   const preventEmbedding =
     matchesPathSegment(pathname, NON_EMBEDDABLE_PATH_SEGMENTS) ||
@@ -38,19 +96,14 @@ const wrapResponseWithFrameProtection = (response: NextResponse, pathname: strin
 
   if (preventEmbedding) {
     response.headers.set('X-Frame-Options', 'DENY')
-    const contentSecurityPolicy = response.headers.get('Content-Security-Policy')
-    response.headers.set(
-      'Content-Security-Policy',
-      contentSecurityPolicy
-        ? `${contentSecurityPolicy} ${FRAME_ANCESTORS_NONE}`
-        : FRAME_ANCESTORS_NONE,
-    )
+    appendFrameAncestors(response, FRAME_ANCESTORS_NONE)
   }
 
   return response
 }
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+  const marketplaceFrameOrigin = getMarketplaceOAuthFrameOrigin(request.nextUrl)
 
   // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
   if (pathname === '/' && request.nextUrl.searchParams.get('action') === LEGACY_EDUCATION_ACTION) {
@@ -61,6 +114,7 @@ export function proxy(request: NextRequest) {
     return wrapResponseWithFrameProtection(
       NextResponse.redirect(destination, { status: 308 }),
       pathname,
+      marketplaceFrameOrigin,
     )
   }
 
@@ -76,7 +130,7 @@ export function proxy(request: NextRequest) {
         headers: requestHeaders,
       },
     })
-    return wrapResponseWithFrameProtection(response, pathname)
+    return wrapResponseWithFrameProtection(response, pathname, marketplaceFrameOrigin)
   }
 
   const turnstileOrigin = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -101,6 +155,7 @@ export function proxy(request: NextRequest) {
     object-src 'none';
     base-uri 'self';
     form-action 'self';
+    ${marketplaceFrameOrigin ? `frame-ancestors ${marketplaceFrameOrigin};` : ''}
     upgrade-insecure-requests;
 `
   // Replace newline characters and spaces
@@ -118,7 +173,7 @@ export function proxy(request: NextRequest) {
 
   response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue)
 
-  return wrapResponseWithFrameProtection(response, pathname)
+  return wrapResponseWithFrameProtection(response, pathname, marketplaceFrameOrigin)
 }
 
 export const config = {

@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canEmbedPath, proxy } from '@/proxy'
+import { canEmbedPath, getMarketplaceOAuthFrameOrigin, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
   NEXT_PUBLIC_CSP_WHITELIST: 'https://example.com',
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: '',
+  NEXT_PUBLIC_EDITION: 'CLOUD' as const,
+  NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID: 'marketplace-client',
+  NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
 }))
 
 vi.mock('@/env', () => ({
@@ -85,6 +88,43 @@ describe('proxy frame options', () => {
 
     expect(response.headers.get('x-frame-options')).toBe('DENY')
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+
+  it('allows only the configured Marketplace OAuth flow to be framed by Marketplace', () => {
+    const url = new URL(
+      'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+    )
+
+    expect(
+      getMarketplaceOAuthFrameOrigin(url, {
+        edition: 'CLOUD',
+        marketplaceClientId: 'marketplace-client',
+        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
+      }),
+    ).toBe('https://marketplace.dify.ai')
+
+    url.searchParams.set('client_id', 'another-client')
+    expect(
+      getMarketplaceOAuthFrameOrigin(url, {
+        edition: 'CLOUD',
+        marketplaceClientId: 'marketplace-client',
+        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
+      }),
+    ).toBe('')
+  })
+
+  it('does not allow the Marketplace OAuth flow outside Cloud', () => {
+    const url = new URL(
+      'https://self-hosted.example.com/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+    )
+
+    expect(
+      getMarketplaceOAuthFrameOrigin(url, {
+        edition: 'SELF_HOSTED',
+        marketplaceClientId: 'marketplace-client',
+        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
+      }),
+    ).toBe('')
   })
 })
 

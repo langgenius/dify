@@ -109,4 +109,15 @@ describe('post-login redirect utilities', () => {
 
     expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
   })
+
+  it('should preserve every Marketplace OAuth authorize parameter across signin', () => {
+    setPostLoginRedirect(
+      '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&flow=marketplace',
+    )
+
+    expect(resolvePostLoginRedirect()).toEqual({
+      kind: 'internal',
+      href: '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&flow=marketplace',
+    })
+  })
 })
