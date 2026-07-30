@@ -15,6 +15,7 @@ class CanonicalSpanKind(StrEnum):
     RETRIEVER = "retriever"
     TOOL = "tool"
     AGENT = "agent"
+    HUMAN_WAIT = "human_wait"
 
 
 class CanonicalSpanStatus(StrEnum):
@@ -39,6 +40,7 @@ class CanonicalSpan(BaseModel):
     synthetic: bool = False
     can_parent_workflow: bool = False
     publishes_parent_context: bool = False
+    links: tuple[str, ...] = ()
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

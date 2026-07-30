@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "今天",
   "agentDetail.monitoring.title": "监控",
   "agentDetail.monitoring.tokenUsageConsumed": "耗费 Tokens",
+  "agentDetail.monitoring.tracing.scope": "Agent App 设置仅适用于 Agent App 对话。Workflow 和 Chatflow 中的 Agent 节点使用调用方 App 的追踪设置。",
+  "agentDetail.monitoring.tracing.title": "追踪",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/秒",
   "agentDetail.navigationLabel": "Agent 导航",
   "agentDetail.publish": "发布",

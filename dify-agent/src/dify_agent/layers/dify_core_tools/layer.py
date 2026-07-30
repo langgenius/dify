@@ -110,6 +110,13 @@ class DifyCoreToolsLayer(PlainLayer[DifyCoreToolsDeps, DifyCoreToolsLayerConfig]
                     execution_context=execution_context,
                     tool_config=tool_config,
                     tool_parameters=tool_arguments,
+                    tool_call_span_id=(
+                        f"{execution_context.agent_run_id}:tool:{_ctx.tool_call_id}"
+                        if tool_config.provider_type == "workflow"
+                        and execution_context.agent_run_id
+                        and _ctx.tool_call_id
+                        else None
+                    ),
                 )
                 return response.observation
             except DifyCoreToolsClientConfigurationError:

@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "今日",
   "agentDetail.monitoring.title": "モニタリング",
   "agentDetail.monitoring.tokenUsageConsumed": "消費トークン",
+  "agentDetail.monitoring.tracing.scope": "Agent App の設定は Agent App の会話にのみ適用されます。Workflow と Chatflow の Agent ノードは、呼び出し元 App のトレーシング設定を使用します。",
+  "agentDetail.monitoring.tracing.title": "トレーシング",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "エージェントナビゲーション",
   "agentDetail.publish": "公開",

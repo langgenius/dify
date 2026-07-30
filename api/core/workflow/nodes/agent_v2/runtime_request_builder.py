@@ -153,6 +153,7 @@ class WorkflowAgentRuntimeRequest:
     agent_soul: AgentSoulConfig
     node_job: WorkflowNodeJobConfig
     metadata: dict[str, Any]
+    workflow_tool_names: frozenset[str]
 
 
 class WorkflowAgentRuntimeRequestBuilder:
@@ -277,6 +278,11 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul=agent_soul,
             node_job=node_job,
             metadata=metadata,
+            workflow_tool_names=frozenset(
+                tool.name or tool.tool_name
+                for tool in (tool_layers.core_tools.tools if tool_layers.core_tools is not None else [])
+                if tool.provider_type == "workflow"
+            ),
         )
 
     def _build_tool_layers(

@@ -241,6 +241,7 @@ class AskHumanFormCreated:
     node_data: HumanInputNodeData
     node_title: str
     resolved_default_values: dict[str, Any]
+    form: HumanInputFormEntity
 
 
 def create_ask_human_form(
@@ -292,6 +293,7 @@ def create_ask_human_form(
         node_data=node_data,
         node_title=node_title,
         resolved_default_values=resolved_default_values,
+        form=form,
     )
 
 

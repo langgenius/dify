@@ -72,6 +72,40 @@ def _request() -> AgentToolInvokeRequest:
     )
 
 
+def _workflow_request() -> AgentToolInvokeRequest:
+    payload = _request().model_dump(mode="json")
+    payload["caller"].update(
+        {
+            "parent_workflow_run_id": "outer-workflow-run-1",
+            "tool_call_span_id": "tool-call-span-1",
+        }
+    )
+    payload["tool"].update(
+        {
+            "provider_type": "workflow",
+            "provider_id": "workflow-provider-1",
+            "tool_name": "child_workflow",
+        }
+    )
+    return AgentToolInvokeRequest.model_validate(payload)
+
+
+class _TraceAwareWorkflowRuntime:
+    def __init__(self) -> None:
+        self.parent_context: tuple[str, str] | None = None
+
+    def set_parent_trace_context(
+        self,
+        *,
+        parent_workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> None:
+        self.parent_context = (parent_workflow_run_id, parent_node_execution_id)
+
+    def clear_parent_trace_context(self) -> None:
+        self.parent_context = None
+
+
 def _messages() -> Generator[ToolInvokeMessage, None, None]:
     yield ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.TEXT,
@@ -109,6 +143,62 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: 
     mock_invoke.assert_called_once()
     assert mock_invoke.call_args.kwargs["session"] is sqlite_session
     assert sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_workflow_parent_trace_context_remains_set_while_lazy_messages_are_consumed(
+    sqlite_session: Session,
+) -> None:
+    runtime = _TraceAwareWorkflowRuntime()
+    observed_contexts: list[tuple[str, str] | None] = []
+    _persist_app(sqlite_session)
+
+    def lazy_messages() -> Generator[ToolInvokeMessage, None, None]:
+        observed_contexts.append(runtime.parent_context)
+        yield from _messages()
+
+    with (
+        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=runtime),
+        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=lazy_messages()),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        response = AgentToolInnerService().invoke(_workflow_request(), session=sqlite_session)
+
+    assert response.observation == "ok"
+    assert observed_contexts == [("outer-workflow-run-1", "tool-call-span-1")]
+    assert runtime.parent_context is None
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_workflow_parent_trace_context_is_cleared_when_lazy_message_consumption_fails(
+    sqlite_session: Session,
+) -> None:
+    runtime = _TraceAwareWorkflowRuntime()
+    observed_contexts: list[tuple[str, str] | None] = []
+    _persist_app(sqlite_session)
+
+    def failing_messages() -> Generator[ToolInvokeMessage, None, None]:
+        observed_contexts.append(runtime.parent_context)
+        raise RuntimeError("lazy workflow failed")
+        yield from _messages()
+
+    with (
+        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=runtime),
+        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=failing_messages()),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        with pytest.raises(AgentToolInnerServiceError) as exc_info:
+            AgentToolInnerService().invoke(_workflow_request(), session=sqlite_session)
+
+    assert exc_info.value.error_code == "agent_tool_invoke_unexpected_error"
+    assert observed_contexts == [("outer-workflow-run-1", "tool-call-span-1")]
+    assert runtime.parent_context is None
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)

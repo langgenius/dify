@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "Hoy",
   "agentDetail.monitoring.title": "Monitoreo",
   "agentDetail.monitoring.tokenUsageConsumed": "Tokens consumidos",
+  "agentDetail.monitoring.tracing.scope": "La configuración de Agent App solo se aplica a sus conversaciones. Los nodos Agent de workflows y chatflows usan la configuración de rastreo de la aplicación que los invoca.",
+  "agentDetail.monitoring.tracing.title": "Rastreo",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Navegación del agente",
   "agentDetail.publish": "Publicar",

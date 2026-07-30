@@ -431,6 +431,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         update_outputs: bool = True,
         finished_at: datetime | None = None,
     ) -> None:
+        self._record_agent_trace_fragments(
+            parent_node_execution_id=domain_execution.id,
+            metadata=node_result.metadata,
+        )
         actual_finished_at = finished_at or naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
@@ -462,6 +466,26 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
+
+    def _record_agent_trace_fragments(
+        self,
+        *,
+        parent_node_execution_id: str,
+        metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any],
+    ) -> None:
+        try:
+            agent_log = metadata.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+            if not isinstance(agent_log, Mapping):
+                return
+            raw_fragments = agent_log.get("agent_fragments")
+            if not isinstance(raw_fragments, list):
+                return
+            self._application_generate_entity.workflow_trace_state.record_agent_fragments(
+                parent_node_execution_id,
+                raw_fragments,
+            )
+        except Exception:
+            return
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
         now = naive_utc_now()
@@ -497,6 +521,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             external_trace_id=external_trace_id,
             trace_session_id=trace_session_id,
             parent_trace_context=parent_trace_context,
+            agent_fragments=self._application_generate_entity.workflow_trace_state.agent_fragments_by_parent(),
+            human_waits=[
+                wait.model_dump(mode="json")
+                for wait in self._application_generate_entity.workflow_trace_state.human_waits
+            ],
         )
         self._trace_manager.add_trace_task(trace_task)
 

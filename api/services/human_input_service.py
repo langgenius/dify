@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from core.ops.unified_trace.human_wait import HumanWaitRecord, try_build_human_wait_record
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
@@ -223,10 +224,11 @@ class HumanInputService:
 
         if result.form_kind != HumanInputFormKind.RUNTIME:
             return
+        human_wait = self._build_human_wait(result)
         # A RUNTIME form is owned by a workflow run (workflow Agent node) or a
         # conversation (ENG-635: Agent v2 chat). Route the resume accordingly.
         if result.workflow_run_id is not None:
-            self.enqueue_resume(result.workflow_run_id)
+            self.enqueue_resume(result.workflow_run_id, human_wait=human_wait)
         elif result.conversation_id is not None:
             self.enqueue_agent_app_resume(conversation_id=result.conversation_id, form_id=result.form_id)
 
@@ -262,7 +264,18 @@ class HumanInputService:
         except HumanInputSubmissionValidationError as exc:
             raise InvalidFormDataError(str(exc)) from exc
 
-    def enqueue_resume(self, workflow_run_id: str) -> None:
+    @staticmethod
+    def _build_human_wait(record: HumanInputFormRecord) -> HumanWaitRecord | None:
+        human_wait = try_build_human_wait_record(
+            record,
+            owner_kind="workflow_node",
+            owner_id=record.node_id,
+        )
+        if human_wait is None:
+            logger.warning("Failed to normalize human wait lifecycle for form %s", record.form_id)
+        return human_wait
+
+    def enqueue_resume(self, workflow_run_id: str, *, human_wait: HumanWaitRecord | None = None) -> None:
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
         workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(workflow_run_id)
 
@@ -279,6 +292,8 @@ class HumanInputService:
 
         if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             payload = {"workflow_run_id": workflow_run_id}
+            if human_wait is not None:
+                payload["human_wait"] = human_wait.model_dump(mode="json")
             try:
                 resume_app_execution.apply_async(
                     kwargs={"payload": payload},

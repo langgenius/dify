@@ -51,6 +51,8 @@ class _DifyCoreToolsCaller(BaseModel):
     node_execution_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
+    parent_workflow_run_id: str | None = None
+    tool_call_span_id: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -105,6 +107,7 @@ class DifyCoreToolsClient:
         execution_context: DifyExecutionContextLayerConfig,
         tool_config: DifyCoreToolConfig,
         tool_parameters: dict[str, JsonValue],
+        tool_call_span_id: str | None = None,
     ) -> DifyCoreToolsInvokeResponse:
         _validate_execution_context(execution_context)
 
@@ -122,6 +125,8 @@ class DifyCoreToolsClient:
                 node_execution_id=execution_context.node_execution_id,
                 agent_id=execution_context.agent_id,
                 agent_config_version_id=execution_context.agent_config_version_id,
+                parent_workflow_run_id=execution_context.workflow_run_id if tool_call_span_id else None,
+                tool_call_span_id=tool_call_span_id,
             ),
             tool=_DifyCoreToolsRequestTool(
                 provider_type=tool_config.provider_type,

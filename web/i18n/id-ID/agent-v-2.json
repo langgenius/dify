@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "Hari ini",
   "agentDetail.monitoring.title": "Pemantauan",
   "agentDetail.monitoring.tokenUsageConsumed": "Token terpakai",
+  "agentDetail.monitoring.tracing.scope": "Pengaturan Agent App hanya berlaku untuk percakapan Agent App. Node Agent dalam workflow dan chatflow menggunakan pengaturan pelacakan aplikasi yang memanggilnya.",
+  "agentDetail.monitoring.tracing.title": "Pelacakan",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/dtk",
   "agentDetail.navigationLabel": "Navigasi agen",
   "agentDetail.publish": "Terbitkan",

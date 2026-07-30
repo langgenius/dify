@@ -1177,7 +1177,10 @@ class TestEasyUiBasedGenerateTaskPipeline:
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
-        application_generate_entity.extras = {"trace_session_id": "session-1"}
+        application_generate_entity.extras = {
+            "trace_session_id": "session-1",
+            "human_waits": [{"wait_id": "form-1"}],
+        }
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=_FakeQueueManager(),
@@ -1232,6 +1235,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert trace_task.conversation_id == "conv"
         assert trace_task.message_id == "msg"
         assert trace_task.kwargs["trace_session_id"] == "session-1"
+        assert trace_task.kwargs["human_waits"] == [{"wait_id": "form-1"}]
         assert len(sent_payloads) == 1
 
     def test_save_message_raises_when_message_not_found(self):

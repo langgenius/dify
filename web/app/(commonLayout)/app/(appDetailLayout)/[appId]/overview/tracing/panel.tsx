@@ -19,7 +19,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
@@ -38,7 +38,6 @@ import {
 import Loading from '@/app/components/base/loading'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { usePathname } from '@/next/navigation'
 import {
   fetchTracingConfig as doFetchTracingConfig,
   fetchTracingStatus,
@@ -51,11 +50,13 @@ import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
 
-const Panel: FC = () => {
+export type TracingPanelProps = {
+  appId: string
+  readOnly?: boolean
+}
+
+const Panel: FC<TracingPanelProps> = ({ appId, readOnly: readOnlyOverride }) => {
   const { t } = useTranslation()
-  const pathname = usePathname()
-  const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.length && matched[1] ? matched[1] : ''
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appDetail = useAppStore((s) => s.appDetail)
@@ -69,7 +70,7 @@ const Panel: FC = () => {
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canConfigTracing = appACLCapabilities.canConfigureTracing
-  const readOnly = !canConfigTracing
+  const readOnly = readOnlyOverride ?? !canConfigTracing
 
   const [isLoaded, { setTrue: setLoaded }] = useBoolean(false)
 
@@ -137,7 +138,7 @@ const Panel: FC = () => {
     tencentConfig
   )
 
-  const fetchTracingConfig = async () => {
+  const fetchTracingConfig = useCallback(async () => {
     const getArizeConfig = async () => {
       const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } =
         await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
@@ -200,7 +201,7 @@ const Panel: FC = () => {
       getDatabricksConfig(),
       getTencentConfig(),
     ])
-  }
+  }, [appId])
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
     // call api to hide secret key value
@@ -246,7 +247,7 @@ const Panel: FC = () => {
       await fetchTracingConfig()
       setLoaded()
     })()
-  }, [])
+  }, [appId, fetchTracingConfig, setLoaded])
 
   if (!isLoaded) {
     return (

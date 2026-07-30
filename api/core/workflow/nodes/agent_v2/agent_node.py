@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, override
 
 from agenton.compositor import CompositorSessionSnapshot
@@ -24,6 +25,9 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.ops.unified_trace.agent_collector import AgentSemanticTraceCollector
+from core.ops.unified_trace.agent_events import AgentTraceCollectionGate
+from core.ops.unified_trace.agent_normalizer import PydanticAIAgentEventNormalizer
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
@@ -334,12 +338,23 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "status": create_response.status,
             }
 
+            trace_collector = None
+            if AgentTraceCollectionGate.for_app(dify_ctx.app_id).enabled:
+                trace_collector = AgentSemanticTraceCollector(
+                    run_id=create_response.run_id,
+                    role="resume" if deferred_tool_results is not None else ("initial" if attempt == 0 else "retry"),
+                    start_time=datetime.now(),
+                    workflow_tool_names=set(runtime_request.workflow_tool_names),
+                )
             terminal_event, exhausted = self._consume_event_stream(
                 create_response.run_id,
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
+                trace_collector=trace_collector,
             )
+            if trace_collector is not None:
+                self._record_trace_fragment(metadata, trace_collector, terminal_event)
             if exhausted is not None:
                 # Streaming error / unexpected end — surface immediately without
                 # retrying because the failure is transport-level.
@@ -506,6 +521,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
+        trace_collector: AgentSemanticTraceCollector | None = None,
     ) -> tuple[
         _TerminalAgentBackendEvent | None,
         StreamCompletedEvent | None,
@@ -526,6 +542,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 should_stop=self._is_graph_aborted,
             ):
                 stream_event_count += 1
+                if trace_collector is not None:
+                    try:
+                        for semantic_event in PydanticAIAgentEventNormalizer().normalize(public_event):
+                            trace_collector.consume(semantic_event)
+                    except Exception:
+                        logger.warning("Failed to normalize Agent backend trace event", exc_info=True)
                 for internal_event in self._event_adapter.adapt(public_event):
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
                         continue
@@ -581,6 +603,21 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
         self._cancel_backend_run(run_id, reason="stream_ended_without_terminal_event")
         return None, None
+
+    @staticmethod
+    def _record_trace_fragment(
+        metadata: dict[str, Any],
+        collector: AgentSemanticTraceCollector,
+        terminal_event: _TerminalAgentBackendEvent | None,
+    ) -> None:
+        try:
+            output = (
+                terminal_event.output if isinstance(terminal_event, AgentBackendRunSucceededInternalEvent) else None
+            )
+            error = terminal_event.error if isinstance(terminal_event, AgentBackendRunFailedInternalEvent) else None
+            metadata["agent_fragments"] = [collector.finish(output=output, error=error).model_dump(mode="json")]
+        except Exception:
+            logger.warning("Failed to finalize Agent backend trace fragment", exc_info=True)
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""

@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "امروز",
   "agentDetail.monitoring.title": "نظارت",
   "agentDetail.monitoring.tokenUsageConsumed": "توکن‌های مصرف‌شده",
+  "agentDetail.monitoring.tracing.scope": "تنظیمات Agent App فقط برای گفتگوهای Agent App اعمال می‌شود. گره‌های Agent در workflow و chatflow از تنظیمات ردیابی برنامه فراخواننده استفاده می‌کنند.",
+  "agentDetail.monitoring.tracing.title": "ردیابی",
   "agentDetail.monitoring.units.tokenPerSecond": "توکن/ثانیه",
   "agentDetail.navigationLabel": "ناوبری عامل",
   "agentDetail.publish": "انتشار",

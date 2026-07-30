@@ -13,10 +13,10 @@ DOCKER_MIDDLEWARE_PROJECT=dify-middlewares-dev
 .DEFAULT_GOAL := help
 
 # Backend Development Environment Setup
-.PHONY: dev-setup prepare-docker prepare-web prepare-api
+.PHONY: dev-setup prepare-docker prepare-web prepare-api prepare-agent
 
 # Dev setup target
-dev-setup: prepare-docker prepare-web prepare-api
+dev-setup: prepare-docker prepare-web prepare-api prepare-agent
 	@echo "✅ Backend development environment setup complete!"
 
 # Step 1: Prepare Docker middleware
@@ -45,6 +45,18 @@ prepare-api:
 	@cd api && uv sync --dev
 	@cd api && uv run flask db upgrade
 	@echo "✅ API environment prepared (not started)"
+
+# Step 4: Prepare Dify Agent environment
+prepare-agent:
+	@echo "🤖 Setting up Dify Agent environment..."
+	@if [ ! -f "dify-agent/.env" ]; then \
+		cp "dify-agent/.example.env" "dify-agent/.env"; \
+		echo "Dify Agent .env created"; \
+	else \
+		echo "Dify Agent .env already exists"; \
+	fi
+	@cd dify-agent && uv sync --group dev --extra server
+	@echo "✅ Dify Agent environment prepared (not started)"
 
 # Clean dev environment
 dev-clean:
@@ -207,6 +219,7 @@ help:
 	@echo "  make prepare-docker - Set up Docker middleware"
 	@echo "  make prepare-web    - Set up web environment"
 	@echo "  make prepare-api    - Set up API environment"
+	@echo "  make prepare-agent  - Set up Dify Agent environment"
 	@echo "  make dev-clean      - Stop Docker middleware containers and remove dev data"
 	@echo ""
 	@echo "Backend Code Quality:"
@@ -228,4 +241,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all
+.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api prepare-agent dev-clean help format check lint api-contract-lint type-check test test-all

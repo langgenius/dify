@@ -94,7 +94,7 @@ const mockedFetchTracingConfig = vi.mocked(fetchTracingConfig)
 const mockedUpdateTracingStatus = vi.mocked(updateTracingStatus)
 
 const renderPanel = async () => {
-  render(<Panel />)
+  render(<Panel appId="app-1" />)
 
   await screen.findAllByTestId('config-button')
 }
@@ -164,6 +164,14 @@ describe('Tracing overview panel permissions', () => {
         readOnly: false,
         hasConfigured: false,
       })
+    })
+  })
+
+  it('uses the explicit App id instead of route-derived identity', async () => {
+    render(<Panel appId="backing-app-1" />)
+
+    await waitFor(() => {
+      expect(mockedFetchTracingStatus).toHaveBeenCalledWith({ appId: 'backing-app-1' })
     })
   })
 })

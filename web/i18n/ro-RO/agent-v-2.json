@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "Astăzi",
   "agentDetail.monitoring.title": "Monitorizare",
   "agentDetail.monitoring.tokenUsageConsumed": "Token-uri consumate",
+  "agentDetail.monitoring.tracing.scope": "Setările Agent App se aplică numai conversațiilor Agent App. Nodurile Agent din workflow-uri și chatflow-uri folosesc setările de urmărire ale aplicației care le invocă.",
+  "agentDetail.monitoring.tracing.title": "Urmărire",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Navigarea agentului",
   "agentDetail.publish": "Publică",

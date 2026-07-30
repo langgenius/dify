@@ -36,7 +36,9 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       <div className="min-h-0 flex-1">
         <ChartView
           appId={appId}
-          headerRight={appACLCapabilities.canConfigureTracing ? <TracingPanel /> : null}
+          headerRight={
+            appACLCapabilities.canConfigureTracing ? <TracingPanel appId={appId} /> : null
+          }
         />
       </div>
     </div>

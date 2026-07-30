@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,6 +10,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
+from core.ops.unified_trace.human_wait import HumanWaitRecord
+from core.ops.unified_trace.workflow_trace_state import WorkflowTraceState
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
@@ -19,11 +22,13 @@ from tasks import human_input_timeout_tasks as task_module
 class _FakeService:
     def __init__(self):
         self.enqueued: list[str] = []
+        self.enqueued_waits: list[HumanWaitRecord | None] = []
         self.agent_app_resumed: list[tuple[str, str]] = []
 
-    def enqueue_resume(self, workflow_run_id: str | None) -> None:
+    def enqueue_resume(self, workflow_run_id: str | None, *, human_wait: HumanWaitRecord | None = None) -> None:
         if workflow_run_id is not None:
             self.enqueued.append(workflow_run_id)
+            self.enqueued_waits.append(human_wait)
 
     def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
         self.agent_app_resumed.append((conversation_id, form_id))
@@ -94,6 +99,78 @@ def test_is_global_timeout_uses_created_at():
     assert task_module._is_global_timeout(form, 0, now=now) is False
 
 
+def test_handle_global_timeout_publishes_retained_trace_before_cleanup(monkeypatch: pytest.MonkeyPatch):
+    started_at = datetime(2025, 1, 1, 10, 0, 0)
+    timed_out_at = started_at + timedelta(hours=2)
+    workflow_run = SimpleNamespace(
+        id="run-global",
+        app_id="app-id",
+        created_by="creator-id",
+        total_tokens=13,
+        status=HumanInputFormStatus.WAITING,
+        error=None,
+        finished_at=None,
+    )
+    pause = SimpleNamespace(id="pause-id", state_object_key="pause-state", resumed_at=None)
+
+    session = MagicMock()
+    session.get.return_value = workflow_run
+    session.scalar.return_value = pause
+    session_factory = MagicMock()
+    session_factory.return_value.__enter__.return_value = session
+    session.begin.return_value.__enter__.return_value = None
+
+    generate_entity = SimpleNamespace(
+        app_config=SimpleNamespace(app_id="app-id"),
+        user_id="end-user-id",
+        conversation_id="conversation-id",
+        extras={"trace_session_id": "trace-session"},
+        workflow_trace_state=WorkflowTraceState(),
+    )
+    resumption_context = SimpleNamespace(get_generate_entity=lambda: generate_entity)
+    monkeypatch.setattr(task_module.WorkflowResumptionContext, "loads", lambda _value: resumption_context)
+
+    deleted: list[str] = []
+    monkeypatch.setattr(task_module.storage, "load", lambda _key: b"serialized-pause-state")
+    monkeypatch.setattr(task_module.storage, "delete", deleted.append)
+    trace_tasks: list[Any] = []
+
+    class _TraceManager:
+        def __init__(self, app_id: str, user_id: str):
+            assert app_id == "app-id"
+            assert user_id == "end-user-id"
+
+        def add_trace_task(self, task) -> None:
+            trace_tasks.append(task)
+
+    monkeypatch.setattr(task_module, "TraceQueueManager", _TraceManager)
+    monkeypatch.setattr(task_module, "naive_utc_now", lambda: timed_out_at)
+    wait = HumanWaitRecord(
+        wait_id="form-global",
+        owner_id="node-global",
+        owner_kind="workflow_node",
+        start_time=started_at,
+        end_time=timed_out_at,
+        outcome="expired",
+    )
+
+    task_module._handle_global_timeout(
+        form_id="form-global",
+        workflow_run_id="run-global",
+        node_id="node-global",
+        session_factory=session_factory,
+        human_wait=wait,
+    )
+
+    assert len(trace_tasks) == 1
+    trace_task = trace_tasks[0]
+    assert trace_task.workflow_run_id == "run-global"
+    assert trace_task.workflow_total_tokens == 13
+    assert trace_task.kwargs["trace_session_id"] == "trace-session"
+    assert trace_task.kwargs["human_waits"] == [wait.model_dump(mode="json")]
+    assert deleted == ["pause-state"]
+
+
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_check_and_handle_human_input_timeouts_marks_and_routes(
     monkeypatch: pytest.MonkeyPatch,
@@ -156,11 +233,16 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),
     }
     assert service.enqueued == ["run-node"]
+    assert service.enqueued_waits[0] is not None
+    assert service.enqueued_waits[0].wait_id == "form-node"
+    assert service.enqueued_waits[0].outcome == "timed_out"
     global_timeout_handler.assert_called_once()
     global_timeout_call = global_timeout_handler.call_args.kwargs
     assert global_timeout_call["form_id"] == "form-global"
     assert global_timeout_call["workflow_run_id"] == "run-global"
     assert global_timeout_call["node_id"] == "node-global"
+    assert global_timeout_call["human_wait"].wait_id == "form-global"
+    assert global_timeout_call["human_wait"].outcome == "expired"
     task_session_maker = global_timeout_call["session_factory"]
     assert isinstance(task_session_maker, sessionmaker)
     assert task_session_maker.kw["bind"] is sqlite_engine

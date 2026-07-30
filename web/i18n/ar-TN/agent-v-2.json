@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "اليوم",
   "agentDetail.monitoring.title": "المراقبة",
   "agentDetail.monitoring.tokenUsageConsumed": "التوكنات المستهلكة",
+  "agentDetail.monitoring.tracing.scope": "تنطبق إعدادات تطبيق Agent على محادثات تطبيق Agent فقط. تستخدم عقد Agent في سير العمل وChatflow إعدادات التتبّع الخاصة بالتطبيق المستدعي.",
+  "agentDetail.monitoring.tracing.title": "التتبّع",
   "agentDetail.monitoring.units.tokenPerSecond": "توكن/ث",
   "agentDetail.navigationLabel": "تنقّل الوكيل",
   "agentDetail.publish": "نشر",

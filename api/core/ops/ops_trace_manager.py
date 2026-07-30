@@ -756,6 +756,8 @@ class TraceTask:
         trace_type: Any,
         message_id: str | None = None,
         workflow_execution: "WorkflowExecution | None" = None,
+        workflow_run_id: str | None = None,
+        workflow_total_tokens: int | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,
@@ -763,8 +765,8 @@ class TraceTask:
     ):
         self.trace_type = trace_type
         self.message_id = message_id
-        self.workflow_run_id = workflow_execution.id_ if workflow_execution else None
-        self.workflow_total_tokens: int | None = workflow_execution.total_tokens if workflow_execution else None
+        self.workflow_run_id = workflow_execution.id_ if workflow_execution else workflow_run_id
+        self.workflow_total_tokens = workflow_execution.total_tokens if workflow_execution else workflow_total_tokens
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.timer = timer
@@ -900,6 +902,10 @@ class TraceTask:
         trace_session_id = _get_trace_session_id(self.kwargs)
         if trace_session_id:
             metadata["trace_session_id"] = trace_session_id
+        if agent_fragments := self.kwargs.get("agent_fragments"):
+            metadata["agent_fragments"] = agent_fragments
+        if human_waits := self.kwargs.get("human_waits"):
+            metadata["human_waits"] = human_waits
 
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
@@ -987,6 +993,10 @@ class TraceTask:
         trace_session_id = _get_trace_session_id(kwargs)
         if trace_session_id:
             metadata["trace_session_id"] = trace_session_id
+        if agent_fragments := kwargs.get("agent_fragments"):
+            metadata["agent_fragments"] = agent_fragments
+        if human_waits := kwargs.get("human_waits"):
+            metadata["human_waits"] = human_waits
 
         message_tokens = message_data.message_tokens
 

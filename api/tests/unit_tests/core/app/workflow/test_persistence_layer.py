@@ -8,6 +8,8 @@ import pytest
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
+from core.ops.unified_trace.agent_events import AgentRunTraceFragment
+from core.ops.unified_trace.human_wait import HumanWaitRecord
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
@@ -321,6 +323,25 @@ class TestWorkflowPersistenceLayer:
             "parent_node_execution_id": "outer-node-execution-1",
         }
 
+    def test_terminal_trace_task_carries_private_human_waits(self):
+        trace_tasks: list[TraceTask] = []
+        trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
+        layer, _, _, _ = _make_layer(trace_manager=trace_manager)
+        human_wait = HumanWaitRecord(
+            wait_id="form-1",
+            owner_id="node-1",
+            owner_kind="workflow_node",
+            start_time=_naive_utc_now(),
+            end_time=_naive_utc_now(),
+            outcome="submitted",
+        )
+        layer._application_generate_entity.workflow_trace_state.human_waits.append(human_wait)
+        layer._handle_graph_run_started()
+
+        layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
+
+        assert trace_tasks[0].kwargs["human_waits"] == [human_wait.model_dump(mode="json")]
+
     def test_handle_graph_run_aborted_sets_status(self):
         layer, exec_repo, _, _ = _make_layer()
         layer._handle_graph_run_started()
@@ -396,6 +417,45 @@ class TestWorkflowPersistenceLayer:
 
         assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
         assert node_repo.saved == []
+
+    def test_agent_node_fragments_accumulate_in_private_workflow_trace_state(self):
+        layer, _, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="agent-exec",
+                node_id="agent-node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_version="2",
+                node_title="Agent",
+                start_at=_naive_utc_now(),
+            )
+        )
+        fragment = AgentRunTraceFragment(
+            run_id="agent-run-1",
+            role="initial",
+            start_time=_naive_utc_now(),
+        )
+
+        layer._handle_node_pause_requested(
+            NodeRunPauseRequestedEvent(
+                id="agent-exec",
+                node_id="agent-node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_run_result=NodeRunResult(
+                    metadata={
+                        WorkflowNodeExecutionMetadataKey.AGENT_LOG: {
+                            "agent_fragments": [fragment.model_dump(mode="json")],
+                        }
+                    }
+                ),
+                reason=SchedulingPause(message="wait"),
+            )
+        )
+
+        assert layer._application_generate_entity.workflow_trace_state.agent_fragments_by_parent() == {
+            "agent-exec": [fragment.model_dump(mode="json")]
+        }
 
     def test_retry_history_is_preserved_after_node_succeeds(self):
         layer, _, node_repo, _ = _make_layer()

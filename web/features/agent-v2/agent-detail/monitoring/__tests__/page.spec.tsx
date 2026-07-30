@@ -19,8 +19,14 @@ type AgentMonitoringQueryInput = {
 
 const mocks = vi.hoisted(() => ({
   chartOptions: [] as EChartsOption[],
+  tracingPanelProps: [] as Array<{ appId: string; readOnly?: boolean }>,
+  agentDetailQueryFn: vi.fn(),
   statisticsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
+  agentDetailQueryOptions: vi.fn((input: AgentMonitoringQueryInput) => ({
+    queryKey: ['agent-detail', input],
+    queryFn: () => mocks.agentDetailQueryFn(input),
+  })),
   statisticsQueryOptions: vi.fn((input: AgentMonitoringQueryInput) => ({
     queryKey: ['agent-monitoring-statistics', input],
     queryFn: () => mocks.statisticsQueryFn(input),
@@ -44,10 +50,27 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+  }))
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryOptions: mocks.agentDetailQueryOptions,
+        },
         logSources: {
           get: {
             queryOptions: mocks.logSourcesQueryOptions,
@@ -62,6 +85,13 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+  },
+}))
+
+vi.mock('@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/panel', () => ({
+  default: (props: { appId: string; readOnly?: boolean }) => {
+    mocks.tracingPanelProps.push(props)
+    return <div data-testid="app-tracing-panel" />
   },
 }))
 
@@ -168,6 +198,11 @@ describe('AgentMonitoringPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.chartOptions = []
+    mocks.tracingPanelProps = []
+    mocks.agentDetailQueryFn.mockResolvedValue({
+      backing_app_id: 'backing-app-1',
+      permission_keys: ['app.acl.tracing_config'],
+    })
     mocks.statisticsQueryFn.mockResolvedValue(statisticsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
   })
@@ -191,6 +226,36 @@ describe('AgentMonitoringPage', () => {
       },
     })
     expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
+  })
+
+  it('should render tracing controls for the backing App and explain their scope', async () => {
+    renderPage()
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.monitoring.tracing.scope'),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('app-tracing-panel')).toBeInTheDocument()
+    expect(mocks.tracingPanelProps.at(-1)).toEqual({
+      appId: 'backing-app-1',
+      readOnly: false,
+    })
+  })
+
+  it('should omit tracing controls when the Agent has no backing App', async () => {
+    mocks.agentDetailQueryFn.mockResolvedValue({
+      backing_app_id: null,
+      permission_keys: ['app.acl.tracing_config'],
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(mocks.agentDetailQueryFn).toHaveBeenCalled()
+    })
+    expect(screen.queryByTestId('app-tracing-panel')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.monitoring.tracing.scope'),
+    ).not.toBeInTheDocument()
   })
 
   it('should render statistics summary values and chart options from backend data', async () => {

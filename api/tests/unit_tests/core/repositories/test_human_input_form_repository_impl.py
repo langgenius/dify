@@ -327,6 +327,18 @@ class TestHumanInputFormRepositoryImplPublicMethods:
 
 
 class TestHumanInputFormSubmissionRepository:
+    def test_list_by_workflow_run_id_returns_records_without_recipient_secrets(self, sqlite_session: Session):
+        form = _make_form(tenant_id="tenant-1")
+        recipient = _make_recipient(form.id)
+        _persist_form(sqlite_session, form, [recipient])
+        repo = HumanInputFormSubmissionRepository()
+
+        records = repo.list_by_workflow_run_id(form.workflow_run_id)
+
+        assert [record.form_id for record in records] == [form.id]
+        assert records[0].recipient_id is None
+        assert records[0].access_token is None
+
     def test_get_by_token_returns_record(self, sqlite_session: Session):
         form = _make_form(tenant_id="tenant-1")
         recipient = _make_recipient(form.id)
@@ -424,3 +436,26 @@ class TestHumanInputFormSubmissionRepository:
         assert persisted_form.selected_action_id is None
         assert persisted_form.submitted_data is None
         assert persisted_form.submitted_at is None
+
+    def test_mark_timeout_records_terminal_transition_time(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        fixed_now = datetime(2024, 1, 1, 0, 0, 0)
+        monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
+        form = _make_form(tenant_id="tenant-1", expiration_time=fixed_now)
+        _persist_form(sqlite_session, form)
+        repo = HumanInputFormSubmissionRepository()
+
+        record = repo.mark_timeout(
+            form_id=form.id,
+            timeout_status=HumanInputFormStatus.TIMEOUT,
+            reason="node_timeout",
+        )
+
+        sqlite_session.expire_all()
+        persisted_form = sqlite_session.get(HumanInputForm, form.id)
+        assert persisted_form is not None
+        assert persisted_form.updated_at == fixed_now
+        assert record.updated_at == fixed_now

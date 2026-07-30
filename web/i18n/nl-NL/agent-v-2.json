@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "Vandaag",
   "agentDetail.monitoring.title": "Monitoring",
   "agentDetail.monitoring.tokenUsageConsumed": "Verbruikte tokens",
+  "agentDetail.monitoring.tracing.scope": "Agent App-instellingen gelden alleen voor Agent App-gesprekken. Agent-knooppunten in workflows en chatflows gebruiken de traceringsinstellingen van de aanroepende app.",
+  "agentDetail.monitoring.tracing.title": "Tracering",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "Agentnavigatie",
   "agentDetail.publish": "Publiceren",

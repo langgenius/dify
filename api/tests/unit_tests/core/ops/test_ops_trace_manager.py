@@ -497,11 +497,17 @@ def test_message_trace_reads_real_conversation_app_and_message_file(
     database.add(file)
     database.commit()
     monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
-    result = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id=message.id).message_trace(message.id)
+    human_waits = [{"wait_id": "wait-id", "phase": "requested"}]
+    result = TraceTask(
+        trace_type=TraceTaskName.MESSAGE_TRACE,
+        message_id=message.id,
+        human_waits=human_waits,
+    ).preprocess()
     assert result.message_id == message.id
     assert result.conversation_mode == AppMode.CHAT
     assert result.file_list[0].endswith("path/to/file")
     assert result.metadata["tenant_id"] == "tenant-1"
+    assert result.metadata["human_waits"] == human_waits
 
 
 def test_workflow_log_enriches_moderation_and_suggested_question_traces(

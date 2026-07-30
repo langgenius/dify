@@ -17,6 +17,21 @@ def test_canonical_trace_rejects_unknown_fields() -> None:
         )
 
 
+def test_canonical_human_wait_supports_links() -> None:
+    span = CanonicalSpan(
+        id="wait-1",
+        parent_id="message-2",
+        name="human_wait",
+        kind=CanonicalSpanKind.HUMAN_WAIT,
+        start_time=datetime(2025, 1, 1),
+        end_time=None,
+        status=CanonicalSpanStatus.OK,
+        links=("message-1",),
+    )
+
+    assert span.links == ("message-1",)
+
+
 def test_canonical_span_is_immutable() -> None:
     span = CanonicalSpan(
         id="span-1",

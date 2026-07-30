@@ -525,6 +525,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         if application_generate_entity.agent_config_version_kind == AgentConfigVersionKind.BUILD_DRAFT
                         else None
                     ),
+                    on_trace_fragment=lambda fragment: application_generate_entity.extras.setdefault(
+                        "agent_fragments", []
+                    ).append(fragment.model_dump(mode="json")),
+                    on_human_wait=lambda wait: application_generate_entity.extras.setdefault(
+                        "human_waits", []
+                    ).append(wait.model_dump(mode="json")),
                 )
             except GenerateTaskStoppedError:
                 pass

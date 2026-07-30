@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "Hôm nay",
   "agentDetail.monitoring.title": "Giám sát",
   "agentDetail.monitoring.tokenUsageConsumed": "Token đã tiêu thụ",
+  "agentDetail.monitoring.tracing.scope": "Cài đặt Agent App chỉ áp dụng cho các cuộc hội thoại Agent App. Các nút Agent trong workflow và chatflow sử dụng cài đặt theo dõi của ứng dụng gọi.",
+  "agentDetail.monitoring.tracing.title": "Theo dõi",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/giây",
   "agentDetail.navigationLabel": "Điều hướng tác nhân",
   "agentDetail.publish": "Xuất bản",

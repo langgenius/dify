@@ -1,5 +1,6 @@
 import json
 from collections.abc import Sequence
+from datetime import datetime
 from time import time
 from unittest.mock import Mock
 
@@ -16,6 +17,8 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.ops.unified_trace.agent_events import AgentRunTraceFragment
+from core.ops.unified_trace.workflow_trace_state import WorkflowTraceState
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
@@ -219,6 +222,51 @@ class TestPauseStatePersistenceLayer:
             invoke_from=InvokeFrom.DEBUGGER,
             workflow_execution_id=workflow_execution_id,
         )
+
+    def test_pause_context_round_trip_retains_private_trace_fragments(self):
+        entity = self._create_generate_entity()
+        entity.workflow_trace_state = WorkflowTraceState(
+            collection_enabled=True,
+            agent_fragments=[
+                AgentRunTraceFragment(
+                    run_id="agent-run-1",
+                    role="initial",
+                    start_time=datetime(2026, 7, 29),
+                )
+            ],
+        )
+
+        restored = WorkflowResumptionContext.loads(
+            WorkflowResumptionContext(
+                generate_entity=_WorkflowGenerateEntityWrapper(entity=entity),
+                serialized_graph_runtime_state="{}",
+            ).dumps()
+        ).get_generate_entity()
+
+        assert restored.workflow_trace_state.agent_fragments[0].run_id == "agent-run-1"
+
+    def test_workflow_trace_state_groups_accumulated_fragments_by_node_execution(self):
+        state = WorkflowTraceState(collection_enabled=True)
+        initial = AgentRunTraceFragment(
+            run_id="agent-run-1",
+            role="initial",
+            start_time=datetime(2026, 7, 29),
+        )
+        resumed = AgentRunTraceFragment(
+            run_id="agent-run-2",
+            role="resume",
+            start_time=datetime(2026, 7, 29, 0, 1),
+        )
+
+        state.record_agent_fragments("node-exec-1", [initial.model_dump(mode="json")])
+        state.record_agent_fragments("node-exec-1", [resumed.model_dump(mode="json")])
+
+        assert state.agent_fragments_by_parent() == {
+            "node-exec-1": [
+                initial.model_dump(mode="json"),
+                resumed.model_dump(mode="json"),
+            ]
+        }
 
     def test_init_with_dependency_injection(self, sqlite_session_factory: sessionmaker[Session]):
         state_owner_user_id = "user-123"

@@ -145,6 +145,7 @@ class AppGenerateEntity(BaseModel):
 
     # tracing instance
     trace_manager: "TraceQueueManager | None" = Field(default=None, exclude=True, repr=False)
+    workflow_trace_state: "WorkflowTraceState" = Field(default_factory=lambda: WorkflowTraceState(), repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -319,6 +320,7 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
 
 
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.unified_trace.workflow_trace_state import WorkflowTraceState
 
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()

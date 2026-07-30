@@ -127,6 +127,24 @@ services:
     networks:
       - ssrf_proxy_network
 
+  # Local sandbox for source-based Dify Agent development.
+  local_sandbox:
+    image: langgenius/dify-agent-local-sandbox:1.16.1
+    restart: always
+    environment:
+      SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-}
+      HTTP_PROXY: http://agent_ssrf_proxy:3128
+      HTTPS_PROXY: http://agent_ssrf_proxy:3128
+      NO_PROXY: localhost,127.0.0.1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - local_sandbox_proxy_network
+
   # plugin daemon
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.6.3-local
@@ -190,6 +208,40 @@ services:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
+
+  # Dedicated SSRF proxy for the source-based Dify Agent local sandbox.
+  agent_ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      - ./ssrf_proxy/squid-agent.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/squid-common.conf.template:/etc/squid/dify_common.conf.template
+      - ./ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      SSRF_AGENT_BACKEND_HOST: ${SSRF_AGENT_BACKEND_HOST:-host.docker.internal}
+      SSRF_API_HOST: ${SSRF_API_HOST:-host.docker.internal}
+      SSRF_AGENT_BACKEND_UPSTREAM_HOST: host.docker.internal
+      SSRF_AGENT_BACKEND_UPSTREAM_PORT: 5050
+      SSRF_API_UPSTREAM_HOST: host.docker.internal
+      SSRF_API_UPSTREAM_PORT: 5001
+      SSRF_SANDBOX_PROXY_PORT: 5004
+      SSRF_SANDBOX_PROXY_HOST: local_sandbox
+      SANDBOX_PORT: 5004
+    ports:
+      - "127.0.0.1:${EXPOSE_AGENT_LOCAL_SANDBOX_PORT:-5004}:5004"
+    networks:
+      - default
+      - local_sandbox_proxy_network
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -257,5 +309,10 @@ services:
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
+    driver: bridge
+    internal: true
+
+  # Only local_sandbox and agent_ssrf_proxy share this internal network.
+  local_sandbox_proxy_network:
     driver: bridge
     internal: true

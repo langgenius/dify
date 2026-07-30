@@ -111,6 +111,32 @@ assert_post_target_not_blocked() {
   fi
 }
 
+assert_restricted_target_blocked() {
+  local proxy_url="$1"
+  local target_url="$2"
+  local status_code
+
+  status_code="$(http_code_for "$proxy_url" "$target_url")"
+  if [[ "$status_code" != "403" && "$status_code" != "503" ]]; then
+    echo "Expected restricted target $target_url to be blocked, got ${status_code:-no response}."
+    docker logs "$AGENT_PROXY_CONTAINER_NAME" >&2 || true
+    exit 1
+  fi
+}
+
+assert_mock_target_reachable() {
+  local proxy_url="$1"
+  local target_url="$2"
+  local status_code
+
+  status_code="$(http_code_for "$proxy_url" "$target_url")"
+  if [[ "$status_code" != "200" ]]; then
+    echo "Expected mock target $target_url to return HTTP 200, got ${status_code:-no response}."
+    docker logs "$AGENT_PROXY_CONTAINER_NAME" >&2 || true
+    exit 1
+  fi
+}
+
 assert_sandbox_bridge_allowed() {
   local target_url="$1"
   local status_code
@@ -133,8 +159,9 @@ docker run \
   --name "$SANDBOX_CONTAINER_NAME" \
   --network "$NETWORK_NAME" \
   --network-alias sandbox \
+  --network-alias local_sandbox \
   "$CLIENT_IMAGE" \
-  sh -c "mkdir -p /www && echo ok > /www/health && httpd -f -p 8194 -h /www" \
+  sh -c "mkdir -p /www && echo ok > /www/health && httpd -p 8194 -h /www && httpd -f -p 5004 -h /www" \
   >/dev/null
 
 docker run \
@@ -147,6 +174,15 @@ docker run \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
+  --env SSRF_AGENT_BACKEND_HOST=agent_public \
+  --env SSRF_API_HOST=api_public \
+  --env SSRF_AGENT_BACKEND_UPSTREAM_HOST=agent_backend \
+  --env SSRF_AGENT_BACKEND_UPSTREAM_PORT=5050 \
+  --env SSRF_API_UPSTREAM_HOST=api \
+  --env SSRF_API_UPSTREAM_PORT=5001 \
+  --env SSRF_SANDBOX_PROXY_PORT=5004 \
+  --env SSRF_SANDBOX_PROXY_HOST=local_sandbox \
+  --env SANDBOX_PORT=5004 \
   --env SSRF_SANDBOX_PROXY_PORT=8194 \
   --env SSRF_SANDBOX_PROXY_HOST=sandbox \
   --env "SSRF_PROXY_ALLOW_PRIVATE_IPS=${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}" \
@@ -233,23 +269,33 @@ if [[ -z "${agent_probe_status:-}" ]]; then
   exit 1
 fi
 
+agent_peer_config="$(docker exec "$AGENT_PROXY_CONTAINER_NAME" cat /etc/squid/dify_sandbox_proxy.conf)"
+grep 'name=dify_agent_backend' <<<"$agent_peer_config" | grep -q 'no-digest'
+grep 'name=dify_agent_backend' <<<"$agent_peer_config" | grep -q 'login=PASS'
+grep 'name=dify_api' <<<"$agent_peer_config" | grep -q 'no-digest'
+grep -q '^never_direct allow dst_agent_backend path_agent_stub$' <<<"$agent_peer_config"
+grep -q '^never_direct allow dst_dify_api path_files$' <<<"$agent_peer_config"
+
+# The host bridge must reach shellctl without attaching the sandbox to a non-internal network.
+assert_sandbox_bridge_allowed "http://$AGENT_PROXY_CONTAINER_NAME:5004/health"
+
 # Private targets must be blocked.
 assert_private_target_blocked "$agent_proxy_url" "http://127.0.0.1:80/"
 assert_private_target_blocked "$agent_proxy_url" "http://169.254.169.254/latest/meta-data/"
 
 # agent_backend /agent-stub/* must be allowed.
-assert_public_target_allowed "$agent_proxy_url" "http://agent_backend:5050/agent-stub/config"
+assert_mock_target_reachable "$agent_proxy_url" "http://agent_public:5050/agent-stub/config"
 
 # agent_backend non-/agent-stub paths must be blocked (403 from Squid).
-assert_private_target_blocked "$agent_proxy_url" "http://agent_backend:5050/index.html"
+assert_restricted_target_blocked "$agent_proxy_url" "http://agent_public:5050/index.html"
 
 # api /files/* must be allowed.
-assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test"
-assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test?timestamp=1&nonce=2&sign=3"
-assert_post_target_not_blocked "$agent_proxy_url" "http://api:5001/files/upload/for-plugin?timestamp=1&nonce=2&sign=3"
+assert_mock_target_reachable "$agent_proxy_url" "http://api_public:5001/files/test"
+assert_public_target_allowed "$agent_proxy_url" "http://api_public:5001/files/test?timestamp=1&nonce=2&sign=3"
+assert_post_target_not_blocked "$agent_proxy_url" "http://api_public:5001/files/upload/for-plugin?timestamp=1&nonce=2&sign=3"
 
 # api non-/files paths must be blocked.
-assert_private_target_blocked "$agent_proxy_url" "http://api:5001/index.html"
+assert_restricted_target_blocked "$agent_proxy_url" "http://api_public:5001/index.html"
 
 # External internet must be allowed.
 if [[ "$RUN_PUBLIC_CHECK" == "true" ]]; then

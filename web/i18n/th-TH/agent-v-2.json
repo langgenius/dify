@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "วันนี้",
   "agentDetail.monitoring.title": "การมอนิเตอร์",
   "agentDetail.monitoring.tokenUsageConsumed": "โทเค็นที่ใช้",
+  "agentDetail.monitoring.tracing.scope": "การตั้งค่า Agent App ใช้กับการสนทนา Agent App เท่านั้น โหนด Agent ใน workflow และ chatflow ใช้การตั้งค่าการติดตามของแอปที่เรียกใช้",
+  "agentDetail.monitoring.tracing.title": "การติดตาม",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "การนำทางตัวแทน",
   "agentDetail.publish": "เผยแพร่",

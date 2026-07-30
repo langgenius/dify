@@ -21,6 +21,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.ops.unified_trace.human_wait import HumanWaitRecord
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
@@ -498,6 +499,17 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     generate_entity = resumption_context.get_generate_entity()
+    raw_human_wait = payload.get("human_wait")
+    if raw_human_wait is not None:
+        try:
+            human_wait = HumanWaitRecord.model_validate(raw_human_wait)
+            retained_waits = generate_entity.workflow_trace_state.human_waits
+            generate_entity.workflow_trace_state.human_waits = [
+                wait for wait in retained_waits if wait.wait_id != human_wait.wait_id
+            ]
+            generate_entity.workflow_trace_state.human_waits.append(human_wait)
+        except Exception:
+            logger.warning("Failed to restore human wait trace record for workflow run %s", workflow_run_id)
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()

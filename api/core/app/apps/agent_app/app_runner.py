@@ -11,7 +11,8 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -50,7 +51,15 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.ops.unified_trace.agent_collector import AgentSemanticTraceCollector
+from core.ops.unified_trace.agent_events import AgentRunTraceFragment, AgentTraceCollectionGate
+from core.ops.unified_trace.agent_normalizer import PydanticAIAgentEventNormalizer
+from core.ops.unified_trace.human_wait import HumanWaitRecord, try_build_human_wait_record
+from core.repositories.human_input_repository import (
+    HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
@@ -642,6 +651,8 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
+        on_trace_fragment: Callable[[AgentRunTraceFragment], None] | None = None,
+        on_human_wait: Callable[[HumanWaitRecord], None] | None = None,
     ) -> None:
         scope = self._build_session_scope(
             dify_context=dify_context,
@@ -670,8 +681,44 @@ class AgentAppRunner:
             stored=stored,
             message_id=message_id,
         )
+        if (
+            on_human_wait is not None
+            and stored.pending_form_id is not None
+            and runtime.request.deferred_tool_results is not None
+        ):
+            try:
+                form = HumanInputFormSubmissionRepository().get_by_form_id(stored.pending_form_id)
+                wait = (
+                    try_build_human_wait_record(
+                        form,
+                        owner_kind="agent_message",
+                        owner_id=message_id,
+                        tool_call_id=stored.pending_tool_call_id,
+                    )
+                    if form is not None
+                    else None
+                )
+                if wait is not None:
+                    on_human_wait(
+                        wait.with_phase(
+                            "resumed",
+                            message_id=message_id,
+                            linked_message_id=form.node_id,
+                        )
+                    )
+            except Exception:
+                logger.warning("Failed to record Agent App resumed human wait", exc_info=True)
 
         create_response = self._agent_backend_client.create_run(runtime.request)
+        trace_collector = (
+            AgentSemanticTraceCollector(
+                run_id=create_response.run_id,
+                role="resume" if stored.pending_form_id else "initial",
+                start_time=datetime.now(),
+            )
+            if AgentTraceCollectionGate.for_app(dify_context.app_id).enabled
+            else None
+        )
         terminal, process_recorder = self._consume_stream(
             create_response.run_id,
             dify_context=dify_context,
@@ -679,7 +726,18 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
+            trace_collector=trace_collector,
         )
+        if trace_collector is not None and on_trace_fragment is not None:
+            try:
+                on_trace_fragment(
+                    trace_collector.finish(
+                        output=terminal.output if isinstance(terminal, AgentBackendRunSucceededInternalEvent) else None,
+                        error=terminal.error if isinstance(terminal, AgentBackendRunFailedInternalEvent) else None,
+                    )
+                )
+            except Exception:
+                logger.warning("Failed to finalize Agent App trace fragment", exc_info=True)
 
         if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
             # ENG-635: the agent asked a human. End this turn with the question and
@@ -695,6 +753,7 @@ class AgentAppRunner:
                 runtime=runtime,
                 queue_manager=queue_manager,
                 query=query,
+                on_human_wait=on_human_wait,
             )
             return
 
@@ -809,6 +868,7 @@ class AgentAppRunner:
         runtime: AgentAppRuntimeRequest,
         queue_manager: AppQueueManager,
         query: str,
+        on_human_wait: Callable[[HumanWaitRecord], None] | None = None,
     ) -> None:
         """End the chat turn on a dify.ask_human call: create a conversation-owned
         HITL form, persist the pause correlation, and surface the question."""
@@ -824,6 +884,19 @@ class AgentAppRunner:
             )
         except AskHumanFormBuildError as error:
             raise AgentBackendError(f"Failed to build ask_human form for Agent App chat: {error}") from error
+
+        if on_human_wait is not None:
+            wait = try_build_human_wait_record(
+                created.form,
+                owner_kind="agent_message",
+                owner_id=message_id,
+                tool_call_id=terminal.deferred_tool_call.tool_call_id,
+            )
+            if wait is not None:
+                try:
+                    on_human_wait(wait.with_phase("requested", message_id=message_id))
+                except Exception:
+                    logger.warning("Failed to record Agent App requested human wait", exc_info=True)
 
         # Persist the snapshot + correlation so a form submission can start the
         # second run with the human's answer (ENG-637/638 columns, conversation owner).
@@ -893,6 +966,7 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
+        trace_collector: AgentSemanticTraceCollector | None = None,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -932,6 +1006,12 @@ class AgentAppRunner:
                 should_stop=queue_manager.is_stopped,
             )
             for public_event in public_events:
+                if trace_collector is not None:
+                    try:
+                        for semantic_event in PydanticAIAgentEventNormalizer().normalize(public_event):
+                            trace_collector.consume(semantic_event)
+                    except Exception:
+                        logger.warning("Failed to normalize Agent App trace event", exc_info=True)
                 if queue_manager.is_stopped():
                     flush_pending_agent_message_text()
                     self._cancel_run(run_id)

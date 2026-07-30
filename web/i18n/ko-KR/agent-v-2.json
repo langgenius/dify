@@ -349,6 +349,8 @@
   "agentDetail.monitoring.timeRanges.today": "오늘",
   "agentDetail.monitoring.title": "모니터링",
   "agentDetail.monitoring.tokenUsageConsumed": "소비된 토큰",
+  "agentDetail.monitoring.tracing.scope": "Agent App 설정은 Agent App 대화에만 적용됩니다. Workflow 및 Chatflow의 Agent 노드는 호출한 앱의 추적 설정을 사용합니다.",
+  "agentDetail.monitoring.tracing.title": "추적",
   "agentDetail.monitoring.units.tokenPerSecond": "Token/s",
   "agentDetail.navigationLabel": "에이전트 탐색",
   "agentDetail.publish": "게시",
