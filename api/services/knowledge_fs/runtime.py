@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from threading import Lock
 from typing import NamedTuple
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -47,6 +48,27 @@ class KnowledgeFSRuntime(NamedTuple):
     control_plane: KnowledgeFSControlPlaneService
     credentials: KnowledgeFSCredentialService
     facade: KnowledgeFSDataFacade
+
+
+_runtime_cache_lock = Lock()
+_runtime_cache: tuple[sessionmaker[Session], KnowledgeFSRuntime] | None = None
+
+
+def get_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> KnowledgeFSRuntime:
+    """Reuse the process runtime so request handling never reparses the signing key."""
+    global _runtime_cache
+
+    cached = _runtime_cache
+    if cached is not None and cached[0] is session_maker:
+        return cached[1]
+
+    with _runtime_cache_lock:
+        cached = _runtime_cache
+        if cached is not None and cached[0] is session_maker:
+            return cached[1]
+        runtime = create_knowledge_fs_runtime(session_maker)
+        _runtime_cache = (session_maker, runtime)
+        return runtime
 
 
 def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> KnowledgeFSRuntime:
@@ -130,4 +152,4 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
     )
 
 
-__all__ = ["KnowledgeFSRuntime", "create_knowledge_fs_runtime"]
+__all__ = ["KnowledgeFSRuntime", "create_knowledge_fs_runtime", "get_knowledge_fs_runtime"]

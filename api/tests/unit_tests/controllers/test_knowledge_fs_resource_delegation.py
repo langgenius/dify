@@ -1087,10 +1087,10 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
 ) -> None:
     runtime = object()
     session_maker = object()
-    create_runtime = MagicMock(return_value=runtime)
+    get_runtime = MagicMock(return_value=runtime)
     monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_ENABLED", True)
     monkeypatch.setattr(console_resources.session_factory, "get_session_maker", lambda: session_maker)
-    monkeypatch.setattr(console_resources, "create_knowledge_fs_runtime", create_runtime)
+    monkeypatch.setattr(console_resources, "get_knowledge_fs_runtime", get_runtime)
     monkeypatch.setattr(
         console_resources,
         "current_account_with_tenant",
@@ -1099,7 +1099,7 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
     app = Flask(__name__)
 
     assert console_resources._console_services() is runtime
-    create_runtime.assert_called_once_with(session_maker)
+    get_runtime.assert_called_once_with(session_maker)
     assert console_resources._actor() == ("account-1", "tenant-1")
     query = KnowledgeFSQueryCreatePayload(query="question", mode="fast", active_document_ids=["doc-1"])
     assert console_resources._query_pairs(query) == (
@@ -1127,14 +1127,14 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
 ) -> None:
     runtime = object()
     session_maker = object()
-    create_runtime = MagicMock(return_value=runtime)
+    get_runtime = MagicMock(return_value=runtime)
     monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_ENABLED", True)
     monkeypatch.setattr(service_resources.session_factory, "get_session_maker", lambda: session_maker)
-    monkeypatch.setattr(service_resources, "create_knowledge_fs_runtime", create_runtime)
+    monkeypatch.setattr(service_resources, "get_knowledge_fs_runtime", get_runtime)
     app = Flask(__name__)
 
     assert service_resources._runtime() is runtime
-    create_runtime.assert_called_once_with(session_maker)
+    get_runtime.assert_called_once_with(session_maker)
     query = SimpleNamespace(model_dump=lambda **_: {"enabled": True, "disabled": False, "count": 2})
     assert service_resources._query_pairs(query) == (
         ("enabled", "true"),
