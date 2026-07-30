@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "فشل تحميل المهارة.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "قم بتحميل ملف .zip أو .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "يجب ألا يتجاوز حجم حزمة Skill {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "تم تحميل المهارة.",
   "agentDetail.configure.skills.upload.title": "تحميل مهارة",
   "agentDetail.configure.skills.upload.warning.files": "إذا كنت تحتاج فقط إلى استخدام ملفات Markdown، فحمّلها إلى قسم الملفات وأشر إليها في الموجّه الخاص بك.",

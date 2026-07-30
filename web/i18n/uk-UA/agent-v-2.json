@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Не вдалося завантажити навичку.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Завантажте файл .zip або .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Розмір пакета навички не повинен перевищувати {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "Навичку завантажено.",
   "agentDetail.configure.skills.upload.title": "Завантажити навичку",
   "agentDetail.configure.skills.upload.warning.files": "Якщо потрібно використовувати лише файли Markdown, завантажте їх у розділ «Файли» та посилайтеся на них у своєму промпті.",

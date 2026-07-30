@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Skill konnte nicht hochgeladen werden.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Bitte eine .zip- oder .skill-Datei hochladen.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Das Skill-Paket darf maximal {{sizeLimit}} groß sein.",
   "agentDetail.configure.skills.upload.success": "Skill hochgeladen.",
   "agentDetail.configure.skills.upload.title": "Skill hochladen",
   "agentDetail.configure.skills.upload.warning.files": "Wenn du nur Markdown-Dateien verwenden möchtest, lade sie unter „Dateien“ hoch und verweise in deinem Prompt darauf.",

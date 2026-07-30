@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Veščine ni bilo mogoče naložiti.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Naložite datoteko .zip ali .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Paket veščine ne sme biti večji od {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "Veščina naložena.",
   "agentDetail.configure.skills.upload.title": "Naloži veščino",
   "agentDetail.configure.skills.upload.warning.files": "Če želite uporabljati samo datoteke Markdown, jih naložite v razdelek Datoteke in se nanje sklicujte v svojem pozivu.",
