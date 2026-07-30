@@ -1,6 +1,13 @@
+import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { ReactNode } from 'react'
+import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/client'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
@@ -52,24 +59,86 @@ vi.mock('@/app/components/app/access-point/deployed-environment-access-points', 
   ),
 }))
 
+const appEnvironments: AppEnvironment[] = [
+  {
+    id: 'staging',
+    display_name: 'Staging',
+    description: '',
+    status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+    in_use: true,
+  },
+  {
+    id: 'canary',
+    display_name: 'Canary',
+    description: '',
+    status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+    in_use: true,
+  },
+  {
+    id: 'qa',
+    display_name: 'Quality Assurance',
+    description: '',
+    status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+    in_use: false,
+  },
+]
+
+const renderAccessPoint = ({
+  environments = appEnvironments,
+  searchParams = '',
+}: {
+  environments?: AppEnvironment[]
+  searchParams?: string
+} = {}) => {
+  const queryClient = createTestQueryClient()
+  const queryOptions =
+    consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+      },
+    })
+  queryClient.setQueryData(queryOptions.queryKey, { data: environments })
+  const onUrlUpdate = vi.fn()
+
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientTestProvider queryClient={queryClient}>
+      <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+        {children}
+      </NuqsTestingAdapter>
+    </QueryClientTestProvider>
+  )
+
+  return {
+    ...render(<AccessPoint appId="app-1" />, { wrapper: Wrapper }),
+    onUrlUpdate,
+  }
+}
+
 describe('AccessPoint', () => {
   beforeEach(() => {
     appMode = 'workflow'
     appPermissionKeys = [AppACLPermission.Deploy]
   })
 
-  it('renders the page and environment tabs with app deploy ACL permission', () => {
-    renderWithNuqs(<AccessPoint appId="app-1" />)
+  it('renders Built-in and only in-use environments from the API', () => {
+    renderAccessPoint()
 
     expect(screen.getByRole('heading', { name: 'common.appMenus.accessPoint' })).toBeInTheDocument()
     expect(screen.getByTestId('built-in-access-points')).toHaveTextContent('app-1')
-    expect(screen.getAllByRole('tab')).toHaveLength(9)
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Built-in',
+      'Staging',
+      'Canary',
+    ])
+    expect(screen.queryByRole('tab', { name: 'Quality Assurance' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('persists the selected environment in the URL', async () => {
     const user = userEvent.setup()
-    const { onUrlUpdate } = renderWithNuqs(<AccessPoint appId="app-1" />)
+    const { onUrlUpdate } = renderAccessPoint()
 
     await user.click(screen.getByRole('tab', { name: 'Canary' }))
 
@@ -81,7 +150,7 @@ describe('AccessPoint', () => {
   })
 
   it('shows a read-only deployed environment view for non-built-in tabs', () => {
-    renderWithNuqs(<AccessPoint appId="app-1" />, {
+    renderAccessPoint({
       searchParams: '?environment=canary',
     })
 
@@ -89,10 +158,21 @@ describe('AccessPoint', () => {
     expect(screen.queryByTestId('built-in-access-points')).not.toBeInTheDocument()
   })
 
+  it('falls back to Built-in when the URL targets an unused environment', () => {
+    renderAccessPoint({
+      searchParams: '?environment=qa',
+    })
+
+    expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: 'Quality Assurance' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('built-in-access-points')).toBeInTheDocument()
+    expect(screen.queryByTestId('deployed-environment-access-points')).not.toBeInTheDocument()
+  })
+
   it('hides environment tabs for app types without multi-environment support', () => {
     appMode = 'chat'
 
-    renderWithNuqs(<AccessPoint appId="app-1" />)
+    renderAccessPoint()
 
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.getByTestId('built-in-access-points')).toBeInTheDocument()
@@ -101,7 +181,7 @@ describe('AccessPoint', () => {
   it('falls back to built-in access points without app deploy ACL permission', () => {
     appPermissionKeys = []
 
-    renderWithNuqs(<AccessPoint appId="app-1" />, {
+    renderAccessPoint({
       searchParams: '?environment=canary',
     })
 
