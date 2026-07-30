@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 import threading
 import time
-from typing import ClassVar, cast
+from typing import ClassVar, Literal, cast
 
 import docker  # pyright: ignore[reportMissingTypeStubs]
 from docker.models.containers import Container  # pyright: ignore[reportMissingTypeStubs]
 from pydantic import BaseModel, ConfigDict
 
-from benchmarks.schemas import ResourceSummary, StatsCoverage
+from benchmarks.schemas import ComponentResourceSummary, ResourceSummary, StatsCoverage
 
 
 class DockerStatsSample(BaseModel):
@@ -32,7 +32,7 @@ class DockerStatsSample(BaseModel):
 
 
 class DockerStatsSampler:
-    """Collect streaming Docker stats for Agent, Redis, and Fake containers."""
+    """Collect streaming Docker stats for the services selected by one profile."""
 
     def __init__(self, containers: dict[str, str]) -> None:
         self._container_ids = containers
@@ -149,54 +149,69 @@ def summarize_resource_window(
     measurement_started_at_ns: int,
     measurement_ended_at_ns: int,
     completed_runs: int,
+    measured_services: tuple[str, ...] = ("agent", "redis"),
     fake_allocated_cpus: float = 2,
 ) -> ResourceSummary:
-    """Calculate cost-oriented container metrics for the timed window."""
-    agent_samples = [sample for sample in samples if sample.service == "agent"]
-    redis_samples = [sample for sample in samples if sample.service == "redis"]
-    fake_samples = [sample for sample in samples if sample.service == "fake-deps"]
+    """Calculate normalized per-component costs and retained diagnostics."""
     denominator = completed_runs if completed_runs > 0 else None
-    agent_start, agent_end = _window_endpoints(agent_samples, measurement_started_at_ns, measurement_ended_at_ns)
-    redis_start, redis_end = _window_endpoints(redis_samples, measurement_started_at_ns, measurement_ended_at_ns)
-    bounded_agent = _bounded_samples(agent_samples, measurement_started_at_ns, measurement_ended_at_ns)
-    bounded_redis = _bounded_samples(redis_samples, measurement_started_at_ns, measurement_ended_at_ns)
+    components: dict[str, ComponentResourceSummary] = {}
+    for service in measured_services:
+        service_samples = [sample for sample in samples if sample.service == service]
+        start_sample, end_sample = _window_endpoints(
+            service_samples,
+            measurement_started_at_ns,
+            measurement_ended_at_ns,
+        )
+        bounded = _bounded_samples(service_samples, measurement_started_at_ns, measurement_ended_at_ns)
+        components[service] = ComponentResourceSummary(
+            cpu_seconds_per_successful_operation=_cpu_seconds_per_run(start_sample, end_sample, denominator),
+            peak_memory_delta_bytes=_peak_memory_delta(bounded, start_sample),
+            memory_gb_seconds_per_successful_operation=_memory_gb_seconds_per_run(
+                bounded,
+                measurement_started_at_ns,
+                measurement_ended_at_ns,
+                denominator,
+            ),
+            network_bytes_per_successful_operation=_network_bytes_per_run(start_sample, end_sample, denominator),
+            block_read_bytes_per_successful_operation=_counter_delta_per_run(
+                start_sample,
+                end_sample,
+                denominator,
+                counter="block_read_bytes",
+            ),
+            block_write_bytes_per_successful_operation=_counter_delta_per_run(
+                start_sample,
+                end_sample,
+                denominator,
+                counter="block_write_bytes",
+            ),
+            peak_pids=max((sample.pids for sample in bounded), default=None),
+            stats_coverage=_stats_coverage(
+                service_samples,
+                measurement_started_at_ns,
+                measurement_ended_at_ns,
+            ),
+        )
+    fake_samples = [sample for sample in samples if sample.service == "fake-deps"]
     bounded_fake = _bounded_samples(fake_samples, measurement_started_at_ns, measurement_ended_at_ns)
+    cpu_values = [
+        component.cpu_seconds_per_successful_operation
+        for name, component in components.items()
+        if name in {"agent", "runtime"} and component.cpu_seconds_per_successful_operation is not None
+    ]
+    memory_values = [
+        component.memory_gb_seconds_per_successful_operation
+        for name, component in components.items()
+        if name in {"agent", "runtime"} and component.memory_gb_seconds_per_successful_operation is not None
+    ]
     return ResourceSummary(
-        agent_cpu_seconds_per_successful_run=_cpu_seconds_per_run(agent_start, agent_end, denominator),
-        agent_peak_memory_delta_bytes=_peak_memory_delta(bounded_agent, agent_start),
-        agent_memory_gb_seconds_per_successful_run=_memory_gb_seconds_per_run(
-            bounded_agent,
-            measurement_started_at_ns,
-            measurement_ended_at_ns,
-            denominator,
-        ),
-        agent_network_bytes_per_successful_run=_network_bytes_per_run(agent_start, agent_end, denominator),
-        redis_cpu_seconds_per_successful_run=_cpu_seconds_per_run(redis_start, redis_end, denominator),
-        redis_memory_gb_seconds_per_successful_run=_memory_gb_seconds_per_run(
-            bounded_redis,
-            measurement_started_at_ns,
-            measurement_ended_at_ns,
-            denominator,
-        ),
+        components=components,
+        total_cpu_seconds_per_successful_operation=sum(cpu_values) if cpu_values else None,
+        total_memory_gb_seconds_per_successful_operation=sum(memory_values) if memory_values else None,
         fake_cpu_p95_percent=_cpu_percent_quantile(
             bounded_fake,
             allocated_cpus=fake_allocated_cpus,
             probability=0.95,
-        ),
-        agent_stats_coverage=_stats_coverage(
-            agent_samples,
-            measurement_started_at_ns,
-            measurement_ended_at_ns,
-        ),
-        redis_stats_coverage=_stats_coverage(
-            redis_samples,
-            measurement_started_at_ns,
-            measurement_ended_at_ns,
-        ),
-        fake_stats_coverage=_stats_coverage(
-            fake_samples,
-            measurement_started_at_ns,
-            measurement_ended_at_ns,
         ),
     )
 
@@ -261,6 +276,18 @@ def _network_bytes_per_run(
     rx_delta = max(0, end_sample.network_rx_bytes - start_sample.network_rx_bytes)
     tx_delta = max(0, end_sample.network_tx_bytes - start_sample.network_tx_bytes)
     return (rx_delta + tx_delta) / denominator
+
+
+def _counter_delta_per_run(
+    start_sample: DockerStatsSample | None,
+    end_sample: DockerStatsSample | None,
+    denominator: int | None,
+    *,
+    counter: Literal["block_read_bytes", "block_write_bytes"],
+) -> float | None:
+    if start_sample is None or end_sample is None or denominator is None:
+        return None
+    return max(0, getattr(end_sample, counter) - getattr(start_sample, counter)) / denominator
 
 
 def _peak_memory_delta(

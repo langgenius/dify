@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "profile": "agent",
   "scenarios": [
     {
       "id": "single_1_chunk_c1",

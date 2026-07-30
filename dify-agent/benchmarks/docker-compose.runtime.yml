@@ -1,0 +1,47 @@
+services:
+  runtime:
+    image: ${BENCH_RUNTIME_IMAGE:?BENCH_RUNTIME_IMAGE is required}
+    command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--state-dir", "/state"]
+    cpus: 4.0
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5004/healthz"]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+    volumes:
+      - runtime-state:/state
+    networks: [benchmark]
+
+  runtime-driver:
+    image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
+    command: ["python", "-m", "benchmarks.runtime_driver"]
+    cpus: 2.0
+    mem_limit: 1g
+    environment:
+      BENCH_RUNTIME_URL: http://runtime:5004
+      BENCH_RESULTS_DIR: /results
+      BENCH_TARGET: ${BENCH_TARGET:?BENCH_TARGET is required}
+      BENCH_TARGET_ID: ${BENCH_TARGET_ID:?BENCH_TARGET_ID is required}
+      BENCH_SCENARIO_ID: ${BENCH_SCENARIO_ID:?BENCH_SCENARIO_ID is required}
+      BENCH_BLOCK_ID: ${BENCH_BLOCK_ID:?BENCH_BLOCK_ID is required}
+      BENCH_PAIR_INDEX: ${BENCH_PAIR_INDEX:?BENCH_PAIR_INDEX is required}
+      BENCH_WARMUP_RUNS: ${BENCH_WARMUP_RUNS:-}
+      BENCH_TRIAL_RUNS: ${BENCH_TRIAL_RUNS:-}
+      BENCH_WARMUP_SECONDS: ${BENCH_WARMUP_SECONDS:-}
+      BENCH_DURATION_SECONDS: ${BENCH_DURATION_SECONDS:-}
+    volumes:
+      - type: bind
+        source: ${BENCH_RESULTS_DIR:?BENCH_RESULTS_DIR is required}
+        target: /results
+    depends_on:
+      runtime:
+        condition: service_healthy
+    networks: [benchmark]
+
+networks:
+  benchmark:
+    internal: true
+
+volumes:
+  runtime-state:

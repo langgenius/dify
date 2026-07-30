@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "profile": "capability",
+  "scenarios": [
+    {
+      "id": "capability_shell_noop_c1",
+      "version": 1,
+      "workload": "shell",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "concurrency": 1,
+      "warmup_runs": 10,
+      "trial_runs": 50
+    },
+    {
+      "id": "capability_shell_resume_c1",
+      "version": 1,
+      "workload": "shell_resume",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "concurrency": 1,
+      "warmup_runs": 5,
+      "trial_runs": 20
+    },
+    {
+      "id": "capability_config_pull_c1",
+      "version": 1,
+      "workload": "config_pull",
+      "model_rounds": 1,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "config_skill_count": 3,
+      "config_file_count": 10,
+      "item_bytes": 4096,
+      "payload_bytes": 53248,
+      "concurrency": 1,
+      "warmup_runs": 5,
+      "trial_runs": 20
+    },
+    {
+      "id": "capability_drive_pull_c1",
+      "version": 1,
+      "workload": "drive_pull",
+      "model_rounds": 1,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "drive_file_count": 10,
+      "item_bytes": 4096,
+      "payload_bytes": 40960,
+      "concurrency": 1,
+      "warmup_runs": 5,
+      "trial_runs": 20
+    },
+    {
+      "id": "capability_file_roundtrip_16m_c1",
+      "version": 1,
+      "workload": "file_roundtrip",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "payload_bytes": 16777216,
+      "concurrency": 1,
+      "warmup_runs": 5,
+      "trial_runs": 20
+    },
+    {
+      "id": "capability_shell_noop_c10",
+      "version": 1,
+      "workload": "shell",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "concurrency": 10,
+      "warmup_seconds": 10.0,
+      "duration_seconds": 30.0
+    }
+  ]
+}

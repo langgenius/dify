@@ -125,18 +125,23 @@ def test_summarize_resource_window_normalizes_agent_deltas() -> None:
         measurement_started_at_ns=100_000_000,
         measurement_ended_at_ns=200_000_000,
         completed_runs=10,
+        measured_services=("agent", "redis", "fake-deps"),
         fake_allocated_cpus=2,
     )
 
-    assert summary.agent_cpu_seconds_per_successful_run == 0.2
-    assert summary.agent_peak_memory_delta_bytes == 100
-    assert summary.agent_memory_gb_seconds_per_successful_run == 15 / (1024**3) / 10
-    assert summary.agent_network_bytes_per_successful_run == 30
-    assert summary.redis_cpu_seconds_per_successful_run == 0.1
-    assert summary.redis_memory_gb_seconds_per_successful_run == 10 / (1024**3) / 10
+    agent = summary.components["agent"]
+    redis = summary.components["redis"]
+    assert agent.cpu_seconds_per_successful_operation == 0.2
+    assert agent.peak_memory_delta_bytes == 100
+    assert agent.memory_gb_seconds_per_successful_operation == 15 / (1024**3) / 10
+    assert agent.network_bytes_per_successful_operation == 30
+    assert redis.cpu_seconds_per_successful_operation == 0.1
+    assert redis.memory_gb_seconds_per_successful_operation == 10 / (1024**3) / 10
+    assert summary.total_cpu_seconds_per_successful_operation == 0.2
+    assert summary.total_memory_gb_seconds_per_successful_operation == 15 / (1024**3) / 10
     assert summary.fake_cpu_p95_percent == pytest.approx(41.6666667)
-    assert summary.agent_stats_coverage.window_covered is True
-    assert summary.redis_stats_coverage.window_covered is True
+    assert agent.stats_coverage.window_covered is True
+    assert redis.stats_coverage.window_covered is True
 
 
 def test_resource_window_marks_missing_boundary_coverage() -> None:
@@ -160,5 +165,6 @@ def test_resource_window_marks_missing_boundary_coverage() -> None:
         completed_runs=1,
     )
 
-    assert summary.agent_stats_coverage.sample_count == 1
-    assert summary.agent_stats_coverage.window_covered is False
+    coverage = summary.components["agent"].stats_coverage
+    assert coverage.sample_count == 1
+    assert coverage.window_covered is False
