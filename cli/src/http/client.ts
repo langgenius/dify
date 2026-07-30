@@ -15,7 +15,12 @@ import { buildBody } from './body.js'
 import { classifyResponse } from './error-mapper.js'
 import { classifyTransport, logRequest, logResponse, setBearer, setUserAgent } from './hooks.js'
 import { proxyDispatcher } from './proxy.js'
-import { classifyRateLimit, MAX_HONORED_WAIT_MS, RATE_LIMIT_MAX_ATTEMPTS, rateLimitDelayMs } from './rate-limit.js'
+import {
+  classifyRateLimit,
+  MAX_HONORED_WAIT_MS,
+  RATE_LIMIT_MAX_ATTEMPTS,
+  rateLimitDelayMs,
+} from './rate-limit.js'
 import { backoffDelay, isIdempotentRetryMethod, shouldRetry } from './retry.js'
 import { redactBearer } from './sanitize.js'
 import { appendSearchParams, joinURL } from './url.js'
@@ -42,8 +47,7 @@ type ClientState = {
 }
 
 function toArray<T>(value: T | T[] | undefined): T[] {
-  if (value === undefined)
-    return []
+  if (value === undefined) return []
   return Array.isArray(value) ? value : [value]
 }
 
@@ -56,8 +60,7 @@ function compileState(opts: ClientOptions): ClientState {
   // Always pin a difyctl-shaped UA so server logs / WAF rules see the CLI's
   // version + platform. Callers can override by passing `userAgent` explicitly.
   onRequest.push(setUserAgent(opts.userAgent ?? defaultUserAgent()))
-  if (opts.bearer !== undefined && opts.bearer !== '')
-    onRequest.push(setBearer(opts.bearer))
+  if (opts.bearer !== undefined && opts.bearer !== '') onRequest.push(setBearer(opts.bearer))
   if (opts.logger !== undefined) {
     onRequest.push(logRequest(opts.logger))
     onResponse.push(logResponse(opts.logger))
@@ -81,21 +84,22 @@ function compileState(opts: ClientOptions): ClientState {
 }
 
 async function runHooks(hooks: readonly Hook[], ctx: FetchContext): Promise<void> {
-  for (const hook of hooks)
-    await hook(ctx)
+  for (const hook of hooks) await hook(ctx)
 }
 
 // Merge a fresh per-attempt timeout signal with the persistent user/oRPC signal.
 // Called once per attempt inside execute() so every retry gets its own timeout budget.
-function mergeSignal(userSignal: AbortSignal | undefined, effectiveTimeoutMs: number | undefined): AbortSignal | undefined {
-  const timeoutSignal = effectiveTimeoutMs !== undefined && effectiveTimeoutMs > 0
-    ? AbortSignal.timeout(effectiveTimeoutMs)
-    : undefined
+function mergeSignal(
+  userSignal: AbortSignal | undefined,
+  effectiveTimeoutMs: number | undefined,
+): AbortSignal | undefined {
+  const timeoutSignal =
+    effectiveTimeoutMs !== undefined && effectiveTimeoutMs > 0
+      ? AbortSignal.timeout(effectiveTimeoutMs)
+      : undefined
 
-  if (timeoutSignal === undefined)
-    return userSignal
-  if (userSignal === undefined)
-    return timeoutSignal
+  if (timeoutSignal === undefined) return userSignal
+  if (userSignal === undefined) return timeoutSignal
   return AbortSignal.any([timeoutSignal, userSignal])
 }
 
@@ -116,11 +120,19 @@ type BuiltRequest = {
 // Path-keyed constructor: turns (path, opts) into a Request. The Request is built
 // WITHOUT a signal — execute() supplies a fresh per-attempt signal via fetch's
 // init.signal (which overrides any signal carried on the Request).
-function buildRequest(state: ClientState, path: string, opts: RequestOptions, throwOnErrorDefault: boolean): BuiltRequest {
+function buildRequest(
+  state: ClientState,
+  path: string,
+  opts: RequestOptions,
+  throwOnErrorDefault: boolean,
+): BuiltRequest {
   const method: HttpMethod = opts.method ?? 'GET'
-  const effectiveTimeoutMs = opts.timeoutMs !== undefined
-    ? (opts.timeoutMs > 0 ? opts.timeoutMs : undefined)
-    : state.defaultTimeoutMs
+  const effectiveTimeoutMs =
+    opts.timeoutMs !== undefined
+      ? opts.timeoutMs > 0
+        ? opts.timeoutMs
+        : undefined
+      : state.defaultTimeoutMs
   const effectiveRetryAttempts = opts.retryAttempts ?? state.defaultRetryAttempts
   const throwOnError = opts.throwOnError ?? throwOnErrorDefault
 
@@ -178,18 +190,18 @@ async function execute(
     // difyctl binary actually runs on — ignores `dispatcher` entirely and instead
     // needs its own `tls` option. Set both; each runtime ignores the one it
     // doesn't understand.
-    const init: RequestInit & { dispatcher?: unknown, tls?: { rejectUnauthorized: boolean }, verbose?: boolean } = { signal }
-    if (state.dispatcher !== undefined)
-      init.dispatcher = state.dispatcher
-    if (state.insecure)
-      init.tls = { rejectUnauthorized: false }
-    if (isVerbose())
-      init.verbose = true
+    const init: RequestInit & {
+      dispatcher?: unknown
+      tls?: { rejectUnauthorized: boolean }
+      verbose?: boolean
+    } = { signal }
+    if (state.dispatcher !== undefined) init.dispatcher = state.dispatcher
+    if (state.insecure) init.tls = { rejectUnauthorized: false }
+    if (isVerbose()) init.verbose = true
 
     try {
       ctx.response = await fetch(ctx.request, init)
-    }
-    catch (err) {
+    } catch (err) {
       ctx.error = err
       // Snapshot the abort cause before onRequestError hooks rewrite ctx.error into BaseError.
       const userAborted = userSignal?.aborted === true
@@ -198,10 +210,14 @@ async function execute(
       // User aborts (ctrl+C) must never retry. Timeouts and other transport errors fall
       // through to shouldRetry, which enforces the method allowlist.
       if (!userAborted && attempt < effectiveRetryAttempts && shouldRetry(ctx.error, ctx)) {
-        state.logger?.({ phase: 'retry', method, url: redactBearer(ctx.request.url), attempt: attempt + 1 })
+        state.logger?.({
+          phase: 'retry',
+          method,
+          url: redactBearer(ctx.request.url),
+          attempt: attempt + 1,
+        })
         const delay = backoffDelay(attempt + 1)
-        if (delay > 0)
-          await new Promise(resolve => setTimeout(resolve, delay))
+        if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
@@ -221,17 +237,23 @@ async function execute(
       // retries. Surfacing reuses the shared classifyResponse so the body parses to ErrorBody.
       if (res.status === 429) {
         const decision = await classifyRateLimit(res.clone())
-        const canRetry
-          = decision.retryable
-            && attempt < effectiveRetryAttempts
-            && (decision.retryAfterMs === undefined || decision.retryAfterMs <= MAX_HONORED_WAIT_MS)
-            && (isIdempotentRetryMethod(method) || (method === 'POST' && resolved.retryOnRateLimit))
+        const canRetry =
+          decision.retryable &&
+          attempt < effectiveRetryAttempts &&
+          (decision.retryAfterMs === undefined || decision.retryAfterMs <= MAX_HONORED_WAIT_MS) &&
+          (isIdempotentRetryMethod(method) || (method === 'POST' && resolved.retryOnRateLimit))
         if (canRetry) {
           const delay = rateLimitDelayMs(decision, attempt + 1)
-          state.logger?.({ phase: 'retry', method, url: redactBearer(ctx.request.url), status: 429, attempt: attempt + 1, delayMs: delay })
+          state.logger?.({
+            phase: 'retry',
+            method,
+            url: redactBearer(ctx.request.url),
+            status: 429,
+            attempt: attempt + 1,
+            delayMs: delay,
+          })
           await res.body?.cancel().catch(() => {})
-          if (delay > 0)
-            await new Promise(resolve => setTimeout(resolve, delay))
+          if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
           continue
         }
 
@@ -247,13 +269,17 @@ async function execute(
       }
 
       if (attempt < effectiveRetryAttempts && shouldRetry(res, ctx)) {
-        state.logger?.({ phase: 'retry', method, url: redactBearer(ctx.request.url), attempt: attempt + 1 })
+        state.logger?.({
+          phase: 'retry',
+          method,
+          url: redactBearer(ctx.request.url),
+          attempt: attempt + 1,
+        })
         // Drain the discarded error body so undici can release the socket back to its
         // pool instead of holding the connection open until keep-alive timeout / GC.
         await res.body?.cancel().catch(() => {})
         const delay = backoffDelay(attempt + 1)
-        if (delay > 0)
-          await new Promise(resolve => setTimeout(resolve, delay))
+        if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
@@ -276,8 +302,7 @@ async function execute(
 // letting `res.json()` throw an unclassified SyntaxError, so void-returning callers
 // (revoke, stopTask, …) stay safe when a server replies with No Content.
 async function parseJsonBody<T>(res: Response): Promise<T> {
-  if (res.status === 204 || res.status === 205)
-    return undefined as T
+  if (res.status === 204 || res.status === 205) return undefined as T
   const text = await res.text()
   return (text === '' ? undefined : JSON.parse(text)) as T
 }
@@ -285,10 +310,20 @@ async function parseJsonBody<T>(res: Response): Promise<T> {
 export function createHttpClient(opts: ClientOptions): HttpClient {
   const state = compileState(opts)
 
-  const typedCall = async <T>(method: HttpMethod, path: string, callOpts?: RequestOptions): Promise<T> => {
+  const typedCall = async <T>(
+    method: HttpMethod,
+    path: string,
+    callOpts?: RequestOptions,
+  ): Promise<T> => {
     const finalOpts: RequestOptions = { ...callOpts, method }
     const built = buildRequest(state, path, finalOpts, true)
-    const res = await execute(state, built.request, built.resolved, built.effectiveTimeoutMs, built.userSignal)
+    const res = await execute(
+      state,
+      built.request,
+      built.resolved,
+      built.effectiveTimeoutMs,
+      built.userSignal,
+    )
     return parseJsonBody<T>(res)
   }
 
@@ -306,9 +341,8 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
     // opts into 429 retry, allow a bounded budget: the 429 admission rejection arrives as a plain
     // body before the stream opens, and execute()'s 429 branch is the only path that fires for a
     // POST — shouldRetry still rejects POST for transport / 5xx, so nothing else replays.
-    const retryAttempts = callOpts?.retryOnRateLimit === true
-      ? (callOpts.retryAttempts ?? RATE_LIMIT_MAX_ATTEMPTS)
-      : 0
+    const retryAttempts =
+      callOpts?.retryOnRateLimit === true ? (callOpts.retryAttempts ?? RATE_LIMIT_MAX_ATTEMPTS) : 0
     const finalOpts: RequestOptions = {
       ...callOpts,
       method: callOpts?.method ?? 'GET',
@@ -340,7 +374,8 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
     return execute(state, req, resolved, state.defaultTimeoutMs, userSignal)
   }
 
-  const extend = (overrides: Partial<ClientOptions>): HttpClient => createHttpClient({ ...state.originalOptions, ...overrides })
+  const extend = (overrides: Partial<ClientOptions>): HttpClient =>
+    createHttpClient({ ...state.originalOptions, ...overrides })
 
   return {
     baseURL: state.baseURL,

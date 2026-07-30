@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import { zGetAllWorkspacesQuery, zGetAllWorkspacesResponse } from './zod.gen'
 
 export const get = oc

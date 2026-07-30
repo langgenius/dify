@@ -33,7 +33,9 @@ describe('education-apply/search-input', () => {
 
     render(<ControlledSearchInput />)
 
-    const input = screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/) as HTMLInputElement
+    const input = screen.getByPlaceholderText(
+      /(?:^|\.)form\.schoolName\.placeholder(?=$|:)/,
+    ) as HTMLInputElement
     expect(input.type).toBe('text')
 
     await user.type(input, 'Alpha')
@@ -51,7 +53,10 @@ describe('education-apply/search-input', () => {
 
     render(<ControlledSearchInput />)
 
-    await user.type(screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/), 'A')
+    await user.type(
+      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
+      'A',
+    )
 
     expect(screen.getByText('Alpha University')).toBeInTheDocument()
 
@@ -67,7 +72,10 @@ describe('education-apply/search-input', () => {
 
     render(<ControlledSearchInput />)
 
-    await user.type(screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/), 'A')
+    await user.type(
+      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
+      'A',
+    )
 
     const scrollContainer = screen.getByText('Alpha University').parentElement as HTMLDivElement
     Object.defineProperties(scrollContainer, {

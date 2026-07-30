@@ -11,12 +11,7 @@ type OptionCardProps = {
   onClick?: () => void
 }
 
-const OptionCard = ({
-  label,
-  selected,
-  nodeData,
-  onClick,
-}: OptionCardProps) => {
+const OptionCard = ({ label, selected, nodeData, onClick }: OptionCardProps) => {
   const iconUrl = useDatasourceIcon(nodeData) as string
 
   return (
@@ -33,7 +28,10 @@ const OptionCard = ({
         <DatasourceIcon iconUrl={iconUrl} />
       </div>
       <div
-        className={cn('line-clamp-2 grow system-sm-medium text-text-secondary', selected && 'text-text-primary')}
+        className={cn(
+          'line-clamp-2 grow system-sm-medium text-text-secondary',
+          selected && 'text-text-primary',
+        )}
         title={label}
       >
         {label}

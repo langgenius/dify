@@ -46,14 +46,11 @@ describe('InstructionEditor', () => {
   })
 
   it('should render the prompt placeholder and forward text changes', () => {
-    render(
-      <InstructionEditor
-        {...baseProps}
-        generatorType={GeneratorType.prompt}
-      />,
-    )
+    render(<InstructionEditor {...baseProps} generatorType={GeneratorType.prompt} />)
 
-    expect(screen.getByText(/(?:^|\.)generate\.instructionPlaceHolderTitle(?=$|:)/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/(?:^|\.)generate\.instructionPlaceHolderTitle(?=$|:)/),
+    ).toBeInTheDocument()
     expect(screen.getByTestId('current-block')).toHaveTextContent('true')
     expect(screen.getByTestId('error-block')).toHaveTextContent('false')
 
@@ -64,21 +61,21 @@ describe('InstructionEditor', () => {
 
   it('should render the code placeholder and emit quick insert events', () => {
     render(
-      <InstructionEditor
-        {...baseProps}
-        generatorType={GeneratorType.code}
-        isShowLastRunBlock
-      />,
+      <InstructionEditor {...baseProps} generatorType={GeneratorType.code} isShowLastRunBlock />,
     )
 
-    expect(screen.getByText(/(?:^|\.)generate\.codeGenInstructionPlaceHolderLine(?=$|:)/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/(?:^|\.)generate\.codeGenInstructionPlaceHolderLine(?=$|:)/),
+    ).toBeInTheDocument()
     expect(screen.getByTestId('error-block')).toHaveTextContent('true')
     expect(screen.getByTestId('last-run-block')).toHaveTextContent('true')
 
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.insertContext(?=$|:)/ }))
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      instanceId: 'editor-1',
-    }))
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'editor-1',
+      }),
+    )
   })
 })

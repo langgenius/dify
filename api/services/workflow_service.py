@@ -76,6 +76,7 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -83,6 +84,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True)
@@ -320,9 +322,17 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
         session: Session,
+        commit: bool = True,
+        sync_agent_bindings: bool = True,
+        graph_only: bool = False,
     ) -> Workflow:
         """
-        Sync draft workflow
+        Sync draft workflow.
+
+        DSL import disables the intermediate commit and Agent binding sync so
+        portable package references can be materialized atomically after the
+        draft workflow has received its target-workspace id.
+
         :raises WorkflowHashNotEqualError
         """
         # fetch draft workflow by app_model
@@ -331,8 +341,10 @@ class WorkflowService:
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
 
-        # validate features structure
-        self.validate_features_structure(app_model=app_model, features=features)
+        # Collaboration persists features and variables through dedicated endpoints. A graph save
+        # must not overwrite those newer database values with another collaborator's stale cache.
+        if not graph_only or not workflow:
+            self.validate_features_structure(app_model=app_model, features=features)
 
         # validate graph structure
         self.validate_graph_structure(graph=graph)
@@ -354,30 +366,45 @@ class WorkflowService:
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
-            workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = naive_utc_now()
-            workflow.environment_variables = environment_variables
-            workflow.conversation_variables = conversation_variables
+            if not graph_only:
+                workflow.features = json.dumps(features)
+                workflow.environment_variables = environment_variables
+                workflow.conversation_variables = conversation_variables
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         session.flush()
-        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-            session=session,
-            draft_workflow=workflow,
-            account_id=account.id,
-        )
-        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-            session=session,
-            draft_workflow=workflow,
-        )
+        retirement_candidates: set[str] = set()
+        if sync_agent_bindings:
+            retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                session=session,
+                draft_workflow=workflow,
+                account_id=account.id,
+            )
+            WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                session=session,
+                draft_workflow=workflow,
+            )
 
         # commit db session changes
-        session.commit()
+        if commit:
+            session.commit()
+            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=app_model.tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account.id,
+            )
+            enqueue_agent_resource_collection(
+                tenant_id=app_model.tenant_id,
+                binding_ids=binding_ids,
+                home_snapshot_ids=home_snapshot_ids,
+            )
 
         # trigger app workflow events
-        app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
+        if commit:
+            app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
 
         # return draft workflow
         return workflow
@@ -492,7 +519,27 @@ class WorkflowService:
         if is_new_draft:
             session.add(draft_workflow)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        session.flush()
+        retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+            session=session,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account_id=account.id,
+        )
+
         session.commit()
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account.id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=app_model.tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
+        )
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
 
         return draft_workflow
@@ -505,7 +552,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> Workflow:
+    ) -> tuple[Workflow, set[str]]:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -518,7 +565,7 @@ class WorkflowService:
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
 
-        if FeatureService.get_system_features().plugin_manager.enabled:
+        if FeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure
@@ -564,7 +611,7 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        retirement_candidates = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
@@ -574,7 +621,7 @@ class WorkflowService:
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
-        return workflow
+        return workflow, retirement_candidates
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """
@@ -1019,6 +1066,7 @@ class WorkflowService:
         # Create repository and save the node execution
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=app_model.tenant_id,
             user=account,
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1035,6 +1083,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1185,6 +1234,7 @@ class WorkflowService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
                 node_type=BuiltinNodeTypes.HUMAN_INPUT,

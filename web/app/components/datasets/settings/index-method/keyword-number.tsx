@@ -21,33 +21,28 @@ type KeyWordNumberProps = {
   onKeywordNumberChange: (value: number) => void
 }
 
-const KeyWordNumber = ({
-  keywordNumber,
-  onKeywordNumberChange,
-}: KeyWordNumberProps) => {
+const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
   const { t } = useTranslation()
-  const label = t($ => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
+  const label = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
-  const handleInputChange = useCallback((value: number | null) => {
-    onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
-  }, [onKeywordNumberChange])
+  const handleInputChange = useCallback(
+    (value: number | null) => {
+      onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
+    },
+    [onKeywordNumberChange],
+  )
 
   return (
     <Fieldset className="flex items-center gap-x-1">
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate system-xs-medium text-text-secondary">
-          {label}
-        </div>
-        <Infotip
-          aria-label={label}
-          className="size-3.5"
-        >
+        <div className="truncate system-xs-medium text-text-secondary">{label}</div>
+        <Infotip aria-label={label} className="size-3.5">
           {label}
         </Infotip>
       </div>
       <Slider
-        className="mr-3 w-[206px] shrink-0"
+        className="mr-3 w-51.5 shrink-0"
         value={keywordNumber}
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
@@ -55,7 +50,7 @@ const KeyWordNumber = ({
         aria-label={label}
       />
       <NumberField
-        className="w-[74px] shrink-0"
+        className="w-18.5 shrink-0"
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}

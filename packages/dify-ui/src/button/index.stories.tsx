@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, fn } from 'storybook/test'
-
-import { Button } from '.'
+import { Button, buttonVariants } from '.'
 
 const meta = {
   title: 'Base/UI/Button',
@@ -109,7 +108,8 @@ export const Loading: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+        story:
+          'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
       },
     },
   },
@@ -151,11 +151,24 @@ export const LargeSize: Story = {
   },
 }
 
-export const AsLink: Story = {
-  args: {
-    variant: 'ghost-accent',
-    render: <a href="https://example.com" />,
-    nativeButton: false,
-    children: 'Link Button',
+export const StyledLink: Story = {
+  render: () => (
+    <a className={buttonVariants({ variant: 'ghost-accent' })} href="https://example.com">
+      Link styled as a button
+    </a>
+  ),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('link', { name: 'Link styled as a button' })).toHaveAttribute(
+      'href',
+      'https://example.com',
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Rendering an anchor through `Button` is an anti-pattern because Base UI enforces button semantics. Keep the native link and apply `buttonVariants` directly when a link needs button styling. See the [Base UI Button usage guidelines](https://base-ui.com/react/components/button#rendering-links-as-buttons).',
+      },
+    },
   },
 }

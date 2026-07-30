@@ -9,14 +9,20 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../declarations'
-import type {
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -69,7 +75,13 @@ type FormProps<
     props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>,
   ) => ReactNode
   // If return falsy value, this field will fallback to default render
-  override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema, props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>) => ReactNode]
+  override?: [
+    Array<FormTypeEnum>,
+    (
+      formSchema: CredentialFormSchema,
+      props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>,
+    ) => ReactNode,
+  ]
   nodeId?: string
   nodeOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -119,85 +131,103 @@ function Form<
   }
 
   const handleFormChange = (key: string, val: FormValue[string]) => {
-    if (isEditMode && (key === '__model_type' || key === '__model_name'))
-      return
+    if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
     setChangeKey(key)
     const shouldClearVariable: Record<string, string | undefined> = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
-        const schema = formSchemas.find(it => it.variable === clearVariable)
+        const schema = formSchemas.find((it) => it.variable === clearVariable)
         shouldClearVariable[clearVariable] = schema ? schema.default : undefined
       })
     }
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
-  const handleModelChanged = useCallback((key: string, model: ModelSelectorValue) => {
-    const newValue = {
-      ...value[key],
-      ...model,
-      type: FormTypeEnum.modelSelector,
-    }
-    onChange({ ...value, [key]: newValue })
-  }, [onChange, value])
+  const handleModelChanged = useCallback(
+    (key: string, model: ModelSelectorValue) => {
+      const newValue = {
+        ...value[key],
+        ...model,
+        type: FormTypeEnum.modelSelector,
+      }
+      onChange({ ...value, [key]: newValue })
+    },
+    [onChange, value],
+  )
 
   const renderField = (formSchema: CredentialFormSchema | CustomFormSchema) => {
     const infotip = formSchema.tooltip
     const infotipText = infotip?.[language] || infotip?.en_US
-    const infotipContent = (infotipText && (
-      <Infotip
-        aria-label={infotipText}
-        className="ml-1"
-        popupClassName="w-[200px] max-w-[200px]"
-      >
+    const infotipContent = infotipText && (
+      <Infotip aria-label={infotipText} className="ml-1" popupClassName="w-[200px] max-w-[200px]">
         {infotipText}
       </Infotip>
-    ))
+    )
     if (override) {
       const [overrideTypes, overrideRender] = override
       if (overrideTypes.includes(formSchema.type as FormTypeEnum)) {
         const node = overrideRender(formSchema as CredentialFormSchema, filteredProps)
-        if (node)
-          return node
+        if (node) return node
       }
     }
 
-    if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
-      const {
-        variable,
-        label,
-        placeholder,
-        required,
-        show_on,
-      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+    if (
+      formSchema.type === FormTypeEnum.textInput ||
+      formSchema.type === FormTypeEnum.secretInput ||
+      formSchema.type === FormTypeEnum.textNumber
+    ) {
+      const { variable, label, placeholder, required, show_on } = formSchema as
+        | CredentialFormSchemaTextInput
+        | CredentialFormSchemaSecretInput
 
-      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+      if (
+        show_on.length &&
+        !show_on.every((showOnItem) => value[showOnItem.variable] === showOnItem.value)
+      )
         return null
 
-      const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const disabled =
+        readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-            {label[language] || label.en_US}
-            {required && (
-              <span className="ml-1 text-red-500">*</span>
+          <div
+            className={cn(
+              fieldLabelClassName,
+              'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
+          >
+            {label[language] || label.en_US}
+            {required && <span className="ml-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <Input
             className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
-            value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
-            onChange={val => handleFormChange(variable, val)}
+            value={
+              isShowDefaultValue &&
+              ((value[variable] as string) === '' ||
+                value[variable] === undefined ||
+                value[variable] === null)
+                ? formSchema.default
+                : value[variable]
+            }
+            onChange={(val) => handleFormChange(variable, val)}
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
             disabled={disabled}
-            type={formSchema.type === FormTypeEnum.secretInput
-              ? 'password'
-              : formSchema.type === FormTypeEnum.textNumber
-                ? 'number'
-                : 'text'}
-            {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
+            type={
+              formSchema.type === FormTypeEnum.secretInput
+                ? 'password'
+                : formSchema.type === FormTypeEnum.textNumber
+                  ? 'number'
+                  : 'text'
+            }
+            {...(formSchema.type === FormTypeEnum.textNumber
+              ? {
+                  min: (formSchema as CredentialFormSchemaNumberInput).min,
+                  max: (formSchema as CredentialFormSchemaNumberInput).max,
+                }
+              : {})}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -206,15 +236,13 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.radio) {
-      const {
-        options,
-        variable,
-        label,
-        show_on,
-        required,
-      } = formSchema as CredentialFormSchemaRadio
+      const { options, variable, label, show_on, required } =
+        formSchema as CredentialFormSchemaRadio
 
-      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+      if (
+        show_on.length &&
+        !show_on.every((showOnItem) => value[showOnItem.variable] === showOnItem.value)
+      )
         return null
 
       const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
@@ -225,41 +253,46 @@ function Form<
       return (
         <Field key={variable} name={variable} className="contents">
           <Fieldset
-            render={(
+            render={
               <RadioGroup
                 value={selectedValue}
-                onValueChange={val => handleFormChange(variable, val)}
+                onValueChange={(val) => handleFormChange(variable, val)}
                 className={cn(itemClassName, 'grid gap-3 py-3', gridColumnsClassName)}
               />
-            )}
+            }
           >
-            <FieldsetLegend className={cn(fieldLabelClassName, 'col-span-full flex items-center py-2 system-sm-semibold text-text-secondary')}>
-              <span>{translatedLabel}</span>
-              {required && (
-                <span className="ml-1 text-red-500">*</span>
+            <FieldsetLegend
+              className={cn(
+                fieldLabelClassName,
+                'col-span-full flex items-center py-2 system-sm-semibold text-text-secondary',
               )}
+            >
+              <span>{translatedLabel}</span>
+              {required && <span className="ml-1 text-red-500">*</span>}
               {infotipContent}
             </FieldsetLegend>
-            {options.filter((option) => {
-              if (option.show_on.length)
-                return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+            {options
+              .filter((option) => {
+                if (option.show_on.length)
+                  return option.show_on.every(
+                    (showOnItem) => value[showOnItem.variable] === showOnItem.value,
+                  )
 
-              return true
-            }).map(option => (
-              <FieldItem key={`${variable}-${option.value}`} className="min-w-0">
-                <FieldLabel
-                  className={`
-                    flex cursor-pointer items-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2
-                    ${value[variable] === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm'}
-                    ${disabled && 'cursor-not-allowed! opacity-60'}
-                  `}
-                >
-                  <Radio value={option.value} disabled={disabled} />
+                return true
+              })
+              .map((option) => (
+                <FieldItem key={`${variable}-${option.value}`} className="min-w-0">
+                  <FieldLabel
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 ${value[variable] === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm'} ${disabled && 'cursor-not-allowed! opacity-60'} `}
+                  >
+                    <Radio value={option.value} disabled={disabled} />
 
-                  <div className="system-sm-regular text-text-secondary">{option.label[language] || option.label.en_US}</div>
-                </FieldLabel>
-              </FieldItem>
-            ))}
+                    <div className="system-sm-regular text-text-secondary">
+                      {option.label[language] || option.label.en_US}
+                    </div>
+                  </FieldLabel>
+                </FieldItem>
+              ))}
             <div className="col-span-full">
               {fieldMoreInfo?.(formSchema)}
               {validating && changeKey === variable && <ValidatingTip />}
@@ -270,46 +303,56 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.select) {
-      const {
-        options,
-        variable,
-        label,
-        show_on,
-        required,
-        placeholder,
-      } = formSchema as CredentialFormSchemaSelect
+      const { options, variable, label, show_on, required, placeholder } =
+        formSchema as CredentialFormSchemaSelect
 
-      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+      if (
+        show_on.length &&
+        !show_on.every((showOnItem) => value[showOnItem.variable] === showOnItem.value)
+      )
         return null
 
-      const filteredOptions = options.filter((option) => {
-        if (option.show_on.length)
-          return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+      const filteredOptions = options
+        .filter((option) => {
+          if (option.show_on.length)
+            return option.show_on.every(
+              (showOnItem) => value[showOnItem.variable] === showOnItem.value,
+            )
 
-        return true
-      }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))
-      const currentValue = (isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null))
-        ? formSchema.default
-        : value[variable]
-      const selectedOption = filteredOptions.find(option => option.value === currentValue)
+          return true
+        })
+        .map((option) => ({
+          value: option.value,
+          name: option.label[language] || option.label.en_US,
+        }))
+      const currentValue =
+        isShowDefaultValue &&
+        ((value[variable] as string) === '' ||
+          value[variable] === undefined ||
+          value[variable] === null)
+          ? formSchema.default
+          : value[variable]
+      const selectedOption = filteredOptions.find((option) => option.value === currentValue)
       const translatedLabel = label[language] || label.en_US
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div
+            className={cn(
+              fieldLabelClassName,
+              'flex items-center py-2 system-sm-semibold text-text-secondary',
+            )}
+          >
             {translatedLabel}
 
-            {required && (
-              <span className="ml-1 text-red-500">*</span>
-            )}
+            {required && <span className="ml-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <Select
             disabled={readonly}
             value={selectedOption?.value ?? null}
             onValueChange={(nextValue) => {
-              if (!nextValue)
-                return
+              if (!nextValue) return
               handleFormChange(variable, nextValue)
             }}
           >
@@ -318,7 +361,7 @@ function Form<
               {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
             </SelectTrigger>
             <SelectContent>
-              {filteredOptions.map(option => (
+              {filteredOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   <SelectItemText>{option.name}</SelectItemText>
                   <SelectItemIndicator />
@@ -333,14 +376,12 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.checkbox) {
-      const {
-        variable,
-        label,
-        show_on,
-        required,
-      } = formSchema as CredentialFormSchemaRadio
+      const { variable, label, show_on, required } = formSchema as CredentialFormSchemaRadio
 
-      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+      if (
+        show_on.length &&
+        !show_on.every((showOnItem) => value[showOnItem.variable] === showOnItem.value)
+      )
         return null
       const booleanValue = typeof value[variable] === 'boolean' ? value[variable] : undefined
       const translatedLabel = label[language] || label.en_US
@@ -349,19 +390,22 @@ function Form<
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <Field name={variable} className="contents">
             <Fieldset
-              render={(
+              render={
                 <RadioGroup<boolean>
                   className="flex items-center justify-between gap-3 py-2"
                   value={booleanValue}
-                  onValueChange={val => handleFormChange(variable, val)}
+                  onValueChange={(val) => handleFormChange(variable, val)}
                 />
-              )}
+              }
             >
-              <FieldsetLegend className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-                <span>{translatedLabel}</span>
-                {required && (
-                  <span className="ml-1 text-red-500">*</span>
+              <FieldsetLegend
+                className={cn(
+                  fieldLabelClassName,
+                  'flex items-center py-2 system-sm-semibold text-text-secondary',
                 )}
+              >
+                <span>{translatedLabel}</span>
+                {required && <span className="ml-1 text-red-500">*</span>}
                 {infotipContent}
               </FieldsetLegend>
               <div className="flex items-center gap-3">
@@ -386,19 +430,19 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.modelSelector) {
-      const {
-        variable,
-        label,
-        required,
-        scope,
-      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+      const { variable, label, required, scope } = formSchema as
+        | CredentialFormSchemaTextInput
+        | CredentialFormSchemaSecretInput
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-            {label[language] || label.en_US}
-            {required && (
-              <span className="ml-1 text-red-500">*</span>
+          <div
+            className={cn(
+              fieldLabelClassName,
+              'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
+          >
+            {label[language] || label.en_US}
+            {required && <span className="ml-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <ModelParameterModal
@@ -407,7 +451,7 @@ function Form<
             isInWorkflow
             isAgentStrategy={isAgentStrategy}
             value={value[variable]}
-            setModel={model => handleModelChanged(variable, model)}
+            setModel={(model) => handleModelChanged(variable, model)}
             readonly={readonly}
             scope={scope}
           />
@@ -418,19 +462,19 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.toolSelector) {
-      const {
-        variable,
-        label,
-        required,
-        scope,
-      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+      const { variable, label, required, scope } = formSchema as
+        | CredentialFormSchemaTextInput
+        | CredentialFormSchemaSecretInput
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-            {label[language] || label.en_US}
-            {required && (
-              <span className="ml-1 text-red-500">*</span>
+          <div
+            className={cn(
+              fieldLabelClassName,
+              'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
+          >
+            {label[language] || label.en_US}
+            {required && <span className="ml-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <ToolSelector
@@ -441,7 +485,7 @@ function Form<
             disabled={readonly}
             value={value[variable]}
             // selectedTools={value[variable] ? [value[variable]] : []}
-            onSelect={item => handleFormChange(variable, item)}
+            onSelect={(item) => handleFormChange(variable, item)}
             onDelete={() => handleFormChange(variable, null)}
           />
           {fieldMoreInfo?.(formSchema)}
@@ -457,7 +501,7 @@ function Form<
         tooltip: infotip,
         required,
         scope,
-      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+      } = formSchema as CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
@@ -471,7 +515,7 @@ function Form<
             required={required}
             tooltip={infotip?.[language] || infotip?.en_US}
             value={value[variable] || []}
-            onChange={item => handleFormChange(variable, item)}
+            onChange={(item) => handleFormChange(variable, item)}
             supportCollapse
           />
           {fieldMoreInfo?.(formSchema)}
@@ -481,27 +525,29 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.appSelector) {
-      const {
-        variable,
-        label,
-        required,
-        scope,
-      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+      const { variable, label, required, scope } = formSchema as
+        | CredentialFormSchemaTextInput
+        | CredentialFormSchemaSecretInput
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-            {label[language] || label.en_US}
-            {required && (
-              <span className="ml-1 text-red-500">*</span>
+          <div
+            className={cn(
+              fieldLabelClassName,
+              'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
+          >
+            {label[language] || label.en_US}
+            {required && <span className="ml-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <AppSelector
             disabled={readonly}
             scope={scope}
             value={value[variable]}
-            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector })}
+            onSelect={(item) =>
+              handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector })
+            }
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -510,20 +556,20 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.any) {
-      const {
-        variable,
-        label,
-        required,
-        scope,
-      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+      const { variable, label, required, scope } = formSchema as
+        | CredentialFormSchemaTextInput
+        | CredentialFormSchemaSecretInput
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-            {label[language] || label.en_US}
-            {required && (
-              <span className="ml-1 text-red-500">*</span>
+          <div
+            className={cn(
+              fieldLabelClassName,
+              'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
+          >
+            {label[language] || label.en_US}
+            {required && <span className="ml-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <VarReferencePicker
@@ -531,10 +577,9 @@ function Form<
             isShowNodeName
             nodeId={nodeId || ''}
             value={value[variable] || []}
-            onChange={item => handleFormChange(variable, item)}
+            onChange={(item) => handleFormChange(variable, item)}
             filterVar={(varPayload) => {
-              if (!scope)
-                return true
+              if (!scope) return true
               return scope.split('&').includes(varPayload.type)
             }}
           />
@@ -549,11 +594,7 @@ function Form<
       return customRenderField?.(formSchema as CustomFormSchema, filteredProps)
   }
 
-  return (
-    <div className={className}>
-      {formSchemas.map(formSchema => renderField(formSchema))}
-    </div>
-  )
+  return <div className={className}>{formSchemas.map((formSchema) => renderField(formSchema))}</div>
 }
 
 export default Form

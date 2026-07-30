@@ -113,10 +113,12 @@ describe('image-uploader utils', () => {
     it('should report progress percentage when progress is computable', () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
-      vi.mocked(upload).mockImplementation((options: { onprogress?: (e: ProgressEvent) => void }) => {
-        options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
-        return Promise.resolve({ id: 'uploaded-id' })
-      })
+      vi.mocked(upload).mockImplementation(
+        (options: { onprogress?: (e: ProgressEvent) => void }) => {
+          options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
+          return Promise.resolve({ id: 'uploaded-id' })
+        },
+      )
 
       imageUpload({ file, ...callbacks })
 
@@ -126,10 +128,12 @@ describe('image-uploader utils', () => {
     it('should not report progress when length is not computable', () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
-      vi.mocked(upload).mockImplementation((options: { onprogress?: (e: ProgressEvent) => void }) => {
-        options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
-        return Promise.resolve({ id: 'uploaded-id' })
-      })
+      vi.mocked(upload).mockImplementation(
+        (options: { onprogress?: (e: ProgressEvent) => void }) => {
+          options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
+          return Promise.resolve({ id: 'uploaded-id' })
+        },
+      )
 
       imageUpload({ file, ...callbacks })
 

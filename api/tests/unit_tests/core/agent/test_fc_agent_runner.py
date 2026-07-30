@@ -1,9 +1,12 @@
 import json
+from collections.abc import Iterator
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
@@ -69,7 +72,7 @@ class DummyResult:
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture):
+def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
         "core.agent.base_agent_runner.BaseAgentRunner.__init__",
@@ -131,7 +134,7 @@ def runner(mocker: MockerFixture):
     runner._current_thoughts = []
     runner.files = []
     runner.agent_callback = MagicMock()
-    runner.session = MagicMock()
+    runner.session = Session(sqlite_engine)
 
     runner._init_prompt_tools = MagicMock(return_value=({}, []))
     runner.create_agent_thought = MagicMock(return_value="thought1")
@@ -139,7 +142,10 @@ def runner(mocker: MockerFixture):
     runner.recalc_llm_max_tokens = MagicMock()
     runner.update_prompt_message_tool = MagicMock()
 
-    return runner
+    try:
+        yield runner
+    finally:
+        runner.session.close()
 
 
 # ==============================
@@ -300,6 +306,8 @@ class TestRunMethod:
 
         outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
+        assert "session" not in runner.create_agent_thought.call_args.kwargs
+        assert "session" not in runner.save_agent_thought.call_args.kwargs
         assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         runner.queue_manager.publish.assert_called()
 
@@ -309,16 +317,22 @@ class TestRunMethod:
     def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
+        events: list[str] = []
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+        session.close.side_effect = lambda: events.append("close")
 
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
 
         def generator():
+            events.append("first-chunk")
             yield chunk
 
         runner.model_instance.invoke_llm.return_value = generator()
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(session, message, "query"))
+        assert events == ["commit", "close", "first-chunk"]
         assert len(outputs) == 1
 
     def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):

@@ -17,6 +17,7 @@ export type UploadConfig = {
   image_file_batch_limit: number
   image_file_size_limit: number
   single_chunk_attachment_limit: number
+  skill_file_size_limit: number
   video_file_size_limit: number
   workflow_file_upload_limit: number
 }
@@ -54,8 +55,8 @@ export type GetFilesSupportTypeResponses = {
   200: AllowedExtensionsResponse
 }
 
-export type GetFilesSupportTypeResponse
-  = GetFilesSupportTypeResponses[keyof GetFilesSupportTypeResponses]
+export type GetFilesSupportTypeResponse =
+  GetFilesSupportTypeResponses[keyof GetFilesSupportTypeResponses]
 
 export type GetFilesUploadData = {
   body?: never
@@ -99,5 +100,5 @@ export type GetFilesByFileIdPreviewResponses = {
   200: TextContentResponse
 }
 
-export type GetFilesByFileIdPreviewResponse
-  = GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
+export type GetFilesByFileIdPreviewResponse =
+  GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]

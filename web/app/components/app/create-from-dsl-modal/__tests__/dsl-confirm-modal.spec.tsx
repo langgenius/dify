@@ -23,12 +23,7 @@ describe('DSLConfirmModal', () => {
     const handleCancel = vi.fn()
     const handleConfirm = vi.fn()
 
-    render(
-      <DSLConfirmModal
-        onCancel={handleCancel}
-        onConfirm={handleConfirm}
-      />,
-    )
+    render(<DSLConfirmModal onCancel={handleCancel} onConfirm={handleConfirm} />)
 
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ }))
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ }))

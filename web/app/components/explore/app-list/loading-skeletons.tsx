@@ -5,7 +5,7 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 
 function ExploreAppCardSkeleton() {
   return (
-    <div className="col-span-1 flex h-[142px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
+    <div className="col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">
           <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
@@ -21,7 +21,7 @@ function ExploreAppCardSkeleton() {
           <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
         </div>
       </div>
-      <div className="relative flex h-[26px] w-full shrink-0 flex-col gap-2 overflow-hidden px-3">
+      <div className="relative flex h-6.5 w-full shrink-0 flex-col gap-2 overflow-hidden px-3">
         <div className="flex w-full shrink-0 items-center gap-1 rounded-lg p-1">
           <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-[5px]" />
         </div>
@@ -47,7 +47,10 @@ function RecommendationSectionSkeletonBody({
         </div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs">
+            <div
+              key={index}
+              className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs"
+            >
               <div className="flex flex-col items-start gap-2 pb-1">
                 <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-[10px]" />
                 <SkeletonRectangle className="h-4 w-3/4 animate-pulse" />
@@ -72,7 +75,10 @@ function RecommendationSectionSkeletonBody({
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-3">
         {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md">
+          <div
+            key={index}
+            className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md"
+          >
             <SkeletonRow>
               <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -122,23 +128,19 @@ function BannerSkeletonBody() {
   return (
     <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
       <div className="flex w-full flex-col gap-1">
-        <SkeletonRectangle className="my-0 h-6 w-[240px] max-w-full animate-pulse" />
+        <SkeletonRectangle className="my-0 h-6 w-60 max-w-full animate-pulse" />
         <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
       </div>
-      <SkeletonRectangle className="h-[168px] w-full animate-pulse rounded-2xl" />
+      <SkeletonRectangle className="h-42 w-full animate-pulse rounded-2xl" />
     </div>
   )
 }
 
-export function ExploreHomeSkeleton({
-  showBanner,
-}: {
-  showBanner: boolean
-}) {
+export function ExploreHomeSkeleton({ showBanner }: { showBanner: boolean }) {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="contents">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="contents">
       {showBanner && <BannerSkeletonBody />}
       <section className="px-8 pb-5">
         <RecommendationSectionSkeletonBody />

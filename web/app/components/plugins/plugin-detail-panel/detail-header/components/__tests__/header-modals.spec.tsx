@@ -7,7 +7,12 @@ import { PluginSource } from '../../../../types'
 import HeaderModals from '../header-modals'
 
 vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
-  default: ({ repository, release, packageName, onHide }: {
+  default: ({
+    repository,
+    release,
+    packageName,
+    onHide,
+  }: {
     repository: string
     release: string
     packageName: string
@@ -17,13 +22,20 @@ vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
       <div data-testid="plugin-info-repo">{repository}</div>
       <div data-testid="plugin-info-release">{release}</div>
       <div data-testid="plugin-info-package">{packageName}</div>
-      <button data-testid="plugin-info-close" onClick={onHide}>Close</button>
+      <button data-testid="plugin-info-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
-  default: ({ pluginId, onSave, onCancel, isShowDowngradeWarningModal }: {
+  default: ({
+    pluginId,
+    onSave,
+    onCancel,
+    isShowDowngradeWarningModal,
+  }: {
     pluginId: string
     onSave: () => void
     onCancel: () => void
@@ -32,8 +44,12 @@ vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
     <div data-testid="update-modal">
       <div data-testid="update-plugin-id">{pluginId}</div>
       <div data-testid="update-downgrade-warning">{String(isShowDowngradeWarningModal)}</div>
-      <button data-testid="update-modal-save" onClick={onSave}>Save</button>
-      <button data-testid="update-modal-cancel" onClick={onCancel}>Cancel</button>
+      <button data-testid="update-modal-save" onClick={onSave}>
+        Save
+      </button>
+      <button data-testid="update-modal-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))

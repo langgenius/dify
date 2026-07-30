@@ -6,10 +6,7 @@ import ThinkBlock from '../think-block'
 // Mock react-i18next
 
 // Helper to wrap component with ChatContextProvider
-const renderWithContext = (
-  children: React.ReactNode,
-  isResponding: boolean = true,
-) => {
+const renderWithContext = (children: React.ReactNode, isResponding: boolean = true) => {
   return render(
     <ChatContextProvider
       config={undefined}
@@ -194,9 +191,7 @@ describe('ThinkBlock', () => {
 
     it('should detect ENDTHINKFLAG in array children', () => {
       renderWithContext(
-        <ThinkBlock data-think={true}>
-          {['Part 1', 'Part 2[ENDTHINKFLAG]']}
-        </ThinkBlock>,
+        <ThinkBlock data-think={true}>{['Part 1', 'Part 2[ENDTHINKFLAG]']}</ThinkBlock>,
         true,
       )
 
@@ -206,21 +201,13 @@ describe('ThinkBlock', () => {
 
   describe('Edge cases', () => {
     it('should handle empty children', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}></ThinkBlock>,
-        true,
-      )
+      renderWithContext(<ThinkBlock data-think={true}></ThinkBlock>, true)
 
       expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     })
 
     it('should handle null children gracefully', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          {null}
-        </ThinkBlock>,
-        true,
-      )
+      renderWithContext(<ThinkBlock data-think={true}>{null}</ThinkBlock>, true)
 
       expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     })

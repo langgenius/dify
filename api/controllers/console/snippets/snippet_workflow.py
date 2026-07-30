@@ -56,9 +56,12 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
+from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +180,10 @@ class SnippetDraftWorkflowApi(Resource):
 
         workflow.conversation_variables = []
         response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=db.session(),
+            draft_workflow=workflow,
+        )
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -290,8 +297,9 @@ class SnippetPublishedWorkflowApi(Resource):
 
         with Session(db.engine) as session:
             snippet = session.merge(snippet)
+            tenant_id = snippet.tenant_id
             try:
-                workflow = snippet_service.publish_workflow(
+                workflow, retirement_candidates = snippet_service.publish_workflow(
                     session=session,
                     snippet=snippet,
                     account=current_user,
@@ -301,6 +309,16 @@ class SnippetPublishedWorkflowApi(Resource):
             except ValueError as e:
                 return {"message": str(e)}, 400
 
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
+        )
         return {
             "result": "success",
             "created_at": workflow_created_at,

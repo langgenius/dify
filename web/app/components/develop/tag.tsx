@@ -53,7 +53,11 @@ export function Tag({
 }: ITagProps) {
   return (
     <span
-      className={cn('font-mono text-2xs/6 font-semibold', variantStyles[variant], colorStyles[color]![variant])}
+      className={cn(
+        'font-mono text-2xs/6 font-semibold',
+        variantStyles[variant],
+        colorStyles[color]![variant],
+      )}
     >
       {children}
     </span>

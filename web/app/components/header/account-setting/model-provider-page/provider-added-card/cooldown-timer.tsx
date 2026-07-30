@@ -36,8 +36,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
       if (now <= targetTime.current) {
         setCurrentTime(Date.now())
         countdown()
-      }
-      else {
+      } else {
         onFinishRef.current?.()
         clearCountdown()
       }
@@ -52,20 +51,18 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
     return clearCountdown
   }, [clearCountdown, countdown, secondsRemaining])
 
-  return displayTime
-    ? (
-        <Tooltip>
-          <TooltipTrigger
-            render={(
-              <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="size-3" />
-            )}
-          />
-          <TooltipContent>
-            {t($ => $['modelProvider.apiKeyRateLimit'], { ns: 'common', seconds: displayTime })}
-          </TooltipContent>
-        </Tooltip>
-      )
-    : null
+  return displayTime ? (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <SimplePieChart percentage={Math.round((displayTime / 60) * 100)} className="size-3" />
+        }
+      />
+      <TooltipContent>
+        {t(($) => $['modelProvider.apiKeyRateLimit'], { ns: 'common', seconds: displayTime })}
+      </TooltipContent>
+    </Tooltip>
+  ) : null
 }
 
 export default memo(CooldownTimer)

@@ -46,7 +46,9 @@ describe('GenerationActionGroups', () => {
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith('hello world')
-    expect(mockSuccess).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/))
+    expect(mockSuccess).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/),
+    )
   })
 
   it('should handle more-like-this and feedback actions', () => {
@@ -70,7 +72,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    )
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }))
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
@@ -96,7 +100,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    ).toBeDisabled()
   })
 
   it('should stringify non-string content before copying', () => {
@@ -138,7 +144,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generation\.batchFailed\.retry(?=$|:)/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)generation\.batchFailed\.retry(?=$|:)/ }),
+    )
 
     expect(mockOnRetry).toHaveBeenCalledTimes(1)
   })
@@ -201,7 +209,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancelDisagree(?=$|:)/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)operation\.cancelDisagree(?=$|:)/ }),
+    )
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
   })
 })

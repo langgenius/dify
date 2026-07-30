@@ -23,8 +23,7 @@ export function OAuthRegistrationAnalytics() {
   const handledParamRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam)
-      return
+    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam) return
 
     handledParamRef.current = oauthNewUserParam
     const oauthNewUser = oauthNewUserParam === 'true'
@@ -38,10 +37,8 @@ export function OAuthRegistrationAnalytics() {
     if (utmInfoStr) {
       try {
         const parsed: unknown = JSON.parse(utmInfoStr)
-        if (isRecord(parsed))
-          utmInfo = parsed
-      }
-      catch (e) {
+        if (isRecord(parsed)) utmInfo = parsed
+      } catch (e) {
         console.error('Failed to parse utm_info cookie:', e)
       }
     }

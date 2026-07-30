@@ -6,7 +6,9 @@ import ReasoningPanel from '../reasoning-panel'
 
 // Mock the heavy Markdown renderer to a simple passthrough.
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div data-testid="reasoning-markdown">{content}</div>,
+  Markdown: ({ content }: { content: string }) => (
+    <div data-testid="reasoning-markdown">{content}</div>
+  ),
 }))
 
 describe('ReasoningPanel', () => {

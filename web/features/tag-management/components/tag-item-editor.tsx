@@ -10,11 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
@@ -41,117 +37,135 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       return
     }
 
-    updateTagMutation.mutate({
-      params: {
-        tag_id: tagId,
+    updateTagMutation.mutate(
+      {
+        params: {
+          tag_id: tagId,
+        },
+        body: {
+          name,
+        },
       },
-      body: {
-        name,
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+          setIsEditing(false)
+          onTagsChange?.()
+        },
+        onError: () => {
+          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          setIsEditing(false)
+        },
       },
-    }, {
-      onSuccess: () => {
-        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-        setIsEditing(false)
-        onTagsChange?.()
-      },
-      onError: () => {
-        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-        setIsEditing(false)
-      },
-    })
+    )
   }
   const [showRemoveModal, setShowRemoveModal] = useState(false)
   const removeTag = (tagId: string) => {
-    if (deleteTagMutation.isPending)
-      return
+    if (deleteTagMutation.isPending) return
 
-    deleteTagMutation.mutate({
-      params: {
-        tag_id: tagId,
+    deleteTagMutation.mutate(
+      {
+        params: {
+          tag_id: tagId,
+        },
       },
-    }, {
-      onSuccess: () => {
-        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-        onTagsChange?.()
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+          onTagsChange?.()
+        },
+        onError: () => {
+          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        },
       },
-      onError: () => {
-        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      },
-    })
+    )
   }
-  const { run: handleRemove } = useDebounceFn(() => {
-    removeTag(tag.id)
-  }, { wait: 200 })
+  const { run: handleRemove } = useDebounceFn(
+    () => {
+      removeTag(tag.id)
+    },
+    { wait: 200 },
+  )
   return (
     <>
-      <div className={cn('flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm/5 text-text-secondary')}>
+      <div
+        className={cn(
+          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm/5 text-text-secondary',
+        )}
+      >
         {!isEditing && (
           <>
-            <div className="text-sm/5 text-text-secondary">
-              {tag.name}
-            </div>
+            <div className="text-sm/5 text-text-secondary">{tag.name}</div>
             <Tooltip>
               <TooltipTrigger>
-                <div className="shrink-0 px-1 text-sm/4.5 font-medium text-text-tertiary">{tag.binding_count}</div>
+                <div className="shrink-0 px-1 text-sm/4.5 font-medium text-text-tertiary">
+                  {tag.binding_count}
+                </div>
               </TooltipTrigger>
-              <TooltipContent>{t($ => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
+              <TooltipContent>{t(($) => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"
-              aria-label={`${t($ => $['operation.edit'], { ns: 'common' })} ${tag.name}`}
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${tag.name}`}
               className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => setIsEditing(true)}
             >
-              <span aria-hidden="true" className="i-ri-edit-line size-3 text-text-tertiary group-hover/edit:text-text-secondary" />
+              <span
+                aria-hidden="true"
+                className="i-ri-edit-line size-3 text-text-tertiary group-hover/edit:text-text-secondary"
+              />
             </button>
             <button
               type="button"
-              aria-label={`${t($ => $['operation.remove'], { ns: 'common' })} ${tag.name}`}
+              aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${tag.name}`}
               className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => {
-                if (Number(tag.binding_count ?? 0) > 0)
-                  setShowRemoveModal(true)
-                else
-                  handleRemove()
+                if (Number(tag.binding_count ?? 0) > 0) setShowRemoveModal(true)
+                else handleRemove()
               }}
             >
-              <span aria-hidden="true" className="i-ri-delete-bin-line size-3 text-text-tertiary group-hover/remove:text-text-secondary" />
+              <span
+                aria-hidden="true"
+                className="i-ri-delete-bin-line size-3 text-text-tertiary group-hover/remove:text-text-secondary"
+              />
             </button>
           </>
         )}
         {isEditing && (
           <input
-            aria-label={`${t($ => $['operation.rename'], { ns: 'common' })} ${tag.name}`}
+            aria-label={`${t(($) => $['operation.rename'], { ns: 'common' })} ${tag.name}`}
             className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary"
             autoFocus
             defaultValue={tag.name}
             onKeyDown={(e) => {
-              if (e.key !== 'Enter' || e.nativeEvent.isComposing)
-                return
+              if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
 
               e.preventDefault()
               e.currentTarget.blur()
             }}
-            onBlur={e => editTag(tag.id, e.currentTarget.value)}
+            onBlur={(e) => editTag(tag.id, e.currentTarget.value)}
           />
         )}
       </div>
-      <AlertDialog open={showRemoveModal} onOpenChange={open => !open && setShowRemoveModal(false)}>
+      <AlertDialog
+        open={showRemoveModal}
+        onOpenChange={(open) => !open && setShowRemoveModal(false)}
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle
-              title={`${t($ => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
+              title={`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
               className="w-full truncate title-2xl-semi-bold text-text-primary"
             >
-              {`${t($ => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
+              {`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t($ => $['tag.deleteTip'], { ns: 'common' })}
+              {t(($) => $['tag.deleteTip'], { ns: 'common' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t($ => $['operation.cancel'], { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               onClick={() => {
@@ -159,7 +173,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                 setShowRemoveModal(false)
               }}
             >
-              {t($ => $['operation.confirm'], { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

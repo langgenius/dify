@@ -1,8 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  Fieldset,
-  FieldsetLegend,
-} from '../index'
+import { Fieldset, FieldsetLegend } from '../index'
 
 describe('Fieldset primitives', () => {
   it('should forward className to the fieldset and legend', async () => {

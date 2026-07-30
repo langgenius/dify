@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
@@ -57,12 +57,22 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/app/components/app/configuration/config/automatic/automatic-btn', () => ({
-  default: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>automatic-btn</button>,
+  default: ({ onClick }: { onClick: () => void }) => (
+    <button onClick={onClick}>automatic-btn</button>
+  ),
 }))
 
 vi.mock('@/app/components/app/configuration/config/automatic/get-automatic-res', () => ({
   default: ({ onFinished }: { onFinished: (value: Record<string, unknown>) => void }) => (
-    <button onClick={() => onFinished({ modified: 'auto prompt', variables: ['city'], opening_statement: 'hello there' })}>
+    <button
+      onClick={() =>
+        onFinished({
+          modified: 'auto prompt',
+          variables: ['city'],
+          opening_statement: 'hello there',
+        })
+      }
+    >
       finish-automatic
     </button>
   ),
@@ -72,18 +82,18 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
   default: (props: {
     onBlur: () => void
     onChange: (value: string) => void
-    contextBlock: { datasets: Array<{ id: string, name: string, type: string }> }
-    variableBlock: { variables: Array<{ name: string, value: string }> }
+    contextBlock: { datasets: Array<{ id: string; name: string; type: string }> }
+    variableBlock: { variables: Array<{ name: string; value: string }> }
     queryBlock: { selectable: boolean }
     externalToolBlock: {
       onAddExternalTool: () => void
-      externalTools: Array<{ name: string, variableName: string }>
+      externalTools: Array<{ name: string; variableName: string }>
     }
   }) => (
     <div>
-      <div>{`datasets:${props.contextBlock.datasets.map(item => item.name).join(',')}`}</div>
-      <div>{`variables:${props.variableBlock.variables.map(item => item.value).join(',')}`}</div>
-      <div>{`external-tools:${props.externalToolBlock.externalTools.map(item => item.variableName).join(',')}`}</div>
+      <div>{`datasets:${props.contextBlock.datasets.map((item) => item.name).join(',')}`}</div>
+      <div>{`variables:${props.variableBlock.variables.map((item) => item.value).join(',')}`}</div>
+      <div>{`external-tools:${props.externalToolBlock.externalTools.map((item) => item.variableName).join(',')}`}</div>
       <div>{`query-selectable:${String(props.queryBlock.selectable)}`}</div>
       <button onClick={() => props.onChange('Hello {{new_var}}')}>change-prompt</button>
       <button onClick={props.onBlur}>blur-prompt</button>
@@ -93,7 +103,7 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 }))
 
 vi.mock('../prompt-editor-height-resize-wrap', () => ({
-  default: ({ children, footer }: { children: ReactNode, footer: ReactNode }) => (
+  default: ({ children, footer }: { children: ReactNode; footer: ReactNode }) => (
     <div>
       {children}
       {footer}
@@ -101,29 +111,30 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
   ),
 }))
 
-const createContextValue = (overrides: Record<string, unknown> = {}) => ({
-  appId: 'app-1',
-  modelConfig: {
-    configs: {
-      prompt_template: 'Hello {{new_var}}',
-      prompt_variables: [
-        { key: 'existing_var', name: 'Existing', type: 'string', required: true },
-      ],
+const createContextValue = (overrides: Record<string, unknown> = {}) =>
+  ({
+    appId: 'app-1',
+    modelConfig: {
+      configs: {
+        prompt_template: 'Hello {{new_var}}',
+        prompt_variables: [
+          { key: 'existing_var', name: 'Existing', type: 'string', required: true },
+        ],
+      },
     },
-  },
-  dataSets: [],
-  setModelConfig: mockSetModelConfig,
-  setPrevPromptConfig: mockSetPrevPromptConfig,
-  setIntroduction: mockSetIntroduction,
-  hasSetBlockStatus: {
-    context: false,
-    history: false,
-    query: false,
-  },
-  showSelectDataSet: vi.fn(),
-  externalDataToolsConfig: [],
-  ...overrides,
-}) as any
+    dataSets: [],
+    setModelConfig: mockSetModelConfig,
+    setPrevPromptConfig: mockSetPrevPromptConfig,
+    setIntroduction: mockSetIntroduction,
+    hasSetBlockStatus: {
+      context: false,
+      history: false,
+      query: false,
+    },
+    showSelectDataSet: vi.fn(),
+    externalDataToolsConfig: [],
+    ...overrides,
+  }) as any
 
 describe('SimplePromptInput', () => {
   beforeEach(() => {
@@ -176,7 +187,9 @@ describe('SimplePromptInput', () => {
     const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
 
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'existing_var' })).toBe(false)
-    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)varKeyError\.keyAlreadyExists(?=$|:)/))
+    expect(mockToastError).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)varKeyError\.keyAlreadyExists(?=$|:)/),
+    )
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'fresh_var' })).toBe(true)
 
     modalConfig.onSaveCallback(undefined)
@@ -187,13 +200,17 @@ describe('SimplePromptInput', () => {
       variable: 'search_api',
     })
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'ADD_EXTERNAL_DATA_TOOL',
-    }))
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      payload: 'search_api',
-      type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-    }))
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'ADD_EXTERNAL_DATA_TOOL',
+      }),
+    )
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: 'search_api',
+        type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+      }),
+    )
   })
 
   it('should apply automatic generation results to prompt and opening statement', () => {
@@ -211,18 +228,20 @@ describe('SimplePromptInput', () => {
     fireEvent.click(screen.getByText('automatic-btn'))
     fireEvent.click(screen.getByText('finish-automatic'))
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      payload: 'auto prompt',
-      type: 'PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER',
-    }))
-    expect(mockSetModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_template: 'auto prompt',
-        prompt_variables: [
-          expect.objectContaining({ key: 'city', name: 'city' }),
-        ],
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: 'auto prompt',
+        type: 'PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER',
       }),
-    }))
+    )
+    expect(mockSetModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_template: 'auto prompt',
+          prompt_variables: [expect.objectContaining({ key: 'city', name: 'city' })],
+        }),
+      }),
+    )
     expect(mockSetPrevPromptConfig).toHaveBeenCalled()
     expect(mockSetIntroduction).toHaveBeenCalledWith('hello there')
     expect(mockSetFeatures).toHaveBeenCalled()
@@ -230,23 +249,31 @@ describe('SimplePromptInput', () => {
 
   it('should expose dataset and external tool metadata to the editor', () => {
     render(
-      <ConfigContext.Provider value={createContextValue({
-        dataSets: [{ id: 'dataset-1', name: 'Knowledge Base', data_source_type: 'file' }],
-        hasSetBlockStatus: {
-          context: false,
-          history: false,
-          query: true,
-        },
-        modelConfig: {
-          configs: {
-            prompt_template: 'Hello {{existing_var}}',
-            prompt_variables: [
-              { key: 'existing_var', name: 'Existing', type: 'string', required: true },
-              { key: 'search_api', name: 'Search API', type: 'api', required: false, icon: 'search', icon_background: '#fff' },
-            ],
+      <ConfigContext.Provider
+        value={createContextValue({
+          dataSets: [{ id: 'dataset-1', name: 'Knowledge Base', data_source_type: 'file' }],
+          hasSetBlockStatus: {
+            context: false,
+            history: false,
+            query: true,
           },
-        },
-      })}
+          modelConfig: {
+            configs: {
+              prompt_template: 'Hello {{existing_var}}',
+              prompt_variables: [
+                { key: 'existing_var', name: 'Existing', type: 'string', required: true },
+                {
+                  key: 'search_api',
+                  name: 'Search API',
+                  type: 'api',
+                  required: false,
+                  icon: 'search',
+                  icon_background: '#fff',
+                },
+              ],
+            },
+          },
+        })}
       >
         <Prompt
           mode={AppModeEnum.CHAT}
@@ -268,9 +295,10 @@ describe('SimplePromptInput', () => {
 
   it('should skip external tool variables and incomplete prompt variables when deciding whether to auto add', () => {
     render(
-      <ConfigContext.Provider value={createContextValue({
-        externalDataToolsConfig: [{ variable: 'search_api' }],
-      })}
+      <ConfigContext.Provider
+        value={createContextValue({
+          externalDataToolsConfig: [{ variable: 'search_api' }],
+        })}
       >
         <Prompt
           mode={AppModeEnum.CHAT}
@@ -296,9 +324,7 @@ describe('SimplePromptInput', () => {
         <Prompt
           mode={AppModeEnum.CHAT}
           promptTemplate="Hello {{existing_var}}"
-          promptVariables={[
-            { key: 'existing_var', name: '', type: 'string', required: true },
-          ]}
+          promptVariables={[{ key: 'existing_var', name: '', type: 'string', required: true }]}
           onChange={mockOnChange}
         />
       </ConfigContext.Provider>,

@@ -10,6 +10,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
@@ -331,45 +333,34 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
 
 
 def test_get_published_workflows_serializes_items_before_session_closes(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    session_state = {"open": False}
-
-    class _SessionContext:
-        def __enter__(self):
-            session_state["open"] = True
-            return object()
-
-        def __exit__(self, exc_type, exc, tb):
-            session_state["open"] = False
-            return False
-
-    class _SessionMaker:
-        def begin(self):
-            return _SessionContext()
-
     base_workflow = _make_workflow()
 
     class _Workflow:
+        def __init__(self, session: Session) -> None:
+            self._session = session
+
         def __getattr__(self, name):
             return getattr(base_workflow, name)
 
         @property
         def id(self):
-            assert session_state["open"] is True
+            assert self._session.in_transaction()
             return "w1"
 
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(workflow_module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
+    def get_all_published_workflow(*, session: Session, **_kwargs):
+        assert isinstance(session, Session)
+        return [_Workflow(session)], False
+
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(
-            get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False),
-        ),
+        lambda: SimpleNamespace(get_all_published_workflow=get_all_published_workflow),
     )
 
     with app.test_request_context(
@@ -611,6 +602,36 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
     ):
         with pytest.raises(NotFound):
             handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
+
+
+@pytest.mark.parametrize(
+    ("resource", "payload"),
+    [
+        (workflow_module.DraftWorkflowTriggerRunApi, {"node_id": "node-1"}),
+        (workflow_module.DraftWorkflowTriggerRunAllApi, {"node_ids": ["node-1"]}),
+    ],
+)
+def test_trigger_run_loads_draft_with_request_session(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource: type,
+    payload: dict[str, object],
+) -> None:
+    get_draft_workflow = Mock(return_value=None)
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_draft_workflow=get_draft_workflow),
+    )
+    session = Mock()
+    app_model = SimpleNamespace(id="app-1")
+    handler = inspect.unwrap(resource.post)
+
+    with app.test_request_context("/", method="POST", json=payload):
+        with pytest.raises(ValueError, match="Workflow not found"):
+            handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
+
+    get_draft_workflow.assert_called_once_with(app_model, session=session)
 
 
 def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

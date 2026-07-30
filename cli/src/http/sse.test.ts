@@ -11,8 +11,10 @@ function streamOf(...chunks: string[]): ReadableStream<Uint8Array> {
   })
 }
 
-async function collect(s: ReadableStream<Uint8Array>): Promise<{ name: string, data: string, id?: string }[]> {
-  const out: { name: string, data: string, id?: string }[] = []
+async function collect(
+  s: ReadableStream<Uint8Array>,
+): Promise<{ name: string; data: string; id?: string }[]> {
+  const out: { name: string; data: string; id?: string }[] = []
   const dec = new TextDecoder()
   for await (const ev of parseSSE(s))
     out.push({ name: ev.name, data: dec.decode(ev.data), id: ev.id })
@@ -76,11 +78,9 @@ describe('parseSSE', () => {
     try {
       for await (const _ of parseSSE(slow, ctrl.signal)) {
         seen++
-        if (seen === 1)
-          ctrl.abort()
+        if (seen === 1) ctrl.abort()
       }
-    }
-    catch (e) {
+    } catch (e) {
       caught = e
     }
     expect(seen).toBeGreaterThanOrEqual(1)

@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import after mock
 import { renameDocumentName } from '@/service/datasets'
-
 import RenameModal from '../rename-modal'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -38,11 +37,6 @@ describe('RenameModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       render(<RenameModal {...defaultProps} />)
       expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
@@ -151,7 +145,7 @@ describe('RenameModal', () => {
       // The button should be in loading state
       await waitFor(() => {
         const buttons = screen.getAllByRole('button')
-        const saveBtn = buttons.find(btn => btn.textContent?.includes('operation.save'))
+        const saveBtn = buttons.find((btn) => btn.textContent?.includes('operation.save'))
         expect(saveBtn).toBeInTheDocument()
       })
 
@@ -191,7 +185,7 @@ describe('RenameModal', () => {
     it('should handle name with special characters', () => {
       render(<RenameModal {...defaultProps} name="Document <with> 'special' chars" />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('Document <with> \'special\' chars')
+      expect(input).toHaveValue("Document <with> 'special' chars")
     })
   })
 })

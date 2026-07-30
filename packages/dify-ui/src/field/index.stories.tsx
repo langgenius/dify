@@ -1,12 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Button } from '../button'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from './index'
+import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from './index'
 
 const meta = {
   title: 'Base/Form/Field',
@@ -15,7 +9,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Field primitives built on Base UI Field. Use Field with FieldLabel, FieldControl, FieldDescription, and FieldError for one named form field. External form libraries can control invalid, dirty, and touched on Field.',
+        component:
+          'Field primitives built on Base UI Field. Use Field with FieldLabel, FieldControl, FieldDescription, and FieldError for one named form field. External form libraries can control invalid, dirty, and touched on Field.',
       },
     },
   },
@@ -37,7 +32,9 @@ export const TextField: Story = {
         <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
       </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </form>
   ),
@@ -65,7 +62,9 @@ export const MultipleFields: Story = {
         <FieldError match="valueMissing">API key is required.</FieldError>
       </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </form>
   ),

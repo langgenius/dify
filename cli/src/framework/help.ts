@@ -40,16 +40,14 @@ function isStructured(format: string): boolean {
 }
 
 function serialize(value: unknown, format: string): string {
-  if (format === 'yaml')
-    return dump(value, { indent: 2, lineWidth: -1 })
+  if (format === 'yaml') return dump(value, { indent: 2, lineWidth: -1 })
   return `${JSON.stringify(value, null, 2)}\n`
 }
 
 function flagLabel(name: string, def: FlagDefinition): string {
   const aliases: string[] = []
 
-  if (def.char)
-    aliases.push(`-${def.char}`)
+  if (def.char) aliases.push(`-${def.char}`)
 
   aliases.push(`--${name}`)
 
@@ -59,14 +57,13 @@ function flagLabel(name: string, def: FlagDefinition): string {
 }
 
 function flagDefault(def: FlagDefinition): string {
-  if (def.default === undefined)
-    return ''
+  if (def.default === undefined) return ''
 
   return ` [default: ${JSON.stringify(def.default)}]`
 }
 
 function renderExamples(ctor: CommandConstructor): string[] {
-  return (ctor.examples ?? []).map(ex => ex.replace('<%= config.bin %>', BIN))
+  return (ctor.examples ?? []).map((ex) => ex.replace('<%= config.bin %>', BIN))
 }
 
 function agentGuideOf(ctor: CommandConstructor): string {
@@ -103,10 +100,13 @@ export function describeCommand(ctor: CommandConstructor, path: string): Command
 function formatHelpText(ctor: CommandConstructor, path: string): string {
   const lines: string[] = []
 
-  if (ctor.description)
-    lines.push(ctor.description, '')
+  if (ctor.description) lines.push(ctor.description, '')
 
-  lines.push('USAGE', `  $ ${BIN} ${path}${ctor.args && Object.keys(ctor.args).length > 0 ? ' [ARGS]' : ''}${ctor.flags && Object.keys(ctor.flags).length > 0 ? ' [FLAGS]' : ''}`, '')
+  lines.push(
+    'USAGE',
+    `  $ ${BIN} ${path}${ctor.args && Object.keys(ctor.args).length > 0 ? ' [ARGS]' : ''}${ctor.flags && Object.keys(ctor.flags).length > 0 ? ' [FLAGS]' : ''}`,
+    '',
+  )
 
   if (ctor.args && Object.keys(ctor.args).length > 0) {
     lines.push('ARGUMENTS')
@@ -141,15 +141,13 @@ function formatHelpText(ctor: CommandConstructor, path: string): string {
 
   const guide = agentGuideOf(ctor)
 
-  if (guide.length > 0)
-    lines.push(guide)
+  if (guide.length > 0) lines.push(guide)
 
   return lines.join('\n')
 }
 
 export function formatHelp(ctor: CommandConstructor, path: string, format = ''): string {
-  if (isStructured(format))
-    return serialize(describeCommand(ctor, path), format)
+  if (isStructured(format)) return serialize(describeCommand(ctor, path), format)
 
   return formatHelpText(ctor, path)
 }
@@ -166,7 +164,9 @@ export function formatTopic(topic: HelpTopic, format = ''): string {
 // top-level overview and namespace drill-in (`difyctl <group> --help`) so both
 // derive from the same full-depth `collectCommands` walk and the canonical
 // space-joined command path.
-export function renderCommandRows(commands: Array<{ command: CommandConstructor, path: string[] }>): string {
+export function renderCommandRows(
+  commands: Array<{ command: CommandConstructor; path: string[] }>,
+): string {
   const rows = commands.map(({ command, path }) => ({
     label: path.join(' '),
     desc: command.description ?? '',
@@ -178,8 +178,7 @@ export function renderCommandRows(commands: Array<{ command: CommandConstructor,
   let prevGroup: string | undefined
 
   for (const r of rows) {
-    if (prevGroup !== undefined && r.group !== prevGroup)
-      lines.push('')
+    if (prevGroup !== undefined && r.group !== prevGroup) lines.push('')
 
     prevGroup = r.group
     lines.push(r.desc ? `  ${r.label.padEnd(width)}${r.desc}` : `  ${r.label}`)
@@ -193,9 +192,15 @@ export function renderCommandRows(commands: Array<{ command: CommandConstructor,
 // same shape as the top-level site map's `commands` — while text renders the
 // aligned rows. Keeps `<group> --help -o json` machine-readable like every
 // other help surface.
-export function formatCommandList(commands: Array<{ command: CommandConstructor, path: string[] }>, format: string): string {
+export function formatCommandList(
+  commands: Array<{ command: CommandConstructor; path: string[] }>,
+  format: string,
+): string {
   if (isStructured(format))
-    return serialize({ commands: commands.map(({ command, path }) => describeCommand(command, path.join(' '))) }, format)
+    return serialize(
+      { commands: commands.map(({ command, path }) => describeCommand(command, path.join(' '))) },
+      format,
+    )
 
   return `COMMANDS\n${renderCommandRows(commands)}\n`
 }
@@ -203,20 +208,16 @@ export function formatCommandList(commands: Array<{ command: CommandConstructor,
 // Curated onboarding examples for the top-level overview (gh-style): the
 // shortest path from zero to a structured app run. Editorial, not an exhaustive
 // dump — per-command examples live in each command's own `--help`.
-const ROOT_EXAMPLES = [
-  `${BIN} auth login`,
-  `${BIN} get app`,
-  `${BIN} run app <id> "hello" -o json`,
-]
+const ROOT_EXAMPLES = [`${BIN} auth login`, `${BIN} get app`, `${BIN} run app <id> "hello" -o json`]
 
 function renderTopicRows(): string {
   const width = TOPICS.reduce((max, t) => Math.max(max, t.name.length), 0) + 2
-  return TOPICS.map(t => `  ${t.name.padEnd(width)}${t.summary}`).join('\n')
+  return TOPICS.map((t) => `  ${t.name.padEnd(width)}${t.summary}`).join('\n')
 }
 
 function renderGlobalFlagRows(): string {
   const width = GLOBAL_FLAG_HELP.reduce((max, f) => Math.max(max, f.label.length), 0) + 2
-  return GLOBAL_FLAG_HELP.map(f => `  ${f.label.padEnd(width)}${f.description}`).join('\n')
+  return GLOBAL_FLAG_HELP.map((f) => `  ${f.label.padEnd(width)}${f.description}`).join('\n')
 }
 
 function formatTopLevelHelpText(tree: CommandTree): string {
@@ -224,12 +225,12 @@ function formatTopLevelHelpText(tree: CommandTree): string {
     `${BIN} — Dify command-line interface`,
     `USAGE\n  ${BIN} <command> <subcommand> [flags]`,
     `COMMANDS\n${renderCommandRows(collectCommands(tree))}`,
-    `EXAMPLES\n${ROOT_EXAMPLES.map(ex => `  $ ${ex}`).join('\n')}`,
+    `EXAMPLES\n${ROOT_EXAMPLES.map((ex) => `  $ ${ex}`).join('\n')}`,
     `GLOBAL FLAGS\n${renderGlobalFlagRows()}`,
     `GUIDES\n${renderTopicRows()}`,
-    `LEARN MORE\n`
-    + `  Use \`${BIN} <command> --help\` for details on a command.\n`
-    + `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} --help -o json\`.`,
+    `LEARN MORE\n` +
+      `  Use \`${BIN} <command> --help\` for details on a command.\n` +
+      `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} --help -o json\`.`,
   ]
 
   return `${sections.join('\n\n')}\n`
@@ -237,12 +238,17 @@ function formatTopLevelHelpText(tree: CommandTree): string {
 
 export function formatTopLevelHelp(tree: CommandTree, format: string): string {
   if (isStructured(format)) {
-    return serialize({
-      bin: BIN,
-      contract: CONTRACT,
-      commands: collectCommands(tree).map(({ command, path }) => describeCommand(command, path.join(' '))),
-      topics: TOPICS.map(t => ({ name: t.name, summary: t.summary })),
-    }, format)
+    return serialize(
+      {
+        bin: BIN,
+        contract: CONTRACT,
+        commands: collectCommands(tree).map(({ command, path }) =>
+          describeCommand(command, path.join(' ')),
+        ),
+        topics: TOPICS.map((t) => ({ name: t.name, summary: t.summary })),
+      },
+      format,
+    )
   }
 
   return formatTopLevelHelpText(tree)

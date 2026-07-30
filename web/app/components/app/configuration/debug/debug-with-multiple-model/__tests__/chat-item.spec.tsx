@@ -1,12 +1,13 @@
 import type { ModelAndParameter } from '../../types'
 import type { ChatConfig, ChatItem as ChatItemType, OnSend } from '@/app/components/base/chat/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import ChatItem from '../chat-item'
 
-const mockUseAppContext = vi.fn()
+const mockConsoleStateReader = vi.fn()
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseProviderContext = vi.fn()
 const mockUseFeatures = vi.fn()
@@ -27,7 +28,9 @@ let capturedChatProps: {
   allToolIcons: Record<string, string | undefined>
 } | null = null
 
-let eventSubscriptionCallback: ((v: { type: string, payload?: Record<string, unknown> }) => void) | null = null
+let eventSubscriptionCallback:
+  | ((v: { type: string; payload?: Record<string, unknown> }) => void)
+  | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
@@ -43,7 +46,8 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 
 vi.mock('../../hooks', () => ({
   useConfigFromDebugContext: () => mockUseConfigFromDebugContext(),
-  useFormattingChangedSubscription: (chatList: ChatItemType[]) => mockUseFormattingChangedSubscription(chatList),
+  useFormattingChangedSubscription: (chatList: ChatItemType[]) =>
+    mockUseFormattingChangedSubscription(chatList),
 }))
 
 vi.mock('@/app/components/base/chat/chat/hooks', () => ({
@@ -61,7 +65,7 @@ vi.mock('@/service/debug', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getLastAnswer: (chatList: ChatItemType[]) => chatList.find(item => item.isAnswer),
+  getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
 }))
 
 vi.mock('@/utils', () => ({
@@ -77,7 +81,19 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         <span data-testid="is-responding">{props?.isResponding ? 'yes' : 'no'}</span>
         <button
           data-testid="send-button"
-          onClick={() => props?.onSend?.('test message', [{ id: 'file-1', name: 'test.txt', size: 100, type: 'text/plain', progress: 100, transferMethod: TransferMethod.local_file, supportFileType: 'document' }])}
+          onClick={() =>
+            props?.onSend?.('test message', [
+              {
+                id: 'file-1',
+                name: 'test.txt',
+                size: 100,
+                type: 'text/plain',
+                progress: 100,
+                transferMethod: TransferMethod.local_file,
+                supportFileType: 'document',
+              },
+            ])
+          }
         >
           Send
         </button>
@@ -90,7 +106,9 @@ vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -99,7 +117,7 @@ const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): Mo
 })
 
 const createDefaultMocks = () => {
-  mockUseAppContext.mockReturnValue({
+  mockConsoleStateReader.mockReturnValue({
     userProfile: { avatar_url: 'http://avatar.url', name: 'Test User' },
   })
 
@@ -160,7 +178,9 @@ const createDefaultMocks = () => {
 
   mockUseEventEmitterContextContext.mockReturnValue({
     eventEmitter: {
-      useSubscription: (callback: (v: { type: string, payload?: Record<string, unknown> }) => void) => {
+      useSubscription: (
+        callback: (v: { type: string; payload?: Record<string, unknown> }) => void,
+      ) => {
         eventSubscriptionCallback = callback
       },
     },
@@ -244,22 +264,24 @@ describe('ChatItem', () => {
     })
 
     it('should use empty opening statement when disabled', () => {
-      mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = {
-          features: {
-            moreLikeThis: { enabled: false },
-            opening: { enabled: false, opening_statement: 'Should not appear' },
-            moderation: { enabled: false },
-            speech2text: { enabled: false },
-            text2speech: { enabled: false },
-            file: { enabled: false },
-            suggested: { enabled: false },
-            citation: { enabled: false },
-            annotationReply: { enabled: false },
-          },
-        }
-        return selector(state)
-      })
+      mockUseFeatures.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) => {
+          const state = {
+            features: {
+              moreLikeThis: { enabled: false },
+              opening: { enabled: false, opening_statement: 'Should not appear' },
+              moderation: { enabled: false },
+              speech2text: { enabled: false },
+              text2speech: { enabled: false },
+              file: { enabled: false },
+              suggested: { enabled: false },
+              citation: { enabled: false },
+              annotationReply: { enabled: false },
+            },
+          }
+          return selector(state)
+        },
+      )
 
       renderComponent()
 
@@ -536,9 +558,7 @@ describe('ChatItem', () => {
         modelConfig: {
           configs: { prompt_variables: [] },
           agentConfig: {
-            tools: [
-              { tool_name: 'tool1', provider_id: 'nonexistent' },
-            ],
+            tools: [{ tool_name: 'tool1', provider_id: 'nonexistent' }],
           },
         },
         appId: 'app-123',
@@ -611,7 +631,6 @@ describe('ChatItem', () => {
         payload: { message: 'Hello', files: [] },
       })
 
-      // Should still call handleSend without crashing
       expect(handleSend).toHaveBeenCalled()
     })
 

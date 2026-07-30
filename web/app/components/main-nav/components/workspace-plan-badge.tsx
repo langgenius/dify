@@ -6,11 +6,8 @@ type WorkspacePlanBadgeProps = {
   plan: Plan
 }
 
-const WorkspacePlanBadge = ({
-  plan,
-}: WorkspacePlanBadgeProps) => {
-  if (plan !== Plan.sandbox)
-    return <PlanBadge plan={plan} />
+const WorkspacePlanBadge = ({ plan }: WorkspacePlanBadgeProps) => {
+  if (plan !== Plan.sandbox) return <PlanBadge plan={plan} />
 
   return (
     <Badge size="xs" variant="dimm" className="shrink-0">

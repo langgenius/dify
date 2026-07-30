@@ -24,14 +24,9 @@ const renderWithProviders = (
 ) => {
   const store = createWorkflowStore({})
 
-  if (options.storeState)
-    store.setState(options.storeState)
+  if (options.storeState) store.setState(options.storeState)
 
-  const result = render(
-    <WorkflowContext value={store}>
-      {ui}
-    </WorkflowContext>,
-  )
+  const result = render(<WorkflowContext value={store}>{ui}</WorkflowContext>)
 
   return {
     ...result,

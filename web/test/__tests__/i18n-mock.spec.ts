@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { createI18nextMock, createReactI18nextMock, withSelectorKey, withSelectorKeyProps } from '../i18n-mock'
+import {
+  createI18nextMock,
+  createReactI18nextMock,
+  withSelectorKey,
+  withSelectorKeyProps,
+} from '../i18n-mock'
 
 describe('createReactI18nextMock', () => {
   describe('Selector Keys', () => {
@@ -9,7 +14,7 @@ describe('createReactI18nextMock', () => {
       const t = withSelectorKey(legacyT, 'app')
 
       // Act
-      const result = t($ => $['accessControlDialog.title'], 'translated')
+      const result = t(($) => $['accessControlDialog.title'], 'translated')
 
       // Assert
       expect(result).toBe('translated:accessControlDialog.title')
@@ -21,7 +26,7 @@ describe('createReactI18nextMock', () => {
       const Trans = withSelectorKeyProps(LegacyTrans)
 
       // Act
-      const result = Trans<'app'>({ i18nKey: $ => $['accessControlDialog.title'] })
+      const result = Trans<'app'>({ i18nKey: ($) => $['accessControlDialog.title'] })
 
       // Assert
       expect(result).toBe('accessControlDialog.title')
@@ -29,7 +34,10 @@ describe('createReactI18nextMock', () => {
 
     it('should preserve additional Trans props and optional i18n keys', () => {
       // Arrange
-      const LegacyTrans = ({ components, i18nKey }: {
+      const LegacyTrans = ({
+        components,
+        i18nKey,
+      }: {
         components: { link: string }
         i18nKey?: string
       }) => `${i18nKey}:${components.link}`
@@ -38,7 +46,7 @@ describe('createReactI18nextMock', () => {
       // Act
       const result = Trans<'app'>({
         components: { link: 'upgrade' },
-        i18nKey: $ => $['accessControlDialog.title'],
+        i18nKey: ($) => $['accessControlDialog.title'],
       })
 
       // Assert
@@ -51,7 +59,7 @@ describe('createReactI18nextMock', () => {
       const { t } = useTranslation('app')
 
       // Act
-      const result = t($ => $['accessControlDialog.title'])
+      const result = t(($) => $['accessControlDialog.title'])
 
       // Assert
       expect(result).toBe('app.accessControlDialog.title')
@@ -63,7 +71,7 @@ describe('createReactI18nextMock', () => {
       const { t } = useTranslation('common')
 
       // Act
-      const result = t($ => $['operation.close'])
+      const result = t(($) => $['operation.close'])
 
       // Assert
       expect(result).toBe('common.operation.close')
@@ -75,7 +83,7 @@ describe('createReactI18nextMock', () => {
       const { t } = useTranslation(['app', 'common'] as const)
 
       // Act
-      const result = t($ => $.common!['operation.close'])
+      const result = t(($) => $.common!['operation.close'])
 
       // Assert
       expect(result).toBe('common.operation.close')
@@ -89,14 +97,14 @@ describe('createReactI18nextMock', () => {
 
       // Act
       const element = Trans<'app'>({
-        i18nKey: $ => $['accessControlDialog.title'],
+        i18nKey: ($) => $['accessControlDialog.title'],
         ns: 'app',
       })
 
       // Assert
       expect(element.props).toMatchObject({
         'data-i18n-key': 'app.accessControlDialog.title',
-        'children': 'Access control',
+        children: 'Access control',
       })
     })
   })
@@ -112,7 +120,7 @@ describe('createReactI18nextMock', () => {
     it('should create a standalone i18next mock without namespace formatting', () => {
       const i18n = createI18nextMock()
 
-      expect(i18n.t($ => $['operation.close'], { ns: 'common' })).toBe('operation.close')
+      expect(i18n.t(($) => $['operation.close'], { ns: 'common' })).toBe('operation.close')
     })
   })
 })

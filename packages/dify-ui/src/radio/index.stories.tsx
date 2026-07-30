@@ -1,18 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import {
-  Radio,
-  RadioControl,
-  RadioGroup,
-  RadioItem,
-  RadioSkeleton,
-} from '.'
-import {
-  Field,
-  FieldDescription,
-  FieldItem,
-  FieldLabel,
-} from '../field'
+import { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton } from '.'
+import { Field, FieldDescription, FieldItem, FieldLabel } from '../field'
 import { Fieldset, FieldsetLegend } from '../fieldset'
 
 const meta = {
@@ -22,7 +11,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: '`@langgenius/dify-ui/radio` exports the complete radio family. `RadioGroup` owns single-selection state, `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
+        component:
+          '`@langgenius/dify-ui/radio` exports the complete radio family. `RadioGroup` owns single-selection state, `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
       },
     },
   },
@@ -38,16 +28,20 @@ function StandardFormRowsDemo() {
   return (
     <Field name="retrievalIndex" className="w-80">
       <Fieldset
-        render={(
-          <RadioGroup value={value} onValueChange={setValue} className="flex-col items-start gap-3" />
-        )}
+        render={
+          <RadioGroup
+            value={value}
+            onValueChange={setValue}
+            className="flex-col items-start gap-3"
+          />
+        }
       >
         <FieldsetLegend>Retrieval index</FieldsetLegend>
         {[
           { value: 'vector', label: 'Vector storage' },
           { value: 'keyword', label: 'Keyword index' },
           { value: 'hybrid', label: 'Hybrid retrieval' },
-        ].map(option => (
+        ].map((option) => (
           <FieldItem key={option.value}>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
               <Radio value={option.value} />
@@ -65,7 +59,8 @@ export const StandardFormRows: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Plain form-row composition. `RadioGroup` owns value, `FieldsetLegend` names the group, `FieldLabel` makes each option label clickable, and `Radio` renders the default dot.',
+        story:
+          'Plain form-row composition. `RadioGroup` owns value, `FieldsetLegend` names the group, `FieldLabel` makes each option label clickable, and `Radio` renders the default dot.',
       },
     },
   },
@@ -77,9 +72,7 @@ function BooleanInlineDemo() {
   return (
     <Field name="streaming" className="w-80">
       <Fieldset
-        render={(
-          <RadioGroup<boolean> value={value} onValueChange={setValue} className="gap-3" />
-        )}
+        render={<RadioGroup<boolean> value={value} onValueChange={setValue} className="gap-3" />}
       >
         <FieldsetLegend>Streaming output</FieldsetLegend>
         <div className="flex items-center gap-3">
@@ -106,7 +99,8 @@ export const BooleanInline: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Compact boolean radio fields. Type `RadioGroup<boolean>` and each child `Radio<boolean>` when the selected value is not a string.',
+        story:
+          'Compact boolean radio fields. Type `RadioGroup<boolean>` and each child `Radio<boolean>` when the selected value is not a string.',
       },
     },
   },
@@ -137,12 +131,16 @@ function OptionCardsDemo() {
   return (
     <Field name="promptMode" className="w-100">
       <Fieldset
-        render={(
-          <RadioGroup<PromptMode> value={value} onValueChange={setValue} className="flex-col items-stretch gap-3" />
-        )}
+        render={
+          <RadioGroup<PromptMode>
+            value={value}
+            onValueChange={setValue}
+            className="flex-col items-stretch gap-3"
+          />
+        }
       >
         <FieldsetLegend>Prompt mode</FieldsetLegend>
-        {options.map(option => (
+        {options.map((option) => (
           <FieldItem key={option.value}>
             <RadioItem<PromptMode>
               value={option.value}
@@ -152,9 +150,7 @@ function OptionCardsDemo() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="system-sm-semibold text-text-primary">
-                    {option.title}
-                  </div>
+                  <div className="system-sm-semibold text-text-primary">{option.title}</div>
                   <div className="mt-1 system-xs-regular text-text-tertiary">
                     {option.description}
                   </div>
@@ -174,7 +170,8 @@ export const OptionCards: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Custom option UIs should make the whole interactive surface the radio item with `RadioItem`. `RadioControl` is the Dify visual dot; the radio semantics stay on `RadioItem`.',
+        story:
+          'Custom option UIs should make the whole interactive surface the radio item with `RadioItem`. `RadioControl` is the Dify visual dot; the radio semantics stay on `RadioItem`.',
       },
     },
   },
@@ -191,21 +188,22 @@ function DynamicFormFieldDemo() {
   return (
     <Field name="generation_mode" className="flex w-80 flex-col gap-2">
       <FieldDescription className="body-xs-regular text-text-tertiary">
-        This mirrors Dify dynamic form fields where radio options are controlled by schema and persisted as a single value.
+        This mirrors Dify dynamic form fields where radio options are controlled by schema and
+        persisted as a single value.
       </FieldDescription>
       <Fieldset
-        render={(
+        render={
           <RadioGroup
             value={selected}
             onValueChange={setSelected}
             className="flex-col items-start gap-2 rounded-lg border border-components-panel-border bg-components-panel-bg p-3"
           />
-        )}
+        }
       >
         <FieldsetLegend className="system-sm-medium text-text-secondary">
           Generation mode
         </FieldsetLegend>
-        {options.map(option => (
+        {options.map((option) => (
           <FieldItem key={option.value}>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
               <Radio value={option.value} />
@@ -223,7 +221,8 @@ export const DynamicFormField: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Matches Dify form composition: Field and Fieldset provide group labeling while `RadioGroup` owns controlled single-selection state.',
+        story:
+          'Matches Dify form composition: Field and Fieldset provide group labeling while `RadioGroup` owns controlled single-selection state.',
       },
     },
   },
@@ -233,7 +232,9 @@ export const StateMatrix: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
       <Field name="radioStates">
-        <Fieldset render={<RadioGroup defaultValue="checked" className="flex-col items-start gap-3" />}>
+        <Fieldset
+          render={<RadioGroup defaultValue="checked" className="flex-col items-start gap-3" />}
+        >
           <FieldsetLegend>Interactive radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
@@ -250,7 +251,15 @@ export const StateMatrix: Story = {
         </Fieldset>
       </Field>
       <Field name="disabledRadioStates">
-        <Fieldset render={<RadioGroup defaultValue="disabled-checked" disabled className="flex-col items-start gap-3" />}>
+        <Fieldset
+          render={
+            <RadioGroup
+              defaultValue="disabled-checked"
+              disabled
+              className="flex-col items-start gap-3"
+            />
+          }
+        >
           <FieldsetLegend>Disabled radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
@@ -275,7 +284,8 @@ export const StateMatrix: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'The visual matrix for Dify radio states. State styling comes from Base UI data attributes such as data-checked and data-disabled.',
+        story:
+          'The visual matrix for Dify radio states. State styling comes from Base UI data attributes such as data-checked and data-disabled.',
       },
     },
   },

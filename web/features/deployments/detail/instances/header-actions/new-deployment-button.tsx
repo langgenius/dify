@@ -23,13 +23,12 @@ export function NewDeploymentButton() {
       className="gap-1.5"
       disabled={!appInstanceId}
       onClick={() => {
-        if (!appInstanceId)
-          return
+        if (!appInstanceId) return
         openDeployDrawer({ appInstanceId })
       }}
     >
       <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
-      {t($ => $['deployTab.newDeployment'])}
+      {t(($) => $['deployTab.newDeployment'])}
     </Button>
   )
 }
@@ -39,8 +38,7 @@ export function NewDeploymentHeaderAction() {
   const hasError = useAtomValue(deploymentEnvironmentDeploymentsIsErrorAtom)
   const rows = useAtomValue(deploymentRuntimeInstanceRowsAtom)
 
-  if (isLoading || hasError || rows.length === 0)
-    return null
+  if (isLoading || hasError || rows.length === 0) return null
 
   return <NewDeploymentButton />
 }

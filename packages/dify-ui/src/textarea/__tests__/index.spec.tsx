@@ -1,21 +1,10 @@
 import type * as React from 'react'
 import { render } from 'vitest-browser-react'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '../../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
 import { Textarea } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-const setTextareaValue = (element: HTMLElement | SVGElement, value: string) => {
-  const textarea = asHTMLElement(element) as HTMLTextAreaElement
-  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
-  valueSetter?.call(textarea, value)
-  textarea.dispatchEvent(new Event('input', { bubbles: true }))
-}
 
 describe('Textarea', () => {
   it('should render a labelled textarea through Base UI Field.Control', async () => {
@@ -55,7 +44,7 @@ describe('Textarea', () => {
     )
 
     const textarea = screen.getByRole('textbox', { name: 'Notes' })
-    setTextareaValue(textarea.element(), 'a')
+    await textarea.fill('a')
 
     expect(onValueChange).toHaveBeenCalledWith('a', expect.any(Object))
     await expect.element(textarea).toHaveValue('')
@@ -83,12 +72,13 @@ describe('Textarea', () => {
       </Form>,
     )
 
-    const saveButton = asHTMLElement(screen.getByRole('button', { name: 'Save' }).element())
-    saveButton.click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     await vi.waitFor(async () => {
       await expect.element(screen.getByText('Summary is required.')).toBeInTheDocument()
-      await expect.element(screen.getByRole('textbox', { name: 'Summary' })).toHaveAttribute('aria-invalid', 'true')
+      await expect
+        .element(screen.getByRole('textbox', { name: 'Summary' }))
+        .toHaveAttribute('aria-invalid', 'true')
     })
     expect(onFormSubmit).not.toHaveBeenCalled()
 
@@ -96,7 +86,12 @@ describe('Textarea', () => {
       <Form aria-label="dataset form" onFormSubmit={onFormSubmit}>
         <Field name="summary">
           <FieldLabel>Summary</FieldLabel>
-          <Textarea key="valid-summary" required minLength={10} defaultValue="Long enough summary" />
+          <Textarea
+            key="valid-summary"
+            required
+            minLength={10}
+            defaultValue="Long enough summary"
+          />
           <FieldError match="valueMissing">Summary is required.</FieldError>
           <FieldError match="tooShort">Summary is too short.</FieldError>
         </Field>
@@ -104,7 +99,7 @@ describe('Textarea', () => {
       </Form>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
     expect(onFormSubmit).toHaveBeenCalledTimes(1)
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({ summary: 'Long enough summary' })
   })
@@ -151,9 +146,9 @@ describe('Textarea', () => {
     )
 
     const profileSummary = screen.getByRole('textbox', { name: 'Profile summary' })
-    expect(
-      asHTMLElement(screen.getByText('Profile summary').element()).getAttribute('for'),
-    ).toBe('profile-summary')
+    expect(asHTMLElement(screen.getByText('Profile summary').element()).getAttribute('for')).toBe(
+      'profile-summary',
+    )
     await expect.element(profileSummary).toHaveAttribute('id', 'profile-summary')
     await expect.element(profileSummary).toHaveAttribute('name', 'profileSummary')
     await expect.element(profileSummary).toHaveAttribute('rows', '6')
@@ -164,11 +159,11 @@ describe('Textarea', () => {
     await expect.element(screen.getByRole('textbox', { name: 'Disabled note' })).toBeDisabled()
 
     asHTMLElement(profileSummary.element()).focus()
-    const saveButton = asHTMLElement(screen.getByRole('button', { name: 'Save' }).element())
-    saveButton.focus()
+    const saveButton = screen.getByRole('button', { name: 'Save' })
+    asHTMLElement(saveButton.element()).focus()
     expect(onBlur).toHaveBeenCalledTimes(1)
 
-    saveButton.click()
+    await saveButton.click()
 
     expect(onFormSubmit).toHaveBeenCalledTimes(1)
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({

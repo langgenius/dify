@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
+import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
-let mockChecklistItems = [
+let mockChecklistItems: ChecklistItem[] = [
   {
     id: 'plugin-1',
     type: BlockEnum.Tool,
@@ -23,6 +25,7 @@ let mockChecklistItems = [
 ]
 
 const mockHandleNodeSelect = vi.fn()
+const mockSetOpenInlineAgentPanelNodeId = vi.fn()
 
 type PopoverProps = {
   children: ReactNode
@@ -40,19 +43,34 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => [],
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-checklist', () => ({
   useChecklist: () => mockChecklistItems,
+}))
+
+vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),
 }))
 
+vi.mock('../../../store', () => ({
+  useStore: (
+    selector: (state: {
+      setOpenInlineAgentPanelNodeId: typeof mockSetOpenInlineAgentPanelNodeId
+    }) => unknown,
+  ) =>
+    selector({
+      setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
+    }),
+}))
+
 vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) => selector({
-    configsMap: {
-      flowType: 'workflow',
-    },
-  }),
+  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) =>
+    selector({
+      configsMap: {
+        flowType: 'workflow',
+      },
+    }),
 }))
 
 vi.mock('@langgenius/dify-ui/popover', () => ({
@@ -62,17 +80,31 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   },
   PopoverTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
   PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTitle: ({ children, className }: { children: ReactNode, className?: string }) => <h2 className={className}>{children}</h2>,
-  PopoverDescription: ({ children, className }: { children: ReactNode, className?: string }) => <p className={className}>{children}</p>,
-  PopoverClose: ({ children, className }: { children: ReactNode, className?: string }) => <button className={className}>{children}</button>,
+  PopoverTitle: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <h2 className={className}>{children}</h2>
+  ),
+  PopoverDescription: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <p className={className}>{children}</p>
+  ),
+  PopoverClose: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <button className={className}>{children}</button>
+  ),
 }))
 
 vi.mock('../plugin-group', () => ({
-  ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => <div data-testid="plugin-group">{items.map(item => item.title).join(',')}</div>,
+  ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => (
+    <div data-testid="plugin-group">{items.map((item) => item.title).join(',')}</div>
+  ),
 }))
 
 vi.mock('../node-group', () => ({
-  ChecklistNodeGroup: ({ item, onItemClick }: { item: { title: string }, onItemClick: (item: { title: string }) => void }) => (
+  ChecklistNodeGroup: ({
+    item,
+    onItemClick,
+  }: {
+    item: { title: string }
+    onItemClick: (item: { title: string }) => void
+  }) => (
     <button data-testid={`node-group-${item.title}`} onClick={() => onItemClick(item)}>
       {item.title}
     </button>
@@ -111,6 +143,7 @@ describe('WorkflowChecklist', () => {
     fireEvent.click(screen.getByTestId('node-group-Broken Node'))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(mockSetOpenInlineAgentPanelNodeId).not.toHaveBeenCalled()
   })
 
   it('should use the custom item click handler when provided', () => {
@@ -121,6 +154,22 @@ describe('WorkflowChecklist', () => {
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
+  })
+
+  it('should open the inline agent editor after selecting an inline agent reference warning', async () => {
+    const user = userEvent.setup()
+    mockChecklistItems[1] = {
+      ...mockChecklistItems[1]!,
+      type: BlockEnum.AgentV2,
+      title: 'Inline Agent',
+      openInlineAgentPanel: true,
+    }
+    render(<WorkflowChecklist disabled={false} />)
+
+    await user.click(screen.getByTestId('node-group-Inline Agent'))
+
+    expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('node-1')
   })
 
   it('should render the resolved state when there are no checklist warnings', () => {

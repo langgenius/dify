@@ -15,18 +15,29 @@ const getNodeRuntimeState = (node?: { data?: unknown }): NodeRuntimeState =>
 
 const createFlowNodes = () => [
   createNode({ id: 'n1', data: { _runningStatus: NodeRunningStatus.Running, _waitingRun: true } }),
-  createNode({ id: 'n2', position: { x: 100, y: 0 }, data: { _runningStatus: NodeRunningStatus.Succeeded, _waitingRun: false } }),
-  createNode({ id: 'n3', position: { x: 200, y: 0 }, data: { _runningStatus: NodeRunningStatus.Failed, _waitingRun: true } }),
+  createNode({
+    id: 'n2',
+    position: { x: 100, y: 0 },
+    data: { _runningStatus: NodeRunningStatus.Succeeded, _waitingRun: false },
+  }),
+  createNode({
+    id: 'n3',
+    position: { x: 200, y: 0 },
+    data: { _runningStatus: NodeRunningStatus.Failed, _waitingRun: true },
+  }),
 ]
 
 const renderNodesInteractionsHook = () =>
-  renderWorkflowFlowHook(() => ({
-    ...useNodesInteractionsWithoutSync(),
-    nodes: useNodes(),
-  }), {
-    nodes: createFlowNodes(),
-    edges: [],
-  })
+  renderWorkflowFlowHook(
+    () => ({
+      ...useNodesInteractionsWithoutSync(),
+      nodes: useNodes(),
+    }),
+    {
+      nodes: createFlowNodes(),
+      edges: [],
+    },
+  )
 
 describe('useNodesInteractionsWithoutSync', () => {
   it('clears _runningStatus and _waitingRun on all nodes', async () => {
@@ -53,9 +64,9 @@ describe('useNodesInteractionsWithoutSync', () => {
     })
 
     await waitFor(() => {
-      const n1 = result.current.nodes.find(node => node.id === 'n1')
-      const n2 = result.current.nodes.find(node => node.id === 'n2')
-      const n3 = result.current.nodes.find(node => node.id === 'n3')
+      const n1 = result.current.nodes.find((node) => node.id === 'n1')
+      const n2 = result.current.nodes.find((node) => node.id === 'n2')
+      const n3 = result.current.nodes.find((node) => node.id === 'n3')
 
       expect(getNodeRuntimeState(n1)._runningStatus).toBe(NodeRunningStatus.Running)
       expect(getNodeRuntimeState(n2)._runningStatus).toBeUndefined()
@@ -71,8 +82,12 @@ describe('useNodesInteractionsWithoutSync', () => {
     })
 
     await waitFor(() => {
-      expect(getNodeRuntimeState(result.current.nodes.find(node => node.id === 'n1'))._waitingRun).toBe(true)
-      expect(getNodeRuntimeState(result.current.nodes.find(node => node.id === 'n3'))._waitingRun).toBe(true)
+      expect(
+        getNodeRuntimeState(result.current.nodes.find((node) => node.id === 'n1'))._waitingRun,
+      ).toBe(true)
+      expect(
+        getNodeRuntimeState(result.current.nodes.find((node) => node.id === 'n3'))._waitingRun,
+      ).toBe(true)
     })
   })
 
@@ -84,7 +99,7 @@ describe('useNodesInteractionsWithoutSync', () => {
     })
 
     await waitFor(() => {
-      const n2 = result.current.nodes.find(node => node.id === 'n2')
+      const n2 = result.current.nodes.find((node) => node.id === 'n2')
       expect(getNodeRuntimeState(n2)._runningStatus).toBeUndefined()
       expect(getNodeRuntimeState(n2)._waitingRun).toBe(false)
     })
@@ -98,7 +113,7 @@ describe('useNodesInteractionsWithoutSync', () => {
     })
 
     await waitFor(() => {
-      const n1 = result.current.nodes.find(node => node.id === 'n1')
+      const n1 = result.current.nodes.find((node) => node.id === 'n1')
       expect(getNodeRuntimeState(n1)._runningStatus).toBe(NodeRunningStatus.Running)
       expect(getNodeRuntimeState(n1)._waitingRun).toBe(true)
     })
@@ -112,7 +127,7 @@ describe('useNodesInteractionsWithoutSync', () => {
     })
 
     await waitFor(() => {
-      const n1 = result.current.nodes.find(node => node.id === 'n1')
+      const n1 = result.current.nodes.find((node) => node.id === 'n1')
       expect(getNodeRuntimeState(n1)._runningStatus).toBe(NodeRunningStatus.Running)
     })
   })

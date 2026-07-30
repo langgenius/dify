@@ -866,7 +866,7 @@ class TestVectorDefaultAttributes(unittest.TestCase):
         mock_dataset = MagicMock()
         mock_dataset.index_struct_dict = None
 
-        vector = Vector(dataset=mock_dataset)
+        vector = Vector(dataset=mock_dataset, session=MagicMock())
 
         assert "doc_type" in vector._attributes, f"doc_type should be in default attributes, got: {vector._attributes}"
 

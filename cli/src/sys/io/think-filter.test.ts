@@ -1,7 +1,12 @@
 import { Buffer } from 'node:buffer'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { extractThinkBlocks, filterThinkInOutputs, stripThinkBlocks, ThinkChunkFilter } from './think-filter'
+import {
+  extractThinkBlocks,
+  filterThinkInOutputs,
+  stripThinkBlocks,
+  ThinkChunkFilter,
+} from './think-filter'
 
 function captures() {
   const out = new PassThrough()
@@ -85,16 +90,19 @@ describe('filterThinkInOutputs', () => {
   })
 
   it('multiple string fields — thinking joined with separator', () => {
-    const r = filterThinkInOutputs(
-      { a: '<think>x</think>\nfoo', b: '<think>y</think>\nbar' },
-      true,
-    )
+    const r = filterThinkInOutputs({ a: '<think>x</think>\nfoo', b: '<think>y</think>\nbar' }, true)
     expect(r.outputs).toEqual({ a: 'foo', b: 'bar' })
     expect(r.thinking).toBe('<think>\nx\n</think>\n---\n<think>\ny\n</think>')
   })
 
   it('non-string values pass through untouched', () => {
-    const outputs = { n: 42, flag: true, nested: { k: '<think>v</think>\nx' }, arr: ['a'], nil: null }
+    const outputs = {
+      n: 42,
+      flag: true,
+      nested: { k: '<think>v</think>\nx' },
+      arr: ['a'],
+      nil: null,
+    }
     const r = filterThinkInOutputs(outputs, true)
     expect(r.outputs).toEqual(outputs)
     expect(r.thinking).toBe('')

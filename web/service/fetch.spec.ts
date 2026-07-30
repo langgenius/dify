@@ -38,8 +38,7 @@ describe('base', () => {
       let caughtError: unknown
       try {
         await base('/login')
-      }
-      catch (error) {
+      } catch (error) {
         caughtError = error
       }
 

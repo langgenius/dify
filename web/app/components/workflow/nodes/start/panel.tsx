@@ -13,10 +13,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.start'
 
-const Panel: FC<NodePanelProps<StartNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const {
     readOnly,
@@ -34,8 +31,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
   const handleAddVarConfirm = (payload: InputVar) => {
     const isValid = handleAddVariable(payload)
-    if (!isValid)
-      return
+    if (!isValid) return
     hideAddVarModal()
   }
 
@@ -43,20 +39,18 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-2">
         <Field
-          title={t($ => $[`${i18nPrefix}.inputField`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.inputField`], { ns: 'workflow' })}
           operations={
-            !readOnly
-              ? (
-                  <button
-                    type="button"
-                    aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $[`${i18nPrefix}.inputField`], { ns: 'workflow' })}`}
-                    className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                    onClick={showAddVarModal}
-                  >
-                    <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-                  </button>
-                )
-              : undefined
+            !readOnly ? (
+              <button
+                type="button"
+                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.inputField`], { ns: 'workflow' })}`}
+                className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={showAddVarModal}
+              >
+                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+              </button>
+            ) : undefined
           }
         >
           <>
@@ -68,33 +62,31 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
             <div className="mt-1 space-y-1">
               <Split className="my-2" />
-              {
-                isChatMode && (
-                  <VarItem
-                    readonly
-                    payload={{
+              {isChatMode && (
+                <VarItem
+                  readonly
+                  payload={
+                    {
                       variable: 'userinput.query',
-                    } as any}
-                    rightContent={(
-                      <div className="text-xs font-normal text-text-tertiary">
-                        String
-                      </div>
-                    )}
-                  />
-                )
-              }
+                    } as any
+                  }
+                  rightContent={
+                    <div className="text-xs font-normal text-text-tertiary">String</div>
+                  }
+                />
+              )}
 
               <VarItem
                 readonly
                 showLegacyBadge={!isChatMode}
-                payload={{
-                  variable: 'userinput.files',
-                } as any}
-                rightContent={(
-                  <div className="text-xs font-normal text-text-tertiary">
-                    Array[File]
-                  </div>
-                )}
+                payload={
+                  {
+                    variable: 'userinput.files',
+                  } as any
+                }
+                rightContent={
+                  <div className="text-xs font-normal text-text-tertiary">Array[File]</div>
+                }
               />
             </div>
           </>
@@ -108,7 +100,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}
-          varKeys={inputs.variables.map(v => v.variable)}
+          varKeys={inputs.variables.map((v) => v.variable)}
         />
       )}
 

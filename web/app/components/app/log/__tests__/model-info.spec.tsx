@@ -15,13 +15,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { provider: unknown, modelName: string }) => (
-    <div data-testid="model-icon" data-model-name={modelName}>ModelIcon</div>
+  default: ({ modelName }: { provider: unknown; modelName: string }) => (
+    <div data-testid="model-icon" data-model-name={modelName}>
+      ModelIcon
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-name', () => ({
-  default: ({ modelItem, showMode }: { modelItem: { model: string }, showMode: boolean }) => (
+  default: ({ modelItem, showMode }: { modelItem: { model: string }; showMode: boolean }) => (
     <div data-testid="model-name" data-show-mode={showMode ? 'true' : 'false'}>
       {modelItem?.model}
     </div>
@@ -30,17 +32,34 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-name'
 
 vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')
-  const PopoverContext = React.createContext<{ open: boolean, onOpenChange?: (open: boolean) => void } | null>(null)
+  const PopoverContext = React.createContext<{
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+  } | null>(null)
 
   return {
-    Popover: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    Popover: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <PopoverContext.Provider value={{ open, onOpenChange }}>
         <div data-testid="popover-root" data-open={open ? 'true' : 'false'}>
           {children}
         </div>
       </PopoverContext.Provider>
     ),
-    PopoverTrigger: ({ children, render }: { children?: React.ReactNode, render?: React.ReactNode }) => {
+    PopoverTrigger: ({
+      children,
+      render,
+    }: {
+      children?: React.ReactNode
+      render?: React.ReactNode
+    }) => {
       const context = React.useContext(PopoverContext)
       const content = render ?? children
       const handleClick = () => {
@@ -52,12 +71,15 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
         return React.cloneElement(element, { onClick: handleClick })
       }
 
-      return <button type="button" data-testid="popover-trigger" onClick={handleClick}>{content}</button>
+      return (
+        <button type="button" data-testid="popover-trigger" onClick={handleClick}>
+          {content}
+        </button>
+      )
     },
     PopoverContent: ({ children }: { children: React.ReactNode }) => {
       const context = React.useContext(PopoverContext)
-      if (!context?.open)
-        return null
+      if (!context?.open) return null
 
       return <div data-testid="popover-content">{children}</div>
     },

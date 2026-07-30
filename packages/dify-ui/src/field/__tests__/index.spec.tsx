@@ -3,14 +3,7 @@ import { Checkbox } from '../../checkbox'
 import { CheckboxGroup } from '../../checkbox-group'
 import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { Form } from '../../form'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldItem,
-  FieldLabel,
-} from '../index'
+import { Field, FieldControl, FieldDescription, FieldError, FieldItem, FieldLabel } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -36,9 +29,11 @@ describe('Field primitives', () => {
     await expect.element(input).toHaveAccessibleDescription('Used for account notifications.')
     expect(label.tagName).toBe('LABEL')
     expect(label).toHaveAttribute('for', asHTMLElement(input.element()).id)
-    expect(asHTMLElement(input.element()).getAttribute('aria-describedby')?.split(' ')).toContain(description.id)
+    expect(asHTMLElement(input.element()).getAttribute('aria-describedby')?.split(' ')).toContain(
+      description.id,
+    )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     await vi.waitFor(async () => {
       const error = asHTMLElement(screen.getByText('Email is required.').element())
@@ -63,7 +58,7 @@ describe('Field primitives', () => {
       </Form>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     expect(onFormSubmit).toHaveBeenCalledTimes(1)
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({ apiKey: 'sk-test' })
@@ -86,7 +81,9 @@ describe('Field primitives', () => {
     )
 
     await expect.element(screen.getByRole('group', { name: 'Features' })).toBeInTheDocument()
-    await expect.element(screen.getByRole('checkbox', { name: 'Search' })).toHaveAttribute('aria-checked', 'true')
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Search' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
   it('should expose the read-only state', async () => {

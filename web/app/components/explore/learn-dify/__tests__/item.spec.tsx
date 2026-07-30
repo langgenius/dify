@@ -1,22 +1,15 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { App } from '@/models/explore'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import LearnDifyItem from '../item'
 
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
+let deploymentEdition: DeploymentEdition = 'CLOUD'
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -53,37 +46,23 @@ describe('LearnDifyItem', () => {
   const mockTrackEvent = vi.mocked(trackEvent)
 
   beforeEach(() => {
-    mockConfig.isCloudEdition = true
+    deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
   })
 
   it('should not render hover action buttons', () => {
-    render(
-      <LearnDifyItem
-        canCreate
-        item={createApp()}
-        onCreate={vi.fn()}
-        onTry={vi.fn()}
-      />,
-    )
+    render(<LearnDifyItem canCreate item={createApp()} onCreate={vi.fn()} onTry={vi.fn()} />)
 
     expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
     expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
   })
 
   it('should create app when card is clicked outside cloud edition', () => {
-    mockConfig.isCloudEdition = false
+    deploymentEdition = 'COMMUNITY'
     const app = createApp()
     const onCreate = vi.fn()
 
-    render(
-      <LearnDifyItem
-        canCreate
-        item={app}
-        onCreate={onCreate}
-        onTry={vi.fn()}
-      />,
-    )
+    render(<LearnDifyItem canCreate item={app} onCreate={onCreate} onTry={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Learn Dify App' }))
 
@@ -92,15 +71,9 @@ describe('LearnDifyItem', () => {
   })
 
   it('should not make the card clickable outside cloud edition when create is unavailable', () => {
-    mockConfig.isCloudEdition = false
+    deploymentEdition = 'COMMUNITY'
 
-    render(
-      <LearnDifyItem
-        canCreate={false}
-        item={createApp()}
-        onTry={vi.fn()}
-      />,
-    )
+    render(<LearnDifyItem canCreate={false} item={createApp()} onTry={vi.fn()} />)
 
     expect(screen.queryByRole('button', { name: 'Learn Dify App' })).not.toBeInTheDocument()
   })
@@ -109,13 +82,7 @@ describe('LearnDifyItem', () => {
     const onTry = vi.fn()
     const app = createApp()
 
-    render(
-      <LearnDifyItem
-        canCreate={false}
-        item={app}
-        onTry={onTry}
-      />,
-    )
+    render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Learn Dify App' }))
 
@@ -133,13 +100,7 @@ describe('LearnDifyItem', () => {
     const onTry = vi.fn()
     const app = createApp()
 
-    render(
-      <LearnDifyItem
-        canCreate={false}
-        item={app}
-        onTry={onTry}
-      />,
-    )
+    render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
 
     fireEvent.keyDown(screen.getByRole('button', { name: 'Learn Dify App' }), { key: 'Enter' })
 

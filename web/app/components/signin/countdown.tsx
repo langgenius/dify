@@ -12,8 +12,7 @@ type CountdownProps = {
 export default function Countdown({ onResend }: CountdownProps) {
   const isClient = useIsClient()
 
-  if (!isClient)
-    return <CountdownFallback />
+  if (!isClient) return <CountdownFallback />
 
   return (
     <Suspense fallback={<CountdownFallback />}>
@@ -27,7 +26,7 @@ function CountdownFallback() {
 
   return (
     <p className="system-xs-regular text-text-tertiary">
-      <span>{t($ => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
+      <span>{t(($) => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
     </p>
   )
 }
@@ -57,24 +56,17 @@ function CountdownContent({ onResend }: CountdownProps) {
 
   return (
     <p className="system-xs-regular text-text-tertiary">
-      <span>{t($ => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
-      {time > 0 && (
-        <span>
-          {Math.round(time / 1000)}
-          s
-        </span>
+      <span>{t(($) => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
+      {time > 0 && <span>{Math.round(time / 1000)}s</span>}
+      {time <= 0 && (
+        <button
+          type="button"
+          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={resend}
+        >
+          {t(($) => $['checkCode.resend'], { ns: 'login' })}
+        </button>
       )}
-      {
-        time <= 0 && (
-          <button
-            type="button"
-            className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={resend}
-          >
-            {t($ => $['checkCode.resend'], { ns: 'login' })}
-          </button>
-        )
-      }
     </p>
   )
 }

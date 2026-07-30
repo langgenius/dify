@@ -31,13 +31,15 @@ describe('TestApi', () => {
     summary: 'summary',
     method: 'GET',
     server_url: 'https://api.example.com',
-    parameters: [{
-      name: 'limit',
-      label: {
-        en_US: 'Limit',
-        zh_Hans: '限制',
-      },
-    } as CustomParamSchema['parameters'][0]],
+    parameters: [
+      {
+        name: 'limit',
+        label: {
+          en_US: 'Limit',
+          zh_Hans: '限制',
+        },
+      } as CustomParamSchema['parameters'][0],
+    ],
   }
 
   const mockOnHide = vi.fn()
@@ -64,14 +66,6 @@ describe('TestApi', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      await act(async () => {
-        renderTestApi()
-      })
-
-      expect(screen.getByText('tools.test.testResult'))!.toBeInTheDocument()
-    })
-
     it('should display tool name in the title', async () => {
       await act(async () => {
         renderTestApi()
@@ -221,7 +215,9 @@ describe('TestApi', () => {
 
       // Check that the auth method display shows the correct type
       // Check that the auth method display shows the correct type
-      expect(screen.getByText('tools.createTool.authMethod.types.api_key_header'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('tools.createTool.authMethod.types.api_key_header'),
+      )!.toBeInTheDocument()
     })
   })
 

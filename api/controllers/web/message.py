@@ -26,7 +26,7 @@ from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
-from fields.conversation_fields import ResultResponse
+from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
@@ -86,11 +86,15 @@ class MessageListApi(WebApiResource):
         query = MessageListQuery.model_validate(raw_args)
 
         try:
+            session = db.session()
             pagination = MessageService.pagination_by_first_id(
-                app_model, end_user, query.conversation_id, query.first_id, query.limit, session=db.session()
+                app_model, end_user, query.conversation_id, query.first_id, query.limit, session=session
             )
             adapter = TypeAdapter(WebMessageListItem)
-            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+            items = [
+                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
+                for message in pagination.data
+            ]
             return WebMessageInfiniteScrollPagination(
                 limit=pagination.limit,
                 has_more=pagination.has_more,

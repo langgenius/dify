@@ -99,6 +99,7 @@ class AgentRosterResponse(ResponseModel):
     archived_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
+    reference_count: int | None = None
     published_reference_count: int = 0
     published_node_reference_count: int = 0
     published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
@@ -382,6 +383,7 @@ class AgentAppComposerResponse(ResponseModel):
     variant: Literal[ComposerVariant.AGENT_APP]
     agent: AgentComposerAgentResponse
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool
     draft: AgentConfigDraftSummaryResponse | None = None
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]

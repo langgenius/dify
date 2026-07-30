@@ -20,7 +20,7 @@ describe('i18n selector configuration', () => {
           },
         },
       })
-      const memberKey: SelectorParam<'app'> = $ => $['accessControlDialog.members']
+      const memberKey: SelectorParam<'app'> = ($) => $['accessControlDialog.members']
 
       // Act
       const singular = instance.t(memberKey, { count: 1 })

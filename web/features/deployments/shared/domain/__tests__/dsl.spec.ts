@@ -5,7 +5,9 @@ describe('deployment DSL domain', () => {
     it('should preserve Unicode content through base64 encoding', () => {
       const content = 'app:\n  name: 部署 🚀'
 
-      const decoded = new TextDecoder().decode(Uint8Array.from(atob(encodeDslContent(content)), character => character.charCodeAt(0)))
+      const decoded = new TextDecoder().decode(
+        Uint8Array.from(atob(encodeDslContent(content)), (character) => character.charCodeAt(0)),
+      )
 
       expect(decoded).toBe(content)
     })
@@ -44,11 +46,13 @@ workflow:
       value: second
 `
 
-      expect(dslEnvVarSlots(content)).toEqual([{
-        key: 'REGION',
-        defaultValue: 'first',
-        hasDefaultValue: true,
-      }])
+      expect(dslEnvVarSlots(content)).toEqual([
+        {
+          key: 'REGION',
+          defaultValue: 'first',
+          hasDefaultValue: true,
+        },
+      ])
     })
 
     it('should omit masked secret defaults', () => {
@@ -60,10 +64,12 @@ workflow:
       value_type: secret
 `
 
-      expect(dslEnvVarSlots(content)).toEqual([{
-        key: 'API_KEY',
-        valueType: 'secret',
-      }])
+      expect(dslEnvVarSlots(content)).toEqual([
+        {
+          key: 'API_KEY',
+          valueType: 'secret',
+        },
+      ])
     })
 
     it('should normalize unquoted timestamp defaults', () => {
@@ -74,11 +80,13 @@ workflow:
       value: 2026-07-10T12:34:56Z
 `
 
-      expect(dslEnvVarSlots(content)).toEqual([{
-        key: 'START_AT',
-        defaultValue: '"2026-07-10T12:34:56.000Z"',
-        hasDefaultValue: true,
-      }])
+      expect(dslEnvVarSlots(content)).toEqual([
+        {
+          key: 'START_AT',
+          defaultValue: '"2026-07-10T12:34:56.000Z"',
+          hasDefaultValue: true,
+        },
+      ])
     })
 
     it('should apply values inherited through YAML merge keys', () => {
@@ -93,13 +101,15 @@ workflow:
       name: REGION
 `
 
-      expect(dslEnvVarSlots(content)).toEqual([{
-        key: 'REGION',
-        description: 'Deployment region',
-        defaultValue: 'ap-southeast-1',
-        hasDefaultValue: true,
-        valueType: 'string',
-      }])
+      expect(dslEnvVarSlots(content)).toEqual([
+        {
+          key: 'REGION',
+          description: 'Deployment region',
+          defaultValue: 'ap-southeast-1',
+          hasDefaultValue: true,
+          valueType: 'string',
+        },
+      ])
     })
   })
 })

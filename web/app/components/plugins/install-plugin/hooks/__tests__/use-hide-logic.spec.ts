@@ -22,12 +22,6 @@ describe('useHideLogic', () => {
     vi.clearAllMocks()
   })
 
-  it('should return initial state with modalClassName', () => {
-    const { result } = renderHook(() => useHideLogic(mockOnClose))
-
-    expect(result.current.modalClassName).toBe('test-modal-class')
-  })
-
   it('should call onClose directly when not installing', () => {
     const { result } = renderHook(() => useHideLogic(mockOnClose))
 

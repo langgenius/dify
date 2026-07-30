@@ -14,9 +14,8 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
 const NAME_SPACE = 'common'
@@ -29,21 +28,24 @@ export const commonQueryKeys = {
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
-  retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
-  invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
-    NAME_SPACE,
-    'invitation-check',
-    params?.workspace_id ?? '',
-    params?.email ?? '',
-    params?.token ?? '',
-  ] as const,
+  invitationCheck: (params?: { workspace_id?: string; email?: string; token?: string }) =>
+    [
+      NAME_SPACE,
+      'invitation-check',
+      params?.workspace_id ?? '',
+      params?.email ?? '',
+      params?.token ?? '',
+    ] as const,
   notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
-  modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
-  langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'langgenius-version', currentVersion] as const,
-  forgotPasswordValidity: (token?: string | null) => [NAME_SPACE, 'forgot-password-validity', token] as const,
+  modelParameterRules: (provider?: string, model?: string) =>
+    [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
+  langGeniusVersion: (currentVersion?: string | null) =>
+    [NAME_SPACE, 'langgenius-version', currentVersion] as const,
+  forgotPasswordValidity: (token?: string | null) =>
+    [NAME_SPACE, 'forgot-password-validity', token] as const,
   dataSourceIntegrates: [NAME_SPACE, 'data-source-integrates'] as const,
 }
 
@@ -58,36 +60,33 @@ export const useGenerateStructuredOutputRules = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'generate-structured-output-rules'],
     mutationFn: (body: StructuredOutputRulesRequestBody) => {
-      return post<StructuredOutputRulesResponse>(
-        '/rule-structured-output-generate',
-        { body },
-      )
+      return post<StructuredOutputRulesResponse>('/rule-structured-output-generate', { body })
     },
   })
 }
 
-export type MailSendResponse = { data: string, result: string }
+export type MailSendResponse = { data: string; result: string }
 export const useSendMail = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-send'],
-    mutationFn: (body: { email: string, language: string }) => {
+    mutationFn: (body: { email: string; language: string }) => {
       return post<MailSendResponse>('/email-register/send-email', { body })
     },
   })
 }
 
-export type MailValidityResponse = { is_valid: boolean, token: string }
+export type MailValidityResponse = { is_valid: boolean; token: string }
 
 export const useMailValidity = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-validity'],
-    mutationFn: (body: { email: string, code: string, token: string }) => {
+    mutationFn: (body: { email: string; code: string; token: string }) => {
       return post<MailValidityResponse>('/email-register/validity', { body })
     },
   })
 }
 
-export type MailRegisterResponse = { result: string, data: Record<string, never> }
+export type MailRegisterResponse = { result: string; data: Record<string, never> }
 
 export const useMailRegister = () => {
   return useMutation({
@@ -118,11 +117,12 @@ type MemberResponse = {
 export const useMembers = (language?: AccessControlTemplateLanguage) => {
   return useQuery<MemberResponse>({
     queryKey: [...commonQueryKeys.members, language],
-    queryFn: () => get<MemberResponse>('/workspaces/current/members', {
-      params: {
-        language,
-      },
-    }),
+    queryFn: () =>
+      get<MemberResponse>('/workspaces/current/members', {
+        params: {
+          language,
+        },
+      }),
   })
 }
 
@@ -170,7 +170,7 @@ export const useLogout = () => {
   })
 }
 
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string, token: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string; token: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -209,13 +209,6 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
   })
 }
 
-export const useSupportRetrievalMethods = () => {
-  return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
-    queryKey: commonQueryKeys.retrievalMethods,
-    queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
-  })
-}
-
 export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
@@ -223,14 +216,24 @@ export const useCodeBasedExtensions = (module: string) => {
   })
 }
 
-export const useInvitationCheck = (params?: { workspace_id?: string, email?: string, token?: string }, enabled?: boolean) => {
+export const useInvitationCheck = (
+  params?: { workspace_id?: string; email?: string; token?: string },
+  enabled?: boolean,
+) => {
   return useQuery({
     queryKey: commonQueryKeys.invitationCheck(params),
-    queryFn: () => get<{
-      is_valid: boolean
-      data: { workspace_name: string, email: string, workspace_id: string, account_status?: string, requires_setup?: boolean }
-      result: string
-    }>('/activate/check', { params }),
+    queryFn: () =>
+      get<{
+        is_valid: boolean
+        data: {
+          workspace_name: string
+          email: string
+          workspace_id: string
+          account_status?: string
+          requires_setup?: boolean
+        }
+        result: string
+      }>('/activate/check', { params }),
     enabled: enabled ?? !!params?.token,
     retry: false,
   })
@@ -239,7 +242,8 @@ export const useInvitationCheck = (params?: { workspace_id?: string, email?: str
 export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
   return useQuery({
     queryKey: commonQueryKeys.notionBinding(code),
-    queryFn: () => get<{ result: string }>('/oauth/data-source/binding/notion', { params: { code } }),
+    queryFn: () =>
+      get<{ result: string }>('/oauth/data-source/binding/notion', { params: { code } }),
     enabled: !!code && (enabled ?? true),
   })
 }
@@ -247,7 +251,11 @@ export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
 export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
   return useQuery<{ data: ModelParameterRule[] }>({
     queryKey: commonQueryKeys.modelParameterRules(provider, model),
-    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model }, silent: true }),
+    queryFn: () =>
+      get<{ data: ModelParameterRule[] }>(
+        `/workspaces/current/model-providers/${provider}/models/parameter-rules`,
+        { params: { model }, silent: true },
+      ),
     enabled: !!provider && !!model && (enabled ?? true),
   })
 }

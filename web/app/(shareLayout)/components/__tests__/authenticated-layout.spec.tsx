@@ -67,7 +67,8 @@ const userCanAccessAppQueryState: QueryState<UserCanAccessApp> = {
 }
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -126,11 +127,12 @@ const resetQueryStates = () => {
   userCanAccessAppQueryState.isFetching = false
 }
 
-const renderLayout = () => render(
-  <AuthenticatedLayout>
-    <div>Workflow form content</div>
-  </AuthenticatedLayout>,
-)
+const renderLayout = () =>
+  render(
+    <AuthenticatedLayout>
+      <div>Workflow form content</div>
+    </AuthenticatedLayout>,
+  )
 
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {

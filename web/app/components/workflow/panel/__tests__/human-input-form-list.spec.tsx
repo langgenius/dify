@@ -1,9 +1,13 @@
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
-import { DeliveryMethodType, UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import {
+  DeliveryMethodType,
+  UserActionButtonType,
+} from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import HumanInputFormList from '../human-input-form-list'
 
 const mockNodes: Array<{
@@ -26,20 +30,24 @@ const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInput
   node_id: 'human-node-1',
   node_title: 'Need Approval',
   form_content: 'Before {{#$output.reason#}} after',
-  inputs: [{
-    type: InputVarType.paragraph,
-    output_variable_name: 'reason',
-    default: {
-      selector: [],
-      type: 'constant',
-      value: 'prefill',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'reason',
+      default: {
+        selector: [],
+        type: 'constant',
+        value: 'prefill',
+      },
     },
-  }],
-  actions: [{
-    id: 'approve',
-    title: 'Approve',
-    button_style: UserActionButtonType.Primary,
-  }],
+  ],
+  actions: [
+    {
+      id: 'approve',
+      title: 'Approve',
+      button_style: UserActionButtonType.Primary,
+    },
+  ],
   form_token: 'token-1',
   resolved_default_values: {},
   display_in_ui: true,
@@ -61,20 +69,22 @@ describe('HumanInputFormList', () => {
         id: 'human-node-1',
         type: CUSTOM_NODE,
         data: {
-          delivery_methods: [{
-            id: 'email-1',
-            type: DeliveryMethodType.Email,
-            enabled: true,
-            config: {
-              recipients: {
-                whole_workspace: false,
-                items: [],
+          delivery_methods: [
+            {
+              id: 'email-1',
+              type: DeliveryMethodType.Email,
+              enabled: true,
+              config: {
+                recipients: {
+                  whole_workspace: false,
+                  items: [],
+                },
+                subject: 'Need approval',
+                body: 'Please review',
+                debug_mode: true,
               },
-              subject: 'Need approval',
-              body: 'Please review',
-              debug_mode: true,
             },
-          }],
+          ],
         },
       },
       {
@@ -128,23 +138,13 @@ describe('HumanInputFormList', () => {
       },
     })
 
-    render(
-      <HumanInputFormList
-        humanInputFormDataList={[
-          createFormData(),
-        ]}
-      />,
-    )
+    render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
     expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
   })
 
   it('should render an empty container when there are no visible forms', () => {
-    render(
-      <HumanInputFormList
-        humanInputFormDataList={[]}
-      />,
-    )
+    render(<HumanInputFormList humanInputFormDataList={[]} />)
 
     expect(screen.queryByTestId('content-wrapper')).not.toBeInTheDocument()
   })

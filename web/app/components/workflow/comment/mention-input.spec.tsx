@@ -71,13 +71,7 @@ function ControlledMentionInput({
   onSubmit: (content: string, mentionedUserIds: string[]) => void
 }) {
   const [value, setValue] = useState('')
-  return (
-    <MentionInput
-      value={value}
-      onChange={setValue}
-      onSubmit={onSubmit}
-    />
-  )
+  return <MentionInput value={value} onChange={setValue} onSubmit={onSubmit} />
 }
 
 describe('MentionInput', () => {
@@ -89,13 +83,7 @@ describe('MentionInput', () => {
   })
 
   it('loads mentionable users when cache is empty', async () => {
-    render(
-      <MentionInput
-        value=""
-        onChange={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    render(<MentionInput value="" onChange={vi.fn()} onSubmit={vi.fn()} />)
 
     await waitFor(() => {
       expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
@@ -114,7 +102,9 @@ describe('MentionInput', () => {
 
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
-    const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+    const textarea = screen.getByPlaceholderText(
+      'workflow.comments.placeholder.add',
+    ) as HTMLTextAreaElement
     textarea.focus()
     textarea.setSelectionRange(4, 4)
     fireEvent.change(textarea, { target: { value: '@Ali' } })
@@ -162,15 +152,12 @@ describe('MentionInput', () => {
       mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
 
       const { unmount } = render(
-        <MentionInput
-          value="draft"
-          onChange={vi.fn()}
-          onSubmit={vi.fn()}
-          autoFocus
-        />,
+        <MentionInput value="draft" onChange={vi.fn()} onSubmit={vi.fn()} autoFocus />,
       )
 
-      const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+      const textarea = screen.getByPlaceholderText(
+        'workflow.comments.placeholder.add',
+      ) as HTMLTextAreaElement
 
       act(() => {
         vi.runOnlyPendingTimers()
@@ -181,8 +168,7 @@ describe('MentionInput', () => {
       expect(textarea.selectionEnd).toBe(5)
 
       unmount()
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

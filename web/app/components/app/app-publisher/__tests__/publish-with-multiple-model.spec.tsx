@@ -12,22 +12,34 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => <span data-testid="model-icon">{modelName}</span>,
+  default: ({ modelName }: { modelName: string }) => (
+    <span data-testid="model-icon">{modelName}</span>
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const ReactModule = await vi.importActual<typeof import('react')>('react')
-  const OpenContext = ReactModule.createContext<{ open: boolean, setOpen: (nextOpen: boolean) => void } | null>(null)
+  const OpenContext = ReactModule.createContext<{
+    open: boolean
+    setOpen: (nextOpen: boolean) => void
+  } | null>(null)
 
   const useOpenContext = () => {
     const context = ReactModule.use(OpenContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <OpenContext.Provider value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div data-testid="portal-root">{children}</div>
       </OpenContext.Provider>
@@ -42,18 +54,38 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       const { open, setOpen } = useOpenContext()
 
       if (render) {
-        return ReactModule.cloneElement(render, {
-          onClick: () => setOpen(!open),
-        } as Record<string, unknown>, children)
+        return ReactModule.cloneElement(
+          render,
+          {
+            onClick: () => setOpen(!open),
+          } as Record<string, unknown>,
+          children,
+        )
       }
 
-      return <button type="button" onClick={() => setOpen(!open)}>{children}</button>
+      return (
+        <button type="button" onClick={() => setOpen(!open)}>
+          {children}
+        </button>
+      )
     },
-    DropdownMenuContent: ({ children, popupClassName }: { children: React.ReactNode, popupClassName?: string }) => {
+    DropdownMenuContent: ({
+      children,
+      popupClassName,
+    }: {
+      children: React.ReactNode
+      popupClassName?: string
+    }) => {
       const context = useOpenContext()
       return context.open ? <div className={popupClassName}>{children}</div> : null
     },
-    DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+    DropdownMenuItem: ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode
+      onClick?: React.MouseEventHandler<HTMLButtonElement>
+    }) => {
       const { setOpen } = useOpenContext()
       return (
         <button
@@ -105,7 +137,9 @@ describe('PublishWithMultipleModel', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }),
+    ).toBeDisabled()
     expect(screen.queryByText(/(?:^|\.)publishAs(?=$|:)/)).not.toBeInTheDocument()
   })
 
@@ -119,10 +153,7 @@ describe('PublishWithMultipleModel', () => {
     }
 
     render(
-      <PublishWithMultipleModel
-        multipleModelConfigs={[modelConfig]}
-        onSelect={handleSelect}
-      />,
+      <PublishWithMultipleModel multipleModelConfigs={[modelConfig]} onSelect={handleSelect} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }))

@@ -22,7 +22,10 @@ export class MembersClient {
     this.orpc = createOpenApiClient(http)
   }
 
-  async list(workspaceId: string, q?: { page?: number, limit?: number }): Promise<MemberListResponse> {
+  async list(
+    workspaceId: string,
+    q?: { page?: number; limit?: number },
+  ): Promise<MemberListResponse> {
     return this.orpc.workspaces.byWorkspaceId.members.get({
       params: { workspace_id: workspaceId },
       query: { page: q?.page, limit: q?.limit },

@@ -19,25 +19,24 @@ type Props = Readonly<{
 }>
 
 const getIcon = (type: InputVarType) => {
-  return ({
-    [InputVarType.textInput]: RiTextSnippet,
-    [InputVarType.paragraph]: RiAlignLeft,
-    [InputVarType.select]: RiCheckboxMultipleLine,
-    [InputVarType.number]: RiHashtag,
-    [InputVarType.checkbox]: RiCheckboxLine,
-    [InputVarType.jsonObject]: RiBracesLine,
-    [InputVarType.singleFile]: RiFileList2Line,
-    [InputVarType.multiFiles]: RiFileCopy2Line,
-  } as any)[type] || RiTextSnippet
+  return (
+    (
+      {
+        [InputVarType.textInput]: RiTextSnippet,
+        [InputVarType.paragraph]: RiAlignLeft,
+        [InputVarType.select]: RiCheckboxMultipleLine,
+        [InputVarType.number]: RiHashtag,
+        [InputVarType.checkbox]: RiCheckboxLine,
+        [InputVarType.jsonObject]: RiBracesLine,
+        [InputVarType.singleFile]: RiFileList2Line,
+        [InputVarType.multiFiles]: RiFileCopy2Line,
+      } as any
+    )[type] || RiTextSnippet
+  )
 }
 
-const InputVarTypeIcon: FC<Props> = ({
-  className,
-  type,
-}) => {
+const InputVarTypeIcon: FC<Props> = ({ className, type }) => {
   const Icon = getIcon(type)
-  return (
-    <Icon className={className} />
-  )
+  return <Icon className={className} />
 }
 export default React.memo(InputVarTypeIcon)

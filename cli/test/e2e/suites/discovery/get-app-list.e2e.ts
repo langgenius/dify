@@ -146,14 +146,14 @@ describe('E2E / difyctl get app (list)', () => {
     const result = await fx.r(['get', 'app', '--mode', 'chat', '-o', 'json'])
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: Array<{ mode: string }> }>(result)
-    parsed.data.forEach(app => expect(app.mode).toBe('chat'))
+    parsed.data.forEach((app) => expect(app.mode).toBe('chat'))
   })
 
   it('[P0] --mode workflow filters to workflow apps only', async () => {
     const result = await fx.r(['get', 'app', '--mode', 'workflow', '-o', 'json'])
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: Array<{ mode: string }> }>(result)
-    parsed.data.forEach(app => expect(app.mode).toBe('workflow'))
+    parsed.data.forEach((app) => expect(app.mode).toBe('workflow'))
   })
 
   it('[P0] --mode with a valid enum value succeeds', async () => {
@@ -210,8 +210,7 @@ describe('E2E / difyctl get app (list)', () => {
       const result = await run(['get', 'app'], { configDir: tmp.configDir })
       assertExitCode(result, 4)
       expect(result.stderr).toMatch(/not.?logged.?in|auth/i)
-    }
-    finally {
+    } finally {
       await tmp.cleanup()
     }
   })
@@ -240,8 +239,7 @@ describe('E2E / difyctl get app (list)', () => {
       const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
       assertExitCode(result, 0)
       expect(result.stdout).toMatch(/NAME\s+ID\s+MODE/i)
-    }
-    finally {
+    } finally {
       await ssoTmp.cleanup()
     }
   })
@@ -255,8 +253,7 @@ describe('E2E / difyctl get app (list)', () => {
       const result = await run(['get', 'app', '-o', 'json'], { configDir: tmp.configDir })
       expect(result.exitCode).not.toBe(0)
       assertErrorEnvelope(result)
-    }
-    finally {
+    } finally {
       await tmp.cleanup()
     }
   })
@@ -267,7 +264,7 @@ describe('E2E / difyctl get app (list)', () => {
     // Spec 3.7: JSON output must include core fields per item.
     const result = await fx.r(['get', 'app', '-o', 'json'])
     assertExitCode(result, 0)
-    const parsed = assertJson<{ data: Array<{ id: string, name: string, mode: string }> }>(result)
+    const parsed = assertJson<{ data: Array<{ id: string; name: string; mode: string }> }>(result)
     expect(parsed.data.length, 'data array must be non-empty').toBeGreaterThan(0)
     const first = parsed.data[0]!
     expect(typeof first.id, 'id must be a string').toBe('string')
@@ -278,20 +275,19 @@ describe('E2E / difyctl get app (list)', () => {
 
   it('[P1] app list is sorted by updated_at DESC (3.2)', async () => {
     // Spec 3.2: apps are returned in descending updated_at order.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', '-o', 'json']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', '-o', 'json']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: Array<{ updated_at: string }> }>(result)
     // Loose check: first item's updated_at should be >= last item's.
     // Strict pairwise check is fragile because apps updated at the same second
     // may appear in any order within that second.
-    const dates = parsed.data.map(a => new Date(a.updated_at).getTime())
-    expect(
-      dates[0]!,
-      'first item should have the newest updated_at',
-    ).toBeGreaterThanOrEqual(dates[dates.length - 1]!)
+    const dates = parsed.data.map((a) => new Date(a.updated_at).getTime())
+    expect(dates[0]!, 'first item should have the newest updated_at').toBeGreaterThanOrEqual(
+      dates[dates.length - 1]!,
+    )
   })
 
   it('[P1] --limit 100 (server max) returns apps and exits 0 (3.13)', async () => {
@@ -311,7 +307,7 @@ describe('E2E / difyctl get app (list)', () => {
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: Array<{ name: string }> }>(result)
     expect(parsed.data.length, '--name auto should return at least 1 app').toBeGreaterThan(0)
-    parsed.data.forEach(app =>
+    parsed.data.forEach((app) =>
       expect(app.name.toLowerCase(), `app "${app.name}" should contain "auto"`).toContain('auto'),
     )
   })
@@ -323,7 +319,7 @@ describe('E2E / difyctl get app (list)', () => {
     assertNoAnsi(result.stdout, 'stdout')
     const lines = result.stdout.trim().split('\n').filter(Boolean)
     expect(lines.length, '-o name should output at least one line').toBeGreaterThan(0)
-    lines.forEach(line =>
+    lines.forEach((line) =>
       expect(line.trim(), `"${line}" should be a UUID`).toMatch(/^[0-9a-f-]{36}$/),
     )
   })
@@ -353,8 +349,7 @@ describe('E2E / difyctl get app (list)', () => {
       const result = await run(['get', 'app'], { configDir: networkTmp.configDir, timeout: 15_000 })
       expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
       expect(result.stderr.length, 'stderr should contain error message').toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await networkTmp.cleanup()
     }
   })

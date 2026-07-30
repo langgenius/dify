@@ -1,12 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { Button } from '../button'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import { Textarea } from './index'
 
@@ -17,7 +12,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Multiline text control built on Base UI Field.Control. Use it with Field for labelled, described, and validated form fields.',
+        component:
+          'Multiline text control built on Base UI Field.Control. Use it with Field for labelled, described, and validated form fields.',
       },
     },
   },
@@ -31,7 +27,10 @@ type Story = StoryObj<typeof meta>
 export const Basic: Story = {
   render: () => (
     <div className="w-80">
-      <label htmlFor="workspace-description" className="mb-1 block w-fit py-1 text-text-secondary system-sm-medium">
+      <label
+        htmlFor="workspace-description"
+        className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary"
+      >
         Workspace description
       </label>
       <Textarea
@@ -46,17 +45,34 @@ export const Basic: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
-      <label className="grid gap-1 text-text-secondary system-sm-medium" htmlFor="small-textarea">
+      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="small-textarea">
         Small
-        <Textarea id="small-textarea" size="small" name="smallTextarea" placeholder="Short note..." rows={3} />
+        <Textarea
+          id="small-textarea"
+          size="small"
+          name="smallTextarea"
+          placeholder="Short note..."
+          rows={3}
+        />
       </label>
-      <label className="grid gap-1 text-text-secondary system-sm-medium" htmlFor="medium-textarea">
+      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="medium-textarea">
         Medium
-        <Textarea id="medium-textarea" name="mediumTextarea" placeholder="Add context..." rows={3} />
+        <Textarea
+          id="medium-textarea"
+          name="mediumTextarea"
+          placeholder="Add context..."
+          rows={3}
+        />
       </label>
-      <label className="grid gap-1 text-text-secondary system-sm-medium" htmlFor="large-textarea">
+      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="large-textarea">
         Large
-        <Textarea id="large-textarea" size="large" name="largeTextarea" placeholder="Write a longer instruction..." rows={3} />
+        <Textarea
+          id="large-textarea"
+          size="large"
+          name="largeTextarea"
+          placeholder="Write a longer instruction..."
+          rows={3}
+        />
       </label>
     </div>
   ),
@@ -84,7 +100,11 @@ export const States: Story = {
       </Field>
       <Field name="readonlyState">
         <FieldLabel>Read-only</FieldLabel>
-        <Textarea readOnly defaultValue="Generated from the published workflow configuration." rows={3} />
+        <Textarea
+          readOnly
+          defaultValue="Generated from the published workflow configuration."
+          rows={3}
+        />
       </Field>
     </div>
   ),
@@ -116,13 +136,13 @@ const FormDemo = () => {
         <FieldError match="tooShort">Use at least 20 characters.</FieldError>
       </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save Settings</Button>
+        <Button type="submit" variant="primary">
+          Save Settings
+        </Button>
       </div>
       {savedDescription && (
-        <div className="rounded-lg bg-background-section px-3 py-2 text-text-secondary system-xs-regular">
-          Saved:
-          {' '}
-          {savedDescription}
+        <div className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-secondary">
+          Saved: {savedDescription}
         </div>
       )}
     </Form>
@@ -134,14 +154,16 @@ export const WithField: Story = {
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = React.useState('Summarize customer feedback into actionable product themes.')
+  const [value, setValue] = React.useState(
+    'Summarize customer feedback into actionable product themes.',
+  )
 
   return (
     <Field name="prompt">
       <FieldLabel>Prompt</FieldLabel>
       <Textarea
         value={value}
-        onValueChange={nextValue => setValue(nextValue)}
+        onValueChange={(nextValue) => setValue(nextValue)}
         rows={4}
         className="resize-y"
       />
@@ -160,7 +182,9 @@ export const Controlled: Story = {
 
 const CharacterCounterDemo = () => {
   const maxLength = 120
-  const [value, setValue] = React.useState('Summarize customer feedback into actionable product themes.')
+  const [value, setValue] = React.useState(
+    'Summarize customer feedback into actionable product themes.',
+  )
 
   return (
     <Field name="limitedPrompt">
@@ -168,18 +192,18 @@ const CharacterCounterDemo = () => {
       <div className="relative">
         <Textarea
           value={value}
-          onValueChange={nextValue => setValue(nextValue)}
+          onValueChange={(nextValue) => setValue(nextValue)}
           maxLength={maxLength}
           rows={4}
           className="resize-y pb-8"
         />
-        <div className="pointer-events-none absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-text-quaternary system-xs-medium">
-          <span>{value.length}</span>
-          /
-          <span className="text-text-tertiary">{maxLength}</span>
+        <div className="pointer-events-none absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-xs-medium text-text-quaternary">
+          <span>{value.length}</span>/<span className="text-text-tertiary">{maxLength}</span>
         </div>
       </div>
-      <FieldDescription>Character counters are composed at the usage site when the workflow needs one.</FieldDescription>
+      <FieldDescription>
+        Character counters are composed at the usage site when the workflow needs one.
+      </FieldDescription>
     </Field>
   )
 }

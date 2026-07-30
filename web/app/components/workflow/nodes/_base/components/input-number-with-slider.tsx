@@ -32,13 +32,15 @@ function InputNumberWithSlider({
       onChange(max)
       return
     }
-    if (min !== undefined && value < min)
-      onChange(min)
+    if (min !== undefined && value < min) onChange(min)
   }, [defaultValue, max, min, onChange, value])
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(Number.parseFloat(e.target.value))
-  }, [onChange])
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(Number.parseFloat(e.target.value))
+    },
+    [onChange],
+  )
 
   return (
     <Fieldset>

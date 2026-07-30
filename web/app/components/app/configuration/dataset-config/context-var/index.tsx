@@ -11,20 +11,29 @@ import VarPicker from './var-picker'
 const ContextVar: FC<Props> = (props) => {
   const { t } = useTranslation()
   const { value, options } = props
-  const currItem = options.find(item => item.value === value)
+  const currItem = options.find((item) => item.value === value)
   const notSetVar = !currItem
   return (
-    <div className={cn(notSetVar ? 'rounded-br-xl rounded-bl-xl border-[#FEF0C7] bg-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex h-12 items-center justify-between border-t px-3')}>
+    <div
+      className={cn(
+        notSetVar
+          ? 'rounded-br-xl rounded-bl-xl border-[#FEF0C7] bg-[#FEF0C7]'
+          : 'border-components-panel-border-subtle',
+        'flex h-12 items-center justify-between border-t px-3',
+      )}
+    >
       <div className="flex shrink-0 items-center space-x-1">
         <div className="p-1">
           <BracketsX className="size-4 text-text-accent" />
         </div>
-        <div className="mr-1 text-sm font-medium text-text-secondary">{t($ => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}</div>
+        <div className="mr-1 text-sm font-medium text-text-secondary">
+          {t(($) => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}
+        </div>
         <Infotip
-          aria-label={t($ => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+          aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t($ => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+          {t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
         </Infotip>
       </div>
 

@@ -11,9 +11,9 @@ const Paragraph = (paragraph: any) => {
       return (
         <div className="markdown-img-wrapper">
           <ImageGallery srcs={[children_node[0].properties.src]} />
-          {Array.isArray(paragraph.children) && paragraph.children.length > 1
-            ? <div className="mt-2">{paragraph.children.slice(1)}</div>
-            : null}
+          {Array.isArray(paragraph.children) && paragraph.children.length > 1 ? (
+            <div className="mt-2">{paragraph.children.slice(1)}</div>
+          ) : null}
         </div>
       )
     }
