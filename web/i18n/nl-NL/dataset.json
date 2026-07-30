@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "De naam van de kennisbank is verplicht.",
   "newKnowledge.settings.noMembersFound": "Geen leden gevonden.",
   "newKnowledge.settings.pageDescription": "Beheer basisinformatie, API-toegang en ophalen.",
+  "newKnowledge.settings.rerankModelRequired": "Selecteer een rerankmodel.",
   "newKnowledge.settings.retrievalDepth": "Ophaaldiepte",
   "newKnowledge.settings.retrievalDescription": "Ophaalmodellen, diepte en rangschikkingsbeleid die door apps en workflows worden gebruikt.",
   "newKnowledge.settings.retrievalMode.auto": "Automatisch",

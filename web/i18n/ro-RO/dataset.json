@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Numele bazei de cunoștințe este obligatoriu.",
   "newKnowledge.settings.noMembersFound": "Nu s-au găsit membri.",
   "newKnowledge.settings.pageDescription": "Gestionați informațiile de bază, accesul API și regăsirea.",
+  "newKnowledge.settings.rerankModelRequired": "Selectați un model de rerangare.",
   "newKnowledge.settings.retrievalDepth": "Adâncimea regăsirii",
   "newKnowledge.settings.retrievalDescription": "Modelele de regăsire, adâncimea și politica de clasare folosite de aplicații și fluxuri de lucru.",
   "newKnowledge.settings.retrievalMode.auto": "Automat",

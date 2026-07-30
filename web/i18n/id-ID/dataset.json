@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Nama basis pengetahuan wajib diisi.",
   "newKnowledge.settings.noMembersFound": "Tidak ada anggota yang ditemukan.",
   "newKnowledge.settings.pageDescription": "Kelola informasi dasar, akses API, dan pengambilan.",
+  "newKnowledge.settings.rerankModelRequired": "Pilih model rerank.",
   "newKnowledge.settings.retrievalDepth": "Kedalaman pengambilan",
   "newKnowledge.settings.retrievalDescription": "Model pengambilan, kedalaman, dan kebijakan peringkat yang digunakan oleh aplikasi dan alur kerja.",
   "newKnowledge.settings.retrievalMode.auto": "Otomatis",

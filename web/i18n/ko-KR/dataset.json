@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "지식 베이스 이름은 필수입니다.",
   "newKnowledge.settings.noMembersFound": "멤버를 찾을 수 없습니다.",
   "newKnowledge.settings.pageDescription": "기본 정보, API 액세스 및 검색 설정을 관리합니다.",
+  "newKnowledge.settings.rerankModelRequired": "리랭크 모델을 선택하세요.",
   "newKnowledge.settings.retrievalDepth": "검색 깊이",
   "newKnowledge.settings.retrievalDescription": "앱과 워크플로에서 사용하는 검색 모델, 깊이 및 순위 정책입니다.",
   "newKnowledge.settings.retrievalMode.auto": "자동",

@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "知識庫名稱為必填項。",
   "newKnowledge.settings.noMembersFound": "找不到成員。",
   "newKnowledge.settings.pageDescription": "管理基本資訊、API 存取和檢索設定。",
+  "newKnowledge.settings.rerankModelRequired": "請選擇 Rerank 模型。",
   "newKnowledge.settings.retrievalDepth": "檢索深度",
   "newKnowledge.settings.retrievalDescription": "應用程式和工作流程使用的檢索模型、深度與排序策略。",
   "newKnowledge.settings.retrievalMode.auto": "自動",

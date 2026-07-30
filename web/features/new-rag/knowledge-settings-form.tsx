@@ -886,7 +886,7 @@ export function KnowledgeSettingsForm({
               />
               {rerankEnabled && !rerankModel && (
                 <p className="mt-1 system-xs-regular text-text-destructive" role="alert">
-                  {tAppDebug(($) => $['datasetConfig.rerankModelRequired'])}
+                  {t(($) => $['newKnowledge.settings.rerankModelRequired'])}
                 </p>
               )}
             </div>

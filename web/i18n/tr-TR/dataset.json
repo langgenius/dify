@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Bilgi tabanı adı zorunludur.",
   "newKnowledge.settings.noMembersFound": "Üye bulunamadı.",
   "newKnowledge.settings.pageDescription": "Temel bilgileri, API erişimini ve getirme ayarlarını yönetin.",
+  "newKnowledge.settings.rerankModelRequired": "Bir yeniden sıralama modeli seçin.",
   "newKnowledge.settings.retrievalDepth": "Getirme derinliği",
   "newKnowledge.settings.retrievalDescription": "Uygulamalar ve iş akışları tarafından kullanılan getirme modelleri, derinlik ve sıralama ilkesi.",
   "newKnowledge.settings.retrievalMode.auto": "Otomatik",

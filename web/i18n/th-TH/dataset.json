@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "ต้องระบุชื่อฐานความรู้",
   "newKnowledge.settings.noMembersFound": "ไม่พบสมาชิก",
   "newKnowledge.settings.pageDescription": "จัดการข้อมูลพื้นฐาน การเข้าถึง API และการเรียกค้น",
+  "newKnowledge.settings.rerankModelRequired": "เลือกโมเดลจัดอันดับใหม่",
   "newKnowledge.settings.retrievalDepth": "ความลึกของการเรียกคืน",
   "newKnowledge.settings.retrievalDescription": "โมเดลการเรียกคืน ความลึก และนโยบายการจัดอันดับที่แอปและเวิร์กโฟลว์ใช้",
   "newKnowledge.settings.retrievalMode.auto": "อัตโนมัติ",

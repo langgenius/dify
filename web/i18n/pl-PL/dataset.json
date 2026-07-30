@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Nazwa bazy wiedzy jest wymagana.",
   "newKnowledge.settings.noMembersFound": "Nie znaleziono członków.",
   "newKnowledge.settings.pageDescription": "Zarządzaj podstawowymi informacjami, dostępem do API i pobieraniem.",
+  "newKnowledge.settings.rerankModelRequired": "Wybierz model ponownego rankingu.",
   "newKnowledge.settings.retrievalDepth": "Głębokość wyszukiwania",
   "newKnowledge.settings.retrievalDescription": "Modele wyszukiwania, głębokość i zasady rankingu używane przez aplikacje i przepływy pracy.",
   "newKnowledge.settings.retrievalMode.auto": "Automatyczny",

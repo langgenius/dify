@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Необходимо указать название базы знаний.",
   "newKnowledge.settings.noMembersFound": "Участники не найдены.",
   "newKnowledge.settings.pageDescription": "Управляйте основной информацией, доступом к API и поиском.",
+  "newKnowledge.settings.rerankModelRequired": "Выберите модель переранжирования.",
   "newKnowledge.settings.retrievalDepth": "Глубина поиска",
   "newKnowledge.settings.retrievalDescription": "Модели поиска, глубина и политика ранжирования, используемые приложениями и рабочими процессами.",
   "newKnowledge.settings.retrievalMode.auto": "Автоматический",

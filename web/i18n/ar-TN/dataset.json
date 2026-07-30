@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "اسم قاعدة المعرفة مطلوب.",
   "newKnowledge.settings.noMembersFound": "لم يتم العثور على أعضاء.",
   "newKnowledge.settings.pageDescription": "إدارة المعلومات الأساسية والوصول إلى API والاسترجاع.",
+  "newKnowledge.settings.rerankModelRequired": "اختر نموذج إعادة ترتيب.",
   "newKnowledge.settings.retrievalDepth": "عمق الاسترجاع",
   "newKnowledge.settings.retrievalDescription": "نماذج الاسترجاع والعمق وسياسة الترتيب التي تستخدمها التطبيقات وسير العمل.",
   "newKnowledge.settings.retrievalMode.auto": "أوتوماتيك",

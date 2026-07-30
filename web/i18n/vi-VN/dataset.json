@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Tên kho kiến thức là bắt buộc.",
   "newKnowledge.settings.noMembersFound": "Không tìm thấy thành viên.",
   "newKnowledge.settings.pageDescription": "Quản lý thông tin cơ bản, quyền truy cập API và truy xuất.",
+  "newKnowledge.settings.rerankModelRequired": "Chọn một mô hình xếp hạng lại.",
   "newKnowledge.settings.retrievalDepth": "Độ sâu truy xuất",
   "newKnowledge.settings.retrievalDescription": "Mô hình truy xuất, độ sâu và chính sách xếp hạng được ứng dụng và quy trình sử dụng.",
   "newKnowledge.settings.retrievalMode.auto": "Tự động",

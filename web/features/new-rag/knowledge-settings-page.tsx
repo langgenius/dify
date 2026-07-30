@@ -33,6 +33,10 @@ function KnowledgeSettingsSkeleton() {
         <SkeletonRectangle className="h-9 w-45 rounded-md" />
         <SkeletonRectangle className="h-9 flex-1 rounded-lg" />
       </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <SkeletonRectangle className="h-8 w-[71px] rounded-lg" />
+        <SkeletonRectangle className="h-8 w-[115px] rounded-lg" />
+      </div>
       <div className="h-px bg-divider-subtle" />
       <div className="flex gap-1">
         <SkeletonRectangle className="h-7 w-45 rounded-md" />
@@ -51,6 +55,11 @@ function KnowledgeSettingsSkeleton() {
             <SkeletonRectangle className="h-16 flex-1 rounded-lg" />
           </div>
         </div>
+      </div>
+      <div className="h-px bg-divider-subtle" />
+      <div className="flex gap-1 pt-7">
+        <SkeletonRectangle className="h-8 w-45 rounded-md" />
+        <SkeletonRectangle className="h-[58px] flex-1 rounded-xl" />
       </div>
     </div>
   )

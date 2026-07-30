@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "نام پایگاه دانش الزامی است.",
   "newKnowledge.settings.noMembersFound": "عضوی پیدا نشد.",
   "newKnowledge.settings.pageDescription": "اطلاعات پایه، دسترسی API و بازیابی را مدیریت کنید.",
+  "newKnowledge.settings.rerankModelRequired": "یک مدل رتبه‌بندی مجدد انتخاب کنید.",
   "newKnowledge.settings.retrievalDepth": "عمق بازیابی",
   "newKnowledge.settings.retrievalDescription": "مدل‌های بازیابی، عمق و سیاست رتبه‌بندی مورد استفاده برنامه‌ها و گردش‌های کاری.",
   "newKnowledge.settings.retrievalMode.auto": "اتوماتیک",

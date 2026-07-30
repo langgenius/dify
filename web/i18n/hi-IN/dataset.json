@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "नॉलेज बेस का नाम आवश्यक है।",
   "newKnowledge.settings.noMembersFound": "कोई सदस्य नहीं मिला।",
   "newKnowledge.settings.pageDescription": "मूल जानकारी, API एक्सेस और रिट्रीवल प्रबंधित करें।",
+  "newKnowledge.settings.rerankModelRequired": "एक रीरैंक मॉडल चुनें।",
   "newKnowledge.settings.retrievalDepth": "रिट्रीवल की गहराई",
   "newKnowledge.settings.retrievalDescription": "ऐप और वर्कफ़्लो द्वारा उपयोग किए जाने वाले रिट्रीवल मॉडल, गहराई और रैंकिंग नीति।",
   "newKnowledge.settings.retrievalMode.auto": "स्वचालित",
