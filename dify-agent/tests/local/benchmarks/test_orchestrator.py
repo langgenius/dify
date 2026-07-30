@@ -3,8 +3,10 @@ from pathlib import Path
 import pytest
 
 from benchmarks.orchestrator import (
+    E2BCapacityOptions,
     RunOptions,
     _fake_dependency_cpu_saturated,
+    _redact_secret_in_directory,
     _render_markdown,
     build_comparison,
 )
@@ -67,6 +69,48 @@ def _identity(kind: TargetKind) -> TargetIdentity:
             )
         },
     )
+
+
+def test_e2b_capacity_options_hide_secret_and_require_fixed_matrix_limit() -> None:
+    options = E2BCapacityOptions(
+        target_ref="1.16.1",
+        api_key="super-secret",
+        template="template",
+        max_concurrency=20,
+        max_inventory=1000,
+        pilot_tenant_count=5,
+        keep_containers=False,
+        quick=False,
+        capacity_results_dir=Path("/tmp/capacity"),
+        results_root=None,
+    )
+
+    assert "super-secret" not in repr(options)
+    with pytest.raises(ValueError, match="at least 20"):
+        _ = E2BCapacityOptions(
+            target_ref="1.16.1",
+            api_key="super-secret",
+            template="template",
+            max_concurrency=10,
+            max_inventory=1000,
+            pilot_tenant_count=5,
+            keep_containers=False,
+            quick=False,
+            capacity_results_dir=None,
+            results_root=None,
+        )
+
+
+def test_e2b_secret_is_redacted_from_persisted_block_artifacts(tmp_path: Path) -> None:
+    secret = "super-secret"
+    (tmp_path / "service.log").write_text(f"failed with {secret}")
+    (tmp_path / "result.json").write_text(f'{{"error": "{secret}"}}')
+
+    _redact_secret_in_directory(tmp_path, secret)
+
+    assert secret not in (tmp_path / "service.log").read_text()
+    assert secret not in (tmp_path / "result.json").read_text()
+    assert "[redacted]" in (tmp_path / "service.log").read_text()
 
 
 def _block(*, target: TargetKind, pair_index: int, overhead_ms: float, cpu_seconds: float) -> BlockResult:

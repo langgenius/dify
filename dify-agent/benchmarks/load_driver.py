@@ -57,6 +57,10 @@ class DriverSettings:
     trial_runs: int | None
     warmup_seconds: float | None
     duration_seconds: float | None
+    result_scenario_id: str | None = None
+    concurrency: int | None = None
+    minimum_successful_runs: int | None = None
+    maximum_duration_seconds: float | None = None
 
     @classmethod
     def from_environment(cls) -> "DriverSettings":
@@ -79,6 +83,10 @@ class DriverSettings:
             trial_runs=_optional_int_environment("BENCH_TRIAL_RUNS"),
             warmup_seconds=_optional_float_environment("BENCH_WARMUP_SECONDS"),
             duration_seconds=_optional_float_environment("BENCH_DURATION_SECONDS"),
+            result_scenario_id=os.environ.get("BENCH_RESULT_SCENARIO_ID") or None,
+            concurrency=_optional_int_environment("BENCH_CONCURRENCY"),
+            minimum_successful_runs=_optional_int_environment("BENCH_MIN_SUCCESSFUL_RUNS"),
+            maximum_duration_seconds=_optional_float_environment("BENCH_MAX_DURATION_SECONDS"),
         )
 
 
@@ -165,7 +173,7 @@ async def run_block(settings: DriverSettings) -> BlockResult:
         profile="agent",
         target=settings.target,
         target_id=settings.target_id,
-        scenario_id=scenario.id,
+        scenario_id=settings.result_scenario_id or scenario.id,
         scenario_version=scenario.version,
         block_id=settings.block_id,
         pair_index=settings.pair_index,
@@ -260,6 +268,8 @@ async def _run_measurement(
             settings=settings,
             agent_client=agent_client,
             tracker=tracker,
+            minimum_successful_runs=settings.minimum_successful_runs,
+            maximum_duration_seconds=settings.maximum_duration_seconds,
         )
     return observations, tracker.max_active_runs
 
@@ -294,16 +304,28 @@ async def _run_for_duration(
     settings: DriverSettings,
     agent_client: httpx.AsyncClient,
     tracker: ActiveRunTracker | None = None,
+    minimum_successful_runs: int | None = None,
+    maximum_duration_seconds: float | None = None,
 ) -> list[RunObservation]:
     if duration_seconds <= 0:
         return []
-    deadline = time.perf_counter() + duration_seconds
+    started = time.perf_counter()
+    minimum_deadline = started + duration_seconds
+    maximum_deadline = started + (maximum_duration_seconds or duration_seconds)
     observations: list[RunObservation] = []
     observation_lock = asyncio.Lock()
 
     async def worker(worker_index: int) -> None:
         sequence = worker_index
-        while time.perf_counter() < deadline:
+        while True:
+            now = time.perf_counter()
+            successful = sum(
+                observation.sample.terminal_status == "succeeded"
+                for observation in observations
+            )
+            minimum_met = minimum_successful_runs is None or successful >= minimum_successful_runs
+            if (now >= minimum_deadline and minimum_met) or now >= maximum_deadline:
+                break
             observation = await _run_once(
                 sequence=sequence,
                 scenario=scenario,
@@ -332,7 +354,7 @@ async def _run_once(
     sample = RunSample(
         profile="agent",
         target=settings.target,
-        scenario_id=scenario.id,
+        scenario_id=settings.result_scenario_id or scenario.id,
         block_id=settings.block_id,
         pair_index=settings.pair_index,
         benchmark_run_id=benchmark_run_id,
@@ -685,6 +707,8 @@ def _apply_scenario_overrides(
     if settings.warmup_seconds is not None:
         updates["warmup_seconds"] = settings.warmup_seconds
         updates["warmup_runs"] = None
+    if settings.concurrency is not None:
+        updates["concurrency"] = settings.concurrency
     return BenchmarkScenario.model_validate(scenario.model_dump() | updates)
 
 

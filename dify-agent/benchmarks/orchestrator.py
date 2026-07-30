@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
 import io
@@ -22,6 +22,19 @@ import tarfile
 import tempfile
 from typing import Iterator, Literal, cast
 
+from benchmarks.capacity import (
+    CapacityPoint,
+    E2BLifecycleSample,
+    QuotaRecommendation,
+    aggregate_e2b_lifecycle_point,
+    aggregate_local_capacity_point,
+    build_e2b_service_capacity_matrix,
+    build_local_capacity_matrix,
+    build_quota_recommendation,
+    build_unit_consumption,
+    enrich_e2b_service_point,
+    render_capacity_markdown,
+)
 from benchmarks.comparison import (
     compare_blocked_quantile_latency,
     compare_paired_blocks,
@@ -76,21 +89,25 @@ _PROFILE_COMPOSE = {
     "agent": "docker-compose.yml",
     "runtime": "docker-compose.runtime.yml",
     "capability": "docker-compose.capability.yml",
+    "e2b": "docker-compose.e2b-capacity.yml",
 }
 _PROFILE_DRIVER = {
     "agent": "load-driver",
     "runtime": "runtime-driver",
     "capability": "capability-driver",
+    "e2b": "e2b-service-driver",
 }
 _PROFILE_SERVICES = {
     "agent": ("redis", "fake-deps", "agent"),
     "runtime": ("runtime",),
     "capability": ("redis", "fake-deps", "runtime", "agent"),
+    "e2b": ("redis", "fake-deps", "agent"),
 }
 _PROFILE_PRIMARY_COMPONENTS = {
     "agent": ("agent",),
     "runtime": ("runtime",),
     "capability": ("agent", "runtime"),
+    "e2b": ("agent",),
 }
 _RESOURCE_LIMITS = {
     "agent": {"agent": "4 CPU/1 GiB", "redis": "2 CPU/512 MiB", "fake-deps": "2 CPU/512 MiB"},
@@ -101,6 +118,7 @@ _RESOURCE_LIMITS = {
         "redis": "2 CPU/512 MiB",
         "fake-deps": "2 CPU/512 MiB",
     },
+    "e2b": {"agent": "4 CPU/1 GiB", "redis": "2 CPU/512 MiB", "fake-deps": "2 CPU/512 MiB"},
 }
 
 
@@ -123,6 +141,46 @@ class RunOptions:
             raise ValueError("PIN_AGENT_REF and PIN_RUNTIME_REF cannot be used together")
         if self.profile != "capability" and (self.pin_agent_ref or self.pin_runtime_ref):
             raise ValueError("component pinning is available only for the capability profile")
+
+
+@dataclass(slots=True, frozen=True)
+class CapacityOptions:
+    """Single-target Local capacity execution settings."""
+
+    target_ref: str
+    keep_containers: bool
+    quick: bool
+    results_root: Path | None
+
+
+@dataclass(slots=True, frozen=True)
+class E2BCapacityOptions:
+    """Secret-bearing real E2B calibration settings."""
+
+    target_ref: str
+    api_key: str = field(repr=False)
+    template: str
+    max_concurrency: int
+    max_inventory: int
+    pilot_tenant_count: int
+    keep_containers: bool
+    quick: bool
+    capacity_results_dir: Path | None
+    results_root: Path | None
+
+    def __post_init__(self) -> None:
+        if not self.api_key.strip() or not self.template.strip():
+            raise ValueError("E2B API key and template are required")
+        if min(self.max_concurrency, self.max_inventory, self.pilot_tenant_count) < 1:
+            raise ValueError("E2B vendor limits and pilot tenant count must be positive")
+        if self.max_concurrency < 20:
+            raise ValueError(
+                "BENCH_E2B_MAX_CONCURRENCY must be at least 20 for the fixed capacity matrix"
+            )
+        if self.max_inventory < 20:
+            raise ValueError(
+                "BENCH_E2B_MAX_INVENTORY must be at least 20 for the fixed capacity matrix"
+            )
 
 
 def _fake_dependency_cpu_saturated(resources: ResourceSummary) -> bool:
@@ -292,6 +350,740 @@ def run_smoke(
         raise BenchmarkCommandError(f"Docker smoke failed; inspect {invocation_dir}")
     logger.info("%s Docker benchmark smoke passed: %s", profile, invocation_dir)
     return invocation_dir
+
+
+def run_local_capacity(options: CapacityOptions) -> Path:
+    """Run the compact single-target Local capacity matrix and write reference artifacts."""
+    root = repository_root()
+    for profile in ("agent", "capability"):
+        _verify_docker_environment(root, cast(BenchmarkProfile, profile))
+    run_id = _new_run_id()
+    results_root = options.results_root or root / "dify-agent" / "benchmarks" / "results"
+    invocation_dir = (results_root / f"{run_id}-capacity").resolve()
+    invocation_dir.mkdir(parents=True)
+    (invocation_dir / "logs").mkdir()
+    python_base_image_id = _prepare_base_images()
+    harness_image = _build_harness_image(root)
+    identities = {
+        profile: _build_target_identity(
+            root,
+            kind="candidate",
+            profile=cast(BenchmarkProfile, profile),
+            ref=options.target_ref,
+            pin_agent_ref=None,
+            pin_runtime_ref=None,
+        )
+        for profile in ("agent", "capability")
+    }
+    environments = {
+        profile: _capture_environment(
+            root,
+            profile=cast(BenchmarkProfile, profile),
+            python_base_image_id=python_base_image_id,
+        )
+        for profile in ("agent", "capability")
+    }
+    _write_json(
+        invocation_dir / "environment.json",
+        {
+            "schema_version": 1,
+            "mode": "local_capacity",
+            "target_ref": options.target_ref,
+            "reference_valid": not options.quick,
+            "profiles": {
+                profile: environment.model_dump(mode="json")
+                for profile, environment in environments.items()
+            },
+        },
+    )
+    blocks_by_scenario: dict[str, list[BlockResult]] = {}
+    block_position = 0
+    block_count = 1 if options.quick else 3
+    for matrix_point in build_local_capacity_matrix():
+        profile = cast(BenchmarkProfile, matrix_point.profile)
+        point_blocks: list[BlockResult] = []
+        for block_index in range(block_count):
+            block_id = f"{matrix_point.scenario_id}-candidate-{block_index}"
+            block_dir = invocation_dir / "blocks" / block_id
+            overrides = {
+                "BENCH_RESULT_SCENARIO_ID": matrix_point.scenario_id,
+                "BENCH_CONCURRENCY": str(matrix_point.requested_concurrency),
+            }
+            if matrix_point.profile == "capability":
+                overrides["BENCH_BINDING_POOL_SIZE"] = str(matrix_point.requested_concurrency)
+            if not options.quick:
+                overrides.update(
+                    {
+                        "BENCH_WARMUP_RUNS": "",
+                        "BENCH_TRIAL_RUNS": "",
+                        "BENCH_WARMUP_SECONDS": "15",
+                        "BENCH_DURATION_SECONDS": "60",
+                        "BENCH_MIN_SUCCESSFUL_RUNS": "100",
+                        "BENCH_MAX_DURATION_SECONDS": "300",
+                    }
+                )
+            block = _run_compose_block(
+                root=root,
+                profile=profile,
+                invocation_id=run_id,
+                block_position=block_position,
+                identity=identities[matrix_point.profile],
+                harness_image=harness_image,
+                scenario_id=matrix_point.source_scenario_id,
+                block_id=block_id,
+                pair_index=block_index,
+                block_dir=block_dir,
+                keep_containers=options.keep_containers,
+                quick=options.quick,
+                environment_overrides=overrides,
+            )
+            point_blocks.append(block)
+            block_position += 1
+            service_log = block_dir / "services.log"
+            if service_log.exists():
+                shutil.copyfile(service_log, invocation_dir / "logs" / f"{block_id}.log")
+        blocks_by_scenario[matrix_point.scenario_id] = point_blocks
+
+    points = [
+        aggregate_local_capacity_point(
+            profile=cast(Literal["agent", "capability"], matrix_point.profile),
+            workload=matrix_point.workload,
+            scenario_id=matrix_point.scenario_id,
+            requested_concurrency=matrix_point.requested_concurrency,
+            blocks=blocks_by_scenario[matrix_point.scenario_id],
+            reference_valid=not options.quick,
+            expected_blocks=block_count,
+            minimum_samples=2 if options.quick else 300,
+        )
+        for matrix_point in build_local_capacity_matrix()
+    ]
+    local_payload = {
+        "schema_version": 1,
+        "mode": "local_capacity",
+        "target_ref": options.target_ref,
+        "reference_valid": not options.quick,
+        "identities": {
+            profile: identity.model_dump(mode="json")
+            for profile, identity in identities.items()
+        },
+        "points": [point.model_dump(mode="json") for point in points],
+    }
+    _write_json(invocation_dir / "local-capacity.json", local_payload)
+    _write_json(
+        invocation_dir / "unit-consumption.json",
+        {
+            "schema_version": 1,
+            "units": [
+                unit.model_dump(mode="json")
+                for unit in build_unit_consumption(points)
+            ],
+        },
+    )
+    _write_json(
+        invocation_dir / "quota-recommendation.json",
+        {
+            "schema_version": 1,
+            "status": "pending_e2b",
+            "reference_valid": False,
+            "reasons": ["real E2B capacity evidence is required before recommending launch quotas"],
+        },
+    )
+    (invocation_dir / "capacity-report.md").write_text(
+        render_capacity_markdown(
+            target_ref=options.target_ref,
+            local_points=points,
+            e2b_points=[],
+            quota=None,
+        )
+    )
+    with (invocation_dir / "samples.jsonl").open("w") as output:
+        for point_blocks in blocks_by_scenario.values():
+            for block in point_blocks:
+                for sample in block.samples:
+                    output.write(sample.model_dump_json())
+                    output.write("\n")
+    results_root.mkdir(parents=True, exist_ok=True)
+    (results_root / "latest-capacity.txt").write_text(str(invocation_dir))
+    if any(point.status == "invalid" for point in points):
+        raise BenchmarkCommandError(f"local capacity correctness failed; inspect {invocation_dir}")
+    logger.info("Local capacity results: %s", invocation_dir)
+    return invocation_dir
+
+
+def run_e2b_capacity(options: E2BCapacityOptions) -> Path:
+    """Calibrate the existing Local capacity result against real E2B."""
+    root = repository_root()
+    secret_environment = {
+        "BENCH_E2B_API_KEY": options.api_key,
+        "BENCH_E2B_TEMPLATE": options.template,
+    }
+    invocation_dir = _resolve_capacity_results_dir(root, options)
+    local_payload = json.loads((invocation_dir / "local-capacity.json").read_text())
+    local_points = [
+        CapacityPoint.model_validate(point)
+        for point in cast(list[object], local_payload.get("points", []))
+    ]
+    if not local_points:
+        raise BenchmarkCommandError(f"no Local capacity points found in {invocation_dir}")
+    _verify_docker_environment(root, "e2b", environment_overrides=secret_environment)
+
+    python_base_image_id = _prepare_base_images()
+    harness_image = _build_harness_image(root)
+    identity = _build_target_identity(
+        root,
+        kind="candidate",
+        profile="e2b",
+        ref=options.target_ref,
+        pin_agent_ref=None,
+        pin_runtime_ref=None,
+    )
+    _verify_capacity_target_matches(local_payload, identity, invocation_dir)
+    environment = _capture_environment(
+        root,
+        profile="e2b",
+        python_base_image_id=python_base_image_id,
+    )
+    _verify_capacity_environment_matches(invocation_dir, environment)
+    reference_valid = bool(local_payload.get("reference_valid")) and not options.quick
+    lifecycle_points: list[CapacityPoint] = []
+    lifecycle_samples: list[E2BLifecycleSample] = []
+    block_position = 0
+    smoke_block_id = "e2b_contract_smoke_c1"
+    smoke_samples, _, _ = _run_e2b_lifecycle_block(
+        root=root,
+        invocation_id=invocation_dir.name,
+        block_position=block_position,
+        identity=identity,
+        harness_image=harness_image,
+        block_id=smoke_block_id,
+        concurrency=1,
+        waves=1,
+        block_dir=invocation_dir / "blocks" / smoke_block_id,
+        keep_containers=options.keep_containers,
+        api_key=options.api_key,
+        template=options.template,
+    )
+    lifecycle_samples.extend(smoke_samples)
+    smoke_log = invocation_dir / "blocks" / smoke_block_id / "driver.log"
+    if smoke_log.exists():
+        shutil.copyfile(smoke_log, invocation_dir / "logs" / f"{smoke_block_id}.log")
+    block_position += 1
+    if not smoke_samples or any(
+        not sample.success or sample.cleanup_error for sample in smoke_samples
+    ):
+        _write_e2b_capacity_artifacts(
+            invocation_dir=invocation_dir,
+            target_ref=options.target_ref,
+            local_points=local_points,
+            e2b_points=[],
+            lifecycle_samples=lifecycle_samples,
+            service_blocks=[],
+            identity=identity,
+            environment=environment,
+            options=options,
+            quota=None,
+        )
+        raise BenchmarkCommandError(
+            f"real E2B lifecycle contract smoke failed; inspect {invocation_dir}"
+        )
+    lifecycle_block_count = 1 if options.quick else 2
+    lifecycle_waves = 1 if options.quick else 5
+    for concurrency in (1, 5, 10, 20):
+        point_samples: list[E2BLifecycleSample] = []
+        elapsed_seconds = 0.0
+        observed_max_active = 0
+        for block_index in range(lifecycle_block_count):
+            block_id = f"e2b_binding_create_pause_c{concurrency}-candidate-{block_index}"
+            samples, observed, elapsed = _run_e2b_lifecycle_block(
+                root=root,
+                invocation_id=invocation_dir.name,
+                block_position=block_position,
+                identity=identity,
+                harness_image=harness_image,
+                block_id=block_id,
+                concurrency=concurrency,
+                waves=lifecycle_waves,
+                block_dir=invocation_dir / "blocks" / block_id,
+                keep_containers=options.keep_containers,
+                api_key=options.api_key,
+                template=options.template,
+            )
+            driver_log = invocation_dir / "blocks" / block_id / "driver.log"
+            if driver_log.exists():
+                shutil.copyfile(driver_log, invocation_dir / "logs" / f"{block_id}.log")
+            block_position += 1
+            point_samples.extend(samples)
+            lifecycle_samples.extend(samples)
+            observed_max_active = max(observed_max_active, observed)
+            elapsed_seconds += elapsed
+        point = aggregate_e2b_lifecycle_point(
+            requested_concurrency=concurrency,
+            samples=point_samples,
+            block_count=lifecycle_block_count,
+            elapsed_seconds=elapsed_seconds,
+            observed_max_active=observed_max_active,
+            reference_valid=reference_valid,
+            expected_blocks=lifecycle_block_count,
+            waves_per_block=lifecycle_waves,
+        )
+        lifecycle_points.append(point)
+        if concurrency == 1 and point.status == "invalid":
+            _write_e2b_capacity_artifacts(
+                invocation_dir=invocation_dir,
+                target_ref=options.target_ref,
+                local_points=local_points,
+                e2b_points=lifecycle_points,
+                lifecycle_samples=lifecycle_samples,
+                service_blocks=[],
+                identity=identity,
+                environment=environment,
+                options=options,
+                quota=None,
+            )
+            raise BenchmarkCommandError(
+                f"real E2B c1 lifecycle contract failed; inspect {invocation_dir}"
+            )
+
+    service_blocks: list[BlockResult] = []
+    service_points: list[CapacityPoint] = []
+    service_block_count = 1 if options.quick else 2
+    for matrix_point in build_e2b_service_capacity_matrix():
+        point_blocks: list[BlockResult] = []
+        for block_index in range(service_block_count):
+            block_id = f"{matrix_point.scenario_id}-candidate-{block_index}"
+            block_dir = invocation_dir / "blocks" / block_id
+            overrides = {
+                **secret_environment,
+                "BENCH_RESULT_SCENARIO_ID": matrix_point.scenario_id,
+                "BENCH_CONCURRENCY": str(matrix_point.requested_concurrency),
+                "BENCH_BINDING_POOL_SIZE": str(matrix_point.requested_concurrency),
+                "BENCH_WARMUP_ONCE_PER_WORKER": "1",
+            }
+            if not options.quick:
+                overrides.update(
+                    {
+                        "BENCH_WARMUP_RUNS": "",
+                        "BENCH_TRIAL_RUNS": "",
+                        "BENCH_WARMUP_SECONDS": "1",
+                        "BENCH_DURATION_SECONDS": "0.001",
+                        "BENCH_MIN_SUCCESSFUL_RUNS": "50",
+                        "BENCH_MAX_DURATION_SECONDS": "120",
+                    }
+                )
+            try:
+                block = _run_compose_block(
+                    root=root,
+                    profile="e2b",
+                    invocation_id=invocation_dir.name,
+                    block_position=block_position,
+                    identity=identity,
+                    harness_image=harness_image,
+                    scenario_id=matrix_point.source_scenario_id,
+                    block_id=block_id,
+                    pair_index=block_index,
+                    block_dir=block_dir,
+                    keep_containers=options.keep_containers,
+                    quick=options.quick,
+                    environment_overrides=overrides,
+                )
+            except BenchmarkCommandError as exc:
+                raise BenchmarkCommandError(
+                    str(exc).replace(options.api_key, "[redacted]")
+                ) from exc
+            finally:
+                _redact_secret_in_directory(block_dir, options.api_key)
+            point_blocks.append(block)
+            service_blocks.append(block)
+            block_position += 1
+            service_log = block_dir / "services.log"
+            if service_log.exists():
+                shutil.copyfile(service_log, invocation_dir / "logs" / f"{block_id}.log")
+        point = aggregate_local_capacity_point(
+            profile="e2b",
+            workload=matrix_point.workload,
+            scenario_id=matrix_point.scenario_id,
+            requested_concurrency=matrix_point.requested_concurrency,
+            blocks=point_blocks,
+            reference_valid=reference_valid,
+            expected_blocks=service_block_count,
+            minimum_samples=2 if options.quick else 100,
+        )
+        point = enrich_e2b_service_point(
+            point,
+            workload=matrix_point.workload,
+            blocks=point_blocks,
+        )
+        service_points.append(point)
+        if matrix_point.requested_concurrency == 1 and point.status == "invalid":
+            all_e2b_points = [*lifecycle_points, *service_points]
+            _write_e2b_capacity_artifacts(
+                invocation_dir=invocation_dir,
+                target_ref=options.target_ref,
+                local_points=local_points,
+                e2b_points=all_e2b_points,
+                lifecycle_samples=lifecycle_samples,
+                service_blocks=service_blocks,
+                identity=identity,
+                environment=environment,
+                options=options,
+                quota=None,
+            )
+            raise BenchmarkCommandError(
+                f"real E2B c1 service contract failed; inspect {invocation_dir}"
+            )
+
+    e2b_points = [*lifecycle_points, *service_points]
+    quota = build_quota_recommendation(
+        local_points=local_points,
+        e2b_points=e2b_points,
+        e2b_max_concurrency=options.max_concurrency,
+        e2b_max_inventory=options.max_inventory,
+        pilot_tenant_count=options.pilot_tenant_count,
+    )
+    _write_e2b_capacity_artifacts(
+        invocation_dir=invocation_dir,
+        target_ref=options.target_ref,
+        local_points=local_points,
+        e2b_points=e2b_points,
+        lifecycle_samples=lifecycle_samples,
+        service_blocks=service_blocks,
+        identity=identity,
+        environment=environment,
+        options=options,
+        quota=quota,
+    )
+    if any(point.status == "invalid" for point in e2b_points):
+        raise BenchmarkCommandError(f"E2B capacity correctness failed; inspect {invocation_dir}")
+    logger.info("E2B capacity results: %s", invocation_dir)
+    return invocation_dir
+
+
+def _resolve_capacity_results_dir(root: Path, options: E2BCapacityOptions) -> Path:
+    if options.capacity_results_dir is not None:
+        invocation_dir = options.capacity_results_dir.resolve()
+    else:
+        results_root = options.results_root or root / "dify-agent" / "benchmarks" / "results"
+        pointer = results_root / "latest-capacity.txt"
+        if not pointer.is_file():
+            raise BenchmarkCommandError(
+                "Local capacity result is required; run bench-docker-capacity first"
+            )
+        invocation_dir = Path(pointer.read_text().strip()).resolve()
+    if not (invocation_dir / "local-capacity.json").is_file():
+        raise BenchmarkCommandError(
+            f"{invocation_dir} does not contain local-capacity.json"
+        )
+    (invocation_dir / "logs").mkdir(exist_ok=True)
+    return invocation_dir
+
+
+def _verify_capacity_target_matches(
+    local_payload: object,
+    identity: TargetIdentity,
+    invocation_dir: Path,
+) -> None:
+    if not isinstance(local_payload, dict):
+        raise BenchmarkCommandError(f"invalid Local capacity payload in {invocation_dir}")
+    identities = local_payload.get("identities")
+    agent_identity = identities.get("agent") if isinstance(identities, dict) else None
+    components = (
+        agent_identity.get("components") if isinstance(agent_identity, dict) else None
+    )
+    agent_component = components.get("agent") if isinstance(components, dict) else None
+    local_commit = (
+        agent_component.get("commit") if isinstance(agent_component, dict) else None
+    )
+    if not isinstance(local_commit, str):
+        raise BenchmarkCommandError(
+            f"Local capacity identity is incomplete in {invocation_dir}"
+        )
+    e2b_commit = identity.components["agent"].commit
+    if local_commit != e2b_commit:
+        raise BenchmarkCommandError(
+            f"Local capacity Agent commit {local_commit} differs from E2B target {e2b_commit}"
+        )
+
+
+def _verify_capacity_environment_matches(
+    invocation_dir: Path,
+    e2b_environment: EnvironmentFingerprint,
+) -> None:
+    environment_path = invocation_dir / "environment.json"
+    payload = json.loads(environment_path.read_text())
+    profiles = payload.get("profiles") if isinstance(payload, dict) else None
+    agent_payload = profiles.get("agent") if isinstance(profiles, dict) else None
+    capability_payload = (
+        profiles.get("capability") if isinstance(profiles, dict) else None
+    )
+    if not isinstance(agent_payload, dict) or not isinstance(capability_payload, dict):
+        raise BenchmarkCommandError(
+            f"Local environment fingerprints are incomplete in {environment_path}"
+        )
+    agent_environment = EnvironmentFingerprint.model_validate(agent_payload)
+    capability_environment = EnvironmentFingerprint.model_validate(capability_payload)
+    mismatches: list[str] = []
+    if {
+        agent_environment.harness_hash,
+        capability_environment.harness_hash,
+    } != {e2b_environment.harness_hash}:
+        mismatches.append("harness hash")
+    if (
+        capability_environment.scenario_manifest_hash
+        != e2b_environment.scenario_manifest_hash
+    ):
+        mismatches.append("capability scenario manifest")
+    for name, local_value, e2b_value in (
+        ("OS", agent_environment.os, e2b_environment.os),
+        ("architecture", agent_environment.architecture, e2b_environment.architecture),
+        ("CPU model", agent_environment.cpu_model, e2b_environment.cpu_model),
+        ("Docker Engine", agent_environment.docker_engine, e2b_environment.docker_engine),
+        ("Docker CPU allocation", agent_environment.docker_cpus, e2b_environment.docker_cpus),
+        (
+            "Docker memory allocation",
+            agent_environment.docker_memory_bytes,
+            e2b_environment.docker_memory_bytes,
+        ),
+    ):
+        if local_value != e2b_value:
+            mismatches.append(name)
+    for name, local_value, e2b_value in (
+        ("Redis image", agent_environment.redis_image, e2b_environment.redis_image),
+        (
+            "Redis config",
+            agent_environment.redis_config_hash,
+            e2b_environment.redis_config_hash,
+        ),
+        (
+            "Agent resource limit",
+            agent_environment.resource_limits.get("agent"),
+            e2b_environment.resource_limits.get("agent"),
+        ),
+        (
+            "Redis resource limit",
+            agent_environment.resource_limits.get("redis"),
+            e2b_environment.resource_limits.get("redis"),
+        ),
+        (
+            "Fake resource limit",
+            agent_environment.resource_limits.get("fake-deps"),
+            e2b_environment.resource_limits.get("fake-deps"),
+        ),
+    ):
+        if local_value != e2b_value:
+            mismatches.append(name)
+    if mismatches:
+        raise BenchmarkCommandError(
+            "Local and E2B capacity evidence is not comparable: "
+            + ", ".join(mismatches)
+        )
+
+
+def _run_e2b_lifecycle_block(
+    *,
+    root: Path,
+    invocation_id: str,
+    block_position: int,
+    identity: TargetIdentity,
+    harness_image: str,
+    block_id: str,
+    concurrency: int,
+    waves: int,
+    block_dir: Path,
+    keep_containers: bool,
+    api_key: str,
+    template: str,
+) -> tuple[list[E2BLifecycleSample], int, float]:
+    block_dir.mkdir(parents=True)
+    project = _compose_project_name(
+        invocation_id,
+        "e2b",
+        block_id,
+        block_position,
+        identity.kind,
+    )
+    compose_file = root / "dify-agent" / "benchmarks" / _PROFILE_COMPOSE["e2b"]
+    environment = _compose_environment(
+        identity=identity,
+        harness_image=harness_image,
+        block_dir=block_dir,
+        scenario_id=block_id,
+        block_id=block_id,
+        pair_index=block_position,
+        quick=False,
+    )
+    environment.update(
+        {
+            "BENCH_E2B_API_KEY": api_key,
+            "BENCH_E2B_TEMPLATE": template,
+            "BENCH_CONCURRENCY": str(concurrency),
+            "BENCH_E2B_WAVES": str(waves),
+        }
+    )
+    compose = ["docker", "compose", "-f", str(compose_file), "-p", project]
+    driver_result: subprocess.CompletedProcess[str] | None = None
+    try:
+        driver_result = _run_command(
+            [*compose, "run", "--rm", "-T", "--no-deps", "e2b-lifecycle-driver"],
+            env=environment,
+            check=False,
+        )
+        driver_log = (driver_result.stdout + driver_result.stderr).replace(
+            api_key,
+            "[redacted]",
+        )
+        (block_dir / "driver.log").write_text(driver_log)
+        result_path = block_dir / "e2b-lifecycle.json"
+        if not result_path.is_file():
+            raise BenchmarkCommandError(
+                f"E2B lifecycle driver did not write {result_path}\n{driver_log}"
+            )
+        payload = json.loads(result_path.read_text())
+        samples_raw = payload.get("samples")
+        if not isinstance(samples_raw, list):
+            raise BenchmarkCommandError(f"invalid E2B lifecycle samples in {result_path}")
+        samples = [E2BLifecycleSample.model_validate(sample) for sample in samples_raw]
+        observed_max_active = int(payload.get("observed_max_active", 0))
+        elapsed_seconds = float(payload.get("elapsed_seconds", 0))
+        return samples, observed_max_active, elapsed_seconds
+    finally:
+        _redact_secret_in_directory(block_dir, api_key)
+        if keep_containers and driver_result is not None and driver_result.returncode != 0:
+            logger.warning("E2B lifecycle driver failed in Compose project %s", project)
+        else:
+            _ = _run_command(
+                [*compose, "down", "-v", "--remove-orphans"],
+                env=environment,
+                check=False,
+            )
+
+
+def _write_e2b_capacity_artifacts(
+    *,
+    invocation_dir: Path,
+    target_ref: str,
+    local_points: Sequence[CapacityPoint],
+    e2b_points: Sequence[CapacityPoint],
+    lifecycle_samples: Sequence[E2BLifecycleSample],
+    service_blocks: Sequence[BlockResult],
+    identity: TargetIdentity,
+    environment: EnvironmentFingerprint,
+    options: E2BCapacityOptions,
+    quota: QuotaRecommendation | None,
+) -> None:
+    reference_valid = bool(
+        local_points
+        and e2b_points
+        and all(point.reference_valid for point in [*local_points, *e2b_points])
+    )
+    _write_json(
+        invocation_dir / "e2b-capacity.json",
+        {
+            "schema_version": 1,
+            "mode": "e2b_capacity",
+            "target_ref": target_ref,
+            "reference_valid": reference_valid,
+            "identity": identity.model_dump(mode="json"),
+            "points": [point.model_dump(mode="json") for point in e2b_points],
+        },
+    )
+    _write_json(
+        invocation_dir / "unit-consumption.json",
+        {
+            "schema_version": 1,
+            "units": [
+                unit.model_dump(mode="json")
+                for unit in build_unit_consumption([*local_points, *e2b_points])
+            ],
+        },
+    )
+    if quota is None:
+        quota_payload: object = {
+            "schema_version": 1,
+            "status": "no_launch_recommendation",
+            "reference_valid": False,
+            "reasons": ["E2B correctness failed before a quota could be derived"],
+        }
+    else:
+        quota_payload = {
+            "schema_version": 1,
+            **quota.model_dump(mode="json"),
+        }
+    _write_json(invocation_dir / "quota-recommendation.json", quota_payload)
+    (invocation_dir / "capacity-report.md").write_text(
+        render_capacity_markdown(
+            target_ref=target_ref,
+            local_points=local_points,
+            e2b_points=e2b_points,
+            quota=quota,
+        )
+    )
+    environment_path = invocation_dir / "environment.json"
+    existing_environment = (
+        json.loads(environment_path.read_text()) if environment_path.is_file() else {}
+    )
+    if not isinstance(existing_environment, dict):
+        existing_environment = {}
+    profiles = existing_environment.setdefault("profiles", {})
+    if not isinstance(profiles, dict):
+        profiles = {}
+        existing_environment["profiles"] = profiles
+    profiles["e2b"] = environment.model_dump(mode="json")
+    existing_environment["e2b_calibration"] = {
+        "template": options.template,
+        "vendor_max_concurrency": options.max_concurrency,
+        "approved_inventory_limit": options.max_inventory,
+        "pilot_tenant_count": options.pilot_tenant_count,
+        "reference_valid": reference_valid,
+    }
+    _write_json(environment_path, existing_environment)
+    samples_path = invocation_dir / "samples.jsonl"
+    retained_lines: list[str] = []
+    if samples_path.is_file():
+        for line in samples_path.read_text().splitlines():
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                retained_lines.append(line)
+                continue
+            if isinstance(record, dict) and (
+                record.get("kind") == "e2b_lifecycle"
+                or record.get("profile") == "e2b"
+            ):
+                continue
+            retained_lines.append(line)
+    with samples_path.open("w") as output:
+        for line in retained_lines:
+            output.write(line)
+            output.write("\n")
+        for sample in lifecycle_samples:
+            output.write(
+                json.dumps(
+                    {
+                        "kind": "e2b_lifecycle",
+                        "sample": sample.model_dump(mode="json"),
+                    },
+                    sort_keys=True,
+                )
+            )
+            output.write("\n")
+        for block in service_blocks:
+            for sample in block.samples:
+                output.write(sample.model_dump_json())
+                output.write("\n")
+
+
+def _redact_secret_in_directory(directory: Path, secret: str) -> None:
+    if not secret or not directory.exists():
+        return
+    for path in directory.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            content = path.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        if secret in content:
+            path.write_text(content.replace(secret, "[redacted]"))
 
 
 def build_comparison(
@@ -664,6 +1456,7 @@ def _run_compose_block(
     block_dir: Path,
     keep_containers: bool,
     quick: bool,
+    environment_overrides: dict[str, str] | None = None,
 ) -> BlockResult:
     block_dir.mkdir(parents=True)
     project = _compose_project_name(invocation_id, profile, scenario_id, block_position, identity.kind)
@@ -677,6 +1470,8 @@ def _run_compose_block(
         pair_index=pair_index,
         quick=quick,
     )
+    if environment_overrides:
+        environment.update(environment_overrides)
     compose = ["docker", "compose", "-f", str(compose_file), "-p", project]
     sampler: DockerStatsSampler | None = None
     result: BlockResult | None = None
@@ -1061,7 +1856,12 @@ def _capture_environment(
     docker_info = json.loads(_run_command(["docker", "info", "--format", "{{json .}}"]).stdout)
     docker_version = json.loads(_run_command(["docker", "version", "--format", "{{json .Server}}"]).stdout)
     compose_file = root / "dify-agent" / "benchmarks" / _PROFILE_COMPOSE[profile]
-    manifest_name = "scenarios.json" if profile == "agent" else f"{profile}_scenarios.json"
+    manifest_name = {
+        "agent": "scenarios.json",
+        "runtime": "runtime_scenarios.json",
+        "capability": "capability_scenarios.json",
+        "e2b": "capability_scenarios.json",
+    }[profile]
     manifest_file = root / "dify-agent" / "benchmarks" / manifest_name
     return EnvironmentFingerprint(
         profile=profile,
@@ -1221,7 +2021,12 @@ def _decision_metrics(scenario: ScenarioComparison) -> tuple[MetricComparison, .
     return tuple(metrics)
 
 
-def _verify_docker_environment(root: Path, profile: BenchmarkProfile) -> None:
+def _verify_docker_environment(
+    root: Path,
+    profile: BenchmarkProfile,
+    *,
+    environment_overrides: dict[str, str] | None = None,
+) -> None:
     _ = _run_command(["docker", "info"])
     _ = _run_command(["docker", "compose", "version"])
     compose_file = root / "dify-agent" / "benchmarks" / _PROFILE_COMPOSE[profile]
@@ -1237,6 +2042,8 @@ def _verify_docker_environment(root: Path, profile: BenchmarkProfile) -> None:
         "BENCH_BLOCK_ID": "environment-check",
         "BENCH_PAIR_INDEX": "0",
     }
+    if environment_overrides:
+        placeholders.update(environment_overrides)
     _ = _run_command(["docker", "compose", "-f", str(compose_file), "config", "--quiet"], env=placeholders)
 
 
@@ -1363,7 +2170,7 @@ def _run_command_bytes(command: Sequence[str], *, cwd: Path) -> bytes:
     return result.stdout
 
 
-def _parse_args() -> tuple[str, RunOptions]:
+def _parse_args() -> tuple[str, RunOptions | CapacityOptions | E2BCapacityOptions]:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     smoke_parser = subparsers.add_parser("smoke")
@@ -1382,7 +2189,52 @@ def _parse_args() -> tuple[str, RunOptions]:
     ab_parser.add_argument("--quick", action="store_true")
     ab_parser.add_argument("--scenario", action="append", dest="scenarios", default=[])
     ab_parser.add_argument("--results-root", type=Path)
+    capacity_parser = subparsers.add_parser("capacity")
+    capacity_parser.add_argument("--target-ref", default=os.environ.get("TARGET_REF", "1.16.1"))
+    capacity_parser.add_argument(
+        "--keep-containers",
+        action="store_true",
+        default=os.environ.get("KEEP_CONTAINERS") == "1",
+    )
+    capacity_parser.add_argument("--quick", action="store_true")
+    capacity_parser.add_argument("--results-root", type=Path)
+    e2b_capacity_parser = subparsers.add_parser("e2b-capacity")
+    e2b_capacity_parser.add_argument("--target-ref", default=os.environ.get("TARGET_REF", "1.16.1"))
+    e2b_capacity_parser.add_argument(
+        "--keep-containers",
+        action="store_true",
+        default=os.environ.get("KEEP_CONTAINERS") == "1",
+    )
+    e2b_capacity_parser.add_argument("--quick", action="store_true")
+    e2b_capacity_parser.add_argument("--capacity-results-dir", type=Path)
+    e2b_capacity_parser.add_argument("--results-root", type=Path)
     args = parser.parse_args()
+    if args.command == "capacity":
+        return args.command, CapacityOptions(
+            target_ref=args.target_ref,
+            keep_containers=args.keep_containers,
+            quick=args.quick,
+            results_root=args.results_root,
+        )
+    if args.command == "e2b-capacity":
+        return args.command, E2BCapacityOptions(
+            target_ref=args.target_ref,
+            api_key=_required_orchestrator_environment("BENCH_E2B_API_KEY"),
+            template=_required_orchestrator_environment("BENCH_E2B_TEMPLATE"),
+            max_concurrency=int(
+                _required_orchestrator_environment("BENCH_E2B_MAX_CONCURRENCY")
+            ),
+            max_inventory=int(
+                _required_orchestrator_environment("BENCH_E2B_MAX_INVENTORY")
+            ),
+            pilot_tenant_count=int(
+                _required_orchestrator_environment("BENCH_PILOT_TENANT_COUNT")
+            ),
+            keep_containers=args.keep_containers,
+            quick=args.quick,
+            capacity_results_dir=args.capacity_results_dir,
+            results_root=args.results_root,
+        )
     options = RunOptions(
         profile=cast(BenchmarkProfile, args.profile),
         baseline_ref=getattr(args, "baseline_ref", "origin/main"),
@@ -1402,6 +2254,7 @@ def main() -> int:
     try:
         command, options = _parse_args()
         if command == "smoke":
+            assert isinstance(options, RunOptions)
             _ = run_smoke(
                 profile=options.profile,
                 keep_containers=options.keep_containers,
@@ -1409,12 +2262,26 @@ def main() -> int:
                 scenario_id=options.scenario_ids[0] if options.scenario_ids else None,
                 quick=options.quick,
             )
-        else:
+        elif command == "ab":
+            assert isinstance(options, RunOptions)
             _ = run_ab(options)
+        elif command == "capacity":
+            assert isinstance(options, CapacityOptions)
+            _ = run_local_capacity(options)
+        else:
+            assert isinstance(options, E2BCapacityOptions)
+            _ = run_e2b_capacity(options)
     except (BenchmarkCommandError, ValueError):
         logger.exception("benchmark failed")
         return 1
     return 0
+
+
+def _required_orchestrator_environment(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise ValueError(f"{name} is required")
+    return value
 
 
 if __name__ == "__main__":
@@ -1423,9 +2290,13 @@ if __name__ == "__main__":
 
 __all__ = [
     "BenchmarkCommandError",
+    "CapacityOptions",
+    "E2BCapacityOptions",
     "RunOptions",
     "build_comparison",
     "repository_root",
     "run_ab",
+    "run_e2b_capacity",
+    "run_local_capacity",
     "run_smoke",
 ]
