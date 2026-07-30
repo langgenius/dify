@@ -1,7 +1,15 @@
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
+import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
+
+let appPermissionKeys: string[] = [AppACLPermission.Deploy]
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}))
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -24,7 +32,33 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        mode: 'workflow',
+        maintainer: 'user-2',
+        permission_keys: appPermissionKeys,
+      },
+    }),
+}))
+
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
+})
+
 describe('AppDeploy', () => {
+  beforeEach(() => {
+    appPermissionKeys = [AppACLPermission.Deploy]
+  })
+
   it('renders the built-in environment and mock deployment list', () => {
     render(<AppDeploy />)
 
@@ -38,6 +72,19 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('cell', { name: /Canary/ })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: /Preview/ })).toBeInTheDocument()
     expect(screen.getAllByRole('row')).toHaveLength(9)
+  })
+
+  it('does not render deployment controls without app deploy ACL permission', () => {
+    appPermissionKeys = []
+
+    render(<AppDeploy />)
+
+    expect(
+      screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'deployments.studio.environments' }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the deploy menu with undeployed environments', async () => {

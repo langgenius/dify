@@ -6,6 +6,7 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
@@ -51,7 +52,6 @@ const collaborationMocks = vi.hoisted(() => ({
 
 let mockAppDetail: Record<string, any> | null = null
 let mockWorkspacePermissionKeys: string[] = ['tool.manage']
-let mockIsCurrentWorkspaceEditor = true
 
 vi.mock('@tanstack/react-hotkeys', () => ({
   useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
@@ -132,9 +132,15 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
   }))
 })
 vi.mock('@/context/permission-state', async () => {
@@ -253,11 +259,12 @@ describe('AppPublisher', () => {
     mockPublishedWorkflow = null
     mockFetchPublishedWorkflow.mockResolvedValue(null)
     mockWorkspacePermissionKeys = ['tool.manage']
-    mockIsCurrentWorkspaceEditor = true
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
       mode: AppModeEnum.CHAT,
+      maintainer: 'user-2',
+      permission_keys: [],
       access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
       site: {
         app_base_url: 'https://example.com',
@@ -364,14 +371,15 @@ describe('AppPublisher', () => {
     expect(mockToastSuccess).toHaveBeenCalled()
   })
 
-  it('should expose the Deploy quick link for editable workflow apps when enabled', () => {
+  it('should expose app deployment with deploy ACL regardless of the legacy workspace role', () => {
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.Deploy],
     }
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
-      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
+      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: false },
     })
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
@@ -381,6 +389,24 @@ describe('AppPublisher', () => {
     expect(
       screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }),
     ).toBeInTheDocument()
+  })
+
+  it('should keep the workflow publisher single-environment without app deploy ACL', () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [],
+    }
+
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: false },
+    })
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(sectionProps.actions?.showDeployAction).toBe(false)
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(sectionProps.summary?.environmentTabs).toBeUndefined()
   })
 
   it('should keep the single-environment publisher for unsupported app types', () => {
@@ -399,6 +425,7 @@ describe('AppPublisher', () => {
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.Deploy],
     }
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },

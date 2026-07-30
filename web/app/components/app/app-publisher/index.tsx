@@ -35,7 +35,8 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { appDefaultIconBackground } from '@/config'
-import { isCurrentWorkspaceEditorAtom } from '@/context/workspace-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
@@ -49,6 +50,7 @@ import {
   useUpdateWorkflow,
 } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import AccessControl from '../app-access-control'
 import { PublisherEnvironmentFlow } from './environment-deployment-flow'
 import { BUILT_IN_ENVIRONMENT_ID, PublisherEnvironmentTabs } from './environment-tabs'
@@ -158,7 +160,8 @@ export function AppPublisher({
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const canManageTools = useCanManageTools()
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -167,8 +170,12 @@ export function AppPublisher({
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const appMode = appDetail?.mode
   const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const supportsMultiEnvironment =
-    appMode === AppModeEnum.WORKFLOW && systemFeatures.enable_app_deploy
+  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canDeploy
+  const supportsMultiEnvironment = appMode === AppModeEnum.WORKFLOW && canDeploy
   const isChatApp =
     appMode === AppModeEnum.CHAT ||
     appMode === AppModeEnum.AGENT_CHAT ||
@@ -525,7 +532,7 @@ export function AppPublisher({
                   marketplaceActionDisabled={!currentPublishedAt}
                   publishedAt={currentPublishedAt}
                   publishingToMarketplace={publishingToMarketplace}
-                  showDeployAction={supportsMultiEnvironment && isCurrentWorkspaceEditor}
+                  showDeployAction={supportsMultiEnvironment}
                   showMarketplaceAction={systemFeatures.enable_creators_platform}
                   showRunConfig={hiddenLaunchVariables.length > 0}
                   toolPublished={workflowToolPublished}

@@ -1,13 +1,15 @@
 'use client'
 
 import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { MOCK_ENVIRONMENT_DEPLOYMENTS } from '@/app/components/app/deploy/mock-data'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInAccessPoints } from './built-in-access-points'
 import { DeployedEnvironmentAccessPoints } from './deployed-environment-access-points'
 
@@ -42,10 +44,16 @@ type AccessPointProps = {
 
 export default function AccessPoint({ appId }: AccessPointProps) {
   const { t } = useTranslation()
-  const appMode = useAppStore((state) => state.appDetail?.mode)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const appDetail = useAppStore((state) => state.appDetail)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [environment, setEnvironment] = useQueryState('environment', environmentQueryState)
-  const showEnvironmentTabs = appMode === AppModeEnum.WORKFLOW && systemFeatures.enable_app_deploy
+  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canDeploy
+  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && canDeploy
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-components-panel-bg">

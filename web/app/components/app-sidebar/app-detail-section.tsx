@@ -12,7 +12,6 @@ import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { isCurrentWorkspaceEditorAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
@@ -84,7 +83,6 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore((state) => state.appDetail)
   const appInfoActions = useAppInfoActions({
@@ -124,7 +122,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
         icon: accessPointNavIcon,
         selectedIcon: accessPointNavIcon,
       },
-      ...(supportsAppDeploy && isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
+      ...(supportsAppDeploy && appACLCapabilities.canDeploy
         ? [
             {
               name: t(($) => $['appMenus.deploy'], { ns: 'common' }),
@@ -175,15 +173,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
           ]
         : []),
     ]
-  }, [
-    appDetail,
-    t,
-    currentUserId,
-    workspacePermissionKeys,
-    isCurrentWorkspaceEditor,
-    isRbacEnabled,
-    systemFeatures.enable_app_deploy,
-  ])
+  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled])
 
   if (!appDetail) return null
 

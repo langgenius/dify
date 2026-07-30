@@ -10,7 +10,7 @@ describe('app-redirection', () => {
   /**
    * Tests getRedirectionPath which determines the correct path based on:
    * - App ACL layout access permissions
-   * - App ACL monitor and access config permissions
+   * - App ACL monitor, deploy, and access config permissions
    * - App mode (workflow, advanced-chat, chat, completion, agent-chat)
    */
   describe('getRedirectionPath', () => {
@@ -153,6 +153,16 @@ describe('app-redirection', () => {
       }
 
       expect(getRedirectionPath(app)).toBe('/app/app-123/logs')
+    })
+
+    it('returns deploy path when a workflow app ACL can only deploy', () => {
+      const app = {
+        id: 'app-123',
+        mode: AppModeEnum.WORKFLOW,
+        permission_keys: [AppACLPermission.Deploy],
+      }
+
+      expect(getRedirectionPath(app)).toBe('/app/app-123/deploy')
     })
   })
 

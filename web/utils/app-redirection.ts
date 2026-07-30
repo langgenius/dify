@@ -30,6 +30,9 @@ export const getRedirectionPath = (
 
   if (appACLCapabilities.canAccessConfig) return `/app/${app.id}/access-config`
 
+  if (app.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canDeploy)
+    return `/app/${app.id}/deploy`
+
   return `/app/${app.id}/develop`
 }
 

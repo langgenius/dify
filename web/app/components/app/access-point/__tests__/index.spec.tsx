@@ -1,10 +1,15 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
+import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
 let appMode = 'workflow'
-let enableAppDeploy = true
+let appPermissionKeys: string[] = [AppACLPermission.Deploy]
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}))
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -13,29 +18,27 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        enable_app_deploy: enableAppDeploy,
-      },
-    }),
-  }
-})
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       appDetail: {
         id: 'app-1',
         mode: appMode,
-        permission_keys: [],
+        maintainer: 'user-2',
+        permission_keys: appPermissionKeys,
       },
     }),
 }))
+
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
+})
 
 vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
   BuiltInAccessPoints: ({ appId }: { appId: string }) => (
@@ -52,10 +55,10 @@ vi.mock('@/app/components/app/access-point/deployed-environment-access-points', 
 describe('AccessPoint', () => {
   beforeEach(() => {
     appMode = 'workflow'
-    enableAppDeploy = true
+    appPermissionKeys = [AppACLPermission.Deploy]
   })
 
-  it('renders the page and environment tabs without requiring deploy permission', () => {
+  it('renders the page and environment tabs with app deploy ACL permission', () => {
     renderWithNuqs(<AccessPoint appId="app-1" />)
 
     expect(screen.getByRole('heading', { name: 'common.appMenus.accessPoint' })).toBeInTheDocument()
@@ -86,19 +89,24 @@ describe('AccessPoint', () => {
     expect(screen.queryByTestId('built-in-access-points')).not.toBeInTheDocument()
   })
 
-  it.each([
-    { mode: 'workflow', featureEnabled: false, label: 'the feature is disabled' },
-    { mode: 'chat', featureEnabled: true, label: 'the app has no multi-environment support' },
-  ])(
-    'hides environment tabs when $label but keeps the page visible',
-    ({ featureEnabled, mode }) => {
-      appMode = mode
-      enableAppDeploy = featureEnabled
+  it('hides environment tabs for app types without multi-environment support', () => {
+    appMode = 'chat'
 
-      renderWithNuqs(<AccessPoint appId="app-1" />)
+    renderWithNuqs(<AccessPoint appId="app-1" />)
 
-      expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-      expect(screen.getByTestId('built-in-access-points')).toBeInTheDocument()
-    },
-  )
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.getByTestId('built-in-access-points')).toBeInTheDocument()
+  })
+
+  it('falls back to built-in access points without app deploy ACL permission', () => {
+    appPermissionKeys = []
+
+    renderWithNuqs(<AccessPoint appId="app-1" />, {
+      searchParams: '?environment=canary',
+    })
+
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.getByTestId('built-in-access-points')).toBeInTheDocument()
+    expect(screen.queryByTestId('deployed-environment-access-points')).not.toBeInTheDocument()
+  })
 })

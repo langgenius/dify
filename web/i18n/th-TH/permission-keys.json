@@ -4,6 +4,7 @@
   "app.access_config": "กําหนดค่าสิทธิ์การเข้าถึงแอป",
   "app.acl.access_config": "กําหนดค่าสิทธิ์การเข้าถึงแอป",
   "app.acl.delete": "ลบแอป",
+  "app.acl.deploy": "ปรับใช้แอป",
   "app.acl.edit": "แก้ไขและจัดวางแอป",
   "app.acl.import_export_dsl": "นําเข้า / ส่งออก DSL",
   "app.acl.log_and_annotation": "เข้าถึงบันทึกและคำอธิบายประกอบ",

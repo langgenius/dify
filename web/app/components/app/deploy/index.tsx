@@ -2,8 +2,14 @@
 
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
 import type { MockEnvironmentDeployment } from './mock-data'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
@@ -13,6 +19,14 @@ export default function AppDeploy() {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
+  const appDetail = useAppStore((state) => state.appDetail)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canDeploy
   const latestVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)
 
   const handleRedeploy = (deployment: MockEnvironmentDeployment) => {
@@ -30,6 +44,8 @@ export default function AppDeploy() {
       kind: 'redeploy',
     })
   }
+
+  if (appDetail?.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
 
   return (
     <>
