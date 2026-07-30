@@ -73,7 +73,14 @@ COPY --from=go-builder /bin/dify-agent /usr/local/bin/dify-agent
 RUN useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
     && chown dify:dify /home \
-    && chown -R dify:dify /home/dify /mnt/drive
+    && chown -R dify:dify /home/dify /mnt/drive \
+    # Allow the non-root `dify` user to install the egress proxy's
+    # per-container CA into the system trust store at runtime (see
+    # internal/egressproxy/ca.go InstallSystemTrust), so tools that don't
+    # honor SSL_CERT_FILE/CURL_CA_BUNDLE/etc. (apt-get, wget, ...) also trust
+    # it. update-ca-certificates only needs filesystem write access to these
+    # paths; it does not require any other root-only syscalls.
+    && chown -R dify:dify /usr/local/share/ca-certificates /etc/ssl/certs /etc/ca-certificates.conf
 
 USER dify
 WORKDIR /home/dify

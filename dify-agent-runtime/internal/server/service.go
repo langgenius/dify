@@ -83,6 +83,16 @@ func (s *Service) initEgressProxy() error {
 	s.egressCAFiles = caFiles
 	log.Printf("egressproxy: CA generated in %s", caDir)
 
+	// Best-effort: also install the CA into the system trust store so tools
+	// that don't honor SSL_CERT_FILE/CURL_CA_BUNDLE/etc. (apt-get, wget, ...)
+	// trust it too. Non-fatal on failure since EgressProxyEnv's per-tool env
+	// vars remain a working fallback for most jobs.
+	if err := egressproxy.InstallSystemTrust(caFiles.CertPath); err != nil {
+		log.Printf("egressproxy: system trust install failed (falling back to per-tool env vars): %v", err)
+	} else {
+		log.Printf("egressproxy: CA installed into system trust store")
+	}
+
 	resolver := egressproxy.NewResolver()
 	s.egressResolver = resolver
 
@@ -251,6 +261,8 @@ func (s *Service) EgressProxyEnv(sandboxID string) map[string]string {
 		"REQUESTS_CA_BUNDLE":  s.egressCAFiles.CertPath,
 		"NODE_EXTRA_CA_CERTS": s.egressCAFiles.CertPath,
 		"CURL_CA_BUNDLE":      s.egressCAFiles.CertPath,
+		"GIT_SSL_CAINFO":      s.egressCAFiles.CertPath,
+		"PIP_CERT":            s.egressCAFiles.CertPath,
 	}
 }
 

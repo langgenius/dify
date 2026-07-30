@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 )
@@ -78,4 +79,36 @@ func GenerateCA(dir string) (*CAFiles, error) {
 	}
 
 	return &CAFiles{CertPath: certPath, KeyPath: keyPath}, nil
+}
+
+// systemTrustAnchorPath is where the CA cert is copied for
+// update-ca-certificates to pick up. Debian/Ubuntu-based images (see
+// docker/Dockerfile) scan this directory for additional trust anchors.
+const systemTrustAnchorPath = "/usr/local/share/ca-certificates/dify-agent-egress-proxy-ca.crt"
+
+// InstallSystemTrust copies the CA certificate at certPath into the system
+// trust anchors directory and runs update-ca-certificates, so tools that
+// don't honor SSL_CERT_FILE/CURL_CA_BUNDLE/etc. (apt-get, wget, ...) also
+// trust it. This requires write access to systemTrustAnchorPath's directory
+// and /etc/ssl/certs, which docker/Dockerfile grants to the non-root `dify`
+// user at build time; update-ca-certificates itself performs no privileged
+// syscalls, only filesystem writes.
+//
+// Failures here are non-fatal: callers should log and continue, since the
+// per-tool env vars set by Service.EgressProxyEnv remain a working fallback
+// for most jobs even if system-wide trust installation fails (e.g. on
+// images that haven't granted the necessary permissions).
+func InstallSystemTrust(certPath string) error {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return fmt.Errorf("egressproxy: read CA cert: %w", err)
+	}
+	if err := os.WriteFile(systemTrustAnchorPath, certPEM, 0644); err != nil {
+		return fmt.Errorf("egressproxy: write system trust anchor: %w", err)
+	}
+	cmd := exec.Command("update-ca-certificates")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("egressproxy: update-ca-certificates: %w (output: %s)", err, out)
+	}
+	return nil
 }
