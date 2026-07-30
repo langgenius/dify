@@ -21,7 +21,9 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console.error import AccountNotLinkTenantError
+from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import (
+    CurrentWorkspaceSummaryApi,
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
     TenantApi,
@@ -357,6 +359,54 @@ class TestTenantApi:
             result, status = method(api, MagicMock(), user)
         assert "Deprecated URL /info was used." in caplog.messages
         assert status == HTTPStatus.OK
+
+
+class TestCurrentWorkspaceSummaryApi:
+    def test_get_summary(self, app: Flask):
+        api = CurrentWorkspaceSummaryApi()
+        method = unwrap(api.get)
+        tenant = make_tenant()
+        user = make_account_with_tenant(tenant)
+        session = MagicMock()
+        summary = {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": "owner",
+            "plan": CloudPlan.SANDBOX,
+            "credits": 180,
+        }
+
+        with (
+            app.test_request_context("/workspaces/current/summary"),
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_current_workspace_summary",
+                return_value=summary,
+            ) as get_summary,
+        ):
+            result, status = method(api, session, user)
+
+        assert status == HTTPStatus.OK
+        assert result == {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": "owner",
+            "plan": "sandbox",
+            "credits": 180,
+        }
+        get_summary.assert_called_once_with(tenant, user.id, session=session)
+
+    def test_get_archived_tenant_returns_conflict(self, app: Flask):
+        api = CurrentWorkspaceSummaryApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(status=TenantStatus.ARCHIVE)
+        user = make_account_with_tenant(tenant)
+
+        with app.test_request_context("/workspaces/current/summary"):
+            with pytest.raises(CurrentWorkspaceArchivedError) as exc_info:
+                method(api, MagicMock(), user)
+
+        assert exc_info.value.code == HTTPStatus.CONFLICT
+        assert exc_info.value.error_code == "current_workspace_archived"
 
 
 class TestTenantInfoResponse:
