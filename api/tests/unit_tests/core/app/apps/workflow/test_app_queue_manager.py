@@ -117,3 +117,23 @@ class TestWorkflowAppQueueManager:
             _ = list(manager.listen())
 
             graph_engine_manager.return_value.send_stop_command.assert_not_called()
+
+    def test_workflow_pause_does_not_abort_execution(self):
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
+            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+        ):
+            redis_client.get.return_value = None
+            manager = WorkflowAppQueueManager(
+                task_id="task",
+                user_id="user",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_mode="workflow",
+            )
+            manager.publish(QueueWorkflowPausedEvent(), PublishFrom.APPLICATION_MANAGER)
+            listener = manager.listen()
+
+            assert isinstance(next(listener).event, QueueWorkflowPausedEvent)
+            listener.close()
+
+            graph_engine_manager.return_value.send_stop_command.assert_not_called()

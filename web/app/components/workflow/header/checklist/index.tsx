@@ -16,6 +16,7 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useHooksStore } from '../../hooks-store/store'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useStore } from '../../store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
@@ -33,6 +34,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const needWarningNodes = useChecklist(nodes, edges, { flowType })
   const { handleNodeSelect } = useNodesInteractions()
+  const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
 
   const { pluginItems, nodeItems } = useMemo(() => {
@@ -47,7 +49,10 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
 
   const handleItemClick = (item: ChecklistItem) => {
     if (onItemClick) onItemClick(item)
-    else handleNodeSelect(item.id)
+    else {
+      handleNodeSelect(item.id)
+      if (item.openInlineAgentPanel) setOpenInlineAgentPanelNodeId(item.id)
+    }
     setOpen(false)
   }
 

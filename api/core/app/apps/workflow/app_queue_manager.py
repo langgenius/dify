@@ -33,6 +33,11 @@ class WorkflowAppQueueManager(AppQueueManager):
 
         self._q.put(message)
 
+        # A pause ends only the current listener segment; the workflow stays PAUSED and
+        # resumes with the same task ID. Without this marker, listen() cleanup calls
+        # _abort_execution(), whose stop flag and abort command can stop the resumed run.
+        # This is a compatibility workaround: cancellation policy belongs to the execution
+        # owner, not the response-stream listener.
         if isinstance(
             event,
             QueueStopEvent
