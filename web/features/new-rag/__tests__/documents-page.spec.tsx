@@ -780,6 +780,65 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it('retries failed initial processing from a document row action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              active: null,
+              activeRevision: undefined,
+              id: 'failed-document',
+              status: 'failed',
+              title: 'Failed.pdf',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              documentId: 'failed-document',
+              documentRevision: 1,
+              id: 'failed-task',
+              state: 'failed',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.documentActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.reindexDocument',
+      }),
+    )
+
+    expect(retryMutation.mutateAsync).toHaveBeenCalledWith({
+      params: {
+        control_space_id: 'space-1',
+        task_id: 'failed-task',
+        task_kind: 'document',
+      },
+    })
+    expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(toastMock.success).toHaveBeenCalledWith(
+        'dataset.newKnowledge.documentsReindexStarted',
+      ),
+    )
+  })
+
   it('opens the upload form and consumes the one-shot URL request', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />, {

@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Der Name der Wissensdatenbank ist erforderlich.",
   "newKnowledge.settings.noMembersFound": "Keine Mitglieder gefunden.",
   "newKnowledge.settings.pageDescription": "Grundinformationen, API-Zugriff und Abruf verwalten.",
+  "newKnowledge.settings.rerankModelRequired": "Wählen Sie ein Rerank-Modell aus.",
   "newKnowledge.settings.retrievalDepth": "Suchtiefe",
   "newKnowledge.settings.retrievalDescription": "Abrufmodelle, Tiefe und Rangfolgerichtlinie für Apps und Workflows.",
   "newKnowledge.settings.retrievalMode.auto": "Automatisch",

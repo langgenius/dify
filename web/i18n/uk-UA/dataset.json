@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Потрібно вказати назву бази знань.",
   "newKnowledge.settings.noMembersFound": "Учасників не знайдено.",
   "newKnowledge.settings.pageDescription": "Керуйте основною інформацією, доступом до API та пошуком.",
+  "newKnowledge.settings.rerankModelRequired": "Виберіть модель переранжування.",
   "newKnowledge.settings.retrievalDepth": "Глибина пошуку",
   "newKnowledge.settings.retrievalDescription": "Моделі пошуку, глибина та політика ранжування, які використовують застосунки й робочі процеси.",
   "newKnowledge.settings.retrievalMode.auto": "Автоматично",

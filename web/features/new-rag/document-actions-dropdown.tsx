@@ -28,7 +28,7 @@ export function DocumentActionsDropdown({
       <DropdownMenuTrigger
         aria-label={t(($) => $['newKnowledge.documentActions'], { name: documentTitle })}
         className={cn(
-          'ml-auto flex size-7 items-center justify-end rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'ml-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           className,
         )}
       >

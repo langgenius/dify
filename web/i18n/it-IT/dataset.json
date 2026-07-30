@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Il nome della knowledge base è obbligatorio.",
   "newKnowledge.settings.noMembersFound": "Nessun membro trovato.",
   "newKnowledge.settings.pageDescription": "Gestisci le informazioni di base, l’accesso API e il recupero.",
+  "newKnowledge.settings.rerankModelRequired": "Seleziona un modello di reranking.",
   "newKnowledge.settings.retrievalDepth": "Profondità di recupero",
   "newKnowledge.settings.retrievalDescription": "Modelli di recupero, profondità e criteri di classificazione utilizzati da app e workflow.",
   "newKnowledge.settings.retrievalMode.auto": "Automatico",

@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Ime zbirke znanja je obvezno.",
   "newKnowledge.settings.noMembersFound": "Ni najdenih članov.",
   "newKnowledge.settings.pageDescription": "Upravljajte osnovne podatke, dostop do API-ja in pridobivanje.",
+  "newKnowledge.settings.rerankModelRequired": "Izberite model za ponovno razvrščanje.",
   "newKnowledge.settings.retrievalDepth": "Globina pridobivanja",
   "newKnowledge.settings.retrievalDescription": "Modeli pridobivanja, globina in pravilnik razvrščanja, ki jih uporabljajo aplikacije in delovni tokovi.",
   "newKnowledge.settings.retrievalMode.auto": "Samodejno",

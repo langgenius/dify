@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "知识库名称为必填项。",
   "newKnowledge.settings.noMembersFound": "未找到成员。",
   "newKnowledge.settings.pageDescription": "管理基本信息、API 访问和检索设置。",
+  "newKnowledge.settings.rerankModelRequired": "请选择 Rerank 模型。",
   "newKnowledge.settings.retrievalDepth": "检索深度",
   "newKnowledge.settings.retrievalDescription": "应用和工作流使用的检索模型、深度与排序策略。",
   "newKnowledge.settings.retrievalMode.auto": "自动",

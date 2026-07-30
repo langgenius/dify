@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Knowledge name is required.",
   "newKnowledge.settings.noMembersFound": "No members found.",
   "newKnowledge.settings.pageDescription": "Manage basic info, API access, and retrieval.",
+  "newKnowledge.settings.rerankModelRequired": "Select a rerank model.",
   "newKnowledge.settings.retrievalDepth": "Retrieval depth",
   "newKnowledge.settings.retrievalDescription": "Retrieval models, depth, and ranking policy used by apps and workflows.",
   "newKnowledge.settings.retrievalMode.auto": "Auto",

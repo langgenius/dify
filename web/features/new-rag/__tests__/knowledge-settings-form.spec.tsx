@@ -516,6 +516,21 @@ describe('KnowledgeSettingsForm', () => {
     expect(thresholdSwitch).toHaveAttribute('aria-disabled', 'true')
   })
 
+  it('prompts for a rerank model when reranking is enabled without one', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(
+      screen.getByRole('switch', {
+        name: 'common.modelProvider.rerankModel.key',
+      }),
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.settings.rerankModelRequired',
+    )
+  })
+
   it('prevents two profile migrations from being edited in one save', async () => {
     const user = userEvent.setup()
     renderForm()

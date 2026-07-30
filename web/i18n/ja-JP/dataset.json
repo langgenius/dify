@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "ナレッジベース名は必須です。",
   "newKnowledge.settings.noMembersFound": "メンバーが見つかりません。",
   "newKnowledge.settings.pageDescription": "基本情報、API アクセス、検索設定を管理します。",
+  "newKnowledge.settings.rerankModelRequired": "再ランキングモデルを選択してください。",
   "newKnowledge.settings.retrievalDepth": "検索の深度",
   "newKnowledge.settings.retrievalDescription": "アプリとワークフローで使用する検索モデル、深度、ランキングポリシーです。",
   "newKnowledge.settings.retrievalMode.auto": "自動",

@@ -572,6 +572,7 @@
   "newKnowledge.settings.nameRequired": "Le nom de la base de connaissances est obligatoire.",
   "newKnowledge.settings.noMembersFound": "Aucun membre trouvé.",
   "newKnowledge.settings.pageDescription": "Gérez les informations de base, l’accès à l’API et la récupération.",
+  "newKnowledge.settings.rerankModelRequired": "Sélectionnez un modèle de reranking.",
   "newKnowledge.settings.retrievalDepth": "Profondeur de récupération",
   "newKnowledge.settings.retrievalDescription": "Modèles de récupération, profondeur et stratégie de classement utilisés par les applications et les workflows.",
   "newKnowledge.settings.retrievalMode.auto": "Automatique",
