@@ -1,9 +1,8 @@
 """Application service for listing workspaces visible to a Console account."""
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import NamedTuple, Protocol
 
 from enums.cloud_plan import CloudPlan
 from machinery.context import RequestContext
@@ -13,8 +12,7 @@ class WorkspacePlanGateway(Protocol):
     def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str]: ...
 
 
-@dataclass(frozen=True, slots=True)
-class WorkspaceRecord:
+class WorkspaceRecord(NamedTuple):
     id: str
     name: str | None
     status: str
@@ -26,8 +24,7 @@ class WorkspaceQuery(Protocol):
     def list_for_account(self, account_id: str) -> Sequence[WorkspaceRecord]: ...
 
 
-@dataclass(frozen=True, slots=True)
-class WorkspaceSummary:
+class WorkspaceSummary(NamedTuple):
     id: str
     name: str | None
     plan: str

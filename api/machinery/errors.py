@@ -4,11 +4,10 @@ They deliberately do not carry Flask responses, Werkzeug exceptions, HTTP
 status codes, or surface-specific wire models.
 """
 
-from dataclasses import dataclass
+from typing import NamedTuple
 
 
-@dataclass(frozen=True, slots=True)
-class ErrorDetail:
+class ErrorDetail(NamedTuple):
     type: str
     location: tuple[str | int, ...]
     message: str

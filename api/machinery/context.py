@@ -1,10 +1,9 @@
 """Stable values passed from API admission into application services."""
 
-from dataclasses import dataclass
+from typing import NamedTuple
 
 
-@dataclass(frozen=True, slots=True)
-class RequestContext:
+class RequestContext(NamedTuple):
     request_id: str
     trace_id: str | None
     account_id: str

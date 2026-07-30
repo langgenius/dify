@@ -34,10 +34,10 @@ def console_account_admission[R](
             if _REQUEST_CONTEXT_KEY in kwargs:
                 raise RuntimeError(f"{_REQUEST_CONTEXT_KEY} is reserved for Console admission")
 
-            account, active_workspace_id = current_account_with_tenant()
+            account_with_tenant = current_account_with_tenant()
             kwargs[_REQUEST_CONTEXT_KEY] = RequestContext(
-                account_id=account.id,
-                active_workspace_id=active_workspace_id,
+                account_id=account_with_tenant.account.id,
+                active_workspace_id=account_with_tenant.tenant_id,
                 request_id=get_request_id(),
                 trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
             )
