@@ -75,6 +75,16 @@ const createConversationData = (
   ...overrides,
 })
 
+describe('shareQueryKeys', () => {
+  it('should isolate web app metadata by share code', () => {
+    expect(shareQueryKeys.appInfo('env-app-one')).not.toEqual(shareQueryKeys.appInfo('env-app-two'))
+    expect(shareQueryKeys.appParams('env-app-one')).not.toEqual(
+      shareQueryKeys.appParams('env-app-two'),
+    )
+    expect(shareQueryKeys.appMeta('env-app-one')).not.toEqual(shareQueryKeys.appMeta('env-app-two'))
+  })
+})
+
 // Scenario: share conversation list queries behave consistently with params and enablement.
 describe('useShareConversations', () => {
   beforeEach(() => {

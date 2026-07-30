@@ -40,6 +40,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_API_PREFIX: z.string().optional(),
   /**
+   * The base URL of the AppDeploy Web API.
+   */
+  NEXT_PUBLIC_APPDEPLOY_WEB_API_PREFIX: z.string().optional(),
+  /**
    * The base path for the application
    */
   NEXT_PUBLIC_BASE_PATH: z
@@ -198,6 +202,9 @@ export const env = createEnv({
     NEXT_PUBLIC_API_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_API_PREFIX
       : getRuntimeEnvFromBody('apiPrefix'),
+    NEXT_PUBLIC_APPDEPLOY_WEB_API_PREFIX: isServer
+      ? process.env.NEXT_PUBLIC_APPDEPLOY_WEB_API_PREFIX
+      : getRuntimeEnvFromBody('appdeployWebApiPrefix'),
     NEXT_PUBLIC_BASE_PATH: isServer
       ? process.env.NEXT_PUBLIC_BASE_PATH
       : getRuntimeEnvFromBody('basePath'),

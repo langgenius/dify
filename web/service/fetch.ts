@@ -6,14 +6,17 @@ import ky, { HTTPError } from 'ky'
 import {
   API_PREFIX,
   APP_VERSION,
+  APPDEPLOY_WEB_API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
   IS_MARKETPLACE,
+  isAppDeployShareCode,
   MARKETPLACE_API_PREFIX,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { isAppDeployRoute, resolveShareCode } from './share-code'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -82,25 +85,6 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
     }
-  }
-}
-
-const SHARE_ROUTE_DENY_LIST = new Set(['webapp-signin', 'check-code', 'login'])
-
-const resolveShareCode = () => {
-  const pathnameSegments = globalThis.location.pathname.split('/').filter(Boolean)
-  const lastSegment = pathnameSegments.at(-1) || ''
-  if (lastSegment && !SHARE_ROUTE_DENY_LIST.has(lastSegment)) return lastSegment
-
-  const redirectParam = new URLSearchParams(globalThis.location.search).get('redirect_url')
-  if (!redirectParam) return ''
-  try {
-    const redirectUrl = new URL(decodeURIComponent(redirectParam), globalThis.location.origin)
-    const redirectSegments = redirectUrl.pathname.split('/').filter(Boolean)
-    const redirectSegment = redirectSegments.at(-1) || ''
-    return SHARE_ROUTE_DENY_LIST.has(redirectSegment) ? '' : redirectSegment
-  } catch {
-    return ''
   }
 }
 
@@ -173,8 +157,10 @@ async function base<T>(
 
   let base: string
   if (isMarketplaceAPI) base = MARKETPLACE_API_PREFIX
-  else if (isPublicAPI) base = PUBLIC_API_PREFIX
-  else base = API_PREFIX
+  else if (isPublicAPI) {
+    const useAppDeploy = isAppDeployShareCode(resolveShareCode()) && isAppDeployRoute(url)
+    base = useAppDeploy ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
+  } else base = API_PREFIX
 
   if (getAbortController) {
     const abortController = new AbortController()
