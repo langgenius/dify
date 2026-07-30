@@ -87,7 +87,7 @@ describe("quality replay runtime", () => {
         retrievalProfile: run.frozenSnapshot.retrievalProfile,
         traceId: TRACE_ID,
       });
-      expect(embed).toHaveBeenCalledTimes(mode === "research" ? 0 : 1);
+      expect(embed).toHaveBeenCalledTimes(1);
       expect(revalidatePermissionSnapshot).toHaveBeenCalledTimes(2);
       expect(assertReady).toHaveBeenCalledWith({
         knowledgeSpaceId: SPACE_ID,
@@ -408,7 +408,7 @@ function runtimeRetriever(
             score: 0.9,
             sources:
               mode === "research"
-                ? (["pageindex"] as const)
+                ? (["dense", "pageindex"] as const)
                 : mode === "deep"
                   ? (["dense", "fts", "graph"] as const)
                   : (["dense", "fts"] as const),
@@ -424,8 +424,8 @@ function runtimeRetriever(
 function runtimeMetrics(mode: "deep" | "fast" | "research"): HybridRetrievalMetrics {
   if (mode === "research") {
     return {
-      denseCandidates: 0,
-      denseMs: 0,
+      denseCandidates: 2,
+      denseMs: 2,
       documentOutlineMatchedItems: 1,
       ftsCandidates: 0,
       ftsMs: 0,
@@ -433,9 +433,9 @@ function runtimeMetrics(mode: "deep" | "fast" | "research"): HybridRetrievalMetr
       fusionMs: 0,
       pageIndexMatchedNodes: 2,
       pageIndexOpenedRanges: 1,
-      pageIndexScoreVersion: "pageindex-score-v1",
+      pageIndexScoreVersion: "pageindex-semantic-llm-v1",
       scoreThresholdFilteredCandidates: 0,
-      summaryCandidates: 1,
+      summaryCandidates: 0,
       summarySelectedSections: 1,
       totalMs: 5,
     };

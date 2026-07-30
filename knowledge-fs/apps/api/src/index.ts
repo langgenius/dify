@@ -21,6 +21,7 @@ import {
   createLlmAnswerQueryGenerator,
   createLlmAutoRetrievalModeResolver,
   createModelCapabilityPreflight,
+  createPageIndexSemanticTreeSearch,
   createProfileAwareKnowledgeSpaceManifestRepository,
   createProfileAwareQueryGenerator,
   createPublishedProjectionReadSnapshotResolver,
@@ -147,6 +148,14 @@ const multimodalEnrichmentOptions = createApiMultimodalEnrichmentOptions({
 const rerankerOptions = createApiRerankerOptions();
 const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions();
 const profileReasoningCapability = createApiProfileReasoningCapability();
+const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
+  batchSize: 10,
+  maxConcurrentBatches: 4,
+  maxOutputTokens: profileReasoningCapability.maxOutputTokens,
+  maxTextCharsPerCandidate: 1_500,
+  providerFactory: profileReasoningCapability.providerFactory,
+  timeoutMs: 20_000,
+});
 const knowledgeSpaceSemanticIngestionOptions = createApiKnowledgeSpaceSemanticIngestionOptions({
   providerFactory: profileReasoningCapability.providerFactory,
 });
@@ -530,7 +539,10 @@ const retriever = retrievalRepository
           }
         : {}),
       ...(publishedPageIndex
-        ? { pageIndex: publishedPageIndex }
+        ? {
+            pageIndex: publishedPageIndex,
+            pageIndexSemanticTreeSearch,
+          }
         : repositoryOptions.documentOutlines
           ? { outlines: repositoryOptions.documentOutlines }
           : {}),

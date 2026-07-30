@@ -295,7 +295,7 @@ export function registerQueryHandlers({
         400,
       );
     }
-    if (runtimeSnapshot && resolvedMode !== "research" && !runtimeSnapshot.embeddingProfile) {
+    if (runtimeSnapshot && !runtimeSnapshot.embeddingProfile) {
       await releaseEarlyExecutionLease();
       return context.json({ error: "Embedding profile snapshot unavailable" }, 503);
     }

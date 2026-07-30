@@ -106,7 +106,7 @@ export function createDocumentCompilationInitialProfileCoordinator({
       if (existingHeads.retrieval && !manifest.pendingModelConfiguration) {
         throw compilationError(
           "MODEL_PROFILE_ACTIVATION_INCOMPLETE",
-          "Fast/Deep retrieval requires an active embedding profile",
+          "Retrieval requires an active embedding profile",
           false,
         );
       }
@@ -302,10 +302,10 @@ async function verifyPendingConfiguration(
         })
       : undefined,
   ]);
-  if (retrievalInput.defaultMode !== "research" && (!pending.embeddingSelection || !embedding)) {
+  if (!pending.embeddingSelection || !embedding) {
     throw new ModelCapabilityPreflightError(
       "MODEL_CAPABILITY_MISMATCH",
-      "Fast/Deep retrieval requires an embedding model for this knowledge space",
+      "Fast, Deep, and Research retrieval require an embedding model for this knowledge space",
     );
   }
   if (!reasoning) {
@@ -450,9 +450,7 @@ function activeTupleSupportsCompilation(heads: {
 }): boolean {
   if (!heads.retrieval) return false;
   const retrieval = heads.retrieval.profile.snapshot;
-  return (
-    "defaultMode" in retrieval && (retrieval.defaultMode === "research" || heads.embedding !== null)
-  );
+  return "defaultMode" in retrieval && heads.embedding !== null;
 }
 
 function initialActivationPermission(

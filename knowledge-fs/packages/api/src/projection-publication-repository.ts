@@ -2566,10 +2566,11 @@ async function requireDatabaseDocumentCompilationPublicationFence(
 
 /**
  * Compares both mutable profile heads with the immutable refs on the attempt. Retrieval is
- * mandatory; embedding is either an exact match or absent on both the attempt and active heads for
- * a Research-only space. The transaction already owns the stable knowledge-space row lock, which
- * every profile activation also acquires, so this read is serialized without locking the nullable
- * side of a PostgreSQL outer join.
+ * mandatory. Nullable embedding refs remain readable only so legacy attempts fail through the
+ * existing publication fence instead of being misinterpreted as a different tuple. New profile
+ * activation always requires embedding. The transaction already owns the stable knowledge-space
+ * row lock, which every profile activation also acquires, so this read is serialized without
+ * locking the nullable side of a PostgreSQL outer join.
  */
 async function requireDatabaseDocumentCompilationProfileFence(
   database: DatabaseAdapter,

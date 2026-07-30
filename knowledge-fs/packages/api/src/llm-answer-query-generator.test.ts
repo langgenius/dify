@@ -1113,14 +1113,16 @@ describe("llm answer query generator", () => {
     expect(providerCalls[0]?.messages[1]?.content).not.toContain("much longer evidence");
   });
 
-  it("keeps Research answer synthesis independent from query embeddings", async () => {
-    const queryVectors: number[][] = [];
+  it("embeds Research queries before semantic Value Search and answer synthesis", async () => {
+    const retrievalInputs: { denseProjectionModel?: string; queryVector: readonly number[] }[] = [];
     const generator = createLlmAnswerQueryGenerator({
-      embeddingModel: "must-not-run",
+      embeddingModel: "research-embedding",
       embeddings: {
-        embed: async () => {
-          throw new Error("Research must not call embeddings");
-        },
+        embed: async () => ({
+          dense: [[0.4, 0.6]],
+          metadata: { dimension: 2, model: "research-embedding", provider: "static" },
+          model: "research-embedding",
+        }),
         kind: "static",
         models: async () => [],
       },
@@ -1135,7 +1137,12 @@ describe("llm answer query generator", () => {
       },
       retriever: {
         retrieve: async (input) => {
-          queryVectors.push([...input.queryVector]);
+          retrievalInputs.push({
+            ...(input.denseProjectionModel
+              ? { denseProjectionModel: input.denseProjectionModel }
+              : {}),
+            queryVector: [...input.queryVector],
+          });
           return { items: [] };
         },
       },
@@ -1149,6 +1156,8 @@ describe("llm answer query generator", () => {
       // Drain the stream.
     }
 
-    expect(queryVectors).toEqual([[0]]);
+    expect(retrievalInputs).toEqual([
+      { denseProjectionModel: "research-embedding", queryVector: [0.4, 0.6] },
+    ]);
   });
 });

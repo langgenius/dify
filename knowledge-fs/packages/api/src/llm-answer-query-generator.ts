@@ -148,32 +148,27 @@ export function createLlmAnswerQueryGenerator({
         reasoningSelection,
       });
       const embedStartedAt = Date.now();
-      // Research opens the published PageIndex directly and must remain
-      // independent from dense embedding availability.
-      const requiresQueryEmbedding = input.mode !== "research";
-      const resolvedEmbedding =
-        requiresQueryEmbedding && embeddingResolver
-          ? await embeddingResolver.resolve({
-              ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              tenantId,
-            })
-          : null;
+      const resolvedEmbedding = embeddingResolver
+        ? await embeddingResolver.resolve({
+            ...(input.embeddingProfile ? { profile: input.embeddingProfile } : {}),
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            tenantId,
+          })
+        : null;
       const effectiveProvider = resolvedEmbedding?.providerInstance ?? embeddings;
       const queryEmbedding: {
         readonly embeddingModel?: string | undefined;
         readonly vector: readonly number[];
         readonly vectorSpaceId?: string | undefined;
-      } =
-        requiresQueryEmbedding && effectiveProvider
-          ? await embedLlmAnswerQuery({
-              model: resolvedEmbedding?.model ?? embeddingModel ?? "",
-              profile: resolvedEmbedding,
-              provider: effectiveProvider,
-              query: input.query,
-              tenantId,
-            })
-          : { vector: [0] as readonly number[] };
+      } = effectiveProvider
+        ? await embedLlmAnswerQuery({
+            model: resolvedEmbedding?.model ?? embeddingModel ?? "",
+            profile: resolvedEmbedding,
+            provider: effectiveProvider,
+            query: input.query,
+            tenantId,
+          })
+        : { vector: [0] as readonly number[] };
       if (resolvedEmbedding) {
         if (input.embeddingProfile) {
           assertObservedEmbeddingDimension({
@@ -191,7 +186,7 @@ export function createLlmAnswerQueryGenerator({
         }
       }
 
-      if (requiresQueryEmbedding && effectiveProvider) {
+      if (effectiveProvider) {
         yield traceStepEvent("query.embed", embedStartedAt, "ok", {
           ...(queryEmbedding.embeddingModel ? { model: queryEmbedding.embeddingModel } : {}),
           dimension: queryEmbedding.vector.length,

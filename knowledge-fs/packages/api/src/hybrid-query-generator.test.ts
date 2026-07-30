@@ -856,22 +856,29 @@ describe("hybrid query generator", () => {
     );
   });
 
-  it("keeps Research independent from the configured embedding capability", async () => {
-    const vectors: number[][] = [];
+  it("embeds Research queries for semantic Value Search", async () => {
+    const retrievalInputs: { denseProjectionModel?: string; queryVector: readonly number[] }[] = [];
     const generator = createHybridQueryGenerator({
       limit: 3,
       maxAnswerChars: 1_000,
-      queryEmbeddingModel: "must-not-run",
+      queryEmbeddingModel: "research-embedding",
       queryEmbeddingProvider: {
-        embed: async () => {
-          throw new Error("Research must not call embeddings");
-        },
+        embed: async () => ({
+          dense: [[0.3, 0.7]],
+          metadata: { dimension: 2, model: "research-embedding", provider: "static" },
+          model: "research-embedding",
+        }),
         kind: "static",
         models: async () => [],
       },
       retriever: {
         retrieve: async (input) => {
-          vectors.push([...input.queryVector]);
+          retrievalInputs.push({
+            ...(input.denseProjectionModel
+              ? { denseProjectionModel: input.denseProjectionModel }
+              : {}),
+            queryVector: [...input.queryVector],
+          });
           return { items: [] };
         },
       },
@@ -893,6 +900,8 @@ describe("hybrid query generator", () => {
       // Drain the stream.
     }
 
-    expect(vectors).toEqual([[0]]);
+    expect(retrievalInputs).toEqual([
+      { denseProjectionModel: "research-embedding", queryVector: [0.3, 0.7] },
+    ]);
   });
 });

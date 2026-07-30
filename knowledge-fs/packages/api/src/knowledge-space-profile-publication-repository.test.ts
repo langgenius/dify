@@ -611,27 +611,25 @@ describe.each(["postgres", "tidb"] as const)(
       expect(fake.committedMutations()).toBe(0);
     });
 
-    it("bootstraps a Research-only published tuple without inventing an embedding vector space", async () => {
+    it("rejects bootstrap of a Research-only tuple without an embedding vector space", async () => {
       const fake = fakeDatabase(dialect, { noEmbeddingHead: true });
       const repository = createDatabaseKnowledgeSpaceProfilePublicationRepository({
         database: fake.database,
         generateBindingId: () => bindingId,
       });
-      const binding = await repository.bindExistingPublished({
-        embeddingProfileRevision: null,
-        expectedPublicationHeadRevision: 4,
-        knowledgeSpaceId: spaceId,
-        publicationFingerprint: oldFingerprint,
-        retrievalProfileRevision: 1,
-        tenantId,
-        verifiedAt: now,
+      await expect(
+        repository.bindExistingPublished({
+          embeddingProfileRevision: null,
+          expectedPublicationHeadRevision: 4,
+          knowledgeSpaceId: spaceId,
+          publicationFingerprint: oldFingerprint,
+          retrievalProfileRevision: 1,
+          tenantId,
+          verifiedAt: now,
+        }),
+      ).rejects.toMatchObject({
+        code: "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_EMBEDDING_REQUIRED",
       });
-      expect(binding).toMatchObject({
-        bindingReason: "legacy-bootstrap",
-        changedKind: "bootstrap",
-      });
-      expect(binding.embeddingProfile).toBeUndefined();
-      expect(binding.vectorSpaceId).toBeUndefined();
       expect(fake.calls.some((call) => call.input.tableName === "index_projections")).toBe(false);
     });
 
@@ -772,7 +770,7 @@ describe.each(["postgres", "tidb"] as const)(
       });
     });
 
-    it("jointly activates an explicit Research-only retrieval candidate", async () => {
+    it("rejects activation of a Research-only retrieval candidate without embedding", async () => {
       const researchBinding = {
         ...retrievalCandidateBindingRow(),
         embedding_profile_kind: null,
@@ -790,22 +788,21 @@ describe.each(["postgres", "tidb"] as const)(
       const repository = createDatabaseKnowledgeSpaceProfilePublicationRepository({
         database: fake.database,
       });
-      const activated = await repository.activateCandidate({
-        changedKind: "retrieval",
-        expectedProfileHeadRevision: 1,
-        expectedPublicationHeadRevision: 4,
-        knowledgeSpaceId: spaceId,
-        migrationFence: migrationFence(),
-        profileRevision: 2,
-        publicationFingerprint: candidateFingerprint,
-        tenantId,
-        updatedAt: now,
+      await expect(
+        repository.activateCandidate({
+          changedKind: "retrieval",
+          expectedProfileHeadRevision: 1,
+          expectedPublicationHeadRevision: 4,
+          knowledgeSpaceId: spaceId,
+          migrationFence: migrationFence(),
+          profileRevision: 2,
+          publicationFingerprint: candidateFingerprint,
+          tenantId,
+          updatedAt: now,
+        }),
+      ).rejects.toMatchObject({
+        code: "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_EMBEDDING_REQUIRED",
       });
-      expect(activated).toMatchObject({
-        binding: { changedKind: "retrieval" },
-        migrationRunCompleted: true,
-      });
-      expect(activated.binding.embeddingProfile).toBeUndefined();
     });
 
     it("fails closed on legacy bootstrap head, publication, and binding drift", async () => {
@@ -917,7 +914,7 @@ describe.each(["postgres", "tidb"] as const)(
       });
     });
 
-    it("binds an explicit Research-only retrieval candidate without a vector space", async () => {
+    it("rejects binding a Research-only retrieval candidate without a vector space", async () => {
       const fake = fakeDatabase(dialect, {
         candidateRetrieval: true,
         noEmbeddingHead: true,
@@ -935,17 +932,15 @@ describe.each(["postgres", "tidb"] as const)(
           publicationFingerprint: candidateFingerprint,
           tenantId,
         }),
-      ).resolves.toMatchObject({
-        changedKind: "retrieval",
-        retrievalProfile: { revision: 2 },
+      ).rejects.toMatchObject({
+        code: "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_EMBEDDING_REQUIRED",
       });
       const inserted = fake.calls.find(
         (call) =>
           call.input.tableName === "knowledge_space_profile_publication_bindings" &&
           call.input.operation === "insert",
       );
-      expect(inserted?.input.params.slice(5, 9)).toEqual([null, null, null, null]);
-      expect(inserted?.input.params[13]).toBeNull();
+      expect(inserted).toBeUndefined();
     });
 
     it("rejects corrupt immutable profile and publication rows before binding", async () => {

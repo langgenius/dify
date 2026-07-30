@@ -277,6 +277,7 @@ export * from "./operation-policy-routes";
 export * from "./operational-metrics";
 export * from "./parse-artifact-repository";
 export * from "./page-index-scoring";
+export * from "./page-index-semantic-tree-search";
 export * from "./page-index-build-repository";
 export * from "./page-index-upgrade-backfill";
 export * from "./page-index-upgrade-backfill-runtime";

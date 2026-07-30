@@ -1105,7 +1105,7 @@ export function configurationStatusFor(
     return pendingModelConfiguration.state;
   }
   if (!retrieval) return "setup-required";
-  return retrieval.defaultMode === "research" || embedding ? "ready" : "setup-required";
+  return embedding ? "ready" : "setup-required";
 }
 
 function provisioningIntentDigest(

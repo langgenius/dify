@@ -110,7 +110,7 @@ export interface ActivateKnowledgeSpaceProfilePublicationCandidateInput
 
 export interface BindExistingKnowledgeSpaceProfilePublicationInput
   extends KnowledgeSpaceProfilePublicationScope {
-  /** Null is an explicit Research-only space with no embedding head. */
+  /** Null is retained for legacy payload compatibility and is rejected for new bindings. */
   readonly embeddingProfileRevision: number | null;
   readonly expectedPublicationHeadRevision: number;
   readonly publicationFingerprint: string;
@@ -233,8 +233,8 @@ interface PublicationHead {
 }
 
 /**
- * A profile switch is published as one tuple: publication + exact embedding snapshot (optional for
- * Research-only spaces) + exact retrieval snapshot. Candidate binding happens before build;
+ * A profile switch is published as one tuple: publication + exact embedding snapshot + exact
+ * retrieval snapshot. Candidate binding happens before build;
  * activation revalidates the tuple, dense vector-space closure, both mutable heads, and deletion
  * admission in one transaction. A thrown error rolls every state/head write back together.
  */
@@ -280,7 +280,7 @@ export function createDatabaseKnowledgeSpaceProfilePublicationRepository({
           );
         }
         if (!embedding) await requireNoExpectedEmbeddingSource(database, tx, input);
-        requireResearchOnlyWhenEmbeddingIsAbsent(embedding, retrieval);
+        requireEmbeddingProfile(embedding);
         if (
           embedding &&
           embedding.state !== (input.changedKind === "embedding" ? "candidate" : "active")
@@ -406,7 +406,7 @@ export function createDatabaseKnowledgeSpaceProfilePublicationRepository({
           );
         }
         if (!embedding) await requireNoExpectedEmbeddingSource(database, tx, input);
-        requireResearchOnlyWhenEmbeddingIsAbsent(embedding, retrieval);
+        requireEmbeddingProfile(embedding);
         const tuple = legacyBinding(input, embedding, retrieval, publication);
         const existing = await getBindingByPublication(database, tx, publication, true);
         if (existing) {
@@ -526,7 +526,7 @@ export function createDatabaseKnowledgeSpaceProfilePublicationRepository({
           );
         }
         if (!embedding) await requireNoExpectedEmbeddingSource(database, tx, input);
-        requireResearchOnlyWhenEmbeddingIsAbsent(embedding, retrieval);
+        requireEmbeddingProfile(embedding);
         if (embedding) {
           await assertEmbeddingPublicationVectorSpace(
             database,
@@ -671,7 +671,7 @@ async function bindCurrentPublishedTransaction(
   }
   requireState(retrieval, "active", "retrieval head profile");
   if (!embedding) await requireNoExpectedEmbeddingSource(database, tx, input);
-  requireResearchOnlyWhenEmbeddingIsAbsent(embedding, retrieval);
+  requireEmbeddingProfile(embedding);
   const tuple = legacyBinding(input, embedding, retrieval, publication);
   const existing = await getBindingByPublication(database, tx, publication, true);
   if (existing) {
@@ -1397,14 +1397,11 @@ function assertSameBinding(
   }
 }
 
-function requireResearchOnlyWhenEmbeddingIsAbsent(
-  embedding: ProfileRecord | undefined,
-  retrieval: ProfileRecord,
-): void {
-  if (!embedding && retrieval.defaultMode !== "research") {
+function requireEmbeddingProfile(embedding: ProfileRecord | undefined): void {
+  if (!embedding) {
     throw transition(
       "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_EMBEDDING_REQUIRED",
-      "A publication without an embedding profile is only valid for Research retrieval",
+      "A publication requires an embedding profile for semantic retrieval",
     );
   }
 }

@@ -4,7 +4,7 @@
   Auto 是公开的 LLM 路由选择器，不是第四条执行管线：只有显式 auto 才使用空间
   published reasoningModel/plugin-daemon；省略 mode 使用 defaultMode；失败回落 defaultMode。
   Fast = ordinary dense + FTS hybrid + fusion + final rerank。
-  Research = Summary / Outline / PageIndex tree navigation；无 ordinary hybrid/Graph/rerank。
+  Research = semantic Value Search + LLM PageIndex tree scoring；无 FTS/Graph/ordinary rerank。
   Deep = ordinary hybrid + Graph expansion + one unified final rerank。
 -->
 <html lang="zh-CN">
@@ -198,27 +198,27 @@
   <div class="row">
     <div class="row-label">
       <span class="mode">research</span>
-      <span class="modesub">Summary / Outline / PageIndex</span>
+      <span class="modesub">Semantic Value + LLM Tree Search</span>
     </div>
     <div class="cards">
-      <div class="card off">
-        <div class="title">普通 Embed / Hybrid</div>
-        <div class="desc"><b>不运行</b><br/>Research 不依赖普通 dense + FTS seed</div>
-      </div>
-      <div class="arrow">→</div>
-      <div class="card ext">
-        <div class="title">Summary / Outline</div>
-        <div class="desc">检索 generation-scoped PageIndex 节点摘要与文档大纲</div>
+      <div class="card recall">
+        <div class="title">Query Embed</div>
+        <div class="desc">使用 published embedding profile 生成查询向量</div>
       </div>
       <div class="arrow">→</div>
       <div class="card recall">
-        <div class="title">PageIndex 召回</div>
-        <div class="desc">exact-term / normalized score 排序并定位相关树节点</div>
+        <div class="title">Semantic Value Search</div>
+        <div class="desc">在 immutable published dense projections 上有界召回</div>
       </div>
       <div class="arrow">→</div>
       <div class="card ext">
-        <div class="title">树导航 / Leaf Evidence</div>
-        <div class="desc">从匹配 outline 节点打开可见 leaf ranges</div>
+        <div class="title">PageIndex Candidate Tree</div>
+        <div class="desc">按文档与 section path 聚合、归一化并保留多章节候选</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card ext">
+        <div class="title">LLM Tree Score</div>
+        <div class="desc">frozen reasoning model 按完整问题、树路径和证据给出 [0,1] 分数</div>
       </div>
       <div class="arrow">→</div>
       <div class="card off">
@@ -228,7 +228,7 @@
       <div class="arrow">→</div>
       <div class="card shared">
         <div class="title">Evidence → Answer</div>
-        <div class="desc">PageIndex Threshold → Top K → 使用空间 reasoning model 生成</div>
+        <div class="desc">LLM Score Threshold → Top K → 使用空间 reasoning model 生成</div>
       </div>
     </div>
   </div>
@@ -261,8 +261,8 @@
     </div>
   </div>
   <div class="footer-note">
-    <div><b>三条执行管线：</b> Fast = ordinary hybrid + final rerank；Research = Summary/Outline/PageIndex，Graph 与 ordinary rerank zero-call；Deep = ordinary hybrid + Graph expansion + one unified final rerank。</div>
-    <div><b>Top K / Threshold：</b> Fast、Deep 在最终 rerank score 上先 threshold 再 Top K；Research 在 versioned PageIndex normalized score 上先 threshold 再 Top K。权限过滤与 immutable publication closure 对三条管线都生效。</div>
+    <div><b>三条执行管线：</b> Fast = ordinary hybrid + final rerank；Research = semantic Value Search + LLM PageIndex tree score，FTS、Graph 与 ordinary rerank zero-call；Deep = ordinary hybrid + Graph expansion + one unified final rerank。</div>
+    <div><b>Top K / Threshold：</b> Fast、Deep 在最终 rerank score 上先 threshold 再 Top K；Research 在 versioned semantic LLM relevance score 上先 threshold 再 Top K。权限过滤与 immutable publication closure 对三条管线都生效。</div>
     <div><b>Auto 不是第四条管线：</b><code>/queries</code> 接受显式 <code>auto</code>，由空间 published reasoning model 选择 concrete mode；未传 mode 使用空间 <code>defaultMode</code>。路由模型失败回落同一 default，不运行旧启发式。</div>
     <div><b>可追踪性：</b>在线查询将 requested/resolved/resolver/model/prompt/degraded 等 bounded provenance 写入 AnswerTrace 的 <code>query.route</code> step；异步 Research create 冻结并持久化一次 Auto 决策，worker retry/restart 不重判。</div>
     <div><b>答案生成：</b>三条管线最终都使用知识空间 frozen published <code>reasoningModel</code>；模型/provider/credential 不从部署级默认值猜测。</div>

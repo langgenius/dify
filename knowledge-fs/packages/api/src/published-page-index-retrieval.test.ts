@@ -1,73 +1,111 @@
-import type {
-  DocumentOutline,
-  DocumentOutlineNode,
-  KnowledgeNode,
-  KnowledgeSpaceRetrievalProfile,
-} from "@knowledge/core";
+import type { KnowledgeSpaceRetrievalProfile } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
-  PublishedPageIndexOutlineItem,
-  PublishedPageIndexRepository,
-} from "./published-page-index-repository";
+  PageIndexSemanticScore,
+  PageIndexSemanticTreeSearch,
+  ScorePageIndexSemanticCandidatesInput,
+} from "./page-index-semantic-tree-search";
 import {
   PublishedPageIndexCapabilityUnavailableError,
-  PublishedPageIndexScanLimitExceededError,
   createPublishedPageIndexRetrievalPath,
 } from "./published-page-index-retrieval";
+import type { HybridRetrievalRepository, RetrievalCandidate } from "./retrieval-candidates";
 import { createRetrievalPlanner } from "./retrieval-planner";
 import type { BasicHybridRetriever, RetrieveHybridInput } from "./retrieval-types";
 
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const PUBLICATION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
 
-describe("published PageIndex retrieval", () => {
-  it("retrieves a published Summary hit without calling the hybrid leg", async () => {
+describe("published PageIndex semantic retrieval", () => {
+  it("uses published dense Value Search and lets the LLM score determine final rank", async () => {
     const base = vi.fn(async () => {
-      throw new Error("hybrid must not run");
+      throw new Error("ordinary hybrid retrieval must not run");
     });
-    const pageIndex = pageIndexRepository([
-      outlineItem("018f0d60-7a49-7cc2-9c1b-5b36f18f2c51", "generation-a", {
-        summary: "Camera warranty and sensor policy",
-        title: "Support",
+    const searchDense = vi.fn(async () => [
+      candidate({
+        nodeId: "finance-primary",
+        score: 0.99,
+        sectionPath: ["Finance", "Invoice"],
+        text: "The invoice includes the tax identifier.",
+      }),
+      candidate({
+        nodeId: "legal-direct",
+        score: 0.8,
+        sectionPath: ["Legal", "Billing"],
+        text: "Invoices must be retained for seven years.",
+      }),
+      candidate({
+        nodeId: "finance-secondary",
+        score: 0.7,
+        sectionPath: ["Finance", "Invoice"],
+        text: "General invoice metadata.",
       }),
     ]);
+    const semanticTreeSearch = createSemanticTreeSearchStub({
+      c1: { reason: "mentions an identifier, not retention", score: 0.2 },
+      c2: { reason: "directly answers the retention period", score: 0.95 },
+      c3: { reason: "related invoice context", score: 0.6 },
+    });
     const retriever = createPublishedPageIndexRetrievalPath({
-      allowOutlineScanFallback: true,
-      maxConcurrentLeafOpens: 4,
-      maxLeafEvidenceItems: 100,
-      maxOutlineNodesScanned: 100,
-      maxOutlinesScanned: 100,
-      maxSelectedSections: 20,
-      outlinePageSize: 10,
-      pageIndex,
+      maxSemanticCandidates: 20,
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       retriever: { retrieve: base },
+      semanticTreeSearch,
+      valueSearch: {
+        publishedMembershipEnforced: true,
+        searchDense,
+      },
     });
 
-    const result = await retriever.retrieve(input());
+    const result = await retriever.retrieve(input({ limit: 2, topK: 3 }));
 
     expect(base).not.toHaveBeenCalled();
-    expect(pageIndex.listOutlines).toHaveBeenCalledWith(
+    expect(searchDense).toHaveBeenCalledWith(
       expect.objectContaining({
+        denseProjectionModel: "embedding-space-v1",
         permissionScope: ["document:read"],
-        publicationId: PUBLICATION_ID,
+        projectionSetPublicationId: PUBLICATION_ID,
+        queryVector: [0.1, 0.2],
+        tenantId: "tenant-1",
+        topK: 30,
       }),
     );
-    expect(result.items).toEqual([
+    expect(semanticTreeSearch.score).toHaveBeenCalledWith(
       expect.objectContaining({
-        score: 0.9,
-        sources: ["pageindex"],
+        query: "How long must invoices be retained?",
+        reasoningModel: profile().reasoningModel,
+        tenantId: "tenant-1",
       }),
+    );
+    const scoredInput = vi.mocked(semanticTreeSearch.score).mock.calls[0]?.[0] as
+      | ScorePageIndexSemanticCandidatesInput
+      | undefined;
+    expect(scoredInput?.candidates.map((entry) => entry.nodeId)).toEqual([
+      "finance-primary",
+      "legal-direct",
+      "finance-secondary",
     ]);
+    expect(result.items.map((item) => [item.nodeId, item.score])).toEqual([
+      ["legal-direct", 0.95],
+      ["finance-secondary", 0.6],
+    ]);
+    expect(result.items[0]?.metadata.pageIndex).toEqual(
+      expect.objectContaining({
+        llmReason: "directly answers the retention period",
+        normalizedScore: 0.95,
+        scoreVersion: "pageindex-semantic-llm-v1",
+      }),
+    );
     expect(result.metrics).toMatchObject({
-      denseCandidates: 0,
+      denseCandidates: 3,
       ftsCandidates: 0,
-      pageIndexOpenedRanges: 1,
-      pageIndexScoreVersion: "pageindex-lexical-v2",
+      pageIndexMatchedNodes: 3,
+      pageIndexScoreVersion: "pageindex-semantic-llm-v1",
+      reasoningTreeSearchNodes: 3,
     });
     expect(result.plan).toMatchObject({
-      denseTopK: 0,
+      denseTopK: 30,
       ftsTopK: 0,
       fusionLimit: 0,
       rerankCandidateLimit: 0,
@@ -75,165 +113,114 @@ describe("published PageIndex retrieval", () => {
     });
   });
 
-  it("uses bounded indexed search without enumerating a large outline corpus", async () => {
-    const item = outlineItem("018f0d60-7a49-7cc2-9c1b-5b36f18f2c51", "generation-a", {
-      summary: "Camera warranty",
-      title: "Support",
+  it("applies permission and metadata filters before LLM scoring", async () => {
+    const searchDense = vi.fn(async () => [
+      candidate({
+        metadata: { documentType: "invoice", text: "Readable invoice evidence" },
+        nodeId: "allowed",
+        score: 1,
+      }),
+      candidate({
+        metadata: { documentType: "memo", text: "Wrong document type" },
+        nodeId: "wrong-type",
+        score: 0.9,
+      }),
+      candidate({
+        metadata: { documentType: "invoice", text: "Private invoice evidence" },
+        nodeId: "private",
+        permissionScope: ["document:private"],
+        score: 0.8,
+      }),
+    ]);
+    const semanticTreeSearch = createSemanticTreeSearchStub({
+      c1: { reason: "direct evidence", score: 0.8 },
     });
-    const delegate = pageIndexRepository([item]);
-    const listOutlines = vi.fn(async () => {
-      throw new Error("10k+ outlines must never be enumerated");
-    });
-    const searchSections = vi.fn(async () => ({
-      items: [
-        {
-          documentAssetId: item.documentAssetId,
-          documentVersion: item.outline.version,
-          generationId: item.generationId,
-          node: item.outline.nodes[0] as DocumentOutlineNode,
-          outlineId: item.outline.id,
-          outlineVersion: item.outline.outlineVersion,
-          score: 0.5,
-          visitedNodeIds: [item.outline.nodes[0]?.id ?? "missing"],
-        },
-      ],
-      tokenizerVersion: "pageindex-nfkc-exact-v1" as const,
-      truncated: false,
-    }));
-    const retriever = createPublishedPageIndexRetrievalPath({
-      maxConcurrentLeafOpens: 2,
-      maxLeafEvidenceItems: 100,
-      maxOutlineNodesScanned: 1,
-      maxOutlinesScanned: 1,
-      maxSelectedSections: 100,
-      outlinePageSize: 1,
-      pageIndex: {
-        listOutlines,
-        openLeafEvidence: delegate.openLeafEvidence,
-        searchSections,
-      },
-      planner: createRetrievalPlanner({ maxTopK: 100 }),
-      retriever: emptyRetriever(),
-    });
+    const retriever = configuredRetriever({ searchDense, semanticTreeSearch });
 
-    const result = await retriever.retrieve(input({ topK: 100 }));
+    const result = await retriever.retrieve(
+      input({ filters: { documentTypes: ["invoice"] }, limit: 5, topK: 5 }),
+    );
 
-    expect(searchSections).toHaveBeenCalledOnce();
-    expect(listOutlines).not.toHaveBeenCalled();
-    expect(result.items).toHaveLength(1);
+    const scoredInput = vi.mocked(semanticTreeSearch.score).mock.calls[0]?.[0] as
+      | ScorePageIndexSemanticCandidatesInput
+      | undefined;
+    expect(scoredInput?.candidates.map((entry) => entry.nodeId)).toEqual(["allowed"]);
+    expect(result.items.map((item) => item.nodeId)).toEqual(["allowed"]);
     expect(result.metrics).toMatchObject({
-      pageIndexCandidateTruncated: false,
-      pageIndexScannedNodes: 0,
-      pageIndexScannedOutlines: 0,
+      metadataFilteredCandidates: 1,
+      permissionFilteredCandidates: 1,
     });
   });
 
-  it("propagates threshold filtering performed inside bounded indexed search", async () => {
-    const item = outlineItem("018f0d60-7a49-7cc2-9c1b-5b36f18f2c51", "generation-a", {
-      summary: "Camera warranty",
-      title: "Support",
+  it("applies the profile score threshold inclusively before final Top K", async () => {
+    const semanticTreeSearch = createSemanticTreeSearchStub({
+      c1: { reason: "at threshold", score: 0.6 },
+      c2: { reason: "below threshold", score: 0.59 },
     });
-    const delegate = pageIndexRepository([item]);
-    const retriever = createPublishedPageIndexRetrievalPath({
-      maxConcurrentLeafOpens: 2,
-      maxLeafEvidenceItems: 20,
-      maxOutlineNodesScanned: 1,
-      maxOutlinesScanned: 1,
-      maxSelectedSections: 20,
-      outlinePageSize: 1,
-      pageIndex: {
-        listOutlines: delegate.listOutlines,
-        openLeafEvidence: delegate.openLeafEvidence,
-        searchSections: vi.fn(async () => ({
-          filteredCount: 4,
-          items: [
-            {
-              documentAssetId: item.documentAssetId,
-              documentVersion: item.outline.version,
-              generationId: item.generationId,
-              node: item.outline.nodes[0] as DocumentOutlineNode,
-              outlineId: item.outline.id,
-              outlineVersion: item.outline.outlineVersion,
-              score: 0.9,
-              visitedNodeIds: [item.outline.nodes[0]?.id ?? "missing"],
-            },
-          ],
-          tokenizerVersion: "pageindex-nfkc-exact-v1" as const,
-          truncated: false,
-        })),
-      },
-      planner: createRetrievalPlanner({ maxTopK: 100 }),
-      retriever: emptyRetriever(),
+    const retriever = configuredRetriever({
+      searchDense: vi.fn(async () => [
+        candidate({ nodeId: "included", score: 0.9 }),
+        candidate({ nodeId: "excluded", score: 0.8 }),
+      ]),
+      semanticTreeSearch,
     });
 
     const result = await retriever.retrieve(
       input({
         retrievalProfile: profile({
           scoreThreshold: { enabled: true, stage: "mode-final", value: 0.6 },
-          topK: 1,
         }),
-        topK: 1,
       }),
     );
 
-    expect(result.items).toHaveLength(1);
-    expect(result.metrics?.scoreThresholdFilteredCandidates).toBe(4);
+    expect(result.items.map((item) => item.nodeId)).toEqual(["included"]);
+    expect(result.metrics?.scoreThresholdFilteredCandidates).toBe(1);
   });
 
-  it("applies the normalized threshold inclusively before final Top K", async () => {
-    const pageIndex = pageIndexRepository([
-      outlineItem("018f0d60-7a49-7cc2-9c1b-5b36f18f2c51", "generation-a", {
-        summary: "Camera warranty and sensor policy",
-        title: "Support",
-      }),
-      outlineItem("018f0d60-7a49-7cc2-9c1b-5b36f18f2c52", "generation-b", {
-        summary: "Camera only",
-        title: "Support",
-      }),
-    ]);
-    const retriever = configuredRetriever(pageIndex);
+  it("returns an empty semantic result without calling the LLM when Value Search has no hits", async () => {
+    const semanticTreeSearch = createSemanticTreeSearchStub({});
+    const retriever = configuredRetriever({
+      searchDense: vi.fn(async () => []),
+      semanticTreeSearch,
+    });
 
-    const result = await retriever.retrieve(
-      input({
-        limit: 1,
-        retrievalProfile: profile({
-          scoreThreshold: { enabled: true, stage: "mode-final", value: 0.9 },
-          topK: 1,
-        }),
-        topK: 1,
-      }),
-    );
+    const result = await retriever.retrieve(input());
 
-    expect(pageIndex.openLeafEvidence).toHaveBeenCalledOnce();
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.score).toBe(0.9);
-    expect(result.metrics?.scoreThresholdFilteredCandidates).toBe(1);
+    expect(result.items).toEqual([]);
+    expect(semanticTreeSearch.score).not.toHaveBeenCalled();
+    expect(result.metrics).toMatchObject({
+      denseCandidates: 0,
+      pageIndexMatchedNodes: 0,
+    });
   });
 
   it.each(["fast", "deep"] as const)("leaves %s on the ordinary retrieval stack", async (mode) => {
     const base = vi.fn(async () => ({ items: [] }));
-    const pageIndex = pageIndexRepository([]);
+    const searchDense = vi.fn(async () => []);
+    const semanticTreeSearch = createSemanticTreeSearchStub({});
     const retriever = createPublishedPageIndexRetrievalPath({
-      allowOutlineScanFallback: true,
-      maxConcurrentLeafOpens: 4,
-      maxLeafEvidenceItems: 100,
-      maxOutlineNodesScanned: 10,
-      maxOutlinesScanned: 10,
-      maxSelectedSections: 10,
-      outlinePageSize: 5,
-      pageIndex,
+      maxSemanticCandidates: 20,
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       retriever: { retrieve: base },
+      semanticTreeSearch,
+      valueSearch: {
+        publishedMembershipEnforced: true,
+        searchDense,
+      },
     });
 
     await retriever.retrieve(input({ mode }));
 
     expect(base).toHaveBeenCalledOnce();
-    expect(pageIndex.listOutlines).not.toHaveBeenCalled();
+    expect(searchDense).not.toHaveBeenCalled();
+    expect(semanticTreeSearch.score).not.toHaveBeenCalled();
   });
 
-  it("fails closed without a fixed snapshot or server-issued permission scope", async () => {
-    const retriever = configuredRetriever(pageIndexRepository([]));
+  it("fails closed when semantic Value Search prerequisites are absent", async () => {
+    const retriever = configuredRetriever({
+      searchDense: vi.fn(async () => []),
+      semanticTreeSearch: createSemanticTreeSearchStub({}),
+    });
 
     await expect(
       retriever.retrieve(input({ projectionSnapshot: undefined })),
@@ -241,207 +228,93 @@ describe("published PageIndex retrieval", () => {
     await expect(retriever.retrieve(input({ permissionScope: undefined }))).rejects.toBeInstanceOf(
       PublishedPageIndexCapabilityUnavailableError,
     );
-  });
+    await expect(retriever.retrieve(input({ denseProjectionModel: undefined }))).rejects.toThrow(
+      "frozen embedding vector space",
+    );
+    await expect(retriever.retrieve(input({ queryVector: [] }))).rejects.toThrow(
+      "finite query embedding",
+    );
+    await expect(retriever.retrieve(input({ retrievalProfile: undefined }))).rejects.toThrow(
+      "frozen retrieval profile",
+    );
 
-  it("fails instead of silently returning a partial corpus when scan bounds are exceeded", async () => {
-    const retriever = createPublishedPageIndexRetrievalPath({
-      allowOutlineScanFallback: true,
-      maxConcurrentLeafOpens: 4,
-      maxLeafEvidenceItems: 100,
-      maxOutlineNodesScanned: 1,
-      maxOutlinesScanned: 10,
-      maxSelectedSections: 10,
-      outlinePageSize: 5,
-      pageIndex: pageIndexRepository([
-        outlineItem("018f0d60-7a49-7cc2-9c1b-5b36f18f2c51", "generation-a", {
-          children: [outlineNode({ id: "child-1" })],
-        }),
-      ]),
+    const unsafe = createPublishedPageIndexRetrievalPath({
+      maxSemanticCandidates: 20,
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       retriever: emptyRetriever(),
+      semanticTreeSearch: createSemanticTreeSearchStub({}),
+      valueSearch: {
+        searchDense: vi.fn(async () => []),
+      },
     });
-
-    await expect(retriever.retrieve(input())).rejects.toBeInstanceOf(
-      PublishedPageIndexScanLimitExceededError,
+    await expect(unsafe.retrieve(input())).rejects.toThrow(
+      "authoritative published-membership filtering",
     );
-  });
-
-  it("bounds concurrent leaf opens and the total requested leaf evidence", async () => {
-    const items = Array.from({ length: 12 }, (_, index) =>
-      outlineItem(
-        `018f0d60-7a49-7cc2-9c1b-${(100 + index).toString().padStart(12, "0")}`,
-        `generation-${index}`,
-        { summary: "Camera warranty", title: `Support ${index}` },
-      ),
-    );
-    const delegate = pageIndexRepository(items);
-    let active = 0;
-    let peak = 0;
-    let requested = 0;
-    const openLeafEvidence = vi.fn(async (openInput) => {
-      requested += openInput.limit;
-      active += 1;
-      peak = Math.max(peak, active);
-      await new Promise((resolve) => setTimeout(resolve, 1));
-      try {
-        return await delegate.openLeafEvidence(openInput);
-      } finally {
-        active -= 1;
-      }
-    });
-    const retriever = createPublishedPageIndexRetrievalPath({
-      allowOutlineScanFallback: true,
-      maxConcurrentLeafOpens: 2,
-      maxLeafEvidenceItems: 6,
-      maxOutlineNodesScanned: 100,
-      maxOutlinesScanned: 100,
-      maxSelectedSections: 20,
-      outlinePageSize: 20,
-      pageIndex: { listOutlines: delegate.listOutlines, openLeafEvidence },
-      planner: createRetrievalPlanner({ maxTopK: 100 }),
-      retriever: emptyRetriever(),
-    });
-
-    await retriever.retrieve(input({ limit: 10, topK: 10 }));
-
-    expect(openLeafEvidence).toHaveBeenCalledTimes(6);
-    expect(requested).toBeLessThanOrEqual(6);
-    expect(peak).toBe(2);
   });
 });
 
-function configuredRetriever(pageIndex: PublishedPageIndexRepository): BasicHybridRetriever {
+function configuredRetriever({
+  searchDense,
+  semanticTreeSearch,
+}: {
+  readonly searchDense: HybridRetrievalRepository["searchDense"];
+  readonly semanticTreeSearch: PageIndexSemanticTreeSearch;
+}): BasicHybridRetriever {
   return createPublishedPageIndexRetrievalPath({
-    allowOutlineScanFallback: true,
-    maxConcurrentLeafOpens: 4,
-    maxLeafEvidenceItems: 100,
-    maxOutlineNodesScanned: 100,
-    maxOutlinesScanned: 100,
-    maxSelectedSections: 20,
-    outlinePageSize: 10,
-    pageIndex,
+    maxSemanticCandidates: 20,
     planner: createRetrievalPlanner({ maxTopK: 100 }),
     retriever: emptyRetriever(),
-  });
-}
-
-function pageIndexRepository(
-  items: readonly PublishedPageIndexOutlineItem[],
-): PublishedPageIndexRepository & {
-  readonly listOutlines: ReturnType<typeof vi.fn>;
-  readonly openLeafEvidence: ReturnType<typeof vi.fn>;
-} {
-  const listOutlines = vi.fn(async () => ({ items }));
-  const openLeafEvidence = vi.fn(async (openInput) => {
-    const item = items.find((candidate) => candidate.outline.id === openInput.outlineId);
-    if (!item) {
-      throw new Error("outline not found");
-    }
-    const selectedNode = item.outline.nodes[0];
-    if (!selectedNode) {
-      throw new Error("outline node not found");
-    }
-    const node = knowledgeNode(item.documentAssetId, item.generationId, selectedNode.id);
-
-    return {
-      items: [
-        {
-          citation: {
-            artifactHash: node.artifactHash,
-            documentAssetId: node.documentAssetId,
-            documentVersion: item.outline.version,
-            endOffset: node.endOffset,
-            sectionPath: [...node.sourceLocation.sectionPath],
-            startOffset: node.startOffset,
-          },
-          node,
-          outlineId: item.outline.id,
-          outlineNodeId: selectedNode.id,
-          projections: [
-            {
-              id: `018f0d60-7a49-7cc2-9c1b-${item.documentAssetId.slice(-12)}`,
-            },
-          ],
-        },
-      ],
-      openedRange: { endOffset: selectedNode.endOffset ?? 100, startOffset: 0 },
-      outline: item.outline,
-      selectedNode,
-    };
-  });
-
-  return { listOutlines, openLeafEvidence };
-}
-
-function outlineItem(
-  outlineId: string,
-  generationId: string,
-  nodeOverrides: Partial<DocumentOutlineNode>,
-): PublishedPageIndexOutlineItem {
-  const documentAssetId = outlineId.replace(/.$/, "9");
-
-  return {
-    documentAssetId,
-    generationId,
-    outline: {
-      artifactHash: "a".repeat(64),
-      createdAt: "2026-07-14T00:00:00.000Z",
-      documentAssetId,
-      id: outlineId,
-      knowledgeSpaceId: SPACE_ID,
-      metadata: {},
-      nodes: [outlineNode(nodeOverrides)],
-      outlineVersion: "document-outline-v1",
-      parseArtifactId: outlineId.replace(/.$/, "8"),
-      publicationGenerationId: generationId,
-      version: 1,
+    semanticTreeSearch,
+    valueSearch: {
+      publishedMembershipEnforced: true,
+      searchDense,
     },
-    publicationId: PUBLICATION_ID,
+  });
+}
+
+function createSemanticTreeSearchStub(
+  scores: Readonly<Record<string, Omit<PageIndexSemanticScore, "candidateId">>>,
+): PageIndexSemanticTreeSearch & { readonly score: ReturnType<typeof vi.fn> } {
+  return {
+    score: vi.fn(async (input: ScorePageIndexSemanticCandidatesInput) =>
+      input.candidates.map((candidate) => {
+        const score = scores[candidate.candidateId];
+        if (!score) {
+          throw new Error(`missing test score for ${candidate.candidateId}`);
+        }
+        return { candidateId: candidate.candidateId, ...score };
+      }),
+    ),
   };
 }
 
-function outlineNode(overrides: Partial<DocumentOutlineNode> = {}): DocumentOutlineNode {
+function candidate(
+  overrides: Partial<RetrievalCandidate> & {
+    readonly nodeId: string;
+    readonly sectionPath?: readonly string[];
+    readonly score: number;
+    readonly text?: string;
+  },
+): RetrievalCandidate {
+  const { metadata, sectionPath, text, ...candidateOverrides } = overrides;
   return {
-    childNodeIds: [],
-    children: [],
-    endOffset: 100,
-    id: "outline-node-1",
-    level: 1,
-    metadata: {},
-    sectionPath: ["Support"],
-    sourceElementIds: [],
-    sourceNodeIds: [],
-    startOffset: 0,
-    title: "General",
-    tocSource: "parser-heading",
-    ...overrides,
-  };
-}
-
-function knowledgeNode(
-  documentAssetId: string,
-  publicationGenerationId: string,
-  suffix: string,
-): KnowledgeNode {
-  return {
-    artifactHash: "a".repeat(64),
-    documentAssetId,
-    endOffset: 80,
-    id: documentAssetId.replace(/.$/, suffix.endsWith("1") ? "7" : "6"),
-    kind: "chunk",
-    knowledgeSpaceId: SPACE_ID,
-    metadata: {},
-    parseArtifactId: documentAssetId.replace(/.$/, "8"),
+    citation: {
+      artifactHash: "a".repeat(64),
+      documentAssetId: `document-${overrides.nodeId}`,
+      documentVersion: 1,
+      sectionPath: sectionPath ? [...sectionPath] : ["Invoices"],
+    },
+    metadata: metadata ?? { text: text ?? `Evidence for ${overrides.nodeId}` },
     permissionScope: ["document:read"],
-    publicationGenerationId,
-    sourceLocation: { sectionPath: ["Support"] },
-    startOffset: 10,
-    text: "Published camera warranty evidence",
+    projectionId: `projection-${overrides.nodeId}`,
+    source: "dense",
+    ...candidateOverrides,
   };
 }
 
 function input(overrides: Partial<RetrieveHybridInput> = {}): RetrieveHybridInput {
   return {
+    denseProjectionModel: "embedding-space-v1",
     knowledgeSpaceId: SPACE_ID,
     limit: 5,
     mode: "research",
@@ -454,8 +327,8 @@ function input(overrides: Partial<RetrieveHybridInput> = {}): RetrieveHybridInpu
       publicationId: PUBLICATION_ID,
       tenantId: "tenant-1",
     },
-    query: "camera warranty sensor",
-    queryVector: [],
+    query: "How long must invoices be retained?",
+    queryVector: [0.1, 0.2],
     retrievalProfile: profile(),
     tenantId: "tenant-1",
     topK: 5,

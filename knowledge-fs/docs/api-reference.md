@@ -414,12 +414,13 @@ select exactly one concrete pipeline. Omitting `mode` does not invoke the router
 published `defaultMode`. Explicit `fast`, `research`, and `deep` requests also bypass routing.
 
 The model is instructed to select the least expensive sufficient pipeline: **Fast** for ordinary
-dense + FTS hybrid recall, fusion, and final rerank; **Research** for Summary/Outline/PageIndex tree
-navigation without ordinary hybrid, Graph, or ordinary rerank; and **Deep** for ordinary hybrid
-recall plus Graph expansion, followed by one unified final rerank. Selection is not implemented by
-hard-coded CJK/language, query-length, word-count, or keyword rules. A timeout, provider failure,
-invalid response, or model-identity mismatch safely degrades to the published `defaultMode` and is
-recorded in the trace; it never falls back to the removed heuristic.
+dense + FTS hybrid recall, fusion, and final rerank; **Research** for published semantic Value
+Search followed by PageIndex hierarchy-aware LLM tree scoring, without FTS, Graph, or the ordinary
+reranker; and **Deep** for ordinary hybrid recall plus Graph expansion, followed by one unified
+final rerank. Selection is not implemented by hard-coded CJK/language, query-length, word-count, or
+keyword rules. A timeout, provider failure, invalid response, or model-identity mismatch safely
+degrades to the published `defaultMode` and is recorded in the trace; it never falls back to the
+removed heuristic.
 
 **Response headers**:
 
@@ -486,9 +487,9 @@ Online queries normally persist these steps:
   prompt version, bounded provider/usage metadata, duration, and a `degraded` flag plus safe error
   class when Auto falls back. The step is persisted but is not emitted as an SSE frame. Explicit
   modes and omitted-mode defaults record routing without making an LLM call.
-- `query.embed` (Fast and Deep only): `durationMs`, observed embedding `model`, observed
-  `dimension`, and immutable `vectorSpaceId`. Research does not call the embedding capability and
-  omits this step.
+- `query.embed`: `durationMs`, observed embedding `model`, observed `dimension`, and immutable
+  `vectorSpaceId`. All three concrete modes require the published embedding capability; Research
+  uses the vector for its semantic Value Search candidate stage.
 - `query.retrieve`: `durationMs`, `itemCount`, optional immutable `projectionSnapshot`, published
   `retrievalProfile`, resolved retrieval `plan`, and retrieval `metrics`.
 - `query.answer`: `durationMs`, `answerChars`, `synthesis`, and, for LLM generation, `model`,
@@ -511,10 +512,11 @@ and `totalMs`. Mode-specific fields are:
 
 - **Fast**: ordinary dense + FTS hybrid recall and candidate fusion, followed by the single final
   rerank pass when reranking is enabled by the published profile.
-- **Research**: PageIndex/Outline/Summary fields such as `pageIndexMatchedNodes`,
-  `pageIndexOpenedRanges`, scanned outlines/nodes, candidate truncation, PageIndex score version,
-  Summary candidates/selected sections, and threshold-filtered candidates. Dense/FTS/rerank plan
-  limits are zero and no Graph expansion is used.
+- **Research**: dense candidate count/latency for semantic Value Search plus PageIndex fields such
+  as `pageIndexMatchedNodes`, `pageIndexOpenedRanges`, candidate truncation, selected sections, the
+  semantic LLM score version, and threshold-filtered candidates. FTS/fusion/ordinary-rerank plan
+  limits are zero and no Graph expansion is used. The final evidence `score` is the frozen
+  reasoning model's strict `[0,1]` relevance score, not a dense similarity score.
 - **Deep**: ordinary hybrid fields plus `graphExpansionSeeds`, traversed entities, relations,
   candidates, latency, and timeout state, followed by the single final rerank pass when reranking
   is enabled by the published profile.

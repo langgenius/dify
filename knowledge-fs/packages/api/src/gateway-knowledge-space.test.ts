@@ -767,11 +767,7 @@ describe("knowledge-space gateway integration", () => {
     });
   });
 
-  it("stores a Research-only selection as pending without calling the reasoning model", async () => {
-    const profiles = createInMemoryKnowledgeSpaceProfileRepository({
-      maxListLimit: 10,
-      maxRevisions: 10,
-    });
+  it("rejects a Research selection without embedding before calling the reasoning model", async () => {
     const verify = vi.fn(async (input: Parameters<ModelCapabilityPreflight["verify"]>[0]) => ({
       capabilityDigest: `sha256:${"a".repeat(64)}`,
       checkedAt: "2026-07-14T12:00:00.000Z",
@@ -791,7 +787,6 @@ describe("knowledge-space gateway integration", () => {
           },
         },
       }),
-      knowledgeSpaceProfiles: profiles,
       knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
         generateId: () => SPACE_ID,
         maxListLimit: 10,
@@ -819,25 +814,12 @@ describe("knowledge-space gateway integration", () => {
       method: "POST",
     });
 
-    expect(response.status).toBe(201);
-    await expect(response.clone().json()).resolves.toMatchObject({
-      configurationStatus: "pending-validation",
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      code: "MODEL_CAPABILITY_MISMATCH",
+      error: "All retrieval modes require an embedding model for this knowledge space",
     });
     expect(verify).not.toHaveBeenCalled();
-    await expect(
-      profiles.getHead({
-        kind: "embedding",
-        knowledgeSpaceId: SPACE_ID,
-        tenantId: "tenant-1",
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      profiles.getHead({
-        kind: "retrieval",
-        knowledgeSpaceId: SPACE_ID,
-        tenantId: "tenant-1",
-      }),
-    ).resolves.toBeNull();
   });
 
   it("accepts empty-space settings without preflight and leaves active profiles unset", async () => {
@@ -974,6 +956,11 @@ describe("knowledge-space gateway integration", () => {
     };
     const created = await app.request("/knowledge-spaces", {
       body: JSON.stringify({
+        embeddingProfile: {
+          model: "embedding-a",
+          pluginId: "plugin-embedding-a",
+          provider: "provider-a",
+        },
         name: "Populated research",
         retrievalProfile: initialRetrievalProfile,
       }),

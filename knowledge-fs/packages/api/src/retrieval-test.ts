@@ -14,6 +14,7 @@ import {
   assertObservedEmbeddingDimension,
 } from "./knowledge-space-embedding-resolver";
 import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
+import { PageIndexSemanticScoreVersion } from "./page-index-semantic-tree-search";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { RetrievalSource } from "./retrieval-candidates";
 import { createRetrievalPlanner } from "./retrieval-planner";
@@ -150,12 +151,9 @@ export function assertRetrievalTestRuntimeCapabilities(
     });
   }
 
-  if (input.mode === "research") {
-    return;
-  }
   if (!input.embeddingProfile || !input.embeddingCapabilitySnapshot) {
     throw new RetrievalTestUnavailableError(
-      "Fast and Deep retrieval tests require a verified embedding profile",
+      "Fast, Deep, and Research retrieval tests require a verified embedding profile",
     );
   }
   const capability = assertCapabilityMatchesSelection({
@@ -201,22 +199,19 @@ export function createRetrievalTestExecutor({
           traceId: input.traceId,
         });
         const embeddingStartedAt = Date.now();
-        const queryVector =
-          input.mode === "research"
-            ? ([0] as const)
-            : await resolveRetrievalTestEmbedding({
-                embeddingModel,
-                embeddingProfile: input.embeddingProfile,
-                embeddingResolver,
-                embeddings,
-                knowledgeSpaceId: input.knowledgeSpaceId,
-                query: input.query,
-                signal: input.signal,
-                tenantId: input.subject.tenantId,
-              });
+        const queryVector = await resolveRetrievalTestEmbedding({
+          embeddingModel,
+          embeddingProfile: input.embeddingProfile,
+          embeddingResolver,
+          embeddings,
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          query: input.query,
+          signal: input.signal,
+          tenantId: input.subject.tenantId,
+        });
         const embeddingMs = Math.max(0, Date.now() - embeddingStartedAt);
         const retrieval = await retriever.retrieve({
-          ...(input.mode !== "research" && input.embeddingProfile
+          ...(input.embeddingProfile
             ? { denseProjectionModel: input.embeddingProfile.vectorSpaceId }
             : {}),
           knowledgeSpaceId: input.knowledgeSpaceId,
@@ -297,7 +292,7 @@ async function resolveRetrievalTestEmbedding({
 }): Promise<readonly number[]> {
   if (!embeddingProfile) {
     throw new RetrievalTestUnavailableError(
-      "Fast and Deep retrieval tests require an active embedding profile",
+      "Fast, Deep, and Research retrieval tests require an active embedding profile",
     );
   }
   const resolved = embeddingResolver
@@ -354,11 +349,11 @@ function retrievalTestStages({
   const deep = mode === "deep";
   const rerank = ordinary && profile.rerank.enabled;
   return [
-    stage("embedding", ordinary, undefined, embeddingMs),
-    stage("dense", ordinary, metrics.denseCandidates, metrics.denseMs),
+    stage("embedding", true, undefined, embeddingMs),
+    stage("dense", true, metrics.denseCandidates, metrics.denseMs),
     stage("fts", ordinary, metrics.ftsCandidates, metrics.ftsMs),
     stage("fusion", ordinary, metrics.fusedCandidates, metrics.fusionMs),
-    stage("summary", research, metrics.summaryCandidates),
+    stage("summary", false, metrics.summaryCandidates),
     stage("outline", research, metrics.documentOutlineMatchedItems),
     stage(
       "pageindex",
@@ -472,15 +467,14 @@ function assertRetrievalTestModeEvidence({
 
   if (mode === "research") {
     if (
-      metrics.denseCandidates !== 0 ||
       metrics.ftsCandidates !== 0 ||
       metrics.pageIndexMatchedNodes === undefined ||
-      !metrics.pageIndexScoreVersion ||
+      metrics.pageIndexScoreVersion !== PageIndexSemanticScoreVersion ||
       metrics.graphExpansionCandidates !== undefined ||
       metrics.rerankCandidates !== undefined
     ) {
       throw new RetrievalTestUnavailableError(
-        "Research retrieval did not use the independent Summary/Outline/PageIndex path",
+        "Research retrieval did not use semantic Value Search plus LLM PageIndex tree scoring",
       );
     }
     return;

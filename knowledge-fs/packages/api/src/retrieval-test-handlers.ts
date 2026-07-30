@@ -141,8 +141,7 @@ export function registerRetrievalTestHandlers({
           traceId,
         });
         await executionLease.assertActive();
-        const embeddingCapabilityStatus: "not-required" | "verified" =
-          mode === "research" ? "not-required" : "verified";
+        const embeddingCapabilityStatus = "verified" as const;
         const rerankCapabilityStatus: "disabled" | "not-required" | "verified" = !runtimeSnapshot
           .retrievalProfile.rerank.enabled
           ? "disabled"

@@ -625,7 +625,7 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
     expect(body).toMatchObject({
       configuration: {
         activeProfiles: { retrievalRevision: 1 },
-        availableModes: ["research"],
+        availableModes: [],
         pendingModelConfiguration: {
           digest: "b".repeat(64),
           failure: {
@@ -636,7 +636,7 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
           revision: 2,
           state: "validation-failed",
         },
-        status: "ready",
+        status: "validation-failed",
       },
     });
     expect(JSON.stringify(body)).not.toContain("private-replacement");
