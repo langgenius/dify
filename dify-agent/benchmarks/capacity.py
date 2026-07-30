@@ -163,8 +163,8 @@ class QuotaRecommendation(BaseModel):
     vendor_max_concurrency: int
     launch_global_concurrency: int | None
     launch_tenant_concurrency: int | None
-    global_binding_quota: int
-    tenant_binding_quota: int
+    global_binding_quota: int | None
+    tenant_binding_quota: int | None
     suggested_create_operations_per_second: float | None = None
     reasons: list[str] = Field(default_factory=list)
 
@@ -479,9 +479,7 @@ def enrich_e2b_service_point(
     transfer_multiplier = 2 if workload == "file_roundtrip_16m" else 1
     updated = point.model_copy(deep=True)
     updated.workload = workload
-    updated.e2b_active_window_seconds_per_operation = _mean(
-        [sample.terminal_e2e_ms / 1000 for sample in successful_samples if sample.terminal_e2e_ms is not None]
-    )
+    updated.e2b_active_window_seconds_per_operation = None
     updated.e2b_create_calls_per_operation = 0
     updated.e2b_resume_calls_per_operation = 1 if successful else 0
     updated.e2b_pause_calls_per_operation = 1 if successful else 0
@@ -524,14 +522,16 @@ def build_quota_recommendation(
     reference_valid = bool(all_points) and all(point.reference_valid for point in all_points)
     local_stable = _stable_concurrency(local_points)
     e2b_stable = _stable_concurrency(e2b_points)
-    global_binding_quota = math.floor(0.5 * e2b_max_inventory)
-    tenant_binding_quota = max(1, math.floor(global_binding_quota / pilot_tenant_count))
+    global_binding_quota: int | None = None
+    tenant_binding_quota: int | None = None
     reasons: list[str] = []
     launch_global: int | None = None
     launch_tenant: int | None = None
     if not reference_valid:
         reasons.append("quick or smoke capacity evidence cannot produce a launch recommendation")
     else:
+        global_binding_quota = math.floor(0.5 * e2b_max_inventory)
+        tenant_binding_quota = max(1, math.floor(global_binding_quota / pilot_tenant_count))
         candidate = math.floor(0.5 * min(local_stable, e2b_stable, e2b_max_concurrency))
         if candidate < 1:
             reasons.append("validated concurrency was too low to preserve 50% launch headroom")
@@ -622,8 +622,10 @@ def render_capacity_markdown(
                 f"- E2B stable concurrency: `{quota.e2b_stable_concurrency}`",
                 f"- Global Active Run / E2B concurrency: `{quota.launch_global_concurrency or 'unavailable'}`",
                 f"- Tenant Active Run concurrency: `{quota.launch_tenant_concurrency or 'unavailable'}`",
-                f"- Global Binding inventory: `{quota.global_binding_quota}`",
-                f"- Tenant Binding inventory: `{quota.tenant_binding_quota}`",
+                "- Global Binding inventory: "
+                f"`{quota.global_binding_quota if quota.global_binding_quota is not None else 'unavailable'}`",
+                "- Tenant Binding inventory: "
+                f"`{quota.tenant_binding_quota if quota.tenant_binding_quota is not None else 'unavailable'}`",
                 (
                     f"- Suggested Binding creates/s: `{quota.suggested_create_operations_per_second:.3f}`"
                     if quota.suggested_create_operations_per_second is not None
