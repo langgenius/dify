@@ -548,6 +548,7 @@
   "skillManagement.detail.publishSuccess": "Skill 已发布。",
   "skillManagement.detail.publishUpdate": "发布更新",
   "skillManagement.detail.published": "Published",
+  "skillManagement.detail.publishedVersion": "已发布 #{{number}}",
   "skillManagement.detail.readonly": "只读",
   "skillManagement.detail.referenceFiles.confirm": "Enter 确认",
   "skillManagement.detail.referenceFiles.empty": "暂无可引用的文件。",

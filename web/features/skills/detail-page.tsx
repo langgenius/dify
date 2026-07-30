@@ -4170,6 +4170,8 @@ function FileEditor({
   detail,
   file,
   fileMutationCoordinator,
+  hasLocalUnpublishedChanges,
+  onLocalUnpublishedChangesChange,
   onOpenVersions,
   onPublish,
   onRestoreVersion,
@@ -4188,6 +4190,8 @@ function FileEditor({
   detail: SkillDetailResponse | undefined
   file: SkillFileResponse | undefined
   fileMutationCoordinator: SkillFileMutationCoordinator
+  hasLocalUnpublishedChanges: boolean
+  onLocalUnpublishedChangesChange: (hasChanges: boolean) => void
   onOpenVersions: () => void
   onPublish: () => void
   onRestoreVersion: () => void
@@ -4231,6 +4235,7 @@ function FileEditor({
   const saveConflictContentRef = useRef<string | null>(null)
   const detailRef = useRef(detail)
   const fileRef = useRef(file)
+  const pendingPublishAfterSaveRef = useRef(false)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -4264,6 +4269,29 @@ function FileEditor({
     [draftContent, isSkillManifestFile],
   )
   const csvRows = useMemo(() => parseCsvRows(draftContent), [draftContent])
+  const hasPublishedVersion = !!detail?.latest_published_version_id
+  const latestPublishedVersionNumber = detail?.latest_published_version_number
+  const latestPublishedVersionText =
+    typeof latestPublishedVersionNumber === 'number'
+      ? t(($) => $['skillManagement.detail.publishedVersion'], {
+          number: latestPublishedVersionNumber,
+        })
+      : null
+  const latestPublishedAt = detail?.latest_published_at
+  const hasUnpublishedChanges =
+    saveStatus === 'dirty' ||
+    saveStatus === 'saving' ||
+    saveStatus === 'error' ||
+    hasSaveConflict ||
+    hasLocalUnpublishedChanges ||
+    !hasPublishedVersion ||
+    (typeof detail?.updated_at === 'number' &&
+      typeof latestPublishedAt === 'number' &&
+      detail.updated_at > latestPublishedAt)
+  const publishStatusText = hasUnpublishedChanges
+    ? t(($) => $['skillManagement.detail.draft'])
+    : (latestPublishedVersionText ?? t(($) => $['skillManagement.detail.published']))
+  const publishDisabled = publishing || !hasUnpublishedChanges
   const fileHash = file?.hash
   const editorInstanceKey = `${selectedVersionId ?? 'draft'}:${filePath ?? 'empty'}:${readonly ? 'readonly' : 'draft'}`
   const editorRenderKey = `${editorInstanceKey}:${externalContentRevision}`
@@ -4596,16 +4624,20 @@ function FileEditor({
     setReferenceSelectedIndex(Math.max(filteredReferenceFiles.length - 1, 0))
   }, [filteredReferenceFiles.length, referenceSelectedIndex])
 
-  const updateDraftContent = (nextContent: string) => {
-    draftContentRef.current = nextContent
-    const isConflictContent = nextContent === saveConflictContentRef.current
-    if (!isConflictContent) {
-      saveConflictContentRef.current = null
-      setHasSaveConflict(false)
-    }
-    setDraftContent(nextContent)
-    setSaveStatus(nextContent === lastSavedContentRef.current ? 'saved' : 'dirty')
-  }
+  const updateDraftContent = useCallback(
+    (nextContent: string) => {
+      draftContentRef.current = nextContent
+      const isConflictContent = nextContent === saveConflictContentRef.current
+      if (!isConflictContent) {
+        saveConflictContentRef.current = null
+        setHasSaveConflict(false)
+      }
+      setDraftContent(nextContent)
+      setSaveStatus(nextContent === lastSavedContentRef.current ? 'saved' : 'dirty')
+      if (nextContent !== lastSavedContentRef.current) onLocalUnpublishedChangesChange(true)
+    },
+    [onLocalUnpublishedChangesChange],
+  )
 
   const handleContentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const nextContent = event.target.value
@@ -4922,8 +4954,12 @@ function FileEditor({
     setMetadataAdding(false)
   }
 
-  const handlePublish = async () => {
-    if (publishing) return
+  const handlePublish = useCallback(async () => {
+    if (publishDisabled) return
+    if (saveStatus === 'saving') {
+      pendingPublishAfterSaveRef.current = true
+      return
+    }
 
     let contentToPublish = draftContentRef.current
     if (canEdit && isSkillManifestFile && displayNameDraft !== markdownContent.displayName) {
@@ -4942,7 +4978,25 @@ function FileEditor({
     }
 
     onPublish()
-  }
+  }, [
+    canEdit,
+    detail?.reference_count,
+    displayNameDraft,
+    isSkillManifestFile,
+    markdownContent.displayName,
+    onPublish,
+    publishDisabled,
+    saveDraftContent,
+    saveStatus,
+    updateDraftContent,
+  ])
+
+  useEffect(() => {
+    if (!pendingPublishAfterSaveRef.current || saveStatus === 'saving') return
+
+    pendingPublishAfterSaveRef.current = false
+    void handlePublish()
+  }, [handlePublish, saveStatus])
 
   const saveStateText =
     saveStatus === 'saving'
@@ -5419,7 +5473,13 @@ function FileEditor({
             />
             <span aria-hidden className="size-1.5 rounded-[2px] bg-text-tertiary" />
             <span className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.draft'])}
+              {publishStatusText}
+              {hasUnpublishedChanges && latestPublishedVersionText && (
+                <>
+                  <span className="px-1">·</span>
+                  {latestPublishedVersionText}
+                </>
+              )}
               <span className="px-1">·</span>
               {saveStateText}
             </span>
@@ -5434,8 +5494,8 @@ function FileEditor({
             <Button
               variant="primary"
               className="h-8 px-4"
-              loading={publishing || saveStatus === 'saving'}
-              disabled={saveStatus === 'saving'}
+              loading={publishing}
+              disabled={publishDisabled}
               onClick={handlePublish}
             >
               {t(($) => $['skillManagement.detail.publish'])}
@@ -6441,6 +6501,12 @@ export default function SkillDetailPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
+  const [hasLocalUnpublishedChanges, setHasLocalUnpublishedChanges] = useState(false)
+  const [publishedOverride, setPublishedOverride] = useState<{
+    id: string
+    publishedAt: number
+    versionNumber: number
+  } | null>(null)
   const fileMutationCoordinator = useMemo<SkillFileMutationCoordinator>(
     () => ({
       latestDetail: undefined,
@@ -6500,7 +6566,21 @@ export default function SkillDetailPage() {
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
   )
   const queriedDetail = detailQuery.data
-  const detail = draftDetailOverride ?? queriedDetail
+  const baseDetail = draftDetailOverride ?? queriedDetail
+  const detail = useMemo<SkillDetailResponse | undefined>(() => {
+    if (!baseDetail || !publishedOverride) return baseDetail
+
+    return {
+      ...baseDetail,
+      latest_published_at: publishedOverride.publishedAt,
+      latest_published_version_id: publishedOverride.id,
+      latest_published_version_number: publishedOverride.versionNumber,
+      updated_at:
+        baseDetail.latest_published_version_id === publishedOverride.id
+          ? baseDetail.updated_at
+          : Math.max(baseDetail.updated_at, publishedOverride.publishedAt),
+    }
+  }, [baseDetail, publishedOverride])
   if (
     detail &&
     (!fileMutationCoordinator.latestDetail ||
@@ -6526,6 +6606,8 @@ export default function SkillDetailPage() {
 
   useEffect(() => {
     setDraftDetailOverride(undefined)
+    setHasLocalUnpublishedChanges(false)
+    setPublishedOverride(null)
   }, [skillId])
 
   useEffect(() => {
@@ -6569,8 +6651,14 @@ export default function SkillDetailPage() {
         body: {},
       },
       {
-        onSuccess: async () => {
+        onSuccess: async (version) => {
           toast.success(t(($) => $['skillManagement.detail.publishSuccess']))
+          setPublishedOverride({
+            id: version.id,
+            publishedAt: version.created_at,
+            versionNumber: version.version_number,
+          })
+          setHasLocalUnpublishedChanges(false)
           const detailQueryKey = consoleQuery.workspaces.current.skills.bySkillId.get.key({
             type: 'query',
             input: {
@@ -6579,6 +6667,15 @@ export default function SkillDetailPage() {
               },
             },
           })
+          if (detail) {
+            setSkillDetailCache(queryClient, skillId, {
+              ...detail,
+              latest_published_at: version.created_at,
+              latest_published_version_id: version.id,
+              latest_published_version_number: version.version_number,
+              updated_at: Math.max(detail.updated_at, version.created_at),
+            })
+          }
           await queryClient.invalidateQueries({ queryKey: detailQueryKey })
           await queryClient.refetchQueries({ queryKey: detailQueryKey, type: 'active' })
           void queryClient.invalidateQueries({
@@ -6692,8 +6789,10 @@ export default function SkillDetailPage() {
           detail={detail}
           file={selectedFile}
           fileMutationCoordinator={fileMutationCoordinator}
+          hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
+          onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
           onRestoreVersion={handleRestoreSelectedVersion}

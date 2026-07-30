@@ -31,6 +31,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import object_session
 from yaml.error import MarkedYAMLError
 
 from core.db.session_factory import session_factory
@@ -1949,6 +1950,15 @@ class SkillManagementService:
         accounts = accounts or {}
         created_by_account = accounts.get(skill.created_by or "")
         updated_by_account = accounts.get(skill.updated_by or "")
+        latest_published_version_number: int | None = None
+        latest_published_at: int | None = None
+        session = object_session(skill)
+        if session is not None and skill.latest_published_version_id is not None:
+            latest_version = session.get(SkillVersion, skill.latest_published_version_id)
+            if latest_version is not None:
+                latest_published_version_number = latest_version.version_number
+                latest_published_at = int(latest_version.created_at.timestamp())
+
         return {
             "id": skill.id,
             "name": skill.name,
@@ -1959,6 +1969,8 @@ class SkillManagementService:
             "name_manually_edited": skill.name_manually_edited,
             "visibility": skill.visibility,
             "latest_published_version_id": skill.latest_published_version_id,
+            "latest_published_version_number": latest_published_version_number,
+            "latest_published_at": latest_published_at,
             "reference_count": reference_count,
             "created_by": skill.created_by,
             "created_by_name": created_by_account.name if created_by_account else None,

@@ -548,6 +548,7 @@
   "skillManagement.detail.publishSuccess": "Skill published.",
   "skillManagement.detail.publishUpdate": "Publish update",
   "skillManagement.detail.published": "Published",
+  "skillManagement.detail.publishedVersion": "Published #{{number}}",
   "skillManagement.detail.readonly": "Read only",
   "skillManagement.detail.referenceFiles.confirm": "Enter Confirm",
   "skillManagement.detail.referenceFiles.empty": "No files available.",

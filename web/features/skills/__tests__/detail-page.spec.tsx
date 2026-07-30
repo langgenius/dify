@@ -210,6 +210,8 @@ function createSkillDetail(overrides: Partial<SkillDetailResponse> = {}): SkillD
     name_manually_edited: true,
     visibility: 'workspace',
     latest_published_version_id: 'version-1',
+    latest_published_version_number: 1,
+    latest_published_at: 1784638400,
     reference_count: 0,
     created_by: 'user-1',
     created_by_name: 'Fate',
@@ -461,17 +463,29 @@ describe('SkillDetailPage', () => {
         return nextDetail
       },
     )
-    mocks.publishSkillMutationFn.mockResolvedValue({
-      id: 'version-2',
-      version_number: 2,
-      version_name: '',
-      publish_note: '',
-      hash_code: 'hash-code',
-      archive_size: 180,
-      published_by: 'user-1',
-      published_by_name: 'Fate',
-      created_at: 1784638492,
-      is_latest: true,
+    mocks.publishSkillMutationFn.mockImplementation(async () => {
+      const version = {
+        id: 'version-2',
+        version_number: 2,
+        version_name: '',
+        publish_note: '',
+        hash_code: 'hash-code',
+        archive_size: 180,
+        published_by: 'user-1',
+        published_by_name: 'Fate',
+        created_at: 1784638492,
+        is_latest: true,
+      }
+      mocks.skillDetail = mocks.skillDetail
+        ? {
+            ...mocks.skillDetail,
+            latest_published_at: version.created_at,
+            latest_published_version_id: version.id,
+            latest_published_version_number: version.version_number,
+            updated_at: version.created_at,
+          }
+        : mocks.skillDetail
+      return version
     })
     mocks.restoreSkillMutationFn.mockResolvedValue({})
     mocks.versionPatchMutationFn.mockResolvedValue({})
@@ -729,6 +743,34 @@ describe('SkillDetailPage', () => {
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
+  })
+
+  it('marks the draft as published and disables publish until new edits are made', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    const publishButton = await screen.findByRole('button', {
+      name: 'agentV2.skillManagement.detail.publish',
+    })
+    expect(publishButton).toBeEnabled()
+
+    await user.click(publishButton)
+
+    await waitFor(() => {
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(document.body).toHaveTextContent(
+        'agentV2.skillManagement.detail.publishedVersion:{"number":2}',
+      )
+    })
+    expect(publishButton).toBeDisabled()
+
+    const displayNameInput = screen.getByDisplayValue('Untitled skill')
+    await user.clear(displayNameInput)
+    await user.type(displayNameInput, 'Updated skill')
+
+    expect(publishButton).toBeEnabled()
   })
 
   it('adds custom metadata from the value field Enter key and saves it on publish', async () => {
