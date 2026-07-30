@@ -77,13 +77,15 @@ func TestProxyHTTPCredentialInjection(t *testing.T) {
 	defer backend.Close()
 
 	resolver := NewResolver()
-	resolver.Register("token", &StoredCredential{
-		Value: "s3cr3t",
-		Inject: &CredentialInjectionPolicy{
-			Type: SimpleHeader,
-			SimpleHeader: &SimpleHeaderPolicy{
-				HeaderName: "Authorization",
-				Expr:       "Bearer {{.Value}}",
+	resolver.SetSystemCredentials(map[string]*StoredCredential{
+		"token": {
+			Value: "s3cr3t",
+			Inject: &CredentialInjectionPolicy{
+				Type: SimpleHeader,
+				SimpleHeader: &SimpleHeaderPolicy{
+					HeaderName: "Authorization",
+					Expr:       "Bearer {{.Value}}",
+				},
 			},
 		},
 	})
@@ -113,13 +115,15 @@ func TestProxyHTTPSMitmCredentialInjection(t *testing.T) {
 	defer backend.Close()
 
 	resolver := NewResolver()
-	resolver.Register("token", &StoredCredential{
-		Value: "s3cr3t",
-		Inject: &CredentialInjectionPolicy{
-			Type: SimpleHeader,
-			SimpleHeader: &SimpleHeaderPolicy{
-				HeaderName: "Authorization",
-				Expr:       "Bearer {{.Value}}",
+	resolver.SetSystemCredentials(map[string]*StoredCredential{
+		"token": {
+			Value: "s3cr3t",
+			Inject: &CredentialInjectionPolicy{
+				Type: SimpleHeader,
+				SimpleHeader: &SimpleHeaderPolicy{
+					HeaderName: "Authorization",
+					Expr:       "Bearer {{.Value}}",
+				},
 			},
 		},
 	})
@@ -155,7 +159,7 @@ func TestProxyPlaceholderReplacement(t *testing.T) {
 	defer backend.Close()
 
 	resolver := NewResolver()
-	resolver.Register("myprovider/mysecret", &StoredCredential{Value: "hunter2"})
+	resolver.SetSystemCredentials(map[string]*StoredCredential{"myprovider/mysecret": {Value: "hunter2"}})
 
 	proxy, caPool := newTestProxy(t, resolver, "")
 	client := clientThroughProxy(t, proxy, caPool)

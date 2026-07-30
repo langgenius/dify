@@ -219,15 +219,18 @@ func handlePrepare(svc *Service) http.HandlerFunc {
 			writeError(w, 400, "invalid_request", "Invalid JSON body")
 			return
 		}
+		if req.SandboxID == "" {
+			writeError(w, 422, "validation_error", "sandbox_id is required")
+			return
+		}
 		if len(req.Credentials) == 0 {
 			writeError(w, 400, "invalid_request", "credentials must not be empty")
 			return
 		}
-		if svc.egressResolver == nil {
-			writeError(w, 409, "egressproxy_disabled", "Egress proxy is not enabled")
+		if err := svc.PrepareCredentials(req.SandboxID, req.Credentials); err != nil {
+			writeServerError(w, err)
 			return
 		}
-		svc.RegisterCredentials(req.Credentials)
 		writeJSON(w, http.StatusOK, PrepareResponse{Registered: len(req.Credentials)})
 	}
 }

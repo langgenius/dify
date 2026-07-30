@@ -162,13 +162,16 @@ class RunJobRequest(ShellctlModel):
 
     `env` augments the runner's inherited process environment instead of
     replacing it, so callers can preset script-local variables without losing
-    ambient values such as `PATH`.
+    ambient values such as `PATH`. Credentials are never passed here; callers
+    must first register them for a `sandbox_id` via `PUT /v1/prepare`, then
+    reference them from the script/env using `__secret:provider/name__`
+    placeholders or rely on the proxy's proactive header injection.
     """
 
     script: str
     cwd: str | None = None
     env: dict[str, str] | None = None
-    credentials: list[Credential] | None = None
+    sandbox_id: str | None = None
     terminal: TerminalSize | None = None
     timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
@@ -224,6 +227,25 @@ class TerminateJobRequest(ShellctlModel):
     grace_seconds: float = Field(default=DEFAULT_TERMINATE_GRACE_SECONDS, ge=0, le=300)
 
 
+class PrepareRequest(ShellctlModel):
+    """HTTP request body for `PUT /v1/prepare`.
+
+    `sandbox_id` scopes these credentials to one sandbox session: they are
+    persisted server-side to a session-specific file and made visible only to
+    egress traffic from jobs run with the same `sandbox_id` (see
+    `RunJobRequest`). They never affect the system tier or any other session.
+    """
+
+    sandbox_id: str
+    credentials: list[Credential]
+
+
+class PrepareResponse(ShellctlModel):
+    """Response body for `PUT /v1/prepare`."""
+
+    registered: int
+
+
 __all__ = [
     "TERMINAL_JOB_STATUSES",
     "Credential",
@@ -239,6 +261,8 @@ __all__ = [
     "JobStatusName",
     "JobStatusView",
     "ListJobsResponse",
+    "PrepareRequest",
+    "PrepareResponse",
     "RunJobRequest",
     "ShellctlModel",
     "TerminalSize",

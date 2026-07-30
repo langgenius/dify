@@ -558,9 +558,12 @@ services:
       - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
       - SHELLCTL_EGRESSPROXY_ENABLED=${DIFY_AGENT_EGRESSPROXY_ENABLED:-true}
       - SHELLCTL_EGRESSPROXY_UPSTREAM=http://agent_ssrf_proxy:${SSRF_HTTP_PORT:-3128}
+      - SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_FILE=/etc/shellctl/system-credentials.yaml
       - HTTP_PROXY=http://127.0.0.1:18080
       - HTTPS_PROXY=http://127.0.0.1:18080
       - NO_PROXY=localhost,127.0.0.1
+    volumes:
+      - ./volumes/local_sandbox/system-credentials.yaml:/etc/shellctl/system-credentials.yaml:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s

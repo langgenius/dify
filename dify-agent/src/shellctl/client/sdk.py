@@ -32,6 +32,7 @@ from shellctl.shared.schemas import (
     JobResult,
     JobStatusView,
     ListJobsResponse,
+    PrepareRequest,
     RunJobRequest,
     TerminalSize,
 )
@@ -142,23 +143,23 @@ class ShellctlClient:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-        credentials: list[Credential] | None = None,
+        sandbox_id: str | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         terminal: TerminalSize | None = None,
     ) -> JobResult:
         """Create a new job and wait for initial output or completion.
 
         `cwd` and `env` preset the script's working directory and environment
-        overlay on the server side. `credentials` registers structured secrets
-        with the credential proxy for header injection and placeholder
-        replacement in outbound HTTP requests.
+        overlay on the server side. `sandbox_id` identifies which sandbox
+        session's credentials (registered via `prepare()`) apply to this job's
+        egress traffic; it is required when the egress proxy is enabled.
         """
 
         payload = RunJobRequest(
             script=script,
             cwd=cwd,
             env=env,
-            credentials=credentials,
+            sandbox_id=sandbox_id,
             terminal=terminal,
             timeout=timeout,
             output_limit=self.output_limit,
@@ -271,16 +272,19 @@ class ShellctlClient:
         )
         return JobStatusView.model_validate(self._decode_response(response))
 
-    async def prepare(self, credentials: list[Credential]) -> dict[str, Any]:
+    async def prepare(self, sandbox_id: str, credentials: list[Credential]) -> dict[str, Any]:
         """Register structured credentials with the sandbox credential proxy.
 
-        This is a standalone endpoint for registering credentials outside of
-        job runs. Credentials persist for the lifetime of the sandbox.
+        Credentials are scoped strictly to `sandbox_id`: they are persisted to
+        a session-specific manifest and never affect the system tier or any
+        other sandbox session's credentials. Pass the same `sandbox_id` to
+        `run()` so the egress proxy can resolve them for that job's traffic.
         """
 
+        payload = PrepareRequest(sandbox_id=sandbox_id, credentials=credentials)
         response = await self._client.put(
             "/v1/prepare",
-            json={"credentials": [c.model_dump(mode="json", exclude_none=True) for c in credentials]},
+            json=payload.model_dump(mode="json", exclude_none=True),
             headers=self._auth_headers(),
         )
         return self._decode_response(response)

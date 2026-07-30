@@ -225,11 +225,11 @@ class ShellctlClientProtocol(Protocol):
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-        credentials: list[Credential] | None = None,
+        sandbox_id: str | None = None,
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
     ) -> ShellctlJobResult: ...
 
-    async def prepare(self, credentials: list[Credential]) -> object: ...
+    async def prepare(self, sandbox_id: str, credentials: list[Credential]) -> object: ...
 
     async def wait(
         self,
@@ -273,6 +273,7 @@ type ShellctlClientFactory = Callable[[], ShellctlClientProtocol]
 @dataclass(slots=True)
 class ShellctlCommands(ShellCommandProtocol):
     client: ShellctlClientProtocol
+    sandbox_id: str | None = None
     home_dir: str | None = None
     workspace_dir: str | None = None
 
@@ -291,12 +292,22 @@ class ShellctlCommands(ShellCommandProtocol):
         )
         resolved_env = _lease_env(env, home_dir=self.home_dir)
         return _from_job_result(
-            await _run_client_call(self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout))
+            await _run_client_call(
+                self.client.run(
+                    script,
+                    cwd=resolved_cwd,
+                    env=resolved_env,
+                    sandbox_id=self.sandbox_id,
+                    timeout=timeout,
+                )
+            )
         )
 
     async def prepare(self, credentials: Sequence[Credential]) -> None:
-        """Register credentials with the sandbox credential proxy."""
-        await _run_client_call(self.client.prepare(list(credentials)))
+        """Register credentials with the sandbox credential proxy, scoped to `sandbox_id`."""
+        if self.sandbox_id is None:
+            raise ValueError("ShellctlCommands.sandbox_id must be set to prepare credentials")
+        await _run_client_call(self.client.prepare(self.sandbox_id, list(credentials)))
 
     async def wait(
         self,

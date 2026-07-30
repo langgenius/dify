@@ -1,15 +1,33 @@
 package server
 
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
 // RunJobRequest is the HTTP request body for POST /v1/jobs/run.
+//
+// Credentials are never passed here. Callers must first register them for a
+// sandbox_id via PUT /v1/prepare, then reference them from the script/env
+// using __secret:provider/name__ placeholders (resolved by the egress proxy
+// at request time) or rely on the proxy's proactive header injection.
 type RunJobRequest struct {
-	Script           string            `json:"script"`
-	Cwd              *string           `json:"cwd,omitempty"`
-	Env              map[string]string `json:"env,omitempty"`
-	Credentials      []Credential      `json:"credentials,omitempty"`
-	Terminal         *TerminalSize     `json:"terminal,omitempty"`
-	Timeout          float64           `json:"timeout,omitempty"`
-	OutputLimit      int               `json:"output_limit,omitempty"`
-	IdleFlushSeconds float64           `json:"idle_flush_seconds,omitempty"`
+	Script string            `json:"script"`
+	Cwd    *string           `json:"cwd,omitempty"`
+	Env    map[string]string `json:"env,omitempty"`
+	// SandboxID identifies which sandbox session's credentials (registered
+	// via PUT /v1/prepare) apply to this job's egress traffic. Required when
+	// the egress proxy is enabled; ignored otherwise.
+	SandboxID        string        `json:"sandbox_id,omitempty"`
+	Terminal         *TerminalSize `json:"terminal,omitempty"`
+	Timeout          float64       `json:"timeout,omitempty"`
+	OutputLimit      int           `json:"output_limit,omitempty"`
+	IdleFlushSeconds float64       `json:"idle_flush_seconds,omitempty"`
 }
 
 // TerminalSize specifies the initial PTY geometry.
@@ -92,14 +110,22 @@ type HealthResponse struct {
 // Credential represents a secret with its identity and injection policy.
 type Credential struct {
 	// Provider identifies the credential source (e.g. "github", "dify_agent_stub").
-	Provider string `json:"provider"`
+	Provider string `json:"provider" yaml:"provider"`
 	// Name identifies the credential within the provider (e.g. "token", "auth_jwe").
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 	// Value is the actual secret.
-	Value string `json:"value"`
+	Value string `json:"value" yaml:"value"`
 	// Inject defines how the credential is automatically injected into HTTP requests.
 	// If nil, the credential is only resolved via __secret:provider/name__ placeholders.
-	Inject *InjectPolicy `json:"inject,omitempty"`
+	Inject *InjectPolicy `json:"inject,omitempty" yaml:"inject,omitempty"`
+	// EnvName overrides the environment variable name used to expose this
+	// credential's __secret:provider/name__ placeholder to system-tier jobs
+	// (see Service.systemCredentialPlaceholderEnv). If empty, a name is
+	// derived from Provider and Name (e.g. "github"/"token" -> "GITHUB_TOKEN").
+	// Only meaningful for system-tier credentials loaded via
+	// LoadCredentialManifest; ignored for session credentials set via
+	// PUT /v1/prepare.
+	EnvName string `json:"env_name,omitempty" yaml:"env_name,omitempty"`
 }
 
 // InjectType enumerates supported credential injection strategies.
@@ -113,21 +139,21 @@ const (
 // InjectPolicy defines how a credential is proactively injected into outbound HTTP requests.
 // The Type field selects the strategy; exactly one corresponding payload field should be set.
 type InjectPolicy struct {
-	Type       InjectType        `json:"type"`
-	HTTPHeader *HTTPHeaderInject `json:"http_header,omitempty"`
+	Type       InjectType        `json:"type" yaml:"type"`
+	HTTPHeader *HTTPHeaderInject `json:"http_header,omitempty" yaml:"http_header,omitempty"`
 }
 
 // HTTPHeaderInject injects a credential value as an HTTP request header.
 type HTTPHeaderInject struct {
 	// Name is the HTTP header name (e.g. "Authorization", "X-API-Key").
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 	// Expr is a Go text/template rendered with the credential value
 	// available as {{.Value}} (e.g. "Bearer {{.Value}}").
-	Expr string `json:"expr,omitempty"`
+	Expr string `json:"expr,omitempty" yaml:"expr,omitempty"`
 	// Domains restricts injection to requests matching these host patterns.
 	// Supports wildcard prefix (e.g. "*.github.com", "api.example.com").
 	// Empty means inject on all domains.
-	Domains []string `json:"domains,omitempty"`
+	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
 }
 
 // Ref returns the canonical credential reference used in placeholders: "provider/name".
@@ -136,8 +162,40 @@ func (c *Credential) Ref() string {
 }
 
 // PrepareRequest is the HTTP request body for PUT /v1/prepare.
+//
+// SandboxID scopes these credentials to one sandbox session: they are
+// persisted to a session-specific file and made visible only to egress
+// traffic from jobs run with the same sandbox_id (see RunJobRequest). They
+// never affect the system tier or any other session.
 type PrepareRequest struct {
-	Credentials []Credential `json:"credentials"`
+	SandboxID   string       `json:"sandbox_id" yaml:"sandbox_id"`
+	Credentials []Credential `json:"credentials" yaml:"credentials"`
+}
+
+// LoadCredentialManifest reads a credential manifest file (same shape as
+// PrepareRequest: {"credentials": [...]}) and returns its credentials. It is
+// used to seed the resolver with system-level credentials at startup, before
+// any sandbox session credentials are registered.
+//
+// The format is chosen by the file extension: ".yaml"/".yml" is parsed as
+// YAML, everything else (including ".json") is parsed as JSON.
+func LoadCredentialManifest(path string) ([]Credential, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read credential manifest %s: %w", path, err)
+	}
+	var req PrepareRequest
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".yaml", ".yml":
+		if err := yaml.Unmarshal(data, &req); err != nil {
+			return nil, fmt.Errorf("parse credential manifest %s: %w", path, err)
+		}
+	default:
+		if err := json.Unmarshal(data, &req); err != nil {
+			return nil, fmt.Errorf("parse credential manifest %s: %w", path, err)
+		}
+	}
+	return req.Credentials, nil
 }
 
 // PrepareResponse is the response for PUT /v1/prepare.

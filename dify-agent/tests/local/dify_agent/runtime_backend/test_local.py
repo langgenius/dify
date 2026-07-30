@@ -22,6 +22,7 @@ class _RunCall:
     commands: tuple[tuple[str, ...], ...]
     cwd: str | None
     env: Mapping[str, str] | None
+    sandbox_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -39,13 +40,14 @@ class _Client:
         *,
         cwd: str | None = None,
         env: Mapping[str, str] | None = None,
+        sandbox_id: str | None = None,
         timeout: float = 10.0,
     ) -> JobResult:
         del timeout
         commands = tuple(
             tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
         )
-        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env))
+        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env, sandbox_id=sandbox_id))
         return JobResult(
             job_id=f"job-{len(self.runs)}",
             status=JobStatusName.EXITED,

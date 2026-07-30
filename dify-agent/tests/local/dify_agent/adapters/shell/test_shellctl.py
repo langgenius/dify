@@ -58,6 +58,7 @@ class _RunCall:
     cwd: str | None
     env: dict[str, str] | None
     timeout: float
+    sandbox_id: str | None = None
 
 
 type _RunHandler = Callable[[str, str | None, dict[str, str] | None, float], _Job]
@@ -86,15 +87,15 @@ class FakeShellctlClient:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-        credentials: object = None,
+        sandbox_id: str | None = None,
         timeout: float = 30.0,
     ) -> _Job:
-        self.run_calls.append(_RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
+        self.run_calls.append(_RunCall(script=script, cwd=cwd, env=env, timeout=timeout, sandbox_id=sandbox_id))
         if self.run_handler is not None:
             return self.run_handler(script, cwd, env, timeout)
         return _Job(job_id="job", status="exited", done=True, exit_code=0)
 
-    async def prepare(self, credentials: object) -> object:
+    async def prepare(self, sandbox_id: str, credentials: object) -> object:
         return {}
 
     async def wait(self, job_id: str, *, offset: int, timeout: float = 30.0) -> _Job:

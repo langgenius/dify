@@ -3,9 +3,11 @@
 // __secret:provider/name__ placeholders, and proactively injects credentials
 // as HTTP headers based on domain-matching policies.
 //
-// Credentials are registered by the shellctl server when agent_backend
-// sends them via the prepare API. In a future iteration the proxy will also
-// enforce SSRF/access policies and rate-limiting.
+// Credentials come from two independent tiers: a system tier seeded once at
+// startup, and a per-sandbox-session tier set via the prepare API and scoped
+// strictly to the sandbox_id supplied with each request (see Resolver). In a
+// future iteration the proxy will also enforce SSRF/access policies and
+// rate-limiting.
 package egressproxy
 
 import (
@@ -113,42 +115,87 @@ type StoredCredential struct {
 	Inject *CredentialInjectionPolicy
 }
 
-// Resolver is a thread-safe credential store indexed by "provider/name" refs.
+// Resolver is a thread-safe credential store scoped by sandbox session.
 // It supports both placeholder replacement and proactive header injection.
+//
+// Credentials live in two independent tiers:
+//
+//   - system holds credentials seeded once at startup (see
+//     LoadCredentialManifest). It is set via SetSystemCredentials and is
+//     never touched by session operations.
+//   - sessions holds one independent credential set per sandbox_id, set via
+//     SetSessionCredentials (from PUT /v1/prepare). Writing session N's
+//     credentials never touches session M's map or the system tier — there
+//     is no shared mutable state across sandbox sessions.
+//
+// Every lookup is scoped to a sandboxID: it checks that session's map first
+// and falls back to the system tier. An empty sandboxID (no session
+// identified) only ever sees the system tier.
 type Resolver struct {
-	mu    sync.RWMutex
-	creds map[string]*StoredCredential // key: "provider/name"
+	mu       sync.RWMutex
+	system   map[string]*StoredCredential            // key: "provider/name"
+	sessions map[string]map[string]*StoredCredential // key: sandboxID -> "provider/name"
 }
 
 // NewResolver creates an empty credential resolver.
 func NewResolver() *Resolver {
-	return &Resolver{creds: make(map[string]*StoredCredential)}
+	return &Resolver{
+		system:   make(map[string]*StoredCredential),
+		sessions: make(map[string]map[string]*StoredCredential),
+	}
 }
 
-// Register stores or updates a credential.
-func (r *Resolver) Register(ref string, cred *StoredCredential) {
+// SetSystemCredentials replaces the entire system-tier credential set.
+// Intended to be called once at startup (e.g. from LoadCredentialManifest).
+func (r *Resolver) SetSystemCredentials(creds map[string]*StoredCredential) {
+	if creds == nil {
+		creds = make(map[string]*StoredCredential)
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.creds[ref] = cred
+	r.system = creds
 }
 
-// Unregister removes a credential by ref.
-func (r *Resolver) Unregister(ref string) {
+// SetSessionCredentials replaces the credential set for one sandbox session,
+// identified by sandboxID. This only ever affects that session's own map;
+// it never mutates the system tier or any other session's credentials.
+func (r *Resolver) SetSessionCredentials(sandboxID string, creds map[string]*StoredCredential) {
+	if creds == nil {
+		creds = make(map[string]*StoredCredential)
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.creds, ref)
+	r.sessions[sandboxID] = creds
 }
 
-// Resolve returns the stored credential for a ref, or nil if unknown.
-func (r *Resolver) Resolve(ref string) *StoredCredential {
+// ClearSession removes a sandbox session's credentials entirely (e.g. on
+// teardown). The system tier and other sessions are unaffected.
+func (r *Resolver) ClearSession(sandboxID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.sessions, sandboxID)
+}
+
+// ResolveFor returns the effective credential for ref within sandboxID's
+// session, falling back to the system tier, or nil if neither has it. An
+// empty sandboxID only ever resolves against the system tier.
+func (r *Resolver) ResolveFor(sandboxID, ref string) *StoredCredential {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.creds[ref]
+	if sandboxID != "" {
+		if session, ok := r.sessions[sandboxID]; ok {
+			if cred, ok := session[ref]; ok {
+				return cred
+			}
+		}
+	}
+	return r.system[ref]
 }
 
-// ReplaceAll scans s for all __secret:provider/name__ placeholders and replaces
-// each with the resolved value. Unresolved placeholders are left intact.
-func (r *Resolver) ReplaceAll(s string) string {
+// ReplaceAllFor scans s for all __secret:provider/name__ placeholders and
+// replaces each with the value resolved for sandboxID (session, falling back
+// to system). Unresolved placeholders are left intact.
+func (r *Resolver) ReplaceAllFor(sandboxID, s string) string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return placeholderPattern.ReplaceAllStringFunc(s, func(match string) string {
@@ -157,16 +204,24 @@ func (r *Resolver) ReplaceAll(s string) string {
 			return match
 		}
 		ref := groups[1]
-		if cred, ok := r.creds[ref]; ok {
+		if sandboxID != "" {
+			if session, ok := r.sessions[sandboxID]; ok {
+				if cred, ok := session[ref]; ok {
+					return cred.Value
+				}
+			}
+		}
+		if cred, ok := r.system[ref]; ok {
 			return cred.Value
 		}
 		return match
 	})
 }
 
-// InjectHeaders proactively injects credential-derived headers into the
-// request based on domain-matching injection policies.
-func (r *Resolver) InjectHeaders(req *http.Request) {
+// InjectHeadersFor proactively injects credential-derived headers into the
+// request based on domain-matching injection policies, using the effective
+// credential set for sandboxID (session merged over system).
+func (r *Resolver) InjectHeadersFor(sandboxID string, req *http.Request) {
 	host := req.URL.Hostname()
 	if host == "" {
 		host = req.Host
@@ -177,7 +232,7 @@ func (r *Resolver) InjectHeaders(req *http.Request) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for ref, cred := range r.creds {
+	for ref, cred := range r.effectiveCredsLocked(sandboxID) {
 		if cred.Inject == nil {
 			continue
 		}
@@ -185,23 +240,32 @@ func (r *Resolver) InjectHeaders(req *http.Request) {
 			continue
 		}
 		if err := cred.Inject.apply(req, cred.Value); err != nil {
-			log.Printf("egressproxy: inject credential %q: %v", ref, err)
+			log.Printf("egressproxy: inject credential %q (sandbox=%q): %v", ref, sandboxID, err)
 		}
 	}
 }
 
-// Clear removes all stored credentials.
-func (r *Resolver) Clear() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.creds = make(map[string]*StoredCredential)
+// effectiveCredsLocked returns the merged view of the system tier and
+// sandboxID's session tier, with the session shadowing the system tier
+// under the same ref. Callers must hold r.mu (read or write lock).
+func (r *Resolver) effectiveCredsLocked(sandboxID string) map[string]*StoredCredential {
+	session := r.sessions[sandboxID]
+	merged := make(map[string]*StoredCredential, len(r.system)+len(session))
+	for ref, cred := range r.system {
+		merged[ref] = cred
+	}
+	for ref, cred := range session {
+		merged[ref] = cred
+	}
+	return merged
 }
 
-// Len returns the number of stored credentials.
-func (r *Resolver) Len() int {
+// LenFor returns the number of distinct effective credential refs visible to
+// sandboxID (system tier merged with that session's tier).
+func (r *Resolver) LenFor(sandboxID string) int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return len(r.creds)
+	return len(r.effectiveCredsLocked(sandboxID))
 }
 
 // matchesDomain checks if host matches any of the domain patterns.

@@ -54,3 +54,19 @@ func TestConfigNoAuthToken(t *testing.T) {
 		t.Errorf("expected empty auth token, got %q", cfg.AuthToken)
 	}
 }
+
+func TestConfigEgressProxySystemCredentialsFromEnv(t *testing.T) {
+	t.Setenv("SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_FILE", "/etc/shellctl/system-credentials.json")
+	cfg := DefaultConfig()
+	if cfg.EgressProxySystemCredentials != "/etc/shellctl/system-credentials.json" {
+		t.Errorf("expected system credentials path from env, got %q", cfg.EgressProxySystemCredentials)
+	}
+}
+
+func TestConfigNoEgressProxySystemCredentials(t *testing.T) {
+	t.Setenv("SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_FILE", "")
+	cfg := DefaultConfig()
+	if cfg.EgressProxySystemCredentials != "" {
+		t.Errorf("expected empty system credentials path, got %q", cfg.EgressProxySystemCredentials)
+	}
+}
