@@ -16,6 +16,8 @@ import MCPDetailContent from './content'
 type Props = Readonly<{
   detail?: ToolWithProvider
   onUpdate: () => void
+  onEdit: (providerID: string) => void
+  onDelete: (providerID: string) => void
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
@@ -24,15 +26,12 @@ type Props = Readonly<{
 const MCPDetailPanel: FC<Props> = ({
   detail,
   onUpdate,
+  onEdit,
+  onDelete,
   onHide,
   isTriggerAuthorize,
   onFirstCreate,
 }) => {
-  const handleUpdate = (isDelete = false) => {
-    if (isDelete) onHide()
-    onUpdate()
-  }
-
   if (!detail) return null
 
   return (
@@ -57,7 +56,9 @@ const MCPDetailPanel: FC<Props> = ({
                 <MCPDetailContent
                   detail={detail}
                   onHide={onHide}
-                  onUpdate={handleUpdate}
+                  onUpdate={onUpdate}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
                   isTriggerAuthorize={isTriggerAuthorize}
                   onFirstCreate={onFirstCreate}
                 />

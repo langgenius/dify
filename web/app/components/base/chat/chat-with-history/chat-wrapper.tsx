@@ -48,7 +48,7 @@ const ChatWrapper = () => {
     handleFeedback,
     currentChatInstanceRef,
     appData,
-    themeBuilder,
+    theme,
     sidebarCollapseState,
     clearChatList,
     setClearChatList,
@@ -456,7 +456,7 @@ const ChatWrapper = () => {
         suggestedQuestions={suggestedQuestions}
         answerIcon={answerIcon}
         hideProcessDetail
-        themeBuilder={themeBuilder}
+        theme={theme}
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}

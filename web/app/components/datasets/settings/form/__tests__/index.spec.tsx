@@ -227,7 +227,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
-    supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))
 

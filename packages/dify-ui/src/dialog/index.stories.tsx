@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
+  createDialogHandle,
   Dialog,
   DialogBackdrop,
   DialogCloseButton,
@@ -189,6 +190,59 @@ const ControlledDemo = () => {
 
 export const Controlled: Story = {
   render: () => <ControlledDemo />,
+}
+
+type WorkspaceDialogPayload = {
+  name: string
+  memberCount: number
+}
+
+const workspaceDialogPayloads = [
+  { name: 'Design', memberCount: 8 },
+  { name: 'Engineering', memberCount: 24 },
+] as const satisfies readonly WorkspaceDialogPayload[]
+
+function DetachedTriggersDemo() {
+  const [dialogHandle] = React.useState(() => createDialogHandle<WorkspaceDialogPayload>())
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex gap-2">
+        {workspaceDialogPayloads.map((payload) => (
+          <DialogTrigger
+            key={payload.name}
+            handle={dialogHandle}
+            payload={payload}
+            render={<Button variant="secondary" />}
+          >
+            Edit {payload.name}
+          </DialogTrigger>
+        ))}
+      </div>
+
+      <Dialog handle={dialogHandle}>
+        {({ payload }) => (
+          <DialogContent>
+            <DialogCloseButton />
+            <div className="grid gap-2 pr-8">
+              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+                {payload ? `Edit ${payload.name}` : 'Edit workspace'}
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-5 text-text-secondary">
+                {payload
+                  ? `${payload.memberCount} members currently have access to this workspace.`
+                  : 'Choose a workspace to edit.'}
+              </DialogDescription>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  render: () => <DetachedTriggersDemo />,
 }
 
 type ApiExtensionFormValues = {

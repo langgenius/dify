@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "بارگذاری مهارت ناموفق بود.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "یک فایل .zip یا .skill بارگذاری کنید.",
+  "agentDetail.configure.skills.upload.sizeLimit": "حجم بسته Skill باید {{sizeLimit}} یا کمتر باشد.",
   "agentDetail.configure.skills.upload.success": "مهارت بارگذاری شد.",
   "agentDetail.configure.skills.upload.title": "بارگذاری مهارت",
   "agentDetail.configure.skills.upload.warning.files": "اگر فقط می‌خواهید از فایل‌های Markdown استفاده کنید، آن‌ها را در بخش فایل‌ها بارگذاری و در پرامپت خود ارجاع دهید.",

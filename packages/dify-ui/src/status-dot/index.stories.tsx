@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { StatusDotSize, StatusDotStatus } from '.'
+import type { StatusDotProps, StatusDotStatus } from '.'
 import * as React from 'react'
 import { StatusDot, StatusDotSkeleton } from '.'
+
+type StatusDotSize = NonNullable<StatusDotProps['size']>
 
 const statuses: StatusDotStatus[] = ['success', 'warning', 'error', 'normal', 'disabled']
 const sizes: StatusDotSize[] = ['small', 'medium']

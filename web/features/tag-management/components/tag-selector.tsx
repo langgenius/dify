@@ -1,6 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
-import type { ComponentProps } from 'react'
+import type { ComboboxContentProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
@@ -45,7 +44,7 @@ type TagSelectorRootProps = Omit<
   | 'children'
 >
 type TagSelectorContentProps = Pick<
-  ComponentProps<typeof ComboboxContent>,
+  ComboboxContentProps,
   | 'placement'
   | 'sideOffset'
   | 'alignOffset'
