@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react'
-import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
