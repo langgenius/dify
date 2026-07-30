@@ -1,4 +1,6 @@
+import inspect
 import json
+import threading
 from collections.abc import Iterator, Sequence
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -2876,3 +2878,74 @@ class TestIsEmailSendIpLimit:
             patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 60),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is False
+
+
+class TestTokenGenerationAdditionalData:
+    """The code-carrying token generators must not share one dict across calls."""
+
+    _GENERATORS = (
+        "generate_reset_password_token",
+        "generate_email_register_token",
+        "generate_owner_transfer_token",
+    )
+
+    @pytest.mark.parametrize("method_name", _GENERATORS)
+    def test_additional_data_default_is_not_mutable(self, method_name: str) -> None:
+        """The default must not be a dict the function then writes the code into."""
+        parameter = inspect.signature(getattr(AccountService, method_name)).parameters["additional_data"]
+        assert parameter.default is None
+
+    @pytest.mark.parametrize("method_name", _GENERATORS)
+    def test_caller_dict_is_not_mutated(self, method_name: str) -> None:
+        """A dict passed in by the caller must come back without the code in it."""
+        generate = getattr(AccountService, method_name)
+        caller_data = {"invite_id": "abc"}
+
+        with patch("services.account_service.TokenManager.generate_token", return_value="token") as mock_generate:
+            code, _ = generate("user@example.com", additional_data=caller_data)
+
+        assert caller_data == {"invite_id": "abc"}
+        assert mock_generate.call_args.kwargs["additional_data"] == {"invite_id": "abc", "code": code}
+
+    @pytest.mark.parametrize("method_name", _GENERATORS)
+    def test_concurrent_calls_keep_their_own_code(self, method_name: str) -> None:
+        """Two overlapping calls must each store the code they returned to their caller.
+
+        The generators run under gevent workers, so a second greenlet can write to a
+        shared default dict between the first one's write and TokenManager reading it.
+        """
+        generate = getattr(AccountService, method_name)
+        first_entered = threading.Event()
+        second_wrote = threading.Event()
+        stored: dict[str, str] = {}
+
+        def fake_generate_token(
+            *,
+            email: str,
+            additional_data: dict[str, str] | None = None,
+            **_: object,
+        ) -> str:
+            if email == "first@example.com":
+                first_entered.set()
+                second_wrote.wait(timeout=5)
+            else:
+                second_wrote.set()
+            assert additional_data is not None
+            stored[email] = additional_data["code"]
+            return "token"
+
+        returned: dict[str, str] = {}
+
+        def call(email: str) -> None:
+            returned[email] = generate(email)[0]
+
+        with patch("services.account_service.TokenManager.generate_token", fake_generate_token):
+            first = threading.Thread(target=call, args=("first@example.com",))
+            second = threading.Thread(target=call, args=("second@example.com",))
+            first.start()
+            first_entered.wait(timeout=5)
+            second.start()
+            first.join(timeout=5)
+            second.join(timeout=5)
+
+        assert stored == returned
