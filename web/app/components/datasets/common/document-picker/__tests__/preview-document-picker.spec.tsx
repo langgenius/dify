@@ -456,7 +456,7 @@ describe('PreviewDocumentPicker', () => {
       })
 
       const nameElement = screen.getByText('Test')
-      expect(nameElement).toHaveClass('max-w-[200px]')
+      expect(nameElement).toHaveClass('max-w-50')
     })
   })
 

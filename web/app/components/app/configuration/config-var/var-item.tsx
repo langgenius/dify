@@ -39,7 +39,7 @@ const VarItem: FC<ItemProps> = ({
   return (
     <div
       className={cn(
-        'group relative mb-1 flex h-[34px] w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+        'group relative mb-1 flex h-8.5 w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
         isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
         readonly && 'cursor-not-allowed',
         className,

@@ -19,7 +19,7 @@ import {
 } from '../state'
 
 function EnvironmentOptionIcon() {
-  return <span className="i-ri-server-line size-[14px]" />
+  return <span className="i-ri-server-line size-3.5" />
 }
 
 function EnvironmentFilterOptionIcon({
@@ -28,7 +28,7 @@ function EnvironmentFilterOptionIcon({
   option: DeploymentsListEnvironmentFilterOption
 }) {
   return option.kind === 'all' ? (
-    <span className="i-ri-apps-2-line size-[14px]" />
+    <span className="i-ri-apps-2-line size-3.5" />
   ) : (
     <EnvironmentOptionIcon />
   )

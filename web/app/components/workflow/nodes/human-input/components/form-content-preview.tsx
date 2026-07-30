@@ -61,12 +61,12 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
 
   return (
     <div
-      className="fixed top-[112px] z-10 max-h-[calc(100vh-116px)] w-[600px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
+      className="fixed top-28 z-10 max-h-[calc(100vh-116px)] w-150 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
       style={{
         right: panelWidth + 8,
       }}
     >
-      <div className="flex h-[26px] items-center justify-between px-4">
+      <div className="flex h-6.5 items-center justify-between px-4">
         <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
           {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
         </Badge>

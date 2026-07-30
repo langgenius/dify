@@ -144,7 +144,7 @@ const DocumentList = ({
         className="relative h-0 grow overflow-x-auto"
       >
         <table
-          className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}
+          className={`w-full max-w-full min-w-175 border-collapse border-0 text-sm ${s.documentTable}`}
         >
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
             <tr>
@@ -161,7 +161,7 @@ const DocumentList = ({
                 </div>
               </td>
               <td>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</td>
-              <td className="w-[130px]">
+              <td className="w-32.5">
                 {t(($) => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}
               </td>
               <td className="w-24">

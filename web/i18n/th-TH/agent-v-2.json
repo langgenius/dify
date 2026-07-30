@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "อัปโหลดทักษะไม่สำเร็จ",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "อัปโหลดไฟล์ .zip หรือ .skill",
+  "agentDetail.configure.skills.upload.sizeLimit": "แพ็กเกจทักษะต้องมีขนาดไม่เกิน {{sizeLimit}}",
   "agentDetail.configure.skills.upload.success": "อัปโหลดทักษะแล้ว",
   "agentDetail.configure.skills.upload.title": "อัปโหลดทักษะ",
   "agentDetail.configure.skills.upload.warning.files": "หากต้องการใช้เฉพาะไฟล์ Markdown ให้อัปโหลดไปยังส่วนไฟล์และอ้างอิงไฟล์เหล่านั้นในพรอมต์ของคุณ",

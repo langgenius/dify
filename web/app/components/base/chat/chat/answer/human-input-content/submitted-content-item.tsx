@@ -48,7 +48,7 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
   if (isParagraphFormInput(field)) {
     return (
       <span
-        className="body-md-regular break-words text-text-primary"
+        className="body-md-regular wrap-break-word text-text-primary"
         data-testid={`submitted-field-${fieldName}`}
       >
         {typeof value === 'string' ? value : ''}

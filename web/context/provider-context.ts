@@ -5,7 +5,6 @@ import type {
   Model,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { defaultPlan } from '@/app/components/billing/config'
@@ -15,7 +14,6 @@ export type ProviderContextState = {
   isLoadingModelProviders: boolean
   refreshModelProviders: () => void
   textGenerationModelList: Model[]
-  supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
   plan: {
     type: Plan
@@ -55,7 +53,6 @@ export const baseProviderContextValue: ProviderContextState = {
   isLoadingModelProviders: false,
   refreshModelProviders: noop,
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,

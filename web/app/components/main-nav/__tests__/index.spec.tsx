@@ -1,3 +1,4 @@
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
@@ -8,10 +9,9 @@ import type { StepByStepTourSessionState } from '@/app/components/step-by-step-t
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
-import type { InstalledApp } from '@/models/explore'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -27,7 +27,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
@@ -39,10 +38,22 @@ const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface
 const activeStackingClassName = 'aria-[current=page]:z-1'
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 
-const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoisted(() => ({
+const {
+  mockFetchNextInstalledAppsPage,
+  mockInstalledAppsRequest,
+  mockIsAgentV2Enabled,
+  mockSwitchWorkspace,
+  mockToastSuccess,
+  mockUninstall,
+  mockUpdatePinStatus,
+} = vi.hoisted(() => ({
+  mockFetchNextInstalledAppsPage: vi.fn(),
+  mockInstalledAppsRequest: vi.fn(),
+  mockIsAgentV2Enabled: vi.fn(() => true),
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
-  mockIsAgentV2Enabled: vi.fn(() => true),
+  mockUninstall: vi.fn(),
+  mockUpdatePinStatus: vi.fn(),
 }))
 const mockStepByStepTour = vi.hoisted(() => {
   const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
@@ -295,6 +306,41 @@ vi.mock('@/service/client', async (importOriginal) => {
           },
         }
       }
+      if (prop === 'installedApps') {
+        return {
+          get: {
+            infiniteOptions: (options: {
+              getNextPageParam: (page: {
+                has_more: boolean
+                next_cursor: string | null
+              }) => string | undefined
+              initialPageParam: undefined
+              input: (pageParam: string | undefined) => {
+                query: { cursor?: string; limit: number; name?: string }
+              }
+              placeholderData?: unknown
+              select?: (data: unknown) => unknown
+            }) => ({
+              ...options,
+              queryKey: ['installed-apps', options.input(undefined).query.name ?? ''],
+              queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
+                mockInstalledAppsRequest(options.input(pageParam)),
+            }),
+          },
+          byInstalledAppId: {
+            delete: {
+              mutationOptions: () => ({
+                mutationFn: (input: unknown) => mockUninstall(input),
+              }),
+            },
+            patch: {
+              mutationOptions: () => ({
+                mutationFn: (input: unknown) => mockUpdatePinStatus(input),
+              }),
+            },
+          },
+        }
+      }
 
       return Reflect.get(target, prop, receiver)
     },
@@ -305,12 +351,6 @@ vi.mock('@/service/client', async (importOriginal) => {
     consoleQuery,
   }
 })
-
-vi.mock('@/service/use-explore', () => ({
-  useGetInstalledApps: vi.fn(),
-  useUninstallApp: vi.fn(),
-  useUpdateAppPinStatus: vi.fn(),
-}))
 
 vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
@@ -348,11 +388,10 @@ vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
-const mockUninstall = vi.fn()
-const mockUpdatePinStatus = vi.fn()
 let mockPathname = '/apps'
-let mockInstalledApps: InstalledApp[] = []
+let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
+let mockInstalledAppsHasNextPage = false
 let mockWorkspaces: IWorkspace[] = []
 
 const ownerWorkspacePermissionKeys = [
@@ -373,8 +412,13 @@ const datasetOperatorWorkspacePermissionKeys = [
   'dataset.external.connect',
 ]
 
-const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
+const createInstalledApp = (
+  overrides: Partial<InstalledAppResponse> = {},
+): InstalledAppResponse => ({
   id: overrides.id ?? 'installed-1',
+  app_owner_tenant_id: overrides.app_owner_tenant_id ?? 'tenant-1',
+  editable: overrides.editable ?? true,
+  last_used_at: overrides.last_used_at ?? null,
   uninstallable: overrides.uninstallable ?? false,
   is_pinned: overrides.is_pinned ?? false,
   app: {
@@ -383,7 +427,7 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
     icon_type: overrides.app?.icon_type ?? 'emoji',
     icon: overrides.app?.icon ?? '🤖',
     icon_background: overrides.app?.icon_background ?? '#fff',
-    icon_url: overrides.app?.icon_url ?? '',
+    icon_url: overrides.app?.icon_url ?? null,
     name: overrides.app?.name ?? 'Alpha App',
     description: overrides.app?.description ?? '',
     use_icon_as_answer_icon: overrides.app?.use_icon_as_answer_icon ?? false,
@@ -501,6 +545,7 @@ describe('MainNav', () => {
     mockPathname = '/apps'
     mockInstalledApps = []
     mockInstalledAppsPending = false
+    mockInstalledAppsHasNextPage = false
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -542,17 +587,28 @@ describe('MainNav', () => {
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
     } as unknown as ModalContextState)
-    ;(useGetInstalledApps as Mock).mockImplementation(() => ({
-      isPending: mockInstalledAppsPending,
-      data: { installed_apps: mockInstalledApps },
-    }))
-    ;(useUninstallApp as Mock).mockReturnValue({
-      mutateAsync: mockUninstall,
-      isPending: false,
-    })
-    ;(useUpdateAppPinStatus as Mock).mockReturnValue({
-      mutateAsync: mockUpdatePinStatus,
-    })
+    mockInstalledAppsRequest.mockImplementation(
+      async ({ query }: { query: { cursor?: string; name?: string } }) => {
+        if (mockInstalledAppsPending) return new Promise(() => {})
+        if (query.cursor) {
+          mockFetchNextInstalledAppsPage(query.cursor)
+          return { installed_apps: [], has_more: false, next_cursor: null }
+        }
+
+        const installedApps = query.name
+          ? mockInstalledApps.filter((installedApp) =>
+              installedApp.app.name.toLowerCase().includes(query.name!.toLowerCase()),
+            )
+          : mockInstalledApps
+        return {
+          installed_apps: installedApps,
+          has_more: mockInstalledAppsHasNextPage,
+          next_cursor: mockInstalledAppsHasNextPage ? 'next-page' : null,
+        }
+      },
+    )
+    mockUninstall.mockResolvedValue(undefined)
+    mockUpdatePinStatus.mockResolvedValue({ result: 'success', message: 'updated' })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
 
@@ -681,7 +737,7 @@ describe('MainNav', () => {
 
     const accountButton = screen.getByRole('button', { name: 'common.account.account' })
     expect(accountButton).toHaveTextContent('Evan Z')
-    expect(accountButton).toHaveClass('max-w-[180px]', 'gap-3', 'py-1', 'pr-4', 'pl-1')
+    expect(accountButton).toHaveClass('max-w-45', 'gap-3', 'py-1', 'pr-4', 'pl-1')
     expect(accountButton).not.toHaveClass('justify-center', 'p-1')
   })
 
@@ -1083,6 +1139,65 @@ describe('MainNav', () => {
     })
   })
 
+  it('opens About from its real Help menu owner and restores focus when closed', async () => {
+    const user = userEvent.setup()
+    mockConsoleState.current = {
+      ...consoleState,
+      langGeniusVersionInfo: {
+        ...consoleState.langGeniusVersionInfo,
+        latest_version: '1.1.0',
+        release_notes: 'https://github.com/langgenius/dify/releases/tag/1.1.0',
+      },
+    }
+    renderMainNav()
+
+    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    await user.click(helpButton)
+    await user.click(await screen.findByRole('menuitem', { name: /common\.userProfile\.about/ }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'common.userProfile.about' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+      'href',
+      'https://dify.ai/privacy',
+    )
+    expect(screen.getByRole('link', { name: 'common.about.changeLog' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify/releases',
+    )
+    expect(screen.getByRole('link', { name: 'common.about.updateNow' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify/releases/tag/1.1.0',
+    )
+    expect(screen.queryByRole('button', { name: 'common.about.changeLog' })).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'common.userProfile.about' }),
+      ).not.toBeInTheDocument()
+      expect(helpButton).toHaveFocus()
+    })
+  })
+
+  it('shows the open-source license in About for non-Cloud editions', async () => {
+    const user = userEvent.setup()
+    renderMainNav({ deployment_edition: 'COMMUNITY' })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(await screen.findByRole('menuitem', { name: /common\.userProfile\.about/ }))
+
+    expect(await screen.findByRole('link', { name: 'Open Source License' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify/blob/main/LICENSE',
+    )
+    expect(screen.queryByRole('link', { name: 'Privacy Policy' })).not.toBeInTheDocument()
+  })
+
   it('closes the help menu from the support upgrade action', async () => {
     renderMainNav()
 
@@ -1212,7 +1327,8 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('filters installed web apps and renders installed app navigation link', () => {
+  it('searches installed web apps and renders the matching navigation link', async () => {
+    const user = userEvent.setup()
     mockInstalledApps = [
       createInstalledApp({
         id: 'installed-1',
@@ -1226,13 +1342,15 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.search' }))
-    fireEvent.change(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder'), {
-      target: { value: 'beta' },
-    })
+    await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
+    await user.type(searchInput, 'beta')
 
-    expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-    expect(screen.getByText('Beta Tool')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
+      expect(screen.getByText('Beta Tool')).toBeInTheDocument()
+    })
+    expect(searchInput).toHaveFocus()
     expect(
       screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
     ).toHaveAttribute('href', '/installed/installed-2')
@@ -1257,22 +1375,24 @@ describe('MainNav', () => {
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
   })
 
-  it('hides the installed web apps section when no web apps are available', () => {
+  it('hides the installed web apps section when no web apps are available', async () => {
     renderMainNav()
 
-    expect(
-      screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
-    ).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+      ).not.toBeInTheDocument()
+    })
     expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'common.operation.search' }),
     ).not.toBeInTheDocument()
   })
 
-  it('separates pinned and unpinned installed web apps', () => {
+  it('separates pinned and unpinned installed web apps', async () => {
     mockInstalledApps = [
       createInstalledApp({
         id: 'installed-1',
@@ -1288,12 +1408,12 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByText('Pinned App')).toBeInTheDocument()
+    expect(await screen.findByText('Pinned App')).toBeInTheDocument()
     expect(screen.getByText('Unpinned App')).toBeInTheDocument()
     expect(screen.getByTestId('divider')).toBeInTheDocument()
   })
 
-  it('keeps long installed web app names truncated in the main nav item', () => {
+  it('keeps long installed web app names truncated in the main nav item', async () => {
     const longName = 'A very long installed web app name that should stay on one line and truncate'
     mockInstalledApps = [
       createInstalledApp({
@@ -1304,39 +1424,42 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByText(longName)).toHaveClass('truncate')
+    expect(await screen.findByText(longName)).toHaveClass('truncate')
   })
 
-  it('virtualizes large installed web app lists', async () => {
-    const offsetHeightSpy = vi
-      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
-      .mockReturnValue(320)
-    const offsetWidthSpy = vi
-      .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
-      .mockReturnValue(240)
-    mockInstalledApps = Array.from({ length: 100 }, (_, index) =>
-      createInstalledApp({
-        id: `installed-${index}`,
-        app: {
-          ...createInstalledApp().app,
-          id: `app-${index}`,
-          name: `Web App ${index}`,
-        },
-      }),
+  it('fetches the next installed web app page when the bottom sentinel enters the viewport', async () => {
+    let intersectionCallback: IntersectionObserverCallback | undefined
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          if (options?.root) intersectionCallback = callback
+        }
+
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
     )
+    mockInstalledApps = [createInstalledApp()]
+    mockInstalledAppsHasNextPage = true
+    renderMainNav()
+    await screen.findByText('Alpha App')
 
-    try {
-      renderMainNav()
+    act(() => {
+      intersectionCallback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
 
-      expect(await screen.findByText('Web App 0')).toBeInTheDocument()
-      expect(screen.queryByText('Web App 99')).not.toBeInTheDocument()
-    } finally {
-      offsetHeightSpy.mockRestore()
-      offsetWidthSpy.mockRestore()
-    }
+    await waitFor(() => {
+      expect(mockFetchNextInstalledAppsPage).toHaveBeenCalledWith('next-page')
+    })
   })
 
   it('collapses and expands installed web apps from the section arrow', async () => {
+    const user = userEvent.setup()
     mockInstalledApps = [createInstalledApp()]
 
     renderMainNav()
@@ -1345,39 +1468,45 @@ describe('MainNav', () => {
     expect(webAppsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Alpha App')).toBeInTheDocument()
 
-    fireEvent.click(webAppsButton)
+    await user.click(webAppsButton)
 
     expect(webAppsButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
 
-    fireEvent.click(webAppsButton)
+    await user.click(webAppsButton)
 
     expect(webAppsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Alpha App')).toBeInTheDocument()
   })
 
   it('updates pin status and reuses the existing delete confirmation for installed web apps', async () => {
+    const user = userEvent.setup()
     mockInstalledApps = [createInstalledApp()]
     mockUninstall.mockResolvedValue(undefined)
     mockUpdatePinStatus.mockResolvedValue(undefined)
 
     renderMainNav()
 
-    fireEvent.mouseEnter(screen.getByText('Alpha App'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
+    await user.hover(await screen.findByText('Alpha App'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
     await waitFor(() => {
-      expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'installed-1', isPinned: true })
+      expect(mockUpdatePinStatus).toHaveBeenCalledWith({
+        params: { installed_app_id: 'installed-1' },
+        body: { is_pinned: true },
+      })
     })
 
-    fireEvent.mouseEnter(screen.getByText('Alpha App'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
-    fireEvent.click(await screen.findByText('common.operation.confirm'))
+    await user.hover(screen.getByText('Alpha App'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByText('explore.sidebar.action.delete'))
+    await user.click(await screen.findByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockUninstall).toHaveBeenCalledWith('installed-1')
+      expect(mockUninstall).toHaveBeenCalledWith({
+        params: { installed_app_id: 'installed-1' },
+      })
       expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
     })
   })

@@ -110,7 +110,7 @@ const ConditionWrap: FC<Props> = ({
               className={cn(
                 'group relative rounded-[10px] bg-components-panel-bg',
                 willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                !isSubVariable && 'min-h-[40px] px-3 py-1',
+                !isSubVariable && 'min-h-10 px-3 py-1',
                 isSubVariable && 'px-1 py-2',
               )}
             >
@@ -130,7 +130,7 @@ const ConditionWrap: FC<Props> = ({
                   >
                     {index === 0 ? 'IF' : 'ELIF'}
                     {casesLength > 1 && (
-                      <div className="text-[10px] font-medium text-text-tertiary">
+                      <div className="text-2xs font-medium text-text-tertiary">
                         CASE
                         {index + 1}
                       </div>
@@ -168,10 +168,10 @@ const ConditionWrap: FC<Props> = ({
 
               <div
                 className={cn(
-                  'flex items-center justify-between pr-[30px]',
+                  'flex items-center justify-between pr-7.5',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && 'pl-[60px]',
+                  !isSubVariable && 'pl-15',
                 )}
               >
                 {isSubVariable ? (

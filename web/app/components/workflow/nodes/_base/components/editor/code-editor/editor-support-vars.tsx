@@ -150,7 +150,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
         createPortal(
           <div
             ref={popupRef}
-            className="fixed z-50 w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+            className="fixed z-50 w-57 space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
             style={{
               top: popupPosition.y,
               left: popupPosition.x,

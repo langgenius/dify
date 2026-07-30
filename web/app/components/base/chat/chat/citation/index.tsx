@@ -87,7 +87,7 @@ const Citation: FC<CitationProps> = ({
           <div
             key={res.documentId}
             data-testid="citation-measurement-item"
-            className="absolute top-0 left-0 -z-10 mr-1 mb-1 h-7 w-auto max-w-[240px] pr-2 pl-7 text-xs whitespace-nowrap opacity-0"
+            className="absolute top-0 left-0 -z-10 mr-1 mb-1 h-7 w-auto max-w-60 pr-2 pl-7 text-xs whitespace-nowrap opacity-0"
             ref={(ele: HTMLDivElement | null) => {
               elesRef.current[index] = ele!
             }}

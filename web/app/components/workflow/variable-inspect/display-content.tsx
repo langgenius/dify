@@ -104,7 +104,7 @@ export function DisplayContent(props: DisplayContentProps) {
             <SegmentedControlItem
               key={value}
               value={value}
-              className="h-[22px] gap-[3px] rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-pressed:text-text-accent-light-mode-only"
+              className="h-5.5 gap-0.75 rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-pressed:text-text-accent-light-mode-only"
             >
               <i className={cn('size-4 shrink-0', iconClassName)} aria-hidden="true" />
               <span className="p-0.5 pr-1">{label}</span>

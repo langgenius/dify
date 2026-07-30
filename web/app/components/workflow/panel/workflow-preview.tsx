@@ -111,7 +111,7 @@ const WorkflowPreview = () => {
       style={{ width: `${panelWidth}px` }}
     >
       <div
-        className="absolute top-1/2 bottom-0 left-[3px] z-50 h-6 w-[3px] cursor-col-resize rounded-sm bg-gray-300"
+        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize rounded-sm bg-gray-300"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
@@ -130,7 +130,7 @@ const WorkflowPreview = () => {
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
@@ -140,7 +140,7 @@ const WorkflowPreview = () => {
           )}
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -153,7 +153,7 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -166,7 +166,7 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}

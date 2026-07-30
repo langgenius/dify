@@ -23,7 +23,7 @@ const ErrorHandleOnNode = ({ id, data }: ErrorHandleOnNodeProps) => {
     <div className="relative px-3 pt-1 pb-2">
       <div
         className={cn(
-          'relative flex h-6 items-center justify-between rounded-md bg-workflow-block-parma-bg px-[5px]',
+          'relative flex h-6 items-center justify-between rounded-md bg-workflow-block-parma-bg px-1.25',
           data._runningStatus === NodeRunningStatus.Exception &&
             'border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover',
         )}

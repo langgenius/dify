@@ -171,7 +171,7 @@ export default function InviteSettingsPage() {
   if (isProfilePending || shouldReturnToSignIn || !checkRes) return <Loading />
   if (!checkRes.is_valid) {
     return (
-      <div className="flex flex-col md:w-[400px]">
+      <div className="flex flex-col md:w-100">
         <div className="mx-auto w-full">
           <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">
             🤷‍♂️

@@ -31,7 +31,7 @@ const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
     return (
       <Textarea
         aria-label={field.output_variable_name}
-        className="h-[104px] sm:text-xs"
+        className="h-26 sm:text-xs"
         value={typeof value === 'string' ? value : ''}
         onValueChange={(nextValue) => onChange(nextValue)}
         data-testid="content-item-textarea"

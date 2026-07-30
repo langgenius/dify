@@ -31,7 +31,6 @@ import {
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { MAX_TOOLS_NUM } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
-import { useMittContextSelector } from '@/context/mitt-context'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -77,21 +76,6 @@ const AgentTools: FC = () => {
       collection,
     }
   })
-  const useSubscribe = useMittContextSelector((s) => s.useSubscribe)
-  const handleUpdateToolsWhenInstallToolSuccess = useCallback(
-    (installedPluginNames: string[]) => {
-      const newModelConfig = produce(modelConfig, (draft) => {
-        draft.agentConfig.tools.forEach((item: any) => {
-          if (item.isDeleted && installedPluginNames.includes(item.provider_id))
-            item.isDeleted = false
-        })
-      })
-      setModelConfig(newModelConfig)
-    },
-    [modelConfig, setModelConfig],
-  )
-  useSubscribe('plugin:install:success', handleUpdateToolsWhenInstallToolSuccess as any)
-
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       const tool = draft.agentConfig.tools.find(
@@ -183,7 +167,7 @@ const AgentTools: FC = () => {
         }
         headerRight={
           <div className="flex items-center">
-            <div className="text-xs leading-[18px] font-normal text-text-tertiary">
+            <div className="text-xs leading-4.5 font-normal text-text-tertiary">
               {tools.filter((item) => !!item.enabled).length}/{tools.length}
               &nbsp;
               {t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}

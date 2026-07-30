@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
   setShowExternalKnowledgeAPIModal: vi.fn(),
+  invalidateQueries: vi.fn(),
   externalKnowledgeApiList: [] as Array<{
     id: string
     name: string
@@ -23,10 +24,29 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mocks.externalKnowledgeApiList,
-  }),
+const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({ data: { data: mocks.externalKnowledgeApiList } }),
+    useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../ExternalApiSelect', () => ({
@@ -107,5 +127,20 @@ describe('ExternalApiSelection', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.noExternalKnowledge' }))
 
     expect(mocks.setShowExternalKnowledgeAPIModal).toHaveBeenCalledOnce()
+  })
+
+  it('invalidates the generated query after creating an external API', async () => {
+    const user = userEvent.setup()
+    mocks.externalKnowledgeApiList = []
+    render(<ExternalApiSelection {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.noExternalKnowledge' }))
+    const modalConfig = mocks.setShowExternalKnowledgeAPIModal.mock.calls[0]![0]
+    await modalConfig.onSaveCallback()
+
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: externalKnowledgeApiQueryKey,
+    })
+    expect(mocks.refresh).toHaveBeenCalledOnce()
   })
 })

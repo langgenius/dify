@@ -47,7 +47,7 @@ function TryApp({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-[1280px] overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
+      <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loading type="area" />
@@ -109,7 +109,7 @@ function TryApp({
                 <Preview appId={appId} appDetail={appDetail} />
               </TabsPanel>
               <AppInfo
-                className="w-[360px] shrink-0"
+                className="w-90 shrink-0"
                 appDetail={appDetail}
                 appId={appId}
                 canCreate={canCreate}

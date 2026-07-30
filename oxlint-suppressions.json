@@ -458,7 +458,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
@@ -5971,16 +5971,6 @@
   },
   "web/app/signup/set-password/page.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/context/external-api-panel-context.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/context/external-knowledge-api-context.tsx": {
-    "react/only-export-components": {
       "count": 1
     }
   },

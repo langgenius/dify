@@ -90,7 +90,7 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
       <div className="flex h-15 shrink-0 justify-between px-3 pt-3.5 pb-1">
         <div className="text-base font-semibold text-text-primary">
           <div>{t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
-          <div className="text-xs leading-[18px] font-normal text-text-tertiary">
+          <div className="text-xs leading-4.5 font-normal text-text-tertiary">
             <a
               target="_blank"
               rel="noopener noreferrer"

@@ -178,9 +178,9 @@ export default function AccountSetting({
         </Button>
         <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
       </div>
-      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-[232px]">
-        <div className="flex w-[44px] shrink-0 flex-col pr-6 pl-4 sm:w-[224px]">
-          <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
+      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
+        <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
+          <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
             {t(($) => $['settings.settings'], { ns: 'common' })}
           </div>
           <div className="w-full">
@@ -224,7 +224,7 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px] min-w-0">
+        <div className="relative flex min-h-0 w-206 min-w-0">
           <ScrollArea
             ref={scrollContainerRef}
             className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
@@ -233,7 +233,7 @@ export default function AccountSetting({
               content: 'min-h-full min-w-0 w-full max-w-full pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
+            <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
               <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
                 {activeItem?.title ?? activeItem?.name}
                 {activeItem?.description && (

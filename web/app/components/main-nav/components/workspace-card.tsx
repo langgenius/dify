@@ -129,7 +129,7 @@ function WorkspaceCardTrigger({
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
             <span
-              className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary"
+              className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary"
               title={name}
             >
               {name}
