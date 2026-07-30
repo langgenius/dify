@@ -1,5 +1,7 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 from core.app.apps.execution_coordinator import AppExecutionCoordinator, AppExecutionState
 
 
@@ -72,7 +74,7 @@ def test_pausing_started_attempt_cancels_watchdog() -> None:
     assert coordinator.state is AppExecutionState.PAUSED
 
 
-def test_stop_flag_failure_does_not_block_graph_stop(caplog) -> None:
+def test_stop_flag_failure_does_not_block_graph_stop(caplog: pytest.LogCaptureFixture) -> None:
     on_timeout = Mock()
     with (
         patch("core.app.apps.execution_coordinator.redis_client") as redis_client,
