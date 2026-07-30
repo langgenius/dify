@@ -59,7 +59,7 @@ export const numberFieldInputVariants = cva(
   {
     variants: {
       size: {
-        medium: 'px-3 py-[7px] system-sm-regular',
+        medium: 'px-3 py-1.75 system-sm-regular',
         large: 'px-4 py-2 system-md-regular',
       },
     },

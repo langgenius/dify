@@ -47,7 +47,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-[400px]! max-w-[400px]! overflow-hidden! border-none p-4! text-left align-middle">
+      <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['nodes.http.curl.title'], { ns: 'workflow' })}
         </DialogTitle>
@@ -62,10 +62,10 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
           />
         </div>
         <div className="mt-4 flex justify-end space-x-2">
-          <Button className="w-[95px]!" onClick={onHide}>
+          <Button className="w-23.75!" onClick={onHide}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button className="w-[95px]!" variant="primary" onClick={handleSave}>
+          <Button className="w-23.75!" variant="primary" onClick={handleSave}>
             {' '}
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>

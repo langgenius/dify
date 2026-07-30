@@ -16,7 +16,7 @@ function EditingTitle() {
     <div
       role="status"
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
-      className="flex h-[18px] min-w-[300px] items-center system-xs-regular whitespace-nowrap text-text-tertiary"
+      className="flex h-4.5 min-w-75 items-center system-xs-regular whitespace-nowrap text-text-tertiary"
     >
       {!!draftUpdatedAt && (
         <span className="flex items-center gap-1">

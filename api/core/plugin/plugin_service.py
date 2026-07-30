@@ -66,7 +66,7 @@ from services.enterprise.plugin_manager_service import (
     PreUninstallPluginRequest,
 )
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService, PluginInstallationScope
+from services.feature_service import FeatureService, PluginInstallationPermissionModel, PluginInstallationScope
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
@@ -604,22 +604,30 @@ class PluginService:
             return result
 
     @staticmethod
-    def _check_marketplace_only_permission():
+    def _check_marketplace_only_permission() -> None:
         """
         Check if the marketplace only permission is enabled
         """
-        features = FeatureService.get_system_features()
-        if features.plugin_installation_permission.restrict_to_marketplace_only:
+        permission = PluginService._get_plugin_installation_permission()
+        if permission.restrict_to_marketplace_only:
             raise PluginInstallationForbiddenError("Plugin installation is restricted to marketplace only")
 
     @staticmethod
-    def _check_plugin_installation_scope(plugin_verification: PluginVerification | None):
+    def _get_plugin_installation_permission() -> PluginInstallationPermissionModel:
+        """Resolve the validated policy and reject deny-all before any installation side effect."""
+        permission = FeatureService.get_plugin_installation_permission()
+        if permission.plugin_installation_scope == PluginInstallationScope.NONE:
+            raise PluginInstallationForbiddenError("Installing plugins is not allowed")
+        return permission
+
+    @staticmethod
+    def _check_plugin_installation_scope(plugin_verification: PluginVerification | None) -> None:
         """
         Check the plugin installation scope
         """
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
-        match features.plugin_installation_permission.plugin_installation_scope:
+        match permission.plugin_installation_scope:
             case PluginInstallationScope.OFFICIAL_ONLY:
                 if (
                     plugin_verification is None
@@ -634,10 +642,10 @@ class PluginService:
                     raise PluginInstallationForbiddenError(
                         "Plugin installation is restricted to official and specific partners"
                     )
-            case PluginInstallationScope.NONE:
-                raise PluginInstallationForbiddenError("Installing plugins is not allowed")
             case PluginInstallationScope.ALL:
                 pass
+            case _:
+                raise PluginInstallationForbiddenError("Plugin installation policy is invalid")
 
     @staticmethod
     def get_debugging_key(tenant_id: str) -> str:
@@ -907,7 +915,7 @@ class PluginService:
         # check if plugin pkg is already downloaded
         manager = PluginInstaller()
 
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
@@ -919,7 +927,7 @@ class PluginService:
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
-                verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                verify_signature=permission.restrict_to_marketplace_only,
             )
 
             # check if the plugin is available to install
@@ -974,11 +982,11 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
         response = manager.upload_pkg(
             tenant_id,
             pkg,
-            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            verify_signature=permission.restrict_to_marketplace_only,
         )
         PluginService._check_plugin_installation_scope(response.verification)
 
@@ -996,13 +1004,13 @@ class PluginService:
         pkg = download_with_size_limit(
             f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         manager = PluginInstaller()
         response = manager.upload_pkg(
             tenant_id,
             pkg,
-            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            verify_signature=permission.restrict_to_marketplace_only,
         )
         PluginService._check_plugin_installation_scope(response.verification)
 
@@ -1076,7 +1084,7 @@ class PluginService:
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
 
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         manager = PluginInstaller()
         try:
@@ -1086,7 +1094,7 @@ class PluginService:
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
-                verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                verify_signature=permission.restrict_to_marketplace_only,
             )
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
@@ -1108,7 +1116,7 @@ class PluginService:
         # collect actual plugin_unique_identifiers
         actual_plugin_unique_identifiers = []
         metas = []
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
@@ -1126,7 +1134,7 @@ class PluginService:
                 response = manager.upload_pkg(
                     tenant_id,
                     pkg,
-                    verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                    verify_signature=permission.restrict_to_marketplace_only,
                 )
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
@@ -1144,10 +1152,11 @@ class PluginService:
         return result
 
     @staticmethod
-    def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
+    def uninstall(tenant_id: str, plugin_installation_id: str, *, preserve_credentials: bool = False) -> bool:
+        """Uninstall a plugin and optionally retain model-provider credentials for replacement."""
         manager = PluginInstaller()
 
-        # Get plugin info before uninstalling to delete associated credentials
+        # Resolve the trusted plugin ID before the daemon removes the installation record.
         plugins = manager.list_plugins(tenant_id)
         plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
 
@@ -1164,59 +1173,74 @@ class PluginService:
                     plugin_unique_identifier=plugin.plugin_unique_identifier,
                 )
             )
-        with Session(db.engine) as session, session.begin():
+
+        result = manager.uninstall(tenant_id, plugin_installation_id)
+        if not result:
+            return False
+
+        if preserve_credentials:
+            logger.info("Preserving credentials while replacing plugin: %s", plugin.plugin_id)
+        else:
             plugin_id = plugin.plugin_id
-            logger.info("Deleting credentials for plugin: %s", plugin_id)
+            logger.info("Deleting credentials after uninstalling plugin: %s", plugin_id)
+            provider_ids: Sequence[str] = []
 
-            session.execute(
-                delete(TenantPreferredModelProvider).where(
-                    TenantPreferredModelProvider.tenant_id == tenant_id,
-                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+            with Session(db.engine) as session, session.begin():
+                session.execute(
+                    delete(TenantPreferredModelProvider).where(
+                        TenantPreferredModelProvider.tenant_id == tenant_id,
+                        TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+                    )
                 )
-            )
 
-            # Delete provider credentials that match this plugin
-            credential_ids = session.scalars(
-                select(ProviderCredential.id).where(
-                    ProviderCredential.tenant_id == tenant_id,
-                    ProviderCredential.provider_name.like(f"{plugin_id}/%"),
-                )
-            ).all()
-
-            if not credential_ids:
-                logger.info("No credentials found for plugin: %s", plugin_id)
-            else:
-                provider_ids = session.scalars(
-                    select(Provider.id).where(
-                        Provider.tenant_id == tenant_id,
-                        Provider.provider_name.like(f"{plugin_id}/%"),
-                        Provider.credential_id.in_(credential_ids),
+                credential_ids = session.scalars(
+                    select(ProviderCredential.id).where(
+                        ProviderCredential.tenant_id == tenant_id,
+                        ProviderCredential.provider_name.like(f"{plugin_id}/%"),
                     )
                 ).all()
 
-                session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+                if not credential_ids:
+                    logger.info("No credentials found for plugin: %s", plugin_id)
+                else:
+                    provider_ids = session.scalars(
+                        select(Provider.id).where(
+                            Provider.tenant_id == tenant_id,
+                            Provider.provider_name.like(f"{plugin_id}/%"),
+                            Provider.credential_id.in_(credential_ids),
+                        )
+                    ).all()
 
-                for provider_id in provider_ids:
-                    ProviderCredentialsCache(
-                        tenant_id=tenant_id,
-                        identity_id=provider_id,
-                        cache_type=ProviderCredentialsCacheType.PROVIDER,
-                    ).delete()
-
-                session.execute(
-                    delete(ProviderCredential).where(
-                        ProviderCredential.id.in_(credential_ids),
+                    session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+                    session.execute(
+                        delete(ProviderCredential).where(
+                            ProviderCredential.id.in_(credential_ids),
+                        )
                     )
-                )
 
-                logger.info(
-                    "Completed deleting credentials and cleaning provider associations for plugin: %s",
-                    plugin_id,
-                )
+                    logger.info(
+                        "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                        plugin_id,
+                    )
 
-        result = manager.uninstall(tenant_id, plugin_installation_id)
-        if result:
-            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+            for provider_id in provider_ids:
+                ProviderCredentialsCache(
+                    tenant_id=tenant_id,
+                    identity_id=provider_id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+                ).delete()
+
+            from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+
+            ProviderManager.invalidate_configurations_cache(
+                tenant_id,
+                sources=(
+                    ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS,
+                    ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,
+                ),
+            )
+
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
 
     @staticmethod

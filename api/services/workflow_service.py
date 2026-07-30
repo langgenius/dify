@@ -84,6 +84,7 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -91,6 +92,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True)
@@ -463,8 +465,9 @@ class WorkflowService:
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         session.flush()
+        retirement_candidates: set[str] = set()
         if sync_agent_bindings:
-            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+            retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
                 session=session,
                 draft_workflow=workflow,
                 account_id=account.id,
@@ -477,6 +480,16 @@ class WorkflowService:
         # commit db session changes
         if commit:
             session.commit()
+            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=app_model.tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account.id,
+            )
+            enqueue_agent_resource_collection(
+                tenant_id=app_model.tenant_id,
+                binding_ids=binding_ids,
+                home_snapshot_ids=home_snapshot_ids,
+            )
 
         # trigger app workflow events
         if commit:
@@ -624,7 +637,7 @@ class WorkflowService:
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         session.flush()
-        WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+        retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
             session=session,
             source_workflow=source_workflow,
             draft_workflow=draft_workflow,
@@ -632,6 +645,16 @@ class WorkflowService:
         )
 
         session.commit()
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account.id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=app_model.tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
+        )
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
 
         return draft_workflow
@@ -644,7 +667,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> Workflow:
+    ) -> tuple[Workflow, set[str]]:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -708,7 +731,7 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        retirement_candidates = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
@@ -718,7 +741,7 @@ class WorkflowService:
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
-        return workflow
+        return workflow, retirement_candidates
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """

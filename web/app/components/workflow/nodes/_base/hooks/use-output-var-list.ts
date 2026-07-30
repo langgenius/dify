@@ -1,6 +1,6 @@
 import type { CodeNodeType, OutputVar } from '../../code/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import { useBoolean, useDebounceFn } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -116,10 +116,7 @@ function useOutputVarList<T>({
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
   }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, varKey])
 
-  const [
-    isShowRemoveVarConfirm,
-    { setTrue: showRemoveVarConfirm, setFalse: hideRemoveVarConfirm },
-  ] = useBoolean(false)
+  const [isShowRemoveVarConfirm, setIsShowRemoveVarConfirm] = useState(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const removeVarInNode = useCallback(() => {
     const varId = nodesWithInspectVars
@@ -129,21 +126,14 @@ function useOutputVarList<T>({
       })?.id
     if (varId) deleteInspectVar(id, varId)
     removeUsedVarInNodes(removedVar)
-    hideRemoveVarConfirm()
-  }, [
-    deleteInspectVar,
-    hideRemoveVarConfirm,
-    id,
-    nodesWithInspectVars,
-    removeUsedVarInNodes,
-    removedVar,
-  ])
+    setIsShowRemoveVarConfirm(false)
+  }, [deleteInspectVar, id, nodesWithInspectVars, removeUsedVarInNodes, removedVar])
   const handleRemoveVariable = useCallback(
     (index: number) => {
       const key = outputKeyOrders[index]!
 
       if (isVarUsedInNodes([id, key])) {
-        showRemoveVarConfirm()
+        setIsShowRemoveVarConfirm(true)
         setRemovedVar([id, key])
         return
       }
@@ -180,7 +170,6 @@ function useOutputVarList<T>({
       onOutputKeyOrdersChange,
       nodesWithInspectVars,
       deleteInspectVar,
-      showRemoveVarConfirm,
       varKey,
     ],
   )
@@ -190,7 +179,7 @@ function useOutputVarList<T>({
     handleAddVariable,
     handleRemoveVariable,
     isShowRemoveVarConfirm,
-    hideRemoveVarConfirm,
+    hideRemoveVarConfirm: () => setIsShowRemoveVarConfirm(false),
     onRemoveVarConfirm: removeVarInNode,
   }
 }

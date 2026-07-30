@@ -90,8 +90,8 @@ const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) =
       >
         {!inputImage ? (
           <>
-            <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
-            <div className="mb-[2px] text-sm font-medium">
+            <ImagePlus className="pointer-events-none mb-3 h-7.5 w-7.5" />
+            <div className="mb-0.5 text-sm font-medium">
               <span className="pointer-events-none">
                 {t(($) => $['imageInput.dropImageHere'], { ns: 'common' })}
                 &nbsp;

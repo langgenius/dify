@@ -325,7 +325,7 @@ function SourceRow({
           <span
             aria-hidden
             className={cn(
-              'size-[18px] shrink-0 text-text-tertiary',
+              'size-4.5 shrink-0 text-text-tertiary',
               source.type === 'web' ? 'i-ri-global-line' : 'i-ri-links-line',
             )}
           />
@@ -619,7 +619,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
+            <table className="w-full table-fixed border-collapse text-left lg:min-w-225 lg:table-auto">
               <thead className="system-2xs-medium text-text-tertiary uppercase">
                 <tr>
                   <th className="w-7 pr-3 pb-2">

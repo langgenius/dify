@@ -155,7 +155,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
         {/* Left: Filters */}
         <div className="flex items-center gap-2">
           <Chip
-            className="w-[160px]"
+            className="w-40"
             showLeftIcon={false}
             value={statusFilterValue}
             items={statusFilterItems}

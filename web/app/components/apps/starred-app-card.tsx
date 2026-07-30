@@ -56,7 +56,7 @@ export function StarredAppCard({
     isRbacEnabled,
   })
   const cardClassName = cn(
-    'flex h-[72px] min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-4 py-3 shadow-xs outline-hidden transition-shadow duration-200',
+    'flex h-18 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-4 py-3 shadow-xs outline-hidden transition-shadow duration-200',
     isPreviewOnly
       ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid'
       : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',

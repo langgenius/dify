@@ -69,7 +69,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
       <div className="flex flex-col px-5 py-4">
         <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
-          <div className="flex min-h-[104px] flex-col gap-y-2">
+          <div className="flex min-h-26 flex-col gap-y-2">
             <div className="text-[30px] leading-[1.2] font-medium text-text-primary">
               {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
             </div>

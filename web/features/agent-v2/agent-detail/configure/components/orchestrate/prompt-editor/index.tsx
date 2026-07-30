@@ -125,22 +125,29 @@ const getLastTextContent = (node: Node): string => {
   return textParts.join('')
 }
 
+const hasSlashTriggerBoundary = (text: string) => {
+  if (!text.endsWith('/')) return false
+
+  const previousCharacter = text.at(-2)
+  return previousCharacter === undefined || /\s/.test(previousCharacter)
+}
+
 const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: string) => {
-  if (!rootElement) return fallbackValue.endsWith('/')
+  if (!rootElement) return hasSlashTriggerBoundary(fallbackValue)
 
   const selection = rootElement.ownerDocument.getSelection()
   if (!selection || !selection.isCollapsed || selection.rangeCount === 0)
-    return fallbackValue.endsWith('/')
+    return hasSlashTriggerBoundary(fallbackValue)
 
   const anchorNode = selection.anchorNode
   if (!anchorNode || !rootElement.contains(anchorNode)) return false
 
   if (anchorNode.nodeType === Node.TEXT_NODE)
-    return (anchorNode.textContent ?? '').slice(0, selection.anchorOffset).endsWith('/')
+    return hasSlashTriggerBoundary((anchorNode.textContent ?? '').slice(0, selection.anchorOffset))
 
   const element = anchorNode as Element
   const previousChild = element.childNodes.item(selection.anchorOffset - 1)
-  return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
+  return previousChild ? hasSlashTriggerBoundary(getLastTextContent(previousChild)) : false
 }
 
 /* v8 ignore start -- Lexical selection offsets and DOM range geometry are browser-editor integration glue; user-visible slash insertion behavior is covered by AgentPromptEditor tests. @preserve */
@@ -1089,7 +1096,7 @@ export function AgentPromptEditor() {
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
         >
-          <div ref={promptEditorHostRef} className="min-h-[104px] overflow-y-auto px-3 pt-0.5">
+          <div ref={promptEditorHostRef} className="min-h-26 overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               aria-controls={isSlashMenuOpen ? agentPromptSlashMenuId : undefined}
@@ -1097,7 +1104,7 @@ export function AgentPromptEditor() {
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
-              className="min-h-[104px] text-text-primary"
+              className="min-h-26 text-text-primary"
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}

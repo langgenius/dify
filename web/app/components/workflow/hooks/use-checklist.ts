@@ -83,6 +83,7 @@ export type ChecklistItem = {
   disableGoTo?: boolean
   isPluginMissing?: boolean
   pluginUniqueIdentifier?: string
+  openInlineAgentPanel?: boolean
 }
 
 type CheckValidExtraData = Record<string, unknown> | undefined
@@ -365,6 +366,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         })
 
         const errorMessages: string[] = []
+        const missingReferences = inlineAgentMissingReferences[node!.id]
 
         if (isPluginMissing) {
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
@@ -396,7 +398,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             if (validationError) errorMessages.push(validationError)
           }
 
-          const missingReferences = inlineAgentMissingReferences[node!.id]
           if (missingReferences?.hasMissingFiles)
             errorMessages.push(
               t(($) => $['agentDetail.configure.files.missing'], { ns: 'agentV2' }),
@@ -446,6 +447,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             pluginUniqueIdentifier: isPluginMissing
               ? (node!.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
               : undefined,
+            ...(missingReferences ? { openInlineAgentPanel: true } : {}),
           })
         }
       }

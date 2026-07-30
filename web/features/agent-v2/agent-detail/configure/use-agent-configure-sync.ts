@@ -135,9 +135,10 @@ export function useAgentConfigureSync({
             agent_soul: configSnapshot,
           },
         })
-      } catch {
+      } catch (error) {
         // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
         if (!silent) {
+          if (publish) throw error
           throw new Error('Failed to save agent composer draft.')
         }
 
@@ -378,7 +379,20 @@ export function useAgentConfigureSync({
       })
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch (error) {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+      let errorData: unknown = error
+      if (error instanceof Response) {
+        try {
+          errorData = await error.clone().json()
+        } catch {}
+      }
+      toast.error(
+        errorData &&
+          typeof errorData === 'object' &&
+          'message' in errorData &&
+          typeof errorData.message === 'string'
+          ? errorData.message
+          : tCommon(($) => $['api.actionFailed']),
+      )
       throw error
     } finally {
       publishInFlightRef.current = false

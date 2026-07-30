@@ -22,9 +22,9 @@ const toneI18nKeyMap = {
 } as const
 
 const TONE_ICONS: Record<number, ReactNode> = {
-  1: <Brush01 className="mr-2 h-[14px] w-[14px] text-[#6938EF]" />,
-  2: <Scales02 className="mr-2 h-[14px] w-[14px] text-indigo-600" />,
-  3: <Target04 className="mr-2 h-[14px] w-[14px] text-[#107569]" />,
+  1: <Brush01 className="mr-2 h-3.5 w-3.5 text-[#6938EF]" />,
+  2: <Scales02 className="mr-2 h-3.5 w-3.5 text-indigo-600" />,
+  3: <Target04 className="mr-2 h-3.5 w-3.5 text-[#107569]" />,
 }
 
 type PresetsParameterProps = {

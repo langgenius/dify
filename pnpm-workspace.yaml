@@ -160,6 +160,7 @@ catalog:
   eslint: 10.8.0
   eslint-markdown: 0.12.1
   eslint-plugin-antfu: 3.2.3
+  eslint-plugin-better-tailwindcss: 4.7.0
   eslint-plugin-command: 3.5.3
   eslint-plugin-erasable-syntax-only: 0.4.2
   eslint-plugin-hyoban: 0.14.1

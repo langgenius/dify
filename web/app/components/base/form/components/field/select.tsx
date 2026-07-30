@@ -79,7 +79,7 @@ const SelectField = ({
           {popupProps?.title && (
             <div
               className={cn(
-                'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                 popupProps.titleClassName,
               )}
             >

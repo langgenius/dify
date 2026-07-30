@@ -180,7 +180,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   return (
     <div
       className={cn(
-        'flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl',
+        'flex h-full w-90 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl',
       )}
     >
       <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">

@@ -560,7 +560,7 @@ export const zSandboxReadResponse = z.object({
  * WorkflowAgentSandboxUploadPayload
  */
 export const zWorkflowAgentSandboxUploadPayload = z.object({
-  node_execution_id: z.string().nullish(),
+  node_execution_id: z.string().min(1),
   path: z.string().min(1),
 })
 
@@ -5941,7 +5941,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().optional().default('.'),
   })
 
@@ -5960,7 +5960,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().min(1),
   })
 

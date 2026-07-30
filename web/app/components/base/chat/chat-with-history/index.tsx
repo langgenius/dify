@@ -1,7 +1,7 @@
 'use client'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
-import type { InstalledApp } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useState } from 'react'
 import Loading from '@/app/components/base/loading'
@@ -50,7 +50,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
       {!isMobile && (
         <div
           className={cn(
-            'flex w-[236px] flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+            'flex w-59 flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
             isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
           )}
         >
@@ -63,7 +63,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
-              showSidePanel ? 'left-0' : 'left-[-248px]',
+              showSidePanel ? 'left-0' : '-left-62',
             )}
             onMouseEnter={() => setShowSidePanel(true)}
             onMouseLeave={() => setShowSidePanel(false)}
@@ -87,7 +87,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
 }
 
 type ChatWithHistoryWrapProps = {
-  installedAppInfo?: InstalledApp
+  installedAppInfo?: InstalledAppResponse
   className?: string
   isNewAgent?: boolean
   renderAgentContent?: ChatProps['renderAgentContent']
