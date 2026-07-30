@@ -97,7 +97,7 @@ func TestProxyHTTPCredentialInjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET through proxy: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if got := resp.Header.Get("X-Got-Auth"); got != "Bearer s3cr3t" {
 		t.Fatalf("expected injected Authorization header %q, got %q", "Bearer s3cr3t", got)
@@ -142,7 +142,7 @@ func TestProxyHTTPSMitmCredentialInjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET through proxy (MITM): %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if got := resp.Header.Get("X-Got-Auth"); got != "Bearer s3cr3t" {
 		t.Fatalf("expected injected Authorization header %q, got %q", "Bearer s3cr3t", got)
@@ -174,7 +174,7 @@ func TestProxyPlaceholderReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET through proxy: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if got, want := resp.Header.Get("X-Got-Custom"), "prefix-hunter2-suffix"; got != want {
 		t.Fatalf("expected placeholder-resolved header %q, got %q", want, got)
@@ -230,7 +230,7 @@ func (p *fakeUpstreamCONNECTProxy) serve(t *testing.T) {
 }
 
 func (p *fakeUpstreamCONNECTProxy) handle(t *testing.T, conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	br := bufio.NewReader(conn)
 	req, err := http.ReadRequest(br)
@@ -256,7 +256,7 @@ func (p *fakeUpstreamCONNECTProxy) handle(t *testing.T, conn net.Conn) {
 		_, _ = conn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		return
 	}
-	defer backendConn.Close()
+	defer func() { _ = backendConn.Close() }()
 
 	_, _ = conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
 
@@ -321,7 +321,7 @@ func TestProxyUpstreamChainingPreservesHostname(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET through proxy chained to upstream: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)

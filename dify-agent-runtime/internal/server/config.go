@@ -140,16 +140,6 @@ func (c *Config) RunnerPath() string {
 	return filepath.Join(c.RuntimeDir, "bin", "shellctl-runner")
 }
 
-// envOrFallback returns the value of the first non-empty env var.
-func envOrFallback(keys ...string) string {
-	for _, k := range keys {
-		if v := os.Getenv(k); v != "" {
-			return v
-		}
-	}
-	return ""
-}
-
 func defaultStateDir() string {
 	if runtime.GOOS == "darwin" {
 		home, _ := os.UserHomeDir()
