@@ -139,14 +139,14 @@ export function KnowledgeSpaceShell({
 
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body p-1"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body py-1"
       style={
         {
           '--new-rag-sidebar-width': sidebarExpanded ? '248px' : '64px',
         } as CSSProperties
       }
     >
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden sm:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden pl-1 sm:flex-row">
         <aside
           className={cn(
             'flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs transition-[width] motion-reduce:transition-none',

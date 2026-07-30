@@ -40,7 +40,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
-import { KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
+import { isKnowledgeModelSetupReady, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
 import { newKnowledgeListPath } from './routes'
 
 const TOP_K_MIN = 1
@@ -48,6 +48,7 @@ const TOP_K_MAX = 10
 const SCORE_THRESHOLD_MIN = 0
 const SCORE_THRESHOLD_MAX = 1
 const NAME_ERROR_ID = 'knowledge-name-error'
+const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
 const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
 const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
 const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
@@ -257,7 +258,6 @@ export function KnowledgeSettingsForm({
   const [saveError, setSaveError] = useState(false)
   const [pendingMigrationId, setPendingMigrationId] = useState<string>()
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
-  const [apiDisableDialogOpen, setApiDisableDialogOpen] = useState(false)
   const [embeddingDialogOpen, setEmbeddingDialogOpen] = useState(false)
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -271,6 +271,7 @@ export function KnowledgeSettingsForm({
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
   const canDelete = space.permission_keys.includes('knowledge_space_delete')
   const initialModelSetup = settings.configuration_state !== 'active'
+  const modelSetupReady = isKnowledgeModelSetupReady(settings.configuration_state)
 
   const spaceDirty =
     name !== initialName ||
@@ -786,23 +787,19 @@ export function KnowledgeSettingsForm({
 
         <div className="my-1 h-px bg-divider-subtle" />
 
-        <SettingsRow label={t(($) => $['newKnowledge.apiAgentAccess'])}>
+        <SettingsRow label={t(($) => $['newKnowledge.settings.apiAccessLabel'])}>
           <div className="flex min-h-7 items-center gap-2">
             <Switch
               aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
+              aria-describedby={API_ACCESS_DESCRIPTION_ID}
               checked={apiEnabled}
-              disabled={
-                !canEdit ||
-                !canManageAccess ||
-                isSaving ||
-                settings.configuration_state !== 'active'
-              }
-              onCheckedChange={(checked) => {
-                if (checked) setApiEnabled(true)
-                else setApiDisableDialogOpen(true)
-              }}
+              disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
+              onCheckedChange={setApiEnabled}
             />
-            <p className="system-xs-regular text-text-tertiary">
+            <p
+              id={API_ACCESS_DESCRIPTION_ID}
+              className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
+            >
               {t(($) => $['newKnowledge.settings.apiAccessDescription'])}
             </p>
           </div>
@@ -825,7 +822,7 @@ export function KnowledgeSettingsForm({
                 id={REASONING_MODEL_LABEL_ID}
                 className="flex h-7 items-center system-sm-medium text-text-secondary"
               >
-                {tCommon(($) => $['modelProvider.systemReasoningModel.key'])}
+                {t(($) => $['newKnowledge.settings.systemReasoningModelLabel'])}
               </div>
               <ModelSelector
                 ariaLabelledBy={REASONING_MODEL_LABEL_ID}
@@ -844,7 +841,7 @@ export function KnowledgeSettingsForm({
                 id={EMBEDDING_MODEL_LABEL_ID}
                 className="flex h-7 items-center system-sm-medium text-text-secondary"
               >
-                {tSettings(($) => $['form.embeddingModel'])}
+                {t(($) => $['newKnowledge.settings.embeddingModelLabel'])}
               </div>
               <ModelSelector
                 ariaLabelledBy={EMBEDDING_MODEL_LABEL_ID}
@@ -926,7 +923,7 @@ export function KnowledgeSettingsForm({
                   htmlFor="knowledge-top-k"
                   className="flex h-7 items-center system-sm-medium text-text-secondary"
                 >
-                  {tAppDebug(($) => $['datasetConfig.top_k'])}
+                  {t(($) => $['newKnowledge.settings.topKLabel'])}
                 </label>
                 <div className="flex items-center gap-3">
                   <Input
@@ -944,7 +941,7 @@ export function KnowledgeSettingsForm({
                     }}
                   />
                   <Slider
-                    aria-label={tAppDebug(($) => $['datasetConfig.top_k'])}
+                    aria-label={t(($) => $['newKnowledge.settings.topKLabel'])}
                     min={TOP_K_MIN}
                     max={TOP_K_MAX}
                     value={topK}
@@ -1056,32 +1053,6 @@ export function KnowledgeSettingsForm({
           if (selection.type === 'emoji') setIcon(selection.icon)
         }}
       />
-
-      <AlertDialog open={apiDisableDialogOpen} onOpenChange={setApiDisableDialogOpen}>
-        <AlertDialogContent>
-          <div className="px-6 pt-6">
-            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-              {tCommon(($) => $['operation.confirmAction'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.settings.disableApiDescription'])}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {tCommon(($) => $['operation.cancel'])}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              onClick={() => {
-                setApiEnabled(false)
-                setApiDisableDialogOpen(false)
-              }}
-            >
-              {tCommon(($) => $['operation.confirm'])}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={embeddingDialogOpen} onOpenChange={setEmbeddingDialogOpen}>
         <AlertDialogContent>

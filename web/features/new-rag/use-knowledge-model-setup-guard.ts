@@ -1,17 +1,13 @@
 'use client'
 
-import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { isKnowledgeModelSetupReady } from './constants'
 import { newKnowledgeSettingsPath } from './routes'
-
-function modelSetupReady(configurationState: KnowledgeFsSettingsResponse['configuration_state']) {
-  return configurationState === 'active' || configurationState === 'pending-validation'
-}
 
 export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
   const { t: tCommon } = useTranslation('common')
@@ -34,7 +30,7 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
           toast.error(tCommon(($) => $['api.actionFailed']))
           return false
         }
-        if (!modelSetupReady(result.data.configuration_state)) {
+        if (!isKnowledgeModelSetupReady(result.data.configuration_state)) {
           setModelSetupDialogOpen(true)
           return false
         }
