@@ -514,7 +514,7 @@ function SourcesEmpty({
   const { t } = useTranslation('dataset')
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+    <div className="mt-2.5 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
       <div aria-hidden className="flex items-center gap-3 opacity-85">
         <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-8" />
         <span data-brand="jina" className="i-custom-public-llm-jina size-8" />
@@ -662,10 +662,10 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   ])
 
   return (
-    <main className="flex min-h-full min-w-0 flex-1 flex-col px-4 py-6 sm:px-8 sm:py-8">
+    <div className="flex min-h-full min-w-0 flex-1 flex-col px-4 py-6 sm:px-8 sm:py-8">
       <header>
         <div>
-          <h2 className="title-xl-semi-bold text-text-primary">
+          <h2 className="title-xl-semi-bold leading-6 text-text-primary">
             {t(($) => $['newKnowledge.sources'])}
           </h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
@@ -891,6 +891,6 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         onOpenChange={setModelSetupDialogOpen}
         onConfigure={configureModelSetup}
       />
-    </main>
+    </div>
   )
 }
