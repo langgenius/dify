@@ -24,6 +24,7 @@ describe('useAdvancedPromptConfig', () => {
 
   it('should update the advanced chat prompt and mark user changes', () => {
     const handleUserChangedPrompt = vi.fn()
+    const handlePublishConfigChange = vi.fn()
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
         appMode: AppModeEnum.CHAT,
@@ -36,6 +37,7 @@ describe('useAdvancedPromptConfig', () => {
         completionParams: {},
         setCompletionParams: vi.fn(),
         setStop: vi.fn(),
+        onPublishConfigChange: handlePublishConfigChange,
       }),
     )
 
@@ -51,6 +53,7 @@ describe('useAdvancedPromptConfig', () => {
     ])
     expect(result.current.hasSetBlockStatus.query).toBe(true)
     expect(handleUserChangedPrompt).toHaveBeenCalledTimes(1)
+    expect(handlePublishConfigChange).toHaveBeenCalledTimes(1)
   })
 
   it('should derive simple prompt block status from the pre-prompt', () => {

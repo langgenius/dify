@@ -60,11 +60,6 @@ describe('ExternalAPIPanel', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()
-    })
-
     it('should render panel title and description', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()

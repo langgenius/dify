@@ -91,7 +91,7 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
         alignOffset={16}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="flex w-[400px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
+        <div className="flex w-100 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
           {/* Title */}
           <div className="relative px-3 pt-3.5 pb-1">
             <button

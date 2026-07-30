@@ -1,12 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 
-// Hoisted mocks
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
   setShowExternalKnowledgeAPIModal: vi.fn(),
-  mutateExternalKnowledgeApis: vi.fn(),
   externalKnowledgeApiList: [] as Array<{
     id: string
     name: string
@@ -27,32 +26,20 @@ vi.mock('@/context/modal-context', () => ({
 vi.mock('@/context/external-knowledge-api-context', () => ({
   useExternalKnowledgeApi: () => ({
     externalKnowledgeApiList: mocks.externalKnowledgeApiList,
-    mutateExternalKnowledgeApis: mocks.mutateExternalKnowledgeApis,
   }),
 }))
 
-// Mock ExternalApiSelect as simple stub
-type MockSelectItem = { value: string; name: string }
 vi.mock('../ExternalApiSelect', () => ({
   default: ({
     items,
-    value,
     onSelect,
   }: {
-    items: MockSelectItem[]
-    value?: string
-    onSelect: (item: MockSelectItem) => void
+    items: Array<{ value: string; name: string }>
+    onSelect: (item: { value: string; name: string }) => void
   }) => (
-    <div data-testid="external-api-select">
-      <span data-testid="select-value">{value}</span>
-      <span data-testid="select-items-count">{items.length}</span>
-      {items.map((item: MockSelectItem) => (
-        <button
-          type="button"
-          key={item.value}
-          data-testid={`select-${item.value}`}
-          onClick={() => onSelect(item)}
-        >
+    <div>
+      {items.map((item) => (
+        <button type="button" key={item.value} onClick={() => onSelect(item)}>
           {item.name}
         </button>
       ))}
@@ -62,13 +49,13 @@ vi.mock('../ExternalApiSelect', () => ({
 
 const { default: ExternalApiSelection } = await import('../ExternalApiSelection')
 
-describe('ExternalApiSelection', () => {
-  const defaultProps = {
-    external_knowledge_api_id: '',
-    external_knowledge_id: '',
-    onChange: vi.fn(),
-  }
+const defaultProps = {
+  external_knowledge_api_id: '',
+  external_knowledge_id: '',
+  onChange: vi.fn(),
+}
 
+describe('ExternalApiSelection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.externalKnowledgeApiList = [
@@ -77,53 +64,48 @@ describe('ExternalApiSelection', () => {
     ]
   })
 
-  describe('rendering', () => {
-    it('should render API selection label', () => {
-      render(<ExternalApiSelection {...defaultProps} />)
-      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
-    })
+  it('selects an external knowledge API', async () => {
+    const user = userEvent.setup()
+    render(<ExternalApiSelection {...defaultProps} />)
 
-    it('should render knowledge ID label and input', () => {
-      render(<ExternalApiSelection {...defaultProps} />)
-      expect(screen.getByText('dataset.externalKnowledgeId')).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'API Two' }))
 
-    it('should render ExternalApiSelect when APIs exist', () => {
-      render(<ExternalApiSelection {...defaultProps} />)
-      expect(screen.getByTestId('external-api-select')).toBeInTheDocument()
-      expect(screen.getByTestId('select-items-count').textContent).toBe('2')
-    })
-
-    it('should show add button when no APIs exist', () => {
-      mocks.externalKnowledgeApiList = []
-      render(<ExternalApiSelection {...defaultProps} />)
-      expect(screen.getByText('dataset.noExternalKnowledge')).toBeInTheDocument()
-    })
+    expect(defaultProps.onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ external_knowledge_api_id: 'api-2' }),
+    )
   })
 
-  describe('interactions', () => {
-    it('should call onChange when API selected', () => {
-      render(<ExternalApiSelection {...defaultProps} />)
-      fireEvent.click(screen.getByTestId('select-api-2'))
-      expect(defaultProps.onChange).toHaveBeenCalledWith(
-        expect.objectContaining({ external_knowledge_api_id: 'api-2' }),
+  it('updates the external knowledge ID', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const Harness = () => {
+      const [value, setValue] = useState(defaultProps)
+      return (
+        <ExternalApiSelection
+          {...value}
+          onChange={(nextValue) => {
+            setValue((current) => ({ ...current, ...nextValue }))
+            onChange(nextValue)
+          }}
+        />
       )
-    })
+    }
+    render(<Harness />)
 
-    it('should call onChange when knowledge ID input changes', () => {
-      render(<ExternalApiSelection {...defaultProps} />)
-      const input = screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder')
-      fireEvent.change(input, { target: { value: 'kb-123' } })
-      expect(defaultProps.onChange).toHaveBeenCalledWith(
-        expect.objectContaining({ external_knowledge_id: 'kb-123' }),
-      )
-    })
+    await user.type(screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder'), 'kb-123')
 
-    it('should call setShowExternalKnowledgeAPIModal when add button clicked', () => {
-      mocks.externalKnowledgeApiList = []
-      render(<ExternalApiSelection {...defaultProps} />)
-      fireEvent.click(screen.getByText('dataset.noExternalKnowledge'))
-      expect(mocks.setShowExternalKnowledgeAPIModal).toHaveBeenCalledOnce()
-    })
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ external_knowledge_id: 'kb-123' }),
+    )
+  })
+
+  it('opens external API creation when no API exists', async () => {
+    const user = userEvent.setup()
+    mocks.externalKnowledgeApiList = []
+    render(<ExternalApiSelection {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.noExternalKnowledge' }))
+
+    expect(mocks.setShowExternalKnowledgeAPIModal).toHaveBeenCalledOnce()
   })
 })

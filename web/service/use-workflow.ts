@@ -11,19 +11,28 @@ import type {
   WorkflowConfigResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { del, get, patch, post, put } from './base'
 import { useInvalid, useReset } from './use-base'
 import { getFlowPrefix } from './utils'
 
 const NAME_SPACE = 'workflow'
 
-export const useAppWorkflow = (appID: string) => {
-  return useQuery<FetchWorkflowDraftResponse | null>({
+export const appWorkflowQueryOptions = (appID: string) =>
+  queryOptions({
     enabled: !!appID,
     queryKey: [NAME_SPACE, 'publish', appID],
     queryFn: () => get<FetchWorkflowDraftResponse | null>(`/apps/${appID}/workflows/publish`),
   })
+
+export const useAppWorkflow = (appID: string) => {
+  return useQuery(appWorkflowQueryOptions(appID))
 }
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
@@ -97,6 +106,7 @@ export const useResetWorkflowVersionHistory = () => {
 }
 
 export const useUpdateWorkflow = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
     mutationFn: (params: UpdateWorkflowParams) =>
@@ -106,6 +116,11 @@ export const useUpdateWorkflow = () => {
           marked_comment: params.releaseNotes,
         },
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [...WorkflowVersionHistoryKey],
+      })
+    },
   })
 }
 

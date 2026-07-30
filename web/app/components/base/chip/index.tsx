@@ -121,7 +121,7 @@ function Chip<T extends ItemValue>({
           placement="bottom-start"
           sideOffset={4}
           popupClassName={cn(
-            'relative w-[240px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
+            'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
             panelClassName,
           )}
           listClassName="max-h-72 p-1"

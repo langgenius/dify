@@ -1,4 +1,4 @@
-import { IS_CE_EDITION } from '@/config'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 
 type ConversationField = {
   id: string
@@ -19,9 +19,10 @@ declare global {
 
 export const setZendeskConversationFields = (
   fields: ConversationField[],
+  deploymentEdition: DeploymentEdition,
   callback?: () => unknown,
 ) => {
-  if (!IS_CE_EDITION && window.zE)
+  if (deploymentEdition === 'CLOUD' && window.zE)
     window.zE('messenger:set', 'conversationFields', fields, callback)
 }
 
@@ -30,25 +31,25 @@ type OpenZendeskWindowOptions = {
   retries?: number
 }
 
-const openZendeskWindowOnce = () => {
-  if (IS_CE_EDITION || !window.zE) return false
+const openZendeskWindowOnce = (deploymentEdition: DeploymentEdition) => {
+  if (deploymentEdition !== 'CLOUD' || !window.zE) return false
 
   window.zE('messenger', 'show')
   window.zE('messenger', 'open')
   return true
 }
 
-export const openZendeskWindow = ({
-  interval = 100,
-  retries = 20,
-}: OpenZendeskWindowOptions = {}) => {
-  if (IS_CE_EDITION) return
+export const openZendeskWindow = (
+  deploymentEdition: DeploymentEdition,
+  { interval = 100, retries = 20 }: OpenZendeskWindowOptions = {},
+) => {
+  if (deploymentEdition !== 'CLOUD') return
 
-  if (openZendeskWindowOnce()) return
+  if (openZendeskWindowOnce(deploymentEdition)) return
 
   let attempts = 0
   const timer = window.setInterval(() => {
     attempts += 1
-    if (openZendeskWindowOnce() || attempts >= retries) window.clearInterval(timer)
+    if (openZendeskWindowOnce(deploymentEdition) || attempts >= retries) window.clearInterval(timer)
   }, interval)
 }

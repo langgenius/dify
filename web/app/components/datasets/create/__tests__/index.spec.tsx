@@ -6,10 +6,11 @@ import type { TopBarProps } from '../top-bar'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { DataSet, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
 
@@ -41,80 +42,47 @@ let mockCurrentUserId = 'user-1'
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 let mockIsLoadingWorkspacePermissionKeys = false
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: mockCurrentUserId },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: mockCurrentUserId },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: mockCurrentUserId },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: mockCurrentUserId },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createSystemFeaturesStateModuleMock(() => ({
     userProfile: { id: mockCurrentUserId },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }))
 })
 
-// Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (state: {
-      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
-    }) => unknown,
-  ) => {
-    const state = {
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }
-    return selector(state)
-  },
-}))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
 // Mock dataset detail context
@@ -409,13 +377,6 @@ describe('DatasetUpdateForm', () => {
 
   // Rendering Tests - Verify component renders correctly in different states
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('top-bar'))!.toBeInTheDocument()
-      expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-    })
-
     it('should render TopBar with correct active index for step 1', () => {
       render(<DatasetUpdateForm />)
 
@@ -677,7 +638,7 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-one-setting'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should open provider settings when onSetting is called from StepTwo', () => {
@@ -686,7 +647,7 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-two-setting'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
 
     it('should update crawl options when onCrawlOptionsChange is called', () => {

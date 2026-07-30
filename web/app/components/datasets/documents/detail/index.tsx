@@ -292,7 +292,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                     showBatchModal={showBatchModal}
                     embedding={embedding}
                   />
-                  <Divider type="vertical" className="mx-3! h-[14px]! bg-divider-regular!" />
+                  <Divider type="vertical" className="mx-3! h-3.5! bg-divider-regular!" />
                 </>
               )}
             {documentDetail && (
@@ -313,7 +313,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               detail={operationsDetail}
               datasetId={datasetId}
               onUpdate={handleOperate}
-              className="w-[200px]!"
+              className="w-50!"
               canEdit={canEditDocument}
               canDownload={datasetACLCapabilities.canDocumentDownload}
               canDelete={datasetACLCapabilities.canDeleteFile}
@@ -321,7 +321,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             />
             <button
               type="button"
-              data-testid="document-detail-metadata-toggle"
               aria-label={metadataToggleLabel}
               aria-pressed={showMetadata}
               title={metadataToggleLabel}

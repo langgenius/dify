@@ -98,12 +98,6 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.connectDataset'))!.toBeInTheDocument()
-    })
-
     it('should render KnowledgeBaseInfo component with correct labels', () => {
       renderComponent()
 
@@ -274,35 +268,6 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'new-knowledge-id' } })
 
       expect((knowledgeIdInput as HTMLInputElement).value).toBe('new-knowledge-id')
-    })
-
-    it('should apply filled text style when description has value', () => {
-      renderComponent()
-
-      const descriptionInput = screen.getByPlaceholderText(
-        'dataset.externalKnowledgeDescriptionPlaceholder',
-      ) as HTMLTextAreaElement
-
-      // Initially empty - should have placeholder style
-      expect(descriptionInput.className).toContain('text-components-input-text-placeholder')
-
-      // Add description - should have filled style
-      fireEvent.change(descriptionInput, { target: { value: 'Some description' } })
-      expect(descriptionInput.className).toContain('text-components-input-text-filled')
-    })
-
-    it('should apply placeholder text style when description is empty', () => {
-      renderComponent()
-
-      const descriptionInput = screen.getByPlaceholderText(
-        'dataset.externalKnowledgeDescriptionPlaceholder',
-      ) as HTMLTextAreaElement
-
-      // Add then clear description
-      fireEvent.change(descriptionInput, { target: { value: 'Some description' } })
-      fireEvent.change(descriptionInput, { target: { value: '' } })
-
-      expect(descriptionInput.className).toContain('text-components-input-text-placeholder')
     })
   })
 

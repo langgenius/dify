@@ -418,7 +418,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
               >
                 <div className="flex items-center justify-center gap-px">
                   <span className="i-ri-edit-line size-3.5" />
-                  <div className="px-[3px] system-xs-medium text-text-tertiary">
+                  <div className="px-0.75 system-xs-medium text-text-tertiary">
                     {serverPublished
                       ? t(($) => $['mcp.server.edit'], { ns: 'tools' })
                       : t(($) => $['mcp.server.addDescription'], { ns: 'tools' })}

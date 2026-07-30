@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import Loading from '@/app/components/base/loading'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -76,7 +76,7 @@ const Chatbot = () => {
       </div>
       {/* powered by */}
       {isMobile && (
-        <div className="flex h-[60px] shrink-0 items-center pl-2">
+        <div className="flex h-15 shrink-0 items-center pl-2">
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn('flex shrink-0 items-center gap-1.5 px-2')}>
               <div className="system-2xs-medium-uppercase text-text-tertiary">
@@ -95,7 +95,7 @@ const Chatbot = () => {
                   className="block h-5 w-auto"
                 />
               ) : (
-                <DifyLogo size="small" />
+                <DifyLogo alt="Dify" size="small" />
               )}
             </div>
           )}

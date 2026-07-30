@@ -99,6 +99,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   onCompletionParamsChange,
   onConfirmUseGPT4,
   onEnableMultipleModelDebug,
+  onFeatureStoreChange,
   onFeaturesChange,
   onHideDebugPanel,
   onModelChange,
@@ -128,10 +129,10 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
 
   return (
     <ConfigContext.Provider value={contextValue}>
-      <FeaturesProvider features={featuresData}>
+      <FeaturesProvider features={featuresData} onFeaturesChange={onFeatureStoreChange}>
         <MittProvider>
           <div className="flex h-full flex-col">
-            <div className="relative flex h-[200px] grow pt-14">
+            <div className="relative flex h-50 grow pt-14">
               <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
@@ -168,7 +169,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-[14px]" />
+                        <Divider type="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (
@@ -187,7 +188,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 </div>
               </div>
               <div
-                className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}
+                className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-140'}`}
               >
                 <Config />
               </div>

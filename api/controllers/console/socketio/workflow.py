@@ -98,6 +98,7 @@ def handle_collaboration_event(sid, data):
     6. workflow_update
     7. comments_update
     8. node_panel_presence
+    9. graph_view_state (session reports tab visibility; drives leader election)
     """
     return collaboration_service.relay_collaboration_event(sid, data)
 

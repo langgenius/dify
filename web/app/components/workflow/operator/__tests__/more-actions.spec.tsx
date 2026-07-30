@@ -45,12 +45,28 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     ),
     DropdownMenuTrigger: ({
       children,
+      render,
       className,
     }: {
       children: React.ReactNode
+      render?: React.ReactElement<{
+        className?: string
+        disabled?: boolean
+        onClick?: React.MouseEventHandler<HTMLButtonElement>
+      }>
       className?: string
     }) => {
       const { open, setOpen } = useDropdownMenuContext()
+      if (render) {
+        return React.cloneElement(
+          render,
+          {
+            className,
+            onClick: () => setOpen(!open),
+          },
+          children,
+        )
+      }
       return (
         <button type="button" className={className} onClick={() => setOpen(!open)}>
           {children}
@@ -119,11 +135,16 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: typeof mockWorkflowState) => unknown) => selector(mockWorkflowState),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: mockGetNodesReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: mockGetNodesReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: (...args: unknown[]) => mockDownloadUrl(...args),
@@ -193,7 +214,12 @@ describe('MoreActions', () => {
 
     render(<MoreActions />)
 
-    await user.click(screen.getByRole('button'))
+    const trigger = screen.getByRole('button', { name: 'workflow.common.moreActions' })
+    expect(trigger).toHaveAttribute('aria-disabled', 'true')
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
 
     expect(screen.queryByText('workflow.common.exportImage')).not.toBeInTheDocument()
   })

@@ -1,8 +1,9 @@
 import type { Shape } from '../../../store'
 import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { Plan } from '@/app/components/billing/type'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -10,6 +11,8 @@ const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
 const mockRestoreWorkflow = vi.fn()
+const mockUpdateWorkflow = vi.fn()
+const mockInvalidateAppWorkflow = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
@@ -18,7 +21,7 @@ const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'test-user-id',
     name: 'Test User',
@@ -68,31 +71,9 @@ type MockVersionHistoryItemProps = {
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -104,10 +85,11 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useUpdateWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
   useWorkflowVersionHistory: () => ({
     data: {
       pages: [
@@ -133,9 +115,15 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-DSL', () => ({
   useDSL: () => ({ handleExportDSL: mockHandleExportDSL }),
+}))
+
+vi.mock('../../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
+}))
+
+vi.mock('../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
@@ -143,10 +131,19 @@ vi.mock('../../../hooks', () => ({
 }))
 
 vi.mock('../../../hooks-store', () => ({
-  useHooksStore: () => ({
-    flowId: 'test-flow-id',
-    flowType: 'workflow',
-  }),
+  useHooksStore: (
+    selector: (state: {
+      accessControl: { canImportExportDSL: boolean }
+      configsMap: { flowId: string; flowType: string }
+    }) => unknown,
+  ) =>
+    selector({
+      accessControl: { canImportExportDSL: true },
+      configsMap: {
+        flowId: 'app-1',
+        flowType: 'appFlow',
+      },
+    }),
 }))
 
 vi.mock('../../../collaboration/core/collaboration-manager', () => ({
@@ -195,7 +192,25 @@ vi.mock('../restore-confirm-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
-  default: () => null,
+  default: ({
+    versionInfo,
+    onPublish,
+  }: {
+    versionInfo: VersionHistory
+    onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
+  }) => (
+    <button
+      onClick={() =>
+        onPublish({
+          id: versionInfo.id,
+          title: 'Updated release',
+          releaseNotes: 'Updated notes',
+        })
+      }
+    >
+      submit version info
+    </button>
+  ),
 }))
 
 vi.mock('../version-history-item', () => ({
@@ -228,6 +243,11 @@ vi.mock('../version-history-item', () => ({
               >
                 {`export-${item.id}`}
               </button>
+              <button
+                onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.edit)}
+              >
+                {`edit-${item.id}`}
+              </button>
             </>
           )}
         </div>
@@ -242,6 +262,7 @@ describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRestoreWorkflow.mockResolvedValue(undefined)
+    mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
     mockPlanType = Plan.professional
     mockEnableBilling = true
@@ -383,5 +404,36 @@ describe('VersionHistoryPanel', () => {
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ backupDraft: undefined })
     expect(mockSetCurrentVersion).not.toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should refresh the published workflow after editing the latest app version', async () => {
+    mockUpdateWorkflow.mockImplementation(
+      async (
+        _params,
+        options?: {
+          onSuccess?: () => void
+          onSettled?: () => void
+        },
+      ) => {
+        options?.onSuccess?.()
+        options?.onSettled?.()
+      },
+    )
+    const { VersionHistoryPanel } = await import('../index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
+        updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('edit-published-version-id'))
+    fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
+
+    await waitFor(() => {
+      expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
+    })
   })
 })

@@ -1,0 +1,57 @@
+'use client'
+
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { useTranslation } from 'react-i18next'
+
+type UndeployConfirmDialogProps = {
+  environmentName: string
+  open: boolean
+  onConfirm: () => void
+  onOpenChange: (open: boolean) => void
+}
+
+export function UndeployConfirmDialog({
+  environmentName,
+  open,
+  onConfirm,
+  onOpenChange,
+}: UndeployConfirmDialogProps) {
+  const { t } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation('common')
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="w-120">
+        <div className="flex flex-col items-start gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+            {t(($) => $['deployTab.undeployConfirmTitle'], { name: environmentName })}
+          </AlertDialogTitle>
+          <AlertDialogDescription render={<div />} className="flex flex-col gap-2">
+            <p className="system-md-regular text-text-secondary">
+              {t(($) => $['deployTab.undeployConfirmDesc'])}
+            </p>
+            <p className="system-md-medium text-text-warning">
+              {t(($) => $['deployTab.undeployConfirmWarning'])}
+            </p>
+          </AlertDialogDescription>
+        </div>
+        <AlertDialogActions>
+          <AlertDialogCancelButton variant="secondary" className="min-w-20">
+            {tCommon(($) => $['operation.cancel'])}
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton className="min-w-20" onClick={onConfirm}>
+            {t(($) => $['deployTab.confirmUndeploy'])}
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}

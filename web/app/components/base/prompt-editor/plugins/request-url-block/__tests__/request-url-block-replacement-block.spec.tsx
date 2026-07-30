@@ -1,13 +1,13 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { REQUEST_URL_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import { RequestURLBlockNode } from '../index'
 import RequestURLBlockReplacementBlock from '../request-url-block-replacement-block'
 

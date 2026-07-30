@@ -431,7 +431,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
 
     return (
       <div
-        className="absolute z-30 w-[360px] max-w-[360px]"
+        className="absolute z-30 w-90 max-w-90"
         style={{
           left: canvasPosition.x + 40,
           top: canvasPosition.y,
@@ -442,7 +442,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       >
         <div
           ref={threadRef}
-          className="relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
+          className="relative flex h-90 flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
           role="dialog"
           aria-modal="true"
           aria-labelledby="comment-thread-title"
@@ -789,7 +789,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                   size="sm"
                   className="size-8"
                 />
-                <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm">
+                <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-0.5 shadow-sm">
                   <MentionInput
                     ref={replyInputRef}
                     value={replyContent}

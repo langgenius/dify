@@ -4,14 +4,14 @@ import { render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { CURRENT_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readEditorStateValue,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import CurrentBlockReplacementBlock from '../current-block-replacement-block'
 import { CurrentBlockNode } from '../index'
 

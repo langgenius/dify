@@ -16,13 +16,17 @@ import { useProviderContext } from '@/context/provider-context'
 import {
   useDeleteWorkflow,
   useInvalidAllLastRun,
+  useInvalidateAppWorkflow,
   useResetWorkflowVersionHistory,
   useRestoreWorkflow,
   useUpdateWorkflow,
   useWorkflowVersionHistory,
 } from '@/service/use-workflow'
-import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
+import { FlowType } from '@/types/common'
 import { useHooksStore } from '../../hooks-store'
+import { useDSL } from '../../hooks/use-DSL'
+import { useWorkflowRefreshDraft } from '../../hooks/use-workflow-refresh-draft'
+import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
 import {
   VersionHistoryContextMenuOptions,
@@ -74,6 +78,7 @@ export const VersionHistoryPanel = ({
   const configsMap = useHooksStore((s) => s.configsMap)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation()
 
@@ -312,7 +317,12 @@ export const VersionHistoryPanel = ({
           onSuccess: () => {
             setEditModalOpen(false)
             toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
-            resetWorkflowVersionHistory()
+            if (
+              id === latestVersionId &&
+              configsMap?.flowType === FlowType.appFlow &&
+              configsMap.flowId
+            )
+              invalidateAppWorkflow(configsMap.flowId)
           },
           onError: () => {
             toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
@@ -323,11 +333,19 @@ export const VersionHistoryPanel = ({
         },
       )
     },
-    [t, updateWorkflow, resetWorkflowVersionHistory, updateVersionUrl],
+    [
+      configsMap?.flowId,
+      configsMap?.flowType,
+      invalidateAppWorkflow,
+      latestVersionId,
+      t,
+      updateWorkflow,
+      updateVersionUrl,
+    ],
   )
 
   return (
-    <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+    <div className="flex h-full w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
         <div className="flex-1 py-1 system-xl-semibold text-text-primary">
           {t(($) => $['versionHistory.title'], { ns: 'workflow' })}

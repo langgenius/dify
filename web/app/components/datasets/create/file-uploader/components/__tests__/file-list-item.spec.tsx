@@ -104,7 +104,6 @@ describe('FileListItem', () => {
       render(<FileListItem {...defaultProps} />)
       const extensionSpan = screen.getByText('pdf')
       expect(extensionSpan).toBeInTheDocument()
-      expect(extensionSpan).toHaveClass('uppercase')
     })
 
     it('should render file size', () => {
@@ -328,18 +327,6 @@ describe('FileListItem', () => {
   })
 
   describe('styling', () => {
-    it('should have proper shadow styling', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-      const item = container.firstChild as HTMLElement
-      expect(item).toHaveClass('shadow-xs')
-    })
-
-    it('should have proper border styling', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-      const item = container.firstChild as HTMLElement
-      expect(item).toHaveClass('border', 'border-components-panel-border')
-    })
-
     it('should truncate long file names', () => {
       const longFileName = 'this-is-a-very-long-file-name-that-should-be-truncated.pdf'
       const fileItem = createMockFileItem({

@@ -7,7 +7,7 @@ import type {
 } from '@/models/debug'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   checkHasContextBlock,
   checkHasHistoryBlock,
@@ -30,6 +30,7 @@ type Param = {
   completionParams: FormValue
   setCompletionParams: (params: FormValue) => void
   setStop: (stop: string[]) => void
+  onPublishConfigChange?: () => void
 }
 
 const useAdvancedPromptConfig = ({
@@ -43,13 +44,28 @@ const useAdvancedPromptConfig = ({
   completionParams,
   setCompletionParams,
   setStop,
+  onPublishConfigChange,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
-  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(() =>
+  const [chatPromptConfig, doSetChatPromptConfig] = useState<ChatPromptConfig>(() =>
     clone(DEFAULT_CHAT_PROMPT_CONFIG),
   )
-  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(() =>
-    clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
+  const [completionPromptConfig, doSetCompletionPromptConfig] = useState<CompletionPromptConfig>(
+    () => clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
+  )
+  const setChatPromptConfig = useCallback(
+    (config: ChatPromptConfig) => {
+      doSetChatPromptConfig(config)
+      onPublishConfigChange?.()
+    },
+    [onPublishConfigChange],
+  )
+  const setCompletionPromptConfig = useCallback(
+    (config: CompletionPromptConfig) => {
+      doSetCompletionPromptConfig(config)
+      onPublishConfigChange?.()
+    },
+    [onPublishConfigChange],
   )
 
   const currentAdvancedPrompt = (() => {

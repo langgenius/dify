@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { useEdgesInteractions } from '../../../hooks'
+import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import AddButton from '../../_base/components/add-button'
 import { useInlineLabelHintDismissed } from '../storage'
 import Item from './class-item'
@@ -150,7 +150,7 @@ const ClassList: FC<Props> = ({
                 <div
                   key={item.id}
                   className={cn(
-                    'group relative -ml-3 min-h-[40px] rounded-[10px] bg-components-panel-bg px-0 py-0',
+                    'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
                   )}
                   style={{
                     // Performance hint for browser

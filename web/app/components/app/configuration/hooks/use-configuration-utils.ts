@@ -56,6 +56,28 @@ type DeletedTool = {
   tool_name: string
 }
 
+const normalizeChatPromptConfig = (
+  chatPromptConfig: BackendModelConfig['chat_prompt_config'],
+): NonNullable<BackendModelConfig['chat_prompt_config']> =>
+  chatPromptConfig?.prompt?.length ? chatPromptConfig : clone(DEFAULT_CHAT_PROMPT_CONFIG)
+
+const normalizeCompletionPromptConfig = (
+  completionPromptConfig: BackendModelConfig['completion_prompt_config'],
+): NonNullable<BackendModelConfig['completion_prompt_config']> =>
+  completionPromptConfig?.prompt && completionPromptConfig.conversation_histories_role
+    ? completionPromptConfig
+    : clone(DEFAULT_COMPLETION_PROMPT_CONFIG)
+
+export type ConfigurationPublishConfig = {
+  modelConfig: ModelConfig
+  completionParams: FormValue
+  promptMode: PromptMode
+  chatPromptConfig: NonNullable<BackendModelConfig['chat_prompt_config']>
+  completionPromptConfig: NonNullable<BackendModelConfig['completion_prompt_config']>
+  datasetConfigs: DatasetConfigs
+  externalDataToolsConfig: NonNullable<BackendModelConfig['external_data_tools']>
+}
+
 const buildPublishedModelConfig = ({
   backendModelConfig,
   collectionList,
@@ -99,6 +121,11 @@ const buildPublishedModelConfig = ({
         backendModelConfig.dataset_query_variable,
       ),
     },
+    prompt_type: backendModelConfig.prompt_type,
+    chat_prompt_config: normalizeChatPromptConfig(backendModelConfig.chat_prompt_config),
+    completion_prompt_config: normalizeCompletionPromptConfig(
+      backendModelConfig.completion_prompt_config,
+    ),
     more_like_this: backendModelConfig.more_like_this ?? { enabled: false },
     opening_statement: backendModelConfig.opening_statement,
     suggested_questions: backendModelConfig.suggested_questions ?? [],
@@ -158,16 +185,18 @@ const buildPublishedModelConfig = ({
 export const buildPublishedConfig = ({
   backendModelConfig,
   collectionList,
+  datasetConfigs,
   deletedTools,
   mode,
   nextDataSets,
 }: {
   backendModelConfig: BackendModelConfig
   collectionList: Collection[]
+  datasetConfigs: DatasetConfigs
   deletedTools?: DeletedTool[]
   mode: AppModeEnum
   nextDataSets: DataSet[]
-}) => ({
+}): ConfigurationPublishConfig => ({
   modelConfig: buildPublishedModelConfig({
     backendModelConfig,
     collectionList,
@@ -176,6 +205,16 @@ export const buildPublishedConfig = ({
     nextDataSets,
   }),
   completionParams: backendModelConfig.model.completion_params,
+  promptMode:
+    backendModelConfig.prompt_type === PromptMode.advanced
+      ? PromptMode.advanced
+      : PromptMode.simple,
+  chatPromptConfig: normalizeChatPromptConfig(backendModelConfig.chat_prompt_config),
+  completionPromptConfig: normalizeCompletionPromptConfig(
+    backendModelConfig.completion_prompt_config,
+  ),
+  datasetConfigs,
+  externalDataToolsConfig: backendModelConfig.external_data_tools ?? [],
 })
 
 export const buildConfigurationDatasetConfigs = ({
@@ -369,19 +408,22 @@ export const loadConfigurationState = async ({
     nextDataSets = data
   }
 
+  const datasetConfigs = buildConfigurationDatasetConfigs({
+    backendModelConfig,
+    currentRerankModel,
+    currentRerankProvider,
+    nextDataSets,
+  })
+
   return {
     annotationConfig: normalizeAnnotationConfig(backendModelConfig.annotation_reply),
     backendModelConfig,
     canReturnToSimpleMode: nextPromptMode !== PromptMode.advanced,
     collectionList,
-    completionPromptConfig:
-      backendModelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
-    datasetConfigs: buildConfigurationDatasetConfigs({
-      backendModelConfig,
-      currentRerankModel,
-      currentRerankProvider,
-      nextDataSets,
-    }),
+    completionPromptConfig: normalizeCompletionPromptConfig(
+      backendModelConfig.completion_prompt_config,
+    ),
+    datasetConfigs,
     externalDataToolsConfig: backendModelConfig.external_data_tools ?? [],
     mode: response.mode as AppModeEnum,
     moreLikeThisConfig: backendModelConfig.more_like_this || { enabled: false },
@@ -390,6 +432,7 @@ export const loadConfigurationState = async ({
     publishedConfig: buildPublishedConfig({
       backendModelConfig,
       collectionList,
+      datasetConfigs,
       deletedTools: response.deleted_tools,
       mode: response.mode as AppModeEnum,
       nextDataSets,
@@ -407,11 +450,7 @@ export const loadConfigurationState = async ({
     },
     visionConfig: backendModelConfig.file_upload?.image,
     citationConfig: backendModelConfig.retriever_resource || { enabled: false },
-    chatPromptConfig:
-      backendModelConfig.chat_prompt_config &&
-      backendModelConfig.chat_prompt_config.prompt?.length > 0
-        ? backendModelConfig.chat_prompt_config
-        : clone(DEFAULT_CHAT_PROMPT_CONFIG),
+    chatPromptConfig: normalizeChatPromptConfig(backendModelConfig.chat_prompt_config),
     introduction: backendModelConfig.opening_statement,
     moderationConfig: backendModelConfig.sensitive_word_avoidance,
   }
@@ -530,7 +569,6 @@ export const createPublishHandler =
   ({
     appId,
     chatPromptConfig,
-    citationConfig,
     completionParamsState,
     completionPromptConfig,
     contextVar,
@@ -539,25 +577,19 @@ export const createPublishHandler =
     datasetConfigs,
     externalDataToolsConfig,
     hasSetBlockStatus,
-    introduction,
     isAdvancedMode,
     isFunctionCall,
     mode,
     modelConfig,
-    moreLikeThisConfig,
     promptEmpty,
     promptMode,
     resolvedModelModeType,
     setCanReturnToSimpleMode,
     setPublishedConfig,
-    speechToTextConfig,
-    suggestedQuestionsAfterAnswerConfig,
     t: rawTranslate,
-    textToSpeechConfig,
   }: {
     appId: string
     chatPromptConfig: BackendModelConfig['chat_prompt_config']
-    citationConfig: ModelConfig['retriever_resource']
     completionParamsState: FormValue
     completionPromptConfig: BackendModelConfig['completion_prompt_config']
     contextVar?: string
@@ -566,21 +598,16 @@ export const createPublishHandler =
     datasetConfigs: DatasetConfigs
     externalDataToolsConfig: BackendModelConfig['external_data_tools']
     hasSetBlockStatus: { history: boolean; query: boolean }
-    introduction: string
     isAdvancedMode: boolean
     isFunctionCall: boolean
     mode: AppModeEnum
     modelConfig: ModelConfig
-    moreLikeThisConfig: ModelConfig['more_like_this']
     promptEmpty: boolean
     promptMode: BackendModelConfig['prompt_type']
     resolvedModelModeType: ModelModeType
     setCanReturnToSimpleMode: (value: boolean) => void
-    setPublishedConfig: (config: { modelConfig: ModelConfig; completionParams: FormValue }) => void
-    speechToTextConfig: ModelConfig['speech_to_text']
-    suggestedQuestionsAfterAnswerConfig: ModelConfig['suggested_questions_after_answer']
+    setPublishedConfig: (config: ConfigurationPublishConfig) => void
     t: SelectorTranslate<'appDebug' | 'common'>
-    textToSpeechConfig: ModelConfig['text_to_speech']
   }) =>
   async (
     updateAppModelConfig: (params: { url: string; body: BackendModelConfig }) => Promise<unknown>,
@@ -643,18 +670,47 @@ export const createPublishHandler =
     await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body })
 
     const nextModelConfig = produce(modelConfig, (draft: ModelConfig) => {
-      draft.opening_statement = introduction
-      draft.more_like_this = moreLikeThisConfig
-      draft.suggested_questions_after_answer = suggestedQuestionsAfterAnswerConfig
-      draft.speech_to_text = speechToTextConfig
-      draft.text_to_speech = textToSpeechConfig
-      draft.retriever_resource = citationConfig
+      draft.provider = body.model.provider
+      draft.model_id = body.model.name
+      draft.mode = body.model.mode
+      draft.configs.prompt_template = body.pre_prompt
+      draft.prompt_type = body.prompt_type
+      draft.chat_prompt_config = normalizeChatPromptConfig(body.chat_prompt_config)
+      draft.completion_prompt_config = normalizeCompletionPromptConfig(
+        body.completion_prompt_config,
+      )
+      draft.opening_statement = body.opening_statement
+      draft.more_like_this = body.more_like_this
+      draft.suggested_questions = body.suggested_questions ?? []
+      draft.suggested_questions_after_answer = body.suggested_questions_after_answer
+      draft.speech_to_text = body.speech_to_text
+      draft.text_to_speech = body.text_to_speech
+      draft.file_upload = body.file_upload ?? null
+      draft.retriever_resource = body.retriever_resource
+      draft.sensitive_word_avoidance = body.sensitive_word_avoidance
+      draft.external_data_tools = body.external_data_tools
+      draft.system_parameters = body.system_parameters
+      const publishedAgentConfig = body.agent_mode as ModelConfig['agentConfig']
+      draft.agentConfig = {
+        ...draft.agentConfig,
+        ...publishedAgentConfig,
+        max_iteration: publishedAgentConfig.max_iteration || draft.agentConfig.max_iteration,
+      }
       draft.dataSets = dataSets
     })
 
     setPublishedConfig({
       modelConfig: nextModelConfig,
-      completionParams: completionParamsState,
+      completionParams: body.model.completion_params,
+      promptMode:
+        body.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple,
+      chatPromptConfig: normalizeChatPromptConfig(body.chat_prompt_config),
+      completionPromptConfig: normalizeCompletionPromptConfig(body.completion_prompt_config),
+      datasetConfigs: {
+        ...datasetConfigs,
+        datasets: body.dataset_configs.datasets,
+      },
+      externalDataToolsConfig: body.external_data_tools ?? [],
     })
     toast.success(t(($) => $['api.success'], { ns: 'common' }))
     setCanReturnToSimpleMode(false)

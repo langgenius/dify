@@ -27,7 +27,7 @@ Given(
       )
     }
 
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithSpeechToText(normalAgentSoulConfig),
     })
     this.createdAgentIds.push(agent.id)

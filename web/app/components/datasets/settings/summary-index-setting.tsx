@@ -120,7 +120,7 @@ const SummaryIndexSetting = ({
     return (
       <div className="space-y-4">
         <div className="flex gap-x-1">
-          <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
+          <div className="flex h-7 w-45 shrink-0 items-center pt-1">
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </div>
@@ -149,7 +149,7 @@ const SummaryIndexSetting = ({
         {summaryIndexSetting?.enable && (
           <>
             <div className="flex gap-x-1">
-              <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
+              <div className="flex h-7 w-45 shrink-0 items-center pt-1">
                 <div className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
                 </div>
@@ -171,7 +171,7 @@ const SummaryIndexSetting = ({
               </div>
             </div>
             <div className="flex">
-              <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
+              <div className="flex h-7 w-45 shrink-0 items-center pt-1">
                 <div className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
                 </div>

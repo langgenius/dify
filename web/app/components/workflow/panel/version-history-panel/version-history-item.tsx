@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge/index'
 import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
@@ -18,6 +19,22 @@ type VersionHistoryItemProps = {
   isLast: boolean
   hideActionMenu?: boolean
 }
+
+type VersionEnvironment = {
+  id: string
+  name: string
+}
+
+const MOCK_ENVIRONMENTS: VersionEnvironment[] = [
+  {
+    id: 'mock-pre-release',
+    name: 'Pre-release',
+  },
+  {
+    id: 'mock-qa',
+    name: 'QA',
+  },
+]
 
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
   const { version, id } = versionHistory
@@ -53,6 +70,8 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const isSelected = item.version === currentVersion?.version
   const isDraft = formattedVersion === WorkflowVersion.Draft
   const isLatest = formattedVersion === WorkflowVersion.Latest
+  // TODO: Replace with item.environments when the version history API exposes deployment data.
+  const deployedEnvironments = MOCK_ENVIRONMENTS
 
   useEffect(() => {
     if (isDraft) onClick(item)
@@ -87,7 +106,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       {!isLast && (
         <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />
       )}
-      <div className="flex h-5 w-[18px] shrink-0 items-center justify-center">
+      <div className="flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div
           className={cn(
             'size-2 rounded-lg border-2',
@@ -108,7 +127,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
               : item.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}
           </div>
           {isLatest && (
-            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] system-2xs-medium-uppercase text-text-accent-secondary">
+            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $['versionHistory.latest'], { ns: 'workflow' })}
             </div>
           )}
@@ -123,11 +142,25 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             {`${formatTime(item.created_at)} · ${item.created_by.name}`}
           </div>
         )}
+        {!isDraft && deployedEnvironments.length > 0 && (
+          <div className="flex w-full flex-wrap content-start items-start gap-x-1 gap-y-2 pt-0.5">
+            {deployedEnvironments.map((environment) => (
+              <Badge
+                key={environment.id}
+                size="s"
+                className="h-4.5 shrink-0 bg-components-badge-bg-dimm py-0!"
+              >
+                {environment.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
       {/* Action Menu */}
       {!hideActionMenu && !isDraft && isHovering && (
         <div className="absolute top-1 right-1">
           <ActionMenu
+            workflowId={item.id}
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
             canImportExportDSL={canImportExportDSL}

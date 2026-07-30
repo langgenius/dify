@@ -110,7 +110,7 @@ describe('ItemOperation', () => {
     it('should render pin and delete actions when menu is open', async () => {
       renderComponent()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(await screen.findByText('explore.sidebar.action.pin')).toBeInTheDocument()
       expect(screen.getByText('explore.sidebar.action.delete')).toBeInTheDocument()
@@ -121,7 +121,7 @@ describe('ItemOperation', () => {
     it('should render rename action when isShowRenameConversation is true', async () => {
       renderComponent({ isShowRenameConversation: true })
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(await screen.findByText('explore.sidebar.action.rename')).toBeInTheDocument()
     })
@@ -129,7 +129,7 @@ describe('ItemOperation', () => {
     it('should render unpin label when isPinned is true', async () => {
       renderComponent({ isPinned: true })
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(await screen.findByText('explore.sidebar.action.unpin')).toBeInTheDocument()
     })
@@ -139,7 +139,7 @@ describe('ItemOperation', () => {
     it('should call togglePin when clicking pin action', async () => {
       const { props } = renderComponent()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       expect(props.togglePin).toHaveBeenCalledTimes(1)
@@ -148,7 +148,7 @@ describe('ItemOperation', () => {
     it('should call onDelete when clicking delete action', async () => {
       const { props } = renderComponent()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(props.onDelete).toHaveBeenCalledTimes(1)
@@ -161,7 +161,7 @@ describe('ItemOperation', () => {
         onRenameConversation,
       })
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.rename'))
 
       expect(onRenameConversation).toHaveBeenCalledTimes(1)
@@ -171,7 +171,7 @@ describe('ItemOperation', () => {
   describe('Edge Cases', () => {
     it('should keep the menu open after rerender', async () => {
       const { props, rerender } = renderComponent()
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await screen.findByText('explore.sidebar.action.pin')
 
       rerender(<ItemOperation {...props} />)
@@ -195,7 +195,7 @@ describe('ItemOperation', () => {
         </div>,
       )
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       expect(togglePin).toHaveBeenCalledTimes(1)
