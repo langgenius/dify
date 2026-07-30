@@ -110,7 +110,7 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   }
 
   return (
-    <main className="min-h-full px-6 pt-5 pb-6 sm:pr-6 sm:pl-20">
+    <div className="min-h-full w-full overflow-y-auto px-6 pt-5 pb-6 sm:pr-6 sm:pl-20">
       <div className="flex flex-col gap-0.5">
         <h1 className="system-xl-semibold text-text-primary">{tSettings(($) => $.title)}</h1>
         <p className="system-xs-regular text-text-tertiary">
@@ -150,6 +150,6 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
           />
         )}
       </div>
-    </main>
+    </div>
   )
 }
