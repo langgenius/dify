@@ -230,7 +230,7 @@ export function KnowledgeSpaceShell({
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
                 overviewActive
-                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
                   : 'text-text-secondary',
               )}
             >
@@ -245,7 +245,7 @@ export function KnowledgeSpaceShell({
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
                 sourcesActive
-                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
                   : 'text-text-secondary',
               )}
             >
@@ -260,7 +260,7 @@ export function KnowledgeSpaceShell({
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
                 documentsActive
-                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
                   : 'text-text-secondary',
               )}
             >
@@ -275,7 +275,7 @@ export function KnowledgeSpaceShell({
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
                 retrievalTestActive
-                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
                   : 'text-text-secondary',
               )}
             >
@@ -290,7 +290,7 @@ export function KnowledgeSpaceShell({
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
                 qualityActive
-                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
                   : 'text-text-secondary',
               )}
             >
@@ -305,7 +305,7 @@ export function KnowledgeSpaceShell({
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
                 settingsActive
-                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
                   : 'text-text-secondary',
               )}
             >
