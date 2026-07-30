@@ -2,27 +2,29 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import queue
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 from uuid import UUID
 
 import pytest
+from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.ops.ops_trace_manager as module
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileTransferMethod, FileType
-from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
-from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom
+from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
 class DummyConfig:
@@ -80,6 +82,49 @@ class DummyTimer:
         return False
 
 
+class EncryptTokenRecorder:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    def __call__(self, tenant_id: str, value: str) -> str:
+        self.calls.append((tenant_id, value))
+        return f"enc-{value}"
+
+
+class BatchDecryptTokenRecorder:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[str]]] = []
+
+    def __call__(self, tenant_id: str, values: list[str]) -> list[str]:
+        self.calls.append((tenant_id, values))
+        return [f"dec-{value}" for value in values]
+
+
+class ObfuscatedTokenRecorder:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def __call__(self, value: str) -> str:
+        self.calls.append(value)
+        return f"ob-{value}"
+
+
+class RecordingStorage:
+    def __init__(self) -> None:
+        self.writes: list[tuple[str, bytes]] = []
+
+    def save(self, path: str, data: bytes) -> None:
+        self.writes.append((path, data))
+
+
+class RecordingDispatcher:
+    def __init__(self) -> None:
+        self.payloads: list[dict[str, str]] = []
+
+    def delay(self, payload: dict[str, str]) -> None:
+        self.payloads.append(payload)
+
+
 @pytest.fixture
 def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
     with (
@@ -90,29 +135,27 @@ def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session
 
 
 @pytest.fixture
-def trace_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def trace_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(module, "provider_config_map", FakeProviderMap({"dummy": PROVIDER_ENTRY}))
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
     monkeypatch.setattr(module.threading, "Timer", DummyTimer)
     monkeypatch.setattr(module, "trace_manager_queue", queue.Queue())
     monkeypatch.setattr(module, "trace_manager_timer", None)
-
-    class FakeApp:
-        def app_context(self):
-            return contextlib.nullcontext()
-
-    current = MagicMock()
-    current._get_current_object.return_value = FakeApp()
-    monkeypatch.setattr(module, "current_app", current)
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
+
+    app = Flask(__name__)
+    with app.app_context():
+        yield
 
 
 @pytest.fixture
-def encryption_mocks(monkeypatch: pytest.MonkeyPatch):
-    encrypt = MagicMock(side_effect=lambda _tenant, value: f"enc-{value}")
-    decrypt = MagicMock(side_effect=lambda _tenant, values: [f"dec-{value}" for value in values])
-    obfuscate = MagicMock(side_effect=lambda value: f"ob-{value}")
+def encryption_functions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[EncryptTokenRecorder, BatchDecryptTokenRecorder, ObfuscatedTokenRecorder]:
+    encrypt = EncryptTokenRecorder()
+    decrypt = BatchDecryptTokenRecorder()
+    obfuscate = ObfuscatedTokenRecorder()
     monkeypatch.setattr(module, "encrypt_token", encrypt)
     monkeypatch.setattr(module, "batch_decrypt_token", decrypt)
     monkeypatch.setattr(module, "obfuscated_token", obfuscate)
@@ -230,28 +273,9 @@ def _message_data(**overrides):
     return SimpleNamespace(**data, to_dict=lambda: data)
 
 
-def _workflow_run():
-    return SimpleNamespace(
-        workflow_id="workflow-1",
-        tenant_id="tenant-1",
-        id="run-1",
-        elapsed_time=10,
-        status="finished",
-        inputs_dict={"query": "search"},
-        outputs_dict={"out": "value"},
-        version="3",
-        error=None,
-        total_tokens=12,
-        created_at=datetime(2025, 2, 20, 10, 0, 0),
-        finished_at=datetime(2025, 2, 20, 10, 0, 5),
-        triggered_from="user",
-        app_id="app-id",
-        to_dict=lambda: {"run": "value"},
-    )
-
-
 def test_encrypt_decrypt_obfuscate_and_cache(
-    trace_environment: None, encryption_mocks: tuple[MagicMock, MagicMock, MagicMock]
+    trace_environment: None,
+    encryption_functions: tuple[EncryptTokenRecorder, BatchDecryptTokenRecorder, ObfuscatedTokenRecorder],
 ) -> None:
     encrypted = OpsTraceManager.encrypt_tracing_config(
         "tenant-1", "dummy", {"secret_value": "value", "other_value": "info"}
@@ -264,15 +288,15 @@ def test_encrypt_decrypt_obfuscate_and_cache(
     first = OpsTraceManager.decrypt_tracing_config("tenant-1", "dummy", encrypted)
     second = OpsTraceManager.decrypt_tracing_config("tenant-1", "dummy", encrypted)
     assert first == second
-    assert encryption_mocks[1].call_count == 1
+    assert len(encryption_functions[1].calls) == 1
     obfuscated = OpsTraceManager.obfuscated_decrypt_token("dummy", first)
     assert obfuscated["secret_value"] == "ob-dec-enc-value"
-    encryption_mocks[2].assert_called_once_with("dec-enc-value")
+    assert encryption_functions[2].calls == ["dec-enc-value"]
 
 
 def test_decrypted_config_reads_real_trace_and_app_rows(
     trace_environment: None,
-    encryption_mocks,
+    encryption_functions,
     database: Session,
 ) -> None:
     app = _app(database)
@@ -303,7 +327,7 @@ def test_decrypted_config_reads_real_trace_and_app_rows(
 
 def test_ops_trace_instance_uses_persisted_enabled_state_and_cache(
     trace_environment: None,
-    encryption_mocks,
+    encryption_functions,
     database: Session,
 ) -> None:
     app = _app(database, tracing=json.dumps({"enabled": False, "tracing_provider": "dummy"}))
@@ -443,6 +467,7 @@ def test_workflow_trace_reads_real_workflow_log_from_owned_session(
     monkeypatch: pytest.MonkeyPatch,
     trace_environment: None,
     database: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     app = _app(database)
     log = WorkflowAppLog(
@@ -454,10 +479,30 @@ def test_workflow_trace_reads_real_workflow_log_from_owned_session(
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
     )
-    database.add(log)
+    workflow_run = WorkflowRun(
+        id="run-1",
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="3",
+        graph="{}",
+        inputs=json.dumps({"query": "search"}),
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        outputs=json.dumps({"out": "value"}),
+        error=None,
+        elapsed_time=10,
+        total_tokens=12,
+        total_steps=1,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime(2025, 2, 20, 10, 0, 0),
+        finished_at=datetime(2025, 2, 20, 10, 0, 5),
+    )
+    database.add_all([log, workflow_run])
     database.commit()
-    repo = MagicMock()
-    repo.get_workflow_run_by_id_without_tenant.return_value = _workflow_run()
+    repo = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
     monkeypatch.setattr(TraceTask, "_get_workflow_run_repo", classmethod(lambda cls: repo))
     monkeypatch.setattr(TraceTask, "_calculate_workflow_token_split", classmethod(lambda cls, *_a, **_k: (5, 7)))
     result = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE).workflow_trace(
@@ -551,13 +596,17 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     manager.add_trace_task(task)
     assert manager.collect_tasks() == [task]
 
-    save = MagicMock()
-    delay = MagicMock()
-    monkeypatch.setattr(module.storage, "save", save)
-    monkeypatch.setattr(module.process_trace_tasks, "delay", delay)
+    recording_storage = RecordingStorage()
+    dispatcher = RecordingDispatcher()
+    monkeypatch.setattr(module.storage, "save", recording_storage.save)
+    monkeypatch.setattr(module.process_trace_tasks, "delay", dispatcher.delay)
     file_id = UUID("00000000-0000-0000-0000-000000000123")
     monkeypatch.setattr(module, "uuid4", lambda: file_id)
     manager.add_trace_task(task)
     manager.run()
-    save.assert_called_once()
-    delay.assert_called_once_with({"file_id": file_id.hex, "app_id": "app-id"})
+
+    assert len(recording_storage.writes) == 1
+    path, data = recording_storage.writes[0]
+    assert path.endswith(f"app-id/{file_id.hex}.json")
+    assert json.loads(data)["app_id"] == "app-id"
+    assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "app-id"}]
