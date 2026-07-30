@@ -193,16 +193,16 @@ const Authorized = ({
         >
           <div
             className={cn(
-              'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
+              'w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
               popupClassName,
             )}
           >
             {popupTitle && (
-              <div className="px-3 pt-[10px] pb-0.5 system-xs-medium text-text-tertiary">
+              <div className="px-3 pt-2.5 pb-0.5 system-xs-medium text-text-tertiary">
                 {popupTitle}
               </div>
             )}
-            <div className="max-h-[304px] overflow-y-auto">
+            <div className="max-h-76 overflow-y-auto">
               {items.map((item) => (
                 <Fragment
                   key={
@@ -251,7 +251,7 @@ const Authorized = ({
                         : undefined,
                     )
                   }
-                  className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
+                  className="flex h-10 cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <span className="mr-1 i-ri-add-line size-4" />
                   {t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'common' })}

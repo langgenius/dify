@@ -1,30 +1,44 @@
 'use client'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-type Props = Readonly<{
-  open: boolean
-  provider?: ToolWithProvider
-  value?: {
-    provider_name: string
-    tool_name: string
-  }
-  isConfigure?: boolean
-}>
+type Props = Readonly<
+  {
+    open: boolean
+    provider?: ToolWithProvider
+    value?: {
+      provider_name: string
+      tool_name: string
+    }
+    isConfigure?: boolean
+  } & Omit<ButtonProps, 'children' | 'size' | 'value' | 'variant'>
+>
 
-const ToolTrigger = ({ open, provider, value, isConfigure }: Props) => {
+export function ToolTrigger({
+  open,
+  provider,
+  value,
+  isConfigure,
+  className,
+  ...buttonProps
+}: Props) {
   const { t } = useTranslation()
   return (
-    <div
+    <Button
+      {...buttonProps}
+      variant="ghost"
+      size="medium"
       className={cn(
-        'group flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal p-2 pl-3 hover:bg-state-base-hover-alt',
+        'group w-full justify-start bg-components-input-bg-normal px-3 hover:bg-state-base-hover-alt focus-visible:ring-inset',
         open && 'bg-state-base-hover-alt',
         value?.provider_name && 'py-1.5 pl-1.5',
+        className,
       )}
     >
       {value?.provider_name && provider && (
@@ -45,23 +59,23 @@ const ToolTrigger = ({ open, provider, value, isConfigure }: Props) => {
         </div>
       )}
       {isConfigure && (
-        <RiEqualizer2Line
+        <span
+          aria-hidden
           className={cn(
-            'ml-0.5 size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+            'ml-0.5 i-ri-equalizer-2-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
             open && 'text-text-secondary',
           )}
         />
       )}
       {!isConfigure && (
-        <RiArrowDownSLine
+        <span
+          aria-hidden
           className={cn(
-            'ml-0.5 size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+            'ml-0.5 i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
             open && 'text-text-secondary',
           )}
         />
       )}
-    </div>
+    </Button>
   )
 }
-
-export default ToolTrigger

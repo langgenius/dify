@@ -6,10 +6,7 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from core.model_manager import ModelManager
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, Document
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.enums import SegmentType
 
@@ -69,34 +66,22 @@ class DatasetDocumentStore:
 
     def add_documents(
         self,
-        docs: Sequence[Document],
         session: Session,
+        docs: Sequence[Document],
+        token_counts: list[int],
         allow_update: bool = True,
         save_child: bool = False,
-    ):
+    ) -> None:
+        document_token_pairs = list(zip(docs, token_counts, strict=True))
+
         max_position = session.scalar(
             select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == self._document_id)
         )
 
         if max_position is None:
             max_position = 0
-        embedding_model = None
-        if self._dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=self._dataset.tenant_id,
-                provider=self._dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=self._dataset.embedding_model,
-            )
 
-        if embedding_model:
-            page_content_list = [doc.page_content for doc in docs]
-            tokens_list = embedding_model.get_text_embedding_num_tokens(page_content_list)
-        else:
-            tokens_list = [0] * len(docs)
-
-        for doc, tokens in zip(docs, tokens_list):
+        for doc, tokens in document_token_pairs:
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
 

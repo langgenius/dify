@@ -1,21 +1,19 @@
 'use client'
-import type { AccessMode } from '@/models/access-control'
+import type { AppMode } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { AppData } from '@/models/share'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import TextGenerationApp from '@/app/components/share/text-generation'
 import { useWebAppStore } from '@/context/web-app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import {
-  useGetInstalledAppAccessModeByAppId,
-  useGetInstalledAppMeta,
-  useGetInstalledAppParams,
-  useGetInstalledApps,
-} from '@/service/use-explore'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/client'
 import AppUnavailable from '../../base/app-unavailable'
+import { toInstalledAppAccessMode, toInstalledAppMeta, toInstalledAppParameters } from './runtime'
 
 const ChatWithHistory = dynamic(() => import('@/app/components/base/chat/chat-with-history'), {
   ssr: false,
@@ -34,13 +32,41 @@ const InstalledTextGenerationSurface = ({ children }: { children: React.ReactNod
   </div>
 )
 
+const getInstalledAppSurface = (
+  mode: AppMode,
+): 'chat' | 'completion' | 'unsupported' | 'workflow' => {
+  switch (mode) {
+    case 'chat':
+    case 'advanced-chat':
+    case 'agent-chat':
+      return 'chat'
+    case 'completion':
+      return 'completion'
+    case 'workflow':
+      return 'workflow'
+    case 'agent':
+    case 'channel':
+    case 'rag-pipeline':
+      return 'unsupported'
+  }
+}
+
 const InstalledApp = ({ id }: { id: string }) => {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const webappAuthEnabled = systemFeatures.webapp_auth.enabled
   const {
-    data,
-    isPending: isPendingInstalledApps,
-    isFetching: isFetchingInstalledApps,
-  } = useGetInstalledApps()
-  const installedApp = data?.installed_apps?.find((item) => item.id === id)
+    data: installedApp,
+    isPending: isPendingInstalledApp,
+    error: installedAppError,
+  } = useQuery({
+    ...consoleQuery.installedApps.byInstalledAppId.get.queryOptions({
+      input: {
+        params: {
+          installed_app_id: id,
+        },
+      },
+    }),
+  })
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateWebAppAccessMode = useWebAppStore((s) => s.updateWebAppAccessMode)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
@@ -50,18 +76,41 @@ const InstalledApp = ({ id }: { id: string }) => {
     isPending: isPendingWebAppAccessMode,
     data: webAppAccessMode,
     error: webAppAccessModeError,
-  } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
+  } = useQuery({
+    ...consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.queryOptions({
+      input: { query: { appId: id } },
+    }),
+    enabled: webappAuthEnabled,
+    select: toInstalledAppAccessMode,
+  })
   const {
     isPending: isPendingAppParams,
     data: appParams,
     error: appParamsError,
-  } = useGetInstalledAppParams(installedApp?.id ?? null)
+  } = useQuery({
+    ...consoleQuery.installedApps.byInstalledAppId.parameters.get.queryOptions({
+      input: { params: { installed_app_id: id } },
+    }),
+    select: toInstalledAppParameters,
+  })
   const {
     isPending: isPendingAppMeta,
     data: appMeta,
     error: appMetaError,
-  } = useGetInstalledAppMeta(installedApp?.id ?? null)
-  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({
+  } = useQuery({
+    ...consoleQuery.installedApps.byInstalledAppId.meta.get.queryOptions({
+      input: { params: { installed_app_id: id } },
+    }),
+    select: toInstalledAppMeta,
+  })
+  const resolvedWebAppAccessMode = webappAuthEnabled
+    ? webAppAccessMode?.accessMode
+    : AccessMode.PUBLIC
+  const {
+    data: userCanAccessApp,
+    error: useCanAccessAppError,
+    isPending: isPendingUserCanAccessApp,
+  } = useGetUserCanAccessApp({
     appId: installedApp?.app.id,
     isInstalledApp: true,
   })
@@ -77,7 +126,7 @@ const InstalledApp = ({ id }: { id: string }) => {
           title: app.name,
           description: app.description,
           icon_type: app.icon_type,
-          icon: app.icon,
+          icon: app.icon ?? undefined,
           icon_background: app.icon_background,
           icon_url: app.icon_url,
           prompt_public: false,
@@ -85,18 +134,14 @@ const InstalledApp = ({ id }: { id: string }) => {
           show_workflow_steps: true,
           use_icon_as_answer_icon: app.use_icon_as_answer_icon,
         },
-        plan: 'basic',
         custom_config: null,
-      } as AppData)
+      } satisfies AppData)
     }
 
     if (appParams) updateAppParams(appParams)
     if (appMeta) updateWebAppMeta(appMeta)
-    if (webAppAccessMode)
-      updateWebAppAccessMode((webAppAccessMode as { accessMode: AccessMode }).accessMode)
-    updateUserCanAccessApp(
-      Boolean(userCanAccessApp && (userCanAccessApp as { result: boolean })?.result),
-    )
+    if (resolvedWebAppAccessMode) updateWebAppAccessMode(resolvedWebAppAccessMode)
+    updateUserCanAccessApp(Boolean(userCanAccessApp?.result))
   }, [
     installedApp,
     appMeta,
@@ -106,7 +151,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     updateUserCanAccessApp,
     updateWebAppMeta,
     userCanAccessApp,
-    webAppAccessMode,
+    resolvedWebAppAccessMode,
     updateWebAppAccessMode,
   ])
 
@@ -146,6 +191,20 @@ const InstalledApp = ({ id }: { id: string }) => {
       </InstalledAppFrame>
     )
   }
+  if (installedAppError) {
+    const isNotFound = installedAppError instanceof Response && installedAppError.status === 404
+    return (
+      <InstalledAppFrame>
+        <div className="flex h-full items-center justify-center">
+          {isNotFound ? (
+            <AppUnavailable code={404} isUnknownReason />
+          ) : (
+            <AppUnavailable unknownReason={installedAppError.message} />
+          )}
+        </div>
+      </InstalledAppFrame>
+    )
+  }
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
       <InstalledAppFrame>
@@ -156,9 +215,11 @@ const InstalledApp = ({ id }: { id: string }) => {
     )
   }
   if (
-    isPendingInstalledApps ||
-    (!installedApp && isFetchingInstalledApps) ||
-    (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
+    isPendingInstalledApp ||
+    isPendingAppParams ||
+    isPendingAppMeta ||
+    (webappAuthEnabled && isPendingWebAppAccessMode) ||
+    isPendingUserCanAccessApp
   ) {
     return (
       <InstalledAppFrame>
@@ -177,23 +238,34 @@ const InstalledApp = ({ id }: { id: string }) => {
       </InstalledAppFrame>
     )
   }
+  const surface = getInstalledAppSurface(installedApp.app.mode)
+
+  if (surface === 'unsupported') {
+    return (
+      <InstalledAppFrame>
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable unknownReason="Unsupported installed app mode." />
+        </div>
+      </InstalledAppFrame>
+    )
+  }
+
   return (
     <InstalledAppFrame>
-      {installedApp?.app.mode !== AppModeEnum.COMPLETION &&
-        installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
-          <ChatWithHistory
-            installedAppInfo={installedApp}
-            className={`overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}
-          />
-        )}
-      {installedApp?.app.mode === AppModeEnum.COMPLETION && (
+      {surface === 'chat' && (
+        <ChatWithHistory
+          installedAppInfo={installedApp}
+          className={`overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}
+        />
+      )}
+      {surface === 'completion' && (
         <InstalledTextGenerationSurface>
-          <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />
+          <TextGenerationApp isInstalledApp />
         </InstalledTextGenerationSurface>
       )}
-      {installedApp?.app.mode === AppModeEnum.WORKFLOW && (
+      {surface === 'workflow' && (
         <InstalledTextGenerationSurface>
-          <TextGenerationApp isWorkflow isInstalledApp installedAppInfo={installedApp} />
+          <TextGenerationApp isWorkflow isInstalledApp />
         </InstalledTextGenerationSurface>
       )}
     </InstalledAppFrame>

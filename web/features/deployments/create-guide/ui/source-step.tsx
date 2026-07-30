@@ -10,7 +10,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
@@ -119,7 +119,7 @@ function SourceMethodCard({
       nativeButton
       render={<button type="button" />}
       className={cn(
-        `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:w-[240px]`,
+        `relative box-content h-21 w-full cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:w-60`,
         'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
       )}
     >

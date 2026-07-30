@@ -97,6 +97,7 @@
   "categorySingle.model": "Model",
   "categorySingle.tool": "Orodje",
   "categorySingle.trigger": "Sprožilec",
+  "clearSearch": "Počisti {{label}}",
   "debugInfo.title": "Odpravljanje napak",
   "debugInfo.viewDocs": "Oglejte si dokumente",
   "deprecated": "Zastaran",

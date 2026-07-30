@@ -40,7 +40,7 @@ const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange })
         }}
       >
         <SelectTrigger
-          className="h-8 w-[120px] cursor-pointer rounded-lg px-2.5 text-[13px] text-text-primary"
+          className="h-8 w-30 cursor-pointer rounded-lg px-2.5 text-[13px] text-text-primary"
           title={value}
         >
           <span className="capitalize">{value}</span>
@@ -54,7 +54,7 @@ const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange })
             <SelectItem
               key={type}
               value={type}
-              className="h-[30px] rounded-lg pr-2 pl-3 text-[13px] text-text-primary"
+              className="h-7.5 rounded-lg pr-2 pl-3 text-[13px] text-text-primary"
             >
               <SelectItemText className="px-0 capitalize">{type}</SelectItemText>
               <SelectItemIndicator />

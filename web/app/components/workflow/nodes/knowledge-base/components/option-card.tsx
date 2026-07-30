@@ -64,7 +64,7 @@ const OptionCard = memo(
         return (
           <div
             className={cn(
-              'absolute top-[-2px] left-[-2px] hidden h-14 w-14 rounded-full',
+              'absolute -top-0.5 -left-0.5 hidden h-14 w-14 rounded-full',
               'group-hover:block',
               isActive && 'block',
             )}
@@ -104,7 +104,7 @@ const OptionCard = memo(
         >
           {effectElement}
           {!!icon && (
-            <div className="mr-1 flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+            <div className="mr-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center">
               {typeof icon === 'function' ? icon(isActive) : icon}
             </div>
           )}
@@ -134,7 +134,7 @@ const OptionCard = memo(
         </div>
         {!!(children && isActive) && (
           <div className="relative rounded-b-xl bg-components-panel-bg p-3">
-            <ArrowShape className="absolute top-[-11px] left-[14px] h-4 w-4 text-components-panel-bg" />
+            <ArrowShape className="absolute -top-2.75 left-3.5 h-4 w-4 text-components-panel-bg" />
             {children}
           </div>
         )}

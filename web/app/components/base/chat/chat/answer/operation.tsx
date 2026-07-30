@@ -23,6 +23,7 @@ import NewAudioButton from '@/app/components/base/new-audio-button'
 import { useChatContext } from '../context'
 
 type OperationProps = {
+  answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
   index: number
@@ -32,6 +33,8 @@ type OperationProps = {
   hasWorkflowProcess: boolean
   noChatInput?: boolean
 }
+
+export type AnswerActionPosition = 'auto' | 'below'
 
 type FeedbackTooltipProps = {
   content: ReactNode
@@ -69,6 +72,7 @@ const FeedbackTooltip = ({ content, children }: FeedbackTooltipProps) => {
 }
 
 function Operation({
+  answerActionPosition = 'auto',
   item,
   question,
   index,
@@ -86,6 +90,7 @@ function Operation({
     onAnnotationRemoved,
     onFeedback,
     onRegenerate,
+    showRegenerate,
     readonly,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
@@ -203,7 +208,10 @@ function Operation({
     showPromptLog,
   ])
 
-  const positionRight = useMemo(() => operationWidth < maxSize, [operationWidth, maxSize])
+  const positionRight = useMemo(
+    () => answerActionPosition === 'auto' && operationWidth < maxSize,
+    [answerActionPosition, operationWidth, maxSize],
+  )
 
   return (
     <>
@@ -212,7 +220,7 @@ function Operation({
           'absolute flex justify-end gap-1',
           hasWorkflowProcess && 'right-2 -bottom-4',
           !positionRight && 'right-2 -bottom-4',
-          !hasWorkflowProcess && positionRight && 'top-[9px]!',
+          !hasWorkflowProcess && positionRight && 'top-2.25!',
         )}
         style={!hasWorkflowProcess && positionRight ? { left: contentWidth + 8 } : {}}
         data-testid="operation-bar"
@@ -389,7 +397,7 @@ function Operation({
                 <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
               </ActionButton>
             )}
-            {!noChatInput && (
+            {(!noChatInput || showRegenerate) && (
               <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </ActionButton>

@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { AppModeEnum } from '@/types/app'
@@ -9,7 +9,7 @@ import { AppModeEnum } from '@/types/app'
 const i18nPrefix = ''
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.QuestionUnderstand,
+  classification: BlockClassification.QuestionUnderstand,
   sort: 1,
   type: BlockEnum.QuestionClassifier,
 })

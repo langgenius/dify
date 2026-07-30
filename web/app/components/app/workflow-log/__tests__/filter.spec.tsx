@@ -17,6 +17,35 @@ import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 // Mocks
 // ============================================================================
 
+const mockRuntime = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD',
+  enableBilling: true,
+  isFetchedPlan: true,
+  isFetchedPlanInfo: true,
+  planType: 'professional',
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({ data: mockRuntime.deploymentEdition }),
+  }
+})
+
+vi.mock('@/context/provider-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/provider-context')>()
+  return {
+    ...actual,
+    useProviderContext: () => ({
+      enableBilling: mockRuntime.enableBilling,
+      isFetchedPlan: mockRuntime.isFetchedPlan,
+      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
+      plan: { type: mockRuntime.planType },
+    }),
+  }
+})
+
 const mockTrackEvent = vi.fn()
 vi.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
@@ -41,23 +70,17 @@ describe('Filter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRuntime.deploymentEdition = 'CLOUD'
+    mockRuntime.enableBilling = true
+    mockRuntime.isFetchedPlan = true
+    mockRuntime.isFetchedPlanInfo = true
+    mockRuntime.planType = 'professional'
   })
 
   // --------------------------------------------------------------------------
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(
-        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
-      )
-
-      // Should render status chip, period chip, and search input
-      // Should render status chip, period chip, and search input
-      expect(screen.getByText('All'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-    })
-
     it('should render all filter components', () => {
       render(
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
@@ -187,6 +210,69 @@ describe('Filter', () => {
   // Time Period Filter Tests
   // --------------------------------------------------------------------------
   describe('Time Period Filter', () => {
+    it('should only show supported periods for Cloud sandbox workspaces', async () => {
+      const user = userEvent.setup()
+      mockRuntime.deploymentEdition = 'CLOUD'
+      mockRuntime.planType = 'sandbox'
+
+      render(
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }))
+
+      const listbox = await screen.findByRole('listbox')
+      expect(
+        within(listbox)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual([
+        'appLog.filter.period.today',
+        'appLog.filter.period.last7days',
+        'appLog.filter.period.last30days',
+      ])
+    })
+
+    it('should keep all periods for sandbox workspaces outside Cloud', async () => {
+      const user = userEvent.setup()
+      mockRuntime.deploymentEdition = 'COMMUNITY'
+      mockRuntime.planType = 'sandbox'
+
+      render(
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }))
+
+      const listbox = await screen.findByRole('listbox')
+      expect(within(listbox).getAllByRole('option')).toHaveLength(9)
+    })
+
+    it('should reset the Cloud sandbox period to today when cleared', async () => {
+      const user = userEvent.setup()
+      const setQueryParams = vi.fn()
+      mockRuntime.deploymentEdition = 'CLOUD'
+      mockRuntime.planType = 'sandbox'
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams({ period: '3' })}
+          setQueryParams={setQueryParams}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: /common\.operation\.clear appLog\.filter\.period\.last30days/,
+        }),
+      )
+
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '1',
+      })
+    })
+
     it('should display current period value', () => {
       render(
         <Filter
@@ -214,21 +300,6 @@ describe('Filter', () => {
         expect(screen.getByText('appLog.filter.period.last3months'))!.toBeInTheDocument()
         expect(screen.getByText('appLog.filter.period.allTime'))!.toBeInTheDocument()
       })
-    })
-
-    it('should apply period chip sizing classes to trigger and panel', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
-      )
-
-      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
-      expect(periodTrigger).toHaveClass('min-w-[150px]')
-
-      await user.click(periodTrigger)
-      const listbox = await screen.findByRole('listbox')
-      expect(listbox.parentElement).toHaveClass('w-[270px]')
     })
 
     it('should call setQueryParams when period is selected', async () => {

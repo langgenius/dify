@@ -43,7 +43,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
   const [showExamples, setShowExamples] = useState(false)
 
   return (
-    <div className="flex w-[224px] justify-end gap-1">
+    <div className="flex w-56 justify-end gap-1">
       <DropdownMenu open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
         <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
           <span className="i-ri-add-line size-3" aria-hidden />

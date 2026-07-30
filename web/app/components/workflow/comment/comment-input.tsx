@@ -149,8 +149,8 @@ export const CommentInput: FC<CommentInputProps> = memo(
       >
         <div className="flex items-center gap-3">
           <div className="relative shrink-0 cursor-move" onPointerDown={handleDragPointerDown}>
-            <div className="relative aspect-square h-8 w-8 shrink-0 rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500 p-[2px]">
-              <div className="flex size-full items-center justify-center overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur p-[2px]">
+            <div className="relative aspect-square h-8 w-8 shrink-0 rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500 p-0.5">
+              <div className="flex size-full items-center justify-center overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur p-0.5">
                 <Avatar
                   avatar={userProfile.avatar_url}
                   name={userProfile.name}
@@ -162,10 +162,10 @@ export const CommentInput: FC<CommentInputProps> = memo(
           </div>
           <div
             className={cn(
-              'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[4px] shadow-md',
+              'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-1 shadow-md',
             )}
           >
-            <div className="relative pt-[4px] pl-[9px]">
+            <div className="relative pt-1 pl-2.25">
               <MentionInput
                 value={content}
                 onChange={setContent}

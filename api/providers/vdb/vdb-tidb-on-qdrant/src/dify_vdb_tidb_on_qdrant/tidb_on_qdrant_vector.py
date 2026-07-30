@@ -356,7 +356,7 @@ class TidbOnQdrantVector(BaseVector):
             query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
-            with_vectors=True,
+            with_vectors=False,
             score_threshold=kwargs.get("score_threshold", 0.0),
         )
         docs = []

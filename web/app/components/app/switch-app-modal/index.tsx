@@ -119,7 +119,7 @@ const SwitchAppModal = ({
         <DialogContent
           className={cn(
             'w-full overflow-hidden! border-none text-left align-middle',
-            cn('w-[600px] max-w-[600px] p-8'),
+            cn('w-150 max-w-150 p-8'),
           )}
         >
           <button
@@ -133,7 +133,7 @@ const SwitchAppModal = ({
           <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
             <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
           </div>
-          <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">
+          <div className="relative mt-3 text-xl leading-7.5 font-semibold text-text-primary">
             {t(($) => $.switch, { ns: 'app' })}
           </div>
           <div className="my-1 text-sm/5 text-text-tertiary">
@@ -144,7 +144,7 @@ const SwitchAppModal = ({
             <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
           </div>
           <div className="pb-4">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">
+            <div className="py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $.switchLabel, { ns: 'app' })}
             </div>
             <div className="flex items-center justify-between space-x-2">

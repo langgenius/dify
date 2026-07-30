@@ -278,11 +278,6 @@ describe('ChatInputArea', () => {
       expect(getTextarea()!).toBeInTheDocument()
     })
 
-    it('should apply disabled styles when the disabled prop is true', () => {
-      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
-      expect(container.firstChild).toHaveClass('pointer-events-none', 'opacity-50')
-    })
-
     it('should restore pointer events on the input surface', () => {
       const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
       expect(container.firstChild).toHaveClass('pointer-events-auto')
@@ -988,16 +983,6 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Layout & Styles', () => {
-    it('should toggle opacity class based on disabled prop', () => {
-      const { container, rerender } = render(
-        <ChatInputArea visionConfig={mockVisionConfig} disabled={false} />,
-      )
-      expect(container.firstChild).not.toHaveClass('opacity-50')
-
-      rerender(<ChatInputArea visionConfig={mockVisionConfig} disabled={true} />)
-      expect(container.firstChild).toHaveClass('opacity-50')
-    })
-
     it('should handle multi-line layout correctly', () => {
       mockIsMultipleLine.value = true
       render(<ChatInputArea visionConfig={mockVisionConfig} />)

@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Thực thi Quy trình Làm việc Chuẩn",
   "plansCommon.workflowExecution.tooltip": "Ưu tiên và tốc độ hàng đợi thực thi quy trình làm việc.",
   "plansCommon.year": "năm",
+  "plansCommon.yearlyBilling": "Thanh toán hằng năm",
   "plansCommon.yearlyTip": "Nhận 2 tháng miễn phí khi đăng ký hàng năm!",
   "teamMembers": "Các thành viên trong nhóm",
   "triggerLimitModal.description": "Bạn đã đạt đến giới hạn kích hoạt sự kiện quy trình cho gói này.",

@@ -26,10 +26,10 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'flex max-h-[80%] min-h-[360px] flex-col overflow-hidden p-0 shadow-xs',
+          'flex max-h-[80%] min-h-90 flex-col overflow-hidden p-0 shadow-xs',
           createType === SupportedCreationMethods.MANUAL
-            ? 'w-[640px] max-w-[calc(100vw-2rem)]'
-            : 'w-[480px] max-w-[calc(100vw-2rem)]',
+            ? 'w-160 max-w-[calc(100vw-2rem)]'
+            : 'w-120 max-w-[calc(100vw-2rem)]',
         )}
       >
         <CommonCreateModalContent createType={createType} builder={builder} onClose={onClose} />
@@ -76,7 +76,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
       data-disabled={isDisabled}
     >
       <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary" data-testid="modal-title">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
         <DialogCloseButton

@@ -7,18 +7,15 @@ import {
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodeMetaData,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { FlowType } from '@/types/common'
+import { useAvailableBlocks } from '../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
+import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
 import { ChangeBlockMenuTrigger } from '../change-block-menu-trigger'
 import { NodeActionsDropdownContent } from '../dropdown-content'
 
@@ -31,6 +28,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     ignoreNodeIds,
     forceEnableStartTab,
     allowUserInputSelection,
+    isolateKeyboardEvents,
   }: any) => (
     <div>
       <div>{trigger()}</div>
@@ -39,6 +37,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
       <div>{`force-start:${String(forceEnableStartTab)}`}</div>
       <div>{`allow-start:${String(allowUserInputSelection)}`}</div>
+      <div>{`isolate-keyboard:${String(isolateKeyboardEvents)}`}</div>
       <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
         select-http
       </button>
@@ -46,14 +45,39 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
+vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-available-blocks')>()
+
   return {
     ...actual,
     useAvailableBlocks: vi.fn(),
-    useIsChatMode: vi.fn(),
-    useNodeMetaData: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
     useNodesInteractions: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-meta-data')>()
+
+  return {
+    ...actual,
+    useNodeMetaData: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: vi.fn(),
     useNodesReadOnly: vi.fn(),
   }
 })
@@ -172,6 +196,7 @@ describe('node actions menu details', () => {
     expect(screen.getByText('ignore:')).toBeInTheDocument()
     expect(screen.getByText('force-start:false')).toBeInTheDocument()
     expect(screen.getByText('allow-start:false')).toBeInTheDocument()
+    expect(screen.getByText('isolate-keyboard:true')).toBeInTheDocument()
     expect(handleNodeChange).toHaveBeenCalledWith(
       'node-1',
       BlockEnum.HttpRequest,

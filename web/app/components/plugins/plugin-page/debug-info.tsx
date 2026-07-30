@@ -4,7 +4,6 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiArrowRightUpLine, RiBugLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
@@ -29,7 +28,7 @@ function DebugInfo({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: info, isLoading } = useDebugKey()
-  const trigger = triggerContent ?? <RiBugLine className="size-4" />
+  const trigger = triggerContent ?? <span aria-hidden className="i-ri-bug-line size-4" />
   const triggerClassNames = cn(
     !triggerClassName && 'size-full p-2 text-components-button-secondary-text',
     triggerClassName,
@@ -73,10 +72,10 @@ function DebugInfo({
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
+                    className="flex cursor-pointer items-center gap-1 rounded-xs system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   >
                     <span>{t(($) => $[`${i18nPrefix}.viewDocs`], { ns: 'plugin' })}</span>
-                    <RiArrowRightUpLine className="size-3" />
+                    <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
                   </a>
                 </div>
               </div>

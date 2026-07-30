@@ -59,10 +59,13 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('../../../hooks/use-workflow-history', () => ({
   useWorkflowHistory: () => ({
     saveStateToHistory: mockSaveStateToHistory,
   }),

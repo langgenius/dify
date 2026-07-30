@@ -55,7 +55,7 @@ const FileFromLinkOrLocal = ({
         sideOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
+        <div className="w-70 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
           {showFromLink && (
             <>
               <div
@@ -93,9 +93,9 @@ const FileFromLinkOrLocal = ({
           )}
           {showFromLink && showFromLocal && (
             <div className="flex h-7 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
-              <div className="mr-2 h-px w-[93px] bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
+              <div className="mr-2 h-px w-23.25 bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
               OR
-              <div className="ml-2 h-px w-[93px] bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
+              <div className="ml-2 h-px w-23.25 bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
             </div>
           )}
           {showFromLocal && (

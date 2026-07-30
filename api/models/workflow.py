@@ -1031,6 +1031,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     node_id: Mapped[str] = mapped_column(String(255))
     node_type: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     inputs: Mapped[str | None] = mapped_column(LongText)
     process_data: Mapped[str | None] = mapped_column(LongText)
     outputs: Mapped[str | None] = mapped_column(LongText)
@@ -1476,6 +1477,8 @@ class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
             name="workflow_run_archive_bundle_identity_uq",
         ),
         sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+        sa.Index("workflow_run_archive_bundle_month_id_idx", "year", "month", "id"),
+        sa.Index("workflow_run_archive_bundle_month_shard_id_idx", "year", "month", "shard", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

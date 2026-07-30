@@ -14,6 +14,7 @@ const StatusContainer: FC<Props> = ({ status, children }) => {
 
   return (
     <div
+      role="status"
       className={cn(
         'relative rounded-lg border border-workflow-display-disabled-border-1 px-3 py-2.5 system-xs-regular break-all',
         status === 'succeeded' &&
@@ -68,7 +69,7 @@ const StatusContainer: FC<Props> = ({ status, children }) => {
     >
       <div
         className={cn(
-          'absolute top-0 left-0 h-[50px] w-[65%] bg-no-repeat',
+          'absolute top-0 left-0 h-12.5 w-[65%] bg-no-repeat',
           theme === Theme.light && 'bg-[url(~@/app/components/workflow/run/assets/highlight.svg)]',
           theme === Theme.dark &&
             'bg-[url(~@/app/components/workflow/run/assets/highlight-dark.svg)]',

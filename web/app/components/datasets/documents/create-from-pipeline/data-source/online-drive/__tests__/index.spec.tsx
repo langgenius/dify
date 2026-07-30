@@ -2,14 +2,13 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import OnlineDrive from '../index'
 
 const mocks = vi.hoisted(() => ({
   pipelineId: 'pipeline-123' as string | undefined,
   docLink: vi.fn((path?: string) => `https://docs.example.com${path || ''}`),
-  openIntegrationsSetting: vi.fn(),
+  setSettingsDestination: vi.fn(),
   ssePost: vi.fn(),
   toastError: vi.fn(),
   useGetDataSourceAuth: vi.fn(),
@@ -49,9 +48,10 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { pipeline_id: mocks.pipelineId } }),
 }))
 
-vi.mock('@/app/components/header/account-setting/use-integrations-setting', () => ({
-  useIntegrationsSetting: () => mocks.openIntegrationsSetting,
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mocks.setSettingsDestination] }
+})
 
 vi.mock('@/service/base', () => ({
   ssePost: (...args: unknown[]) => mocks.ssePost(...args),
@@ -432,9 +432,7 @@ describe('OnlineDrive', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Configure' }))
     fireEvent.click(screen.getByRole('button', { name: 'Change Credential' }))
 
-    expect(mocks.openIntegrationsSetting).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
+    expect(mocks.setSettingsDestination).toHaveBeenCalledWith('data-source')
     expect(onCredentialChange).toHaveBeenCalledWith('credential-2')
   })
 })
