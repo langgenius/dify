@@ -79,10 +79,12 @@ func TestProxyHTTPCredentialInjection(t *testing.T) {
 	resolver := NewResolver()
 	resolver.Register("token", &StoredCredential{
 		Value: "s3cr3t",
-		Inject: &HeaderInjectRule{
-			HeaderName: "Authorization",
-			Prefix:     "Bearer ",
-			Value:      "s3cr3t",
+		Inject: &CredentialInjectionPolicy{
+			Type: SimpleHeader,
+			SimpleHeader: &SimpleHeaderPolicy{
+				HeaderName: "Authorization",
+				Expr:       "Bearer {{.Value}}",
+			},
 		},
 	})
 
@@ -113,10 +115,12 @@ func TestProxyHTTPSMitmCredentialInjection(t *testing.T) {
 	resolver := NewResolver()
 	resolver.Register("token", &StoredCredential{
 		Value: "s3cr3t",
-		Inject: &HeaderInjectRule{
-			HeaderName: "Authorization",
-			Prefix:     "Bearer ",
-			Value:      "s3cr3t",
+		Inject: &CredentialInjectionPolicy{
+			Type: SimpleHeader,
+			SimpleHeader: &SimpleHeaderPolicy{
+				HeaderName: "Authorization",
+				Expr:       "Bearer {{.Value}}",
+			},
 		},
 	})
 

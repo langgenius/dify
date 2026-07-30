@@ -128,10 +128,16 @@ class ErrorResponse(ShellctlModel):
 
 
 class HTTPHeaderInject(ShellctlModel):
-    """Inject a credential value as an HTTP request header."""
+    """Inject a credential value as an HTTP request header.
+
+    `expr` is a Go text/template string evaluated by the sandbox credential
+    proxy with the resolved credential value available as `{{.Value}}`, e.g.
+    `"Bearer {{.Value}}"` or `"{{.Value}}"`. This mirrors the wire contract of
+    `egressproxy.SimpleHeaderPolicy` in dify-agent-runtime.
+    """
 
     name: str
-    prefix: str = ""
+    expr: str = ""
     domains: list[str] = Field(default_factory=list)
 
 

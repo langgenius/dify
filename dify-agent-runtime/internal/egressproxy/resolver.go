@@ -9,28 +9,108 @@
 package egressproxy
 
 import (
+	"bytes"
+	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 	"sync"
+	"text/template"
 )
 
 // placeholderPattern matches __secret:<provider>/<name>__ tokens.
 // Group 1 captures the full ref ("provider/name").
 var placeholderPattern = regexp.MustCompile(`__secret:([a-zA-Z0-9_]+/[a-zA-Z0-9_]+)__`)
 
-// HeaderInjectRule describes a single header injection policy.
-type HeaderInjectRule struct {
-	HeaderName string   // e.g. "Authorization"
-	Prefix     string   // e.g. "Bearer "
+// CredentialInjectionPolicyType enumerates the supported proactive credential
+// injection strategies. New strategies (e.g. AWS SigV4 request signing) can
+// be added alongside SimpleHeader without changing the Resolver's public API.
+type CredentialInjectionPolicyType string
+
+const (
+	// SimpleHeader injects the credential as a single HTTP header whose
+	// value is rendered from a Go text/template.
+	SimpleHeader CredentialInjectionPolicyType = "simple-header"
+)
+
+// SimpleHeaderPolicy injects a single HTTP header on requests matching
+// Domains. The header value is rendered from Expr, a Go text/template
+// evaluated with the resolved credential value available as {{.Value}},
+// e.g. `Bearer {{.Value}}` or `{{.Value}}`.
+type SimpleHeaderPolicy struct {
+	HeaderName string
 	Domains    []string // wildcard-capable domain patterns; empty = all
-	Value      string   // the credential value to inject
+	Expr       string   // Go text/template rendered with {{.Value}}
+
+	tmplOnce sync.Once
+	tmpl     *template.Template
+	tmplErr  error
+}
+
+// compile lazily parses Expr into a template, caching the result (or error).
+func (p *SimpleHeaderPolicy) compile() (*template.Template, error) {
+	p.tmplOnce.Do(func() {
+		p.tmpl, p.tmplErr = template.New("simple-header").Parse(p.Expr)
+	})
+	return p.tmpl, p.tmplErr
+}
+
+// render evaluates Expr against the given credential value.
+func (p *SimpleHeaderPolicy) render(value string) (string, error) {
+	tmpl, err := p.compile()
+	if err != nil {
+		return "", fmt.Errorf("parse expr %q: %w", p.Expr, err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, struct{ Value string }{Value: value}); err != nil {
+		return "", fmt.Errorf("render expr %q: %w", p.Expr, err)
+	}
+	return buf.String(), nil
+}
+
+// CredentialInjectionPolicy describes how a credential should be proactively
+// injected into outbound requests. Type selects the concrete strategy; the
+// corresponding field should be populated (e.g. SimpleHeader for
+// CredentialInjectionPolicyType SimpleHeader).
+type CredentialInjectionPolicy struct {
+	Type         CredentialInjectionPolicyType
+	SimpleHeader *SimpleHeaderPolicy
+}
+
+// domains returns the domain-match patterns for this policy, if any.
+func (p *CredentialInjectionPolicy) domains() []string {
+	switch p.Type {
+	case SimpleHeader:
+		if p.SimpleHeader != nil {
+			return p.SimpleHeader.Domains
+		}
+	}
+	return nil
+}
+
+// apply injects the credential into req according to the policy.
+func (p *CredentialInjectionPolicy) apply(req *http.Request, value string) error {
+	switch p.Type {
+	case SimpleHeader:
+		if p.SimpleHeader == nil {
+			return fmt.Errorf("simple-header policy missing configuration")
+		}
+		rendered, err := p.SimpleHeader.render(value)
+		if err != nil {
+			return err
+		}
+		req.Header.Set(p.SimpleHeader.HeaderName, rendered)
+		return nil
+	default:
+		return fmt.Errorf("unsupported credential injection policy type %q", p.Type)
+	}
 }
 
 // StoredCredential holds a credential's value and optional injection policy.
 type StoredCredential struct {
 	Value  string
-	Inject *HeaderInjectRule
+	Inject *CredentialInjectionPolicy
 }
 
 // Resolver is a thread-safe credential store indexed by "provider/name" refs.
@@ -97,15 +177,16 @@ func (r *Resolver) InjectHeaders(req *http.Request) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for _, cred := range r.creds {
+	for ref, cred := range r.creds {
 		if cred.Inject == nil {
 			continue
 		}
-		rule := cred.Inject
-		if !matchesDomain(host, rule.Domains) {
+		if !matchesDomain(host, cred.Inject.domains()) {
 			continue
 		}
-		req.Header.Set(rule.HeaderName, rule.Prefix+rule.Value)
+		if err := cred.Inject.apply(req, cred.Value); err != nil {
+			log.Printf("egressproxy: inject credential %q: %v", ref, err)
+		}
 	}
 }
 

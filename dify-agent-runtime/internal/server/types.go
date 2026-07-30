@@ -121,8 +121,9 @@ type InjectPolicy struct {
 type HTTPHeaderInject struct {
 	// Name is the HTTP header name (e.g. "Authorization", "X-API-Key").
 	Name string `json:"name"`
-	// Prefix is prepended to the credential value (e.g. "Bearer ", "token ").
-	Prefix string `json:"prefix,omitempty"`
+	// Expr is a Go text/template rendered with the credential value
+	// available as {{.Value}} (e.g. "Bearer {{.Value}}").
+	Expr string `json:"expr,omitempty"`
 	// Domains restricts injection to requests matching these host patterns.
 	// Supports wildcard prefix (e.g. "*.github.com", "api.example.com").
 	// Empty means inject on all domains.

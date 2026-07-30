@@ -102,17 +102,41 @@ func (s *Service) RegisterCredentials(creds []Credential) {
 	}
 	for i := range creds {
 		c := &creds[i]
-		stored := &egressproxy.StoredCredential{Value: c.Value}
-		if c.Inject != nil && c.Inject.HTTPHeader != nil {
-			h := c.Inject.HTTPHeader
-			stored.Inject = &egressproxy.HeaderInjectRule{
-				HeaderName: h.Name,
-				Prefix:     h.Prefix,
-				Domains:    h.Domains,
-				Value:      c.Value,
-			}
+		stored := &egressproxy.StoredCredential{
+			Value:  c.Value,
+			Inject: buildInjectionPolicy(c.Inject),
 		}
 		s.egressResolver.Register(c.Ref(), stored)
+	}
+}
+
+// buildInjectionPolicy converts an API-level InjectPolicy into the
+// egressproxy's internal CredentialInjectionPolicy representation. Returns
+// nil if inject is nil or unrecognized.
+func buildInjectionPolicy(inject *InjectPolicy) *egressproxy.CredentialInjectionPolicy {
+	if inject == nil {
+		return nil
+	}
+	switch inject.Type {
+	case InjectTypeHTTPHeader:
+		h := inject.HTTPHeader
+		if h == nil {
+			return nil
+		}
+		expr := h.Expr
+		if expr == "" {
+			expr = "{{.Value}}"
+		}
+		return &egressproxy.CredentialInjectionPolicy{
+			Type: egressproxy.SimpleHeader,
+			SimpleHeader: &egressproxy.SimpleHeaderPolicy{
+				HeaderName: h.Name,
+				Domains:    h.Domains,
+				Expr:       expr,
+			},
+		}
+	default:
+		return nil
 	}
 }
 

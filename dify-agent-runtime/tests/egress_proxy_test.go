@@ -82,7 +82,7 @@ func TestEgressProxyCredentialInjection(t *testing.T) {
 					"type": "http-header",
 					"http_header": map[string]any{
 						"name":    "Authorization",
-						"prefix":  "Bearer ",
+						"expr":    "Bearer {{.Value}}",
 						"domains": []string{"echo-backend"},
 					},
 				},
@@ -176,7 +176,7 @@ func TestEgressProxyCredentialNotInjectedForNonMatchingDomain(t *testing.T) {
 					"type": "http-header",
 					"http_header": map[string]any{
 						"name":    "X-Scoped-Test",
-						"prefix":  "Bearer ",
+						"expr":    "Bearer {{.Value}}",
 						"domains": []string{"some-other-host.internal"},
 					},
 				},
@@ -235,7 +235,7 @@ func TestEgressProxyUpstreamChaining(t *testing.T) {
 					"type": "http-header",
 					"http_header": map[string]any{
 						"name":    "Authorization",
-						"prefix":  "Bearer ",
+						"expr":    "Bearer {{.Value}}",
 						"domains": []string{"echo-backend"},
 					},
 				},

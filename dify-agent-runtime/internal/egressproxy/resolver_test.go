@@ -74,20 +74,24 @@ func TestResolverInjectHeaders(t *testing.T) {
 	r := NewResolver()
 	r.Register("github/token", &StoredCredential{
 		Value: "ghp_abc123",
-		Inject: &HeaderInjectRule{
-			HeaderName: "Authorization",
-			Prefix:     "Bearer ",
-			Domains:    []string{"*.github.com", "api.github.com"},
-			Value:      "ghp_abc123",
+		Inject: &CredentialInjectionPolicy{
+			Type: SimpleHeader,
+			SimpleHeader: &SimpleHeaderPolicy{
+				HeaderName: "Authorization",
+				Domains:    []string{"*.github.com", "api.github.com"},
+				Expr:       "Bearer {{.Value}}",
+			},
 		},
 	})
 	r.Register("openai/api_key", &StoredCredential{
 		Value: "sk-xyz",
-		Inject: &HeaderInjectRule{
-			HeaderName: "Authorization",
-			Prefix:     "Bearer ",
-			Domains:    []string{"api.openai.com"},
-			Value:      "sk-xyz",
+		Inject: &CredentialInjectionPolicy{
+			Type: SimpleHeader,
+			SimpleHeader: &SimpleHeaderPolicy{
+				HeaderName: "Authorization",
+				Domains:    []string{"api.openai.com"},
+				Expr:       "Bearer {{.Value}}",
+			},
 		},
 	})
 
@@ -110,6 +114,39 @@ func TestResolverInjectHeaders(t *testing.T) {
 	r.InjectHeaders(req3)
 	if got := req3.Header.Get("Authorization"); got != "" {
 		t.Errorf("unmatched request: got %q, want empty", got)
+	}
+}
+
+func TestResolverInjectHeadersSimpleHeaderExprAndErrors(t *testing.T) {
+	r := NewResolver()
+	r.Register("custom/key", &StoredCredential{
+		Value: "abc123",
+		Inject: &CredentialInjectionPolicy{
+			Type: SimpleHeader,
+			SimpleHeader: &SimpleHeaderPolicy{
+				HeaderName: "X-Api-Key",
+				Expr:       "key={{.Value}}",
+			},
+		},
+	})
+	req, _ := http.NewRequest("GET", "https://example.com/x", nil)
+	r.InjectHeaders(req)
+	if got := req.Header.Get("X-Api-Key"); got != "key=abc123" {
+		t.Errorf("got %q, want %q", got, "key=abc123")
+	}
+
+	// Unsupported policy type should not panic and should leave headers unset.
+	r2 := NewResolver()
+	r2.Register("broken/key", &StoredCredential{
+		Value: "v",
+		Inject: &CredentialInjectionPolicy{
+			Type: CredentialInjectionPolicyType("unsupported"),
+		},
+	})
+	req2, _ := http.NewRequest("GET", "https://example.com/x", nil)
+	r2.InjectHeaders(req2)
+	if len(req2.Header) != 0 {
+		t.Errorf("expected no headers injected for unsupported policy, got %v", req2.Header)
 	}
 }
 

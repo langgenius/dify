@@ -102,7 +102,7 @@ def build_shell_agent_stub_credentials(
                 type="http-header",
                 http_header=HTTPHeaderInject(
                     name="Authorization",
-                    prefix="Bearer ",
+                    expr="Bearer {{.Value}}",
                     domains=[domain] if domain else [],
                 ),
             ),
