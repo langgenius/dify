@@ -1,4 +1,4 @@
-import AccountDropdown from '@/app/components/header/account-dropdown'
+import AccountSection from '@/app/components/main-nav/components/account-section'
 import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import { fetchPluginBanners } from '@/app/components/plugins/marketplace/home/banners'
 import MarketplaceInstallPermissionProvider from '@/app/components/plugins/marketplace/marketplace-install-permission-provider'
@@ -21,7 +21,7 @@ const MarketplacePage = async () => {
           variant="home"
           homeHeaderActions={
             <div className="p-0.5">
-              <AccountDropdown />
+              <AccountSection compact />
             </div>
           }
         />
