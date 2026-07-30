@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/egressproxy"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -247,18 +248,18 @@ func (s *Service) EgressProxyEnv(sandboxID string) map[string]string {
 	}
 	proxyURL := s.egressProxy.ProxyURLForSandbox(sandboxID)
 	return map[string]string{
-		"HTTP_PROXY":          proxyURL,
-		"HTTPS_PROXY":         proxyURL,
-		"http_proxy":          proxyURL,
-		"https_proxy":         proxyURL,
-		"NO_PROXY":            "localhost,127.0.0.1",
-		"no_proxy":            "localhost,127.0.0.1",
-		"SSL_CERT_FILE":       s.egressCAFiles.CertPath,
-		"REQUESTS_CA_BUNDLE":  s.egressCAFiles.CertPath,
-		"NODE_EXTRA_CA_CERTS": s.egressCAFiles.CertPath,
-		"CURL_CA_BUNDLE":      s.egressCAFiles.CertPath,
-		"GIT_SSL_CAINFO":      s.egressCAFiles.CertPath,
-		"PIP_CERT":            s.egressCAFiles.CertPath,
+		envvar.EnvHTTPProxy:        proxyURL,
+		envvar.EnvHTTPSProxy:       proxyURL,
+		envvar.EnvHTTPProxyLower:   proxyURL,
+		envvar.EnvHTTPSProxyLower:  proxyURL,
+		envvar.EnvNoProxy:          "localhost,127.0.0.1",
+		envvar.EnvNoProxyLower:     "localhost,127.0.0.1",
+		envvar.EnvSSLCertFile:      s.egressCAFiles.CertPath,
+		envvar.EnvRequestsCABundle: s.egressCAFiles.CertPath,
+		envvar.EnvNodeExtraCACerts: s.egressCAFiles.CertPath,
+		envvar.EnvCURLCABundle:     s.egressCAFiles.CertPath,
+		envvar.EnvGitSSLCAInfo:     s.egressCAFiles.CertPath,
+		envvar.EnvPIPCert:          s.egressCAFiles.CertPath,
 	}
 }
 

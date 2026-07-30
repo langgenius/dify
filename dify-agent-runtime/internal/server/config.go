@@ -27,7 +27,7 @@ const (
 	DefaultPipeMonitorInterval           = 1 * time.Second
 	DefaultPipeReadyTimeout              = 10 * time.Second
 	DefaultSQLiteBusyTimeoutMs           = 5000
-	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
+	DefaultAuthTokenEnv                  = envvar.EnvShellctlAuthToken
 	HealthStatus                         = "ok"
 )
 
@@ -102,19 +102,6 @@ func DefaultConfig() *Config {
 		cfg.AuthToken = os.Getenv(DefaultAuthTokenEnv)
 	}
 
-	// Egress proxy from environment (new names, with legacy fallback).
-	if v := envOrFallback(envvar.EnvEgressProxyEnabled, envvar.EnvCredProxyEnabled); v == "true" || v == "1" {
-		cfg.EgressProxyEnabled = true
-	}
-	if v := envOrFallback(envvar.EnvEgressProxyAddr, envvar.EnvCredProxyAddr); v != "" {
-		cfg.EgressProxyAddr = v
-	}
-	if v := envOrFallback(envvar.EnvEgressProxyCADir, envvar.EnvCredProxyCADir); v != "" {
-		cfg.EgressProxyCADir = v
-	}
-	if v := envOrFallback(envvar.EnvEgressProxyUpstream, envvar.EnvCredProxyUpstream); v != "" {
-		cfg.EgressProxyUpstream = v
-	}
 	if v := os.Getenv(envvar.EnvEgressProxySystemCredentialsDir); v != "" {
 		cfg.EgressProxySystemCredentialsDir = v
 	}

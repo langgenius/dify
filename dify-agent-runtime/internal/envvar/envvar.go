@@ -64,13 +64,12 @@ const (
 	EnvEgressProxySystemCredentialsFile = "SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_FILE"
 )
 
-// Legacy env var aliases for backward compatibility.
 const (
-	EnvCredProxyEnabled  = "SHELLCTL_CREDPROXY_ENABLED"
-	EnvCredProxyAddr     = "SHELLCTL_CREDPROXY_ADDR"
-	EnvCredProxyCADir    = "SHELLCTL_CREDPROXY_CA_DIR"
-	EnvCredProxyCACert   = "SHELLCTL_CREDPROXY_CA_CERT"
-	EnvCredProxyUpstream = "SHELLCTL_CREDPROXY_UPSTREAM"
+	EnvShellctlStateDir   = "SHELLCTL_STATE_DIR"
+	EnvShellctlRuntimeDir = "SHELLCTL_RUNTIME_DIR"
+	EnvShellctlTmuxSocket = "SHELLCTL_TMUX_SOCKET"
+	EnvShellctlRunner     = "SHELLCTL_RUNNER"
+	EnvShellctlAuthToken  = "SHELLCTL_AUTH_TOKEN"
 )
 
 // PathIsolationEnabled returns whether Landlock filesystem isolation is active.
