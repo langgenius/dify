@@ -3875,7 +3875,6 @@ function FileEditor({
     }),
   )
 
-  const canEdit = !!file && isTextFile(file) && !readonly
   const filePath = file?.path
   const codeLanguage = getSkillCodeLanguage(file)
   const isMarkdown = isMarkdownFile(file)
@@ -3941,6 +3940,10 @@ function FileEditor({
     },
     enabled: shouldFetchTextFileContent,
   })
+  const isTextContentUnavailable = shouldFetchTextFileContent && textContentQuery.data == null
+  const isTextContentPending = isTextContentUnavailable && textContentQuery.isPending
+  const isTextContentError = isTextContentUnavailable && textContentQuery.isError
+  const canEdit = !!file && isTextFile(file) && !readonly && !isTextContentUnavailable
   const canPreviewBinaryFile =
     !!file && !isTextFile(file) && (isSkillImageFile(file) || isSkillPdfFile(file))
   const binaryPreviewQuery = useQuery({
@@ -4160,6 +4163,7 @@ function FileEditor({
 
   useEffect(() => {
     if (!shouldFetchTextFileContent || textContentQuery.data == null) return
+    if (draftContentRef.current !== lastSavedContentRef.current) return
 
     draftContentRef.current = textContentQuery.data
     lastSavedContentRef.current = textContentQuery.data
@@ -4642,7 +4646,15 @@ function FileEditor({
         </div>
       </div>
       <div className="min-h-0 flex-1 p-3 pb-20">
-        {isMarkdown && markdownMode === 'live' ? (
+        {isTextContentPending ? (
+          <div aria-busy="true" className="h-full cursor-not-allowed" />
+        ) : isTextContentError ? (
+          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-divider-regular bg-background-default">
+            <p className="system-sm-regular text-text-tertiary">
+              {t(($) => $['skillManagement.detail.loadFailed'])}
+            </p>
+          </div>
+        ) : isMarkdown && markdownMode === 'live' ? (
           <div className="relative h-full overflow-hidden rounded-xl border border-divider-regular bg-background-default">
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
             <div className="h-full scrollbar-none overflow-y-auto px-8 py-10">
@@ -4884,13 +4896,6 @@ function FileEditor({
               onChange={handleContentChange}
               onKeyDown={(event) => handleTextEditorKeyDown(event)}
             />
-            {textContentQuery.isError && (
-              <div className="absolute top-14 right-3 rounded-lg border border-divider-regular bg-components-panel-bg px-3 py-2 shadow-lg">
-                <p className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['skillManagement.detail.loadFailed'])}
-                </p>
-              </div>
-            )}
             {referencePicker && (
               <ReferenceFilesPicker
                 files={filteredReferenceFiles}
@@ -4927,16 +4932,6 @@ function FileEditor({
               className="h-full"
               onChange={updateDraftContent}
             />
-          </div>
-        ) : isTextFile(file) && textContentQuery.isPending ? (
-          <div className="flex h-full items-center justify-center rounded-lg border border-divider-regular bg-background-default">
-            <SkeletonRectangle className="h-full w-full rounded-lg" />
-          </div>
-        ) : isTextFile(file) && textContentQuery.isError ? (
-          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-divider-regular bg-background-default">
-            <p className="system-sm-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.loadFailed'])}
-            </p>
           </div>
         ) : isCsv ? (
           <CsvTablePreview rows={csvRows} />

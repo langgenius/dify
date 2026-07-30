@@ -482,6 +482,64 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('does not render the markdown editor before external file content loads', async () => {
+    mocks.fetchSkillFileBlob.mockImplementation(() => new Promise<Blob>(() => undefined))
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'references/guide.md',
+          kind: 'file',
+          storage: 'tool_file',
+          mime_type: 'text/markdown',
+          content: null,
+          tool_file_id: 'tool-file-guide',
+          size: 128,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    fireEvent.click(getFileTreeButton('references/guide.md'))
+
+    await waitFor(() => {
+      expect(mocks.fetchSkillFileBlob).toHaveBeenCalledOnce()
+    })
+    expect(container.querySelector('[contenteditable="true"]')).not.toBeInTheDocument()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('does not render the code editor when external file content fails to load', async () => {
+    mocks.fetchSkillFileBlob.mockRejectedValue(new Error('content unavailable'))
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/action.ts',
+          kind: 'file',
+          storage: 'tool_file',
+          mime_type: 'text/typescript',
+          content: null,
+          tool_file_id: 'tool-file-action',
+          size: 128,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    fireEvent.click(getFileTreeButton('scripts/action.ts'))
+
+    expect(await screen.findByText('agentV2.skillManagement.detail.loadFailed')).toBeInTheDocument()
+    expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
   it('sends only one autosave request while the first save is pending', async () => {
     const user = userEvent.setup()
     mocks.saveDraftFileMutationFn.mockImplementation(() => new Promise(() => undefined))
