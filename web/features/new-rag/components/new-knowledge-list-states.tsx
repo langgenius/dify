@@ -206,9 +206,11 @@ function EmptyGhostGrid() {
 export function NewKnowledgeEmptyState({
   canConnect,
   canCreate,
+  uploadAvailable,
 }: {
   canConnect: boolean
   canCreate: boolean
+  uploadAvailable: boolean
 }) {
   const { t } = useTranslation('dataset')
   const canStart = canCreate
@@ -238,6 +240,7 @@ export function NewKnowledgeEmptyState({
                 iconClassName="i-custom-vender-solid-development-api-connection-mod"
                 title={t(($) => $['newKnowledge.connectSource'])}
                 description={t(($) => $['newKnowledge.connectSourceDescription'])}
+                href={newKnowledgeCreatePathWithStartMode('source')}
               />
             )}
             {canCreate && (
@@ -245,6 +248,7 @@ export function NewKnowledgeEmptyState({
                 iconClassName="i-ri-file-text-line"
                 title={t(($) => $['newKnowledge.uploadFiles'])}
                 description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+                href={uploadAvailable ? newKnowledgeCreatePathWithStartMode('upload') : undefined}
               />
             )}
             {canCreate && (

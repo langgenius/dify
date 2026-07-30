@@ -101,6 +101,10 @@ const permissionStateMock = vi.hoisted(() => ({
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
   workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
+const systemFeaturesStateMock = vi.hoisted(() => ({
+  knowledgeFsUploadEnabled: true,
+  knowledgeFsUploadEnabledAtom: Symbol('knowledgeFsUploadEnabledAtom'),
+}))
 
 vi.mock('@/context/external-api-panel-context', () => ({
   useExternalApiPanel: () => ({
@@ -162,6 +166,8 @@ vi.mock('jotai', async (importOriginal) => {
     useAtomValue: (atom: unknown) => {
       if (atom === permissionStateMock.workspacePermissionKeysAtom)
         return permissionStateMock.workspacePermissionKeys
+      if (atom === systemFeaturesStateMock.knowledgeFsUploadEnabledAtom)
+        return systemFeaturesStateMock.knowledgeFsUploadEnabled
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
   }
@@ -169,6 +175,10 @@ vi.mock('jotai', async (importOriginal) => {
 
 vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysAtom: permissionStateMock.workspacePermissionKeysAtom,
+}))
+
+vi.mock('@/context/system-features-state', () => ({
+  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.knowledgeFsUploadEnabledAtom,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -212,6 +222,7 @@ describe('NewKnowledgeList', () => {
       'dataset.create_and_management',
       'dataset.external.connect',
     ]
+    systemFeaturesStateMock.knowledgeFsUploadEnabled = true
   })
 
   it('shows a scoped loading state', () => {
@@ -406,29 +417,27 @@ describe('NewKnowledgeList', () => {
     expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
   })
 
-  it('keeps stacked creation modes disabled while start empty remains available', () => {
+  it('links available creation modes from the empty state', () => {
     setResolvedPage()
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    const connectSource = screen.getByRole('button', {
+    const connectSource = screen.getByRole('link', {
       name: 'dataset.newKnowledge.connectSource',
     })
-    const uploadFiles = screen.getByRole('button', {
+    const uploadFiles = screen.getByRole('link', {
       name: 'dataset.newKnowledge.uploadFiles',
     })
     const startEmpty = screen.getByRole('link', {
       name: 'dataset.newKnowledge.startEmpty',
     })
 
-    expect(connectSource).toBeDisabled()
+    expect(connectSource).toHaveAttribute('href', '/datasets/new/create?start=source')
     expect(connectSource).toHaveAccessibleDescription(
-      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable dataset.firstEmpty.recommended',
+      'dataset.newKnowledge.connectSourceDescription dataset.firstEmpty.recommended',
     )
-    expect(uploadFiles).toBeDisabled()
-    expect(uploadFiles).toHaveAccessibleDescription(
-      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
-    )
+    expect(uploadFiles).toHaveAttribute('href', '/datasets/new/create?start=upload')
+    expect(uploadFiles).toHaveAccessibleDescription('dataset.newKnowledge.uploadFilesDescription')
     expect(startEmpty).toHaveAttribute('href', '/datasets/new/create?start=empty')
     expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
     expect(screen.getByText('dataset.newKnowledge.connectSourceDescription')).toBeInTheDocument()
@@ -436,6 +445,21 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByText('dataset.newKnowledge.startEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.firstEmpty.recommended')).toBeInTheDocument()
     expect(screen.queryByTestId('empty-knowledge-card')).not.toBeInTheDocument()
+  })
+
+  it('keeps upload unavailable when KnowledgeFS upload capability is disabled', () => {
+    systemFeaturesStateMock.knowledgeFsUploadEnabled = false
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    const uploadFiles = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.uploadFiles',
+    })
+    expect(uploadFiles).toBeDisabled()
+    expect(uploadFiles).toHaveAccessibleDescription(
+      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+    )
   })
 
   it('does not show the Create route to users with external-connect permission only', () => {

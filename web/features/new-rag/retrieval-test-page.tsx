@@ -193,34 +193,25 @@ function ResultSkeleton() {
 
 function EmptyState({
   description,
-  failed,
-  onRetry,
+  kind = 'initial',
   title,
 }: {
   description: string
-  failed?: boolean
-  onRetry?: () => void
+  kind?: 'initial' | 'no-results'
   title: string
 }) {
-  const { t } = useTranslation('dataset')
   return (
-    <div className="flex min-h-80 flex-col items-center justify-center px-8 text-center">
+    <div className="flex min-h-full flex-col items-center justify-center px-8 text-center">
       <span
         aria-hidden
         className={cn(
-          'size-10',
-          failed
-            ? 'i-ri-error-warning-line text-text-destructive'
-            : 'i-ri-search-eye-line text-text-quaternary',
+          kind === 'initial'
+            ? 'i-custom-vender-main-nav-quick-search size-6 text-text-tertiary'
+            : 'i-ri-alert-fill size-5 text-text-warning',
         )}
       />
-      <h2 className="mt-4 title-md-semi-bold text-text-primary">{title}</h2>
-      <p className="mt-2 max-w-sm body-sm-regular text-text-tertiary">{description}</p>
-      {onRetry && (
-        <Button className="mt-5" onClick={onRetry}>
-          {t(($) => $['newKnowledge.retrievalTest.retry'])}
-        </Button>
-      )}
+      <h2 className="mt-1.5 system-sm-medium text-text-primary">{title}</h2>
+      <p className="mt-1.5 max-w-97.25 system-xs-regular text-text-tertiary">{description}</p>
     </div>
   )
 }
@@ -1000,6 +991,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   !researchTaskIsActive(selectedResearchTask) &&
                   (selectedHasNoResults || currentEvidence.length === 0) && (
                     <EmptyState
+                      kind="no-results"
                       title={t(($) => $['newKnowledge.retrievalTest.noChunksTitle'])}
                       description={t(($) => $['newKnowledge.retrievalTest.noChunksDescription'])}
                     />

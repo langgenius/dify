@@ -11,6 +11,7 @@ import ExternalAPIPanel from '@/app/components/datasets/external-api/external-ap
 import ServiceApi from '@/app/components/datasets/extra-info/service-api'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
@@ -62,6 +63,7 @@ export function NewKnowledgeList({
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
@@ -176,7 +178,11 @@ export function NewKnowledgeList({
             />
           )
         ) : knowledgeSpaces.length === 0 ? (
-          <NewKnowledgeEmptyState canConnect={canConnect} canCreate={canCreate} />
+          <NewKnowledgeEmptyState
+            canConnect={canConnect}
+            canCreate={canCreate}
+            uploadAvailable={uploadAvailable}
+          />
         ) : (
           <>
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
