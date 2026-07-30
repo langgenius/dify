@@ -423,6 +423,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/logical-documents/{documentId}",
             "document",
         ),
+        "requestLogicalDocumentDeletion": KnowledgeFSCapabilityOperation(
+            "logical_documents.delete",
+            _STANDARD_CALLERS,
+            "DELETE",
+            "/knowledge-spaces/{id}/logical-documents/{documentId}",
+            "document",
+        ),
         "uploadDocument": KnowledgeFSCapabilityOperation(
             "documents.create",
             _STANDARD_CALLERS,

@@ -1333,6 +1333,25 @@
       "resourceType": "document"
     },
     {
+      "action": "logical_documents.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestLogicalDocumentDeletion",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/logical-documents/{documentId}",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
       "action": "sources.delete",
       "allowedCallerKinds": [
         "interactive",

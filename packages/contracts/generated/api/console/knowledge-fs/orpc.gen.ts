@@ -19,6 +19,10 @@ import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse,
@@ -907,6 +911,24 @@ export const jobs = {
   byJobId: byJobId2,
 }
 
+export const delete7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentId',
+    path: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
+      headers: zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
+      params: zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
+
 export const get16 = oc
   .route({
     inputStructure: 'detailed',
@@ -921,6 +943,7 @@ export const get16 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
 
 export const byDocumentId2 = {
+  delete: delete7,
   get: get16,
 }
 
@@ -1280,7 +1303,7 @@ export const partials = {
   get: get26,
 }
 
-export const delete7 = oc
+export const delete8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -1303,7 +1326,7 @@ export const get27 = oc
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse)
 
 export const byTaskId3 = {
-  delete: delete7,
+  delete: delete8,
   get: get27,
   partials,
 }
@@ -1773,7 +1796,7 @@ export const workflowImports = {
   post: post26,
 }
 
-export const delete8 = oc
+export const delete9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -1820,7 +1843,7 @@ export const patch5 = oc
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse)
 
 export const bySourceId = {
-  delete: delete8,
+  delete: delete9,
   get: get38,
   patch: patch5,
   crawlPreview,
@@ -2094,7 +2117,7 @@ export const uploadSessions = {
   byUploadSessionId,
 }
 
-export const delete9 = oc
+export const delete10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2134,7 +2157,7 @@ export const patch6 = oc
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdResponse)
 
 export const byControlSpaceId = {
-  delete: delete9,
+  delete: delete10,
   get: get45,
   patch: patch6,
   appBindings,

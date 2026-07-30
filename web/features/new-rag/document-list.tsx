@@ -1,8 +1,10 @@
 'use client'
 
 import type { FocusEventHandler } from 'react'
+import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentDisplayStatus } from './document-model'
 import type { LogicalDocument } from './document-models'
+import type { Source } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -105,12 +107,17 @@ const DocumentRow = memo(
     document,
     documentHref,
     formatTimeFromNow,
+    onRemove,
+    onRename,
     onSelectedChange,
     onReindex,
+    onToggleSource,
+    pendingAction,
     readOnlyReasonId,
     selected,
     selectionDisabled,
     source,
+    sourceRecord,
     sourcePending,
     status,
     statusPending,
@@ -118,12 +125,17 @@ const DocumentRow = memo(
     document: LogicalDocument
     documentHref: string
     formatTimeFromNow: (time: number) => string
+    onRemove: (documentId: string) => Promise<boolean>
+    onRename: (documentId: string, title: string) => Promise<boolean>
     onSelectedChange: (documentId: string) => void
     onReindex: (documentId: string) => void
+    onToggleSource: (documentId: string) => Promise<boolean>
+    pendingAction?: DocumentAction
     readOnlyReasonId?: string
     selected: boolean
     selectionDisabled: boolean
     source?: string
+    sourceRecord?: Source
     sourcePending: boolean
     status: DocumentDisplayStatus
     statusPending: boolean
@@ -212,8 +224,18 @@ const DocumentRow = memo(
         </td>
         <td className="w-10 align-middle">
           <DocumentActionsDropdown
+            canEdit={!selectionDisabled}
             documentTitle={document.title}
+            onRemove={() => onRemove(document.id)}
+            onRename={(title) => onRename(document.id, title)}
             onReindex={() => onReindex(document.id)}
+            onToggleSource={() => onToggleSource(document.id)}
+            pendingAction={pendingAction}
+            removeDisabled={document.status === 'deleting'}
+            reindexDisabled={selectionDisabled || status === 'disabled'}
+            sourceDisabled={sourceRecord?.status === 'disabled'}
+            toggleSourceDisabled={!sourceRecord || sourceRecord.version === undefined}
+            unavailableReasonId={`${titleId}-actions-unavailable`}
           />
         </td>
       </tr>
@@ -311,10 +333,14 @@ export function DocumentsList({
   onFilterChange,
   onLoadMore,
   onOpenTasks,
+  onRemoveDocument,
+  onRenameDocument,
   onReindexDocument,
   onSearchChange,
   onSelectAll,
   onSelectDocument,
+  onToggleDocumentSource,
+  pendingDocumentAction,
   readOnlyReasonId,
   resultsIncomplete,
   search,
@@ -324,6 +350,7 @@ export function DocumentsList({
   someSelected,
   sourcesPending,
   sourceNames,
+  sources,
   statusPending,
   statuses,
   tasksPending,
@@ -351,10 +378,14 @@ export function DocumentsList({
   onFilterChange: (filter: DocumentFilter) => void
   onLoadMore: () => void
   onOpenTasks: () => void
+  onRemoveDocument: (documentId: string) => Promise<boolean>
+  onRenameDocument: (documentId: string, title: string) => Promise<boolean>
   onReindexDocument: (documentId: string) => void
   onSearchChange: (search: string) => void
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
+  onToggleDocumentSource: (documentId: string) => Promise<boolean>
+  pendingDocumentAction?: { action: DocumentAction; documentId: string }
   readOnlyReasonId?: string
   resultsIncomplete: boolean
   search: string
@@ -364,6 +395,7 @@ export function DocumentsList({
   someSelected: boolean
   sourcesPending: boolean
   sourceNames: Map<string, string>
+  sources: Map<string, Source>
   statusPending: boolean
   statuses: Map<string, DocumentDisplayStatus>
   tasksPending: boolean
@@ -518,8 +550,16 @@ export function DocumentsList({
                 document={document}
                 documentHref={getDocumentHref(document.id)}
                 formatTimeFromNow={formatTimeFromNow}
+                onRemove={onRemoveDocument}
+                onRename={onRenameDocument}
                 onSelectedChange={onSelectDocument}
                 onReindex={onReindexDocument}
+                onToggleSource={onToggleDocumentSource}
+                pendingAction={
+                  pendingDocumentAction?.documentId === document.id
+                    ? pendingDocumentAction.action
+                    : undefined
+                }
                 readOnlyReasonId={
                   !canEdit
                     ? readOnlyReasonId
@@ -532,6 +572,7 @@ export function DocumentsList({
                 source={
                   (document.sourceId && sourceNames.get(document.sourceId)) ?? sourceName(document)
                 }
+                sourceRecord={document.sourceId ? sources.get(document.sourceId) : undefined}
                 sourcePending={Boolean(
                   sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
                 )}

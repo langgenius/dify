@@ -379,6 +379,28 @@ class KnowledgeFSDataFacade:
         )
         return KnowledgeFSLogicalDocumentResponse.model_validate(raw)
 
+    def delete_logical_document(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        document_id: str,
+        payload: KnowledgeFSDocumentDeletePayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSDurableDeletionAcceptedResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="deleteLogicalDocument",
+            resource_id=document_id,
+            path_parameters=(("documentId", document_id),),
+            payload=payload,
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSDurableDeletionAcceptedResponse.model_validate(raw)
+
     def create_document(
         self,
         *,

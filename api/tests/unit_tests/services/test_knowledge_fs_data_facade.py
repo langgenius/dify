@@ -176,7 +176,7 @@ class RecordingRemote:
             }
         if request.operation_id == "listTraceEvidence":
             return {"items": [], "path": "/queries/trace-1/evidence", "truncated": False}
-        if request.operation_id in {"deleteDocument", "deleteSource"}:
+        if request.operation_id in {"deleteDocument", "deleteLogicalDocument", "deleteSource"}:
             return {
                 "job": {
                     "checkpoint": "requested",
@@ -185,7 +185,13 @@ class RecordingRemote:
                     "knowledgeSpaceId": "space-1",
                     "runState": "queued",
                     "targetId": "00000000-0000-4000-8000-000000000002",
-                    "targetType": "document" if request.operation_id == "deleteDocument" else "source",
+                    "targetType": (
+                        "document"
+                        if request.operation_id == "deleteDocument"
+                        else "logical_document"
+                        if request.operation_id == "deleteLogicalDocument"
+                        else "source"
+                    ),
                     "updatedAt": "2030-01-01T00:00:00Z",
                 },
                 "statusUrl": "/deletion-jobs/job-1",
@@ -1112,6 +1118,17 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
             "KnowledgeFSLogicalDocumentResponse",
             "getLogicalDocument",
             {"document_id": "document-1"},
+            "document-1",
+        ),
+        (
+            "delete_logical_document",
+            "KnowledgeFSDurableDeletionAcceptedResponse",
+            "deleteLogicalDocument",
+            {
+                "document_id": "document-1",
+                "payload": MagicMock(),
+                "idempotency_key": "delete-logical-document-once",
+            },
             "document-1",
         ),
         ("get_document", "KnowledgeFSDocumentResponse", "getDocument", {"document_id": "document-1"}, "document-1"),

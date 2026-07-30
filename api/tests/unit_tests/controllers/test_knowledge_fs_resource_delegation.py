@@ -238,6 +238,14 @@ _CONSOLE_DELEGATION_CASES = (
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
+        "KnowledgeFSSpaceLogicalDocumentApi",
+        "delete",
+        ("space-1", "document-1"),
+        "facade",
+        "delete_logical_document",
+        {"control_space_id": "space-1", "document_id": "document-1"},
+    ),
+    (
         "KnowledgeFSSpaceDocumentOutlineApi",
         "get",
         ("space-1", "document-1"),

@@ -2350,6 +2350,26 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.obje
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
 
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
+  zKnowledgeFsDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders = z.object(
+  {
+    'Idempotency-Key': z.string().min(8).max(255),
+  },
+)
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * KnowledgeFS logical document deletion accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsDurableDeletionAcceptedResponse
+
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
   control_space_id: z.string(),
   document_id: z.string(),

@@ -435,6 +435,13 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
         "namespace",
     )
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["listDocuments"].action == "documents.list"
+    assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["requestLogicalDocumentDeletion"] == (
+        "logical_documents.delete",
+        ("interactive", "service", "agent", "workflow"),
+        "DELETE",
+        "/knowledge-spaces/{id}/logical-documents/{documentId}",
+        "document",
+    )
     expected_product_operations = {
         "createKnowledgeSpaceSource": (
             "POST",

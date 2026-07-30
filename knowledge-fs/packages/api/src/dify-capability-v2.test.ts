@@ -392,6 +392,12 @@ describe("Dify Capability v2 request guard", () => {
         "documents.delete",
         "document",
       ],
+      requestLogicalDocumentDeletion: [
+        "DELETE",
+        "/knowledge-spaces/{id}/logical-documents/{documentId}",
+        "logical_documents.delete",
+        "document",
+      ],
       requestSourceDeletion: [
         "DELETE",
         "/knowledge-spaces/{id}/sources/{sourceId}",

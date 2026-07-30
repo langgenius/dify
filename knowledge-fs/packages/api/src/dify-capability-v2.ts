@@ -580,6 +580,16 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     resourceType: "document",
   },
   {
+    action: "logical_documents.delete",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "DELETE",
+    operationId: "requestLogicalDocumentDeletion",
+    parentResource: { pathParameter: "id" },
+    pathTemplate: "/knowledge-spaces/{id}/logical-documents/{documentId}",
+    resource: { pathParameter: "documentId" },
+    resourceType: "document",
+  },
+  {
     action: "documents.create",
     allowedCallerKinds: STANDARD_CALLERS,
     method: "POST",

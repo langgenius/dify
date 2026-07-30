@@ -41,6 +41,11 @@ export function sourceName(document: LogicalDocument) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
+export function documentTitle(document: LogicalDocument) {
+  const value = document.userMetadata.displayName
+  return typeof value === 'string' && value.trim() ? value.trim() : document.title
+}
+
 function documentDisabled(document: LogicalDocument, sourceDisabled = false) {
   return document.status === 'deleting' || sourceDisabled
 }

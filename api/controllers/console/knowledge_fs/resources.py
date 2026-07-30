@@ -1054,6 +1054,29 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 
+    @console_ns.expect(console_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS logical document deletion accepted",
+        console_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def delete(self, control_space_id: str, document_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.delete_logical_document(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+            payload=_payload(KnowledgeFSDocumentDeletePayload),
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSDurableDeletionAcceptedResponse, result), HTTPStatus.ACCEPTED
+
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents")
 class KnowledgeFSSpaceDocumentsApi(Resource):

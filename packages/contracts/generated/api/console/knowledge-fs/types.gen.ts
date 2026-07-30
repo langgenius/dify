@@ -2079,6 +2079,26 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
+  body: KnowledgeFsDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
+  202: KnowledgeFsDurableDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
   body?: never
   path: {

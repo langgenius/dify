@@ -1,5 +1,6 @@
 'use client'
 
+import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentProcessingTask } from './document-models'
 import type { KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
@@ -37,6 +38,7 @@ import {
 import {
   ACTIVE_TASK_STATES,
   documentDisplayStatus,
+  documentTitle,
   newestTaskByDocument,
   sourceName,
   taskIsActive,
@@ -225,6 +227,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
   const uploadRequestIdsRef = useRef(new Map<string, string>())
   const reindexPendingRef = useRef(false)
+  const documentActionPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
@@ -276,6 +279,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
+  const [pendingDocumentAction, setPendingDocumentAction] = useState<
+    { action: DocumentAction; documentId: string } | undefined
+  >()
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
@@ -462,14 +468,17 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setTaskListGeneration(taskListGenerationRef.current)
   }, [taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt])
   const baseTaskById = useMemo(() => new Map(baseTasks.map((task) => [task.id, task])), [baseTasks])
-  const sourceNames = useMemo(
-    () =>
-      new Map(
-        (sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi)) ?? []).map(
-          (source) => [source.id, source.name],
-        ),
-      ),
+  const sources = useMemo(
+    () => sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi)) ?? [],
     [sourcesQuery.data],
+  )
+  const sourceNames = useMemo(
+    () => new Map(sources.map((source) => [source.id, source.name])),
+    [sources],
+  )
+  const sourcesById = useMemo(
+    () => new Map(sources.map((source) => [source.id, source])),
+    [sources],
   )
   const unresolvedDocumentSourceIds = useMemo(
     () =>
@@ -491,12 +500,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const disabledSourceIds = useMemo(
     () =>
-      new Set(
-        (sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi)) ?? [])
-          .filter((source) => source.status === 'disabled')
-          .map((source) => source.id),
-      ),
-    [sourcesQuery.data],
+      new Set(sources.filter((source) => source.status === 'disabled').map((source) => source.id)),
+    [sources],
   )
   const baseTaskByIdRef = useRef(baseTaskById)
   useLayoutEffect(() => {
@@ -1654,6 +1659,129 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ],
   )
 
+  const handleRenameDocument = useCallback(
+    async (documentId: string, title: string) => {
+      if (!canWrite || documentActionPendingRef.current) return false
+      const currentDocument = documents.find((document) => document.id === documentId)
+      const normalizedTitle = title.trim()
+      if (
+        !currentDocument ||
+        !normalizedTitle ||
+        normalizedTitle === documentTitle(currentDocument)
+      )
+        return false
+      documentActionPendingRef.current = true
+      setPendingDocumentAction({ action: 'rename', documentId })
+      try {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+          body: {
+            expectedRowVersion: currentDocument.rowVersion,
+            patch: { displayName: normalizedTitle },
+          },
+          params: { control_space_id: knowledgeSpaceId, document_id: documentId },
+        })
+        refreshDocuments()
+        return true
+      } catch (error) {
+        if (responseStatus(error) === 403) handleWritePermissionDenied()
+        else toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
+        return false
+      } finally {
+        documentActionPendingRef.current = false
+        setPendingDocumentAction(undefined)
+      }
+    },
+    [canWrite, documents, handleWritePermissionDenied, knowledgeSpaceId, refreshDocuments, t],
+  )
+
+  const handleToggleDocumentSource = useCallback(
+    async (documentId: string) => {
+      if (!canWrite || documentActionPendingRef.current) return false
+      const sourceId = documents.find((document) => document.id === documentId)?.sourceId
+      const source = sourceId ? sourcesById.get(sourceId) : undefined
+      if (!source || source.version === undefined) return false
+      documentActionPendingRef.current = true
+      setPendingDocumentAction({ action: 'toggle-source', documentId })
+      try {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+          body: {
+            expectedVersion: source.version,
+            status: source.status === 'disabled' ? 'active' : 'disabled',
+          },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+        })
+        void Promise.allSettled([
+          queryClient.invalidateQueries({
+            predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+          }),
+          queryClient.invalidateQueries({
+            predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+          }),
+        ])
+        return true
+      } catch (error) {
+        if (responseStatus(error) === 403) handleWritePermissionDenied()
+        else toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+        return false
+      } finally {
+        documentActionPendingRef.current = false
+        setPendingDocumentAction(undefined)
+      }
+    },
+    [
+      canWrite,
+      documents,
+      handleWritePermissionDenied,
+      knowledgeSpaceId,
+      queryClient,
+      sourcesById,
+      t,
+    ],
+  )
+
+  const handleRemoveDocument = useCallback(
+    async (documentId: string) => {
+      if (!canWrite || documentActionPendingRef.current) return false
+      const currentDocument = documents.find((document) => document.id === documentId)
+      if (!currentDocument) return false
+      documentActionPendingRef.current = true
+      setPendingDocumentAction({ action: 'remove', documentId })
+      try {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete(
+          {
+            body: { expectedRevision: currentDocument.rowVersion },
+            headers: { 'Idempotency-Key': createRequestId() },
+            params: { control_space_id: knowledgeSpaceId, document_id: documentId },
+          },
+        )
+        setSelectedDocumentIds((current) => {
+          const next = new Set(current)
+          next.delete(documentId)
+          return next
+        })
+        refreshDocumentsAndTasks()
+        return true
+      } catch (error) {
+        if (responseStatus(error) === 403) handleWritePermissionDenied()
+        else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+        return false
+      } finally {
+        documentActionPendingRef.current = false
+        setPendingDocumentAction(undefined)
+      }
+    },
+    [
+      canWrite,
+      documents,
+      handleWritePermissionDenied,
+      knowledgeSpaceId,
+      refreshDocumentsAndTasks,
+      t,
+    ],
+  )
+
   const handleTaskEvent = useCallback(
     (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => {
       const eventVersion = event.event === 'progress' ? event.data.updatedAt : taskVersion
@@ -2323,10 +2451,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}
             onOpenTasks={() => setTasksOpen(true)}
+            onRemoveDocument={handleRemoveDocument}
+            onRenameDocument={handleRenameDocument}
             onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
             onSearchChange={setSearch}
             onSelectAll={toggleAllFiltered}
             onSelectDocument={toggleDocument}
+            onToggleDocumentSource={handleToggleDocumentSource}
+            pendingDocumentAction={pendingDocumentAction}
             readOnlyReasonId={documentWriteRestrictionReasonId}
             resultsIncomplete={filteredResultsIncomplete}
             search={search}
@@ -2341,6 +2473,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             someSelected={someFilteredSelected}
             sourcesPending={sourceResultsIncomplete}
             sourceNames={sourceNames}
+            sources={sourcesById}
             statusPending={dependencyResultsIncomplete}
             statuses={documentStatuses}
             tasksPending={taskResultsIncomplete}

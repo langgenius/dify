@@ -146,6 +146,7 @@ function revisionFromApi(
 export function logicalDocumentFromApi(
   document: KnowledgeFsLogicalDocumentResponse,
 ): LogicalDocument {
+  const displayName = document.user_metadata.displayName
   return {
     active: document.active ? revisionFromApi(document.active) : null,
     activeRevision: document.active_revision ?? undefined,
@@ -156,7 +157,8 @@ export function logicalDocumentFromApi(
     rowVersion: document.row_version,
     sourceId: document.source_id ?? undefined,
     status: document.status,
-    title: document.title,
+    title:
+      typeof displayName === 'string' && displayName.trim() ? displayName.trim() : document.title,
     updatedAt: document.updated_at,
     userMetadata: document.user_metadata,
   }

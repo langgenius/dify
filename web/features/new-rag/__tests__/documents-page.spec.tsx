@@ -63,6 +63,9 @@ const sourcesQuery = vi.hoisted(() => ({
 const cancelMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const removeDocumentMutation = vi.hoisted(() => vi.fn())
+const renameDocumentMutation = vi.hoisted(() => vi.fn())
+const updateSourceMutation = vi.hoisted(() => vi.fn())
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryCacheListeners = vi.hoisted(
@@ -396,6 +399,21 @@ vi.mock('@/service/client', () => ({
               }
             },
           },
+          documents: {
+            byDocumentId: {
+              patch: renameDocumentMutation,
+            },
+          },
+          logicalDocuments: {
+            byDocumentId: {
+              delete: removeDocumentMutation,
+            },
+          },
+          sources: {
+            bySourceId: {
+              patch: updateSourceMutation,
+            },
+          },
         },
       },
     },
@@ -646,6 +664,24 @@ describe('DocumentsPage', () => {
       ],
       total: 1,
     })
+    removeDocumentMutation.mockResolvedValue({
+      job: { id: 'delete-1', state: 'accepted' },
+      status_url: '/delete-1',
+    })
+    renameDocumentMutation.mockImplementation(async ({ body }: { body: { patch: unknown } }) =>
+      documentApiResponse(
+        document({
+          rowVersion: 2,
+          userMetadata: {
+            displayName: String((body.patch as { displayName: string }).displayName),
+          },
+        }),
+      ),
+    )
+    updateSourceMutation.mockImplementation(
+      async ({ body }: { body: { status: Source['status'] } }) =>
+        sourceApiResponse(source({ status: body.status, version: 2 })),
+    )
     uploadMutation.mutateAsync.mockResolvedValue({
       asset: {
         createdAt: '2026-07-20T10:00:00Z',
@@ -740,8 +776,15 @@ describe('DocumentsPage', () => {
     expect(rowActions).toBeEnabled()
     await user.click(rowActions)
     const rowMenuItems = await screen.findAllByRole('menuitem')
-    expect(rowMenuItems).toHaveLength(1)
-    expect(rowMenuItems[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocument')
+    expect(rowMenuItems).toHaveLength(6)
+    expect(rowMenuItems.map((item) => item.textContent)).toEqual([
+      'common.operation.rename',
+      'dataset.newKnowledge.reindexDocument',
+      'dataset.newKnowledge.disableSource',
+      'dataset.batchAction.archive',
+      'dataset.newKnowledge.downloadDocuments',
+      'dataset.newKnowledge.removeSource',
+    ])
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveTextContent(
@@ -778,6 +821,67 @@ describe('DocumentsPage', () => {
         'dataset.newKnowledge.documentsReindexStarted',
       ),
     )
+  })
+
+  it('renames a document through its user-facing display metadata', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
+    const input = screen.getByRole('textbox', { name: 'dataset.newKnowledge.documentColumn' })
+    await user.clear(input)
+    await user.type(input, 'Renamed handbook.pdf')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: {
+        expectedRowVersion: 1,
+        patch: { displayName: 'Renamed handbook.pdf' },
+      },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'common.operation.rename' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('disables the document source from the row action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+    )
+
+    expect(updateSourceMutation).toHaveBeenCalledWith({
+      body: { expectedVersion: 1, status: 'disabled' },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+    })
+  })
+
+  it('confirms permanent document removal from the row action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    )
+    expect(removeDocumentMutation).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
+
+    expect(removeDocumentMutation).toHaveBeenCalledWith({
+      body: { expectedRevision: 1 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
   })
 
   it('opens the upload form and consumes the one-shot URL request', async () => {
@@ -1027,6 +1131,10 @@ describe('DocumentsPage', () => {
       'aria-describedby',
       'documents-readonly-reason',
     )
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    for (const item of await screen.findAllByRole('menuitem'))
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Escape}')
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
