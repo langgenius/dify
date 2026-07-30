@@ -5,11 +5,14 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
+import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillDetailPage from '../detail-page'
+
+const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
 const mocks = vi.hoisted(() => ({
   fetchSkillFileBlob: vi.fn(),
@@ -1382,6 +1385,75 @@ describe('SkillDetailPage', () => {
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
+  it('serializes editor autosave and file creation with the latest timestamp', async () => {
+    const user = userEvent.setup()
+    let resolveAutosave!: (detail: SkillDetailResponse) => void
+    const autosavePromise = new Promise<SkillDetailResponse>((resolve) => {
+      resolveAutosave = resolve
+    })
+    const autosavedDetail = createSkillDetail({
+      updated_at: 1784638490,
+    })
+    const createdDetail = createSkillDetail({
+      updated_at: 1784638491,
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'notes.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '',
+          tool_file_id: null,
+          size: 0,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    mocks.saveDraftFileMutationFn
+      .mockImplementationOnce(() => autosavePromise)
+      .mockResolvedValueOnce(createdDetail)
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nAutosave in progress')
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+      },
+      { timeout: 2500 },
+    )
+
+    await openRootCreateMenu(user)
+    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    await user.type(await screen.findByPlaceholderText('File name'), 'notes.md{Enter}')
+
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveAutosave(autosavedDetail)
+      await autosavePromise
+    })
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+    })
+    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          expected_updated_at: 1784638490,
+          operation: 'upsert_text',
+          path: 'notes.md',
+        }),
+      }),
+    )
+  })
+
   it('updates non-SKILL files from the Skill Builder detail event', async () => {
     const user = userEvent.setup()
     const referenceFile = {
@@ -1432,11 +1504,12 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('agentV2.skillManagement.detail.createFolderMenu'))
-    const dialog = await screen.findByRole('dialog')
+    const folderNameInput = await screen.findByPlaceholderText('Folder name')
 
-    await user.clear(within(dialog).getByDisplayValue('new-folder'))
-    await user.type(within(dialog).getByRole('textbox'), 'references')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(folderNameInput).toHaveFocus()
+    expect(folderNameInput).toHaveValue('')
+    await user.type(folderNameInput, 'references{Enter}')
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -1450,6 +1523,650 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('creates a file when a non-empty inline name loses focus', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    await openRootCreateMenu(user)
+    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    const fileNameInput = await screen.findByPlaceholderText('File name')
+
+    await user.type(fileNameInput, 'notes.md')
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'upsert_text',
+            path: 'notes.md',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('preserves the file list order returned by the service', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        createSkillDetail().files![0]!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+        {
+          id: 'file-3',
+          path: 'README.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# README\n',
+          tool_file_id: null,
+          size: 9,
+          hash: 'hash-3',
+        },
+        {
+          id: 'file-4',
+          path: 'notes.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '',
+          tool_file_id: null,
+          size: 0,
+          hash: 'hash-4',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('notes.md')).toBeInTheDocument()
+    })
+
+    const expectedOrder = ['SKILL.md', 'scripts', 'README.md', 'notes.md'].map(getFileTreeItem)
+    for (const [index, item] of expectedOrder.entries()) {
+      const nextItem = expectedOrder[index + 1]
+      if (nextItem)
+        expect(item.compareDocumentPosition(nextItem)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    }
+  })
+
+  it('removes an empty inline create input when it loses focus', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    await openRootCreateMenu(user)
+    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    const fileNameInput = await screen.findByPlaceholderText('File name')
+
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    await waitFor(() => {
+      expect(fileNameInput).not.toBeInTheDocument()
+    })
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('creates a file inline inside a folder', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('scripts')).toBeInTheDocument()
+    })
+    await openFileTreeActions(user, 'scripts')
+    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    const fileNameInput = await screen.findByPlaceholderText('File name')
+
+    expect(fileNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
+    await user.type(fileNameInput, 'helper.ts{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'upsert_text',
+            path: 'scripts/helper.ts',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('creates a folder inline inside a folder', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('scripts')).toBeInTheDocument()
+    })
+    await openFileTreeActions(user, 'scripts')
+    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFolderMenu'))
+    const folderNameInput = await screen.findByPlaceholderText('Folder name')
+
+    expect(folderNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
+    await user.type(folderNameInput, 'helpers{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'mkdir',
+            path: 'scripts/helpers',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('uses only the native path tooltip for a file tree item', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('scripts/example.ts')).toBeInTheDocument()
+    })
+    const fileButton = getFileTreeButton('scripts/example.ts')
+
+    expect(fileButton).toHaveAttribute('title', 'scripts/example.ts')
+    expect(screen.queryByText('scripts/example.ts')).not.toBeInTheDocument()
+  })
+
+  it('renames a file inline and selects its name without the extension', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.jsonl',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'application/jsonl',
+          content: '',
+          tool_file_id: null,
+          size: 0,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('scripts/example.jsonl')).toBeInTheDocument()
+    })
+    await openFileTreeActions(user, 'scripts/example.jsonl')
+    await user.click(await screen.findByText('common.operation.rename...'))
+    const renameInput = await screen.findByDisplayValue('example.jsonl')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(renameInput).toHaveFocus()
+    expect(renameInput).toHaveProperty('selectionStart', 0)
+    expect(renameInput).toHaveProperty('selectionEnd', 7)
+
+    await user.clear(renameInput)
+    await user.type(renameInput, 'renamed.jsonl{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'rename',
+            path: 'scripts/example.jsonl',
+            target_path: 'scripts/renamed.jsonl',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('opens the file action menu by right-clicking a file row', async () => {
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    fireEvent.contextMenu(getFileTreeItem('SKILL.md'), {
+      button: 2,
+      clientX: 120,
+      clientY: 240,
+    })
+
+    expect(await screen.findByText('common.operation.rename...')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.skillManagement.detail.cutFile')).toBeInTheDocument()
+    expect(screen.getAllByText('⌘')).toHaveLength(2)
+    expect(screen.getByText('X')).toBeInTheDocument()
+    expect(screen.getByText('C')).toBeInTheDocument()
+  })
+
+  it('copies the context-menu file with the displayed keyboard shortcut', async () => {
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    fireEvent.contextMenu(getFileTreeItem('SKILL.md'), {
+      button: 2,
+      clientX: 120,
+      clientY: 240,
+    })
+    await screen.findByText('common.operation.rename...')
+
+    const copyMenuItem = screen.getByRole('menuitem', {
+      name: /skillManagement\.detail\.copyFile/,
+    })
+    copyMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
+    fireEvent.keyDown(copyMenuItem, {
+      code: 'KeyC',
+      key: 'c',
+      ...primaryModifier,
+    })
+
+    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.detail.copyFileSuccess')
+  })
+
+  it('cuts the context-menu file with the displayed keyboard shortcut', async () => {
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    fireEvent.contextMenu(getFileTreeItem('SKILL.md'), {
+      button: 2,
+      clientX: 120,
+      clientY: 240,
+    })
+    await screen.findByText('common.operation.rename...')
+
+    const cutMenuItem = screen.getByRole('menuitem', {
+      name: /agentV2\.skillManagement\.detail\.cutFile/,
+    })
+    cutMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
+    fireEvent.keyDown(cutMenuItem, {
+      code: 'KeyX',
+      key: 'x',
+      ...primaryModifier,
+    })
+
+    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.detail.cutFileSuccess')
+  })
+
+  it('copies a file with the keyboard shortcut and pastes it into the selected folder', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          kind: 'directory',
+          path: 'scripts',
+          size: 0,
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+    })
+    await user.click(getFileTreeButton('SKILL.md'))
+    fireEvent.copy(getFileTreeButton('SKILL.md'))
+    await user.click(screen.getByRole('button', { name: 'scripts' }))
+    fireEvent.paste(document)
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'upsert_text',
+            path: 'scripts/SKILL.md',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('opens only the copied file after pasting it beside the source file', async () => {
+    const user = userEvent.setup()
+    const sourceFile = createSkillDetail().files![0]!
+    const copiedFile = {
+      ...sourceFile,
+      id: 'file-2',
+      path: 'SKILL copy.md',
+      hash: 'hash-2',
+    }
+    mocks.saveDraftFileMutationFn.mockImplementationOnce(async () => {
+      mocks.skillDetail = createSkillDetail({
+        updated_at: 1784638490,
+        files: [sourceFile, copiedFile],
+      })
+      return mocks.skillDetail
+    })
+    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-detail'],
+      queryFn: async () => mocks.skillDetail,
+    }))
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+    })
+    await user.click(getFileTreeButton('SKILL.md'))
+    fireEvent.copy(getFileTreeButton('SKILL.md'))
+    fireEvent.paste(document)
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'upsert_text',
+            path: 'SKILL copy.md',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+    await waitFor(() => {
+      const editorMain = screen.getAllByRole('main').at(-1)
+      if (!editorMain) throw new Error('file editor not found')
+      expect(
+        within(editorMain).getByRole('button', {
+          name: 'SKILL copy.md',
+        }),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('refreshes and retries a paste once when its skill timestamp is stale', async () => {
+    const user = userEvent.setup()
+    const sourceFile = createSkillDetail().files![0]!
+    const latestDetail = createSkillDetail({
+      updated_at: 1784638490,
+      files: [sourceFile],
+    })
+    const copiedDetail = createSkillDetail({
+      updated_at: 1784638491,
+      files: [
+        sourceFile,
+        {
+          ...sourceFile,
+          id: 'file-2',
+          path: 'SKILL copy.md',
+          hash: 'hash-2',
+        },
+      ],
+    })
+    const conflict = new Error('skill has been modified by another user') as Error & {
+      code: string
+      details: {
+        current_updated_at: number
+        expected_updated_at: number
+      }
+    }
+    conflict.code = 'skill_conflict'
+    conflict.details = {
+      current_updated_at: latestDetail.updated_at,
+      expected_updated_at: 1784638487,
+    }
+    mocks.saveDraftFileMutationFn
+      .mockRejectedValueOnce(conflict)
+      .mockImplementationOnce(async () => {
+        mocks.skillDetail = copiedDetail
+        return copiedDetail
+      })
+    mocks.skillDetailGetFn.mockResolvedValueOnce(latestDetail)
+    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-detail'],
+      queryFn: async () => mocks.skillDetail,
+    }))
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+    })
+    await user.click(getFileTreeButton('SKILL.md'))
+    fireEvent.copy(getFileTreeButton('SKILL.md'))
+    fireEvent.paste(document)
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+    })
+    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          expected_updated_at: latestDetail.updated_at,
+          operation: 'upsert_text',
+          path: 'SKILL copy.md',
+        }),
+      }),
+    )
+    expect(toast.error).not.toHaveBeenCalledWith('skill has been modified by another user')
+  })
+
+  it('retries only the current file when a multi-file paste becomes stale', async () => {
+    const user = userEvent.setup()
+    const sourceFiles = [
+      {
+        ...createSkillDetail().files![0]!,
+        id: 'file-1',
+        path: 'alpha.md',
+      },
+      {
+        ...createSkillDetail().files![0]!,
+        id: 'file-2',
+        path: 'beta.md',
+        hash: 'hash-2',
+      },
+    ]
+    const copiedAlpha = {
+      ...sourceFiles[0]!,
+      id: 'file-3',
+      path: 'alpha copy.md',
+      hash: 'hash-3',
+    }
+    const afterAlphaCopy = createSkillDetail({
+      updated_at: 1784638488,
+      files: [...sourceFiles, copiedAlpha],
+    })
+    const refreshedDetail = createSkillDetail({
+      updated_at: 1784638490,
+      files: [...sourceFiles, copiedAlpha],
+    })
+    const copiedBeta = {
+      ...sourceFiles[1]!,
+      id: 'file-4',
+      path: 'beta copy.md',
+      hash: 'hash-4',
+    }
+    const afterBetaCopy = createSkillDetail({
+      updated_at: 1784638491,
+      files: [...sourceFiles, copiedAlpha, copiedBeta],
+    })
+    const conflict = new Error('skill has been modified by another user') as Error & {
+      code: string
+    }
+    conflict.code = 'skill_conflict'
+
+    mocks.skillDetail = createSkillDetail({ files: sourceFiles })
+    mocks.saveDraftFileMutationFn
+      .mockResolvedValueOnce(afterAlphaCopy)
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce(afterBetaCopy)
+    mocks.skillDetailGetFn.mockResolvedValueOnce(refreshedDetail)
+    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-detail'],
+      queryFn: async () => mocks.skillDetail,
+    }))
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('alpha.md')).toBeInTheDocument()
+    })
+    await user.click(getFileTreeButton('alpha.md'))
+    fireEvent.click(getFileTreeButton('beta.md'), primaryModifier)
+    fireEvent.copy(getFileTreeButton('beta.md'))
+    fireEvent.paste(document)
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(3)
+    })
+    expect(mocks.saveDraftFileMutationFn.mock.calls.map(([request]) => request.body.path)).toEqual([
+      'alpha copy.md',
+      'beta copy.md',
+      'beta copy.md',
+    ])
+    expect(mocks.saveDraftFileMutationFn.mock.calls[2]?.[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          expected_updated_at: refreshedDetail.updated_at,
+        }),
+      }),
+    )
+  })
+
+  it('cuts a nested file and pastes it into the root after selecting the blank area', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await user.click(await screen.findByRole('button', { name: 'example.ts' }))
+    fireEvent.cut(getFileTreeButton('scripts/example.ts'))
+    const contextRegion = document.querySelector('[data-skill-file-tree-context-region]')
+    if (!(contextRegion instanceof HTMLElement))
+      throw new Error('file tree context region not found')
+    fireEvent.contextMenu(contextRegion, {
+      button: 2,
+      clientX: 160,
+      clientY: 520,
+    })
+    const rootMenuItem = (
+      await screen.findByText('agentV2.skillManagement.detail.createFileMenu')
+    ).closest('[role="menuitem"]')
+    if (!(rootMenuItem instanceof HTMLElement)) throw new Error('root menu item not found')
+    fireEvent.keyDown(rootMenuItem, {
+      code: 'KeyV',
+      key: 'v',
+      ...primaryModifier,
+    })
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'rename',
+            path: 'scripts/example.ts',
+            target_path: 'example.ts',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('opens the create menu by right-clicking the file-list blank area', async () => {
+    renderSkillDetailPage()
+
+    const contextRegion = await waitFor(() => {
+      const region = document.querySelector('[data-skill-file-tree-context-region]')
+      if (!(region instanceof HTMLElement)) throw new Error('file tree context region not found')
+      return region
+    })
+    fireEvent.contextMenu(contextRegion, {
+      button: 2,
+      clientX: 160,
+      clientY: 520,
+    })
+
+    expect(
+      await screen.findByText('agentV2.skillManagement.detail.createFileMenu'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('agentV2.skillManagement.detail.createFolderMenu')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.skillManagement.detail.uploadFilesMenu')).toBeInTheDocument()
   })
 
   it('deletes a file through the file tree action menu', async () => {

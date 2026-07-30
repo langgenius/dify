@@ -15,6 +15,7 @@ import type {
   FormEvent,
   KeyboardEvent,
   MouseEvent,
+  ReactElement,
   RefObject,
 } from 'react'
 import type {
@@ -35,6 +36,13 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@langgenius/dify-ui/context-menu'
+import {
   Dialog,
   DialogCloseButton,
   DialogContent,
@@ -50,6 +58,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   ScrollAreaContent,
   ScrollAreaRoot,
@@ -60,9 +69,18 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { Markdown } from '@/app/components/base/markdown'
@@ -96,6 +114,58 @@ type FileTreeNode = {
   path: string
   type: 'directory' | 'file'
 }
+
+type FileTreeInlineAction =
+  | {
+      kind: 'create'
+      nodeType: 'directory' | 'file'
+      parentPath?: string
+    }
+  | {
+      kind: 'rename'
+      nodeType: 'directory' | 'file'
+      path: string
+    }
+
+type SkillFileMutationCoordinator = {
+  latestDetail: SkillDetailResponse | undefined
+  queue: Promise<void>
+  skillId: string
+}
+
+function runSkillFileMutation(
+  coordinator: SkillFileMutationCoordinator,
+  mutation: (expectedUpdatedAt: number) => Promise<SkillDetailResponse>,
+) {
+  const operation = coordinator.queue.then(async () => {
+    const latestDetail = coordinator.latestDetail
+    if (!latestDetail) throw new Error('skill detail is required')
+
+    const nextDetail = await mutation(latestDetail.updated_at)
+    if (!coordinator.latestDetail || nextDetail.updated_at >= coordinator.latestDetail.updated_at)
+      coordinator.latestDetail = nextDetail
+
+    return nextDetail
+  })
+  coordinator.queue = operation.then(
+    () => undefined,
+    () => undefined,
+  )
+  return operation
+}
+
+const skillFileHotkeys = {
+  copy: {
+    command: 'Mod+C',
+    keycaps: ['⌘', 'C'],
+  },
+  cut: {
+    command: 'Mod+X',
+    keycaps: ['⌘', 'X'],
+  },
+} as const
+
+const skillFileMenuPopupClassName = 'w-[168px] data-ending-style:transition-none'
 
 type SkillBuilderModel = DefaultModel & {
   model_settings?: FormValue
@@ -734,16 +804,6 @@ function removeMarkdownDisplayName(content: string) {
   return nextLines.join('\n')
 }
 
-function sortFileNodes(nodes: FileTreeNode[]): FileTreeNode[] {
-  return [...nodes]
-    .sort((left, right) => {
-      if (left.type !== right.type) return left.type === 'directory' ? -1 : 1
-
-      return left.name.localeCompare(right.name)
-    })
-    .map((node) => (node.children ? { ...node, children: sortFileNodes(node.children) } : node))
-}
-
 function toFileTree(files: SkillFileResponse[]): FileTreeNode[] {
   const root: FileTreeNode[] = []
   const folders = new Map<string, FileTreeNode>()
@@ -790,7 +850,7 @@ function toFileTree(files: SkillFileResponse[]): FileTreeNode[] {
     })
   }
 
-  return sortFileNodes(root)
+  return root
 }
 
 function flattenFileTree(nodes: FileTreeNode[]): FileTreeNode[] {
@@ -1523,197 +1583,241 @@ function getUploadFileName(file: File) {
   return file.webkitRelativePath || file.name
 }
 
-function SkillFilePathDialog({
-  defaultPath,
-  description,
+function FileTreeNameInput({
+  file,
+  initialValue = '',
   loading,
-  onOpenChange,
+  nodeType,
+  onCancel,
   onSubmit,
-  open,
-  title,
+  placeholder,
+  selectBaseName = false,
 }: {
-  defaultPath: string
-  description: string
+  file?: SkillFileResponse
+  initialValue?: string
   loading: boolean
-  onOpenChange: (open: boolean) => void
+  nodeType: 'directory' | 'file'
+  onCancel: () => void
   onSubmit: (path: string) => void
-  open: boolean
-  title: string
+  placeholder?: string
+  selectBaseName?: boolean
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const [path, setPath] = useState(defaultPath)
-  const trimmedPath = path.trim()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const submittedRef = useRef(false)
+  const [name, setName] = useState(initialValue)
+
+  useLayoutEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+
+    input.focus()
+    if (!selectBaseName) return
+
+    const extensionIndex = initialValue.lastIndexOf('.')
+    input.setSelectionRange(0, extensionIndex > 0 ? extensionIndex : initialValue.length)
+  }, [initialValue, selectBaseName])
+
+  useEffect(() => {
+    if (!loading) submittedRef.current = false
+  }, [loading])
+
+  const handleSubmit = () => {
+    if (loading || submittedRef.current) return
+
+    const trimmedName = name.trim()
+    if (!trimmedName) return
+
+    submittedRef.current = true
+    onSubmit(trimmedName)
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[420px] p-0!">
-        <DialogCloseButton />
-        <div className="px-6 pt-6 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-          <DialogDescription className="mt-2 system-sm-regular text-text-tertiary">
-            {description}
-          </DialogDescription>
-        </div>
-        <div className="px-6 py-3">
-          <Input
-            value={path}
-            onChange={(event) => setPath(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && trimmedPath) onSubmit(trimmedPath)
+    <div data-skill-file-tree-item className="flex h-6 min-w-0 items-center gap-0.5 px-2 pr-1.5">
+      <span
+        aria-hidden
+        className={cn(
+          'size-4 shrink-0 text-text-secondary',
+          nodeType === 'directory'
+            ? 'i-ri-folder-5-line'
+            : file
+              ? getSkillFileIconClass(file)
+              : 'i-ri-file-line',
+        )}
+      />
+      <input
+        ref={inputRef}
+        value={name}
+        placeholder={placeholder}
+        disabled={loading}
+        className="h-5 w-0 min-w-0 flex-1 rounded-[5px] border border-components-input-border-active bg-components-input-bg-active px-1 py-0.5 system-xs-regular text-text-secondary shadow-xs outline-hidden placeholder:text-text-quaternary focus:ring-0 disabled:cursor-wait"
+        onBlur={() => {
+          if (name.trim()) handleSubmit()
+          else onCancel()
+        }}
+        onChange={(event) => setName(event.target.value)}
+        onContextMenu={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+            handleSubmit()
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            onCancel()
+          }
+        }}
+      />
+    </div>
+  )
+}
+
+function FileActionMenuItems({
+  kind,
+  node,
+  onCopy,
+  onCreateFile,
+  onCreateFolder,
+  onCut,
+  onDelete,
+  onRename,
+  onUploadFiles,
+}: {
+  kind: 'context' | 'dropdown'
+  node: FileTreeNode
+  onCopy: (path: string) => void
+  onCreateFile: () => void
+  onCreateFolder: () => void
+  onCut: (path: string) => void
+  onDelete: () => void
+  onRename: () => void
+  onUploadFiles: () => void
+}) {
+  const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
+  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
+  const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
+  const isDirectoryNode = node.type === 'directory'
+
+  return (
+    <>
+      {!isDirectoryNode && (
+        <>
+          <MenuItem
+            className="gap-2"
+            onClick={(event) => {
+              event.stopPropagation()
+              onCut(node.path)
             }}
-          />
-        </div>
-        <div className="flex justify-end gap-2 px-6 pt-3 pb-6">
-          <Button disabled={loading} onClick={() => onOpenChange(false)}>
-            {tCommon(($) => $['operation.cancel'])}
-          </Button>
-          <Button
-            variant="primary"
-            loading={loading}
-            disabled={!trimmedPath}
-            onClick={() => onSubmit(trimmedPath)}
           >
-            {tCommon(($) => $['operation.save'])}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            <span aria-hidden className="i-ri-scissors-cut-line size-4 text-text-tertiary" />
+            <span>{t(($) => $['skillManagement.detail.cutFile'])}</span>
+            <KbdGroup className="ml-auto">
+              {skillFileHotkeys.cut.keycaps.map((keycap) => (
+                <Kbd key={keycap}>{keycap}</Kbd>
+              ))}
+            </KbdGroup>
+          </MenuItem>
+          <MenuItem
+            className="gap-2"
+            onClick={(event) => {
+              event.stopPropagation()
+              onCopy(node.path)
+            }}
+          >
+            <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
+            <span>{t(($) => $['skillManagement.detail.copyFile'])}</span>
+            <KbdGroup className="ml-auto">
+              {skillFileHotkeys.copy.keycaps.map((keycap) => (
+                <Kbd key={keycap}>{keycap}</Kbd>
+              ))}
+            </KbdGroup>
+          </MenuItem>
+          <MenuSeparator />
+        </>
+      )}
+      {isDirectoryNode && (
+        <>
+          <MenuItem
+            className="gap-2"
+            onClick={(event) => {
+              event.stopPropagation()
+              onCreateFile()
+            }}
+          >
+            <span aria-hidden className="i-ri-file-add-line size-4 text-text-tertiary" />
+            <span>{t(($) => $['skillManagement.detail.createFileMenu'])}</span>
+          </MenuItem>
+          <MenuItem
+            className="gap-2"
+            onClick={(event) => {
+              event.stopPropagation()
+              onCreateFolder()
+            }}
+          >
+            <span aria-hidden className="i-ri-folder-add-line size-4 text-text-tertiary" />
+            <span>{t(($) => $['skillManagement.detail.createFolderMenu'])}</span>
+          </MenuItem>
+          <MenuItem
+            className="gap-2"
+            onClick={(event) => {
+              event.stopPropagation()
+              onUploadFiles()
+            }}
+          >
+            <span aria-hidden className="i-ri-upload-cloud-2-line size-4 text-text-tertiary" />
+            <span>{t(($) => $['skillManagement.detail.uploadFilesMenu'])}</span>
+          </MenuItem>
+          <MenuSeparator />
+        </>
+      )}
+      <MenuItem
+        className="gap-2"
+        onClick={(event) => {
+          event.stopPropagation()
+          onRename()
+        }}
+      >
+        <span aria-hidden className="i-ri-input-field size-4 text-text-tertiary" />
+        <span>{tCommon(($) => $['operation.rename'])}...</span>
+      </MenuItem>
+      <MenuSeparator />
+      <MenuItem
+        className="gap-2"
+        onClick={(event) => {
+          event.stopPropagation()
+          onDelete()
+        }}
+      >
+        <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
+        <span>{tCommon(($) => $['operation.delete'])}</span>
+      </MenuItem>
+    </>
   )
 }
 
 function FileActions({
-  detail,
   visible,
   node,
   onCopy,
+  onCreateFile,
+  onCreateFolder,
   onCut,
+  onDelete,
+  onRename,
   onUploadFiles,
-  onSelect,
-  skillId,
 }: {
-  detail: SkillDetailResponse
   visible: boolean
   node: FileTreeNode
   onCopy: (path: string) => void
+  onCreateFile: () => void
+  onCreateFolder: () => void
   onCut: (path: string) => void
+  onDelete: () => void
+  onRename: () => void
   onUploadFiles: (files: File[], targetDirectory: string | undefined) => void
-  onSelect: (path: string) => void
-  skillId: string
 }) {
-  const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const queryClient = useQueryClient()
   const uploadInputRef = useRef<HTMLInputElement>(null)
-  const [createFileOpen, setCreateFileOpen] = useState(false)
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
-  const [renameOpen, setRenameOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const fileMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-  const isDirectoryNode = node.type === 'directory'
-
-  const mutateFile = (
-    body: Parameters<typeof fileMutation.mutate>[0]['body'],
-    options: {
-      onSuccess?: () => void
-      successMessage: string
-    },
-  ) => {
-    fileMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-        },
-        body: {
-          ...body,
-          expected_updated_at: detail.updated_at,
-        },
-      },
-      {
-        onSuccess: (nextDetail) => {
-          toast.success(options.successMessage)
-          setSkillDetailCache(queryClient, skillId, nextDetail)
-          invalidateSkillDetail(queryClient, skillId)
-          options.onSuccess?.()
-        },
-        onError: (error) => {
-          showSkillErrorToast(
-            error,
-            t(($) => $['skillManagement.detail.fileOperationFailed']),
-          )
-        },
-      },
-    )
-  }
-
-  const handleRename = (targetPath: string) => {
-    mutateFile(
-      {
-        operation: 'rename',
-        path: node.path,
-        target_path: targetPath,
-      },
-      {
-        successMessage: t(($) => $['skillManagement.detail.renameFileSuccess']),
-        onSuccess: () => {
-          setRenameOpen(false)
-          onSelect(targetPath)
-        },
-      },
-    )
-  }
-
-  const handleCreateFile = (path: string) => {
-    mutateFile(
-      {
-        content: '',
-        mime_type: 'text/markdown',
-        operation: 'upsert_text',
-        path,
-        size: 0,
-      },
-      {
-        successMessage: t(($) => $['skillManagement.detail.createFileSuccess']),
-        onSuccess: () => {
-          setCreateFileOpen(false)
-          onSelect(path)
-        },
-      },
-    )
-  }
-
-  const handleCreateFolder = (path: string) => {
-    mutateFile(
-      {
-        operation: 'mkdir',
-        path,
-      },
-      {
-        successMessage: t(($) => $['skillManagement.detail.createFolderSuccess']),
-        onSuccess: () => {
-          setCreateFolderOpen(false)
-        },
-      },
-    )
-  }
-
-  const handleDelete = () => {
-    mutateFile(
-      {
-        operation: 'delete',
-        path: node.path,
-      },
-      {
-        successMessage: t(($) => $['skillManagement.detail.deleteFileSuccess']),
-        onSuccess: () => {
-          setDeleteOpen(false)
-        },
-      },
-    )
-  }
 
   return (
     <>
@@ -1721,96 +1825,25 @@ function FileActions({
         <DropdownMenuTrigger
           aria-label={tCommon(($) => $['operation.more'])}
           className={cn(
-            'relative z-10 size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:flex data-popup-open:bg-state-base-hover',
+            'relative z-10 size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:flex data-popup-open:bg-state-base-hover',
             visible ? 'flex' : 'hidden group-hover:flex',
           )}
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" popupClassName="w-44">
-          {!isDirectoryNode && (
-            <>
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onCut(node.path)
-                }}
-              >
-                <span aria-hidden className="i-ri-scissors-cut-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.cutFile'])}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onCopy(node.path)
-                }}
-              >
-                <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.copyFile'])}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-          {isDirectoryNode && (
-            <>
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setCreateFileOpen(true)
-                }}
-              >
-                <span aria-hidden className="i-ri-file-add-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.createFile'])}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setCreateFolderOpen(true)
-                }}
-              >
-                <span aria-hidden className="i-ri-folder-add-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.createFolder'])}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  uploadInputRef.current?.click()
-                }}
-              >
-                <span aria-hidden className="i-ri-upload-cloud-2-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.uploadFile'])}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-          <DropdownMenuItem
-            className="gap-2"
-            onClick={(event) => {
-              event.stopPropagation()
-              setRenameOpen(true)
-            }}
-          >
-            <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
-            <span>{tCommon(($) => $['operation.rename'])}</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            className="gap-2"
-            onClick={(event) => {
-              event.stopPropagation()
-              setDeleteOpen(true)
-            }}
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            <span>{tCommon(($) => $['operation.delete'])}</span>
-          </DropdownMenuItem>
+        <DropdownMenuContent placement="bottom-end" popupClassName={skillFileMenuPopupClassName}>
+          <FileActionMenuItems
+            kind="dropdown"
+            node={node}
+            onCopy={onCopy}
+            onCreateFile={onCreateFile}
+            onCreateFolder={onCreateFolder}
+            onCut={onCut}
+            onDelete={onDelete}
+            onRename={onRename}
+            onUploadFiles={() => uploadInputRef.current?.click()}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       <input
@@ -1823,55 +1856,44 @@ function FileActions({
           event.target.value = ''
         }}
       />
-      <SkillFilePathDialog
-        open={createFileOpen}
-        onOpenChange={setCreateFileOpen}
-        defaultPath={joinSkillPath(node.path, 'new-file.md')}
-        title={t(($) => $['skillManagement.detail.createFile'])}
-        description={t(($) => $['skillManagement.detail.createFileDescription'])}
-        loading={fileMutation.isPending}
-        onSubmit={handleCreateFile}
-      />
-      <SkillFilePathDialog
-        open={createFolderOpen}
-        onOpenChange={setCreateFolderOpen}
-        defaultPath={joinSkillPath(node.path, 'new-folder')}
-        title={t(($) => $['skillManagement.detail.createFolder'])}
-        description={t(($) => $['skillManagement.detail.createFolderDescription'])}
-        loading={fileMutation.isPending}
-        onSubmit={handleCreateFolder}
-      />
-      <SkillFilePathDialog
-        open={renameOpen}
-        onOpenChange={setRenameOpen}
-        defaultPath={node.path}
-        title={t(($) => $['skillManagement.detail.renameFile'])}
-        description={t(($) => $['skillManagement.detail.renameFileDescription'])}
-        loading={fileMutation.isPending}
-        onSubmit={handleRename}
-      />
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="p-6">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-            {node.path}
-          </AlertDialogDescription>
-          <AlertDialogActions className="p-0 pt-6">
-            <AlertDialogCancelButton disabled={fileMutation.isPending}>
-              {tCommon(($) => $['operation.cancel'])}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              loading={fileMutation.isPending}
-              onClick={handleDelete}
-            >
-              {tCommon(($) => $['operation.delete'])}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+    </>
+  )
+}
+
+function RootFileActionMenuItems({
+  kind,
+  onCreateFile,
+  onCreateFolder,
+  onUploadFiles,
+}: {
+  kind: 'context' | 'dropdown'
+  onCreateFile: () => void
+  onCreateFolder: () => void
+  onUploadFiles: () => void
+}) {
+  const { t } = useTranslation('agentV2')
+  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
+
+  return (
+    <>
+      <MenuItem className="gap-2" onClick={onCreateFile}>
+        <span aria-hidden className="i-ri-file-add-line size-4 text-text-secondary" />
+        <span className="system-sm-regular">
+          {t(($) => $['skillManagement.detail.createFileMenu'])}
+        </span>
+      </MenuItem>
+      <MenuItem className="gap-2" onClick={onCreateFolder}>
+        <span aria-hidden className="i-ri-folder-add-line size-4 text-text-secondary" />
+        <span className="system-sm-regular">
+          {t(($) => $['skillManagement.detail.createFolderMenu'])}
+        </span>
+      </MenuItem>
+      <MenuItem className="gap-2" onClick={onUploadFiles}>
+        <span aria-hidden className="i-ri-upload-cloud-2-line size-4 text-text-secondary" />
+        <span className="system-sm-regular">
+          {t(($) => $['skillManagement.detail.uploadFilesMenu'])}
+        </span>
+      </MenuItem>
     </>
   )
 }
@@ -1880,44 +1902,62 @@ function FileTreeItem({
   detail,
   draggingPath,
   dropTargetPath,
+  inlineAction,
+  inlineActionLoading,
   node,
+  onCancelInlineAction,
+  onCreate,
   onDropFiles,
   onCopy,
   onCut,
+  onDelete,
   onItemSelect,
   onMove,
+  onRename,
   onSelect,
   onSetDraggingPath,
   onSetDropTarget,
+  onSubmitInlineAction,
   onUploadFiles,
   readonly,
   selectedPaths,
   selectedPath,
-  skillId,
 }: {
   detail: SkillDetailResponse | undefined
   draggingPath: string | undefined
   dropTargetPath: string | undefined
+  inlineAction: FileTreeInlineAction | undefined
+  inlineActionLoading: boolean
   node: FileTreeNode
+  onCancelInlineAction: () => void
+  onCreate: (nodeType: 'directory' | 'file', parentPath?: string) => void
   onDropFiles: (files: File[], targetDirectory: string | undefined) => void
   onCopy: (path: string) => void
   onCut: (path: string) => void
+  onDelete: (node: FileTreeNode) => void
   onItemSelect: (node: FileTreeNode, event: MouseEvent<HTMLElement>) => void
   onMove: (sourcePaths: string[], targetDirectory: string | undefined) => void
+  onRename: (node: FileTreeNode) => void
   onSelect: (path: string) => void
   onSetDraggingPath: (path: string | undefined) => void
   onSetDropTarget: (path: string | undefined) => void
+  onSubmitInlineAction: (name: string) => void
   onUploadFiles: (files: File[], targetDirectory: string | undefined) => void
   readonly: boolean
   selectedPaths: string[]
   selectedPath: string | undefined
-  skillId: string
 }) {
+  const contextUploadInputRef = useRef<HTMLInputElement>(null)
   const isDragging = draggingPath === node.path
   const nodeDropTargetPath = node.type === 'directory' ? node.path : getPathDirName(node.path)
   const isDropTarget = dropTargetPath === nodeDropTargetPath
   const isSelected = selectedPaths.includes(node.path)
   const actionsVisible = isSelected || selectedPath === node.path
+  const isRenaming = inlineAction?.kind === 'rename' && inlineAction.path === node.path
+  const childCreateAction =
+    inlineAction?.kind === 'create' && inlineAction.parentPath === node.path
+      ? inlineAction
+      : undefined
 
   const handleDragStart = (event: DragEvent<HTMLElement>) => {
     if (readonly) {
@@ -1975,14 +2015,42 @@ function FileTreeItem({
     if (sourcePaths.length > 0) onMove(sourcePaths, nodeDropTargetPath || undefined)
   }
 
-  const nameNode = (
-    <Tooltip>
-      <TooltipTrigger render={<span className="w-0 min-w-0 flex-1 truncate">{node.name}</span>} />
-      <TooltipContent placement="right" sideOffset={6}>
-        <span className="whitespace-nowrap text-text-secondary">{node.path}</span>
-      </TooltipContent>
-    </Tooltip>
-  )
+  const nameNode = <span className="w-0 min-w-0 flex-1 truncate">{node.name}</span>
+
+  const renderWithContextMenu = (trigger: ReactElement) => {
+    if (readonly || !detail) return trigger
+
+    return (
+      <>
+        <ContextMenu>
+          <ContextMenuTrigger render={trigger} />
+          <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+            <FileActionMenuItems
+              kind="context"
+              node={node}
+              onCopy={onCopy}
+              onCreateFile={() => onCreate('file', node.path)}
+              onCreateFolder={() => onCreate('directory', node.path)}
+              onCut={onCut}
+              onDelete={() => onDelete(node)}
+              onRename={() => onRename(node)}
+              onUploadFiles={() => contextUploadInputRef.current?.click()}
+            />
+          </ContextMenuContent>
+        </ContextMenu>
+        <input
+          ref={contextUploadInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            onUploadFiles(Array.from(event.target.files ?? []), node.path)
+            event.target.value = ''
+          }}
+        />
+      </>
+    )
+  }
 
   if (node.type === 'directory') {
     return (
@@ -1992,68 +2060,120 @@ function FileTreeItem({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        <div
-          data-skill-file-tree-item
-          draggable={!readonly}
-          className={cn(
-            'group flex h-6 w-full min-w-0 items-center gap-2 rounded-md px-2 system-xs-regular text-text-secondary outline-hidden transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-            isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid',
-            isSelected && 'bg-state-accent-hover text-text-accent',
-            isDragging && 'opacity-50',
-          )}
-          role="button"
-          tabIndex={0}
-          title={node.path}
-          onClick={(event) => onItemSelect(node, event)}
-          onDragEnd={handleDragEnd}
-          onDragStart={handleDragStart}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return
-            event.preventDefault()
-            onItemSelect(node, event as unknown as MouseEvent<HTMLElement>)
-          }}
-        >
-          <span aria-hidden className="i-ri-folder-5-line size-4 shrink-0 text-text-secondary" />
-          {nameNode}
-          {!readonly && detail && (
-            <FileActions
-              detail={detail}
-              node={node}
-              onCopy={onCopy}
-              onCut={onCut}
-              onSelect={onSelect}
-              onUploadFiles={onUploadFiles}
-              skillId={skillId}
-              visible={actionsVisible}
-            />
-          )}
-        </div>
-        {node.children && node.children.length > 0 && (
+        {isRenaming ? (
+          <FileTreeNameInput
+            initialValue={node.name}
+            loading={inlineActionLoading}
+            nodeType="directory"
+            onCancel={onCancelInlineAction}
+            onSubmit={onSubmitInlineAction}
+            selectBaseName
+          />
+        ) : (
+          renderWithContextMenu(
+            <div
+              data-skill-file-tree-item
+              draggable={!readonly}
+              className={cn(
+                'group flex h-6 w-full min-w-0 items-center gap-2 rounded-md pr-1.5 pl-2 system-xs-regular text-text-secondary outline-hidden transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid',
+                isSelected && 'bg-state-accent-hover text-text-accent',
+                isDragging && 'opacity-50',
+              )}
+              role="button"
+              tabIndex={0}
+              title={node.path}
+              onClick={(event) => onItemSelect(node, event)}
+              onContextMenu={(event) => {
+                event.stopPropagation()
+                onItemSelect(node, event)
+              }}
+              onDragEnd={handleDragEnd}
+              onDragStart={handleDragStart}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                onItemSelect(node, event as unknown as MouseEvent<HTMLElement>)
+              }}
+            >
+              <span
+                aria-hidden
+                className="i-ri-folder-5-line size-4 shrink-0 text-text-secondary"
+              />
+              {nameNode}
+              {!readonly && detail && (
+                <FileActions
+                  node={node}
+                  onCopy={onCopy}
+                  onCreateFile={() => onCreate('file', node.path)}
+                  onCreateFolder={() => onCreate('directory', node.path)}
+                  onCut={onCut}
+                  onDelete={() => onDelete(node)}
+                  onRename={() => onRename(node)}
+                  onUploadFiles={onUploadFiles}
+                  visible={actionsVisible}
+                />
+              )}
+            </div>,
+          )
+        )}
+        {(childCreateAction || (node.children && node.children.length > 0)) && (
           <ul className="ml-4 min-w-0 border-l border-divider-subtle pl-1">
-            {node.children.map((child) => (
+            {childCreateAction && (
+              <FileTreeNameInput
+                loading={inlineActionLoading}
+                nodeType={childCreateAction.nodeType}
+                onCancel={onCancelInlineAction}
+                onSubmit={onSubmitInlineAction}
+                placeholder={childCreateAction.nodeType === 'file' ? 'File name' : 'Folder name'}
+              />
+            )}
+            {node.children?.map((child) => (
               <FileTreeItem
                 detail={detail}
                 draggingPath={draggingPath}
                 dropTargetPath={dropTargetPath}
+                inlineAction={inlineAction}
+                inlineActionLoading={inlineActionLoading}
                 key={child.id}
                 node={child}
+                onCancelInlineAction={onCancelInlineAction}
                 onCopy={onCopy}
+                onCreate={onCreate}
                 onCut={onCut}
+                onDelete={onDelete}
                 onDropFiles={onDropFiles}
                 onItemSelect={onItemSelect}
                 onMove={onMove}
+                onRename={onRename}
                 onSelect={onSelect}
                 onSetDraggingPath={onSetDraggingPath}
                 onSetDropTarget={onSetDropTarget}
+                onSubmitInlineAction={onSubmitInlineAction}
                 onUploadFiles={onUploadFiles}
                 readonly={readonly}
                 selectedPaths={selectedPaths}
                 selectedPath={selectedPath}
-                skillId={skillId}
               />
             ))}
           </ul>
         )}
+      </li>
+    )
+  }
+
+  if (isRenaming) {
+    return (
+      <li className="min-w-0">
+        <FileTreeNameInput
+          file={node.file}
+          initialValue={node.name}
+          loading={inlineActionLoading}
+          nodeType="file"
+          onCancel={onCancelInlineAction}
+          onSubmit={onSubmitInlineAction}
+          selectBaseName
+        />
       </li>
     )
   }
@@ -2065,48 +2185,55 @@ function FileTreeItem({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div
-        data-skill-file-tree-item
-        draggable={!readonly}
-        className={cn(
-          'group flex h-6 w-full min-w-0 items-center rounded-md text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
-          isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid',
-          (selectedPath === node.path || isSelected) && 'bg-state-accent-hover text-text-accent',
-          isDragging && 'opacity-50',
-        )}
-        onDragEnd={handleDragEnd}
-        onDragStart={handleDragStart}
-      >
-        <button
-          type="button"
-          className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          title={node.path}
-          onClick={(event) => {
+      {renderWithContextMenu(
+        <div
+          data-skill-file-tree-item
+          draggable={!readonly}
+          className={cn(
+            'group flex h-6 w-full min-w-0 items-center rounded-md pr-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
+            isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid',
+            (selectedPath === node.path || isSelected) && 'bg-state-accent-hover text-text-accent',
+            isDragging && 'opacity-50',
+          )}
+          onDragEnd={handleDragEnd}
+          onDragStart={handleDragStart}
+          onContextMenu={(event) => {
+            event.stopPropagation()
             onItemSelect(node, event)
-            if (!event.shiftKey && !event.metaKey && !event.ctrlKey) onSelect(node.path)
           }}
         >
-          <span
-            aria-hidden
-            className={cn('size-4 shrink-0', node.file && getSkillFileIconClass(node.file))}
-          />
-          {nameNode}
-        </button>
-        {!readonly && detail && (
-          <div className="flex shrink-0 items-center">
-            <FileActions
-              detail={detail}
-              node={node}
-              onCopy={onCopy}
-              onCut={onCut}
-              onSelect={onSelect}
-              onUploadFiles={onUploadFiles}
-              skillId={skillId}
-              visible={actionsVisible}
+          <button
+            type="button"
+            className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            title={node.path}
+            onClick={(event) => {
+              onItemSelect(node, event)
+              if (!event.shiftKey && !event.metaKey && !event.ctrlKey) onSelect(node.path)
+            }}
+          >
+            <span
+              aria-hidden
+              className={cn('size-4 shrink-0', node.file && getSkillFileIconClass(node.file))}
             />
-          </div>
-        )}
-      </div>
+            {nameNode}
+          </button>
+          {!readonly && detail && (
+            <div className="flex shrink-0 items-center">
+              <FileActions
+                node={node}
+                onCopy={onCopy}
+                onCreateFile={() => onCreate('file', node.path)}
+                onCreateFolder={() => onCreate('directory', node.path)}
+                onCut={onCut}
+                onDelete={() => onDelete(node)}
+                onRename={() => onRename(node)}
+                onUploadFiles={onUploadFiles}
+                visible={actionsVisible}
+              />
+            </div>
+          )}
+        </div>,
+      )}
     </li>
   )
 }
@@ -2685,6 +2812,7 @@ function SkillUploadStatusPanel({
 function FileTree({
   collapsed,
   detail,
+  fileMutationCoordinator,
   files,
   onCollapsedChange,
   onSelect,
@@ -2694,19 +2822,20 @@ function FileTree({
 }: {
   collapsed: boolean
   detail: SkillDetailResponse | undefined
+  fileMutationCoordinator: SkillFileMutationCoordinator
   files: SkillFileResponse[]
   onCollapsedChange: (collapsed: boolean) => void
-  onSelect: (path: string) => void
+  onSelect: (path: string, files?: SkillFileResponse[]) => void
   readonly: boolean
   selectedPath: string | undefined
   skillId: string
 }) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const referencesRegionRef = useRef<HTMLDivElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
-  const [createFileOpen, setCreateFileOpen] = useState(false)
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
+  const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPath, setDraggingPath] = useState<string>()
   const [dropTargetPath, setDropTargetPath] = useState<string>()
   const [referencesOpen, setReferencesOpen] = useState(false)
@@ -2715,6 +2844,7 @@ function FileTree({
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string>()
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
   const [uploadItems, setUploadItems] = useState<SkillUploadQueueItem[]>([])
+  const [deleteNode, setDeleteNode] = useState<FileTreeNode>()
 
   const handleReferencesRegionBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
     const nextTarget = event.relatedTarget
@@ -2752,40 +2882,81 @@ function FileTree({
   const mutateFile = (
     body: Parameters<typeof fileMutation.mutate>[0]['body'],
     options: {
-      onSuccess?: () => void
+      onSuccess?: (detail: SkillDetailResponse) => void
       successMessage: string
     },
   ) => {
     if (!detail || fileMutation.isPending) return
 
-    fileMutation.mutate(
-      {
+    void runSkillFileMutation(fileMutationCoordinator, (expectedUpdatedAt) =>
+      fileMutation.mutateAsync({
         params: {
           skill_id: skillId,
         },
         body: {
           ...body,
-          expected_updated_at: detail.updated_at,
+          expected_updated_at: expectedUpdatedAt,
         },
-      },
-      {
-        onSuccess: (nextDetail) => {
-          toast.success(options.successMessage)
-          setSkillDetailCache(queryClient, skillId, nextDetail)
-          invalidateSkillDetail(queryClient, skillId)
-          options.onSuccess?.()
-        },
-        onError: (error) => {
-          showSkillErrorToast(
-            error,
-            t(($) => $['skillManagement.detail.fileOperationFailed']),
-          )
-        },
-      },
+      }),
     )
+      .then((nextDetail) => {
+        toast.success(options.successMessage)
+        setSkillDetailCache(queryClient, skillId, nextDetail)
+        invalidateSkillDetail(queryClient, skillId)
+        options.onSuccess?.(nextDetail)
+      })
+      .catch((error) => {
+        showSkillErrorToast(
+          error,
+          t(($) => $['skillManagement.detail.fileOperationFailed']),
+        )
+      })
   }
 
-  const handleCreateFile = (path: string) => {
+  const handleSubmitInlineAction = (name: string) => {
+    if (!inlineAction) return
+
+    if (inlineAction.kind === 'rename') {
+      const targetPath = joinSkillPath(getPathDirName(inlineAction.path), name)
+      if (targetPath === inlineAction.path) {
+        setInlineAction(undefined)
+        return
+      }
+
+      mutateFile(
+        {
+          operation: 'rename',
+          path: inlineAction.path,
+          target_path: targetPath,
+        },
+        {
+          successMessage: t(($) => $['skillManagement.detail.renameFileSuccess']),
+          onSuccess: (nextDetail) => {
+            setInlineAction(undefined)
+            onSelect(targetPath, nextDetail.files)
+          },
+        },
+      )
+      return
+    }
+
+    const path = joinSkillPath(inlineAction.parentPath, name)
+    if (inlineAction.nodeType === 'directory') {
+      mutateFile(
+        {
+          operation: 'mkdir',
+          path,
+        },
+        {
+          successMessage: t(($) => $['skillManagement.detail.createFolderSuccess']),
+          onSuccess: () => {
+            setInlineAction(undefined)
+          },
+        },
+      )
+      return
+    }
+
     mutateFile(
       {
         content: '',
@@ -2796,24 +2967,26 @@ function FileTree({
       },
       {
         successMessage: t(($) => $['skillManagement.detail.createFileSuccess']),
-        onSuccess: () => {
-          setCreateFileOpen(false)
-          onSelect(path)
+        onSuccess: (nextDetail) => {
+          setInlineAction(undefined)
+          onSelect(path, nextDetail.files)
         },
       },
     )
   }
 
-  const handleCreateFolder = (path: string) => {
+  const handleDelete = () => {
+    if (!deleteNode) return
+
     mutateFile(
       {
-        operation: 'mkdir',
-        path,
+        operation: 'delete',
+        path: deleteNode.path,
       },
       {
-        successMessage: t(($) => $['skillManagement.detail.createFolderSuccess']),
+        successMessage: t(($) => $['skillManagement.detail.deleteFileSuccess']),
         onSuccess: () => {
-          setCreateFolderOpen(false)
+          setDeleteNode(undefined)
         },
       },
     )
@@ -2837,7 +3010,6 @@ function FileTree({
     setUploadItems(nextUploadItems)
 
     let latestDetail = detail
-    let expectedUpdatedAt = detail.updated_at
     let lastUploadedPath = ''
     let successCount = 0
     let failedCount = 0
@@ -2856,22 +3028,25 @@ function FileTree({
         patchUploadItem(item.id, { progress: 100, status: 'saving' })
 
         const path = getUploadPath(file, targetDirectory)
-        const nextDetail = await fileMutation.mutateAsync({
-          params: {
-            skill_id: skillId,
-          },
-          body: {
-            expected_updated_at: expectedUpdatedAt,
-            mime_type: uploadedFile.mime_type ?? file.type,
-            operation: 'upsert_tool_file',
-            path,
-            size: uploadedFile.size,
-            tool_file_id: uploadedFile.id,
-          },
-        })
+        const nextDetail = await runSkillFileMutation(
+          fileMutationCoordinator,
+          (expectedUpdatedAt) =>
+            fileMutation.mutateAsync({
+              params: {
+                skill_id: skillId,
+              },
+              body: {
+                expected_updated_at: expectedUpdatedAt,
+                mime_type: uploadedFile.mime_type ?? file.type,
+                operation: 'upsert_tool_file',
+                path,
+                size: uploadedFile.size,
+                tool_file_id: uploadedFile.id,
+              },
+            }),
+        )
 
         latestDetail = nextDetail
-        expectedUpdatedAt = nextDetail.updated_at
         lastUploadedPath = path
         successCount += 1
         patchUploadItem(item.id, { progress: 100, status: 'uploaded' })
@@ -2890,7 +3065,7 @@ function FileTree({
     if (successCount > 0) {
       setSkillDetailCache(queryClient, skillId, latestDetail)
       invalidateSkillDetail(queryClient, skillId)
-      if (lastUploadedPath) onSelect(lastUploadedPath)
+      if (lastUploadedPath) onSelect(lastUploadedPath, latestDetail.files)
     }
 
     if (failedCount > 0) {
@@ -2983,23 +3158,25 @@ function FileTree({
     try {
       let lastTargetPath = ''
       let latestDetail = detail
-      let expectedUpdatedAt = detail.updated_at
       for (const sourcePath of movablePaths) {
         const targetPath = joinSkillPath(targetDirectory, getPathBaseName(sourcePath))
         if (sourcePath === targetPath) continue
 
-        const nextDetail = await fileMutation.mutateAsync({
-          params: {
-            skill_id: skillId,
-          },
-          body: {
-            expected_updated_at: expectedUpdatedAt,
-            operation: 'rename',
-            path: sourcePath,
-            target_path: targetPath,
-          },
-        })
-        expectedUpdatedAt = nextDetail.updated_at
+        const nextDetail = await runSkillFileMutation(
+          fileMutationCoordinator,
+          (expectedUpdatedAt) =>
+            fileMutation.mutateAsync({
+              params: {
+                skill_id: skillId,
+              },
+              body: {
+                expected_updated_at: expectedUpdatedAt,
+                operation: 'rename',
+                path: sourcePath,
+                target_path: targetPath,
+              },
+            }),
+        )
         latestDetail = nextDetail
         lastTargetPath = targetPath
       }
@@ -3014,7 +3191,7 @@ function FileTree({
       setSelectedPaths(
         movablePaths.map((path) => joinSkillPath(targetDirectory, getPathBaseName(path))),
       )
-      if (lastTargetPath) onSelect(lastTargetPath)
+      if (lastTargetPath) onSelect(lastTargetPath, latestDetail.files)
     } catch (error) {
       showSkillErrorToast(
         error,
@@ -3025,76 +3202,103 @@ function FileTree({
 
   const handleCopyFiles = async (sourcePaths: string[], targetDirectory: string | undefined) => {
     if (!detail || fileMutation.isPending) return
-    const copyablePaths = getMovablePaths(sourcePaths, targetDirectory).filter((sourcePath) => {
-      const file = findFileByPath(files, sourcePath)
-      return file && !isDirectory(file)
-    })
-    if (copyablePaths.length === 0) return
 
     try {
+      let latestDetail = fileMutationCoordinator.latestDetail ?? detail
+      const copyablePaths = getMovablePaths(sourcePaths, targetDirectory).filter((sourcePath) => {
+        const file = findFileByPath(latestDetail.files ?? [], sourcePath)
+        return file && !isDirectory(file)
+      })
       let lastTargetPath = ''
-      let latestDetail = detail
-      let expectedUpdatedAt = detail.updated_at
       const copiedTargetPaths: string[] = []
-      for (const sourcePath of copyablePaths) {
-        const sourceFile = findFileByPath(files, sourcePath)
-        if (!sourceFile || isDirectory(sourceFile)) continue
-        const targetPath = getCopyTargetPath(files, targetDirectory, sourcePath, copiedTargetPaths)
-        if (!targetPath) throw new Error('target path already exists')
+      let hasRetriedConflict = false
 
-        let nextDetail: SkillDetailResponse
-        if (sourceFile.tool_file_id) {
-          nextDetail = await fileMutation.mutateAsync({
-            params: {
-              skill_id: skillId,
-            },
-            body: {
-              expected_updated_at: expectedUpdatedAt,
-              hash: sourceFile.hash,
-              mime_type: sourceFile.mime_type,
-              operation: 'upsert_tool_file',
-              path: targetPath,
-              size: sourceFile.size,
-              tool_file_id: sourceFile.tool_file_id,
-            },
-          })
-        } else {
-          const content =
-            sourceFile.content ??
-            (await (
-              await fetchSkillFileBlob({
-                path: sourcePath,
-                skillId,
-                versionId: null,
-              })
-            ).text())
-          nextDetail = await fileMutation.mutateAsync({
-            params: {
-              skill_id: skillId,
-            },
-            body: {
-              content,
-              expected_updated_at: expectedUpdatedAt,
-              hash: sourceFile.hash,
-              mime_type: sourceFile.mime_type,
-              operation: 'upsert_text',
-              path: targetPath,
-              size: new Blob([content]).size,
-            },
-          })
+      for (const sourcePath of copyablePaths) {
+        while (true) {
+          const operationFiles = latestDetail.files ?? []
+          const sourceFile = findFileByPath(operationFiles, sourcePath)
+          if (!sourceFile || isDirectory(sourceFile)) break
+          const targetPath = getCopyTargetPath(
+            operationFiles,
+            targetDirectory,
+            sourcePath,
+            copiedTargetPaths,
+          )
+          if (!targetPath) throw new Error('target path already exists')
+
+          try {
+            let nextDetail: SkillDetailResponse
+            if (sourceFile.tool_file_id) {
+              nextDetail = await runSkillFileMutation(
+                fileMutationCoordinator,
+                (expectedUpdatedAt) =>
+                  fileMutation.mutateAsync({
+                    params: {
+                      skill_id: skillId,
+                    },
+                    body: {
+                      expected_updated_at: expectedUpdatedAt,
+                      hash: sourceFile.hash,
+                      mime_type: sourceFile.mime_type,
+                      operation: 'upsert_tool_file',
+                      path: targetPath,
+                      size: sourceFile.size,
+                      tool_file_id: sourceFile.tool_file_id,
+                    },
+                  }),
+              )
+            } else {
+              const content =
+                sourceFile.content ??
+                (await (
+                  await fetchSkillFileBlob({
+                    path: sourcePath,
+                    skillId,
+                    versionId: null,
+                  })
+                ).text())
+              nextDetail = await runSkillFileMutation(
+                fileMutationCoordinator,
+                (expectedUpdatedAt) =>
+                  fileMutation.mutateAsync({
+                    params: {
+                      skill_id: skillId,
+                    },
+                    body: {
+                      content,
+                      expected_updated_at: expectedUpdatedAt,
+                      hash: sourceFile.hash,
+                      mime_type: sourceFile.mime_type,
+                      operation: 'upsert_text',
+                      path: targetPath,
+                      size: new Blob([content]).size,
+                    },
+                  }),
+              )
+            }
+            latestDetail = nextDetail
+            lastTargetPath = targetPath
+            copiedTargetPaths.push(targetPath)
+            break
+          } catch (error) {
+            const errorPayload = await getAsyncSkillErrorPayload(error)
+            if (hasRetriedConflict || getErrorCode(errorPayload ?? error) !== 'skill_conflict')
+              throw error
+
+            latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
+            fileMutationCoordinator.latestDetail = latestDetail
+            hasRetriedConflict = true
+          }
         }
-        expectedUpdatedAt = nextDetail.updated_at
-        latestDetail = nextDetail
-        lastTargetPath = targetPath
-        copiedTargetPaths.push(targetPath)
       }
+
       if (copiedTargetPaths.length === 0) return
 
       toast.success(t(($) => $['skillManagement.detail.pasteFileSuccess']))
       setSkillDetailCache(queryClient, skillId, latestDetail)
       invalidateSkillDetail(queryClient, skillId)
       setSelectedPaths(copiedTargetPaths)
-      if (lastTargetPath) onSelect(lastTargetPath)
+      if (lastTargetPath) onSelect(lastTargetPath, latestDetail.files)
     } catch (error) {
       showSkillErrorToast(
         error,
@@ -3124,6 +3328,103 @@ function FileTree({
 
     return getPathDirName(selectedFile.path) || undefined
   }
+
+  const shortcutTargetPath = selectedPaths[0] ?? selectedPath
+  const fileShortcutEnabled =
+    !readonly && !!shortcutTargetPath && !fileMutation.isPending && !inlineAction
+  const handleOpenMenuHotkey = useEffectEvent((event: globalThis.KeyboardEvent) => {
+    if (readonly || fileMutation.isPending || inlineAction) return
+    if (!(event.target instanceof Element) || !event.target.closest('[role="menu"]')) return
+
+    if (
+      shortcutTargetPath &&
+      (matchesKeyboardEvent(event, 'Meta+X') || matchesKeyboardEvent(event, 'Control+X'))
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+      handleCut(shortcutTargetPath)
+      return
+    }
+
+    if (
+      shortcutTargetPath &&
+      (matchesKeyboardEvent(event, 'Meta+C') || matchesKeyboardEvent(event, 'Control+C'))
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+      handleCopy(shortcutTargetPath)
+      return
+    }
+
+    if (
+      clipboard &&
+      (matchesKeyboardEvent(event, 'Meta+V') || matchesKeyboardEvent(event, 'Control+V'))
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+      handlePaste(getPasteTargetDirectory())
+    }
+  })
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleOpenMenuHotkey, true)
+    return () => document.removeEventListener('keydown', handleOpenMenuHotkey, true)
+  }, [])
+
+  useHotkey(
+    skillFileHotkeys.cut.command,
+    (event) => {
+      if (!shortcutTargetPath) return
+
+      event.preventDefault()
+      handleCut(shortcutTargetPath)
+    },
+    {
+      enabled: fileShortcutEnabled,
+      ignoreInputs: true,
+      preventDefault: true,
+      stopPropagation: true,
+    },
+  )
+  useHotkey(
+    skillFileHotkeys.copy.command,
+    (event) => {
+      if (!shortcutTargetPath) return
+
+      event.preventDefault()
+      handleCopy(shortcutTargetPath)
+    },
+    {
+      enabled: fileShortcutEnabled,
+      ignoreInputs: true,
+      preventDefault: true,
+      stopPropagation: true,
+    },
+  )
+
+  const handleNativeCopy = useEffectEvent((event: ClipboardEvent) => {
+    if (!fileShortcutEnabled || !shortcutTargetPath) return
+    if (isEditableKeyboardTarget(event.target)) return
+
+    event.preventDefault()
+    handleCopy(shortcutTargetPath)
+  })
+  const handleNativeCut = useEffectEvent((event: ClipboardEvent) => {
+    if (!fileShortcutEnabled || !shortcutTargetPath) return
+    if (isEditableKeyboardTarget(event.target)) return
+
+    event.preventDefault()
+    handleCut(shortcutTargetPath)
+  })
+
+  useEffect(() => {
+    document.addEventListener('copy', handleNativeCopy, true)
+    document.addEventListener('cut', handleNativeCut, true)
+    return () => {
+      document.removeEventListener('copy', handleNativeCopy, true)
+      document.removeEventListener('cut', handleNativeCut, true)
+    }
+  }, [])
 
   useEffect(() => {
     const handlePasteEvent = (event: ClipboardEvent) => {
@@ -3262,31 +3563,26 @@ function FileTree({
               >
                 <span aria-hidden className="i-ri-add-line size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent placement="bottom-end" popupClassName="w-52 p-1">
-                <DropdownMenuItem className="gap-2 py-2" onClick={() => setCreateFileOpen(true)}>
-                  <span aria-hidden className="i-ri-file-add-line size-4 text-text-secondary" />
-                  <span className="system-sm-regular">
-                    {t(($) => $['skillManagement.detail.createFileMenu'])}
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2 py-2" onClick={() => setCreateFolderOpen(true)}>
-                  <span aria-hidden className="i-ri-folder-add-line size-4 text-text-secondary" />
-                  <span className="system-sm-regular">
-                    {t(($) => $['skillManagement.detail.createFolderMenu'])}
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="gap-2 py-2"
-                  onClick={() => uploadInputRef.current?.click()}
-                >
-                  <span
-                    aria-hidden
-                    className="i-ri-upload-cloud-2-line size-4 text-text-secondary"
-                  />
-                  <span className="system-sm-regular">
-                    {t(($) => $['skillManagement.detail.uploadFilesMenu'])}
-                  </span>
-                </DropdownMenuItem>
+              <DropdownMenuContent
+                placement="bottom-end"
+                popupClassName={skillFileMenuPopupClassName}
+              >
+                <RootFileActionMenuItems
+                  kind="dropdown"
+                  onCreateFile={() =>
+                    setInlineAction({
+                      kind: 'create',
+                      nodeType: 'file',
+                    })
+                  }
+                  onCreateFolder={() =>
+                    setInlineAction({
+                      kind: 'create',
+                      nodeType: 'directory',
+                    })
+                  }
+                  onUploadFiles={() => uploadInputRef.current?.click()}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -3305,7 +3601,7 @@ function FileTree({
           <ScrollAreaViewport tabIndex={-1}>
             <ScrollAreaContent
               className={cn(
-                'min-h-full min-w-0 px-3 pb-3',
+                'flex min-h-full min-w-0 flex-col px-1 pb-3',
                 dropTargetPath === '' && 'bg-state-base-hover',
               )}
               onDragLeave={handleRootDragLeave}
@@ -3313,48 +3609,138 @@ function FileTree({
               onDrop={handleRootDrop}
               onClick={handleRootClick}
             >
-              {tree.length === 0 ? (
-                <p className="px-2 py-3 system-xs-regular text-text-tertiary">
-                  {t(($) => $['skillManagement.detail.noFiles'])}
-                </p>
-              ) : (
-                <ul className="min-w-0 space-y-0.5">
-                  {tree.map((node) => (
-                    <FileTreeItem
-                      detail={detail}
-                      draggingPath={draggingPath}
-                      dropTargetPath={dropTargetPath}
-                      key={node.id}
-                      node={node}
-                      onCopy={handleCopy}
-                      onCut={handleCut}
-                      onDropFiles={(filesToUpload, targetDirectory) => {
-                        void handleUploadFiles(filesToUpload, targetDirectory)
-                      }}
-                      onItemSelect={handleItemSelect}
-                      onMove={handleMove}
-                      onSelect={onSelect}
-                      onSetDraggingPath={setDraggingPath}
-                      onSetDropTarget={(targetPath) => {
-                        setDropTargetPath(targetPath)
-                      }}
-                      onUploadFiles={(filesToUpload, targetDirectory) => {
-                        void handleUploadFiles(filesToUpload, targetDirectory)
-                      }}
-                      readonly={readonly}
-                      selectedPaths={selectedPaths}
-                      selectedPath={selectedPath}
-                      skillId={skillId}
-                    />
-                  ))}
-                </ul>
-              )}
+              <ContextMenu>
+                <ContextMenuTrigger
+                  data-skill-file-tree-context-region
+                  className="block w-full flex-1"
+                  onContextMenuCapture={(event) => {
+                    const target = event.target
+                    if (
+                      !(target instanceof Element) ||
+                      !target.closest('[data-skill-file-tree-item]')
+                    ) {
+                      setSelectedPaths([])
+                      setSelectionAnchorPath(undefined)
+                    }
+                    if (readonly || !detail || isMutating) {
+                      event.preventDefault()
+                      event.stopPropagation()
+                    }
+                  }}
+                >
+                  {tree.length === 0 && inlineAction?.kind !== 'create' ? (
+                    <p className="px-2 py-3 system-xs-regular text-text-tertiary">
+                      {t(($) => $['skillManagement.detail.noFiles'])}
+                    </p>
+                  ) : (
+                    <ul className="min-w-0 space-y-0.5">
+                      {inlineAction?.kind === 'create' && inlineAction.parentPath === undefined && (
+                        <FileTreeNameInput
+                          loading={fileMutation.isPending}
+                          nodeType={inlineAction.nodeType}
+                          onCancel={() => setInlineAction(undefined)}
+                          onSubmit={handleSubmitInlineAction}
+                          placeholder={
+                            inlineAction.nodeType === 'file' ? 'File name' : 'Folder name'
+                          }
+                        />
+                      )}
+                      {tree.map((node) => (
+                        <FileTreeItem
+                          detail={detail}
+                          draggingPath={draggingPath}
+                          dropTargetPath={dropTargetPath}
+                          inlineAction={inlineAction}
+                          inlineActionLoading={fileMutation.isPending}
+                          key={node.id}
+                          node={node}
+                          onCancelInlineAction={() => setInlineAction(undefined)}
+                          onCopy={handleCopy}
+                          onCreate={(nodeType, parentPath) =>
+                            setInlineAction({
+                              kind: 'create',
+                              nodeType,
+                              parentPath,
+                            })
+                          }
+                          onCut={handleCut}
+                          onDelete={setDeleteNode}
+                          onDropFiles={(filesToUpload, targetDirectory) => {
+                            void handleUploadFiles(filesToUpload, targetDirectory)
+                          }}
+                          onItemSelect={handleItemSelect}
+                          onMove={handleMove}
+                          onRename={(nodeToRename) =>
+                            setInlineAction({
+                              kind: 'rename',
+                              nodeType: nodeToRename.type,
+                              path: nodeToRename.path,
+                            })
+                          }
+                          onSelect={onSelect}
+                          onSetDraggingPath={setDraggingPath}
+                          onSetDropTarget={(targetPath) => {
+                            setDropTargetPath(targetPath)
+                          }}
+                          onSubmitInlineAction={handleSubmitInlineAction}
+                          onUploadFiles={(filesToUpload, targetDirectory) => {
+                            void handleUploadFiles(filesToUpload, targetDirectory)
+                          }}
+                          readonly={readonly}
+                          selectedPaths={selectedPaths}
+                          selectedPath={selectedPath}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </ContextMenuTrigger>
+                <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+                  <RootFileActionMenuItems
+                    kind="context"
+                    onCreateFile={() =>
+                      setInlineAction({
+                        kind: 'create',
+                        nodeType: 'file',
+                      })
+                    }
+                    onCreateFolder={() =>
+                      setInlineAction({
+                        kind: 'create',
+                        nodeType: 'directory',
+                      })
+                    }
+                    onUploadFiles={() => uploadInputRef.current?.click()}
+                  />
+                </ContextMenuContent>
+              </ContextMenu>
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
         </ScrollAreaRoot>
+        <AlertDialog open={!!deleteNode} onOpenChange={(open) => !open && setDeleteNode(undefined)}>
+          <AlertDialogContent className="p-6">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
+              {deleteNode?.path}
+            </AlertDialogDescription>
+            <AlertDialogActions className="p-0 pt-6">
+              <AlertDialogCancelButton disabled={fileMutation.isPending}>
+                {tCommon(($) => $['operation.cancel'])}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                tone="destructive"
+                loading={fileMutation.isPending}
+                onClick={handleDelete}
+              >
+                {tCommon(($) => $['operation.delete'])}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
         <div className="mx-4 border-t border-divider-subtle py-3">
           <SkillUploadStatusPanel items={uploadItems} onDismiss={() => setUploadItems([])} />
           <div ref={referencesRegionRef} onBlur={handleReferencesRegionBlur}>
@@ -3396,24 +3782,6 @@ function FileTree({
             </span>
           </div>
         </div>
-        <SkillFilePathDialog
-          open={createFileOpen}
-          onOpenChange={setCreateFileOpen}
-          defaultPath="new-file.md"
-          title={t(($) => $['skillManagement.detail.createFile'])}
-          description={t(($) => $['skillManagement.detail.createFileDescription'])}
-          loading={fileMutation.isPending}
-          onSubmit={handleCreateFile}
-        />
-        <SkillFilePathDialog
-          open={createFolderOpen}
-          onOpenChange={setCreateFolderOpen}
-          defaultPath="new-folder"
-          title={t(($) => $['skillManagement.detail.createFolder'])}
-          description={t(($) => $['skillManagement.detail.createFolderDescription'])}
-          loading={fileMutation.isPending}
-          onSubmit={handleCreateFolder}
-        />
       </aside>
       <FileSearchDialog
         files={files}
@@ -3801,6 +4169,7 @@ function VersionActionBar({
 function FileEditor({
   detail,
   file,
+  fileMutationCoordinator,
   onOpenVersions,
   onPublish,
   onRestoreVersion,
@@ -3818,6 +4187,7 @@ function FileEditor({
 }: {
   detail: SkillDetailResponse | undefined
   file: SkillFileResponse | undefined
+  fileMutationCoordinator: SkillFileMutationCoordinator
   onOpenVersions: () => void
   onPublish: () => void
   onRestoreVersion: () => void
@@ -3995,38 +4365,44 @@ function FileEditor({
       setHasSaveConflict(false)
       setSaveStatus('saving')
       try {
-        const nextDetail = await saveDraftFile({
-          params: {
-            skill_id: skillId,
+        const nextCachedDetail = await runSkillFileMutation(
+          fileMutationCoordinator,
+          async (expectedUpdatedAt) => {
+            const nextDetail = await saveDraftFile({
+              params: {
+                skill_id: skillId,
+              },
+              body: {
+                content,
+                expected_updated_at: expectedUpdatedAt,
+                hash: currentFile.hash,
+                mime_type: currentFile.mime_type,
+                operation: 'upsert_text',
+                path: currentFile.path,
+                size: content.length,
+              },
+            })
+            const nextDisplayName =
+              currentFile.path === 'SKILL.md'
+                ? parseMarkdownContent(content).displayName.trim()
+                : ''
+            return nextDisplayName && nextDisplayName !== nextDetail.display_name
+              ? {
+                  ...nextDetail,
+                  ...(await updateSkillMetadata({
+                    params: {
+                      skill_id: skillId,
+                    },
+                    body: {
+                      display_name: nextDisplayName,
+                      expected_updated_at: nextDetail.updated_at,
+                    },
+                  })),
+                  files: nextDetail.files,
+                }
+              : nextDetail
           },
-          body: {
-            content,
-            expected_updated_at: currentDetail.updated_at,
-            hash: currentFile.hash,
-            mime_type: currentFile.mime_type,
-            operation: 'upsert_text',
-            path: currentFile.path,
-            size: content.length,
-          },
-        })
-        const nextDisplayName =
-          currentFile.path === 'SKILL.md' ? parseMarkdownContent(content).displayName.trim() : ''
-        const nextCachedDetail =
-          nextDisplayName && nextDisplayName !== nextDetail.display_name
-            ? {
-                ...nextDetail,
-                ...(await updateSkillMetadata({
-                  params: {
-                    skill_id: skillId,
-                  },
-                  body: {
-                    display_name: nextDisplayName,
-                    expected_updated_at: nextDetail.updated_at,
-                  },
-                })),
-                files: nextDetail.files,
-              }
-            : nextDetail
+        )
 
         detailRef.current = nextCachedDetail
         fileRef.current =
@@ -4073,14 +4449,17 @@ function FileEditor({
             else if (currentFileContent != null) lastSavedContentRef.current = currentFileContent
             if (refetchedDetail) {
               detailRef.current = refetchedDetail
+              fileMutationCoordinator.latestDetail = refetchedDetail
               fileRef.current = latestFile ?? currentFile
               setSkillDetailCache(queryClient, skillId, refetchedDetail)
               onDraftDetailChange(refetchedDetail)
             } else {
-              detailRef.current = {
+              const recoveredDetail = {
                 ...currentDetail,
                 updated_at: latestUpdatedAt,
               }
+              detailRef.current = recoveredDetail
+              fileMutationCoordinator.latestDetail = recoveredDetail
               fileRef.current = {
                 ...currentFile,
                 hash: currentFileHash ?? currentFile.hash,
@@ -4113,6 +4492,7 @@ function FileEditor({
     },
     [
       canEdit,
+      fileMutationCoordinator,
       isSavingDraft,
       onDraftDetailChange,
       queryClient,
@@ -6061,6 +6441,14 @@ export default function SkillDetailPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
+  const fileMutationCoordinator = useMemo<SkillFileMutationCoordinator>(
+    () => ({
+      latestDetail: undefined,
+      queue: Promise.resolve(),
+      skillId,
+    }),
+    [skillId],
+  )
   const skillDetailQueryOptions = consoleQuery.workspaces.current.skills.bySkillId.get.queryOptions(
     {
       input: {
@@ -6113,6 +6501,12 @@ export default function SkillDetailPage() {
   )
   const queriedDetail = detailQuery.data
   const detail = draftDetailOverride ?? queriedDetail
+  if (
+    detail &&
+    (!fileMutationCoordinator.latestDetail ||
+      detail.updated_at >= fileMutationCoordinator.latestDetail.updated_at)
+  )
+    fileMutationCoordinator.latestDetail = detail
   const draftFiles = detail?.files ?? []
   const readonlyFiles = versionDetailQuery.data?.files ?? []
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles
@@ -6144,8 +6538,8 @@ export default function SkillDetailPage() {
     setDraftDetailOverride(deriveSkillDetailFromDraftFiles(nextDetail))
   }, [])
 
-  const handleOpenFile = (path: string) => {
-    const targetFile = findFileByPath(activeFiles, path)
+  const handleOpenFile = (path: string, availableFiles = activeFiles) => {
+    const targetFile = findFileByPath(availableFiles, path)
     if (!targetFile || isDirectory(targetFile)) return
 
     setSelectedPath(path)
@@ -6285,6 +6679,7 @@ export default function SkillDetailPage() {
         <FileTree
           collapsed={sidebarCollapsed}
           detail={detail}
+          fileMutationCoordinator={fileMutationCoordinator}
           files={activeFiles}
           onCollapsedChange={setSidebarCollapsed}
           onSelect={handleOpenFile}
@@ -6296,6 +6691,7 @@ export default function SkillDetailPage() {
           key={`${activeVersionId ?? 'draft'}:${activeSelectedPath ?? 'empty'}`}
           detail={detail}
           file={selectedFile}
+          fileMutationCoordinator={fileMutationCoordinator}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
           onOpenVersions={handleOpenVersions}
