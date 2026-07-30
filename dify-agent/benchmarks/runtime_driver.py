@@ -303,9 +303,7 @@ async def _run_once(
         )
         sample.terminal_e2e_ms = (time.perf_counter_ns() - started_ns) / 1_000_000
         sample.runtime_overhead_ms = sample.terminal_e2e_ms
-        sample.first_output_ms = (
-            (first_output_ns - started_ns) / 1_000_000 if first_output_ns is not None else None
-        )
+        sample.first_output_ms = (first_output_ns - started_ns) / 1_000_000 if first_output_ns is not None else None
         sample.time_to_first_event_ms = sample.first_output_ms
         sample.output_bytes = len(output.encode())
         sample.output_sha256 = hashlib.sha256(output.encode()).hexdigest()
@@ -314,10 +312,7 @@ async def _run_once(
         sample.terminal_status = "succeeded" if result.get("status") == "exited" and exit_code == 0 else "failed"
         if sample.terminal_status != "succeeded":
             sample.failure_kind = "terminal_failed"
-            sample.error = (
-                f"unexpected shellctl terminal status={result.get('status')!r} "
-                f"exit_code={exit_code!r}"
-            )
+            sample.error = f"unexpected shellctl terminal status={result.get('status')!r} exit_code={exit_code!r}"
         sample.ledger_valid = _validate_output(scenario, output)
         sample.event_replay_valid = True
         if not sample.ledger_valid:
@@ -438,9 +433,11 @@ def _validate_output(scenario: RuntimeBenchmarkScenario, output: str) -> bool:
         return '"ok":true' in payload.replace(" ", "")
     if scenario.workload == "output":
         normalized = payload.replace("\r", "").replace("\n", "")
-        return len(normalized) == scenario.output_bytes and hashlib.sha256(normalized.encode()).hexdigest() == hashlib.sha256(
-            b"x" * scenario.output_bytes
-        ).hexdigest()
+        return (
+            len(normalized) == scenario.output_bytes
+            and hashlib.sha256(normalized.encode()).hexdigest()
+            == hashlib.sha256(b"x" * scenario.output_bytes).hexdigest()
+        )
     try:
         record = json.loads(payload.strip().splitlines()[-1])
     except (IndexError, json.JSONDecodeError):

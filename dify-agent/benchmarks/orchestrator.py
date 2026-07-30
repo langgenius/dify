@@ -263,11 +263,14 @@ def run_smoke(
     environment = _capture_environment(root, profile=profile, python_base_image_id=python_base_image_id)
     _write_json(invocation_dir / "environment.json", environment)
     _write_json(invocation_dir / "candidate-identity.json", candidate)
-    selected_scenario_id = scenario_id or {
-        "agent": "single_1_chunk_c1",
-        "runtime": "runtime_noop_c1",
-        "capability": "capability_shell_noop_c1",
-    }[profile]
+    selected_scenario_id = (
+        scenario_id
+        or {
+            "agent": "single_1_chunk_c1",
+            "runtime": "runtime_noop_c1",
+            "capability": "capability_shell_noop_c1",
+        }[profile]
+    )
     _ = load_scenario_manifest(profile=profile).get(selected_scenario_id)
     block = _run_compose_block(
         root=root,
@@ -313,9 +316,7 @@ def build_comparison(
     if not compatible or any(not scenario.valid for scenario in scenarios):
         overall: Literal["no_regression", "possible_regression", "inconclusive", "invalid"] = "invalid"
     elif any(
-        metric.verdict == "possible_regression"
-        for scenario in scenarios
-        for metric in _decision_metrics(scenario)
+        metric.verdict == "possible_regression" for scenario in scenarios for metric in _decision_metrics(scenario)
     ):
         overall = "possible_regression"
     elif any(
@@ -428,8 +429,7 @@ def _compare_scenario(
         required_stats.append("redis")
     stats_coverage_valid = all(
         all(
-            service in block.resources.components
-            and block.resources.components[service].stats_coverage.window_covered
+            service in block.resources.components and block.resources.components[service].stats_coverage.window_covered
             for service in required_stats
         )
         for block in [*baseline_blocks, *candidate_blocks]
@@ -605,9 +605,7 @@ def _compare_behavior_counts(
     candidate_by_pair: dict[int, BlockResult],
 ) -> dict[str, MetricComparison]:
     names = {
-        name
-        for block in [*baseline_by_pair.values(), *candidate_by_pair.values()]
-        for name in block.behavior_counts
+        name for block in [*baseline_by_pair.values(), *candidate_by_pair.values()] for name in block.behavior_counts
     }
     comparisons: dict[str, MetricComparison] = {}
     for name in sorted(names):
@@ -824,10 +822,7 @@ def _check_runtime_cleanup(
             "        count = connection.execute('select count(*) from jobs').fetchone()[0]",
             "    assert count == 0, f'{count} SQLite job rows remain'",
             "PY",
-            *[
-                f"test ! -d {path} || test -z \"$(find {path} -mindepth 1 -print -quit)\""
-                for path in paths
-            ],
+            *[f'test ! -d {path} || test -z "$(find {path} -mindepth 1 -print -quit)"' for path in paths],
             *(
                 ['test ! -d /mnt/drive || test -z "$(find /mnt/drive -mindepth 1 -print -quit)"']
                 if profile == "capability"
@@ -835,7 +830,7 @@ def _check_runtime_cleanup(
             ),
             "if test -S /state/runtime/tmux.sock; then",
             "  sessions=\"$(tmux -S /state/runtime/tmux.sock list-sessions -F '#{session_name}' 2>/dev/null || true)\"",
-            "  test -z \"$sessions\"",
+            '  test -z "$sessions"',
             "fi",
         ]
     )
@@ -922,7 +917,9 @@ def _build_target_identity(
     return TargetIdentity(
         kind=kind,
         profile=profile,
-        ref=refs[0] if len(refs) == 1 else ", ".join(f"{name}={component.ref}" for name, component in components.items()),
+        ref=refs[0]
+        if len(refs) == 1
+        else ", ".join(f"{name}={component.ref}" for name, component in components.items()),
         content_hash=combined,
         components=components,
     )
@@ -1394,11 +1391,7 @@ def _parse_args() -> tuple[str, RunOptions]:
         pin_runtime_ref=getattr(args, "pin_runtime_ref", None),
         keep_containers=args.keep_containers,
         quick=not args.full if args.command == "smoke" else args.quick,
-        scenario_ids=tuple(
-            [args.scenario]
-            if getattr(args, "scenario", None)
-            else getattr(args, "scenarios", [])
-        ),
+        scenario_ids=tuple([args.scenario] if getattr(args, "scenario", None) else getattr(args, "scenarios", [])),
         results_root=args.results_root,
     )
     return args.command, options

@@ -635,18 +635,18 @@ def _capability_script(scenario: CapabilityBenchmarkScenario) -> str:
     return "\n".join(
         [
             "set -eu",
-            "workdir=\"$(mktemp -d \"$PWD/dify-bench-file-XXXXXX\")\"",
+            'workdir="$(mktemp -d "$PWD/dify-bench-file-XXXXXX")"',
             "trap 'rm -rf \"$workdir\"' EXIT",
-            f"python -c \"from pathlib import Path; size={scenario.payload_bytes}; "
+            f'python -c "from pathlib import Path; size={scenario.payload_bytes}; '
             "pattern=bytes(range(256)); Path('$workdir/payload.bin').write_bytes("
-            "(pattern*((size+255)//256))[:size])\"",
-            "upload_json=\"$(dify-agent file upload \"$workdir/payload.bin\")\"",
-            "reference=\"$(printf '%s' \"$upload_json\" | python -c "
-            "'import json,sys; print(json.load(sys.stdin)[\"reference\"])')\"",
-            "mkdir -p \"$workdir/download\"",
-            "dify-agent file download tool_file \"$reference\" --to \"$workdir/download\" >/dev/null",
-            "test \"$(sha256sum \"$workdir/payload.bin\" | cut -d' ' -f1)\" = "
-            "\"$(sha256sum \"$workdir/download/payload.bin\" | cut -d' ' -f1)\"",
+            '(pattern*((size+255)//256))[:size])"',
+            'upload_json="$(dify-agent file upload "$workdir/payload.bin")"',
+            'reference="$(printf \'%s\' "$upload_json" | python -c '
+            '\'import json,sys; print(json.load(sys.stdin)["reference"])\')"',
+            'mkdir -p "$workdir/download"',
+            'dify-agent file download tool_file "$reference" --to "$workdir/download" >/dev/null',
+            'test "$(sha256sum "$workdir/payload.bin" | cut -d\' \' -f1)" = '
+            '"$(sha256sum "$workdir/download/payload.bin" | cut -d\' \' -f1)"',
             "printf 'DIFY_CAPABILITY_FILE_OK\\n'",
         ]
     )
