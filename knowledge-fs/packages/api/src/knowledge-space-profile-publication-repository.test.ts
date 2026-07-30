@@ -31,6 +31,7 @@ const pageIndexManifestId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4a";
 const migrationRunId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4b";
 const apiKeyId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4c";
 const accessPolicyId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4d";
+const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4e";
 const oldFingerprint = `projection-set-sha256:${"a".repeat(64)}`;
 const candidateFingerprint = `projection-set-sha256:${"b".repeat(64)}`;
 const now = "2026-07-14T14:00:00.000Z";
@@ -451,13 +452,17 @@ describe.each(["postgres", "tidb"] as const)(
       const permissionProbe = fake.calls.find(
         (call) =>
           call.input.tableName === "knowledge_space_profile_migration_runs" &&
-          call.input.operation === "select",
+          call.input.operation === "select" &&
+          call.input.sql.includes("knowledge_space_permission_snapshots"),
       );
       expect(permissionProbe?.input.sql).toContain("knowledge_space_permission_snapshots");
       expect(permissionProbe?.input.sql).toContain("knowledge_space_members");
       expect(permissionProbe?.input.sql).toContain("knowledge_space_access_policies");
       expect(permissionProbe?.input.sql).toContain("knowledge_space_api_access");
       expect(permissionProbe?.input.sql).toContain("FOR UPDATE");
+      expect(permissionProbe?.input.sql.match(/\(/g)).toHaveLength(
+        permissionProbe?.input.sql.match(/\)/g)?.length ?? 0,
+      );
       const apiKeyProbe = fake.calls.find(
         (call) => call.input.tableName === "knowledge_space_api_keys",
       );
@@ -475,6 +480,65 @@ describe.each(["postgres", "tidb"] as const)(
         fake.calls.find((call) => call.input.tableName === "knowledge_space_access_policy_members")
           ?.input.sql,
       ).toContain("FOR UPDATE");
+    });
+
+    it("locks the persisted capability grant for a capability-authenticated migration", async () => {
+      const fake = fakeDatabase(dialect, {
+        binding: bindingRow(),
+        capabilityMigration: true,
+      });
+      const repository = createDatabaseKnowledgeSpaceProfilePublicationRepository({
+        database: fake.database,
+      });
+      await expect(
+        repository.activateCandidate({
+          changedKind: "embedding",
+          expectedProfileHeadRevision: 1,
+          expectedPublicationHeadRevision: 4,
+          knowledgeSpaceId: spaceId,
+          migrationFence: migrationFence(),
+          profileRevision: 2,
+          publicationFingerprint: candidateFingerprint,
+          tenantId,
+          updatedAt: now,
+        }),
+      ).resolves.toMatchObject({ migrationRunCompleted: true });
+      const capabilityProbe = fake.calls.find(
+        (call) => call.input.tableName === "capability_grants",
+      );
+      expect(capabilityProbe?.input.params).toEqual([tenantId, spaceId, capabilityGrantId]);
+      expect(capabilityProbe?.input.sql).toContain("FOR UPDATE");
+      expect(
+        fake.calls.some((call) => call.input.sql.includes("knowledge_space_permission_snapshots")),
+      ).toBe(false);
+    });
+
+    it("reports a revoked capability grant as a lost migration fence", async () => {
+      const fake = fakeDatabase(dialect, {
+        binding: bindingRow(),
+        capabilityMigration: true,
+        revokedCapabilityPermission: true,
+      });
+      const repository = createDatabaseKnowledgeSpaceProfilePublicationRepository({
+        database: fake.database,
+      });
+      await expect(
+        repository.activateCandidate({
+          changedKind: "embedding",
+          expectedProfileHeadRevision: 1,
+          expectedPublicationHeadRevision: 4,
+          knowledgeSpaceId: spaceId,
+          migrationFence: migrationFence(),
+          profileRevision: 2,
+          publicationFingerprint: candidateFingerprint,
+          tenantId,
+          updatedAt: now,
+        }),
+      ).rejects.toMatchObject({
+        code: "KNOWLEDGE_SPACE_PROFILE_MIGRATION_FENCE_LOST",
+      });
+      expect(fake.committedMutations()).toBe(0);
+      expect(fake.rollbacks()).toBe(1);
     });
 
     it("rolls back activation when atomic API-key or partial-member revalidation loses", async () => {
@@ -1197,6 +1261,40 @@ describe.each(["postgres", "tidb"] as const)(
       expect(fake.committedMutations()).toBe(0);
     });
 
+    it("reuses an activated content-publication binding for the same profile tuple", async () => {
+      const activatedAt = "2026-07-13T14:00:00.000Z";
+      const fake = fakeDatabase(dialect, {
+        binding: {
+          ...currentLegacyBindingRow(activatedAt),
+          binding_reason: "content-publication",
+          changed_kind: "content",
+        },
+      });
+      const repository = createDatabaseKnowledgeSpaceProfilePublicationRepository({
+        database: fake.database,
+      });
+      const binding = await repository.bindCurrentPublished({
+        knowledgeSpaceId: spaceId,
+        tenantId,
+        verifiedAt: now,
+      });
+      expect(binding).toMatchObject({
+        activatedAt,
+        bindingReason: "content-publication",
+        changedKind: "content",
+        id: bindingId,
+        publicationId: oldPublicationId,
+      });
+      expect(
+        fake.calls.some(
+          (call) =>
+            call.input.tableName === "knowledge_space_profile_publication_bindings" &&
+            call.input.operation === "insert",
+        ),
+      ).toBe(false);
+      expect(fake.committedMutations()).toBe(0);
+    });
+
     it("does not freeze a Research-only tuple while a legacy embedding head is still pending", async () => {
       const fake = fakeDatabase(dialect, {
         expectedEmbeddingSource: true,
@@ -1311,6 +1409,7 @@ function fakeDatabase(
     readonly binding?: Record<string, unknown> | undefined;
     readonly candidateRetrieval?: boolean | undefined;
     readonly candidatePublicationStatus?: "published" | "validating" | undefined;
+    readonly capabilityMigration?: boolean | undefined;
     readonly expectedEmbeddingSource?: boolean | undefined;
     readonly failBindingActivation?: boolean | undefined;
     readonly failMigrationRunCompletion?: boolean | undefined;
@@ -1341,6 +1440,7 @@ function fakeDatabase(
       | "vector-space"
       | undefined;
     readonly revokedApiKeyPermission?: boolean | undefined;
+    readonly revokedCapabilityPermission?: boolean | undefined;
     readonly rerankEnabled?: boolean | undefined;
     readonly shortBindingInsert?: boolean | undefined;
     readonly unverifiedEmbedding?: boolean | undefined;
@@ -1544,6 +1644,7 @@ function fakeDatabase(
         ? {
             rows: [
               {
+                ...(options.capabilityMigration ? { capability_grant_id: capabilityGrantId } : {}),
                 ...(options.apiKeyPermission
                   ? {
                       api_key_expires_at: "2027-01-01T00:00:00.000Z",
@@ -1562,6 +1663,11 @@ function fakeDatabase(
             rowsAffected: 1,
           }
         : mutation();
+    }
+    if (input.tableName === "capability_grants") {
+      return options.revokedCapabilityPermission
+        ? { rows: [], rowsAffected: 0 }
+        : { rows: [{ grant_id: capabilityGrantId }], rowsAffected: 1 };
     }
     if (input.tableName === "knowledge_space_api_keys") {
       return options.revokedApiKeyPermission

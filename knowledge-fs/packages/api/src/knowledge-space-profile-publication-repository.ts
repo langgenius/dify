@@ -13,6 +13,8 @@ import {
   UuidSchema,
 } from "@knowledge/core";
 
+import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -675,7 +677,7 @@ async function bindCurrentPublishedTransaction(
   const tuple = legacyBinding(input, embedding, retrieval, publication);
   const existing = await getBindingByPublication(database, tx, publication, true);
   if (existing) {
-    assertSameBinding(existing, tuple);
+    assertSameProfileTuple(existing, tuple);
     if (!existing.activatedAt) {
       throw transition(
         "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_BINDING_NOT_ACTIVE",
@@ -1378,9 +1380,23 @@ function assertSameBinding(
   actual: KnowledgeSpaceProfilePublicationBinding,
   expected: BindingDraft,
 ): void {
+  assertSameProfileTuple(actual, expected);
+  if (
+    actual.bindingReason !== expected.bindingReason ||
+    actual.changedKind !== expected.changedKind
+  ) {
+    throw transition(
+      "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_BINDING_CONFLICT",
+      "Publication already has another immutable profile tuple",
+    );
+  }
+}
+
+function assertSameProfileTuple(
+  actual: KnowledgeSpaceProfilePublicationBinding,
+  expected: BindingDraft,
+): void {
   const comparable = (binding: KnowledgeSpaceProfilePublicationBinding | BindingDraft) => ({
-    bindingReason: binding.bindingReason,
-    changedKind: binding.changedKind,
     embeddingProfile: binding.embeddingProfile,
     knowledgeSpaceId: binding.knowledgeSpaceId,
     publicationFingerprint: binding.publicationFingerprint,
@@ -1881,6 +1897,82 @@ async function requireProfileMigrationExecutionFence(
   fence: KnowledgeSpaceProfileMigrationFence,
 ): Promise<void> {
   const run = "migration_run";
+  const runFence = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [
+      fence.runId,
+      input.tenantId,
+      input.knowledgeSpaceId,
+      input.changedKind,
+      input.profileRevision,
+      publication.id,
+      publication.fingerprint,
+      input.expectedPublicationHeadRevision,
+      fence.expectedRowVersion,
+      fence.leaseToken,
+      fence.now,
+    ],
+    sql: `SELECT ${run}.${q(database, "id")}, ${run}.${q(
+      database,
+      "capability_grant_id",
+    )} FROM ${q(database, "knowledge_space_profile_migration_runs")} ${run} WHERE ${run}.${q(
+      database,
+      "id",
+    )} = ${p(database, 1)} AND ${run}.${q(database, "tenant_id")} = ${p(
+      database,
+      2,
+    )} AND ${run}.${q(database, "knowledge_space_id")} = ${p(
+      database,
+      3,
+    )} AND ${run}.${q(database, "changed_kind")} = ${p(database, 4)} AND ${run}.${q(
+      database,
+      "candidate_profile_revision",
+    )} = ${p(database, 5)} AND ${run}.${q(database, "candidate_publication_id")} = ${p(
+      database,
+      6,
+    )} AND ${run}.${q(database, "candidate_publication_fingerprint")} = ${p(
+      database,
+      7,
+    )} AND ${run}.${q(database, "base_publication_head_revision")} = ${p(
+      database,
+      8,
+    )} AND ${run}.${q(database, "row_version")} = ${p(database, 9)} AND ${run}.${q(
+      database,
+      "lease_token",
+    )} = ${p(database, 10)} AND ${run}.${q(database, "lease_expires_at")} > ${p(
+      database,
+      11,
+    )} AND ${run}.${q(database, "run_state")} = 'running' AND ${run}.${q(
+      database,
+      "active_slot",
+    )} = 1 AND ${run}.${q(database, "checkpoint")} = 'evaluated' LIMIT 1 FOR UPDATE;`,
+    tableName: "knowledge_space_profile_migration_runs",
+  });
+  const fencedRun = runFence.rows[0];
+  if (!fencedRun) {
+    throw transition(
+      "KNOWLEDGE_SPACE_PROFILE_MIGRATION_FENCE_LOST",
+      "Profile migration activation lost its durable run/lease fence",
+    );
+  }
+  const capabilityGrantId = optionalStringColumn(fencedRun, "capability_grant_id");
+  if (capabilityGrantId) {
+    try {
+      await assertCapabilityJobPublicationAllowed(database, executor, {
+        capabilityGrantId,
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        tenantId: input.tenantId,
+      });
+    } catch (error) {
+      if (!(error instanceof CapabilityPublicationFencedError)) throw error;
+      throw transition(
+        "KNOWLEDGE_SPACE_PROFILE_MIGRATION_FENCE_LOST",
+        "Profile migration activation lost its durable Capability grant",
+      );
+    }
+    return;
+  }
   const snapshot = "permission_snapshot";
   const member = "permission_member";
   const policy = "permission_policy";
@@ -2048,7 +2140,7 @@ async function requireProfileMigrationExecutionFence(
     )} AND permission_target.${q(database, "subject_id")} = ${snapshot}.${q(
       database,
       "subject_id",
-    )})) LIMIT 1 FOR UPDATE;`,
+    )}))) LIMIT 1 FOR UPDATE;`,
     tableName: "knowledge_space_profile_migration_runs",
   });
   if (result.rows.length !== 1) {
