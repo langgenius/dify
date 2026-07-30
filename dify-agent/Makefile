@@ -5,7 +5,8 @@ PROJECT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 .PHONY: help serve dev check fix typecheck test update-examples docs docs-serve \
 	bench-docker-smoke bench-docker-ab \
 	bench-docker-runtime-smoke bench-docker-runtime-ab \
-	bench-docker-capability-smoke bench-docker-capability-ab
+	bench-docker-capability-smoke bench-docker-capability-ab \
+	bench-docker-capacity bench-e2b-capacity
 
 help:
 	@echo "Dify agent targets:"
@@ -24,6 +25,8 @@ help:
 	@echo "  make bench-docker-runtime-ab - Compare Runtime baseline and candidate"
 	@echo "  make bench-docker-capability-smoke - Check Agent to Runtime capability wiring"
 	@echo "  make bench-docker-capability-ab - Compare capability baseline and candidate"
+	@echo "  make bench-docker-capacity - Build a single-target Local capacity curve"
+	@echo "  make bench-e2b-capacity - Add real E2B calibration and launch quota guidance"
 
 serve:
 	@uv --directory "$(PROJECT_DIR)" run --project . --extra server uvicorn dify_agent.server.app:app --host 127.0.0.1 --port 8000
@@ -42,7 +45,7 @@ typecheck:
 	@uv --directory "$(PROJECT_DIR)" run --project . basedpyright --level error src examples tests benchmarks
 
 test:
-	@uv --directory "$(PROJECT_DIR)" run --project . --extra server python -m pytest tests
+	@uv --directory "$(PROJECT_DIR)" run --project . --extra server python -m pytest --import-mode=importlib tests
 
 update-examples:
 	@uv --directory "$(PROJECT_DIR)" run --project . python -m pytest --update-examples tests/docs/test_examples.py
@@ -106,3 +109,18 @@ bench-docker-capability-ab:
 		$(if $(filter 1,$(KEEP_CONTAINERS)),--keep-containers,) \
 		$(if $(filter 1,$(BENCH_QUICK)),--quick,) \
 		$(if $(BENCH_SCENARIO),--scenario "$(BENCH_SCENARIO)",)
+
+bench-docker-capacity:
+	@UV_PYTHON=3.12.13 uv --directory "$(PROJECT_DIR)" run --project . --extra server --group benchmark \
+		python -m benchmarks.orchestrator capacity \
+		--target-ref "$(or $(TARGET_REF),1.16.1)" \
+		$(if $(filter 1,$(KEEP_CONTAINERS)),--keep-containers,) \
+		$(if $(filter 1,$(BENCH_QUICK)),--quick,)
+
+bench-e2b-capacity:
+	@UV_PYTHON=3.12.13 uv --directory "$(PROJECT_DIR)" run --project . --extra server --group benchmark \
+		python -m benchmarks.orchestrator e2b-capacity \
+		--target-ref "$(or $(TARGET_REF),1.16.1)" \
+		$(if $(CAPACITY_RESULTS_DIR),--capacity-results-dir "$(CAPACITY_RESULTS_DIR)",) \
+		$(if $(filter 1,$(KEEP_CONTAINERS)),--keep-containers,) \
+		$(if $(filter 1,$(BENCH_QUICK)),--quick,)

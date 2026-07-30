@@ -61,9 +61,16 @@ services:
       DIFY_AGENT_PLUGIN_DAEMON_API_KEY: benchmark-only
       DIFY_AGENT_INNER_API_URL: http://fake-deps:5002
       DIFY_AGENT_INNER_API_KEY: benchmark-only
-      DIFY_AGENT_STUB_API_BASE_URL: ""
+      DIFY_AGENT_RUNTIME_BACKEND: e2b
+      DIFY_AGENT_E2B_API_KEY: ${BENCH_E2B_API_KEY:?BENCH_E2B_API_KEY is required}
+      DIFY_AGENT_E2B_TEMPLATE: ${BENCH_E2B_TEMPLATE:?BENCH_E2B_TEMPLATE is required}
+      DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS: ${BENCH_E2B_ACTIVE_TIMEOUT_SECONDS:-900}
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent:5050/agent-stub
+      DIFY_AGENT_SERVER_SECRET_KEY: YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI
       DIFY_AGENT_RUN_RETENTION_SECONDS: "3600"
-      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "5"
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "10"
+      DIFY_AGENT_OUTBOUND_HTTP_READ_TIMEOUT: "180"
+      DIFY_AGENT_OUTBOUND_HTTP_WRITE_TIMEOUT: "180"
     depends_on:
       redis:
         condition: service_healthy
@@ -82,12 +89,16 @@ services:
       retries: 60
     networks: [benchmark]
 
-  load-driver:
+  e2b-service-driver:
     image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
+    command: ["python", "-m", "benchmarks.capability_driver"]
     cpus: 2.0
     mem_limit: 1g
     environment:
+      BENCH_PROFILE: e2b
+      BENCH_EXTERNAL_RUNTIME: "1"
       BENCH_AGENT_URL: http://agent:5050
+      BENCH_RUNTIME_URL: http://agent:5050
       BENCH_FAKE_DEPS_URL: http://fake-deps:5002
       BENCH_REDIS_URL: redis://redis:6379/0
       DIFY_AGENT_REDIS_PREFIX: dify-agent-bench
@@ -105,6 +116,8 @@ services:
       BENCH_CONCURRENCY: ${BENCH_CONCURRENCY:-}
       BENCH_MIN_SUCCESSFUL_RUNS: ${BENCH_MIN_SUCCESSFUL_RUNS:-}
       BENCH_MAX_DURATION_SECONDS: ${BENCH_MAX_DURATION_SECONDS:-}
+      BENCH_BINDING_POOL_SIZE: ${BENCH_BINDING_POOL_SIZE:-}
+      BENCH_WARMUP_ONCE_PER_WORKER: ${BENCH_WARMUP_ONCE_PER_WORKER:-}
     volumes:
       - type: bind
         source: ${BENCH_RESULTS_DIR:?BENCH_RESULTS_DIR is required}
@@ -114,9 +127,27 @@ services:
         condition: service_healthy
     networks: [benchmark]
 
+  e2b-lifecycle-driver:
+    image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
+    command: ["python", "-m", "benchmarks.e2b_driver"]
+    cpus: 2.0
+    mem_limit: 1g
+    environment:
+      BENCH_RESULTS_DIR: /results
+      BENCH_BLOCK_ID: ${BENCH_BLOCK_ID:?BENCH_BLOCK_ID is required}
+      BENCH_CONCURRENCY: ${BENCH_CONCURRENCY:?BENCH_CONCURRENCY is required}
+      BENCH_E2B_WAVES: ${BENCH_E2B_WAVES:-5}
+      BENCH_E2B_API_KEY: ${BENCH_E2B_API_KEY:?BENCH_E2B_API_KEY is required}
+      BENCH_E2B_TEMPLATE: ${BENCH_E2B_TEMPLATE:?BENCH_E2B_TEMPLATE is required}
+      BENCH_E2B_ACTIVE_TIMEOUT_SECONDS: ${BENCH_E2B_ACTIVE_TIMEOUT_SECONDS:-900}
+    volumes:
+      - type: bind
+        source: ${BENCH_RESULTS_DIR:?BENCH_RESULTS_DIR is required}
+        target: /results
+    networks: [benchmark]
+
 networks:
   benchmark:
-    internal: true
 
 volumes:
   redis-data:
