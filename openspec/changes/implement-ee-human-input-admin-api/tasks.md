@@ -28,7 +28,7 @@
 
 - [ ] 3.1 Add typed `difyclient` request/response models, a `HumanInputControlPlaneClient` interface, and a deterministic fake client without importing EE Ent entities or provider SDK types.
 - [ ] 3.2 Implement and test Organization Contact list mapping with member-name/email filters, page/limit defaults, `joined_at` sourced from Dify `Account.created_at`, avatars, and Organization bindings; do not relabel Contact projection creation time as membership time.
-- [ ] 3.3 Implement and test integration get/upsert/delete/test calls, preserving the complete `integration_id + config_version` CAS token, `DISABLED / WEBHOOK / STREAM` selection and supported-mode projection, and every provider-specific replace-or-preserve credential operation.
+- [ ] 3.3 Implement and test integration get/upsert/delete/test calls, preserving the complete `integration_id + config_version` CAS token, read-only effective deployment event transport projection, and every provider-specific replace-or-preserve credential operation; omit Integration-level mode fields from upsert/test and do not expose tenant-selectable supported modes.
 - [ ] 3.4 Implement and test manual sync create, latest run, and latest result calls with real bucket validation, `page / limit / total`, captured integration revision, `finished_at`, and omission of `started_by` and repeated summary.
 - [ ] 3.5 Implement and test IM identity list plus binding create/delete/test calls, including complete Contact/binding path ownership and typed reachable diagnostics.
 - [ ] 3.6 Apply bounded timeouts, correlation propagation, and safe-read-only retries; add tests proving CAS, binding, and sync mutations are not blindly retried after ambiguous connection failures.

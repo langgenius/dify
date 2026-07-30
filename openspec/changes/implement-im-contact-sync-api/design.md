@@ -8,7 +8,7 @@
 - Contact Directory、IM identity/binding、workspace override 与 effective-binding resolution；
 - workspace-scoped Human Input routes 和共享 DTO 骨架。
 
-`implement-human-input-v2-im-provider-foundation` 另行拥有 Integration management、credential encryption/rotation、provider tenant confirmation、provider-local SDK client construction、safe diagnostics 与 `WEBHOOK / STREAM` event transport。Sync 只消费 current Integration/client boundary，不能重新实现这些职责。
+`implement-human-input-v2-im-provider-foundation` 另行拥有 Integration management、credential encryption/rotation、provider tenant confirmation、provider-local SDK client construction、safe diagnostics，以及由deployment runtime policy统一选择的`WEBHOOK / STREAM` event transport。Sync只消费current Integration/client boundary，不能重新实现这些职责，也不能读取deployment event transport mode作为sync revision或reconciliation输入。
 
 本 change 的真正缺口是：没有 Sync-owned directory port 与 provider normalization，没有一个 application service 把 manual run、directory fetch、reconciliation 和 apply 串起来，也没有把 synced identities 稳定接回 Contact binding 管理入口。
 
@@ -19,14 +19,27 @@ Workspace / Trusted Internal API adapters
                   v
              IMSyncService
                   |
-       +----------+-----------+
-       |                      |
-       v                      v
-IMDirectoryReader       SyncReconciler
-       |                      |
-       v                      v
-Provider Foundation     IMControlPlaneRepository
-client lifecycle        + ContactDirectoryRepository
+                  v
+             Sync Worker
+                  |
+                  v
+        IMDirectoryReader port
+                  |
+                  v
+     Provider Directory Adapter
+                  |
+                  v
+   Foundation provider-local client --> Provider SDK
+                  |
+                  | SDK response -> ProviderDirectoryEntry
+                  v
+ SyncReconciler(entries, current snapshot)
+                  |
+                  v
+        ReconciliationPlan
+                  |
+                  v
+ revision-guarded repository apply
 ```
 
 ## Goals / Non-Goals
@@ -89,15 +102,19 @@ Provider-neutral port 只表达目录能力，例如：
 
 Feishu、Lark 与 DingTalk adapter 位于各自 provider package 的 Sync 组合边界中。adapter 使用 Foundation 提供的 provider-local current client lifecycle，负责 pagination、provider user ID/email normalization 与 SDK response/error mapping；它不得解密 credential、确认 tenant 或把 SDK objects 交给 service/core/application consumer。
 
+`ProviderDirectoryEntry` 是Sync-owned、Dify内部的canonical reconciliation input，不是provider DTO。只有matching provider adapter知道如何把SDK response转换为该值；adapter返回后不再增加第二套provider-neutral directory model。`IMSyncService`、worker与`SyncReconciler`不得导入concrete provider package或按provider分支。
+
+Adapter职责终止于返回`ProviderDirectoryEntry`集合与safe error。它不得加载Dify reconciliation snapshot、执行matching/reconciliation、创建Contact/identity/binding、生成`ReconciliationPlan`或持久化sync结果。Concrete adapter选择只发生在显式composition/factory module。
+
 `test_connection(...)` 与 `resolve_provider_tenant(...)` 不属于 `IMDirectoryReader`：它们是 Foundation Integration management 的 baseline diagnostic 与 tenant confirmation。
 
-原因：directory normalization 是 Sync domain concern，client construction 是跨 Sync/Card/transport 共享的 provider concern。两者分离能避免巨型 provider adapter，也不需要 capability registry。
+原因：canonical directory contract由Sync拥有，只有provider adapter拥有SDK到该contract的转换知识；client construction则是跨Sync/Card/transport共享的provider concern。三者分离能避免SDK泄漏、巨型provider adapter和重复canonical model，也不需要capability registry。
 
 ### 4. Manual sync 保持异步、single-active-run 与 latest-only
 
 manual-sync command 只校验 current Integration revision、创建或复用 active run 并 enqueue worker，不在同步 application call 内拉取完整目录。
 
-每个 run 捕获完整 `integration_id + config_version`。apply 前必须重新检查 current revision；Integration replacement、credential rotation 或 event transport configuration change 使捕获 revision 过期时，run 必须终止且不得修改 current identities/bindings。
+每个 run 捕获完整 `integration_id + config_version`。apply 前必须重新检查 current revision；Integration replacement、credential rotation或provider-specific verification material change使捕获revision过期时，run必须终止且不得修改current identities/bindings。Deployment event transport mode不属于Integration configuration，其rollout不得使run stale。
 
 latest query boundary 不扩展成 run-by-ID 或 history semantics。
 
@@ -135,13 +152,13 @@ Unmatched directory entry 只保留为 read-only sync result，不自动创建 `
 - [Foundation 尚未就绪导致 Sync 重复 client glue] -> 把 Foundation 标为前置依赖；Sync adapter 只接受 provider-local client lifecycle，不临时解密 credential。
 - [Provider directory pagination/field差异泄漏] -> 每个 `IMDirectoryReader` adapter 负责完整 pagination 与 normalization，并运行共享 contract suite。
 - [后台 worker failure 使 run 卡死] -> 所有 provider fetch、stale revision、reconcile/apply failure 都必须显式终结 run并保留 safe diagnostics。
-- [Integration revision 因 transport config 变化而使 run stale] -> 保持 complete CAS 语义，宁可重新触发 manual sync，也不把旧 credential/config 结果应用到 current state。
+- [Deployment event transport rollout误伤manual sync] -> deployment mode不属于Integration configuration且不推进`config_version`；Sync revision guard只观察current Integration CAS，不能依赖`WEBHOOK / STREAM`选择。
 - [Binding 写路径误接入 unavailable Contact] -> 在单一 `ContactIMBindingService` 中做 resolution/type gate，并覆盖 repository-level tests。
 - [未来自动 sync 反向污染 Foundation] -> event transport 只交付 authenticated facts；schedule policy 和 reconciliation 始终留在 Sync。
 
 ## Migration Plan
 
-1. 先部署 Foundation 的 current Integration/client boundary，并保持 event transport `DISABLED`。
+1. 先部署 Foundation 的 current Integration/client boundary；deployment event transport可保持全局`DISABLED`，不修改existing Integration records或sync revision。
 2. 落地 `IMDirectoryReader` contract 与 Feishu/Lark/DingTalk directory adapters。
 3. 落地 `IMSyncService`、worker 与 manual sync/latest-only transport-neutral composition boundary。
 4. 落地 identity search、binding 与 workspace override application operations，并提供 API-consumer fixtures。

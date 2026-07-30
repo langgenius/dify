@@ -70,15 +70,19 @@
 - **THEN** 系统 MUST 拒绝该条目或整个请求，并 MUST 要求改走 membership management 流程，而 MUST NOT 在 Human Input Contact API 中额外引入 workspace member removal
 
 ### Requirement: Workspace console MUST expose IM integration, latest-run sync summary, paginated sync results, identity search, and override APIs
-系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 Organization 级 IM integration、`DISABLED / WEBHOOK / STREAM` event transport configuration、manual sync、最近一次 sync run 的 summary、按 result 分页的最近一次 sync 结果查询，以及 IM identity candidate 查询和 workspace IM override API。该 surface MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或历史 run detail endpoint。manual sync 结果 MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
+系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 Organization 级 IM integration、read-only effective deployment event transport context、manual sync、最近一次 sync run 的 summary、按 result 分页的最近一次 sync 结果查询，以及 IM identity candidate 查询和 workspace IM override API。该 surface MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或历史 run detail endpoint。manual sync 结果 MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。该surface MUST NOT提供Integration级`DISABLED / WEBHOOK / STREAM`写入。
 
 #### Scenario: 读取当前 IM integration 摘要
 - **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-integration`
-- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、`DISABLED / WEBHOOK / STREAM` current mode、provider 支持的 mode、适用时的 derived webhook URL、safe operational status、`integration_id` 和 `config_version`；若尚未配置，MUST 返回 `Not configured`
+- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、read-only effective deployment event transport mode、适用时的 derived webhook URL、safe operational status、`integration_id` 和 `config_version`；MUST NOT返回tenant-selectable supported modes；若尚未配置，MUST 返回 `Not configured`
 
-#### Scenario: 配置 provider 支持的 event transport
-- **WHEN** a workspace owner or admin creates or updates an integration with `event_transport_mode=WEBHOOK` or `event_transport_mode=STREAM`
-- **THEN** 系统 MUST 通过同一个 provider-neutral request field 保存所选 mode，并 MUST 在 provider 不支持该 mode 时于任何 Integration revision 或 credential 变更前拒绝请求
+#### Scenario: 校验 provider 与 deployment event transport compatibility
+- **WHEN** a workspace owner or admin creates or updates an Integration while deployment event transport mode is `WEBHOOK` or `STREAM`
+- **THEN** 系统 MUST 在任何Integration revision或credential变更前校验provider compatibility与required provider-specific verification material，并 MUST NOT将deployment mode持久化到Integration
+
+#### Scenario: Administrator submits an Integration-level transport mode
+- **WHEN** a workspace owner or admin includes `event_transport_mode` in an Integration create、update or test request
+- **THEN** the API MUST reject the field and MUST NOT shadow or mutate deployment runtime configuration
 
 #### Scenario: 使用当前 revision 更新 IM integration
 - **WHEN** a workspace owner or admin calls `PUT /console/api/workspaces/current/human-input/im-integration` for an existing integration with its current `integration_id` and `config_version`
@@ -112,9 +116,9 @@
 - **WHEN** a workspace owner or admin calls `DELETE /console/api/workspaces/current/human-input/im-integration` with the current `integration_id` and `config_version`
 - **THEN** 系统 MUST 清空当前 IM integration，并使后续读取结果回到 `Not configured`
 
-#### Scenario: 测试 candidate Integration event transport
-- **WHEN** a workspace owner or admin tests candidate credentials with one selected `DISABLED / WEBHOOK / STREAM` mode
-- **THEN** 系统 MUST 通过 Foundation management boundary 校验 credential、provider baseline permission 与所选 event transport support，并 MUST 不持久化 candidate configuration
+#### Scenario: 测试 candidate Integration event transport compatibility
+- **WHEN** a workspace owner or admin tests candidate credentials under the effective deployment event transport mode
+- **THEN** 系统 MUST 通过Foundation management boundary校验credential、provider baseline permission与deployment event transport compatibility，并 MUST 不接受mode override或持久化candidate configuration
 
 #### Scenario: 使用 stale revision 解除 IM integration
 - **WHEN** a workspace owner or admin calls `DELETE /console/api/workspaces/current/human-input/im-integration` with a stale or mismatched `integration_id` or `config_version`

@@ -33,6 +33,21 @@ Foundation client construction MUST load current encrypted configuration through
 - **WHEN** a directory or card adapter performs provider I/O
 - **THEN** the SDK client MUST remain inside the matching provider package and only provider-neutral results may cross the adapter boundary
 
+### Requirement: IM source dependencies MUST point toward provider-neutral capability contracts
+Dify domain and application modules MUST depend only on provider-neutral IM contracts and canonical values owned by Foundation, Sync or Card. Concrete provider adapters MAY depend on those contracts and the matching provider-local client lifecycle, but MUST NOT import Dify business service implementations, repositories, controllers or workflow runtime implementations. Dify business modules MUST NOT import concrete provider packages. Only explicit composition or factory modules MAY know both a concrete provider adapter and the Dify service or sink to which it is wired.
+
+#### Scenario: Sync or Card invokes provider I/O
+- **WHEN** a Dify application service reads a directory or sends, updates or normalizes a Card
+- **THEN** it MUST invoke a provider-neutral port without importing or branching on a concrete Feishu, Lark or DingTalk implementation
+
+#### Scenario: Concrete provider adapter is loaded
+- **WHEN** a provider adapter converts SDK data into a capability-owned canonical value
+- **THEN** the adapter MAY import that value or port contract but MUST NOT import the consuming Sync, Card or HITL service implementation
+
+#### Scenario: Provider implementation is selected
+- **WHEN** an Integration provider is wired to its directory, Card or event adapter
+- **THEN** the selection MUST occur in an explicit composition or factory module rather than in Dify domain or application business logic
+
 ### Requirement: Foundation errors and diagnostics MUST be safe and stable
 Authentication, permission, rate limit, unavailable, stale revision and sanitized internal outcomes MUST use stable provider-neutral result codes. Credentials, verification material, raw response bodies, event payloads and provider user PII MUST NOT appear in API responses, logs, traces or metric labels.
 

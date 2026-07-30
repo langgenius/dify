@@ -40,14 +40,26 @@ Connection tests MUST validate credential syntax, authenticate the provider, con
 - **WHEN** directory, message send/update or tenant-confirmation access is missing
 - **THEN** the service MUST return a stable permission or unsupported-provider diagnostic without creating an Integration
 
-### Requirement: Management projections MUST include event transport configuration safely
+#### Scenario: Provider is incompatible with deployment event transport
+- **WHEN** candidate credentials target a provider that does not support the deployment-selected `WEBHOOK` or `STREAM` mode
+- **THEN** the service MUST return a stable transport incompatibility without accepting a per-Integration mode override or changing persisted configuration
 
-The transport-neutral Integration management result MUST expose provider-neutral `DISABLED`, `WEBHOOK` or `STREAM` mode, supported event transport choices, derived webhook URL when applicable and safe operational health. It MUST NOT expose webhook verification material, stream credentials, lease owner or fencing token.
+### Requirement: Management projections MUST expose deployment event transport as read-only
 
-#### Scenario: Existing Integration is read after migration
-- **WHEN** an Integration predates event transport configuration
-- **THEN** it MUST project `DISABLED` and MUST continue supporting manual sync, binding and outbound messaging
+The transport-neutral Integration management result MUST expose the effective deployment-selected `DISABLED`, `WEBHOOK` or `STREAM` mode as read-only runtime context, a derived webhook URL only in `WEBHOOK` deployments, and safe per-Integration operational health. It MUST NOT expose tenant-selectable transport choices, accept mode updates, or expose webhook verification material, stream credentials, lease owner or fencing token.
+
+#### Scenario: Integration is read in a disabled deployment
+- **WHEN** an existing Integration is read while deployment event transport mode is `DISABLED`
+- **THEN** the projection MUST report effective mode `DISABLED` without changing the Integration revision and manual sync, binding and outbound messaging MUST remain available
 
 #### Scenario: Stream health is read
-- **WHEN** a `STREAM` Integration has an active or degraded connection
+- **WHEN** deployment mode is `STREAM` and an Integration has an active or degraded persistent connection
 - **THEN** the projection MUST expose only safe status and timestamps without changing `config_version`
+
+#### Scenario: Deployment public webhook URL changes
+- **WHEN** deployment public base URL or routing configuration changes while Integration secrets remain unchanged
+- **THEN** a `WEBHOOK` projection MUST derive the new callback URL without writing the Integration or advancing `config_version`
+
+#### Scenario: Caller attempts to update transport mode
+- **WHEN** a workspace or trusted-internal command includes an Integration-level event transport mode
+- **THEN** the application boundary MUST reject the field instead of persisting it or shadowing deployment configuration

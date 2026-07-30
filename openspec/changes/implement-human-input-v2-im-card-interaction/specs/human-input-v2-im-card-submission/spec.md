@@ -1,16 +1,16 @@
 ## ADDED Requirements
 
-### Requirement: Authenticated Card interaction MUST not be treated as submission proof
+### Requirement: Authenticated Card interaction MUST become proof evidence without duplicating authorization
 
-`IMCardInteractionProcessor` MUST resolve the Endpoint capability hash retained by the Card inbox and revalidate current tenant-scoped Integration, provider tenant, IM identity, effective binding, Contact and Account before constructing `VerifiedIMIdentityProof`. Foundation envelopes, Card normalizers and inbox records MUST NOT create proofs, choose Grants or submit Forms directly.
+`IMCardInteractionProcessor` MUST resolve the Endpoint capability hash retained by the Card inbox, validate the complete Form、Grant and Endpoint owner chain, and verify that the canonical provider actor matches the Endpoint Integration、provider tenant and provider identity before constructing provider-neutral `VerifiedIMIdentityProof` evidence. The Card processor and proof resolver MUST NOT decide current Contact、Account、workspace availability or Form authorization. `SubmitHumanInputFormHandler` and its transaction MUST remain the single owner that loads current Integration、effective binding、Contact、Account、workspace and Form facts and authorizes the proof. Foundation envelopes、Card normalizers and inbox records MUST NOT load Dify authorization state, create proofs, choose Grants or submit Forms directly.
 
-#### Scenario: Current identity matches the Endpoint Grant
-- **WHEN** a canonical interaction has a valid capability and its provider actor currently resolves through effective binding to the Contact-backed Grant
-- **THEN** the processor MUST construct `VerifiedIMIdentityProof` from current facts and pass it to the shared HITL v2 submission boundary
+#### Scenario: Authenticated actor matches the Endpoint identity
+- **WHEN** a canonical interaction has a valid capability and its provider actor matches the Endpoint Integration、provider tenant and provider identity
+- **THEN** the processor MUST construct `VerifiedIMIdentityProof` evidence from the authenticated actor and Endpoint owner chain and pass it to the shared HITL v2 submission boundary for current-state authorization
 
 #### Scenario: IM binding changed after delivery
 - **WHEN** the event actor no longer matches current effective binding for the Endpoint Grant
-- **THEN** the processor MUST record `IM_BINDING_CHANGED` and MUST NOT submit the Form
+- **THEN** the shared submission authorization boundary MUST return `IM_BINDING_CHANGED`, and the processor MUST record that stable result without duplicating the binding policy
 
 #### Scenario: Interaction targets another owner chain
 - **WHEN** provider tenant, Integration, Form, Grant or Endpoint values do not match the resolved capability owner chain
@@ -34,7 +34,7 @@ The processor MUST translate canonical Card values through the same transport-ne
 
 ### Requirement: IM Card submission MUST reuse first-success transaction semantics
 
-After proof and input validation, the processor MUST call the existing HITL v2 submission handler and repository transaction. It MUST NOT create provider-specific submission tables, lifecycle transitions or workflow resume paths. IM, Email, Web and Service API interactions for one Form MUST compete through the same first-success boundary.
+After proof-evidence construction and input validation, the processor MUST call the existing HITL v2 submission handler and repository transaction. That shared boundary MUST exclusively own current Integration、effective binding、Contact、Account、workspace and Form authorization together with first-success persistence. The Card processor MUST NOT pre-authorize those facts or create provider-specific submission tables, lifecycle transitions or workflow resume paths. IM, Email, Web and Service API interactions for one Form MUST compete through the same first-success boundary.
 
 #### Scenario: IM interaction wins
 - **WHEN** a valid IM interaction reaches an active Form before another channel commits

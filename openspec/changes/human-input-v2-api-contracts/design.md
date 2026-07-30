@@ -57,7 +57,7 @@
 
 三组高耦合基础设施继续由专门 change 实现：
 
-- `implement-human-input-v2-im-provider-foundation`：只拥有 `IMIntegrationManagementService`、credential/client lifecycle、provider event transport 与相应 repository/composition boundary；workspace/internal Integration management handler 仍由本 change 独占。provider public webhook transport 不与本 change 的管理 API 重叠，继续由 Foundation 所有。
+- `implement-human-input-v2-im-provider-foundation`：只拥有 `IMIntegrationManagementService`、credential/client lifecycle、deployment-owned provider event transport policy/runtime 与相应 repository/composition boundary；workspace/internal Integration management handler 仍由本 change 独占。provider public webhook transport 不与本 change 的管理 API 重叠，继续由 Foundation 所有；本change只读投影effective mode，不定义mode write DTO。
 - `implement-im-contact-sync-api`：只拥有 Dify-owned `IMDirectoryReader`、manual Sync application service/worker、reconciliation、identity / binding / override application service、repository 与 transport-neutral composition boundary；不拥有 Integration management，也不拥有 workspace/internal handler 或任何 HTTP concern。
 - `implement-ee-human-input-admin-api`：EE Dashboard Kratos HTTP contract、administrator authentication、typed Dify client与稳定error mapping。
 
@@ -138,7 +138,7 @@ workspace console endpoint 收敛为三组，其中 `Platform contact` candidate
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 读取当前 Organization 级 IM integration 摘要 |
 | IM | `PUT` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 保存或更新 IM integration |
 | IM | `DELETE` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 解除当前 IM integration，并回到 `Not configured` |
-| IM | `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | `WorkspaceHumanInputIMIntegrationTestApi` | 校验当前 provider credentials / event transport / permission |
+| IM | `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | `WorkspaceHumanInputIMIntegrationTestApi` | 校验当前 provider credentials / deployment event transport compatibility / permission |
 | IM | `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | `WorkspaceHumanInputIMSyncRunsApi` | 手动触发一次 IM sync |
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | `WorkspaceHumanInputLatestIMSyncRunApi` | 读取最近一次 sync run 的 summary；若当前还没有任何 run，则返回 not-found |
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | `WorkspaceHumanInputLatestIMSyncRunResultsApi` | 按 `result` 分页读取最近一次 sync run 的结果条目 |
@@ -302,7 +302,7 @@ EE 这次只新增 org-level IM integration、manual sync 与 Organization Conta
 | `GET` | `/v1/dashboard/api/human-input/im-integration` | `GetIMIntegration` | 读取当前部署唯一的 IM channel 配置摘要 |
 | `PUT` | `/v1/dashboard/api/human-input/im-integration` | `UpsertIMIntegration` | 保存或更新 IM channel credentials |
 | `DELETE` | `/v1/dashboard/api/human-input/im-integration` | `DeleteIMIntegration` | 清空当前 IM integration |
-| `POST` | `/v1/dashboard/api/human-input/im-integration/test` | `TestIMIntegration` | 执行连接 / event transport / permission test |
+| `POST` | `/v1/dashboard/api/human-input/im-integration/test` | `TestIMIntegration` | 执行连接 / deployment event transport compatibility / permission test |
 | `POST` | `/v1/dashboard/api/human-input/im-sync-runs` | `CreateIMSyncRun` | 手动触发 sync |
 | `GET` | `/v1/dashboard/api/human-input/im-sync-runs/latest` | `GetLatestIMSyncRun` | 读取最近一次 sync run 的 summary |
 | `GET` | `/v1/dashboard/api/human-input/im-sync-runs/latest/results` | `ListLatestIMSyncRunResults` | 按 `result` 分页读取最近一次 sync run 的结果条目 |
@@ -314,7 +314,7 @@ EE 这次只新增 org-level IM integration、manual sync 与 Organization Conta
 
 EE workspace console 搜索当前 workspace 之外的 `organization contact` 并把它们投影成 `Platform contact` 时，应继续复用 enterprise 侧已有 member / workspace API，而不是在 Human Input 侧复制一套新的成员 CRUD。
 
-`TestIMBinding` 与 `TestIMIntegration` 的语义必须分离：前者验证某个已绑定 Contact identity 的当前可达性，后者验证 Organization 级 credentials、所选 `DISABLED / WEBHOOK / STREAM` event transport 与 permission。
+`TestIMBinding` 与 `TestIMIntegration` 的语义必须分离：前者验证某个已绑定 Contact identity 的当前可达性，后者验证 Organization 级 credentials、provider tenant、required permission，以及provider是否兼容Dify只读注入的deployment event transport mode。HTTP request不得选择或覆盖`DISABLED / WEBHOOK / STREAM`。
 
 EE `HumanInputContact` 生命周期绑定 Organization Account，不绑定任意单个 workspace membership。Dify-owned `OrganizationContactProjectionService`使用Account作为source fact：首次部署执行幂等backfill；Organization Contact read与manual sync消费前执行bounded ensure；周期reconciliation修复Account create/update/disable/delete。Active Account创建或更新同一Contact，disabled/deleted Account从current-state projection省略但保留稳定Contact identity，同一Account重新active时复用原Contact。
 

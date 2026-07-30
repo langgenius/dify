@@ -12,9 +12,9 @@ EE Human Input admin implementation MUST NOT 实现 provider adapter、credentia
 - **WHEN** integration、run、identity、binding 或 result需要读取或修改
 - **THEN** EE adapter MUST 使用 Dify internal HTTP contract，MUST NOT 添加对应 Ent schema、repository或 raw SQL access
 
-### Requirement: Typed Dify client MUST 保持 integration CAS 与 credential command语义
+### Requirement: Typed Dify client MUST 保持 integration CAS、credential command与read-only deployment transport语义
 
-EE client MUST 一对一转发 integration get/upsert/delete/test request，包括完整 `integration_id + config_version` CAS token、`DISABLED / WEBHOOK / STREAM` event transport mode、provider-specific credential shape 和 replace-or-preserve operation。EE MUST NOT 在本地模拟 transport support、version advancement、provider replacement、credential rotation 或 identity invalidation。
+EE client MUST 一对一转发 integration get/upsert/delete/test request，包括完整 `integration_id + config_version` CAS token、provider-specific credential shape和replace-or-preserve operation。Upsert/test request MUST NOT携带`DISABLED / WEBHOOK / STREAM` mode；get/test response MAY映射Dify返回的read-only effective deployment mode和safe compatibility/health。EE MUST NOT在本地模拟或覆盖deployment transport policy、transport support、version advancement、provider replacement、credential rotation或identity invalidation。
 
 #### Scenario: 管理员更新当前 integration
 - **WHEN** request包含 current CAS token 与 credential command

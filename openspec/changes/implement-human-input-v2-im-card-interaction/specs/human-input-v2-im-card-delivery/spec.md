@@ -12,6 +12,26 @@
 - **WHEN** a Feishu, Lark or DingTalk adapter sends or updates the message
 - **THEN** it MUST return a safe provider-neutral result while SDK objects, raw responses and opaque handle internals remain in its provider package
 
+### Requirement: Card delivery MUST cross an explicit Dify-to-IM canonical boundary
+
+`IMCardSender` MUST convert the Dify-owned `FormDeliveryProjection` into a provider-neutral `IMCardDocument` before direct rendering. If the provider renderer returns `UnsupportedCardShape`, the sender MUST construct a provider-neutral text-fallback command before invoking provider text delivery; terminal updates MUST likewise cross the adapter boundary as canonical Card commands. Every `IMCardTransportAdapter` invocation MUST accept only those canonical values, stable operation and target identities, and the matching Foundation provider-local client lifecycle. Concrete adapters MUST NOT receive or import HITL Form、Grant、Contact、workflow runtime or submission service implementations. Only an explicit composition or factory module MAY select a concrete provider adapter; Card application modules MUST depend only on the provider-neutral transport port and result values.
+
+#### Scenario: Direct Card rendering starts
+- **WHEN** `IMCardSender` has planned a direct interactive delivery from a frozen Form projection
+- **THEN** the provider adapter MUST receive an `IMCardDocument` rather than `FormDeliveryProjection`, mutable workflow DSL or a provider payload prepared by Dify business logic
+
+#### Scenario: Provider payload is constructed
+- **WHEN** a concrete Card adapter renders, sends or updates a message
+- **THEN** only that adapter MUST translate the canonical Card command into SDK models or provider JSON
+
+#### Scenario: Direct rendering is incompatible
+- **WHEN** a provider renderer returns `UnsupportedCardShape` for the canonical `IMCardDocument`
+- **THEN** control MUST return to `IMCardSender`, which MUST construct the provider-neutral text fallback before another adapter invocation
+
+#### Scenario: Concrete Card provider is wired
+- **WHEN** the Card composition factory selects Feishu, Lark or DingTalk
+- **THEN** only the composition boundary MAY import both the concrete adapter and `IMCardSender`, while sender code MUST contain no concrete provider import or branch
+
 ### Requirement: IMCardSender MUST fall back to text and secure link for incompatible Form shapes
 
 For each delivery, the provider Card renderer MUST either produce a faithful direct interactive card or return a typed incompatibility. If any required input or action cannot be represented faithfully, `IMCardSender` MUST send `MessageTemplate`-controlled text plus a secure HITL v2 form link. It MUST NOT omit, coerce or default required values to force direct submission.

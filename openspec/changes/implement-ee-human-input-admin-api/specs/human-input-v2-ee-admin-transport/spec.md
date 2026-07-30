@@ -14,7 +14,7 @@ EE backend MUST 在 `dify.enterprise.api.enterprise` package 中定义 `Enterpri
 
 ### Requirement: Transport MUST 在调用 Dify client 前完成强类型校验与默认值处理
 
-Protobuf contract MUST 保留 API summary 中的 provider、status、`DISABLED / WEBHOOK / STREAM` event transport mode、result、removal reason、credential、Contact、identity、binding、sync run 与 pagination shape。Required enum zero value、ID、CAS version、event transport mode、secret operation、page 和 limit MUST 在 transport boundary 被拒绝；省略 page/limit 时 MUST 分别使用 `1` 和 `20`。
+Protobuf contract MUST 保留 API summary 中的 provider、status、read-only effective deployment `DISABLED / WEBHOOK / STREAM` event transport mode、result、removal reason、credential、Contact、identity、binding、sync run 与 pagination shape。Integration upsert/test request MUST NOT包含event transport mode或tenant-selectable supported modes。Required enum zero value、ID、CAS version、secret operation、page 和 limit MUST 在 transport boundary 被拒绝；省略 page/limit 时 MUST 分别使用 `1` 和 `20`。
 
 #### Scenario: 请求包含非法 enum 或 CAS token
 - **WHEN** 请求包含 unspecified required enum、空 ID、非正 config version 或越界 pagination
@@ -23,6 +23,10 @@ Protobuf contract MUST 保留 API summary 中的 provider、status、`DISABLED /
 #### Scenario: Latest results 未传 pagination
 - **WHEN** 管理员指定真实 result bucket 但省略 page 和 limit
 - **THEN** EE service MUST 向 Dify client 传递 page `1` 与 limit `20`
+
+#### Scenario: Request attempts to set event transport mode
+- **WHEN** an Integration upsert or test request contains an event transport mode override
+- **THEN** Kratos validation MUST reject the request before the Human Input use case or Dify internal client is invoked
 
 ### Requirement: Administrator identity MUST 只由EE audit boundary拥有
 

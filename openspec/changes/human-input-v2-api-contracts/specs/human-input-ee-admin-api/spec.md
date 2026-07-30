@@ -16,15 +16,19 @@ EE backend MUST 使用 Protobuf、`google.api.http` 与 Kratos HTTP code generat
 - **THEN** the implementation MUST be rejected because it creates a second business owner
 
 ### Requirement: EE dashboard MUST expose Organization-level IM integration APIs via Protobuf-defined Kratos HTTP
-EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP handler 暴露 Organization 级 IM integration API，覆盖读取配置、保存 `DISABLED / WEBHOOK / STREAM` event transport configuration、删除配置和连接测试。该 façade MUST 只允许一个 Organization 级 IM channel 生效，并 MUST 将所有业务 command/query 委托给 Dify。
+EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP handler 暴露 Organization 级 IM integration API，覆盖读取配置、保存provider credential/verification material、删除配置和连接测试。该 façade MUST 只允许一个 Organization 级 IM channel 生效，并 MUST 将所有业务 command/query 委托给 Dify。`DISABLED / WEBHOOK / STREAM` MUST remain deployment-owned runtime configuration and MUST NOT be accepted as an administrator write field.
 
 #### Scenario: 读取当前 IM integration
 - **WHEN** an EE admin calls `GetIMIntegration`
-- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、current event transport mode、provider 支持的 mode、适用时的 derived webhook URL、safe operational status、`integration_id` 与 `config_version`；如果未配置，MUST 返回 `Not configured`
+- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、read-only effective deployment event transport mode、适用时的 derived webhook URL、safe operational status、`integration_id` 与 `config_version`；MUST NOT返回tenant-selectable supported modes；如果未配置，MUST 返回 `Not configured`
 
 #### Scenario: 保存或更新 IM integration
 - **WHEN** an EE admin calls `UpsertIMIntegration`
-- **THEN** EE MUST 将 credentials、`DISABLED / WEBHOOK / STREAM` mode 与 CAS command 转发给 Dify，由 Dify 校验 provider transport support、保存新的 Organization-level IM channel config，并保持“同一时刻只允许一个 channel 生效”的约束
+- **THEN** EE MUST 将 credentials、provider-specific verification material与CAS command转发给Dify，由Dify按effective deployment mode校验provider transport compatibility、保存新的Organization-level IM channel config，并保持“同一时刻只允许一个channel生效”的约束；EE MUST NOT转发或持久化event transport mode override
+
+#### Scenario: EE admin attempts to override deployment transport
+- **WHEN** an EE admin supplies an Integration-level `event_transport_mode` to `UpsertIMIntegration` or `TestIMIntegration`
+- **THEN** the Protobuf/Kratos boundary MUST reject the field and MUST NOT forward、persist or shadow deployment runtime configuration
 
 #### Scenario: 首次创建 IM integration
 - **WHEN** the deployment has no configured integration and an EE admin calls `UpsertIMIntegration` without an expected integration ID or config version
@@ -52,7 +56,7 @@ EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP h
 
 #### Scenario: 测试 IM integration
 - **WHEN** an EE admin calls `TestIMIntegration`
-- **THEN** 系统 MUST 返回 credential、所选 event transport 或 permission 检查结果
+- **THEN** 系统 MUST 返回credential、provider tenant、permission与effective deployment event transport compatibility检查结果，并 MUST NOT接受mode override
 
 #### Scenario: 删除 IM integration
 - **WHEN** an EE admin calls `DeleteIMIntegration` with the current `integration_id` and `config_version`
@@ -114,7 +118,7 @@ EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 Organization Con
 
 #### Scenario: 测试联系人 binding
 - **WHEN** an EE admin tests one existing Contact IM channel
-- **THEN** `TestIMBinding` MUST test the selected binding's current identity reachability and MUST NOT be implemented as an alias of the Organization-level credentials / event transport / permission test
+- **THEN** `TestIMBinding` MUST test the selected binding's current identity reachability and MUST NOT be implemented as an alias of the Organization-level credentials / deployment-event-transport compatibility / permission test
 
 ### Requirement: EE Human Input admin Protobuf contract MUST stay narrow and avoid duplicating business ownership
 本 change 的 EE Human Input admin Protobuf contract MUST 只承担 Organization 级 IM integration / sync 与 Organization Contact IM binding 的 Kratos HTTP IDL，不得复制 Dify 业务逻辑，也不得增加已有 enterprise member / workspace 基础 CRUD、workspace Contact lifecycle、workspace IM override、node-data migration 或 Email provider configuration。workspace console 在 EE 下若需要 Organization member source data，MUST 继续复用已有 enterprise member / workspace API。

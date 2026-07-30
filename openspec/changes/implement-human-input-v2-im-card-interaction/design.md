@@ -4,7 +4,7 @@ Human Input v2 已将业务授权与通知渠道分离：Form 保存 frozen defi
 
 本 change 的上游依赖已经明确：
 
-- `implement-human-input-v2-im-provider-foundation` 拥有 Integration management、credential/client lifecycle、`DISABLED / WEBHOOK / STREAM` configuration、webhook verification/ack、stream supervision/lease/fencing，并输出 `AuthenticatedIMEventEnvelope`。
+- `implement-human-input-v2-im-provider-foundation` 拥有 Integration management、credential/client lifecycle、deployment-level `DISABLED / WEBHOOK / STREAM` runtime policy、webhook verification/ack、stream supervision/lease/fencing，并输出 `AuthenticatedIMEventEnvelope`。Card不读取、选择或持久化该deployment policy。
 - `implement-im-contact-sync-api` 拥有 directory reconciliation 以及 current IM identity/binding/override 管理。
 - Card Interaction 只拥有 card render/send/update/fallback、card event semantic normalization、Card inbox 与 HITL v2 submission bridge。
 
@@ -13,33 +13,53 @@ HITL v2 FormDeliveryProjection
              |
              v
         IMCardSender
-       /            \
-direct card      text + secure link
-       \            /
-        Provider Card Adapter
-                |
-                v
-       Foundation Client Lifecycle
+             |
+             v
+       IMCardDocument
+             |
+             v
+ IMCardTransportAdapter render/send
+       |                 |
+       | success         | UnsupportedCardShape
+       v                 v
+  direct card       IMCardSender
+                          |
+                          v
+              canonical text + secure link
+                          |
+                          v
+               IMCardTransportAdapter
 
-Provider WEBHOOK / STREAM
-             |
-             v
-   IM Provider Foundation
-             |
-             v
-AuthenticatedIMEventEnvelope
-             |
-             v
-   Card Event Sink / Normalizer
-             |
-             v
-      Card Interaction Inbox
-             |
-             v
-   IMCardInteractionProcessor
-             |
-             v
- Existing HITL v2 Submission
+Both adapter calls use Foundation Client Lifecycle
+
+Provider Webhook / SDK Stream Listener
+                  |
+                  v
+    Provider Event Transport Adapter
+                  |
+                  v
+      AuthenticatedIMEventEnvelope
+                  |
+                  v
+       Authenticated Event Router
+                  |
+                  v
+         Card Interaction Sink
+                  |
+                  v
+      IMCardEventNormalizer
+                  |
+                  v
+    CanonicalIMCardInteraction
+                  |
+                  v
+       Card Interaction Inbox
+                  |
+                  v
+    IMCardInteractionProcessor
+                  |
+                  v
+      Existing HITL v2 Submission
 ```
 
 ## Goals / Non-Goals
@@ -49,7 +69,7 @@ AuthenticatedIMEventEnvelope
 - 以 `FormDeliveryProjection` 作为唯一 outbound 输入，提供通用 `IMCardSender`。
 - 在 sender 内部抹平 Feishu、Lark、DingTalk render/send/update 差异。
 - 对无法忠实映射的 Form shape 自动 fallback 到 text message + secure link，不丢失 required input。
-- 让 Foundation 的 `WEBHOOK` 与 `STREAM` 事件进入同一个 Card sink、inbox 与 submission pipeline。
+- 让 Foundation 按deployment profile从`WEBHOOK`或`STREAM`交付的事件进入同一个Card sink、inbox与submission pipeline。
 - 复用 current IM identity/binding 与 HITL v2 first-success semantics。
 
 **Non-Goals:**
@@ -69,7 +89,9 @@ Application boundary 接受 `FormDeliveryProjection` 与 stable delivery operati
 
 Projection 必须包含 frozen form definition、frozen App/workflow/node presentation、rendered `MessageTemplate` content、expiry、Grant 与 Endpoint facts。异步 sender 不回读 mutable workflow DSL 重建历史内容。
 
-Provider-specific payload、message handle 与 SDK exception 只存在于 adapter package；application/core/controller 不按 provider 分支。
+`FormDeliveryProjection`只存在于Dify-facing sender boundary。Direct rendering前，`IMCardSender`必须先把它转换为provider-neutral `IMCardDocument`；renderer返回`UnsupportedCardShape`后，控制权回到sender，由sender构造provider-neutral text fallback再调用adapter。Terminal update同样必须先成为canonical Card command。Provider adapter不得接收或导入Form、Grant、Contact、workflow runtime或submission service implementation。
+
+Provider-specific payload、message handle 与 SDK exception 只存在于 adapter package；application/core/controller 不按 provider 分支。Sender与provider adapter都依赖Card-owned provider-neutral contracts，只有显式composition/factory module同时导入sender与concrete provider adapter。
 
 ### 2. Fallback 是 sender 的逐 Form 决策，不是 Foundation capability
 
@@ -91,6 +113,8 @@ Sender 不静默删除、coerce 或 default required input，也不因某个 For
 
 两者使用 Foundation provider-local client/Integration lifecycle，但不组成通用 provider registry graph。`IMCardEventNormalizer` 不验证 transport；`IMCardTransportAdapter` 不处理 directory 或 submission。
 
+Provider adapter拥有canonical Card value到SDK model/provider JSON的唯一转换知识。Dify application不得预先构造provider payload，adapter也不得反向调用Card/HITL application service。
+
 ### 4. Outbound delivery 使用稳定 operation identity
 
 Form commit 后为每个 IM Endpoint 创建 stable delivery operation，并通过 after-commit dispatch。Worker 重载 projection 与 current Integration，验证 endpoint provider tenant/identity 仍属于 current configuration后调用 `IMCardSender`。
@@ -103,18 +127,29 @@ Provider confirmed success 只持久化 safe message ID 与 adapter-owned opaque
 
 Foundation 完成 `WEBHOOK` signature/decrypt/handshake 或 `STREAM` session authentication、revision fencing后，向 Card sink 交付同一种 `AuthenticatedIMEventEnvelope`。Envelope 表达 transport authenticity，但仍包含 provider-specific、尚未做 Card 语义解释的 bounded payload。
 
-Card sink 根据 provider与 event name 选择显式 `IMCardEventNormalizer`：
+Inbound provider-specific processing必须拆成两段，并由shared router隔开：
+
+1. Foundation provider transport adapter将raw HTTP callback或SDK listener event转换为`AuthenticatedIMEventEnvelope`；
+2. shared router按authenticated provider与native event name选择Card sink，但不解释Card payload；
+3. Card sink选择matching `IMCardEventNormalizer`，把envelope转换为`CanonicalIMCardInteraction`。
+
+Card sink 根据 provider与 event name 选择显式 `IMCardEventNormalizer`。Normalizer 是 provider payload 到 Dify canonical interaction 的 anti-corruption boundary：
 
 - 非 Card event 返回 `IGNORED`，不创建 Card record；
-- 有效 Card action 被规范化为 bounded `CanonicalIMCardInteraction`；
+- provider、provider tenant、Integration revision 与 event identity 只能取自 authenticated envelope，payload 不能覆盖这些 transport-authenticated facts；
+- normalizer 只从 provider payload 提取 provider user ID、endpoint capability、selected action 与 bounded inputs，并生成 `CanonicalIMCardInteraction`；
+- normalizer 只做结构解析、类型转换、字段/大小边界与 malformed-payload classification，不加载 Integration、identity、binding、Contact、Account、Grant 或 Form；
+- normalizer 不执行 effective-binding resolution、Dify authorization、Form validation、proof construction 或 submission；
 - 只有 canonical inbox record 已提交或幂等存在后返回 `ACCEPTED`；
 - normalization或persistence的可重试失败返回 `RETRY`。
 
 Foundation 决定 provider acknowledgement/redelivery；Card sink 不构造 HTTP/SDK ack，也不知道连接 lease。
 
+`CanonicalIMCardInteraction`是Dify application/business的最终入口。Inbox、processor、proof factory与submission handler不得接收或依赖callback、webhook、stream、HTTP request、SDK event或raw provider payload概念。
+
 ### 6. Card-owned inbox 提供业务幂等与恢复
 
-Inbox unique boundary 是 `(integration_id, provider_event_id)`，不包含 `WEBHOOK / STREAM` mode，因此 mode切换或 provider redelivery收敛到同一 record。Inbox只持久化 canonical action、bounded values、provider actor identity、capability hash与safe correlation，不保留 raw envelope payload、headers、signature、SDK object或plaintext capability。
+Inbox unique boundary 是 `(integration_id, provider_event_id)`，不包含deployment `WEBHOOK / STREAM` mode，因此deployment rollout期间的cross-transport redelivery收敛到同一record。Inbox只持久化canonical action、bounded values、provider actor identity、capability hash与safe correlation，不保留raw envelope payload、headers、signature、SDK object或plaintext capability。
 
 Processing 使用可恢复 lease/attempt state，将 pending interaction 异步交给 `IMCardInteractionProcessor`。Durable acceptance不代表Form提交成功；accepted interaction仍可能因current binding/Form state变化进入stable rejection。
 
@@ -124,14 +159,13 @@ Card inbox retention、payload 与 ordering由Card业务定义。Foundation不�
 
 Processor按固定顺序：
 
-1. 由 capability hash解析 `FormRef -> ApproverGrantRef -> DeliveryEndpointRef`，校验 tenant、provider、provider tenant与Integration；
-2. 将 provider actor user ID解析为current IM identity；
-3. 读取 current effective binding、Contact、Account与workspace availability；
-4. 只有当前事实一致时构造 `VerifiedIMIdentityProof`；
-5. 用 frozen definition 的共享 validator 处理action与inputs；
-6. 调用 `SubmitHumanInputFormHandler`。
+1. 由 capability hash解析 `FormRef -> ApproverGrantRef -> DeliveryEndpointRef`，校验 owner chain 与 canonical provider actor 的 provider、provider tenant、Integration 和 endpoint identity；
+2. 将 canonical provider actor转换为 provider-neutral `VerifiedIMIdentityProof` evidence，不在 Card 模块决定 Contact、Account、workspace 或 Form authorization；
+3. 用 frozen definition 的共享 validator 处理action与inputs；
+4. 调用 `SubmitHumanInputFormHandler`；
+5. 由共享 submission transaction加载current Integration、effective binding、Contact、Account、workspace与Form snapshot，并作为这些authorization rules的单一owner完成first-success decision。
 
-Normalizer/inbox不能创建proof、选择Grant或提交Form。Fallback-link message不能通过伪造card action变成direct submission。
+Normalizer/inbox不能加载Dify authorization state、创建proof、选择Grant、校验Form或提交Form。Proof evidence不等于submission authority；Fallback-link message不能通过伪造card action变成direct submission。
 
 ### 8. Submission 与 terminal card update 使用 after-commit 边界
 
@@ -149,21 +183,21 @@ Metrics只使用provider、operation、safe result class、latency、inbox lag/d
 
 - [Provider card差异导致required input丢失] -> renderer返回typed incompatibility，sender统一fallback到text+secure link并fail closed。
 - [Webhook与stream重复交付] -> Foundation stable event identity + Card inbox unique key；transport mode不进入dedup key。
-- [Envelope已认证但actor不再有权限] -> processing时重查current identity/binding/Contact/Account，authenticity与authorization分离。
+- [Envelope已认证但actor不再有权限] -> proof resolver只验证actor与Endpoint identity，shared submission transaction重查current Integration/binding/Contact/Account/workspace/Form，保持authenticity与authorization分离且authorization policy只有一个owner。
 - [Provider send ambiguous timeout产生重复message] -> 仅使用provider idempotency/reconciliation能力安全retry，否则保留ambiguous operation。
 - [Terminal update失败仍可点击] -> Form state/first-success始终是防重复权威，update只负责UX与diagnostic。
 - [Card inbox敏感数据滞留] -> canonical allow-list、bounded values、retention/cleanup与raw payload禁止持久化。
-- [Foundation与Card rollout顺序错误] -> 先部署Foundation transport和Card sink contract，sink/inbox就绪后才从`DISABLED`启用`WEBHOOK / STREAM`。
+- [Foundation与Card rollout顺序错误] -> 先部署Foundation transport和Card sink contract，sink/inbox就绪后才通过deployment configuration从`DISABLED`启用目标`WEBHOOK`或`STREAM` profile。
 
 ## Migration Plan
 
-1. 先部署 Foundation Integration/client/event transport boundary，保持现有 Integration 为`DISABLED`。
+1. 先部署 Foundation Integration/client/event transport boundary，保持deployment event transport mode为`DISABLED`；不修改现有Integration records。
 2. 落地 `IMCardDocument`、`IMCardSender`、delivery operations与text-link fallback。
 3. 落地 Feishu/Lark/DingTalk card render/send/update adapters并运行共享Card contract tests。
 4. 落地 Card event normalizers、durable interaction inbox与Foundation sink registration。
 5. 落地 interaction processor、current proof、shared validation与first-success submission bridge。
-6. 落地 terminal update operations；随后分别灰度 Foundation `WEBHOOK` 与 `STREAM` mode。
-7. Rollback时注销Card sink或将Integration切回`DISABLED`；保留delivery/inbox/audit facts，已提交Form不回滚。
+6. 落地 terminal update operations；随后按目标deployment profile灰度Foundation `WEBHOOK`或`STREAM` runtime。
+7. Rollback时注销Card sink或通过deployment rollout切回`DISABLED`；不写Integration mode，保留delivery/inbox/audit facts，已提交Form不回滚。
 
 ## Open Questions
 

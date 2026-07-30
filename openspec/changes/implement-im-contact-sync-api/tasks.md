@@ -1,13 +1,13 @@
 ## 1. Directory reader adapters
 
 - [ ] 1.1 为 `IMDirectoryReader` contract 编写失败测试，覆盖 complete pagination、provider user ID、normalized email、bounded fields 与 safe provider errors。
-- [ ] 1.2 定义只输出 `ProviderDirectoryEntry` 的 Sync-owned `IMDirectoryReader`，并禁止 connection test、tenant confirmation、credential 或 SDK model 越界。
+- [ ] 1.2 定义只输出 Sync-owned canonical `ProviderDirectoryEntry` 的 `IMDirectoryReader`，明确 SDK response 到该值的转换只能发生在matching provider adapter内，并禁止第二套provider-neutral directory model、connection test、tenant confirmation、credential或SDK model越界。
 - [ ] 1.3 为 Feishu、Lark 与 DingTalk 实现 directory adapters，通过 Foundation provider-local client lifecycle 读取目录，不复制 credential/client factory。
 - [ ] 1.4 增加共享 provider directory contract suite，验证三类 adapter 的 normalization、pagination、rate-limit/error mapping 与 sensitive-data redaction。
 
 ## 2. Manual sync application service
 
-- [ ] 2.1 为纯 Sync `IMSyncService` 编写失败测试，覆盖 manual trigger、active-run reuse、latest summary/result query 与 Foundation current revision dependency。
+- [ ] 2.1 为纯 Sync `IMSyncService` 编写失败测试，覆盖 manual trigger、active-run reuse、latest summary/result query 与 Foundation current Integration revision dependency，并证明deployment `DISABLED / WEBHOOK / STREAM` mode不进入Sync command、run capture或stale decision。
 - [ ] 2.2 实现 manual sync command/query service，只拥有 run lifecycle，不包含 Integration read/configure/delete/test commands。
 - [ ] 2.3 实现异步 worker，按顺序加载 captured revision、调用 `IMDirectoryReader`、加载 snapshot、运行 `SyncReconciler` 并 revision-guarded apply。
 - [ ] 2.4 覆盖 provider fetch failure、stale revision、reconcile/apply failure 与 worker retry，确保 run 总能进入 terminal state 且不错误修改 current identities/bindings。
@@ -31,6 +31,6 @@
 ## 5. Verification and architecture boundaries
 
 - [ ] 5.1 增加 repository/service/worker tests，覆盖 concurrent trigger、stale apply、latest-result filter、identity search、binding writes 与 override reset。
-- [ ] 5.2 增加 architecture tests，禁止 Sync 解密 credential、创建 provider client、运行 webhook/stream transport或调用 EE Human Input API。
-- [ ] 5.3 验证 manual sync implementation 完整调用链只在 Dify 内执行，application modules 不导入 Flask/internal controller 或 EE transport，并且没有 parallel EE worker/provider/repository。
+- [ ] 5.2 增加 architecture tests，禁止 Sync 解密credential、创建provider client、运行webhook/stream transport或调用EE Human Input API；同时禁止`IMSyncService`/worker/`SyncReconciler`导入concrete provider package，并禁止directory adapter执行reconciliation、Contact/identity/binding mutation或persistence。
+- [ ] 5.3 验证完整调用链为SDK response -> provider adapter normalization -> `ProviderDirectoryEntry` -> `SyncReconciler(entries, snapshot)` -> `ReconciliationPlan` -> revision-guarded apply；application modules不导入Flask/internal controller或EE transport，只有显式composition/factory module同时导入concrete adapter与Sync service，并且没有parallel EE worker/provider/repository。
 - [ ] 5.4 运行 targeted unit、repository、service/worker、provider contract 与 concurrency test commands，并修复 typing、lint 与 coverage gaps；transport call-graph/controller tests 留在 `human-input-v2-api-contracts`。

@@ -1,15 +1,27 @@
 ## ADDED Requirements
 
-### Requirement: Event transport MUST support disabled, webhook and stream modes
-An Integration MUST select `DISABLED`, `WEBHOOK` or `STREAM`. Active mode selection MUST be validated against the narrow event transport modes supported by that provider. Event transport support MUST NOT be generalized into directory, messaging or card capability flags.
+### Requirement: Deployment runtime MUST select disabled, webhook or stream mode
+Dify deployment runtime configuration MUST select one startup-time `DISABLED`, `WEBHOOK` or `STREAM` event transport mode for the deployment. The mode MUST NOT be stored on an Integration, accepted from workspace or EE management commands, or exposed as a tenant-selectable capability. Foundation MUST validate the selected mode against the narrow event transport modes supported by registered provider implementations without generalizing support into directory, messaging or Card capability flags.
 
-#### Scenario: Event transport is disabled
-- **WHEN** an Integration selects `DISABLED`
-- **THEN** no webhook event MUST be accepted and no stream session MUST be started while other IM capabilities remain available
+#### Scenario: Deployment event transport is disabled
+- **WHEN** Dify starts with deployment event transport mode `DISABLED`
+- **THEN** no provider webhook event MUST be accepted and no persistent connection session MUST be started while manual Sync, binding and outbound messaging remain available
 
-#### Scenario: Provider does not support selected transport
-- **WHEN** an administrator selects `WEBHOOK` or `STREAM` that the provider transport implementation does not support
-- **THEN** configuration MUST fail before the Integration revision or credentials change
+#### Scenario: Deployment uses webhook transport
+- **WHEN** Dify starts with deployment event transport mode `WEBHOOK`
+- **THEN** provider public webhook ingress MUST be enabled and no persistent connection runtime MUST acquire Integration leases
+
+#### Scenario: Deployment uses stream transport
+- **WHEN** Dify starts with deployment event transport mode `STREAM`
+- **THEN** the dedicated persistent connection runtime MUST be enabled and provider public webhook ingress MUST reject or not register business callbacks
+
+#### Scenario: Provider does not support deployment transport
+- **WHEN** runtime readiness or Integration configure/test finds that a provider implementation does not support the deployment-selected `WEBHOOK` or `STREAM` mode
+- **THEN** Foundation MUST return a stable incompatibility before a new Integration configuration is committed and MUST NOT offer a per-Integration mode override
+
+#### Scenario: Existing Integration is incompatible after deployment rollout
+- **WHEN** Dify starts under a deployment mode unsupported by an already configured Integration provider
+- **THEN** Foundation MUST fail closed for inbound events, report safe incompatible operational health or readiness, and MUST NOT mutate the Integration revision or silently select another mode
 
 ### Requirement: Webhook and stream MUST produce one authenticated envelope contract
 Provider webhook and stream adapters MUST establish transport authenticity and emit the same provider-neutral authenticated event metadata: current Integration revision, provider tenant, stable provider event identity, event name, occurred time and bounded event payload. Credentials, signatures, encryption keys, HTTP headers, SDK tokens and SDK objects MUST NOT enter the envelope.
@@ -25,6 +37,21 @@ Provider webhook and stream adapters MUST establish transport authenticity and e
 #### Scenario: Webhook handshake arrives
 - **WHEN** a provider sends its valid endpoint-verification challenge
 - **THEN** the adapter MUST return only the required handshake response and MUST NOT deliver a business event
+
+### Requirement: Provider transport normalization MUST precede business sink dispatch
+Raw webhook requests and provider SDK callbacks MUST pass through a provider-local transport adapter before entering the shared event router. That adapter MUST perform transport authentication, decryption or session validation, revision and fencing checks, and extraction of bounded native event metadata before creating `AuthenticatedIMEventEnvelope`. The shared router MUST select an explicit business sink using authenticated provider and event-name facts, but MUST NOT interpret Card, directory or other business payload semantics. Provider-specific capability normalization MUST occur only after the router selects the owning business sink.
+
+#### Scenario: Raw webhook callback reaches the public entrypoint
+- **WHEN** a provider-specific HTTP callback arrives
+- **THEN** the webhook entrypoint MUST invoke the matching transport adapter and MUST NOT route the raw body directly to Card, Sync or another business sink
+
+#### Scenario: Provider SDK listener receives an event
+- **WHEN** a persistent provider connection invokes its SDK callback
+- **THEN** the listener MUST convert the callback into the same authenticated envelope before shared dispatch and MUST NOT invoke Dify business logic directly
+
+#### Scenario: Authenticated Card event is dispatched
+- **WHEN** the shared router resolves an authenticated provider event to the Card sink
+- **THEN** the router MUST pass the envelope unchanged at the business-semantic boundary and the Card-owned provider normalizer MUST create the canonical Card interaction after sink selection
 
 ### Requirement: Event transport acknowledgement MUST follow sink durability
 Foundation MUST route an authenticated envelope to the explicit business sink for its event name. A webhook or stream event MUST receive success acknowledgement only after the sink reports durable acceptance, idempotent prior acceptance or safe ignore. Sink failure MUST preserve provider redelivery behavior.
@@ -48,9 +75,13 @@ Long-lived provider SDK streams MUST run in a dedicated supervised runtime. The 
 - **WHEN** two stream supervisors attempt to own the same current Integration revision
 - **THEN** exactly one fencing-valid lease holder MUST remain active
 
-#### Scenario: Configuration revision changes
-- **WHEN** mode, credentials, verification material, provider or provider tenant changes
-- **THEN** the old session MUST stop and a new session MUST start only if the current mode remains `STREAM`
+#### Scenario: Integration configuration revision changes
+- **WHEN** credentials, verification material, provider or provider tenant changes while deployment mode remains `STREAM`
+- **THEN** the old session MUST stop and a new revision-bound session MUST start for the current Integration
+
+#### Scenario: Deployment leaves stream mode
+- **WHEN** a deployment rollout changes event transport mode from `STREAM` to `WEBHOOK` or `DISABLED`
+- **THEN** the persistent connection process role MUST stop all sessions without changing any Integration configuration revision
 
 #### Scenario: Lease owner stops heartbeating
 - **WHEN** the current runtime exits or loses its renewable lease
@@ -68,7 +99,7 @@ Foundation transport MUST NOT parse Form action IDs, validate Human Input fields
 - **THEN** the same transport MUST deliver it to the explicitly registered Sync-owned sink, while Foundation MUST NOT decide whether to start or apply synchronization
 
 ### Requirement: Event transport data MUST remain bounded and non-persistent by default
-Foundation MUST enforce request/event size limits before business delivery and MUST NOT persist raw webhook bodies or raw stream payloads. Logs, traces and metrics MUST retain only provider, transport mode, safe result class, latency and non-PII correlation.
+Foundation MUST enforce request/event size limits before business delivery and MUST NOT persist raw webhook bodies or raw stream payloads. Logs, traces and metrics MUST retain only provider, deployment transport mode, safe result class, latency and non-PII correlation.
 
 #### Scenario: Authenticated payload exceeds limits
 - **WHEN** a validly authenticated webhook or stream event exceeds configured bounds

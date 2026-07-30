@@ -34,11 +34,19 @@ Dify `IMSyncService` MUST exclusively own manual-sync run creation, directory re
 
 ### Requirement: Manual sync orchestration MUST normalize provider data before reconciliation
 
-系统 MUST 先把 provider SDK 或 provider API 返回的数据归一化为统一的 `ProviderDirectoryEntry` 集合，再交给现有 reconciliation 逻辑。application service 和 repository MUST NOT 直接消费厂商 SDK model。
+系统 MUST 先在 matching provider adapter 内把 provider SDK 或 provider API 返回的数据归一化为统一的 `ProviderDirectoryEntry` 集合，再交给现有 reconciliation 逻辑。`ProviderDirectoryEntry` MUST be the Sync-owned canonical Dify input consumed by `SyncReconciler`, not a provider DTO, and the system MUST NOT introduce a second provider-neutral directory model after the adapter returns it. Application service、worker、reconciler 和 repository MUST NOT directly consume provider SDK models, import concrete provider packages or branch on provider-specific directory shapes. Directory adapters MUST stop at canonical conversion and safe error mapping; they MUST NOT load the Dify reconciliation snapshot, execute matching or reconciliation, mutate Contact/identity/binding state, build `ReconciliationPlan` or persist sync results.
 
 #### Scenario: Provider directory data is fetched
 - **WHEN** a sync worker loads members from the configured provider
 - **THEN** the adapter MUST convert provider-specific records into `ProviderDirectoryEntry` values before calling the reconciler
+
+#### Scenario: Canonical entries reach reconciliation
+- **WHEN** `IMDirectoryReader` returns a normalized directory
+- **THEN** the worker MUST pass those `ProviderDirectoryEntry` values and a separately loaded current `ReconciliationSnapshot` to `SyncReconciler` without another provider-specific conversion
+
+#### Scenario: Provider adapter finishes normalization
+- **WHEN** a concrete directory adapter has produced canonical entries or a safe failure
+- **THEN** it MUST return control to the Sync worker and MUST NOT reconcile, persist or mutate Dify business state
 
 #### Scenario: Provider user ID takes precedence
 - **WHEN** a provider directory entry matches an existing identity by provider user ID
@@ -50,7 +58,7 @@ Dify `IMSyncService` MUST exclusively own manual-sync run creation, directory re
 
 ### Requirement: Manual sync MUST remain revision-guarded, single-active-run, and latest-only
 
-系统 MUST 保持现有 IM control plane 的并发与 revision 语义：同一 integration 同时最多一个 active run；每次 run MUST capture `integration_id + config_version`；application query boundary MUST only expose the latest run and MUST NOT add run-history semantics。
+系统 MUST 保持现有 IM control plane 的并发与 revision 语义：同一 integration 同时最多一个 active run；每次 run MUST capture `integration_id + config_version`；application query boundary MUST only expose the latest run and MUST NOT add run-history semantics。Deployment-owned `DISABLED / WEBHOOK / STREAM` mode MUST NOT enter the run capture、stale predicate or reconciliation input。
 
 #### Scenario: Two sync triggers race
 - **WHEN** two commands trigger manual sync for the same integration concurrently
@@ -59,6 +67,10 @@ Dify `IMSyncService` MUST exclusively own manual-sync run creation, directory re
 #### Scenario: Integration changes before apply
 - **WHEN** a sync worker is ready to apply reconciliation but the current integration ID or config version no longer matches the run capture
 - **THEN** the system MUST mark the run as stale or failed and MUST NOT mutate current identities or bindings
+
+#### Scenario: Deployment event transport mode changes during sync
+- **WHEN** a deployment rollout changes between `DISABLED`, `WEBHOOK` and `STREAM` while a manual sync run is active
+- **THEN** the run MUST retain its captured Integration revision and MUST NOT become stale solely because of the deployment mode change
 
 #### Scenario: Reading latest sync summary
 - **WHEN** an application consumer queries sync status
@@ -91,3 +103,7 @@ Feishu、Lark 与 DingTalk directory adapters MUST use the provider-local client
 #### Scenario: Directory read fails with sensitive details
 - **WHEN** a directory read returns an error containing sensitive request or credential context
 - **THEN** the adapter MUST return only a safe transport-neutral diagnostic and MUST retain sensitive details inside the provider boundary
+
+#### Scenario: Directory provider implementation is selected
+- **WHEN** a Sync composition factory wires Feishu, Lark or DingTalk directory access
+- **THEN** only that explicit composition boundary MAY import both the concrete adapter and the Sync service, while the service and reconciler MUST depend only on `IMDirectoryReader` and canonical Sync values
