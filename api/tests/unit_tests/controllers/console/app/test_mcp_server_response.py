@@ -7,6 +7,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
 from controllers.console.app.mcp_server import AppMCPServerController, AppMCPServerResponse
@@ -14,23 +15,30 @@ from models.enums import AppMCPServerStatus
 from models.model import AppMCPServer
 
 
-def _server(**overrides: object) -> AppMCPServer:
-    values = {
-        "tenant_id": "tenant-1",
-        "app_id": "app-1",
-        "name": "Demo App",
-        "description": "Description",
-        "parameters": "{}",
-        "status": AppMCPServerStatus.ACTIVE,
-        "server_code": "server-code",
-    }
-    values.update(overrides)
-    return AppMCPServer(**values)
+def _server(
+    *,
+    tenant_id: str = "tenant-1",
+    app_id: str = "app-1",
+    name: str = "Demo App",
+    description: str = "Description",
+    parameters: str = "{}",
+    status: AppMCPServerStatus = AppMCPServerStatus.ACTIVE,
+    server_code: str = "server-code",
+) -> AppMCPServer:
+    return AppMCPServer(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        name=name,
+        description=description,
+        parameters=parameters,
+        status=status,
+        server_code=server_code,
+    )
 
 
 class TestAppMCPServerResponse:
-    def test_parameters_json_string_parsed(self):
-        data = {
+    def test_parameters_json_string_parsed(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -41,8 +49,8 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == {"key": "value"}
 
-    def test_parameters_invalid_json_returns_original(self):
-        data = {
+    def test_parameters_invalid_json_returns_original(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -53,8 +61,8 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == "not-valid-json"
 
-    def test_parameters_dict_passthrough(self):
-        data = {
+    def test_parameters_dict_passthrough(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -65,8 +73,8 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == {"already": "parsed"}
 
-    def test_parameters_json_array_parsed(self):
-        data = {
+    def test_parameters_json_array_parsed(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -77,9 +85,9 @@ class TestAppMCPServerResponse:
         resp = AppMCPServerResponse.model_validate(data)
         assert resp.parameters == ["a", "b"]
 
-    def test_timestamps_normalized(self):
+    def test_timestamps_normalized(self) -> None:
         dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
-        data = {
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -93,8 +101,8 @@ class TestAppMCPServerResponse:
         assert resp.created_at == int(dt.timestamp())
         assert resp.updated_at == int(dt.timestamp())
 
-    def test_timestamps_none(self):
-        data = {
+    def test_timestamps_none(self) -> None:
+        data: dict[str, object] = {
             "id": "s1",
             "name": "test",
             "server_code": "code",
@@ -109,7 +117,7 @@ class TestAppMCPServerResponse:
 
 class TestAppMCPServerController:
     @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
-    def test_get_returns_empty_dict_when_server_missing(self, sqlite_session: Session):
+    def test_get_returns_empty_dict_when_server_missing(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.get)
 
@@ -119,7 +127,7 @@ class TestAppMCPServerController:
         assert response == {}
 
     @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
-    def test_post_returns_201(self, sqlite_session: Session):
+    def test_post_returns_201(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.post)
         payload = {"parameters": {"timeout": 30}}
@@ -143,7 +151,7 @@ class TestAppMCPServerController:
         assert status_code == 201
 
     @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
-    def test_put_binds_server_lookup_to_app_ref(self, sqlite_session: Session):
+    def test_put_updates_server_for_app(self, sqlite_session: Session) -> None:
         api = AppMCPServerController()
         method = unwrap(api.put)
         payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
@@ -151,9 +159,7 @@ class TestAppMCPServerController:
         app.config["TESTING"] = True
         server = _server(name="Old", description="Old")
         server.id = "server-1"
-        other_server = _server(tenant_id="tenant-2", app_id="app-2", name="Other", server_code="other-code")
-        other_server.id = "server-2"
-        sqlite_session.add_all([server, other_server])
+        sqlite_session.add(server)
         sqlite_session.commit()
 
         with (
@@ -169,6 +175,54 @@ class TestAppMCPServerController:
             )
 
         sqlite_session.expire_all()
+        updated_server = sqlite_session.get(AppMCPServer, "server-1")
+        assert updated_server is not None
         assert response["id"] == "server-1"
-        assert sqlite_session.get(AppMCPServer, "server-1").description == "Updated"
-        assert sqlite_session.get(AppMCPServer, "server-2").description == "Description"
+        assert updated_server.description == "Updated"
+
+    @pytest.mark.parametrize("sqlite_session", [(AppMCPServer,)], indirect=True)
+    @pytest.mark.parametrize(
+        ("foreign_tenant_id", "foreign_app_id"),
+        [
+            ("tenant-2", "app-1"),
+            ("tenant-1", "app-2"),
+        ],
+    )
+    def test_put_scopes_server_lookup_to_complete_app_ref(
+        self,
+        sqlite_session: Session,
+        foreign_tenant_id: str,
+        foreign_app_id: str,
+    ) -> None:
+        api = AppMCPServerController()
+        method = unwrap(api.put)
+        payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        foreign_server = _server(
+            tenant_id=foreign_tenant_id,
+            app_id=foreign_app_id,
+            name="Other",
+            server_code="other-code",
+        )
+        foreign_server.id = "server-1"
+        sqlite_session.add(foreign_server)
+        sqlite_session.commit()
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
+            pytest.raises(NotFound),
+        ):
+            method(
+                api,
+                app_model=SimpleNamespace(
+                    id="app-1", tenant_id="tenant-1", name="Demo App", description="App description"
+                ),
+            )
+
+        sqlite_session.expire_all()
+        unchanged_server = sqlite_session.get(AppMCPServer, "server-1")
+        assert unchanged_server is not None
+        assert unchanged_server.description == "Description"
