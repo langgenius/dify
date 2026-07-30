@@ -19,11 +19,7 @@ import {
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { deploymentEditionAtom } from '@/context/system-features-state'
 import { fetchCurrentPlanInfo } from '@/service/billing'
-import {
-  useModelListByType,
-  useModelProviders,
-  useSupportRetrievalMethods,
-} from '@/service/use-common'
+import { useModelListByType, useModelProviders } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
 import { ProviderContext } from './provider-context'
 import { useAnthropicQuotaNotice } from './provider-storage'
@@ -69,7 +65,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const queryClient = useQueryClient()
   const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
-  const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
   const [plan, setPlan] = useState<ProviderContextState['plan']>(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
@@ -205,7 +200,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isAPIKeySet: !!textGenerationModelList?.data?.some(
           (model) => model.status === ModelStatusEnum.active,
         ),
-        supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
         plan,
         isFetchedPlan,
         isFetchedPlanInfo,
