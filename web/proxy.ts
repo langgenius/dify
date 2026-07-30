@@ -11,6 +11,9 @@ const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const EMBEDDABLE_PATH_PREFIXES = ['/chat', '/workflow', '/completion', '/webapp-signin']
 const EMBEDDABLE_PATH_SEGMENTS = ['/agent']
+const MARKETPLACE_FRAME_ORIGIN = env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
+  ? new URL(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX).origin
+  : ''
 
 export const canEmbedPath = (pathname: string) =>
   EMBEDDABLE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
@@ -56,6 +59,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
+    frame-src 'self' ${scheme_source} ${whiteList} ${MARKETPLACE_FRAME_ORIGIN};
     img-src * data: blob:;
     font-src 'self';
     object-src 'none';
