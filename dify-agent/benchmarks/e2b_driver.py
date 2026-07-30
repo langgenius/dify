@@ -146,12 +146,12 @@ async def _run_operation(
             )
         )
         sample.create_pause_ms = (time.perf_counter() - started) * 1000
-        active_started = time.perf_counter()
-        await tracker.entered()
-        tracker_entered = True
         started = time.perf_counter()
         lease = await bindings.acquire(allocation.binding_ref)
         sample.connect_acquire_ms = (time.perf_counter() - started) * 1000
+        active_started = time.perf_counter()
+        await tracker.entered()
+        tracker_entered = True
         started = time.perf_counter()
         result = await run_shellctl_control_command(lease.commands, "printf 'e2b-capacity\\n'")
         sample.first_output_ms = (time.perf_counter() - started) * 1000

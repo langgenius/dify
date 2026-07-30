@@ -181,6 +181,13 @@ class BenchmarkLedgerStore:
             except KeyError as exc:
                 raise KeyError(record_id) from exc
 
+    async def consume_file(self, record_id: str) -> tuple[str, str, bytes]:
+        async with self._lock:
+            try:
+                return self._files.pop(record_id)
+            except KeyError as exc:
+                raise KeyError(record_id) from exc
+
     def _get_or_create(
         self,
         benchmark_run_id: str,
@@ -493,7 +500,10 @@ async def request_file_download(request: Request) -> dict[str, object]:
 @app.get("/__bench/files/download/{record_id}")
 async def download_file(record_id: str) -> Response:
     started_ns = time.perf_counter_ns()
-    benchmark_run_id, _filename, payload = await ledger_store.read_file(record_id)
+    try:
+        benchmark_run_id, _filename, payload = await ledger_store.consume_file(record_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="benchmark file was already consumed") from exc
     await ledger_store.record_stub_call(
         benchmark_run_id=benchmark_run_id,
         name="signed_download",
