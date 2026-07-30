@@ -514,7 +514,7 @@ function SourcesEmpty({
   const { t } = useTranslation('dataset')
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
       <div aria-hidden className="flex items-center gap-3 opacity-85">
         <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-8" />
         <span data-brand="jina" className="i-custom-public-llm-jina size-8" />
@@ -526,16 +526,18 @@ function SourcesEmpty({
         <span data-brand="confluence" className="i-custom-public-common-confluence size-8" />
         <span data-brand="more" className="i-ri-more-fill size-8 text-text-quaternary" />
       </div>
-      <h2 className="mt-5 title-xl-semi-bold text-text-primary">
-        {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
-      </h2>
-      <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.sourcesEmptyDescription'])}
-      </p>
+      <div className="flex flex-col items-center gap-1.5 pt-1.5">
+        <h2 className="title-xl-semi-bold text-text-primary">
+          {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
+        </h2>
+        <p className="w-full max-w-[440px] body-sm-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.sourcesEmptyDescription'])}
+        </p>
+      </div>
       {canAddSource && (
         <Link
           href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
-          className="mt-5 inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <span aria-hidden className="i-ri-add-line size-4" />
           {t(($) => $['newKnowledge.addSource'])}
@@ -660,7 +662,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   ])
 
   return (
-    <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-8">
+    <main className="flex min-h-full min-w-0 flex-1 flex-col px-4 py-6 sm:px-8 sm:py-8">
       <header>
         <div>
           <h2 className="title-xl-semi-bold text-text-primary">
