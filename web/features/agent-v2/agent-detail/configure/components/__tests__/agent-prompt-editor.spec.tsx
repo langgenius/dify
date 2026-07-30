@@ -565,7 +565,7 @@ describe('AgentPromptEditor', () => {
     it('should list and insert workspace Library Skills', async () => {
       const { store, setPromptValue } = renderAgentPromptEditor('Use')
 
-      setPromptValue('Use/')
+      setPromptValue('Use /')
       await openSlashMenuFromEditor()
       fireEvent.click(
         screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
@@ -577,7 +577,7 @@ describe('AgentPromptEditor', () => {
       ).toEqual(['Library Skill', 'Playwright'])
       fireEvent.click(screen.getByRole('button', { name: 'Library Skill' }))
 
-      expect(store.get(agentComposerPromptAtom)).toBe('Use [§skill:library-skill:Library Skill§]')
+      expect(store.get(agentComposerPromptAtom)).toBe('Use [§skill:library-skill:Library Skill§] ')
     })
 
     it('should support keyboard navigation and selection in the slash menu', async () => {
