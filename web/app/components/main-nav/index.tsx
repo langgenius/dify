@@ -99,7 +99,7 @@ export function MainNav({ className }: MainNavProps) {
   return (
     <aside
       className={cn(
-        'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
+        'relative flex h-full w-60 shrink-0 flex-col overflow-hidden bg-background-body transition-all',
         className,
       )}
     >

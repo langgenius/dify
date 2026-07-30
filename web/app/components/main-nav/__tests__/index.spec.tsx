@@ -694,7 +694,8 @@ describe('MainNav', () => {
     const { container } = renderMainNav()
 
     const mainNav = container.querySelector('aside')
-    expect(mainNav).toHaveClass('w-62', 'p-1')
+    expect(mainNav).toHaveClass('w-60')
+    expect(mainNav).not.toHaveClass('p-1')
     expect(mainNav?.firstElementChild).toHaveClass('w-60')
 
     const logoLink = screen.getByLabelText('Dify')

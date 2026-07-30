@@ -145,38 +145,46 @@ export function NewKnowledgeList({
               <Link
                 href="/datasets/new/create"
                 className={buttonVariants({
-                  className: 'gap-0.5 px-2 shadow-xs',
+                  className:
+                    'w-24 gap-0.5 overflow-hidden border-[0.5px]! border-components-button-primary-border-hover! bg-components-button-primary-bg-hover! p-2! shadow-xs',
                   size: 'medium',
                   variant: 'primary',
                 })}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="pl-1">{createLabel}</span>
+                <span className="flex items-center pl-1">
+                  {createLabel}
+                  <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
+                </span>
               </Link>
             </div>
           )}
         </div>
       </header>
-      <div className="px-4 pt-2 pb-8 sm:px-8">
+      <div className="flex min-h-0 flex-1 flex-col">
         {knowledgeSpacesQuery.isPending ? (
-          <NewKnowledgeLoadingState />
+          <div className="px-4 pt-2 pb-8 sm:px-8">
+            <NewKnowledgeLoadingState />
+          </div>
         ) : knowledgeSpacesQuery.error && !knowledgeSpacesQuery.data ? (
-          isUnavailableError(knowledgeSpacesQuery.error) ? (
-            <NewKnowledgePageState
-              title={t(($) => $['newKnowledge.unavailableTitle'])}
-              description={t(($) => $['newKnowledge.unavailableDescription'])}
-            />
-          ) : (
-            <NewKnowledgePageState
-              title={t(($) => $['newKnowledge.errorTitle'])}
-              description={t(($) => $['newKnowledge.errorDescription'])}
-              action={
-                <Button onClick={() => void knowledgeSpacesQuery.refetch()}>
-                  {tCommon(($) => $['operation.retry'])}
-                </Button>
-              }
-            />
-          )
+          <div className="px-4 pt-2 pb-8 sm:px-8">
+            {isUnavailableError(knowledgeSpacesQuery.error) ? (
+              <NewKnowledgePageState
+                title={t(($) => $['newKnowledge.unavailableTitle'])}
+                description={t(($) => $['newKnowledge.unavailableDescription'])}
+              />
+            ) : (
+              <NewKnowledgePageState
+                title={t(($) => $['newKnowledge.errorTitle'])}
+                description={t(($) => $['newKnowledge.errorDescription'])}
+                action={
+                  <Button onClick={() => void knowledgeSpacesQuery.refetch()}>
+                    {tCommon(($) => $['operation.retry'])}
+                  </Button>
+                }
+              />
+            )}
+          </div>
         ) : knowledgeSpaces.length === 0 ? (
           <NewKnowledgeEmptyState
             canConnect={canConnect}
@@ -184,7 +192,7 @@ export function NewKnowledgeList({
             uploadAvailable={uploadAvailable}
           />
         ) : (
-          <>
+          <div className="px-4 pt-2 pb-8 sm:px-8">
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
               {visibleKnowledgeSpaces.map((knowledgeSpace) => (
                 <KnowledgeSpaceCard
@@ -210,7 +218,7 @@ export function NewKnowledgeList({
                 </Button>
               </div>
             ) : null}
-          </>
+          </div>
         )}
       </div>
       {showExternalApiPanel && canConnect && (
