@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import UUID
 
 import pytest
 from sqlalchemy import Engine
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 import core.ops.ops_trace_manager as module
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
+from core.rag.models.document import Document as RetrievalDocument
 from graphon.file import FileTransferMethod, FileType
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
@@ -263,7 +265,9 @@ def test_encrypt_decrypt_obfuscate_and_cache(
     second = OpsTraceManager.decrypt_tracing_config("tenant-1", "dummy", encrypted)
     assert first == second
     assert encryption_mocks[1].call_count == 1
-    assert OpsTraceManager.obfuscated_decrypt_token("dummy", first)["secret_value"].startswith("ob-")
+    obfuscated = OpsTraceManager.obfuscated_decrypt_token("dummy", first)
+    assert obfuscated["secret_value"] == "ob-dec-enc-value"
+    encryption_mocks[2].assert_called_once_with("dec-enc-value")
 
 
 def test_decrypted_config_reads_real_trace_and_app_rows(
@@ -282,6 +286,15 @@ def test_decrypted_config_reads_real_trace_and_app_rows(
     result = OpsTraceManager.get_decrypted_tracing_config(app.id, "dummy")
     assert result == {"secret_value": "dec-encrypted", "other_value": "info"}
     assert OpsTraceManager.get_decrypted_tracing_config(app.id, "missing") is None
+
+    null_config_app = _app(database, app_id="app-null-config")
+    database.add(
+        TraceAppConfig(app_id=null_config_app.id, tracing_provider="dummy", tracing_config=None)
+    )
+    database.commit()
+    with pytest.raises(ValueError, match="Tracing config cannot be None"):
+        OpsTraceManager.get_decrypted_tracing_config(null_config_app.id, "dummy")
+
     database.delete(app)
     database.commit()
     with pytest.raises(ValueError, match="App not found"):
@@ -301,6 +314,13 @@ def test_ops_trace_instance_uses_persisted_enabled_state_and_cache(
     instance = OpsTraceManager.get_ops_trace_instance(app.id)
     assert isinstance(instance, DummyTraceInstance)
     assert OpsTraceManager.get_ops_trace_instance(app.id) is instance
+
+    app.tracing = json.dumps({"enabled": True, "tracing_provider": "missing"})
+    database.commit()
+    assert OpsTraceManager.get_ops_trace_instance(app.id) is None
+
+    assert OpsTraceManager.get_ops_trace_instance(None) is None
+    assert OpsTraceManager.get_ops_trace_instance("tenant-storage-id") is None
     assert OpsTraceManager.get_ops_trace_instance("missing") is None
 
 
@@ -309,9 +329,16 @@ def test_message_config_lookup_uses_real_conversation_and_model_config(database:
     config = AppModelConfig(app_id=app.id, model='{"provider":"openai"}')
     database.add(config)
     database.commit()
-    _, message = _conversation_message(database, app, config=config)
+    conversation, message = _conversation_message(database, app, config=config)
     result = OpsTraceManager.get_app_config_through_message_id(message.id)
     assert result.id == config.id
+
+    conversation.app_model_config_id = None
+    conversation.override_model_configs = json.dumps({"provider": "override"})
+    database.commit()
+    override = OpsTraceManager.get_app_config_through_message_id(message.id)
+    assert json.loads(override) == {"provider": "override"}
+
     assert OpsTraceManager.get_app_config_through_message_id("missing") is None
 
 
@@ -329,6 +356,8 @@ def test_update_and_get_app_tracing_config_persist_state(trace_environment: None
     }
     with pytest.raises(ValueError, match="Invalid tracing provider"):
         OpsTraceManager.update_app_tracing_config(app.id, True, "missing")
+    with pytest.raises(ValueError, match="App not found"):
+        OpsTraceManager.update_app_tracing_config("missing", False, None)
     with pytest.raises(ValueError, match="App not found"):
         OpsTraceManager.get_app_tracing_config("missing", database)
 
@@ -376,10 +405,38 @@ def test_workflow_log_enriches_moderation_and_suggested_question_traces(
     monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
     task = TraceTask(trace_type=TraceTaskName.MODERATION_TRACE, message_id="message-1")
     moderation = SimpleNamespace(action="block", preset_response="no", query="q", flagged=True)
-    result = task.moderation_trace("message-1", {"start": 1, "end": 2}, moderation_result=moderation)
+    result = task.moderation_trace(
+        "message-1",
+        {"start": 1, "end": 2},
+        moderation_result=moderation,
+        inputs={"source": "payload"},
+    )
     assert result.message_id == log.id
+    assert result.flagged is True
+    assert result.inputs == {"source": "payload"}
     suggested = task.suggested_question_trace("message-1", {"start": 1, "end": 2}, suggested_question=["q1"])
     assert suggested.message_id == log.id
+    assert suggested.suggested_question == ["q1"]
+
+
+def test_dataset_retrieval_trace_serializes_documents(
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    database: Session,
+) -> None:
+    _app(database)
+    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
+    document = RetrievalDocument(page_content="value")
+
+    result = TraceTask(trace_type=TraceTaskName.DATASET_RETRIEVAL_TRACE).dataset_retrieval_trace(
+        "message-1",
+        {"start": 1, "end": 2},
+        documents=[document],
+    )
+
+    assert result.documents == [document.model_dump()]
+    assert result.documents[0]["page_content"] == "value"
+    assert result.metadata["tenant_id"] == "tenant-1"
 
 
 def test_workflow_trace_reads_real_workflow_log_from_owned_session(
@@ -406,6 +463,8 @@ def test_workflow_trace_reads_real_workflow_log_from_owned_session(
     result = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE).workflow_trace(
         workflow_run_id="run-1", conversation_id=None, user_id="user-1"
     )
+    assert result.workflow_run_id == "run-1"
+    assert result.workflow_id == "workflow-1"
     assert result.workflow_app_log_id == log.id
     assert result.prompt_tokens == 5
     assert result.completion_tokens == 7
@@ -432,6 +491,7 @@ def test_tool_trace_reads_real_message_file(monkeypatch: pytest.MonkeyPatch, dat
         "message-1", {"start": 1, "end": 2}, tool_name="tool-a", tool_inputs={}, tool_outputs="result"
     )
     assert result.tool_name == "tool-a"
+    assert result.time_cost == 5
     assert result.message_file_data.id == file.id
 
 
@@ -463,23 +523,41 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert OpsTraceManager.get_trace_config_project_key({}, "dummy") == "fake-key"
     assert OpsTraceManager.get_trace_config_project_url({}, "dummy") == "https://project.fake"
     task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE)
+    assert task.conversation_trace(foo="bar") == {"foo": "bar"}
     assert task._extract_streaming_metrics(_message_data(message_metadata="invalid")) == {}
     assert task.generate_name_trace("conversation", {"start": 1, "end": 2}, tenant_id=None) == {}
+    generated = task.generate_name_trace(
+        "conversation",
+        {"start": 1, "end": 2},
+        tenant_id="tenant-1",
+        generate_conversation_name="name",
+        inputs="query",
+    )
+    assert generated.outputs == "name"
+    assert generated.tenant_id == "tenant-1"
 
 
 def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
     monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
     manager = TraceQueueManager(app_id="app-id", user_id="user-1")
-    task = TraceTask(trace_type=TraceTaskName.CONVERSATION_TRACE, foo="bar")
+    task = TraceTask(
+        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+        conversation_id="conversation-1",
+        timer={"start": 1, "end": 2},
+        tenant_id="tenant-1",
+        generate_conversation_name="name",
+        inputs="query",
+    )
     manager.add_trace_task(task)
     assert manager.collect_tasks() == [task]
 
-    task.execute = MagicMock(return_value=SimpleNamespace(model_dump=lambda: {"trace": True}))
     save = MagicMock()
     delay = MagicMock()
     monkeypatch.setattr(module.storage, "save", save)
     monkeypatch.setattr(module.process_trace_tasks, "delay", delay)
-    monkeypatch.setattr(module, "uuid4", MagicMock(return_value=SimpleNamespace(hex="file-123")))
-    manager.send_to_celery([task])
+    file_id = UUID("00000000-0000-0000-0000-000000000123")
+    monkeypatch.setattr(module, "uuid4", lambda: file_id)
+    manager.add_trace_task(task)
+    manager.run()
     save.assert_called_once()
-    delay.assert_called_once_with({"file_id": "file-123", "app_id": "app-id"})
+    delay.assert_called_once_with({"file_id": file_id.hex, "app_id": "app-id"})
