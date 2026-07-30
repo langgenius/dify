@@ -1,6 +1,6 @@
 'use client'
 
-import type { DocumentProcessingTask, LogicalDocument } from './document-models'
+import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from './document-models'
 import type { TaskProgressStore } from './task-progress-store'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -21,18 +21,18 @@ import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleClient } from '@/service/client'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
-import { documentTaskFromApi } from './document-models'
+import { backgroundTaskFromApi } from './document-models'
 
 type TaskAction = 'cancel' | 'retry'
 
 const TASK_DRAWER_LIMIT = 100
 const noopSubscribe = () => () => undefined
 
-function taskTime(task: DocumentProcessingTask) {
+function taskTime(task: BackgroundTask) {
   return task.completedAt ?? task.updatedAt
 }
 
-function taskLifecycle(task: DocumentProcessingTask) {
+function taskLifecycle(task: BackgroundTask) {
   return `${task.updatedAt}:${task.state}`
 }
 
@@ -47,18 +47,18 @@ function responseStatus(error: unknown): number | undefined {
   }
 }
 
-function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
+function compareTaskRecency(left: BackgroundTask, right: BackgroundTask) {
   if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
   if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
   return right.id.localeCompare(left.id)
 }
 
 function newestTasks(
-  tasks: DocumentProcessingTask[],
+  tasks: BackgroundTask[],
   limit: number,
-  predicate: (task: DocumentProcessingTask) => boolean,
+  predicate: (task: BackgroundTask) => boolean,
 ) {
-  const selected: DocumentProcessingTask[] = []
+  const selected: BackgroundTask[] = []
   for (const task of tasks) {
     if (!predicate(task)) continue
     let low = 0
@@ -134,7 +134,7 @@ export function ProcessingTasksDrawer({
   taskQueryError: boolean
   taskQueryFetching: boolean
   taskQueryPending: boolean
-  tasks: DocumentProcessingTask[]
+  tasks: BackgroundTask[]
   taskProgressStore: TaskProgressStore
   onRetryDocumentQuery: () => void
   onRetryTaskQuery: () => void
@@ -143,38 +143,32 @@ export function ProcessingTasksDrawer({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const cancelTask = useMutation({
-    mutationFn: async (task: DocumentProcessingTask) => {
-      const updated = documentTaskFromApi(
+    mutationFn: async (task: BackgroundTask) =>
+      backgroundTaskFromApi(
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post(
           {
             params: {
               control_space_id: knowledgeSpaceId,
               task_id: task.id,
-              task_kind: task.taskKind ?? 'document',
+              task_kind: task.taskKind,
             },
           },
         ),
-      )
-      if (!updated) throw new Error('KnowledgeFS returned a non-document task')
-      return updated
-    },
+      ),
   })
   const retryTask = useMutation({
-    mutationFn: async (task: DocumentProcessingTask) => {
-      const updated = documentTaskFromApi(
+    mutationFn: async (task: BackgroundTask) =>
+      backgroundTaskFromApi(
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
           {
             params: {
               control_space_id: knowledgeSpaceId,
               task_id: task.id,
-              task_kind: task.taskKind ?? 'document',
+              task_kind: task.taskKind,
             },
           },
         ),
-      )
-      if (!updated) throw new Error('KnowledgeFS returned a non-document task')
-      return updated
-    },
+      ),
   })
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -335,7 +329,7 @@ export function ProcessingTasksDrawer({
     drawerCloseButtonRef.current?.focus()
   }, [open, orderedTasks])
 
-  const performAction = async (task: DocumentProcessingTask, action: TaskAction) => {
+  const performAction = async (task: BackgroundTask, action: TaskAction) => {
     if (!canEdit || pendingActionsRef.current.has(task.id)) return
     pendingActionsRef.current.add(task.id)
     const actionOpenCycle = openCycleRef.current
@@ -355,7 +349,8 @@ export function ProcessingTasksDrawer({
         taskLifecycleGenerationsRef.current.get(task.id)?.generation !== actionLifecycleGeneration
       )
         return
-      onTaskUpdated(updated)
+      if (updated.documentId && updated.documentRevision)
+        onTaskUpdated(updated as DocumentProcessingTask)
       setActionErrors((current) => {
         const next = { ...current }
         delete next[task.id]
@@ -516,16 +511,17 @@ export function ProcessingTasksDrawer({
                 ) : orderedTasks.length ? (
                   <ul>
                     {orderedTasks.map((task) => {
-                      const title =
-                        documentTitles.get(task.documentId) ??
-                        (documentsPending
-                          ? t(($) => $['newKnowledge.documentColumn'])
-                          : task.documentId)
+                      const title = task.documentId
+                        ? (documentTitles.get(task.documentId) ??
+                          (documentsPending
+                            ? t(($) => $['newKnowledge.documentColumn'])
+                            : task.documentId))
+                        : t(($) => $[`newKnowledge.overview.operation.${task.operation}`])
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
                       const taskError = task.errorMessage ?? task.errorCode
-                      const actionTarget = `${documentTitles.get(task.documentId) ?? task.documentId} · ${task.id}`
+                      const actionTarget = `${title} · ${task.id}`
                       return (
                         <li key={task.id} className="flex min-h-15.5 items-center gap-2.5 py-3.5">
                           <span
@@ -542,7 +538,9 @@ export function ProcessingTasksDrawer({
                           />
                           <div className="min-w-0 flex-1">
                             <p className="truncate system-sm-medium text-text-primary">
-                              {t(($) => $['newKnowledge.processDocument'], { name: title })}
+                              {task.documentId
+                                ? t(($) => $['newKnowledge.processDocument'], { name: title })
+                                : title}
                             </p>
                             <p className="mt-0.75 truncate system-xs-regular text-text-tertiary">
                               {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {

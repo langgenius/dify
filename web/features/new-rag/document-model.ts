@@ -1,4 +1,4 @@
-import type { DocumentProcessingTask, LogicalDocument } from './document-models'
+import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from './document-models'
 
 export type DocumentDisplayStatus = 'ready' | 'queued' | 'processing' | 'failed' | 'disabled'
 
@@ -88,14 +88,14 @@ export function documentDisplayStatus(
   return 'ready'
 }
 
-export function taskNeedsAttention(task: DocumentProcessingTask) {
+export function taskNeedsAttention(task: BackgroundTask) {
   return ATTENTION_TASK_STATES.has(task.state)
 }
 
-export function taskIsActive(task: DocumentProcessingTask) {
+export function taskIsActive(task: BackgroundTask) {
   return ACTIVE_TASK_STATES.has(task.state)
 }
 
-export function taskCanRetry(task: DocumentProcessingTask) {
+export function taskCanRetry(task: BackgroundTask) {
   return task.state === 'failed'
 }

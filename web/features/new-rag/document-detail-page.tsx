@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createParser, useQueryState } from 'nuqs'
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
@@ -14,9 +14,15 @@ import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-di
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
 import { DocumentDetailStatus } from './document-detail-status'
-import { documentRevisionListFromApi, logicalDocumentFromApi } from './document-models'
+import {
+  documentRevisionListFromApi,
+  logicalDocumentFromApi,
+  logicalDocumentListFromApi,
+} from './document-models'
 import { DocumentRevisionContent } from './document-revision-content'
+import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { newKnowledgeDocumentsPath } from './routes'
+import { createTaskProgressStore } from './task-progress-store'
 import { useDocumentReindex } from './use-document-reindex'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
@@ -64,7 +70,11 @@ export function DocumentDetailPage({
   const { t: tCommon } = useTranslation('common')
   const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const [selectedRevision, setSelectedRevision] = useQueryState('revision', documentRevisionParser)
+  const [tasksDrawerOpen, setTasksDrawerOpen] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
+  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
+  const taskProgressStore = taskProgressStoreRef.current
   const {
     configureModelSetup,
     ensureModelSetupReady,
@@ -92,6 +102,19 @@ export function DocumentDetailPage({
     [documentId, knowledgeSpaceId],
   )
   const documentQuery = useQuery(documentQueryOptions)
+  const taskDocumentsQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
+      enabled: tasksDrawerOpen,
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        query: {
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+        },
+      }),
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
+      initialPageParam: null as string | null,
+    }),
+  )
   const revisionsQueryOptions = useMemo(
     () =>
       consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.get.infiniteOptions(
@@ -132,8 +155,14 @@ export function DocumentDetailPage({
     documentQuery.data?.activeRevision ?? documentQuery.data?.active?.revision ?? 0
   const documentErrorStatus = responseStatus(documentQuery.error)
   const {
+    cancelReindex,
+    cancelReindexBusy,
     continueLookup,
     documentMissing,
+    fetchNextPage: fetchNextTaskPage,
+    hasNextPage: hasNextTaskPage,
+    isFetchNextPageError: isFetchNextTaskPageError,
+    isFetching: tasksFetching,
     isFetchingNextPage: isFetchingNextTaskPage,
     isLookingUp: isLookingUpTask,
     isPending: tasksPending,
@@ -142,15 +171,12 @@ export function DocumentDetailPage({
     permissionRecoveryBusy,
     permissionRecoveryNeeded,
     refetch: refetchTasks,
-    recheckTimedOutSubmission,
     reindex,
     reindexBusy,
-    retryTimedOutSubmission,
     retryWritePermission,
     submissionPending,
-    submissionRecoveryBusy,
-    submissionTimedOut,
     taskIsActive,
+    tasks,
     tasksError,
     writePermissionRevoked,
   } = useDocumentReindex({
@@ -166,6 +192,26 @@ export function DocumentDetailPage({
   })
   const hasEditPermission = hasPermission(permissionKeys, DatasetACLPermission.Edit)
   const canEdit = hasEditPermission && !writePermissionRevoked
+  const reindexInProgress = submissionPending || taskIsActive
+  const canCancelReindex =
+    canEdit &&
+    reindexInProgress &&
+    (submissionPending || latestTask?.canCancel !== false) &&
+    !tasksError
+  const taskDocuments = useMemo(() => {
+    const documents =
+      taskDocumentsQuery.data?.pages.flatMap((page) => logicalDocumentListFromApi(page).items) ?? []
+    if (documentQuery.data && !documents.some((document) => document.id === documentQuery.data?.id))
+      return [documentQuery.data, ...documents]
+    return documents
+  }, [documentQuery.data, taskDocumentsQuery.data])
+  const taskDocumentIds = useMemo(
+    () => new Set(taskDocuments.map((document) => document.id)),
+    [taskDocuments],
+  )
+  const hasUnresolvedTaskDocuments = tasks.some(
+    (task) => task.documentId && !taskDocumentIds.has(task.documentId),
+  )
   const activeRevision = availableRevisions.find(
     (revision) => revision.revision === effectiveRevision,
   )
@@ -203,12 +249,15 @@ export function DocumentDetailPage({
     <section className="flex min-h-0 flex-1 flex-col px-6 py-5 lg:px-8">
       <DocumentDetailHeader
         backPath={backPath}
+        canCancelReindex={canCancelReindex}
+        cancelReindexBusy={cancelReindexBusy}
         document={document}
         effectiveRevision={effectiveRevision}
         fetchNextRevisionPage={() => void revisionsQuery.fetchNextPage()}
         hasNextRevisionPage={revisionsQuery.hasNextPage}
         isFetchNextRevisionPageError={revisionsQuery.isFetchNextPageError}
         isFetchingNextRevisionPage={revisionsQuery.isFetchingNextPage}
+        onCancelReindex={() => void cancelReindex()}
         onReindex={() => void reindex()}
         onRevisionChange={(revision) => void setSelectedRevision(revision)}
         reindexDisabled={
@@ -224,9 +273,9 @@ export function DocumentDetailPage({
           Boolean(tasksError)
         }
         reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
+        reindexInProgress={reindexInProgress}
         reindexing={reindexBusy || submissionPending}
         revisions={availableRevisions}
-        taskIsActive={taskIsActive}
         titleRef={titleRef}
       />
       {!hasEditPermission && (
@@ -240,23 +289,63 @@ export function DocumentDetailPage({
         effectiveRevision={effectiveRevision}
         isLookingUpTask={isLookingUpTask}
         latestTask={latestTask}
-        locale={locale}
         lookupExhausted={lookupExhausted}
         permissionRecoveryBusy={permissionRecoveryBusy}
         permissionRecoveryNeeded={permissionRecoveryNeeded}
-        recheckTimedOutSubmission={recheckTimedOutSubmission}
         refetchRevisions={() => void revisionsQuery.refetch()}
         refetchTasks={() => void refetchTasks()}
-        retryTimedOutSubmission={retryTimedOutSubmission}
         retryWritePermission={retryWritePermission}
+        reindexInProgress={reindexInProgress}
         revisionHistoryBackgroundError={Boolean(
           revisionsQuery.error && !revisionsQuery.isFetchNextPageError,
         )}
-        submissionRecoveryBusy={submissionRecoveryBusy}
-        submissionTimedOut={submissionTimedOut}
-        taskIsActive={taskIsActive}
         tasksError={Boolean(tasksError)}
         titleRef={titleRef}
+        onViewTasks={() => setTasksDrawerOpen(true)}
+      />
+
+      <ProcessingTasksDrawer
+        actionResultsValid={!documentMissing}
+        canEdit={canEdit}
+        documentQueryError={Boolean(taskDocumentsQuery.error)}
+        documentQueryFetching={taskDocumentsQuery.isFetching}
+        documents={taskDocuments}
+        documentsPending={Boolean(taskDocumentsQuery.isPending || taskDocumentsQuery.hasNextPage)}
+        hasNextDocumentPage={Boolean(taskDocumentsQuery.hasNextPage)}
+        hasNextTaskPage={Boolean(hasNextTaskPage)}
+        hasUnresolvedTaskDocuments={hasUnresolvedTaskDocuments}
+        isFetchingNextDocumentPage={taskDocumentsQuery.isFetchingNextPage}
+        isFetchingNextTaskPage={isFetchingNextTaskPage}
+        knowledgeSpaceId={knowledgeSpaceId}
+        onLoadMoreDocuments={() => void taskDocumentsQuery.fetchNextPage()}
+        onLoadMoreTasks={() => void fetchNextTaskPage()}
+        onOpenChange={setTasksDrawerOpen}
+        onRefreshDocumentsAndTasks={() => {
+          void Promise.all([documentQuery.refetch(), taskDocumentsQuery.refetch(), refetchTasks()])
+        }}
+        onRetryDocumentQuery={() => {
+          if (taskDocumentsQuery.isFetchNextPageError) void taskDocumentsQuery.fetchNextPage()
+          else void taskDocumentsQuery.refetch()
+        }}
+        onRetryPermissionQuery={() => void retryWritePermission()}
+        onRetryTaskQuery={() => {
+          if (isFetchNextTaskPageError) void fetchNextTaskPage()
+          else void refetchTasks()
+        }}
+        onTaskUpdated={() => void refetchTasks()}
+        onWritePermissionDenied={() => void retryWritePermission()}
+        open={tasksDrawerOpen}
+        permissionQueryError={false}
+        permissionQueryFetching={permissionRecoveryBusy}
+        permissionQueryPending={false}
+        readOnlyReason={
+          canEdit ? undefined : t(($) => $['newKnowledge.documentPermissionRestricted'])
+        }
+        taskProgressStore={taskProgressStore}
+        taskQueryError={Boolean(tasksError)}
+        taskQueryFetching={tasksFetching}
+        taskQueryPending={tasksPending}
+        tasks={tasks}
       />
 
       <DocumentRevisionContent

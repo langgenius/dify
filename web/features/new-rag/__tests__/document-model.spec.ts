@@ -39,9 +39,11 @@ const task = (overrides: Partial<DocumentProcessingTask> = {}): DocumentProcessi
   documentRevision: 3,
   id: 'task-1',
   knowledgeSpaceId: 'space-1',
+  operation: 'document_processing',
   progressPercent: 10,
   stage: 'queued',
   state: 'queued',
+  taskKind: 'document',
   updatedAt: '2026-07-20T10:00:00Z',
   ...overrides,
 })

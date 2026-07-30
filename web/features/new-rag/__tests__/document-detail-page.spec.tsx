@@ -1,4 +1,5 @@
 import type {
+  BackgroundTask,
   DocumentProcessingTask,
   DocumentRevisionChunk,
   LogicalDocument,
@@ -27,7 +28,7 @@ type InfiniteOptions = {
   getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
-  queryKind: 'chunks' | 'revisions' | 'tasks'
+  queryKind: 'chunks' | 'documents' | 'revisions' | 'tasks'
 }
 
 function infiniteInput(options?: Pick<InfiniteOptions, 'input'>) {
@@ -40,6 +41,18 @@ const documentQuery = vi.hoisted(() => ({
   error: null as unknown,
   isPending: false,
   refetch: vi.fn(),
+}))
+const submittedJobQuery = vi.hoisted(() => ({
+  data: undefined as
+    | {
+        id: string
+        run_state?: string | null
+        stage?: string | null
+        updated_at?: number
+      }
+    | undefined,
+  error: null as unknown,
+  isPending: false,
 }))
 
 const revisionsQuery = vi.hoisted(() => ({
@@ -69,9 +82,7 @@ const chunksQuery = vi.hoisted(() => ({
 }))
 
 const tasksQuery = vi.hoisted(() => ({
-  data: undefined as
-    | { pages: Array<{ items: DocumentProcessingTask[]; nextCursor?: string }> }
-    | undefined,
+  data: undefined as { pages: Array<{ items: BackgroundTask[]; nextCursor?: string }> } | undefined,
   error: null as unknown,
   fetchNextPage: vi.fn(),
   hasNextPage: false,
@@ -88,6 +99,7 @@ const permissionState = vi.hoisted(() => ({
   refresh: vi.fn(),
 }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const cancelMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
@@ -114,6 +126,20 @@ const revisionApiResponse = vi.hoisted(
     state: revision.state,
   }),
 )
+const logicalDocumentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
+  active: item.active ? revisionApiResponse(item.active) : null,
+  active_revision: item.activeRevision ?? null,
+  created_at: item.createdAt,
+  id: item.id,
+  knowledge_space_id: item.knowledgeSpaceId,
+  provider_item_id: item.providerItemId ?? null,
+  row_version: item.rowVersion,
+  source_id: item.sourceId ?? null,
+  status: item.status,
+  title: item.title,
+  updated_at: item.updatedAt,
+  user_metadata: item.userMetadata,
+}))
 const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   created_at: item.createdAt,
   document_id: item.documentId,
@@ -127,19 +153,20 @@ const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   token_count: item.tokenCount,
   user_metadata: item.userMetadata,
 }))
-const taskApiResponse = vi.hoisted(() => (item: DocumentProcessingTask) => ({
+const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   can_cancel: item.canCancel ?? true,
   can_retry: item.canRetry ?? item.state === 'failed',
   completed_at: item.completedAt ?? null,
   created_at: item.createdAt,
-  document_id: item.documentId,
-  document_revision: item.documentRevision,
+  document_id: item.documentId ?? null,
+  document_revision: item.documentRevision ?? null,
   error_code: item.errorCode ?? null,
   error_message: item.errorMessage ?? null,
   id: item.id,
   knowledge_space_id: item.knowledgeSpaceId,
   operation: item.operation ?? 'document_processing',
   progress_percent: item.progressPercent,
+  source_id: item.sourceId ?? null,
   state:
     item.state === 'succeeded'
       ? 'completed'
@@ -156,6 +183,13 @@ const documentOptions = vi.hoisted(() =>
     ...options,
     queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
     queryKind: 'document',
+  })),
+)
+const submittedJobOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'job'],
+    queryKind: 'submitted-job',
   })),
 )
 const settingsOptions = vi.hoisted(() =>
@@ -183,6 +217,13 @@ const documentTasksOptions = vi.hoisted(() =>
     ...options,
     queryKey: ['knowledge-fs', 'tasks', 'space-1', 'document-1'],
     queryKind: 'tasks',
+  })),
+)
+const documentsOptions = vi.hoisted(() =>
+  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'documents', 'space-1'],
+    queryKind: 'documents',
   })),
 )
 
@@ -235,6 +276,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...original,
     useInfiniteQuery: (options: InfiniteOptions) => {
+      if (options.queryKind === 'documents')
+        return {
+          ...tasksQuery,
+          data: documentQuery.data
+            ? {
+                pages: [
+                  {
+                    data: [logicalDocumentApiResponse(documentQuery.data)],
+                    next_cursor: null,
+                  },
+                ],
+              }
+            : undefined,
+        }
       if (options.queryKind === 'revisions')
         return {
           ...revisionsQuery,
@@ -278,19 +333,22 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           : undefined,
       }
     },
-    useMutation: () => reindexMutation,
-    useQuery: (options: { queryKind?: string }) =>
-      options.queryKind === 'settings'
-        ? {
-            data: {
-              configuration_state: settingsState.configurationState,
-              embedding: null,
-              retrieval: null,
-              revision: 1,
-            },
-            refetch: settingsState.refetch,
-          }
-        : documentQuery,
+    useMutation: (options: { mutationKind?: string }) =>
+      options.mutationKind === 'cancel' ? cancelMutation : reindexMutation,
+    useQuery: (options: { queryKind?: string }) => {
+      if (options.queryKind === 'settings')
+        return {
+          data: {
+            configuration_state: settingsState.configurationState,
+            embedding: null,
+            retrieval: null,
+            revision: 1,
+          },
+          refetch: settingsState.refetch,
+        }
+      if (options.queryKind === 'submitted-job') return submittedJobQuery
+      return documentQuery
+    },
     useQueryClient: () => queryClient,
   }
 })
@@ -301,6 +359,15 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           backgroundTasks: {
+            byTaskKind: {
+              byTaskId: {
+                cancel: {
+                  post: {
+                    mutationOptions: () => ({ mutationKind: 'cancel' }),
+                  },
+                },
+              },
+            },
             get: {
               infiniteOptions: documentTasksOptions,
               key: () => ['knowledge-fs', 'tasks'],
@@ -334,6 +401,17 @@ vi.mock('@/service/client', () => ({
               get: {
                 queryOptions: documentOptions,
                 key: () => ['knowledge-fs', 'document'],
+              },
+            },
+            get: {
+              infiniteOptions: documentsOptions,
+              key: () => ['knowledge-fs', 'documents'],
+            },
+          },
+          jobs: {
+            byJobId: {
+              get: {
+                queryOptions: submittedJobOptions,
               },
             },
           },
@@ -397,10 +475,25 @@ const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTas
   documentRevision: 4,
   id: 'task-1',
   knowledgeSpaceId: 'space-1',
+  operation: 'document_processing',
   progressPercent: 45,
   stage: 'nodes_generated',
   state: 'running',
+  taskKind: 'document',
   updatedAt: '2026-07-21T10:01:00Z',
+  ...overrides,
+})
+
+const backgroundTask = (overrides: Partial<BackgroundTask> = {}): BackgroundTask => ({
+  createdAt: '2026-07-21T10:00:00Z',
+  id: 'background-task-1',
+  knowledgeSpaceId: 'space-1',
+  operation: 'document_reindex',
+  progressPercent: 100,
+  stage: 'published',
+  state: 'succeeded',
+  taskKind: 'document_bulk',
+  updatedAt: '2026-07-21T10:02:00Z',
   ...overrides,
 })
 
@@ -437,10 +530,14 @@ const missingReindexResult = (): BulkDocumentReindexResult => ({
 describe('DocumentDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.sessionStorage.clear()
     permissionState.keys = ['dataset.acl.edit']
     documentQuery.data = logicalDocument()
     documentQuery.error = null
     documentQuery.isPending = false
+    submittedJobQuery.data = undefined
+    submittedJobQuery.error = null
+    submittedJobQuery.isPending = false
     revisionsQuery.data = { pages: [{ items: [activeRevision()] }] }
     revisionsQuery.error = null
     revisionsQuery.hasNextPage = false
@@ -474,10 +571,12 @@ describe('DocumentDetailPage', () => {
       isError: false,
     }))
     reindexMutation.mutateAsync.mockResolvedValue(queuedReindexResult())
+    cancelMutation.mutateAsync.mockResolvedValue(taskApiResponse(task({ state: 'canceled' })))
     queryClient.invalidateQueries.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
+    globalThis.sessionStorage.clear()
     vi.unstubAllGlobals()
   })
 
@@ -556,7 +655,7 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText(/\[Learn more\]\(/)).not.toBeInTheDocument()
   })
 
-  it('expands the parent-child tree and shows selected chunk content and metadata', async () => {
+  it('expands the parent-child tree without mixing selected chunk metadata into document facts', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
       pages: [
@@ -595,13 +694,16 @@ describe('DocumentDetailPage', () => {
     )
     expect(copy).toHaveBeenCalledWith('Workspace contract details')
     expect(toastState.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
-    const characterCount = screen.getByText('dataset.newKnowledge.characterCount').closest('div')
-    expect(characterCount).not.toBeNull()
-    expect(within(characterCount!).getByText('26')).toBeInTheDocument()
-    expect(screen.getByText('section')).toBeInTheDocument()
-    expect(screen.getByText('2.1')).toBeInTheDocument()
-    expect(screen.getByText('sourcePage')).toBeInTheDocument()
-    expect(screen.getByText('8')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'dataset.metadata.metadata' })).toBeInTheDocument()
+    expect(screen.getByText('common.operation.added')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'dataset.newKnowledge.parentChildChunkCount:{"childCount":"1","parentCount":"1"}',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.characterCount')).not.toBeInTheDocument()
+    expect(screen.queryByText('section')).not.toBeInTheDocument()
+    expect(screen.queryByText('sourcePage')).not.toBeInTheDocument()
     const startLabeling = screen.getByRole('button', {
       name: 'dataset.metadata.documentMetadata.startLabeling',
     })
@@ -642,7 +744,7 @@ describe('DocumentDetailPage', () => {
     expect(tree).toHaveFocus()
   })
 
-  it('supports mouse expansion and reports active re-index progress', async () => {
+  it('supports mouse expansion and reports the active re-index state', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
       pages: [
@@ -654,7 +756,22 @@ describe('DocumentDetailPage', () => {
         },
       ],
     }
-    tasksQuery.data = { pages: [{ items: [task({ progressPercent: 45 })] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ progressPercent: 45 }),
+            task({
+              documentId: 'another-document',
+              documentRevision: 1,
+              id: 'another-task',
+              state: 'succeeded',
+            }),
+            backgroundTask({ id: 'bulk-reindex-task' }),
+          ],
+        },
+      ],
+    }
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -664,11 +781,157 @@ describe('DocumentDetailPage', () => {
     expect(parent).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('treeitem', { name: /Child node/ })).toBeNull()
     expect(screen.getByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.documentReindexProgress:{"progress":"45"}',
+      'dataset.newKnowledge.documentReindexStatus',
     )
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
-    ).toHaveAttribute('data-disabled')
+      screen.getByRole('button', { name: 'dataset.newKnowledge.cancelDocumentReindex' }),
+    ).not.toHaveAttribute('data-disabled')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.viewTask' }))
+    const taskDrawer = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.backgroundTasks',
+    })
+    expect(within(taskDrawer).getAllByText(/dataset\.newKnowledge\.processDocument/)).toHaveLength(
+      2,
+    )
+    expect(
+      within(taskDrawer).getByText('dataset.newKnowledge.overview.operation.document_reindex'),
+    ).toBeInTheDocument()
+  })
+
+  it('cancels the active re-index task from the document header', async () => {
+    const user = userEvent.setup()
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.cancelDocumentReindex' }),
+    )
+
+    expect(cancelMutation.mutateAsync).toHaveBeenCalledWith({
+      params: {
+        control_space_id: 'space-1',
+        task_id: 'task-1',
+        task_kind: 'document',
+      },
+    })
+    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
+  })
+
+  it('cancels a newly accepted re-index before task discovery catches up', async () => {
+    const user = userEvent.setup()
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.cancelDocumentReindex',
+      }),
+    )
+
+    expect(cancelMutation.mutateAsync).toHaveBeenCalledWith({
+      params: {
+        control_space_id: 'space-1',
+        task_id: 'compilation-job-1',
+        task_kind: 'document',
+      },
+    })
+  })
+
+  it('restores an accepted re-index after the document page remounts', async () => {
+    const user = userEvent.setup()
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }))
+    expect(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.cancelDocumentReindex',
+      }),
+    ).toBeInTheDocument()
+
+    rendered.unmount()
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.cancelDocumentReindex' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.documentReindexStatus',
+    )
+  })
+
+  it('reconciles a restored re-index through its exact compilation job', async () => {
+    globalThis.sessionStorage.setItem(
+      'dify-new-rag-reindex:space-1:document-1',
+      JSON.stringify({
+        baselineRevision: 3,
+        taskId: 'compilation-job-1',
+      }),
+    )
+    submittedJobQuery.data = {
+      id: 'compilation-job-1',
+      run_state: 'running',
+      stage: 'parsed',
+      updated_at: 1,
+    }
+
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+
+    expect(submittedJobOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        input: {
+          params: {
+            control_space_id: 'space-1',
+            job_id: 'compilation-job-1',
+          },
+        },
+      }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.cancelDocumentReindex' }),
+    ).toBeInTheDocument()
+
+    submittedJobQuery.data = {
+      id: 'compilation-job-1',
+      run_state: 'succeeded',
+      stage: 'published',
+      updated_at: 2,
+    }
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
+      ).toBeInTheDocument(),
+    )
+    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
+    expect(globalThis.sessionStorage.getItem('dify-new-rag-reindex:space-1:document-1')).toBeNull()
+  })
+
+  it('clears a restored re-index when its authoritative job endpoint returns missing', async () => {
+    globalThis.sessionStorage.setItem(
+      'dify-new-rag-reindex:space-1:document-1',
+      JSON.stringify({
+        baselineRevision: 3,
+        taskId: 'missing-compilation-job',
+      }),
+    )
+    submittedJobQuery.error = { status: 404 }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'completed-task', state: 'succeeded' })] }],
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('dataset.newKnowledge.documentReindexStatus')).not.toBeInTheDocument()
+    expect(globalThis.sessionStorage.getItem('dify-new-rag-reindex:space-1:document-1')).toBeNull()
   })
 
   it('renders missing revision and empty chunk states without issuing a usable chunk request', () => {
@@ -1030,7 +1293,7 @@ describe('DocumentDetailPage', () => {
     permissionState.keys = ['dataset.acl.readonly']
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const readonlyReindexButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.reindexDocument',
+      name: 'dataset.newKnowledge.cancelDocumentReindex',
     })
     expect(readonlyReindexButton).toHaveAttribute('data-disabled')
     expect(readonlyReindexButton).toHaveAccessibleDescription(
@@ -1167,11 +1430,16 @@ describe('DocumentDetailPage', () => {
 
     expect(button).toHaveAttribute('aria-busy', 'true')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.documentReindexStatus',
+    )
     finishInvalidation?.()
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
     expect(button).toHaveAttribute('aria-busy', 'true')
-    await user.click(button)
+    expect(button).toHaveTextContent('dataset.newKnowledge.cancelDocumentReindex')
+    expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
+    expect(cancelMutation.mutateAsync).not.toHaveBeenCalled()
   })
 
   it('does not mistake an earlier failed revision for the newly submitted re-index', async () => {
@@ -1184,9 +1452,10 @@ describe('DocumentDetailPage', () => {
 
     await user.click(button)
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
-    expect(button).toHaveAttribute('data-disabled')
-    await user.click(button)
+    expect(button).toHaveTextContent('dataset.newKnowledge.cancelDocumentReindex')
+    expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
+    expect(cancelMutation.mutateAsync).not.toHaveBeenCalled()
 
     const discoveryOptions = documentTasksOptions.mock.lastCall?.[0] as unknown as {
       refetchInterval: (query: {
@@ -1232,17 +1501,11 @@ describe('DocumentDetailPage', () => {
     ).toBe(5000)
   })
 
-  it('keeps submission protection while a delayed status recheck is unresolved', async () => {
+  it('keeps the accepted re-index state while task discovery is delayed', async () => {
     vi.useFakeTimers()
     tasksQuery.data = {
       pages: [{ items: [task({ documentRevision: 4, id: 'old-failed', state: 'failed' })] }],
     }
-    let finishTaskRefresh: (() => void) | undefined
-    tasksQuery.refetch.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        finishTaskRefresh = resolve
-      }),
-    )
     try {
       render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
       const reindexButton = screen.getByRole('button', {
@@ -1255,121 +1518,18 @@ describe('DocumentDetailPage', () => {
       })
       await act(() => vi.advanceTimersByTimeAsync(30000))
 
-      const alert = screen.getByRole('alert')
-      expect(alert).toHaveTextContent('dataset.newKnowledge.documentReindexConfirmationDelayed')
-      fireEvent.click(
-        within(alert).getByRole('button', {
-          name: 'dataset.newKnowledge.checkReindexStatus',
-        }),
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'dataset.newKnowledge.documentReindexStatus',
       )
-      expect(reindexButton).toHaveAttribute('data-disabled')
+      expect(reindexButton).toHaveTextContent('dataset.newKnowledge.cancelDocumentReindex')
+      expect(reindexButton).not.toHaveAttribute('data-disabled')
       expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
-      expect(tasksQuery.refetch).toHaveBeenCalledOnce()
-
-      await act(async () => {
-        finishTaskRefresh?.()
-        await Promise.resolve()
-      })
-      expect(reindexButton).toHaveAttribute('data-disabled')
-      expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
-
-      await act(async () => {
-        fireEvent.click(
-          within(alert).getByRole('button', {
-            name: 'dataset.newKnowledge.retryReindexDocument',
-          }),
-        )
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-      expect(reindexMutation.mutateAsync).toHaveBeenCalledTimes(2)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
-      const discoveryOptions = documentTasksOptions.mock.lastCall?.[0] as unknown as {
-        refetchInterval: (query: {
-          state: {
-            data?: {
-              pages: Array<{
-                data: Array<ReturnType<typeof taskApiResponse>>
-                next_cursor: string | null
-              }>
-            }
-          }
-        }) => number | false
-      }
       expect(
-        discoveryOptions.refetchInterval({
-          state: {
-            data: {
-              pages: [
-                {
-                  data: [taskApiResponse(task({ documentRevision: 4, state: 'failed' }))],
-                  next_cursor: null,
-                },
-              ],
-            },
-          },
-        }),
-      ).toBe(2000)
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('uses a late first task as the baseline while an explicit resubmit is pending', async () => {
-    vi.useFakeTimers()
-    tasksQuery.data = {
-      pages: [{ items: [task({ documentRevision: 4, id: 'old-failed', state: 'failed' })] }],
-    }
-    let finishSecondReindex: ((value: BulkDocumentReindexResult) => void) | undefined
-    try {
-      const rendered = render(
-        <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-      )
-      await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
-        )
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-      await act(() => vi.advanceTimersByTimeAsync(30000))
-      reindexMutation.mutateAsync.mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            finishSecondReindex = resolve
-          }),
-      )
-
-      fireEvent.click(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
-      )
-      tasksQuery.data = {
-        pages: [{ items: [task({ documentRevision: 5, id: 'late-first', state: 'running' })] }],
-      }
-      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-      await act(async () => {
-        finishSecondReindex?.(queuedReindexResult())
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-
-      tasksQuery.data = {
-        pages: [
-          {
-            items: [
-              task({
-                documentRevision: 5,
-                id: 'late-first',
-                state: 'succeeded',
-              }),
-            ],
-          },
-        ],
-      }
-      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+        screen.queryByText('dataset.newKnowledge.documentReindexConfirmationDelayed'),
+      ).not.toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
-      ).toHaveAttribute('data-disabled')
+        screen.queryByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
+      ).not.toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
@@ -1456,8 +1616,8 @@ describe('DocumentDetailPage', () => {
       rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
       expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
-      ).toHaveAttribute('data-disabled')
+        screen.getByRole('button', { name: 'dataset.newKnowledge.cancelDocumentReindex' }),
+      ).not.toHaveAttribute('data-disabled')
       await act(() => vi.advanceTimersByTimeAsync(30000))
       expect(
         screen.queryByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
@@ -1513,7 +1673,7 @@ describe('DocumentDetailPage', () => {
     tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     expect(screen.getByRole('status')).toHaveTextContent(
-      'dataset.newKnowledge.documentReindexProgress:{"progress":"45"}',
+      'dataset.newKnowledge.documentReindexStatus',
     )
   })
 

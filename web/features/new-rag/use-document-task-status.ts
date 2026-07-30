@@ -4,14 +4,14 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { consoleQuery } from '@/service/client'
 import { newestTaskByDocument } from './document-model'
-import { documentTaskListFromApi } from './document-models'
+import { backgroundTaskListFromApi, documentTaskListFromApi } from './document-models'
 
 const TASK_PAGE_SIZE = 100
 const TASK_LOOKUP_PAGE_BATCH = 3
 const ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const SUBMISSION_DISCOVERY_REFRESH_INTERVAL = 2000
 
-function documentTaskIsActive(state: string | undefined) {
+export function documentTaskIsActive(state: string | undefined) {
   return (
     state === 'dispatch_pending' ||
     state === 'queued' ||
@@ -71,33 +71,41 @@ export function useDocumentTaskStatus({
     error: tasksError,
     fetchNextPage,
     hasNextPage,
+    isFetching,
+    isFetchNextPageError,
     isFetchingNextPage,
     isPending,
     refetch,
   } = tasksQuery
   const tasks = useMemo(
+    () => tasksData?.pages.flatMap((page) => backgroundTaskListFromApi(page).items) ?? [],
+    [tasksData],
+  )
+  const documentTasks = useMemo(
     () => tasksData?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
     [tasksData],
   )
   const acceptedTask = useMemo(
-    () => (acceptedTaskId ? tasks.find((candidate) => candidate.id === acceptedTaskId) : undefined),
-    [acceptedTaskId, tasks],
+    () =>
+      acceptedTaskId
+        ? documentTasks.find((candidate) => candidate.id === acceptedTaskId)
+        : undefined,
+    [acceptedTaskId, documentTasks],
   )
   const latestTask = useMemo(() => {
     if (acceptedTask) return acceptedTask
     const task = newestTaskByDocument(
-      tasks.filter(
+      documentTasks.filter(
         (candidate) =>
           candidate.documentId === documentId && candidate.documentRevision >= minimumRevision,
       ),
     ).get(documentId)
     return task && task.documentRevision >= minimumRevision ? task : undefined
-  }, [acceptedTask, documentId, minimumRevision, tasks])
+  }, [acceptedTask, documentId, documentTasks, minimumRevision])
   const lookupSatisfied = acceptedTaskId ? Boolean(acceptedTask) : Boolean(latestTask)
   const lookupExhausted = Boolean(
     !lookupSatisfied && hasNextPage && (tasksData?.pages.length ?? 0) >= lookupPageLimit,
   )
-
   useEffect(() => {
     if (
       isPending ||
@@ -123,6 +131,10 @@ export function useDocumentTaskStatus({
 
   return {
     continueLookup: () => setLookupPageLimit((current) => current + TASK_LOOKUP_PAGE_BATCH),
+    fetchNextPage,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetching,
     isFetchingNextPage,
     isLookingUp: Boolean(!lookupSatisfied && hasNextPage && !lookupExhausted),
     isPending,
@@ -131,6 +143,7 @@ export function useDocumentTaskStatus({
     queryKey: tasksQueryOptions.queryKey,
     refetch,
     taskIsActive: documentTaskIsActive(latestTask?.state),
+    tasks,
     tasksError,
   }
 }

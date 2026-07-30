@@ -67,18 +67,18 @@ type DocumentChunkList = {
   nextCursor?: string
 }
 
-export type DocumentProcessingTask = {
+export type BackgroundTask = {
   canCancel?: boolean
   canRetry?: boolean
   completedAt?: string
   createdAt: string
-  documentId: string
-  documentRevision: number
+  documentId?: string
+  documentRevision?: number
   errorCode?: string
   errorMessage?: string
   id: string
   knowledgeSpaceId: string
-  operation?: KnowledgeFsBackgroundTaskResponse['operation']
+  operation: KnowledgeFsBackgroundTaskResponse['operation']
   progressPercent: number
   retryAt?: string
   stage:
@@ -98,8 +98,14 @@ export type DocumentProcessingTask = {
     | 'failed'
     | 'canceled'
     | 'superseded'
-  taskKind?: KnowledgeFsBackgroundTaskResponse['task_kind']
+  sourceId?: string
+  taskKind: KnowledgeFsBackgroundTaskResponse['task_kind']
   updatedAt: string
+}
+
+export type DocumentProcessingTask = BackgroundTask & {
+  documentId: string
+  documentRevision: number
 }
 
 type DocumentProcessingTaskList = {
@@ -207,7 +213,7 @@ export function documentChunkListFromApi(
   }
 }
 
-function taskStage(task: KnowledgeFsBackgroundTaskResponse): DocumentProcessingTask['stage'] {
+function taskStage(task: KnowledgeFsBackgroundTaskResponse): BackgroundTask['stage'] {
   if (task.state === 'completed') return 'published'
   if (task.progress_percent >= 90) return 'smoke_eval_passed'
   if (task.progress_percent >= 75) return 'projection_built'
@@ -216,17 +222,14 @@ function taskStage(task: KnowledgeFsBackgroundTaskResponse): DocumentProcessingT
   return 'queued'
 }
 
-export function documentTaskFromApi(
-  task: KnowledgeFsBackgroundTaskResponse,
-): DocumentProcessingTask | undefined {
-  if (!task.document_id) return undefined
+export function backgroundTaskFromApi(task: KnowledgeFsBackgroundTaskResponse): BackgroundTask {
   return {
     canCancel: task.can_cancel,
     canRetry: task.can_retry,
     completedAt: task.completed_at ?? undefined,
     createdAt: task.created_at,
-    documentId: task.document_id,
-    documentRevision: task.document_revision ?? 1,
+    documentId: task.document_id ?? undefined,
+    documentRevision: task.document_revision ?? undefined,
     errorCode: task.error_code ?? undefined,
     errorMessage: task.error_message ?? undefined,
     id: task.id,
@@ -240,8 +243,30 @@ export function documentTaskFromApi(
         : task.state === 'canceled'
           ? 'canceled'
           : task.state,
+    sourceId: task.source_id ?? undefined,
     taskKind: task.task_kind,
     updatedAt: task.updated_at,
+  }
+}
+
+export function documentTaskFromApi(
+  task: KnowledgeFsBackgroundTaskResponse,
+): DocumentProcessingTask | undefined {
+  if (!task.document_id) return undefined
+  return {
+    ...backgroundTaskFromApi(task),
+    documentId: task.document_id,
+    documentRevision: task.document_revision ?? 1,
+  }
+}
+
+export function backgroundTaskListFromApi(response: KnowledgeFsBackgroundTaskListResponse): {
+  items: BackgroundTask[]
+  nextCursor?: string
+} {
+  return {
+    items: response.data.map(backgroundTaskFromApi),
+    nextCursor: response.next_cursor ?? undefined,
   }
 }
 

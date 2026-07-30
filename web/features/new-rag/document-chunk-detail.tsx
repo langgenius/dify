@@ -9,11 +9,7 @@ import copy from 'copy-to-clipboard'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import {
-  chunkCharacterCount,
-  chunkContentParts,
-  chunkMetadataEntries,
-} from './document-detail-model'
+import { chunkCharacterCount, chunkContentParts } from './document-detail-model'
 
 function formatBytes(bytes: number, locale: string) {
   const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
@@ -40,6 +36,13 @@ function formatDate(value: string | undefined, locale: string) {
   }).format(date)
 }
 
+function formatDateOnly(value: string | undefined, locale: string) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date)
+}
+
 export function DocumentChunkDetail({
   document,
   chunks,
@@ -59,15 +62,13 @@ export function DocumentChunkDetail({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const selectedChunk = useMemo(
-    () => chunks.find((chunk) => chunk.id === selectedChunkId) ?? chunks[0],
-    [chunks, selectedChunkId],
-  )
   const characterCount = useMemo(
     () => chunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),
     [chunks],
   )
   const averageChunkLength = chunks.length ? Math.round(characterCount / chunks.length) : 0
+  const childChunkCount = chunks.filter((chunk) => chunk.parentChunkId).length
+  const parentChunkCount = chunks.length - childChunkCount
   const sizeBytes = revision?.sizeBytes ?? document.active?.sizeBytes
   const sourceName =
     typeof document.userMetadata.sourceName === 'string'
@@ -149,136 +150,112 @@ export function DocumentChunkDetail({
         )}
       </article>
 
-      <aside className="min-w-0 xl:pl-6">
-        <section className="rounded-xl bg-background-default-subtle p-4">
+      <aside className="min-w-0 space-y-6 xl:pt-3 xl:pl-6">
+        <section className="flex flex-col items-start gap-2.5 rounded-xl bg-background-default-subtle p-4">
           <h2 className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.metadata'])}
+            {t(($) => $['metadata.metadata'])}
           </h2>
-          <p className="mt-2 system-xs-regular text-text-tertiary">
+          <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.documentOverviewDescription'])}
           </p>
           <Button
-            className="mt-2"
             onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}
             variant="primary"
           >
             {t(($) => $['metadata.documentMetadata.startLabeling'])}
           </Button>
         </section>
-        <section className="mt-6">
+        <section>
           <dl className="space-y-3">
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.sourceColumn'])}
               </dt>
-              <dd className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
+              <dd className="min-w-0 flex-1 system-xs-regular wrap-break-word text-text-primary">
                 {sourceName ??
                   (document.sourceId
                     ? t(($) => $['newKnowledge.sourceType.connector'])
                     : t(($) => $['newKnowledge.manualUpload']))}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.fileSize'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
                 {sizeBytes !== undefined ? formatBytes(sizeBytes, locale) : '—'}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
-                {t(($) => $['newKnowledge.createdAt'])}
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
+                {tCommon(($) => $['operation.added'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
-                {formatDate(document.createdAt, locale)}
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
+                {formatDateOnly(document.createdAt, locale)}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.lastIndexed'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
                 {formatDate(revision?.activatedAt ?? revision?.createdAt, locale)}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.documentRevision'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
                 {revision?.revision ?? document.activeRevision ?? '—'}
               </dd>
             </div>
           </dl>
         </section>
-        <section className="mt-7">
-          <h2 className="system-sm-semibold text-text-primary">
+        <section>
+          <h2 className="system-xs-medium text-text-tertiary">
             {t(($) => $['newKnowledge.indexInformation'])}
           </h2>
           <dl className="mt-3 space-y-3">
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.chunkCount'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
-                {chunksComplete ? new Intl.NumberFormat(locale).format(chunks.length) : '—'}
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
+                {chunksComplete
+                  ? childChunkCount
+                    ? t(($) => $['newKnowledge.parentChildChunkCount'], {
+                        childCount: new Intl.NumberFormat(locale).format(childChunkCount),
+                        parentCount: new Intl.NumberFormat(locale).format(parentChunkCount),
+                      })
+                    : new Intl.NumberFormat(locale).format(chunks.length)
+                  : '—'}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.averageChunkLength'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
-                {chunksComplete ? new Intl.NumberFormat(locale).format(averageChunkLength) : '—'}
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
+                {chunksComplete
+                  ? t(($) => $['newKnowledge.averageChunkLengthValue'], {
+                      value: new Intl.NumberFormat(locale).format(averageChunkLength),
+                    })
+                  : '—'}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
+            <div className="flex gap-3">
+              <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.retrievalCount'])}
               </dt>
-              <dd className="mt-1 system-xs-regular text-text-secondary">
+              <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
                 {retrievalCount === undefined
                   ? '—'
-                  : new Intl.NumberFormat(locale).format(retrievalCount)}
+                  : t(($) => $['newKnowledge.retrievalCountValue'], {
+                      value: new Intl.NumberFormat(locale).format(retrievalCount),
+                    })}
               </dd>
             </div>
-            <div>
-              <dt className="system-2xs-medium text-text-tertiary">
-                {t(($) => $['newKnowledge.mimeType'])}
-              </dt>
-              <dd className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
-                {revision?.mimeType ?? document.active?.mimeType ?? '—'}
-              </dd>
-            </div>
-            {selectedChunk && (
-              <>
-                <div>
-                  <dt className="system-2xs-medium text-text-tertiary">
-                    {t(($) => $['newKnowledge.tokenCount'])}
-                  </dt>
-                  <dd className="mt-1 system-xs-regular text-text-secondary">
-                    {new Intl.NumberFormat(locale).format(selectedChunk.tokenCount)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="system-2xs-medium text-text-tertiary">
-                    {t(($) => $['newKnowledge.characterCount'])}
-                  </dt>
-                  <dd className="mt-1 system-xs-regular text-text-secondary">
-                    {new Intl.NumberFormat(locale).format(chunkCharacterCount(selectedChunk.text))}
-                  </dd>
-                </div>
-                {chunkMetadataEntries(selectedChunk.userMetadata).map(([key, value]) => (
-                  <div key={key}>
-                    <dt className="system-2xs-medium wrap-break-word text-text-tertiary">{key}</dt>
-                    <dd className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </>
-            )}
           </dl>
         </section>
       </aside>

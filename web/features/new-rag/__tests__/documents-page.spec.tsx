@@ -1,4 +1,4 @@
-import type { DocumentProcessingTask, LogicalDocument } from '../document-models'
+import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from '../document-models'
 import type { Source } from '../source-models'
 import { hashKey } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -33,9 +33,7 @@ const documentsQuery = vi.hoisted(() => ({
 }))
 
 const tasksQuery = vi.hoisted(() => ({
-  data: undefined as
-    | { pages: Array<{ items: DocumentProcessingTask[]; nextCursor?: string }> }
-    | undefined,
+  data: undefined as { pages: Array<{ items: BackgroundTask[]; nextCursor?: string }> } | undefined,
   dataUpdatedAt: 0,
   dataUpdateCount: 0,
   error: null as unknown,
@@ -157,19 +155,20 @@ const documentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
   updated_at: item.updatedAt,
   user_metadata: item.userMetadata,
 }))
-const taskApiResponse = vi.hoisted(() => (item: DocumentProcessingTask) => ({
+const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   can_cancel: item.canCancel ?? true,
   can_retry: item.canRetry ?? item.state === 'failed',
   completed_at: item.completedAt ?? null,
   created_at: item.createdAt,
-  document_id: item.documentId,
-  document_revision: item.documentRevision,
+  document_id: item.documentId ?? null,
+  document_revision: item.documentRevision ?? null,
   error_code: item.errorCode ?? null,
   error_message: item.errorMessage ?? null,
   id: item.id,
   knowledge_space_id: item.knowledgeSpaceId,
   operation: item.operation ?? 'document_processing',
   progress_percent: item.progressPercent,
+  source_id: item.sourceId ?? null,
   state:
     item.state === 'succeeded'
       ? 'completed'
@@ -314,7 +313,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       }
     },
     useMutation: (options: {
-      mutationFn?: (input: DocumentProcessingTask) => Promise<DocumentProcessingTask>
+      mutationFn?: (input: BackgroundTask) => Promise<BackgroundTask>
       mutationKind?: 'bulk-upload' | 'cancel' | 'reindex' | 'retry' | 'upload'
     }) => {
       if (options.mutationFn)
@@ -514,9 +513,24 @@ const task = (overrides: Partial<DocumentProcessingTask> = {}): DocumentProcessi
   documentRevision: 2,
   id: 'task-1',
   knowledgeSpaceId: 'space-1',
+  operation: 'document_processing',
   progressPercent: 45,
   stage: 'parsed',
   state: 'running',
+  taskKind: 'document',
+  updatedAt: '2026-07-20T10:01:00Z',
+  ...overrides,
+})
+
+const backgroundTask = (overrides: Partial<BackgroundTask> = {}): BackgroundTask => ({
+  createdAt: '2026-07-20T10:00:00Z',
+  id: 'background-task-1',
+  knowledgeSpaceId: 'space-1',
+  operation: 'document_reindex',
+  progressPercent: 100,
+  stage: 'published',
+  state: 'succeeded',
+  taskKind: 'document_bulk',
   updatedAt: '2026-07-20T10:01:00Z',
   ...overrides,
 })
@@ -2409,6 +2423,46 @@ describe('DocumentsPage', () => {
         ),
       ),
     ).toBeInTheDocument()
+  })
+
+  it('shows document, bulk re-index, and source tasks returned by the task list', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({ id: 'document-task', state: 'succeeded' }),
+            backgroundTask({ id: 'reindex-task' }),
+            backgroundTask({
+              errorMessage: 'Source sync failed',
+              id: 'source-task',
+              operation: 'source_sync',
+              sourceId: 'source-1',
+              state: 'failed',
+              taskKind: 'source',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(3)
+    expect(
+      within(panel).getByText('dataset.newKnowledge.overview.operation.document_reindex'),
+    ).toBeInTheDocument()
+    expect(
+      within(panel).getByText('dataset.newKnowledge.overview.operation.source_sync'),
+    ).toBeInTheDocument()
+    expect(within(panel).getByText('Source sync failed')).toBeInTheDocument()
   })
 
   it('gives duplicate task actions distinct accessible names', async () => {

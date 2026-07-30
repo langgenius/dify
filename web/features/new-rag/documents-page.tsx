@@ -46,6 +46,7 @@ import {
   taskVersionIsAfter,
 } from './document-model'
 import {
+  backgroundTaskListFromApi,
   documentTaskFromApi,
   documentTaskListFromApi,
   logicalDocumentListFromApi,
@@ -436,6 +437,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () => tasksQuery.data?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
     [tasksQuery.data],
   )
+  const backgroundTasks = useMemo(
+    () => tasksQuery.data?.pages.flatMap((page) => backgroundTaskListFromApi(page).items) ?? [],
+    [tasksQuery.data],
+  )
   const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
   const unresolvedTaskDocumentIds = useMemo(
     () =>
@@ -534,6 +539,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [baseTasks, taskOverrides, terminalTaskPins],
   )
   const effectiveTaskById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
+  const drawerTasks = useMemo(
+    () => backgroundTasks.map((task) => effectiveTaskById.get(task.id) ?? task),
+    [backgroundTasks, effectiveTaskById],
+  )
   useEffect(() => {
     for (const task of tasks) {
       if (!taskIsActive(task)) {
@@ -740,7 +749,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const selectableFilteredDocuments = filteredDocuments.filter(
     (document) => documentStatuses.get(document.id) !== 'disabled',
   )
-  const attentionTasks = tasks.filter(taskNeedsAttention)
+  const attentionTasks = drawerTasks.filter(taskNeedsAttention)
   const hasTaskError = attentionTasks.some(
     (task) => task.state === 'failed' || task.state === 'canceled',
   )
@@ -2543,7 +2552,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         taskQueryError={Boolean(tasksQuery.error || tasksQuery.isFetchNextPageError)}
         taskQueryFetching={tasksQuery.isFetching}
         taskProgressStore={taskProgressStore}
-        tasks={tasks}
+        tasks={drawerTasks}
       />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}

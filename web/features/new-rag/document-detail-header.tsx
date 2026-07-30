@@ -16,35 +16,41 @@ import Link from '@/next/link'
 
 export function DocumentDetailHeader({
   backPath,
+  canCancelReindex,
+  cancelReindexBusy,
   document,
   effectiveRevision,
   fetchNextRevisionPage,
   hasNextRevisionPage,
   isFetchNextRevisionPageError,
   isFetchingNextRevisionPage,
+  onCancelReindex,
   onReindex,
   onRevisionChange,
   reindexDisabled,
   reindexDisabledReasonId,
+  reindexInProgress,
   reindexing,
   revisions,
-  taskIsActive,
   titleRef,
 }: {
   backPath: string
+  canCancelReindex: boolean
+  cancelReindexBusy: boolean
   document: LogicalDocument
   effectiveRevision?: number
   fetchNextRevisionPage: () => void
   hasNextRevisionPage: boolean
   isFetchNextRevisionPageError: boolean
   isFetchingNextRevisionPage: boolean
+  onCancelReindex: () => void
   onReindex: () => void
   onRevisionChange: (revision: number) => void
   reindexDisabled: boolean
   reindexDisabledReasonId?: string
+  reindexInProgress: boolean
   reindexing: boolean
   revisions: Array<Exclude<LogicalDocumentRevision, null>>
-  taskIsActive: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
@@ -124,15 +130,19 @@ export function DocumentDetailHeader({
             </Button>
           )}
           <Button
-            aria-busy={reindexing || taskIsActive}
+            aria-busy={reindexing || cancelReindexBusy}
             aria-describedby={reindexDisabledReasonId}
             className="gap-1 pl-3"
-            disabled={reindexDisabled}
-            loading={reindexing}
-            onClick={onReindex}
+            disabled={reindexInProgress ? !canCancelReindex : reindexDisabled}
+            loading={reindexInProgress ? cancelReindexBusy : reindexing}
+            onClick={reindexInProgress ? onCancelReindex : onReindex}
           >
-            <span aria-hidden className="i-ri-refresh-line size-4" />
-            {t(($) => $['newKnowledge.reindexDocument'])}
+            {!reindexInProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
+            {t(($) =>
+              reindexInProgress
+                ? $['newKnowledge.cancelDocumentReindex']
+                : $['newKnowledge.reindexDocument'],
+            )}
           </Button>
         </div>
       </div>

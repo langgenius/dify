@@ -9,41 +9,33 @@ export function DocumentDetailStatus({
   effectiveRevision,
   isLookingUpTask,
   latestTask,
-  locale,
   lookupExhausted,
   permissionRecoveryBusy,
   permissionRecoveryNeeded,
-  recheckTimedOutSubmission,
   refetchRevisions,
   refetchTasks,
-  retryTimedOutSubmission,
   retryWritePermission,
+  reindexInProgress,
   revisionHistoryBackgroundError,
-  submissionRecoveryBusy,
-  submissionTimedOut,
-  taskIsActive,
   tasksError,
   titleRef,
+  onViewTasks,
 }: {
   continueLookup: () => void
   effectiveRevision?: number
   isLookingUpTask: boolean
   latestTask?: DocumentProcessingTask
-  locale: string
   lookupExhausted: boolean
   permissionRecoveryBusy: boolean
   permissionRecoveryNeeded: boolean
-  recheckTimedOutSubmission: () => Promise<unknown>
   refetchRevisions: () => void
   refetchTasks: () => void
-  retryTimedOutSubmission: () => Promise<unknown>
   retryWritePermission: () => Promise<boolean>
+  reindexInProgress: boolean
   revisionHistoryBackgroundError: boolean
-  submissionRecoveryBusy: boolean
-  submissionTimedOut: boolean
-  taskIsActive: boolean
   tasksError: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
+  onViewTasks: () => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -58,7 +50,7 @@ export function DocumentDetailStatus({
 
   return (
     <>
-      {taskIsActive && (
+      {reindexInProgress && (
         <div
           className="mt-4 flex items-center gap-2 rounded-lg bg-state-accent-hover px-3 py-2 system-xs-regular text-text-accent"
           role="status"
@@ -67,9 +59,12 @@ export function DocumentDetailStatus({
             aria-hidden
             className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
           />
-          {t(($) => $['newKnowledge.documentReindexProgress'], {
-            progress: new Intl.NumberFormat(locale).format(latestTask?.progressPercent ?? 0),
-          })}
+          <span className="min-w-0 flex-1">
+            {t(($) => $['newKnowledge.documentReindexStatus'])}
+          </span>
+          <Button size="small" variant="ghost-accent" onClick={onViewTasks}>
+            {t(($) => $['newKnowledge.viewTask'])}
+          </Button>
         </div>
       )}
       {latestTask?.state === 'failed' && (
@@ -142,34 +137,6 @@ export function DocumentDetailStatus({
               </Button>
             </>
           )}
-        </div>
-      )}
-
-      {submissionTimedOut && (
-        <div
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
-          role="alert"
-        >
-          <span>{t(($) => $['newKnowledge.documentReindexConfirmationDelayed'])}</span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={submissionRecoveryBusy}
-              loading={submissionRecoveryBusy}
-              onClick={() =>
-                void recheckTimedOutSubmission().finally(() => titleRef.current?.focus())
-              }
-            >
-              {t(($) => $['newKnowledge.checkReindexStatus'])}
-            </Button>
-            <Button
-              disabled={submissionRecoveryBusy}
-              onClick={() =>
-                void retryTimedOutSubmission().finally(() => titleRef.current?.focus())
-              }
-            >
-              {t(($) => $['newKnowledge.retryReindexDocument'])}
-            </Button>
-          </div>
         </div>
       )}
 
