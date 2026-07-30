@@ -211,7 +211,7 @@ function AgentMonitoringSourceFilter({
       <div className="relative w-fit max-w-full">
         <SelectTrigger
           aria-label={triggerLabel}
-          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
+          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
         >
           <span className="flex min-w-0 grow items-center gap-1 text-left">
             <span className="flex min-w-0 grow items-center gap-1 px-1">

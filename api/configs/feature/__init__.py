@@ -470,6 +470,11 @@ class FileUploadConfig(BaseSettings):
         default=50,
     )
 
+    UPLOAD_SKILL_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed Skill package size for uploads in megabytes",
+        default=50,
+    )
+
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a batch upload operation",
         default=20,

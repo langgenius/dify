@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Failed to upload skill.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Upload a .zip or .skill file.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Skill package must be {{sizeLimit}} or smaller.",
   "agentDetail.configure.skills.upload.success": "Skill uploaded.",
   "agentDetail.configure.skills.upload.title": "Upload skill",
   "agentDetail.configure.skills.upload.warning.files": "If you only need to use Markdown files, upload them to Files and reference them in your prompt.",

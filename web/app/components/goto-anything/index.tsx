@@ -477,8 +477,8 @@ function GotoAnythingDialog() {
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <AutocompleteCollection>
-                            {(option: CommandOption) => (
+                          <AutocompleteCollection<CommandOption>>
+                            {(option) => (
                               <AutocompleteItem
                                 key={option.shortcut}
                                 value={option}
@@ -542,8 +542,8 @@ function GotoAnythingDialog() {
                                   { ns: 'app' },
                                 )}
                               </AutocompleteGroupLabel>
-                              <AutocompleteCollection>
-                                {(result: SearchResult) => (
+                              <AutocompleteCollection<SearchResult>>
+                                {(result) => (
                                   <AutocompleteItem
                                     key={`${result.type}-${result.id}`}
                                     value={result}

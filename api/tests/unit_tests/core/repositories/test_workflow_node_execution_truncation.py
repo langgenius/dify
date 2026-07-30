@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
@@ -113,7 +114,6 @@ def create_workflow_node_execution(
 
 def mock_user() -> Account:
     """Create a mock Account user for testing."""
-    from unittest.mock import MagicMock
 
     user = MagicMock(spec=Account)
     user.id = "test-user-id"
@@ -124,21 +124,25 @@ def mock_user() -> Account:
 class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
     """Test class for truncation functionality in SQLAlchemyWorkflowNodeExecutionRepository."""
 
-    def create_repository(self) -> SQLAlchemyWorkflowNodeExecutionRepository:
-        """Create a repository instance for testing."""
-        return SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=MagicMock(spec=Engine),
+    def create_repository(self, sqlite_engine: Engine) -> SQLAlchemyWorkflowNodeExecutionRepository:
+        """Create a repository backed by the test's isolated SQLite engine."""
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=sqlite_engine,
             tenant_id="test-tenant-id",
             user=mock_user(),
             app_id="test-app-id",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
+        with repository._session_factory() as session:
+            assert isinstance(session, Session)
+            assert session.get_bind() is sqlite_engine
+        return repository
 
-    def test_to_domain_model_without_offload_data(self):
+    def test_to_domain_model_without_offload_data(self, sqlite_engine: Engine):
         """Test _to_domain_model correctly handles models without offload data."""
-        repo = self.create_repository()
+        repo = self.create_repository(sqlite_engine)
 
-        # Create a mock database model without offload data
+        # Create a database model without offload data
         db_model = WorkflowNodeExecutionModel()
         db_model.id = "test-id"
         db_model.node_execution_id = "node-exec-id"

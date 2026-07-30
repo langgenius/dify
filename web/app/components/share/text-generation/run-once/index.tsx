@@ -13,6 +13,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
@@ -143,16 +144,16 @@ const RunOnce: FC<IRunOnceProps> = ({
                       <div className="mt-1">
                         {item.type === 'select' && (
                           <Select<string>
-                            value={selectValue}
+                            value={selectValue ?? defaultSelectValue}
                             onValueChange={(nextValue) => {
                               if (nextValue == null || nextValue === '') return
                               handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
                             }}
                           >
                             <SelectTrigger className="w-full">
-                              {selectValue ??
-                                defaultSelectValue ??
-                                t(($) => $['placeholder.select'], { ns: 'common' })}
+                              <SelectValue
+                                placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               {(item.options || []).map((option) => (

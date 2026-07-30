@@ -46,6 +46,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   const SelectContext = React.createContext<{
     disabled?: boolean
     onValueChange?: (value: string) => void
+    value?: string | null
   }>({})
 
   return {
@@ -53,15 +54,21 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       children,
       disabled,
       onValueChange,
+      value,
     }: {
       children: React.ReactNode
       disabled?: boolean
       onValueChange?: (value: string) => void
+      value?: string | null
     }) => (
-      <SelectContext.Provider value={{ disabled, onValueChange }}>
+      <SelectContext.Provider value={{ disabled, onValueChange, value }}>
         <div>{children}</div>
       </SelectContext.Provider>
     ),
+    SelectValue: ({ placeholder }: { placeholder?: React.ReactNode }) => {
+      const context = React.use(SelectContext)
+      return <>{context.value || placeholder}</>
+    },
     SelectTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => {
       const context = React.useContext(SelectContext)
       return (

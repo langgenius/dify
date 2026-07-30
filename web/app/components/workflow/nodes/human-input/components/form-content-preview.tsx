@@ -1,5 +1,4 @@
 'use client'
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -94,10 +93,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
         />
         <div className="mt-3 flex flex-wrap gap-1 py-1">
           {userActions.map((action: UserAction) => (
-            <Button
-              key={action.id}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-            >
+            <Button key={action.id} variant={getButtonStyle(action.button_style)}>
               {action.title}
             </Button>
           ))}
