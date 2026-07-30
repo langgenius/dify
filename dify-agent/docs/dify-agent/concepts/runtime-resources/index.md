@@ -67,12 +67,17 @@ streams are observability state, not the Home/Workspace/Binding ledger.
 
 ## Creation and execution flow
 
-Home Snapshot initialization uses `POST /home-snapshots/initialize`. Build Draft
-Apply uses `POST /home-snapshots/from-binding`: Dify Agent acquires the exact
-source Binding, snapshots its materialized Home through the backend-native
-operation, releases the lease, and returns a new opaque snapshot ref. Dify API
-then stores a new immutable `agent_home_snapshots` row and records its logical id
-on the resulting config version. There is no replay or initialization fallback
+Agent creation does not create a Home Snapshot. A config with no logical Home
+Snapshot asks the selected backend to materialize its deployment-default Home
+when the Binding is created. This default Home is mutable and private to the
+Binding; it does not produce an `agent_home_snapshots` row or an implicit
+snapshot ref.
+
+Build Draft Apply uses `POST /home-snapshots/from-binding`: Dify Agent acquires
+the exact source Binding, snapshots its materialized Home through the
+backend-native operation, releases the lease, and returns a new opaque snapshot
+ref. Dify API then stores a new immutable `agent_home_snapshots` row and records
+its logical id on the resulting config version. There is no replay or fallback
 when the source Binding is unavailable.
 
 Before an Agent request, Dify API loads the specific product context. If it has
@@ -82,10 +87,12 @@ its owner and config/Home generation. Missing, retired, or mismatched Bindings
 fail fast; Dify API does not search by Agent, Workspace, candidate count, or
 recency, and it does not create a replacement implicitly.
 
-`POST /execution-bindings` materializes the selected Home Snapshot and returns
-opaque Binding and Workspace refs. Every create request represents a new
-participant, even when the Agent, Snapshot, config generation, and Workspace
-match another Binding. The request composition contains:
+`POST /execution-bindings` accepts either an exact `home_snapshot_ref` or
+`null`. An exact ref must be materialized without fallback; `null` selects the
+backend's deployment-default Home. It returns opaque Binding and Workspace
+refs. Every create request represents a new participant, even when the Agent,
+Snapshot, config generation, and Workspace match another Binding. The request
+composition contains:
 
 ```json
 {
@@ -174,9 +181,9 @@ own Home plus the shared Workspace.
 
 | Backend | Home Snapshot operations | Binding operations | Physical relationship |
 | --- | --- | --- | --- |
-| Local | Supported | Supported, including attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
-| E2B | Supported | Supported without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; Home initialization/checkpoint uses E2B snapshots. |
-| Enterprise | Not implemented | Not implemented | Configuration is accepted, but every resource operation fails fast with `NotImplementedError`. |
+| Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
+| E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
+| Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
 the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
@@ -185,9 +192,8 @@ its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
 Neither path creates a fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
-resource. Runtime resources pause on timeout; temporary Home initialization
-resources are killed. It is not a retention TTL and does not delete paused
-resources or immutable snapshots.
+resource. Runtime resources pause on timeout. It is not a retention TTL and
+does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
 composition and the [Operations Guide](../../guide/index.md) for Local and E2B

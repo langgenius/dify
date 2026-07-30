@@ -30,7 +30,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
         </TooltipTrigger>
         <TooltipContent
           sideOffset={4}
-          className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary"
+          className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary"
         >
           {error}
         </TooltipContent>
@@ -74,7 +74,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
   return (
     <div
       className={cn(
-        'relative h-[26px] overflow-hidden rounded-md bg-components-progress-bar-bg',
+        'relative h-6.5 overflow-hidden rounded-md bg-components-progress-bar-bg',
         isError && 'bg-state-destructive-hover-alt',
       )}
     >
@@ -84,7 +84,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
           style={{ width: `${percent}%` }}
         />
       )}
-      <div className="z-1 flex h-full items-center gap-1 pr-2 pl-[6px]">
+      <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
         <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
           <div className="truncate system-xs-medium text-text-secondary">{name}</div>

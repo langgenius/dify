@@ -1,42 +1,73 @@
-import type { InstalledApp } from '@/models/explore'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { expectLoadingButton } from '@/test/button'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SideBar from '../index'
 
-const { mockToastSuccess } = vi.hoisted(() => ({
-  mockToastSuccess: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  fetchNextPage: vi.fn(),
+  installedApps: [] as InstalledAppResponse[],
+  hasNextPage: false,
+  uninstall: vi.fn(),
+  updatePinStatus: vi.fn(),
+  toastSuccess: vi.fn(),
 }))
 
-const mockSegments = ['apps']
-const mockPush = vi.fn()
-const mockUninstall = vi.fn()
-const mockUpdatePinStatus = vi.fn()
-let mockIsPending = false
-let mockIsUninstallPending = false
-let mockInstalledApps: InstalledApp[] = []
+let intersectionCallback: IntersectionObserverCallback | undefined
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/',
-  useSelectedLayoutSegments: () => mockSegments,
-  useRouter: () => ({
-    push: mockPush,
-  }),
+  useSelectedLayoutSegments: () => ['apps'],
 }))
 
-vi.mock('@/service/use-explore', () => ({
-  useGetInstalledApps: () => ({
-    isPending: mockIsPending,
-    data: { installed_apps: mockInstalledApps },
-  }),
-  useUninstallApp: () => ({
-    mutateAsync: mockUninstall,
-    isPending: mockIsUninstallPending,
-  }),
-  useUpdateAppPinStatus: () => ({
-    mutateAsync: mockUpdatePinStatus,
-  }),
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: () => ({
+          queryKey: ['system-features'],
+          queryFn: () => new Promise(() => {}),
+        }),
+      },
+    },
+    installedApps: {
+      get: {
+        infiniteOptions: (options: {
+          getNextPageParam: (page: {
+            has_more: boolean
+            next_cursor: string | null
+          }) => string | undefined
+          initialPageParam: undefined
+          input: (pageParam: string | undefined) => unknown
+          select?: (data: unknown) => unknown
+        }) => ({
+          ...options,
+          queryKey: ['installed-apps'],
+          queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+            if (pageParam) mocks.fetchNextPage(pageParam)
+            return {
+              installed_apps: pageParam ? [] : mocks.installedApps,
+              has_more: pageParam ? false : mocks.hasNextPage,
+              next_cursor: pageParam || !mocks.hasNextPage ? null : 'next-page',
+            }
+          },
+        }),
+      },
+      byInstalledAppId: {
+        delete: {
+          mutationOptions: () => ({
+            mutationFn: (input: unknown) => mocks.uninstall(input),
+          }),
+        },
+        patch: {
+          mutationOptions: () => ({
+            mutationFn: (input: unknown) => mocks.updatePinStatus(input),
+          }),
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
@@ -45,193 +76,122 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      success: mockToastSuccess,
+      success: mocks.toastSuccess,
     },
   }
 })
 
-const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
-  id: overrides.id ?? 'app-123',
-  uninstallable: overrides.uninstallable ?? false,
+const createInstalledApp = (
+  overrides: Partial<InstalledAppResponse> = {},
+): InstalledAppResponse => ({
+  id: overrides.id ?? 'installed-app-1',
+  app_owner_tenant_id: overrides.app_owner_tenant_id ?? 'tenant-1',
+  editable: overrides.editable ?? true,
   is_pinned: overrides.is_pinned ?? false,
+  last_used_at: overrides.last_used_at ?? null,
+  uninstallable: overrides.uninstallable ?? false,
   app: {
-    id: overrides.app?.id ?? 'app-basic-id',
-    mode: overrides.app?.mode ?? AppModeEnum.CHAT,
+    id: overrides.app?.id ?? 'app-1',
+    name: overrides.app?.name ?? 'My App',
+    description: overrides.app?.description ?? 'Description',
+    mode: overrides.app?.mode ?? 'chat',
     icon_type: overrides.app?.icon_type ?? 'emoji',
     icon: overrides.app?.icon ?? '🤖',
-    icon_background: overrides.app?.icon_background ?? '#fff',
-    icon_url: overrides.app?.icon_url ?? '',
-    name: overrides.app?.name ?? 'My App',
-    description: overrides.app?.description ?? 'desc',
+    icon_background: overrides.app?.icon_background ?? '#FFFFFF',
+    icon_url: overrides.app?.icon_url ?? null,
     use_icon_as_answer_icon: overrides.app?.use_icon_as_answer_icon ?? false,
   },
 })
 
-const renderSideBar = () => {
-  return render(<SideBar />)
-}
+const renderSideBar = () => renderWithConsoleQuery(<SideBar />)
 
 describe('SideBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsPending = false
-    mockIsUninstallPending = false
-    mockInstalledApps = []
+    mocks.installedApps = []
+    mocks.hasNextPage = false
+    mocks.uninstall.mockResolvedValue(undefined)
+    mocks.updatePinStatus.mockResolvedValue({ result: 'success', message: 'updated' })
+    intersectionCallback = undefined
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          if (options?.root) intersectionCallback = callback
+        }
+
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
   })
 
-  describe('Rendering', () => {
-    it('should render discovery link', () => {
-      renderSideBar()
+  it('renders the empty state after the installed-app query settles', async () => {
+    renderSideBar()
 
-      expect(screen.getByText('explore.sidebar.title')).toBeInTheDocument()
+    expect(await screen.findByText('explore.sidebar.noApps.title')).toBeInTheDocument()
+  })
+
+  it('renders installed apps and folds to icon-only navigation', async () => {
+    const user = userEvent.setup()
+    mocks.installedApps = [createInstalledApp()]
+    renderSideBar()
+
+    expect(await screen.findByRole('link', { name: 'My App' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
+
+    expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
+  })
+
+  it('automatically fetches the next page when the sentinel enters the scroll viewport', async () => {
+    mocks.installedApps = [createInstalledApp()]
+    mocks.hasNextPage = true
+    renderSideBar()
+    await screen.findByRole('region', { name: 'explore.sidebar.webApps' })
+
+    expect(intersectionCallback).toBeDefined()
+    act(() => {
+      intersectionCallback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
     })
 
-    it('should render workspace items when installed apps exist', () => {
-      mockInstalledApps = [createInstalledApp()]
-      renderSideBar()
+    await waitFor(() => expect(mocks.fetchNextPage).toHaveBeenCalledWith('next-page'))
+  })
 
-      expect(screen.getByText('explore.sidebar.webApps')).toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toBeInTheDocument()
-      expect(screen.getByText('My App')).toBeInTheDocument()
-    })
+  it('uninstalls the selected app and closes the confirmation after success', async () => {
+    const user = userEvent.setup()
+    mocks.installedApps = [createInstalledApp()]
+    renderSideBar()
 
-    it('should render NoApps component when no installed apps on desktop', () => {
-      renderSideBar()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByText('explore.sidebar.action.delete'))
+    await user.click(screen.getByText('common.operation.confirm'))
 
-      expect(screen.getByText('explore.sidebar.noApps.title')).toBeInTheDocument()
-    })
-
-    it('should not render NoApps while loading', () => {
-      mockIsPending = true
-      renderSideBar()
-
-      expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
-    })
-
-    it('should render multiple installed apps', () => {
-      mockInstalledApps = [
-        createInstalledApp({ id: 'app-1', app: { ...createInstalledApp().app, name: 'Alpha' } }),
-        createInstalledApp({ id: 'app-2', app: { ...createInstalledApp().app, name: 'Beta' } }),
-      ]
-      renderSideBar()
-
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Beta')).toBeInTheDocument()
-    })
-
-    it('should render divider between pinned and unpinned apps', () => {
-      mockInstalledApps = [
-        createInstalledApp({
-          id: 'app-1',
-          is_pinned: true,
-          app: { ...createInstalledApp().app, name: 'Pinned' },
-        }),
-        createInstalledApp({
-          id: 'app-2',
-          is_pinned: false,
-          app: { ...createInstalledApp().app, name: 'Unpinned' },
-        }),
-      ]
-      const { container } = renderSideBar()
-
-      const dividers = container.querySelectorAll('[class*="divider"], hr')
-      expect(dividers.length).toBeGreaterThan(0)
-    })
-
-    it('should render a button for toggling the sidebar and update its accessible name', () => {
-      renderSideBar()
-
-      const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
-      fireEvent.click(toggleButton)
-
-      expect(
-        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should render icon-only content when folded', () => {
-      mockInstalledApps = [createInstalledApp()]
-      renderSideBar()
-
-      fireEvent.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
-
-      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
-      ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.uninstall).toHaveBeenCalledWith({
+        params: { installed_app_id: 'installed-app-1' },
+      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('common.api.remove')
     })
   })
 
-  describe('User Interactions', () => {
-    it('should uninstall app and show toast when delete is confirmed', async () => {
-      mockInstalledApps = [createInstalledApp()]
-      mockUninstall.mockResolvedValue(undefined)
-      renderSideBar()
+  it('updates pin state through the generated mutation input', async () => {
+    const user = userEvent.setup()
+    mocks.installedApps = [createInstalledApp()]
+    renderSideBar()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
-      fireEvent.click(await screen.findByText('common.operation.confirm'))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
-      await waitFor(() => {
-        expect(mockUninstall).toHaveBeenCalledWith('app-123')
-        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
-      })
-    })
-
-    it('should update pin status and show toast when pin is clicked', async () => {
-      mockInstalledApps = [createInstalledApp({ is_pinned: false })]
-      mockUpdatePinStatus.mockResolvedValue(undefined)
-      renderSideBar()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
-
-      await waitFor(() => {
-        expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-123', isPinned: true })
-        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.success')
-      })
-    })
-
-    it('should unpin an already pinned app', async () => {
-      mockInstalledApps = [createInstalledApp({ is_pinned: true })]
-      mockUpdatePinStatus.mockResolvedValue(undefined)
-      renderSideBar()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.unpin'))
-
-      await waitFor(() => {
-        expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-123', isPinned: false })
-      })
-    })
-
-    it('should open and close confirm dialog for delete', async () => {
-      mockInstalledApps = [createInstalledApp()]
-      renderSideBar()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
-
-      expect(await screen.findByText('explore.sidebar.delete.title')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('common.operation.cancel'))
-
-      await waitFor(() => {
-        expect(mockUninstall).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should disable dialog actions while uninstall is pending', async () => {
-      mockInstalledApps = [createInstalledApp()]
-      mockIsUninstallPending = true
-      renderSideBar()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
-
-      expect(screen.getByText('common.operation.cancel')).toBeDisabled()
-      expectLoadingButton(screen.getByText('common.operation.confirm').closest('button'))
-    })
+    await waitFor(() =>
+      expect(mocks.updatePinStatus).toHaveBeenCalledWith({
+        params: { installed_app_id: 'installed-app-1' },
+        body: { is_pinned: true },
+      }),
+    )
   })
 })

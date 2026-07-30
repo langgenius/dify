@@ -22,7 +22,7 @@ const EnvNav = () => {
 
   return (
     <div
-      className={`mr-1 flex h-[22px] items-center rounded-md border px-2 text-xs font-medium ${headerEnvClassName[langGeniusVersionInfo.current_env]} `}
+      className={`mr-1 flex h-5.5 items-center rounded-md border px-2 text-xs font-medium ${headerEnvClassName[langGeniusVersionInfo.current_env]} `}
     >
       {langGeniusVersionInfo.current_env === 'TESTING' && (
         <>

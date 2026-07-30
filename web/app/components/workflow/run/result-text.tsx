@@ -29,7 +29,7 @@ const ResultText: FC<ResultTextProps> = ({
   return (
     <div className="bg-background-section-burn">
       {isRunning && !outputs && (
-        <div className="pt-4 pl-[26px]">
+        <div className="pt-4 pl-6.5">
           <LoadingAnim type="text" />
         </div>
       )}
@@ -39,7 +39,7 @@ const ResultText: FC<ResultTextProps> = ({
         </div>
       )}
       {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
-        <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
+        <div className="mt-30 flex flex-col items-center px-4 py-2 text-[13px] leading-4.5 text-gray-500">
           <ImageIndentLeft className="size-6 text-gray-400" />
           <div className="mr-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
           <div>

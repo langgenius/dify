@@ -41,7 +41,7 @@ const IdeaOutput: FC<Props> = ({ value, onChange }) => {
       {!isFoldIdeaOutput && (
         <Textarea
           aria-label={t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
-          className="h-[80px]"
+          className="h-20"
           placeholder={t(($) => $[`${i18nPrefix}.idealOutputPlaceholder`], { ns: 'appDebug' })}
           value={value}
           onValueChange={(value) => onChange(value)}

@@ -27,7 +27,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
-    InitializeHomeSnapshotSpec,
     RuntimeLayout,
     RuntimeLease,
 )
@@ -48,28 +47,6 @@ class LocalHomeSnapshotBackend:
     auth_token: str
     snapshot_root: str = "/home/dify/.dify-agent-home-snapshots"
     client_factory: ShellctlClientFactory | None = None
-
-    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
-        snapshot_ref = _local_snapshot_ref(spec.home_snapshot_id)
-        lease = self._control_lease(snapshot_ref)
-        target = self._snapshot_dir(snapshot_ref)
-        try:
-            result = await run_shellctl_control_command(
-                lease.commands,
-                f"set -eu\nmkdir -p {shlex.quote(target)}\nchmod 700 {shlex.quote(target)}",
-            )
-            if result.exit_code != 0:
-                raise HomeSnapshotCreateError(result.output)
-            return snapshot_ref
-        except BaseException as exc:
-            await _remove_partial(lease.commands, target=target, resource_ref=snapshot_ref)
-            if isinstance(exc, HomeSnapshotCreateError):
-                raise
-            if isinstance(exc, Exception):
-                raise HomeSnapshotCreateError(str(exc)) from exc
-            raise
-        finally:
-            await _close_best_effort(lease, resource_ref=snapshot_ref)
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
         snapshot_ref = _local_snapshot_ref(spec.home_snapshot_id)
@@ -142,31 +119,31 @@ class LocalExecutionBindingBackend:
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         binding_id = _validated_ref_part(spec.binding_id)
         workspace_id = _validated_ref_part(spec.workspace_id)
-        snapshot_ref = _validated_ref_part(spec.home_snapshot_ref)
         workspace_ref = workspace_id
         if spec.existing_workspace_ref is not None:
             existing_workspace_ref = _validated_ref_part(spec.existing_workspace_ref)
             if existing_workspace_ref != workspace_ref:
                 raise BindingCreateError("existing Workspace ref does not match workspace_id")
+        snapshot_dir: str | None = None
+        if spec.home_snapshot_ref is not None:
+            snapshot_ref = _validated_ref_part(spec.home_snapshot_ref)
+            snapshot_dir = f"{self.snapshot_root.rstrip('/')}/{snapshot_ref}"
         binding_ref = _local_binding_ref(binding_id=binding_id, workspace_id=workspace_id)
-        lease = self._control_lease(binding_ref)
         home_dir = self._home_dir(binding_id)
         workspace_dir = self._workspace_dir(workspace_id)
-        snapshot_dir = f"{self.snapshot_root.rstrip('/')}/{snapshot_ref}"
         creates_workspace = spec.existing_workspace_ref is None
         workspace_setup = (
             f"mkdir -p {shlex.quote(workspace_dir)}" if creates_workspace else f"test -d {shlex.quote(workspace_dir)}"
         )
-        script = "\n".join(
-            [
-                "set -eu",
-                f"test -d {shlex.quote(snapshot_dir)}",
-                workspace_setup,
-                f"mkdir -p {shlex.quote(home_dir)}",
-                f"cp -a {shlex.quote(snapshot_dir)}/. {shlex.quote(home_dir)}/",
-                f"chmod 700 {shlex.quote(home_dir)} {shlex.quote(workspace_dir)}",
-            ]
-        )
+        setup = ["set -eu"]
+        if snapshot_dir is not None:
+            setup.append(f"test -d {shlex.quote(snapshot_dir)}")
+        setup.extend([workspace_setup, f"mkdir -p {shlex.quote(home_dir)}"])
+        if snapshot_dir is not None:
+            setup.append(f"cp -a {shlex.quote(snapshot_dir)}/. {shlex.quote(home_dir)}/")
+        setup.append(f"chmod 700 {shlex.quote(home_dir)} {shlex.quote(workspace_dir)}")
+        script = "\n".join(setup)
+        lease = self._control_lease(binding_ref)
         try:
             result = await run_shellctl_control_command(lease.commands, script)
             if result.exit_code != 0:

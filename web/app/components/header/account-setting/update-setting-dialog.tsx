@@ -250,7 +250,7 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
         }
       />
       {!disabled && (
-        <DialogContent className="flex w-[480px] max-w-[calc(100vw-32px)] flex-col overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+        <DialogContent className="flex w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
           <div className="relative flex w-full items-start gap-2 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
               {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
@@ -260,7 +260,7 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
           {isSettingsLoading && (
             <div
               role="status"
-              className="flex min-h-[260px] items-center justify-center gap-2 px-6 py-6 system-sm-regular text-text-tertiary"
+              className="flex min-h-65 items-center justify-center gap-2 px-6 py-6 system-sm-regular text-text-tertiary"
             >
               <span
                 aria-hidden
@@ -270,7 +270,7 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
             </div>
           )}
           {!isSettingsLoading && !hasSettings && (
-            <div className="flex min-h-[260px] items-center justify-center px-6 py-6 text-center system-sm-regular text-text-tertiary">
+            <div className="flex min-h-65 items-center justify-center px-6 py-6 text-center system-sm-regular text-text-tertiary">
               {t(($) => $['api.actionFailed'], { ns: 'common' })}
             </div>
           )}
@@ -291,13 +291,13 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
                 onUpdateTimeChange={handleUpdateTimeChange}
                 renderTimePickerTrigger={renderTimePickerTrigger}
               />
-              <div className="flex h-[76px] items-center justify-end gap-2 px-6 pt-5 pb-6">
-                <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+              <div className="flex h-19 items-center justify-end gap-2 px-6 pt-5 pb-6">
+                <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
                 <Button
                   variant="primary"
-                  className="min-w-[72px]"
+                  className="min-w-18"
                   onClick={handleSave}
                   disabled={isSavePending}
                 >

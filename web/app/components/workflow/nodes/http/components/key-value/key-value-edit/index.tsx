@@ -71,13 +71,13 @@ const KeyValueList: FC<Props> = ({
         <div
           className={cn(
             'flex h-full items-center border-r border-divider-regular pl-3',
-            isSupportFile ? 'w-[140px]' : 'w-1/2',
+            isSupportFile ? 'w-35' : 'w-1/2',
           )}
         >
           {t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })}
         </div>
         {isSupportFile && (
-          <div className="flex h-full w-[70px] shrink-0 items-center border-r border-divider-regular pl-3">
+          <div className="flex h-full w-17.5 shrink-0 items-center border-r border-divider-regular pl-3">
             {t(($) => $[`${i18nPrefix}.type`], { ns: 'workflow' })}
           </div>
         )}

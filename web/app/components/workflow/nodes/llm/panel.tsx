@@ -145,7 +145,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
+              <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
                 {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}
               </div>
             )}

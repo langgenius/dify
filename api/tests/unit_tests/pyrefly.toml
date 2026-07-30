@@ -816,7 +816,6 @@ project-excludes = [
   "services/retention/workflow_run/test_bundle_archive_maintenance.py",
   "services/retention/workflow_run/test_clear_free_plan_expired_workflow_run_logs.py",
   "services/retention/workflow_run/test_restore_archived_workflow_run.py",
-  "services/test_account_service.py",
   "services/test_agent_app_feature_service.py",
   "services/test_agent_app_sandbox_service.py",
   "services/test_agent_config_service.py",

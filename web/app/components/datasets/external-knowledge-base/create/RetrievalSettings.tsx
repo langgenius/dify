@@ -36,10 +36,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
 
   return (
     <div
-      className={cn(
-        'flex flex-col gap-2 self-stretch',
-        isInRetrievalSetting && 'w-full max-w-[480px]',
-      )}
+      className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-120')}
     >
       {!isInHitTesting && !isInRetrievalSetting && (
         <div className="flex h-7 flex-col gap-2 self-stretch pt-1">

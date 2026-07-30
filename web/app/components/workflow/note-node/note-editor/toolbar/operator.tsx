@@ -51,7 +51,7 @@ const Operator = ({
         sideOffset={4}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="min-w-[192px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl">
+        <div className="min-w-48 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl">
           <div className="p-1">
             <DropdownMenuItem
               className="justify-between rounded-md px-3 text-sm text-text-secondary"

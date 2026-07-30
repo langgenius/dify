@@ -379,7 +379,7 @@ const BaseField = ({
                   {dynamicNoticeTitle && (
                     <div
                       className={cn(
-                        'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                        'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                         dynamicNoticeClassName,
                       )}
                     >
@@ -419,7 +419,7 @@ const BaseField = ({
                   {dynamicNoticeTitle && (
                     <div
                       className={cn(
-                        'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                        'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                         dynamicNoticeClassName,
                       )}
                     >
@@ -507,7 +507,7 @@ const BaseField = ({
             ) && (
               <div
                 className={cn(
-                  'mt-1 px-0 py-[2px] system-xs-regular',
+                  'mt-1 px-0 py-0.5 system-xs-regular',
                   VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
                 )}
               >

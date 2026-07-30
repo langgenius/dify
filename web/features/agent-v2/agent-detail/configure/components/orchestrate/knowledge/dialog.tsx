@@ -732,7 +732,7 @@ export function AgentKnowledgeRetrievalDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="flex h-130 max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0"
+        className="flex h-130 max-h-[calc(100dvh-2rem)] w-100 flex-col overflow-hidden p-0"
       >
         <AgentKnowledgeRetrievalDialogContent
           item={item}

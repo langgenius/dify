@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { Props as EditorProps } from '.'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -29,7 +28,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
   const monacoRef = useRef(null)
 
   const popupRef = useRef<HTMLDivElement>(null)
-  const [isShowVarPicker, { setTrue: showVarPicker, setFalse: hideVarPicker }] = useBoolean(false)
+  const [isShowVarPicker, setIsShowVarPicker] = useState(false)
 
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 })
 
@@ -48,9 +47,9 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
       const popupY = editorRect.top + cursorCoords.top + 20 // Adjust the vertical position as needed
 
       setPopupPosition({ x: popupX, y: popupY })
-      showVarPicker()
+      setIsShowVarPicker(true)
     } else {
-      hideVarPicker()
+      setIsShowVarPicker(false)
     }
   }
 
@@ -137,7 +136,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
       },
     ])
 
-    hideVarPicker()
+    setIsShowVarPicker(false)
   }
 
   return (
@@ -151,7 +150,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
         createPortal(
           <div
             ref={popupRef}
-            className="fixed z-50 w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+            className="fixed z-50 w-57 space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
             style={{
               top: popupPosition.y,
               left: popupPosition.x,

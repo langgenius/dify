@@ -183,7 +183,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         />
       )}
       {data.type === BlockEnum.DataSource && (
-        <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
+        <div className="absolute -inset-0.5 -top-5.5 z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
           <div className="flex h-5 items-center px-2.5 system-2xs-semibold-uppercase text-text-tertiary">
             {t(($) => $['blocks.datasource'], { ns: 'workflow' })}
           </div>
@@ -194,7 +194,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
           controlMode === ControlMode.Comment && 'hover:cursor-none',
-          !isContainerNode(data.type) && 'w-[240px] bg-workflow-block-bg',
+          !isContainerNode(data.type) && 'w-60 bg-workflow-block-bg',
           isContainerNode(data.type) &&
             'flex size-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',

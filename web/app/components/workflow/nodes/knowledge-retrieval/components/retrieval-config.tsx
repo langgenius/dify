@@ -142,7 +142,7 @@ const RetrievalConfig: FC<Props> = ({
         alignOffset={-2}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
+        <div className="w-101 rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
           <ConfigRetrievalContent
             datasetConfigs={datasetConfigs}
             onChange={handleChange}

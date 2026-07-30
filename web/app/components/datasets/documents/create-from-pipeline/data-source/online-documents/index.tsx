@@ -2,12 +2,15 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
@@ -35,7 +38,7 @@ const OnlineDocuments = ({
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { documentsData, searchValue, selectedPagesId, currentCredentialId } =
     useDataSourceStoreWithSelector(
       useShallow((state) => ({
@@ -141,10 +144,8 @@ const OnlineDocuments = ({
   )
 
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -179,7 +180,7 @@ const OnlineDocuments = ({
               isMultipleChoice={supportBatchUpload}
             />
           ) : (
-            <div className="flex h-[296px] items-center justify-center">
+            <div className="flex h-74 items-center justify-center">
               <Loading type="app" />
             </div>
           )}

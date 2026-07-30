@@ -94,7 +94,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           if (!open) onQAConfirmDialogClose()
         }}
       >
-        <AlertDialogContent className="w-[432px]">
+        <AlertDialogContent className="w-108">
           <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="text-lg/7 font-semibold text-text-primary">
               {t(($) => $['stepTwo.qaSwitchHighQualityTipTitle'], { ns: 'datasetCreation' })}
@@ -123,7 +123,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
                 {t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
                 <Badge
                   className={cn(
-                    'ml-1 h-[18px]',
+                    'ml-1 h-4.5',
                     !hasSetIndexType && indexType === IndexingType.QUALIFIED
                       ? 'border-text-accent-secondary text-text-accent-secondary'
                       : '',

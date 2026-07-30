@@ -21,14 +21,14 @@ const FileIcon = ({ type, fileName, size = 'md', className }: FileIconProps) => 
   }, [type, fileName])
 
   if (type === OnlineDriveFileType.bucket) {
-    return <BucketsBlue className={cn('size-[18px]', className)} />
+    return <BucketsBlue className={cn('size-4.5', className)} />
   }
 
   if (type === OnlineDriveFileType.folder) {
-    return <Folder className={cn('size-[18px]', className)} />
+    return <Folder className={cn('size-4.5', className)} />
   }
 
-  return <FileTypeIcon size={size} type={fileType} className={cn('size-[18px]', className)} />
+  return <FileTypeIcon size={size} type={fileType} className={cn('size-4.5', className)} />
 }
 
 export default React.memo(FileIcon)

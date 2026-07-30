@@ -31,7 +31,7 @@ class AgentAppSessionScope:
     conversation_id: str
     agent_id: str
     agent_config_snapshot_id: str
-    home_snapshot_id: str
+    home_snapshot_id: str | None
     agent_config_version_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT
     build_draft_id: str | None = None
 

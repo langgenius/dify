@@ -182,7 +182,7 @@ const ViewWorkflowHistory = () => {
         placement="bottom-end"
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="flex max-w-90 min-w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
+        <div className="flex max-w-90 min-w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
             <div className="system-mg-regular grow text-text-secondary">
               {t(($) => $['changeHistory.title'], { ns: 'workflow' })}
@@ -227,7 +227,7 @@ const ViewWorkflowHistory = () => {
                   type="button"
                   key={item?.index}
                   className={cn(
-                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-[7px] text-left text-text-secondary hover:bg-state-base-hover',
+                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-left text-text-secondary hover:bg-state-base-hover',
                     item?.index === currentHistoryStateIndex && 'bg-state-base-hover',
                   )}
                   onClick={() => {
@@ -238,7 +238,7 @@ const ViewWorkflowHistory = () => {
                   <div>
                     <div
                       className={cn(
-                        'flex items-center text-[13px] leading-[18px] font-medium text-text-secondary',
+                        'flex items-center text-[13px] leading-4.5 font-medium text-text-secondary',
                       )}
                     >
                       {composeHistoryItemLabel(
@@ -259,7 +259,7 @@ const ViewWorkflowHistory = () => {
                   type="button"
                   key={item?.index}
                   className={cn(
-                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-[7px] text-left hover:bg-state-base-hover',
+                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-left hover:bg-state-base-hover',
                     item?.index === calculateChangeList.statesCount - 1 && 'bg-state-base-hover',
                   )}
                   onClick={() => {
@@ -270,7 +270,7 @@ const ViewWorkflowHistory = () => {
                   <div>
                     <div
                       className={cn(
-                        'flex items-center text-[13px] leading-[18px] font-medium text-text-secondary',
+                        'flex items-center text-[13px] leading-4.5 font-medium text-text-secondary',
                       )}
                     >
                       {composeHistoryItemLabel(
@@ -291,7 +291,7 @@ const ViewWorkflowHistory = () => {
               <button
                 type="button"
                 className={cn(
-                  'my-0.5 flex w-full cursor-pointer rounded-lg px-2 py-[7px] text-left text-text-secondary',
+                  'my-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-left text-text-secondary',
                   'hover:bg-state-base-hover',
                 )}
                 onClick={() => {
@@ -300,18 +300,18 @@ const ViewWorkflowHistory = () => {
                 }}
               >
                 <div>
-                  <div className={cn('flex items-center text-[13px] leading-[18px] font-medium')}>
+                  <div className={cn('flex items-center text-[13px] leading-4.5 font-medium')}>
                     {t(($) => $['changeHistory.clearHistory'], { ns: 'workflow' })}
                   </div>
                 </div>
               </button>
             </div>
           )}
-          <div className="w-[240px] px-3 py-2 text-xs text-text-tertiary">
-            <div className="mb-1 flex h-[22px] items-center font-medium uppercase">
+          <div className="w-60 px-3 py-2 text-xs text-text-tertiary">
+            <div className="mb-1 flex h-5.5 items-center font-medium uppercase">
               {t(($) => $['changeHistory.hint'], { ns: 'workflow' })}
             </div>
-            <div className="mb-1 leading-[18px] text-text-tertiary">
+            <div className="mb-1 leading-4.5 text-text-tertiary">
               {t(($) => $['changeHistory.hintText'], { ns: 'workflow' })}
             </div>
           </div>
