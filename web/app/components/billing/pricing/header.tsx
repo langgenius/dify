@@ -14,11 +14,11 @@ const Header = ({ onClose }: HeaderProps) => {
   const { t } = useTranslation()
 
   return (
-    <div className="flex min-h-[105px] w-full justify-center px-10">
+    <div className="flex min-h-26.25 w-full justify-center px-10">
       <div className="relative flex max-w-[1680px] grow flex-col justify-end gap-y-1 border-x border-divider-accent p-6 pt-8">
         <div className="flex items-end">
-          <div aria-hidden="true" className="py-[5px]">
-            <DifyLogo alt="" className="h-[27px] w-[60px]" />
+          <div aria-hidden="true" className="py-1.25">
+            <DifyLogo alt="" className="h-6.75 w-15" />
           </div>
           <DialogTitle
             className={cn(
@@ -34,7 +34,7 @@ const Header = ({ onClose }: HeaderProps) => {
         </DialogDescription>
         <Button
           variant="secondary"
-          className="absolute right-[-18px] bottom-[40.5px] z-10 size-9 rounded-full p-2"
+          className="absolute -right-4.5 bottom-[40.5px] z-10 size-9 rounded-full p-2"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >

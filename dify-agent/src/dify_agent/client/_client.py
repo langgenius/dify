@@ -36,7 +36,6 @@ from dify_agent.protocol import (
     DeleteHomeSnapshotRequest,
     DestroyExecutionBindingRequest,
     HomeSnapshotResponse,
-    InitializeHomeSnapshotRequest,
     RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
@@ -528,24 +527,6 @@ class Client:
     def destroy_execution_binding_sync(self, request: DestroyExecutionBindingRequest) -> None:
         response = self._post_sync_json("destroy_execution_binding_sync", "/execution-bindings/destroy", request)
         _raise_for_status(response)
-
-    async def initialize_home_snapshot(self, request: InitializeHomeSnapshotRequest) -> HomeSnapshotResponse:
-        """Create a backend-native initial Home Snapshot."""
-        response = await self._post_async_json(
-            "initialize_home_snapshot",
-            "/home-snapshots/initialize",
-            request,
-        )
-        return _parse_model_response(response, HomeSnapshotResponse)
-
-    def initialize_home_snapshot_sync(self, request: InitializeHomeSnapshotRequest) -> HomeSnapshotResponse:
-        """Synchronous variant of ``initialize_home_snapshot``."""
-        response = self._post_sync_json(
-            "initialize_home_snapshot_sync",
-            "/home-snapshots/initialize",
-            request,
-        )
-        return _parse_model_response(response, HomeSnapshotResponse)
 
     async def create_home_snapshot_from_binding(
         self,

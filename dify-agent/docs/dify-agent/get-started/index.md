@@ -80,15 +80,18 @@ Binding backend. A standalone Local server normally uses:
 DIFY_AGENT_RUNTIME_BACKEND=local
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
 DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=
+# Optional when shellctl runs directly on a host without /home/dify:
+# DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
+# DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
+# DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 ```
 
 E2B requires `DIFY_AGENT_E2B_API_KEY` and defaults to the prepared
 `difys-default-team/dify-agent-local-sandbox` template. The E2B active timeout
-pauses the physical resource behind a Binding or kills temporary Home
-initialization resources; it is not a retention TTL. Enterprise settings are
-accepted, but current Home Snapshot and Binding operations fail fast with
-`NotImplementedError`.
+pauses the physical resource behind a Binding; it is not a retention TTL.
+Enterprise supports Bindings created from its deployment-default Home.
+Immutable Home Snapshot creation and materialization remain unsupported there.
 
 A shell-enabled request includes Execution Context, `dify.runtime`, and
 `dify.shell`. Dify API creates or resolves the specific persistent Binding for

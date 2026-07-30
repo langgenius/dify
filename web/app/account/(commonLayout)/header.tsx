@@ -33,7 +33,7 @@ const Header = () => {
           {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
             <img
               src={systemFeatures.branding.login_page_logo}
-              className="block h-[22px] w-auto object-contain"
+              className="block h-5.5 w-auto object-contain"
               alt=""
             />
           ) : (
@@ -41,7 +41,7 @@ const Header = () => {
           )}
         </Link>
         <div className="h-4 w-px origin-center rotate-[11.31deg] bg-divider-regular" />
-        <p className="relative mt-[-2px] title-3xl-semi-bold text-text-primary">
+        <p className="relative -mt-0.5 title-3xl-semi-bold text-text-primary">
           {t(($) => $['account.account'], { ns: 'common' })}
         </p>
       </div>

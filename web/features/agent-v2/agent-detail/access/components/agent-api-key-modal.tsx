@@ -129,7 +129,7 @@ export function AgentApiKeyModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex w-full max-w-[800px]! flex-col overflow-hidden px-8">
+        <DialogContent className="flex w-full max-w-200! flex-col overflow-hidden px-8">
           <DialogCloseButton />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['apiKeyModal.apiSecretKey'])}
@@ -141,11 +141,11 @@ export function AgentApiKeyModal({
           <div className="mt-4 min-h-20 overflow-hidden">
             <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
               <div className="w-64 shrink-0 px-3">{t(($) => $['apiKeyModal.secretKey'])}</div>
-              <div className="w-[200px] shrink-0 px-3">{t(($) => $['apiKeyModal.created'])}</div>
-              <div className="w-[200px] shrink-0 px-3">{t(($) => $['apiKeyModal.lastUsed'])}</div>
+              <div className="w-50 shrink-0 px-3">{t(($) => $['apiKeyModal.created'])}</div>
+              <div className="w-50 shrink-0 px-3">{t(($) => $['apiKeyModal.lastUsed'])}</div>
               <div className="grow px-3" />
             </div>
-            <div className="max-h-[280px] overflow-auto">
+            <div className="max-h-70 overflow-auto">
               {apiKeysQuery.isPending && (
                 <div
                   role="status"
@@ -182,7 +182,7 @@ export function AgentApiKeyModal({
                     <div className="w-64 shrink-0 truncate px-3 font-mono" translate="no">
                       {maskApiKey(apiKey.token)}
                     </div>
-                    <div className="w-[200px] shrink-0 truncate px-3">
+                    <div className="w-50 shrink-0 truncate px-3">
                       {apiKey.created_at
                         ? formatTime(
                             apiKey.created_at,
@@ -190,7 +190,7 @@ export function AgentApiKeyModal({
                           )
                         : t(($) => $.never)}
                     </div>
-                    <div className="w-[200px] shrink-0 truncate px-3">
+                    <div className="w-50 shrink-0 truncate px-3">
                       {apiKey.last_used_at
                         ? formatTime(
                             apiKey.last_used_at,
@@ -272,7 +272,7 @@ function AgentApiKeyGenerateModal({
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[480px]! overflow-hidden px-8">
+      <DialogContent className="w-full max-w-120! overflow-hidden px-8">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['apiKeyModal.apiSecretKey'])}

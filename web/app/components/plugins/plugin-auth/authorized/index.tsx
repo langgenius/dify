@@ -244,7 +244,7 @@ const Authorized = ({
         >
           <div
             className={cn(
-              'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+              'max-h-90 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
               popupClassName,
             )}
           >

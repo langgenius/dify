@@ -11,7 +11,7 @@ class CreateExecutionBindingRequest(BaseModel):
     binding_id: str = Field(min_length=1)
     workspace_id: str = Field(min_length=1)
     existing_workspace_ref: str | None = None
-    home_snapshot_ref: str = Field(min_length=1)
+    home_snapshot_ref: str | None = Field(default=None, min_length=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

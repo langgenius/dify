@@ -326,7 +326,7 @@ const CommandPaletteDemo = () => {
           placeholder="Type a command or search..."
         />
       </div>
-      <div className="max-h-[400px] overflow-y-auto">
+      <div className="max-h-100 overflow-y-auto">
         {filteredCommands.length > 0 ? (
           filteredCommands.map((cmd) => (
             <div

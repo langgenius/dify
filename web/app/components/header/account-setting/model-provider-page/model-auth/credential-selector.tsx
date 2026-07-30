@@ -71,7 +71,7 @@ const CredentialSelector = ({
         popupClassName="border-ccomponents-panel-border rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0"
         popupProps={{ style: { width: 'var(--anchor-width, auto)' } }}
       >
-        <div className="max-h-[320px] overflow-y-auto p-1">
+        <div className="max-h-80 overflow-y-auto p-1">
           {credentials.map((credential) => (
             <CredentialItem
               key={credential.credential_id}

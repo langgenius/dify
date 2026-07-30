@@ -33,11 +33,11 @@ function PluginTaskList({
 
   return (
     <div
-      className="w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+      className="w-90 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
       data-testid="plugin-task-list"
     >
       <ScrollArea
-        className="max-h-[420px] overflow-hidden"
+        className="max-h-105 overflow-hidden"
         label={t(($) => $['task.installing'], { ns: 'plugin' })}
         slotClassNames={{
           viewport: 'max-h-[420px] overscroll-contain',

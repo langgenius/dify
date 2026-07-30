@@ -90,7 +90,7 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
-          <div className="max-w-[250px] truncate system-sm-medium text-text-primary">
+          <div className="max-w-62.5 truncate system-sm-medium text-text-primary">
             {payload.name}
           </div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
@@ -221,7 +221,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[420px]">
+          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-105">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">

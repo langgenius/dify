@@ -187,7 +187,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     {type === 'paragraph' && (
                       <Textarea
                         aria-label={name}
-                        className="h-[120px] grow"
+                        className="h-30 grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
                         onValueChange={(value) => {
@@ -252,7 +252,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ))}
             {visionConfig?.enabled && (
               <div className="mt-3 justify-between xl:flex">
-                <div className="mr-1 w-[120px] shrink-0 py-2 text-sm text-text-primary">
+                <div className="mr-1 w-30 shrink-0 py-2 text-sm text-text-primary">
                   {t(($) => $['imageUploader.imageUpload'], { ns: 'common' })}
                 </div>
                 <div className="grow">
@@ -279,7 +279,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" disabled={debugInputReadonly} onClick={onClear}>
+            <Button className="w-18" disabled={debugInputReadonly} onClick={onClear}>
               {t(($) => $['operation.clear'], { ns: 'common' })}
             </Button>
             {canNotRun && (
@@ -290,7 +290,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       variant="primary"
                       disabled={canNotRun || !canTestAndRun}
                       onClick={() => onSend?.()}
-                      className="w-[96px]"
+                      className="w-24"
                     >
                       <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
                       {t(($) => $['inputs.run'], { ns: 'appDebug' })}
@@ -307,7 +307,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 variant="primary"
                 disabled={canNotRun || !canTestAndRun}
                 onClick={() => onSend?.()}
-                className="w-[96px]"
+                className="w-24"
               >
                 <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
                 {t(($) => $['inputs.run'], { ns: 'appDebug' })}

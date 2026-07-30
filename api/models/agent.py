@@ -307,7 +307,7 @@ class AgentConfigDraft(DefaultFieldsMixin, Base):
     account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     draft_owner_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     base_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    home_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -344,7 +344,7 @@ class AgentConfigSnapshot(DefaultFieldsMixin, Base):
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
-    home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    home_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -520,7 +520,7 @@ class AgentWorkspaceBinding(DefaultFieldsMixin, Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workspace_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    base_home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    base_home_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     agent_config_version_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_config_version_kind: Mapped[AgentConfigVersionKind] = mapped_column(
         EnumText(AgentConfigVersionKind, length=32), nullable=False

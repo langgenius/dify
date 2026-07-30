@@ -312,7 +312,7 @@ function AgentFilePreviewContent({
   }))
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-[22px]">
+    <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-5.5">
       {lines.map((line) => (
         <div key={line.key} className="flex min-w-0 items-start">
           <span
@@ -321,7 +321,7 @@ function AgentFilePreviewContent({
           >
             {line.lineNumber}
           </span>
-          <code className="block min-w-0 flex-1 [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-text-primary">
+          <code className="block min-w-0 flex-1 wrap-anywhere wrap-break-word whitespace-pre-wrap text-text-primary">
             {line.content}
           </code>
         </div>

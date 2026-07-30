@@ -66,10 +66,6 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/app/education-apply/storage', () => ({
-  useSetEducationVerifying: () => vi.fn(),
-}))
-
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {

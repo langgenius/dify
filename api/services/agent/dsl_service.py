@@ -49,7 +49,6 @@ from services.agent.dsl_entities import (
     make_portable_agent_package,
     portable_ref,
 )
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
@@ -569,17 +568,12 @@ class AgentDslService:
             )
             or 0
         ) + 1
-        home_snapshot = AgentHomeSnapshotService.create_initial(
-            session=self.session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-        )
         snapshot = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=next_version,
             config_snapshot=soul,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=None,
             created_by=account_id,
         )
         self.session.add(snapshot)

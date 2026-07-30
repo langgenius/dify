@@ -186,13 +186,13 @@ function MinimizedTourPill({
       type="button"
       aria-label={restoreLabel}
       className={cn(
-        'inline-flex h-8 w-[183px] max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'inline-flex h-8 w-45.75 max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         className,
       )}
       onClick={onRestore}
     >
       <span aria-hidden className="i-custom-vender-line-education-lesson-open-01 size-4 shrink-0" />
-      <span className="w-[104px] shrink-0 truncate system-sm-medium">{title}</span>
+      <span className="w-26 shrink-0 truncate system-sm-medium">{title}</span>
       <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary tabular-nums">
         {`${progress.completed}/${progress.total}`}
       </span>
@@ -292,7 +292,7 @@ function TourTaskRow({
                 <Button
                   variant="secondary"
                   size="small"
-                  className="min-w-[83px]"
+                  className="min-w-20.75"
                   disabled={disabled}
                   onClick={() => onStartTask(task.id)}
                 >
@@ -303,7 +303,7 @@ function TourTaskRow({
                     href={task.learnMoreHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-6 min-w-[98px] items-center justify-center gap-1 rounded-md px-2 system-xs-medium text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="inline-flex h-6 min-w-24.5 items-center justify-center gap-1 rounded-md px-2 system-xs-medium text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   >
                     {task.learnMoreLabel}
                     <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
@@ -347,7 +347,7 @@ function TaskStatusIndicator({
         type="button"
         aria-label={incompleteLabel}
         disabled={disabled}
-        className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-hidden hover:bg-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
+        className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-hidden hover:bg-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
         onClick={onUncomplete}
       >
         <span aria-hidden className="i-ri-check-line size-3" />
@@ -360,7 +360,7 @@ function TaskStatusIndicator({
       type="button"
       aria-label={completeLabel}
       disabled={disabled}
-      className="flex size-[18px] shrink-0 items-center justify-center rounded-full border border-components-checkbox-border bg-components-checkbox-bg-unchecked outline-hidden hover:border-state-accent-solid focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:border-components-checkbox-border"
+      className="flex size-4.5 shrink-0 items-center justify-center rounded-full border border-components-checkbox-border bg-components-checkbox-bg-unchecked outline-hidden hover:border-state-accent-solid focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:border-components-checkbox-border"
       onClick={onComplete}
     />
   )

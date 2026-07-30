@@ -203,7 +203,7 @@ function VoiceInput({
 
   return (
     <div ref={ref} className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-3.5 pr-[6.5px] pl-[14.5px]">
         <canvas ref={canvasRef} className="absolute bottom-0 left-0 h-4 w-full" />
         {(isStarting || isConverting) && (
           <div
@@ -250,7 +250,7 @@ function VoiceInput({
         )}
         <div
           className={cn(
-            'w-[45px] pl-1 text-xs font-medium',
+            'w-11.25 pl-1 text-xs font-medium',
             duration > 500 ? 'text-text-destructive' : 'text-text-secondary',
           )}
           data-testid="voice-input-timer"

@@ -116,7 +116,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               maskColor="var(--color-workflow-minimap-bg)"
               nodeClassName={getMiniMapNodeClassName}
               nodeStrokeWidth={3}
-              className="absolute! bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
+              className="absolute! bottom-10! z-9 m-0! h-18.25! w-25.75! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
             />
           )}
           <ZoomInOut

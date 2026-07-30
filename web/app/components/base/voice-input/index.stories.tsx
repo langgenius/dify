@@ -26,13 +26,13 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 
   return (
     <div className="relative h-16 w-full overflow-hidden rounded-xl border-2 border-primary-600">
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-3.5 pr-[6.5px] pl-[14.5px]">
         {/* Waveform visualization placeholder */}
-        <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-[3px] px-2">
+        <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-0.75 px-2">
           {Array.from({ length: 40 }).map((_, i) => (
             <div
               key={i}
-              className="w-[2px] rounded-t bg-blue-200"
+              className="w-0.5 rounded-t bg-blue-200"
               style={{
                 height: `${Math.random() * 100}%`,
                 animation: state === 'recording' ? 'pulse 1s infinite' : 'none',
@@ -71,7 +71,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
         )}
 
         <div
-          className={`w-[45px] pl-1 text-xs font-medium ${duration > 500 ? 'text-red-600' : 'text-gray-700'}`}
+          className={`w-11.25 pl-1 text-xs font-medium ${duration > 500 ? 'text-red-600' : 'text-gray-700'}`}
         >
           {`0${minutes}:${seconds >= 10 ? seconds : `0${seconds}`}`}
         </div>
