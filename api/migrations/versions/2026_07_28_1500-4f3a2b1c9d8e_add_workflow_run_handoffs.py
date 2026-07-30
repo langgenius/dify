@@ -1,7 +1,7 @@
 """add workflow run handoffs
 
 Revision ID: 4f3a2b1c9d8e
-Revises: f6e4c5686857
+Revises: e4708db55c1d
 Create Date: 2026-07-28 15:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "4f3a2b1c9d8e"
-down_revision = "f6e4c5686857"
+down_revision = "e4708db55c1d"
 branch_labels = None
 depends_on = None
 
