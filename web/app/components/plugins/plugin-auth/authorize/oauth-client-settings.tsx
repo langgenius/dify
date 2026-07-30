@@ -13,6 +13,7 @@ import {
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
+import PermissionSelector, { type CredentialPermission } from './permission-selector'
 
 export type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -25,6 +26,13 @@ export type OAuthClientSettingsProps = {
   onAuth?: () => Promise<void>
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
+  /**
+   * Inline visibility picker — shown only when the parent passes both a value
+   * and a setter, so callers that just need "Save only" (no credential
+   * created yet) can skip the picker entirely.
+   */
+  visibility?: CredentialPermission
+  onVisibilityChange?: (permission: CredentialPermission) => void
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -37,6 +45,8 @@ const OAuthClientSettings = ({
   onAuth,
   hasOriginalClientParams,
   onUpdate,
+  visibility,
+  onVisibilityChange,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const [doingAction, setDoingAction] = useState(false)
@@ -157,6 +167,18 @@ const OAuthClientSettings = ({
               defaultValues={editValues || defaultValues}
               disabled={disabled}
             />
+            {visibility !== undefined && onVisibilityChange && (
+              <div className="mt-4">
+                <div className="mb-1 system-sm-semibold text-text-secondary">
+                  {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
+                </div>
+                <PermissionSelector
+                  disabled={disabled}
+                  permission={visibility}
+                  onChange={onVisibilityChange}
+                />
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 justify-between p-6 pt-5">
             <div>

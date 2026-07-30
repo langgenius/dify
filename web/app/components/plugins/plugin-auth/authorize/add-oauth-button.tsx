@@ -3,6 +3,7 @@ import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -10,11 +11,13 @@ import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
+import { PermissionLevel } from '@/models/permission'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
 } from '../hooks/use-credential'
 import OAuthClientSettings from './oauth-client-settings'
+import PermissionSelector, { type CredentialPermission } from './permission-selector'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload
@@ -58,6 +61,12 @@ const AddOAuthButton = ({
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
   const [isOAuthSettingsMounted, setIsOAuthSettingsMounted] = useState(false)
+  // Pre-OAuth visibility picker — OAuth tokens are creation-only for visibility
+  // (same rule as API-key credentials), so we prompt the user to choose Personal
+  // or Shared before kicking off the OAuth redirect. Default to only_me since
+  // OAuth tokens are usually tied to an individual account.
+  const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false)
+  const [pendingVisibility, setPendingVisibility] = useState<CredentialPermission>(PermissionLevel.onlyMe)
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
   const mergedOAuthData = useMemo<OAuthData>(() => {
@@ -78,12 +87,26 @@ const AddOAuthButton = ({
     setIsOAuthSettingsOpen(true)
   }, [])
   const handleOAuth = useCallback(async () => {
-    const { authorization_url } = await getPluginOAuthUrl()
+    const { authorization_url } = await getPluginOAuthUrl({ visibility: pendingVisibility })
 
     if (authorization_url) {
       openOAuthPopup(authorization_url, () => onUpdate?.())
     }
-  }, [getPluginOAuthUrl, onUpdate])
+  }, [getPluginOAuthUrl, onUpdate, pendingVisibility])
+  // Click handler for the main OAuth button.
+  // - System OAuth (isConfigured): show a small pre-OAuth visibility picker,
+  //   then kick off the popup on confirm.
+  // - Custom OAuth (!isConfigured): go straight to OAuthClientSettings; the
+  //   visibility picker lives inline in that modal so users only see one
+  //   dialog for the whole "set up + authorize" step.
+  const openVisibilityModal = useCallback(() => {
+    if (isConfigured) setIsVisibilityModalOpen(true)
+    else openOAuthSettings()
+  }, [isConfigured, openOAuthSettings])
+  const handleVisibilityConfirm = useCallback(() => {
+    setIsVisibilityModalOpen(false)
+    handleOAuth()
+  }, [handleOAuth])
 
   const renderCustomLabel = useCallback(
     (item: FormSchema) => {
@@ -185,7 +208,7 @@ const AddOAuthButton = ({
       {renderTrigger?.({
         disabled,
         isConfigured,
-        onClick: isConfigured ? handleOAuth : openOAuthSettings,
+        onClick: openVisibilityModal,
       })}
       {!renderTrigger && isConfigured && (
         <div className={cn('flex w-full', className)}>
@@ -196,7 +219,7 @@ const AddOAuthButton = ({
               buttonLeftClassName,
             )}
             disabled={disabled}
-            onClick={handleOAuth}
+            onClick={openVisibilityModal}
           >
             <div className="truncate">{buttonText}</div>
             {is_oauth_custom_client_enabled && (
@@ -236,7 +259,7 @@ const AddOAuthButton = ({
       {!renderTrigger && !isConfigured && (
         <Button
           variant={buttonVariant}
-          onClick={openOAuthSettings}
+          onClick={openVisibilityModal}
           disabled={disabled}
           className="w-full"
         >
@@ -259,8 +282,36 @@ const AddOAuthButton = ({
           }}
           hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
           onUpdate={onUpdate}
+          visibility={pendingVisibility}
+          onVisibilityChange={setPendingVisibility}
         />
       )}
+      <Dialog open={isVisibilityModalOpen} onOpenChange={setIsVisibilityModalOpen}>
+        <DialogContent className="w-[480px]! max-w-[calc(100vw-2rem)]! p-0!">
+          <div className="flex flex-col">
+            <div className="relative shrink-0 p-6 pr-14 pb-3">
+              <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
+              </DialogTitle>
+              <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            </div>
+            <div className="px-6 py-3">
+              <PermissionSelector
+                permission={pendingVisibility}
+                onChange={setPendingVisibility}
+              />
+            </div>
+            <div className="flex shrink-0 justify-end p-6 pt-5">
+              <Button onClick={() => setIsVisibilityModalOpen(false)}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+              <Button variant="primary" className="ml-2" onClick={handleVisibilityConfirm}>
+                {t(($) => $['auth.saveAndAuth'], { ns: 'plugin' })}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
