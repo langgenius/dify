@@ -6,12 +6,8 @@ import { PipelineInputVarType } from '@/models/pipeline'
 import { AgentStrategy } from '@/types/app'
 import pkg from '../package.json'
 
-const getStringConfig = (
-  envVar: string | undefined,
-  defaultValue: string,
-) => {
-  if (envVar)
-    return envVar
+const getStringConfig = (envVar: string | undefined, defaultValue: string) => {
+  if (envVar) return envVar
   return defaultValue
 }
 
@@ -27,22 +23,11 @@ export const MARKETPLACE_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
   'http://localhost:5002/api',
 )
-export const MARKETPLACE_URL_PREFIX = getStringConfig(
-  env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX,
-  '',
-)
+export const MARKETPLACE_URL_PREFIX = getStringConfig(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX, '')
 
-const EDITION = env.NEXT_PUBLIC_EDITION
-
-export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
-export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
-
-export const AMPLITUDE_API_KEY = getStringConfig(
-  env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
-  '',
-)
-
-export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
+export const AMPLITUDE_API_KEY = getStringConfig(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, '')
+export const COOKIEYES_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_COOKIEYES_SITE_KEY, '')
+export const WEB_PREFIX = env.NEXT_PUBLIC_WEB_PREFIX
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
@@ -104,20 +89,13 @@ export const DEFAULT_COMPLETION_PROMPT_CONFIG = {
 }
 export const LOCALE_COOKIE_NAME = 'locale'
 
-const COOKIE_DOMAIN = getStringConfig(
-  env.NEXT_PUBLIC_COOKIE_DOMAIN,
-  '',
-).trim()
-export const SOCKET_URL = getStringConfig(
-  env.NEXT_PUBLIC_SOCKET_URL,
-  'ws://localhost:5001',
-).trim()
+const COOKIE_DOMAIN = getStringConfig(env.NEXT_PUBLIC_COOKIE_DOMAIN, '').trim()
+export const SOCKET_URL = getStringConfig(env.NEXT_PUBLIC_SOCKET_URL, 'ws://localhost:5001').trim()
 
 export const BATCH_CONCURRENCY = env.NEXT_PUBLIC_BATCH_CONCURRENCY
 
 export const CSRF_COOKIE_NAME = () => {
-  if (COOKIE_DOMAIN)
-    return 'csrf_token'
+  if (COOKIE_DOMAIN) return 'csrf_token'
   const isSecure = API_PREFIX.startsWith('https://')
   return isSecure ? '__Host-csrf_token' : 'csrf_token'
 }
@@ -127,13 +105,12 @@ export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appC
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'
 
 export const WEB_APP_SHARE_CODE_HEADER_NAME = 'X-App-Code'
-export const zhRegex = /^[\u4E00-\u9FA5]$/m
+const zhRegex = /^[\u4E00-\u9FA5]$/m
 export const emailRegex = /^[\w.!#$%&'*+\-/=?^{|}~]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGTH = 8
 const MAX_EN_VAR_VALUE_LENGTH = 30
 export const getMaxVarNameLength = (value: string) => {
-  if (zhRegex.test(value))
-    return MAX_ZN_VAR_NAME_LENGTH
+  if (zhRegex.test(value)) return MAX_ZN_VAR_NAME_LENGTH
 
   return MAX_EN_VAR_VALUE_LENGTH
 }
@@ -287,6 +264,7 @@ export const JSON_SCHEMA_MAX_DEPTH = 10
 export const MAX_TOOLS_NUM = env.NEXT_PUBLIC_MAX_TOOLS_NUM
 export const MAX_PARALLEL_LIMIT = env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 export const TEXT_GENERATION_TIMEOUT_MS = env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS
+export const WORKFLOW_GENERATION_TIMEOUT_MS = env.NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS
 export const LOOP_NODE_MAX_COUNT = env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT
 export const MAX_ITERATIONS_NUM = env.NEXT_PUBLIC_MAX_ITERATIONS_NUM
 export const MAX_TREE_DEPTH = env.NEXT_PUBLIC_MAX_TREE_DEPTH
@@ -303,37 +281,16 @@ export const VALUE_SELECTOR_DELIMITER = '@@@'
 
 export const validPassword = /^(?=.*[a-z])(?=.*\d)\S{8,}$/i
 
-export const ZENDESK_WIDGET_KEY = getStringConfig(
-  env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY,
-  '',
-)
+export const ZENDESK_WIDGET_KEY = getStringConfig(env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY, '')
 export const ZENDESK_FIELD_IDS = {
-  ENVIRONMENT: getStringConfig(
-    env.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT,
-    '',
-  ),
-  VERSION: getStringConfig(
-    env.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION,
-    '',
-  ),
-  EMAIL: getStringConfig(
-    env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL,
-    '',
-  ),
-  WORKSPACE_ID: getStringConfig(
-    env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID,
-    '',
-  ),
-  PLAN: getStringConfig(
-    env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN,
-    '',
-  ),
+  ENVIRONMENT: getStringConfig(env.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT, ''),
+  VERSION: getStringConfig(env.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION, ''),
+  EMAIL: getStringConfig(env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL, ''),
+  WORKSPACE_ID: getStringConfig(env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID, ''),
+  PLAN: getStringConfig(env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN, ''),
 }
 
-export const SUPPORT_EMAIL_ADDRESS = getStringConfig(
-  env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS,
-  '',
-)
+export const SUPPORT_EMAIL_ADDRESS = getStringConfig(env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS, '')
 
 export const APP_VERSION = pkg.version
 
@@ -341,12 +298,16 @@ export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 
-export const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
+export const PROVIDER_WITH_PRESET_TONE = [
+  'langgenius/openai/openai',
+  'langgenius/azure_openai/azure_openai',
+]
 
 export const STOP_PARAMETER_RULE: ModelParameterRule = {
   default: [],
   help: {
-    en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
+    en_US:
+      'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
     zh_Hans: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
   },
   label: {

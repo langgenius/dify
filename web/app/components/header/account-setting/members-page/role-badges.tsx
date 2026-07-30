@@ -33,18 +33,16 @@ const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
   const overflow = roleNames.slice(max)
 
   return (
-    <div className={cn('flex min-w-0 items-center gap-1', className)}>
-      {visible.map(role => (
+    <span className={cn('flex min-w-0 items-center gap-1', className)}>
+      {visible.map((role) => (
         <RoleBadge key={role} label={role} />
       ))}
       {overflow.length > 0 && (
-        <span
-          className="inline-flex h-5 shrink-0 cursor-default items-center rounded-md bg-background-body px-1.5 system-xs-medium text-text-tertiary shadow-xs"
-        >
+        <span className="inline-flex h-5 shrink-0 cursor-default items-center rounded-md bg-background-body px-1.5 system-xs-medium text-text-tertiary shadow-xs">
           {`+${overflow.length}`}
         </span>
       )}
-    </div>
+    </span>
   )
 }
 

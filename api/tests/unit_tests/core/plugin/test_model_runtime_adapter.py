@@ -3,7 +3,7 @@
 import datetime
 import uuid
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, sentinel
+from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
 
@@ -44,12 +44,34 @@ class _FakeRedis:
     def delete(self, key: str) -> None:
         self._values.pop(key, None)
 
+    def lock(
+        self,
+        key: str,
+        *,
+        timeout: int,
+        sleep: float,
+    ) -> "_FakeRedisLock":
+        return _FakeRedisLock(self, key)
 
-@pytest.fixture(autouse=True)
-def clear_plugin_model_provider_memory_cache() -> None:
-    PluginService._plugin_model_providers_memory_cache.clear()
-    yield
-    PluginService._plugin_model_providers_memory_cache.clear()
+
+class _FakeRedisLock:
+    def __init__(self, redis: _FakeRedis, key: str) -> None:
+        self._redis = redis
+        self._key = key
+        self._acquired = False
+
+    def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool:
+        if self._key in self._redis._values:
+            return False
+
+        self._redis._values[self._key] = "locked"
+        self._acquired = True
+        return True
+
+    def release(self) -> None:
+        if self._acquired:
+            self._redis.delete(self._key)
+            self._acquired = False
 
 
 def _build_model_schema() -> AIModelEntity:
@@ -256,6 +278,59 @@ class TestPluginModelRuntime:
             stream=False,
         )
 
+    def test_invoke_llm_forwards_string_app_id_from_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"app_id": "app-1"},
+        )
+
+        assert list(result) == []
+        client.invoke_llm.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            app_id="app-1",
+        )
+
+    def test_invoke_llm_ignores_non_string_app_id_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"app_id": 123},
+        )
+
+        assert result is client.invoke_llm.return_value
+        assert "app_id" not in client.invoke_llm.call_args.kwargs
+
     def test_invoke_llm_returns_plugin_stream_directly(self) -> None:
         client = Mock(spec=PluginModelClient)
         stream_result = iter([])
@@ -413,12 +488,13 @@ class TestPluginModelRuntime:
             "redis_client",
             SimpleNamespace(
                 get=Mock(return_value=None),
-                mget=Mock(return_value=[None, None]),
+                mget=Mock(return_value=[None]),
                 delete=Mock(),
                 setex=Mock(),
+                lock=Mock(return_value=MagicMock()),
             ),
         )
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
+        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 0)
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
         runtime.fetch_model_providers()

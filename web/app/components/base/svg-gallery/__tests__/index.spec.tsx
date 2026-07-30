@@ -17,7 +17,7 @@ vi.mock('@svgdotjs/svg.js', () => ({
 
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: vi.fn(content => content),
+    sanitize: vi.fn((content) => content),
   },
 }))
 
@@ -111,10 +111,7 @@ describe('SVGRenderer', () => {
       })
       const img = screen.getByAltText('Preview')
       expect(img)!.toBeInTheDocument()
-      expect(img)!.toHaveAttribute(
-        'src',
-        expect.stringContaining('data:image/svg+xml;base64'),
-      )
+      expect(img)!.toHaveAttribute('src', expect.stringContaining('data:image/svg+xml;base64'))
     })
 
     it('closes image preview on cancel', async () => {

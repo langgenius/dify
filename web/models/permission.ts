@@ -8,4 +8,4 @@ export const PermissionLevel = {
   partialMembers: 'partial_members',
 } as const
 
-export type PermissionLevel = typeof PermissionLevel[keyof typeof PermissionLevel]
+export type PermissionLevel = (typeof PermissionLevel)[keyof typeof PermissionLevel]

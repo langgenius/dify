@@ -57,11 +57,12 @@ class MCPServerParameterType(StrEnum):
     OBJECT = auto()
 
 
-class PluginParameterAutoGenerate(BaseModel):
-    class Type(StrEnum):
-        PROMPT_INSTRUCTION = auto()
+class PluginParameterAutoGenerateType(StrEnum):
+    PROMPT_INSTRUCTION = auto()
 
-    type: Type
+
+class PluginParameterAutoGenerate(BaseModel):
+    type: PluginParameterAutoGenerateType
 
 
 class PluginParameterTemplate(BaseModel):
@@ -201,7 +202,10 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     init frontend parameter by rule
     """
     parameter_value = value
-    if not parameter_value and parameter_value != 0:
+    is_empty_tools_selection = (
+        type == PluginParameterType.TOOLS_SELECTOR and isinstance(parameter_value, list) and not parameter_value
+    )
+    if not is_empty_tools_selection and not parameter_value and parameter_value != 0:
         # get default value
         parameter_value = rule.default
         if not parameter_value and rule.required:

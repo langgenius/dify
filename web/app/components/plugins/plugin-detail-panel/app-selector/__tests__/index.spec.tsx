@@ -34,7 +34,7 @@ const apps: App[] = [
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: ({
           input,
           getNextPageParam,
@@ -42,7 +42,7 @@ vi.mock('@/service/client', () => ({
           placeholderData,
         }: {
           input: (pageParam: number) => { query: { name?: string } }
-          getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+          getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
           initialPageParam: number
           placeholderData: unknown
         }) => ({
@@ -51,7 +51,7 @@ vi.mock('@/service/client', () => ({
             const query = input(Number(pageParam)).query
             const keyword = query.name?.toLowerCase() ?? ''
             const filteredApps = keyword
-              ? apps.filter(app => app.name.toLowerCase().includes(keyword))
+              ? apps.filter((app) => app.name.toLowerCase().includes(keyword))
               : apps
 
             return {
@@ -70,8 +70,9 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useAppDetail: (appId: string) => ({
-    data: apps.find(app => app.id === appId),
+    data: apps.find((app) => app.id === appId),
   }),
 }))
 
@@ -92,18 +93,10 @@ function renderWithQueryClient(children: ReactNode) {
     },
   })
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>)
 }
 
-function StatefulAppSelector({
-  onSelect,
-}: {
-  onSelect: (value: AppSelectorValue) => void
-}) {
+function StatefulAppSelector({ onSelect }: { onSelect: (value: AppSelectorValue) => void }) {
   const [value, setValue] = useState<AppSelectorValue>()
 
   return (
@@ -180,7 +173,10 @@ describe('AppSelector', () => {
 
     await user.click(screen.getByText('Support Bot'))
     await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
-    await user.type(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), 'workflow')
+    await user.type(
+      screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }),
+      'workflow',
+    )
 
     await waitFor(() => {
       expect(screen.queryByRole('option', { name: /Support Bot/ })).not.toBeInTheDocument()

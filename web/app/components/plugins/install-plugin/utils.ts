@@ -25,14 +25,16 @@ export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaratio
     endpoint: {
       settings: [],
     },
-    tags: pluginManifest.tags.map(tag => ({ name: tag })),
+    tags: pluginManifest.tags.map((tag) => ({ name: tag })),
     badges: [],
     verification: { authorized_category: 'langgenius' },
     from: 'package',
   }
 }
 
-export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManifestInMarket): Plugin => {
+export const pluginManifestInMarketToPluginProps = (
+  pluginManifest: PluginManifestInMarket,
+): Plugin => {
   return {
     plugin_id: pluginManifest.plugin_unique_identifier,
     type: pluginManifest.category as Plugin['type'],
@@ -55,7 +57,9 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
     },
     tags: [],
     badges: pluginManifest.badges,
-    verification: isEmpty(pluginManifest.verification) ? { authorized_category: 'langgenius' } : pluginManifest.verification,
+    verification: isEmpty(pluginManifest.verification)
+      ? { authorized_category: 'langgenius' }
+      : pluginManifest.verification,
     from: pluginManifest.from,
   }
 }

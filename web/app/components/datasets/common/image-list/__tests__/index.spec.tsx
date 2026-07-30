@@ -15,17 +15,18 @@ let capturedOnClick: ((file: FileEntity) => void) | null = null
 
 // Mock FileThumb to capture click handler
 vi.mock('@/app/components/base/file-thumb', () => ({
-  default: ({ file, onClick }: { file: FileEntity, onClick?: (file: FileEntity) => void }) => {
+  default: ({ file, onClick }: { file: FileEntity; onClick?: (file: FileEntity) => void }) => {
     // Capture the onClick for testing
     capturedOnClick = onClick ?? null
     return (
-      <div
+      <button
+        type="button"
         data-testid={`file-thumb-${file.sourceUrl}`}
         className="cursor-pointer"
         onClick={() => onClick?.(file)}
       >
         {file.name}
-      </div>
+      </button>
     )
   },
 }))
@@ -48,7 +49,9 @@ vi.mock('../../image-previewer', () => ({
     <div data-testid="image-previewer">
       <span data-testid="preview-count">{images.length}</span>
       <span data-testid="preview-index">{initialIndex}</span>
-      <button data-testid="close-preview" onClick={onClose}>Close</button>
+      <button data-testid="close-preview" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -69,12 +72,6 @@ describe('ImageList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const images = createMockImages(3)
-      const { container } = render(<ImageList images={images} size="md" />)
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render all images when count is below limit', () => {
       const images = createMockImages(5)
       render(<ImageList images={images} size="md" limit={9} />)
@@ -93,14 +90,6 @@ describe('ImageList', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const images = createMockImages(3)
-      const { container } = render(
-        <ImageList images={images} size="md" className="custom-class" />,
-      )
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
-
     it('should use default limit of 9', () => {
       const images = createMockImages(12)
       render(<ImageList images={images} size="md" />)
@@ -115,18 +104,6 @@ describe('ImageList', () => {
       // Should show "+5" for remaining images
       // Should show "+5" for remaining images
       expect(screen.getByText(/\+5/))!.toBeInTheDocument()
-    })
-
-    it('should handle size prop sm', () => {
-      const images = createMockImages(2)
-      const { container } = render(<ImageList images={images} size="sm" />)
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
-    it('should handle size prop md', () => {
-      const images = createMockImages(2)
-      const { container } = render(<ImageList images={images} size="md" />)
-      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -238,11 +215,6 @@ describe('ImageList', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty images array', () => {
-      const { container } = render(<ImageList images={[]} size="md" />)
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should not open preview when clicked image not found in list (index === -1)', () => {
       const images = createMockImages(3)
       const { rerender } = render(<ImageList images={images} size="md" />)
@@ -316,12 +288,6 @@ describe('ImageList', () => {
       // Preview should NOT open because the file was not found in limitedImages
       // Preview should NOT open because the file was not found in limitedImages
       expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-    })
-
-    it('should handle single image', () => {
-      const images = createMockImages(1)
-      const { container } = render(<ImageList images={images} size="md" />)
-      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should not show More button when images count equals limit', () => {

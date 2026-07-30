@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 
 type AppCardTagsProps = {

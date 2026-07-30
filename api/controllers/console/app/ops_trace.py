@@ -13,9 +13,11 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    edit_permission_required,
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models import App
@@ -70,14 +72,14 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def get(self, app_model: App):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
             trace_config = OpsService.get_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider
+                app_id=app_model.id, tracing_provider=args.tracing_provider, session=db.session()
             )
             if not trace_config:
                 return {"has_not_configured": True}
@@ -95,9 +97,12 @@ class TraceAppConfigApi(Resource):
         console_ns.models[TraceAppConfigResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters or configuration already exists")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def post(self, app_model: App):
         """Create a new trace app configuration"""
@@ -105,7 +110,10 @@ class TraceAppConfigApi(Resource):
 
         try:
             result = OpsService.create_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_model.id,
+                tracing_provider=args.tracing_provider,
+                tracing_config=args.tracing_config,
+                session=db.session(),
             )
             if not result:
                 raise TracingConfigIsExist()
@@ -125,9 +133,12 @@ class TraceAppConfigApi(Resource):
         console_ns.models[TraceAppConfigResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters or configuration not found")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def patch(self, app_model: App):
         """Update an existing trace app configuration"""
@@ -135,7 +146,10 @@ class TraceAppConfigApi(Resource):
 
         try:
             result = OpsService.update_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_model.id,
+                tracing_provider=args.tracing_provider,
+                tracing_config=args.tracing_config,
+                session=db.session(),
             )
             if not result:
                 raise TracingConfigNotExist()
@@ -149,16 +163,21 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc(params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(204, "Tracing configuration deleted successfully")
     @console_ns.response(400, "Invalid request parameters or configuration not found")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def delete(self, app_model: App):
         """Delete an existing trace app configuration"""
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
-            result = OpsService.delete_tracing_app_config(app_id=app_model.id, tracing_provider=args.tracing_provider)
+            result = OpsService.delete_tracing_app_config(
+                app_id=app_model.id, tracing_provider=args.tracing_provider, session=db.session()
+            )
             if not result:
                 raise TracingConfigNotExist()
             return "", 204

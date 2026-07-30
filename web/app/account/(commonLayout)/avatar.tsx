@@ -19,15 +19,14 @@ import { useLogout } from '@/service/use-common'
 export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()
-  // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
+  // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
   const { isEducationAccount } = useProviderContext()
 
   const { mutateAsync: logout } = useLogout()
 
-  if (!userProfile)
-    return null
+  if (!userProfile) return null
 
   const handleLogout = async () => {
     await logout()
@@ -66,18 +65,22 @@ export default function AppSelector() {
                   </PremiumBadge>
                 )}
               </div>
-              <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
+              <div className="system-xs-regular break-all text-text-tertiary">
+                {userProfile.email}
+              </div>
             </div>
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
           </div>
         </div>
         <div className="p-1">
-          <DropdownMenuItem
-            className="h-9 justify-start px-3"
-            onClick={handleLogout}
-          >
-            <span aria-hidden="true" className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary" />
-            <span className="text-[14px] font-normal text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</span>
+          <DropdownMenuItem className="h-9 justify-start px-3" onClick={handleLogout}>
+            <span
+              aria-hidden="true"
+              className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"
+            />
+            <span className="text-[14px] font-normal text-text-secondary">
+              {t(($) => $['userProfile.logout'], { ns: 'common' })}
+            </span>
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

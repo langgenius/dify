@@ -7,6 +7,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 cd "$REPO_ROOT"
 
 EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
+UNIT_TESTS_CONFIG="tests/unit_tests/pyrefly.toml"
 TEST_CONTAINERS_DIR="tests/test_containers_integration_tests"
 TEST_CONTAINERS_CONFIG="$TEST_CONTAINERS_DIR/pyrefly.toml"
 
@@ -28,6 +29,10 @@ pyrefly_args=(
   "--project-excludes=tests/"
 )
 
+if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+  pyrefly_args+=("--output-format=github")
+fi
+
 if [[ -f "$EXCLUDES_FILE" ]]; then
   while IFS= read -r exclude; do
     [[ -z "$exclude" || "${exclude:0:1}" == "#" ]] && continue
@@ -36,6 +41,14 @@ if [[ -f "$EXCLUDES_FILE" ]]; then
 fi
 
 run_pyrefly() {
+  if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+    set +e
+    "$@"
+    local pyrefly_status=$?
+    set -e
+    return "$pyrefly_status"
+  fi
+
   local tmp_output
   tmp_output="$(mktemp)"
 
@@ -44,7 +57,7 @@ run_pyrefly() {
   local pyrefly_status=$?
   set -e
 
-  uv run --directory api python libs/pyrefly_diagnostics.py < "$tmp_output"
+  uv run --directory api python libs/pyrefly_diagnostics.py --status "$pyrefly_status" < "$tmp_output"
   rm -f "$tmp_output"
   return "$pyrefly_status"
 }
@@ -62,11 +75,30 @@ fi
 run_pyrefly "${pyrefly_command[@]}" || status=$?
 
 if (( ${#target_paths[@]} == 0 )); then
+  unit_tests_args=(
+    "--summary=none"
+    "--use-ignore-files=false"
+    "--config=$UNIT_TESTS_CONFIG"
+  )
+  if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+    unit_tests_args+=("--output-format=github")
+  fi
   run_pyrefly \
     uv run --directory api --dev pyrefly check \
-    "--summary=none" \
-    "--use-ignore-files=false" \
-    "--config=$TEST_CONTAINERS_CONFIG" \
+    "${unit_tests_args[@]}" \
+    || status=$?
+
+  test_containers_args=(
+    "--summary=none"
+    "--use-ignore-files=false"
+    "--config=$TEST_CONTAINERS_CONFIG"
+  )
+  if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+    test_containers_args+=("--output-format=github")
+  fi
+  run_pyrefly \
+    uv run --directory api --dev pyrefly check \
+    "${test_containers_args[@]}" \
     || status=$?
 fi
 

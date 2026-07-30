@@ -25,6 +25,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
     SystemConfigurationStatus,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -394,13 +395,15 @@ def test_switch_preferred_provider_type_returns_early_when_no_change_or_unsuppor
     configuration = _build_provider_configuration()
 
     with patch("core.entities.provider_configuration.Session") as mock_session_cls:
-        configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+        changed = configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+    assert changed is False
     mock_session_cls.assert_not_called()
 
     configuration.preferred_provider_type = ProviderType.CUSTOM
     configuration.system_configuration.enabled = False
     with patch("core.entities.provider_configuration.Session") as mock_session_cls:
-        configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+        changed = configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+    assert changed is False
     mock_session_cls.assert_not_called()
 
 
@@ -411,10 +414,13 @@ def test_switch_preferred_provider_type_updates_existing_record_with_session() -
     existing_record = SimpleNamespace(preferred_provider_type="custom")
     session.execute.return_value.scalars.return_value.first.return_value = existing_record
 
-    configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
+    with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+        changed = configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
 
+    assert changed is True
     assert existing_record.preferred_provider_type == ProviderType.SYSTEM
     session.commit.assert_called_once()
+    mock_invalidate.assert_not_called()
 
 
 def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
@@ -423,10 +429,13 @@ def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
     session = Mock()
     session.execute.return_value.scalars.return_value.first.return_value = None
 
-    configuration.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
+    with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+        changed = configuration.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
 
+    assert changed is True
     assert session.add.call_count == 1
     session.commit.assert_called_once()
+    mock_invalidate.assert_not_called()
 
 
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
@@ -1022,13 +1031,14 @@ def test_update_load_balancing_configs_updates_all_matching_configs() -> None:
     credential_record = SimpleNamespace(encrypted_config='{"api_key":"enc"}', credential_name="API KEY 3")
 
     with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-        configuration._update_load_balancing_configs_with_credential(
+        changed = configuration._update_load_balancing_configs_with_credential(
             credential_id="cred-1",
             credential_record=credential_record,
             credential_source=CredentialSourceType.PROVIDER,
             session=session,
         )
 
+    assert changed is True
     assert lb_config.encrypted_config == '{"api_key":"enc"}'
     assert lb_config.name == "API KEY 3"
     mock_cache.return_value.delete.assert_called_once()
@@ -1040,13 +1050,14 @@ def test_update_load_balancing_configs_returns_when_no_matching_configs() -> Non
     session = Mock()
     session.execute.return_value.scalars.return_value.all.return_value = []
 
-    configuration._update_load_balancing_configs_with_credential(
+    changed = configuration._update_load_balancing_configs_with_credential(
         credential_id="cred-1",
         credential_record=SimpleNamespace(encrypted_config="{}", credential_name="Main"),
         credential_source=CredentialSourceType.PROVIDER,
         session=session,
     )
 
+    assert changed is False
     session.commit.assert_not_called()
 
 
@@ -1143,6 +1154,41 @@ def test_get_custom_model_record_supports_plugin_id_alias() -> None:
 
     result = configuration._get_custom_model_record(ModelType.LLM, "gpt-4o", session)
     assert result is custom_model_record
+
+
+def test_model_type_db_values_includes_pre_1_15_aliases() -> None:
+    from core.entities.provider_configuration import _model_type_db_values
+
+    assert _model_type_db_values(ModelType.LLM) == ("llm", "text-generation")
+    assert _model_type_db_values(ModelType.TEXT_EMBEDDING) == ("text-embedding", "embeddings")
+    assert _model_type_db_values(ModelType.RERANK) == ("rerank", "reranking")
+    assert _model_type_db_values(ModelType.TTS) == ("tts",)
+
+
+def test_get_custom_model_record_uses_legacy_aware_model_type_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression for #39559: lookups must include pre-1.15 model_type aliases."""
+    import core.entities.provider_configuration as provider_configuration_module
+
+    captured: dict[str, tuple[str, ...]] = {}
+    original = provider_configuration_module._model_type_db_values
+
+    def _capture(model_type: ModelType) -> tuple[str, ...]:
+        values = original(model_type)
+        captured["values"] = values
+        return values
+
+    monkeypatch.setattr(provider_configuration_module, "_model_type_db_values", _capture)
+
+    configuration = _build_provider_configuration(provider_name="langgenius/ollama/ollama")
+    session = Mock()
+    session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(id="legacy-model")
+
+    result = configuration._get_custom_model_record(ModelType.LLM, "llama3", session)
+
+    assert result.id == "legacy-model"
+    assert captured["values"] == ("llm", "text-generation")
 
 
 def test_get_specific_custom_model_credential_success_and_not_found() -> None:
@@ -1326,6 +1372,31 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
                 configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert provider_model_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
+    assert mock_cache.call_args_list[0].kwargs["cache_type"] == ProviderCredentialsCacheType.LOAD_BALANCING_MODEL
+    assert mock_cache.call_args_list[1].kwargs["cache_type"] == ProviderCredentialsCacheType.MODEL
+
+    session = Mock()
+    mismatched_credential_record = SimpleNamespace(
+        id="cred-2",
+        model_name="stored-model",
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    provider_model_record = SimpleNamespace(id="model-2", credential_id="cred-2", updated_at=None)
+    session.execute.side_effect = [
+        _exec_result(scalar_one_or_none=None),
+        _exec_result(scalar_one_or_none=mismatched_credential_record),
+        _exec_result(scalars_all=[]),
+        _exec_result(scalar=1),
+    ]
+    with _patched_session(session):
+        with patch.object(
+            ProviderConfiguration,
+            "_get_custom_model_record",
+            return_value=provider_model_record,
+        ) as mock_get_model:
+            configuration.delete_custom_model_credential(ModelType.LLM, "request-model", "cred-2")
+    mock_get_model.assert_called_once_with(ModelType.TEXT_EMBEDDING, "stored-model", session=session)
+    session.delete.assert_any_call(mismatched_credential_record)
 
 
 def test_add_model_credential_to_model_and_switch_custom_model_credential() -> None:
@@ -1478,12 +1549,15 @@ def test_model_load_balancing_enable_disable_and_switch_preferred_provider_type_
     switch_session = Mock()
     with _patched_session(switch_session):
         switch_session.execute.return_value.scalars.return_value.first.return_value = None
-        configuration.switch_preferred_provider_type(ProviderType.CUSTOM)
+        with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+            changed = configuration.switch_preferred_provider_type(ProviderType.CUSTOM)
+    assert changed is True
     assert any(
         call.args and call.args[0].__class__.__name__ == "TenantPreferredModelProvider"
         for call in switch_session.add.call_args_list
     )
     switch_session.commit.assert_called()
+    mock_invalidate.assert_called_once_with(preferred_model_providers=True)
 
 
 def test_system_and_custom_provider_model_helpers_cover_remaining_skip_paths() -> None:
@@ -1996,9 +2070,16 @@ def test_delete_custom_model_credential_removes_custom_model_record_when_last_cr
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
+                configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert any(call.args and call.args[0] is provider_model_record for call in session.delete.call_args_list)
+    mock_cache.assert_called_once_with(
+        tenant_id="tenant-1",
+        identity_id="model-1",
+        cache_type=ProviderCredentialsCacheType.MODEL,
+    )
+    mock_cache.return_value.delete.assert_called_once()
 
 
 def test_delete_custom_model_credential_rolls_back_on_error() -> None:
@@ -2042,7 +2123,9 @@ def test_get_custom_provider_models_skips_schema_models_with_mismatched_type() -
     assert all(model.model != "embed-model" for model in models)
 
 
-def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none() -> None:
+def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     configuration = _build_provider_configuration()
     configuration.custom_configuration.models = [
         CustomModelConfiguration(model="error-custom", model_type=ModelType.LLM, credentials={"k": "v"}),
@@ -2064,7 +2147,7 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
             return None
         return _build_ai_model(model)
 
-    with patch("core.entities.provider_configuration.logger.warning") as mock_warning:
+    with caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"):
         with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema):
             models = configuration._get_custom_provider_models(
                 model_types=[ModelType.LLM],
@@ -2072,6 +2155,6 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
                 model_setting_map={},
             )
 
-    assert mock_warning.call_count == 1
+    assert "get custom model schema failed, boom" in caplog.messages
     assert any(model.model == "ok-custom" for model in models)
     assert all(model.model != "none-custom" for model in models)

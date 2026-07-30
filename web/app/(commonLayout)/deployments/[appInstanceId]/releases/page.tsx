@@ -1,8 +1,5 @@
-import { VersionsTab } from '@/features/deployments/detail/versions-tab'
+import { DeploymentReleases } from '@/features/deployments/detail/releases'
 
-export default async function InstanceDetailReleasesPage({ params }: {
-  params: Promise<{ appInstanceId: string }>
-}) {
-  const { appInstanceId } = await params
-  return <VersionsTab appInstanceId={appInstanceId} />
+export default function InstanceDetailReleasesPage() {
+  return <DeploymentReleases />
 }

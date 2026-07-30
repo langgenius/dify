@@ -31,16 +31,12 @@ const BuiltinMarketplacePanel = ({
   keywords,
   tagFilterValue,
 }: BuiltinMarketplacePanelProps) => {
-  const {
-    isMarketplaceArrowVisible,
-    marketplaceContext,
-    showMarketplacePanel,
-    toolListTailRef,
-  } = useToolMarketplacePanel({
-    containerRef,
-    keywords,
-    tagFilterValue,
-  })
+  const { isMarketplaceArrowVisible, marketplaceContext, showMarketplacePanel, toolListTailRef } =
+    useToolMarketplacePanel({
+      containerRef,
+      keywords,
+      tagFilterValue,
+    })
 
   return (
     <>
@@ -58,12 +54,14 @@ const BuiltinMarketplacePanel = ({
 }
 
 type PluginsPanelResultsProps = {
-  canManagePlugin: boolean
+  canDeletePlugin: boolean
   canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
   contentInset: PluginPageContentInset
   currentBuiltinToolID?: string
+  firstBuiltinToolTarget?: string
+  firstPluginTarget?: string
   filteredBuiltinTools: Collection[]
   filteredList: Array<PluginDetail & { latest_version: string }>
   hasToolMarketplacePanel: boolean
@@ -80,12 +78,14 @@ type PluginsPanelResultsProps = {
 }
 
 const PluginsPanelResults = ({
-  canManagePlugin,
+  canDeletePlugin,
   canUpdatePlugin,
   containerRef,
   contentFrameClassName,
   contentInset,
   currentBuiltinToolID,
+  firstBuiltinToolTarget,
+  firstPluginTarget,
   filteredBuiltinTools,
   filteredList,
   hasToolMarketplacePanel,
@@ -115,23 +115,25 @@ const PluginsPanelResults = ({
         className="overscroll-contain"
         role={scrollAreaLabel ? 'region' : undefined}
       >
-        <ScrollAreaContent className={cn(
-          'flex min-h-full flex-col',
-          isAgentStrategyIntegrationPage && 'pt-2',
-        )}
+        <ScrollAreaContent
+          className={cn('flex min-h-full flex-col', isAgentStrategyIntegrationPage && 'pt-2')}
         >
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
               pluginList={filteredList}
-              canManagePlugin={canManagePlugin}
+              canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
+              firstPluginTarget={firstPluginTarget}
             >
-              {filteredBuiltinTools.map(collection => (
+              {filteredBuiltinTools.map((collection, index) => (
                 <button
                   key={collection.id}
                   type="button"
                   aria-pressed={currentBuiltinToolID === collection.id}
                   className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
+                  data-step-by-step-tour-target={
+                    filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
+                  }
                   onClick={() => setCurrentBuiltinToolID(collection.id)}
                 >
                   <IntegrationsToolProviderCard
@@ -145,13 +147,13 @@ const PluginsPanelResults = ({
           )}
           {!isLastPage && (
             <div className="flex w-full justify-center py-4">
-              {isFetching
-                ? <Loading className="size-8" />
-                : (
-                    <Button onClick={loadNextPage}>
-                      {t('common.loadMore', { ns: 'workflow' })}
-                    </Button>
-                  )}
+              {isFetching ? (
+                <Loading className="size-8" />
+              ) : (
+                <Button onClick={loadNextPage}>
+                  {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                </Button>
+              )}
             </div>
           )}
           {hasToolMarketplacePanel && (
@@ -164,7 +166,7 @@ const PluginsPanelResults = ({
           )}
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>

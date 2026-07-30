@@ -1,5 +1,5 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Item from '../item'

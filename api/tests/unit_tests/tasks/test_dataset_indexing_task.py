@@ -9,6 +9,7 @@ This module tests the document indexing task functionality including:
 - Task cancellation and cleanup
 """
 
+import logging
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -104,17 +105,30 @@ def mock_db_session():
             try:
                 where = stmt.whereclause
                 if where is None:
-                    return None
-                # Both single-clause and AND-clause-list cases
-                clauses = list(getattr(where, "clauses", [where]))
-                for clause in clauses:
-                    left = getattr(clause, "left", None)
-                    right = getattr(clause, "right", None)
-                    if left is not None and right is not None:
-                        if getattr(left, "key", None) == "id":
-                            return getattr(right, "value", None)
+                    clauses = []
+                else:
+                    try:
+                        clauses = list(where.clauses)
+                    except AttributeError:
+                        clauses = [where]
             except Exception:
-                pass
+                return None
+
+            for clause in clauses:
+                try:
+                    left = clause.left
+                    right = clause.right
+                except AttributeError:
+                    continue
+                try:
+                    key = left.key
+                except AttributeError:
+                    continue
+                if key == "id":
+                    try:
+                        return right.value
+                    except AttributeError:
+                        return None
             return None
 
         def _scalar_side_effect(stmt):
@@ -126,7 +140,6 @@ def mock_db_session():
                     docs = session._shared_data.get("documents", [])
                     if not docs:
                         return None
-                    # When the WHERE clause filters by id, return the matching document
                     queried_id = _extract_id_from_where(stmt)
                     if queried_id:
                         doc_map = {d.id: d for d in docs}
@@ -513,7 +526,7 @@ class TestBatchProcessing:
             _document_indexing(dataset_id, document_ids)
 
             # Assert - IndexingRunner should still be called with empty list
-            mock_indexing_runner.run.assert_called_once_with([])
+            mock_indexing_runner.run.assert_called_once_with([], mock_db_session)
 
 
 # ============================================================================
@@ -758,7 +771,15 @@ class TestErrorHandling:
         assert mock_db_session.close.called
 
     def test_tenant_queue_error_handling_still_processes_next_task(
-        self, tenant_id, dataset_id, document_ids, mock_redis, mock_db_session, mock_dataset, mock_indexing_runner
+        self,
+        tenant_id,
+        dataset_id,
+        document_ids,
+        mock_redis,
+        mock_db_session,
+        mock_dataset,
+        mock_indexing_runner,
+        caplog: pytest.LogCaptureFixture,
     ):
         """
         Test that errors don't prevent processing next task in tenant queue.
@@ -778,14 +799,17 @@ class TestErrorHandling:
         with patch("tasks.document_indexing_task._document_indexing") as mock_indexing:
             mock_indexing.side_effect = Exception("Processing failed")
 
-            # Patch logger to avoid format string issue in actual code
-            with patch("tasks.document_indexing_task.logger"):
+            with caplog.at_level(logging.ERROR, logger="tasks.document_indexing_task"):
                 with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
                     # Act
                     _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                     # Assert - Next task should still be enqueued despite error
                     mock_task.apply_async.assert_called()
+                    assert (
+                        f"Error processing document indexing {dataset_id} for tenant {tenant_id}: {document_ids}"
+                        in caplog.messages
+                    )
 
     def test_concurrent_task_limit_respected(
         self, tenant_id, dataset_id, document_ids, mock_redis, mock_db_session, mock_dataset
@@ -1594,16 +1618,24 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2 = MagicMock()
         session2.begin.return_value = nullcontext()
         session3 = MagicMock()
+        session4 = MagicMock()
 
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=phase1_docs))
         session3.scalar.return_value = dataset
-        session3.scalars.return_value = MagicMock(
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=phase1_docs))
+        session4.scalar.return_value = dataset
+        session4.scalars.return_value = MagicMock(
             all=MagicMock(return_value=[doc_eligible, doc_skip_form, doc_skip_status])
         )
 
         create_session_mock = MagicMock(
-            side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]
+            side_effect=[
+                _SessionContext(session1),
+                _SessionContext(session2),
+                _SessionContext(session3),
+                _SessionContext(session4),
+            ]
         )
         monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
 
@@ -1647,15 +1679,25 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2 = MagicMock()
         session2.begin.return_value = nullcontext()
         session3 = MagicMock()
+        session4 = MagicMock()
 
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
         session3.scalar.return_value = dataset
-        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[doc_eligible]))
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session4.scalar.return_value = dataset
+        session4.scalars.return_value = MagicMock(all=MagicMock(return_value=[doc_eligible]))
 
         monkeypatch.setattr(
             "tasks.document_indexing_task.session_factory.create_session",
-            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+            MagicMock(
+                side_effect=[
+                    _SessionContext(session1),
+                    _SessionContext(session2),
+                    _SessionContext(session3),
+                    _SessionContext(session4),
+                ]
+            ),
         )
 
         features = SimpleNamespace(
@@ -1686,13 +1728,23 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2 = MagicMock()
         session2.begin.return_value = nullcontext()
         session3 = MagicMock()
+        session4 = MagicMock()
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
-        session3.scalar.return_value = None  # dataset not found on second query
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session4.scalar.return_value = None  # dataset not found after indexing
 
         monkeypatch.setattr(
             "tasks.document_indexing_task.session_factory.create_session",
-            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+            MagicMock(
+                side_effect=[
+                    _SessionContext(session1),
+                    _SessionContext(session2),
+                    _SessionContext(session3),
+                    _SessionContext(session4),
+                ]
+            ),
         )
 
         features = SimpleNamespace(
@@ -1708,7 +1760,7 @@ class TestDocumentIndexingTaskSummaryFlow:
         _document_indexing("dataset-1", ["doc-1"])
 
         # Assert
-        session3.scalar.assert_called()
+        session4.scalar.assert_called()
 
     def test_should_skip_summary_when_not_high_quality(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test summary generation skipped when indexing_technique is not high_quality."""
@@ -1723,14 +1775,24 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2 = MagicMock()
         session2.begin.return_value = nullcontext()
         session3 = MagicMock()
+        session4 = MagicMock()
 
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
         session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session4.scalar.return_value = dataset
 
         monkeypatch.setattr(
             "tasks.document_indexing_task.session_factory.create_session",
-            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+            MagicMock(
+                side_effect=[
+                    _SessionContext(session1),
+                    _SessionContext(session2),
+                    _SessionContext(session3),
+                    _SessionContext(session4),
+                ]
+            ),
         )
 
         features = SimpleNamespace(
@@ -1761,8 +1823,13 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2.begin.return_value = nullcontext()
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3 = MagicMock()
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
 
-        create_session_mock = MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2)])
+        create_session_mock = MagicMock(
+            side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]
+        )
         monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
 
         features = SimpleNamespace(
@@ -1795,10 +1862,13 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2.begin.return_value = nullcontext()
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3 = MagicMock()
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
 
         monkeypatch.setattr(
             "tasks.document_indexing_task.session_factory.create_session",
-            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2)]),
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
         )
 
         features = SimpleNamespace(
@@ -1843,15 +1913,25 @@ class TestDocumentIndexingTaskSummaryFlow:
         session2 = MagicMock()
         session2.begin.return_value = nullcontext()
         session3 = MagicMock()
+        session4 = MagicMock()
 
         session1.scalar.return_value = dataset
         session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
         session3.scalar.return_value = dataset
-        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[_FalseyDocument("missing-doc")]))
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session4.scalar.return_value = dataset
+        session4.scalars.return_value = MagicMock(all=MagicMock(return_value=[_FalseyDocument("missing-doc")]))
 
         monkeypatch.setattr(
             "tasks.document_indexing_task.session_factory.create_session",
-            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+            MagicMock(
+                side_effect=[
+                    _SessionContext(session1),
+                    _SessionContext(session2),
+                    _SessionContext(session3),
+                    _SessionContext(session4),
+                ]
+            ),
         )
 
         features = SimpleNamespace(

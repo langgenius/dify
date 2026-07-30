@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from models.agent_config_entities import AgentSoulConfig
+from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
 
 SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
     {
@@ -48,9 +49,7 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
             )
 
     reserved_status = dict.fromkeys(sorted(RESERVED_AGENT_BACKEND_FEATURES), "reserved_not_executed")
-    reserved_status["knowledge"] = (
-        "supported_by_knowledge_layer" if list_configured_knowledge_dataset_ids(agent_soul) else "not_configured"
-    )
+    reserved_status["knowledge"] = "supported_by_knowledge_layer" if agent_soul.knowledge.sets else "not_configured"
     reserved_status["tools.dify_tools"] = "supported_when_config_valid"
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"
@@ -66,14 +65,14 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
 
 
 def list_configured_knowledge_dataset_ids(agent_soul: AgentSoulConfig) -> list[str]:
-    """Return the normalized knowledge dataset ids that can produce a runtime layer.
+    """Return normalized dataset ids selected by Agent v2 knowledge sets.
 
     ``build_runtime_feature_manifest()`` and ``build_knowledge_layer_config()``
-    must stay aligned: both decide knowledge support from this effective,
-    non-blank dataset-id set rather than from raw
-    ``agent_soul.knowledge.datasets`` entries.
+    stay aligned on the set-based contract: DTO validation rejects blank dataset
+    ids before runtime, so this helper only flattens configured set datasets for
+    metadata/diagnostic surfaces that still need a dataset-id summary.
     """
-    return [dataset_id for dataset in agent_soul.knowledge.datasets if (dataset_id := (dataset.id or "").strip())]
+    return list_agent_soul_knowledge_dataset_ids(agent_soul)
 
 
 def _get_nested(value: dict[str, Any], path: str) -> Any:

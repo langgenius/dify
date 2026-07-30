@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import yaml from 'js-yaml'
+import { load } from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ENV_CACHE_DIR } from '@/store/dir'
 import { CACHE_NUDGE, cachePath, getCache } from '@/store/manager'
@@ -22,10 +22,8 @@ describe('NudgeStore', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -70,7 +68,7 @@ describe('NudgeStore', () => {
     const store = await loadNudgeStore({ store: getCache(CACHE_NUDGE), now: () => t })
     await store.markWarned(HOST)
     const raw = await readFile(nudgeStorePath(dir), 'utf8')
-    const parsed = yaml.load(raw) as Record<string, unknown>
+    const parsed = load(raw) as Record<string, unknown>
     expect((parsed.warned as Record<string, string>)[HOST]).toBe(t.toISOString())
   })
 

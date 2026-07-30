@@ -1,13 +1,13 @@
 import type { ReactElement } from 'react'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui)
+const render = (ui: ReactElement) => renderWithConsoleQuery(ui)
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -30,7 +30,9 @@ const mockLogin = vi.mocked(login)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
-  mockFetchInitValidateStatus.mockResolvedValue({ status: 'finished' } as InitValidateStatusResponse)
+  mockFetchInitValidateStatus.mockResolvedValue({
+    status: 'finished',
+  } as InitValidateStatusResponse)
 }
 
 describe('InstallForm', () => {
@@ -66,7 +68,9 @@ describe('InstallForm', () => {
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -81,7 +85,7 @@ describe('InstallForm', () => {
           email: 'admin@example.com',
           name: 'Admin',
           password: 'Password123',
-          language: 'en',
+          language: 'en-US',
         },
       })
     })
@@ -103,11 +107,18 @@ describe('InstallForm', () => {
 
   it('should redirect to sign in when login fails', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
-    mockLogin.mockResolvedValue({ result: 'fail', data: 'error', code: 'login_failed', message: 'login failed' } as any)
+    mockLogin.mockResolvedValue({
+      result: 'fail',
+      data: 'error',
+      code: 'login_failed',
+      message: 'login failed',
+    } as any)
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -128,7 +139,9 @@ describe('InstallForm', () => {
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 

@@ -10,27 +10,22 @@ type Props = Readonly<{
   iconColor?: string
 }>
 
-const ViewFormDropdown = ({
-  iconColor,
-}: Props) => {
+const ViewFormDropdown = ({ iconColor }: Props) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <ActionButton
             size="l"
             state={open ? ActionButtonState.Hover : ActionButtonState.Default}
             data-testid="view-form-dropdown-trigger"
           >
-            <div className={cn('i-ri-chat-settings-line h-[18px] w-[18px] shrink-0', iconColor)} />
+            <div className={cn('i-ri-chat-settings-line h-4.5 w-4.5 shrink-0', iconColor)} />
           </ActionButton>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-end"
@@ -40,11 +35,13 @@ const ViewFormDropdown = ({
       >
         <div
           data-testid="view-form-dropdown-content"
-          className="w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs"
+          className="w-100 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs"
         >
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
-            <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+            <div className="grow system-xl-semibold text-text-secondary">
+              {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
+            </div>
           </div>
           <div className="p-6">
             <InputsFormContent />

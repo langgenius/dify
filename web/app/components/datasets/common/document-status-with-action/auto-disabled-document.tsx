@@ -4,16 +4,18 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAutoDisabledDocuments, useDocumentEnable, useInvalidDisabledDocument } from '@/service/knowledge/use-document'
+import {
+  useAutoDisabledDocuments,
+  useDocumentEnable,
+  useInvalidDisabledDocument,
+} from '@/service/knowledge/use-document'
 import StatusWithAction from './status-with-action'
 
 type Props = Readonly<{
   datasetId: string
 }>
 
-const AutoDisabledDocument: FC<Props> = ({
-  datasetId,
-}) => {
+const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
   const { t } = useTranslation()
   const { data, isLoading } = useAutoDisabledDocuments(datasetId)
   const invalidDisabledDocument = useInvalidDisabledDocument()
@@ -23,16 +25,15 @@ const AutoDisabledDocument: FC<Props> = ({
   const handleEnableDocuments = useCallback(async () => {
     await enableDocument({ datasetId, documentIds })
     invalidDisabledDocument()
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [])
-  if (!hasDisabledDocument || isLoading)
-    return null
+  if (!hasDisabledDocument || isLoading) return null
 
   return (
     <StatusWithAction
       type="info"
-      description={t('documentsDisabled', { ns: 'dataset', num: documentIds?.length })}
-      actionText={t('enable', { ns: 'dataset' })}
+      description={t(($) => $.documentsDisabled, { ns: 'dataset', num: documentIds?.length })}
+      actionText={t(($) => $.enable, { ns: 'dataset' })}
       onAction={handleEnableDocuments}
     />
   )

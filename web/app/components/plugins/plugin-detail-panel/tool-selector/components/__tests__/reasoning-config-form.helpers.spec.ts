@@ -58,18 +58,28 @@ describe('reasoning-config-form helpers', () => {
       },
     ]
 
-    expect(getVisibleSelectOptions(options as never, {
-      mode: { value: { value: 'advanced' } },
-    }, 'en_US')).toEqual([
+    expect(
+      getVisibleSelectOptions(
+        options as never,
+        {
+          mode: { value: { value: 'advanced' } },
+        },
+        'en_US',
+      ),
+    ).toEqual([
       { value: 'one', name: 'One' },
       { value: 'two', name: 'Two' },
     ])
 
-    expect(getVisibleSelectOptions(options as never, {
-      mode: { value: { value: 'basic' } },
-    }, 'en_US')).toEqual([
-      { value: 'one', name: 'One' },
-    ])
+    expect(
+      getVisibleSelectOptions(
+        options as never,
+        {
+          mode: { value: { value: 'basic' } },
+        },
+        'en_US',
+      ),
+    ).toEqual([{ value: 'one', name: 'One' }])
   })
 
   it('updates reasoning values for auto, constant, variable, and merged states', () => {
@@ -133,30 +143,36 @@ describe('reasoning-config-form helpers', () => {
   })
 
   it('derives field flags and picker props from schema types', () => {
-    expect(getFieldFlags(FormTypeEnum.object, { type: VarKindType.constant })).toEqual(expect.objectContaining({
-      isObject: true,
-      isShowJSONEditor: true,
-      showTypeSwitch: true,
-      isConstant: true,
-    }))
+    expect(getFieldFlags(FormTypeEnum.object, { type: VarKindType.constant })).toEqual(
+      expect.objectContaining({
+        isObject: true,
+        isShowJSONEditor: true,
+        showTypeSwitch: true,
+        isConstant: true,
+      }),
+    )
 
-    expect(createPickerProps({
-      type: FormTypeEnum.select,
-      value: {},
-      language: 'en_US',
-      schema: {
-        options: [
-          {
-            value: 'one',
-            label: { en_US: 'One', zh_Hans: 'One' },
-            show_on: [],
-          },
-        ],
-      } as never,
-    })).toEqual(expect.objectContaining({
-      targetVarType: VarType.string,
-      selectItems: [{ value: 'one', name: 'One' }],
-    }))
+    expect(
+      createPickerProps({
+        type: FormTypeEnum.select,
+        value: {},
+        language: 'en_US',
+        schema: {
+          options: [
+            {
+              value: 'one',
+              label: { en_US: 'One', zh_Hans: 'One' },
+              show_on: [],
+            },
+          ],
+        } as never,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        targetVarType: VarType.string,
+        selectItems: [{ value: 'one', name: 'One' }],
+      }),
+    )
   })
 
   it('provides label helpers', () => {

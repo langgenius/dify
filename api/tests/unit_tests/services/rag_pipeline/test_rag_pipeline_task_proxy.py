@@ -152,7 +152,7 @@ def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) ->
     upload_file = SimpleNamespace(id="uploaded-file-1")
     file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
     file_service_cls.return_value.upload_text.return_value = upload_file
-    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", mocker.Mock(engine="fake-engine"))
+    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
 
     result = proxy._upload_invoke_entities()
 

@@ -13,30 +13,17 @@ export type IInputTypeIconProps = {
 const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
   const classNames = `size-3.5 ${className}`
   const icons = {
-    string: (
-      <InputVarTypeIcon type={InputVarType.textInput} className={classNames} />
-    ),
-    paragraph: (
-      <InputVarTypeIcon type={InputVarType.paragraph} className={classNames} />
-    ),
-    select: (
-      <InputVarTypeIcon type={InputVarType.select} className={classNames} />
-    ),
-    number: (
-      <InputVarTypeIcon type={InputVarType.number} className={classNames} />
-    ),
-    api: (
-      <ApiConnection className={classNames} />
-    ),
+    string: <InputVarTypeIcon type={InputVarType.textInput} className={classNames} />,
+    paragraph: <InputVarTypeIcon type={InputVarType.paragraph} className={classNames} />,
+    select: <InputVarTypeIcon type={InputVarType.select} className={classNames} />,
+    number: <InputVarTypeIcon type={InputVarType.number} className={classNames} />,
+    api: <ApiConnection className={classNames} />,
   }
 
   return icons[type]
 }
 
-const InputTypeIcon: FC<IInputTypeIconProps> = ({
-  type,
-  className,
-}) => {
+const InputTypeIcon: FC<IInputTypeIconProps> = ({ type, className }) => {
   const Icon = IconMap(type, className)
   return Icon
 }

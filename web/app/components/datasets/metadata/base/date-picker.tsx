@@ -1,9 +1,6 @@
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiCalendarLine,
-  RiCloseCircleFill,
-} from '@remixicon/react'
+import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
@@ -18,77 +15,77 @@ type Props = Readonly<{
   value?: number
   onChange: (date: number | null) => void
 }>
-const WrappedDatePicker = ({
-  className,
-  label,
-  value,
-  onChange,
-}: Props) => {
+const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
   const { t } = useTranslation()
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
-    select: data => data.profile.timezone ?? undefined,
+    select: (data) => data.profile.timezone ?? undefined,
   })
   const { formatTime: formatTimestamp } = useTimestamp()
 
-  const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
-    if (date)
-      onChange(date.unix())
-    else
-      onChange(null)
-  }, [onChange])
+  const handleDateChange = useCallback(
+    (date?: dayjs.Dayjs) => {
+      if (date) onChange(date.unix())
+      else onChange(null)
+    },
+    [onChange],
+  )
 
-  const renderTrigger = useCallback(({
-    handleClickTrigger,
-  }: TriggerProps) => {
-    const hasValue = Boolean(value)
-    const triggerText = value ? formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : t('metadata.chooseTime', { ns: 'dataset' })
-    const clearLabel = t('operation.clear', { ns: 'common' })
+  const renderTrigger = useCallback(
+    ({ handleClickTrigger }: TriggerProps) => {
+      const hasValue = Boolean(value)
+      const triggerText = value
+        ? formatTimestamp(
+            value,
+            t(($) => $['metadata.dateTimeFormat'], { ns: 'datasetDocuments' }),
+          )
+        : t(($) => $['metadata.chooseTime'], { ns: 'dataset' })
+      const clearLabel = t(($) => $['operation.clear'], { ns: 'common' })
 
-    return (
-      <div className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
-        <button
-          type="button"
-          aria-label={label ? `${label}: ${triggerText}` : undefined}
-          className="flex min-w-0 grow items-center border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={handleClickTrigger}
+      return (
+        <div
+          className={cn(
+            'group flex items-center rounded-md bg-components-input-bg-normal',
+            className,
+          )}
         >
-          <span
-            className={cn(
-              'grow',
-              hasValue ? 'text-text-secondary' : 'text-text-tertiary',
-            )}
+          <button
+            type="button"
+            aria-label={label ? `${label}: ${triggerText}` : undefined}
+            className="flex min-w-0 grow items-center border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={handleClickTrigger}
           >
-            {triggerText}
-          </span>
-          <RiCalendarLine
-            aria-hidden="true"
-            className={cn(
-              'block size-4 shrink-0',
-              hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
-            )}
-          />
-        </button>
-        {hasValue
-          ? (
-              <button
-                type="button"
-                aria-label={label ? `${label}: ${clearLabel}` : clearLabel}
-                className={cn(
-                  'hidden size-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                )}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  handleDateChange()
-                }}
-              >
-                <RiCloseCircleFill className="size-4" aria-hidden="true" />
-              </button>
-            )
-          : null}
-      </div>
-    )
-  }, [className, label, value, formatTimestamp, t, handleDateChange])
+            <span className={cn('grow', hasValue ? 'text-text-secondary' : 'text-text-tertiary')}>
+              {triggerText}
+            </span>
+            <RiCalendarLine
+              aria-hidden="true"
+              className={cn(
+                'block size-4 shrink-0',
+                hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
+              )}
+            />
+          </button>
+          {hasValue ? (
+            <button
+              type="button"
+              aria-label={label ? `${label}: ${clearLabel}` : clearLabel}
+              className={cn(
+                'hidden size-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+              )}
+              onClick={(event) => {
+                event.stopPropagation()
+                handleDateChange()
+              }}
+            >
+              <RiCloseCircleFill className="size-4" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      )
+    },
+    [className, label, value, formatTimestamp, t, handleDateChange],
+  )
 
   return (
     <DatePicker

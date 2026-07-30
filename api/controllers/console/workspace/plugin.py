@@ -31,18 +31,35 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
+from core.plugin.entities.bundle import PluginBundleDependency
+from core.plugin.entities.parameters import PluginParameterOption
+from core.plugin.entities.plugin import (
+    PluginCategory,
+    PluginDeclaration,
+    PluginEntity,
+    PluginInstallationSource,
+)
+from core.plugin.entities.plugin_daemon import PluginDecodeResponse, PluginInstallTask, PluginInstallTaskStartResponse
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import dump_response
 from libs.login import login_required
-from models.account import Account, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from models.account import (
+    Account,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategy,
+    TenantPluginAutoUpgradeStrategySetting,
+    TenantPluginDebugPermission,
+    TenantPluginInstallPermission,
+)
 from models.provider_ids import ToolProviderID
 from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -50,11 +67,20 @@ from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.tools.tools_transform_service import ToolTransformService
 
+_PLUGIN_PACKAGE_UPLOAD_PARAMS = {
+    "pkg": {
+        "description": "Plugin package to upload",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
+
 
 class AutoUpgradeSettingsResponse(TypedDict):
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting
     upgrade_time_of_day: int
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    upgrade_mode: TenantPluginAutoUpgradeMode
     exclude_plugins: list[str]
     include_plugins: list[str]
 
@@ -124,11 +150,12 @@ class ParserGithubUpgrade(BaseModel):
 
 class ParserUninstall(BaseModel):
     plugin_installation_id: str
+    preserve_credentials: bool = False
 
 
 class ParserPermissionChange(BaseModel):
-    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
-    debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
+    install_permission: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE
+    debug_permission: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE
 
 
 class ParserDynamicOptions(BaseModel):
@@ -150,16 +177,14 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
 
 
 class PluginPermissionSettingsPayload(BaseModel):
-    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
-    debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
+    install_permission: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE
+    debug_permission: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE
 
 
 class PluginAutoUpgradeSettingsPayload(BaseModel):
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting = (
-        TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
-    )
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting = TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
     upgrade_time_of_day: int = 0
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+    upgrade_mode: TenantPluginAutoUpgradeMode = TenantPluginAutoUpgradeMode.EXCLUDE
     exclude_plugins: list[str] = Field(default_factory=list)
     include_plugins: list[str] = Field(default_factory=list)
 
@@ -170,15 +195,15 @@ class PluginAutoUpgradeChangeResponse(ResponseModel):
 
 
 class PluginAutoUpgradeSettingsResponseModel(ResponseModel):
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting
     upgrade_time_of_day: int
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    upgrade_mode: TenantPluginAutoUpgradeMode
     exclude_plugins: list[str]
     include_plugins: list[str]
 
 
 class PluginAutoUpgradeFetchResponse(ResponseModel):
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
     auto_upgrade: PluginAutoUpgradeSettingsResponseModel
 
 
@@ -209,19 +234,19 @@ class PluginDeclarationResponse(ResponseModel):
 class ParserAutoUpgradeChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
     auto_upgrade: PluginAutoUpgradeSettingsPayload
 
 
 class ParserAutoUpgradeFetch(BaseModel):
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
 
 
 class ParserExcludePlugin(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     plugin_id: str
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
 
 
 class ParserReadme(BaseModel):
@@ -292,42 +317,59 @@ class PluginCategoryListResponse(ResponseModel):
     has_more: bool
 
 
-class PluginDaemonOperationResponse(RootModel[Any]):
-    root: Any
+class PluginBundleUploadResponse(RootModel[list[PluginBundleDependency]]):
+    pass
 
 
 class PluginListResponse(ResponseModel):
-    plugins: Any
+    plugins: list[PluginEntity]
     total: int
 
 
 class PluginVersionsResponse(ResponseModel):
-    versions: Any
+    versions: Mapping[str, PluginService.LatestPluginCache | None]
+
+
+class PluginInstallationItemResponse(ResponseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    tenant_id: str
+    endpoints_setups: int
+    endpoints_active: int
+    runtime_type: str
+    source: PluginInstallationSource
+    meta: Mapping[str, Any]
+    plugin_id: str
+    plugin_unique_identifier: str
+    version: str
+    checksum: str
+    declaration: PluginDeclarationResponse
 
 
 class PluginInstallationsResponse(ResponseModel):
-    plugins: Any
+    plugins: list[PluginInstallationItemResponse]
 
 
 class PluginManifestResponse(ResponseModel):
-    manifest: Any
+    manifest: PluginDeclaration
 
 
 class PluginTasksResponse(ResponseModel):
-    tasks: Any
+    tasks: list[PluginInstallTask]
 
 
 class PluginTaskResponse(ResponseModel):
-    task: Any
+    task: PluginInstallTask
 
 
 class PluginPermissionResponse(ResponseModel):
-    install_permission: TenantPluginPermission.InstallPermission
-    debug_permission: TenantPluginPermission.DebugPermission
+    install_permission: TenantPluginInstallPermission
+    debug_permission: TenantPluginDebugPermission
 
 
 class PluginDynamicOptionsResponse(ResponseModel):
-    options: Any
+    options: list[PluginParameterOption]
 
 
 class PluginOperationSuccessResponse(ResponseModel):
@@ -374,10 +416,12 @@ register_response_schema_models(
     PluginCategoryBuiltinToolResponse,
     PluginCategoryInstalledPluginResponse,
     PluginCategoryListResponse,
-    PluginDaemonOperationResponse,
+    PluginBundleUploadResponse,
+    PluginDecodeResponse,
     PluginDebuggingKeyResponse,
     PluginDynamicOptionsResponse,
     PluginInstallationsResponse,
+    PluginInstallTaskStartResponse,
     PluginListResponse,
     PluginManifestResponse,
     PluginOperationSuccessResponse,
@@ -391,22 +435,20 @@ register_response_schema_models(
 
 register_enum_models(
     console_ns,
-    TenantPluginPermission.DebugPermission,
-    TenantPluginAutoUpgradeStrategy.PluginCategory,
-    TenantPluginAutoUpgradeStrategy.UpgradeMode,
-    TenantPluginAutoUpgradeStrategy.StrategySetting,
-    TenantPluginPermission.InstallPermission,
+    TenantPluginDebugPermission,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+    TenantPluginInstallPermission,
 )
 
 
-def _default_auto_upgrade_settings(
-    tenant_id: str,
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory,
-) -> AutoUpgradeSettingsResponse:
+def _missing_auto_upgrade_settings(tenant_id: str) -> AutoUpgradeSettingsResponse:
+    """Represent a missing persisted strategy as effectively disabled."""
     return {
-        "strategy_setting": PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+        "strategy_setting": TenantPluginAutoUpgradeStrategySetting.DISABLED,
         "upgrade_time_of_day": PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id),
-        "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+        "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
         "exclude_plugins": [],
         "include_plugins": [],
     }
@@ -611,7 +653,8 @@ class PluginAssetApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.doc(consumes=["multipart/form-data"], params=_PLUGIN_PACKAGE_UPLOAD_PARAMS)
+    @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -632,7 +675,7 @@ class PluginUploadFromPkgApi(Resource):
 @console_ns.route("/workspaces/current/plugin/upload/github")
 class PluginUploadFromGithubApi(Resource):
     @console_ns.expect(console_ns.models[ParserGithubUpload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -652,7 +695,7 @@ class PluginUploadFromGithubApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/bundle")
 class PluginUploadFromBundleApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginBundleUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -673,7 +716,7 @@ class PluginUploadFromBundleApi(Resource):
 @console_ns.route("/workspaces/current/plugin/install/pkg")
 class PluginInstallFromPkgApi(Resource):
     @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -694,7 +737,7 @@ class PluginInstallFromPkgApi(Resource):
 @console_ns.route("/workspaces/current/plugin/install/github")
 class PluginInstallFromGithubApi(Resource):
     @console_ns.expect(console_ns.models[ParserGithubInstall.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -721,7 +764,7 @@ class PluginInstallFromGithubApi(Resource):
 @console_ns.route("/workspaces/current/plugin/install/marketplace")
 class PluginInstallFromMarketplaceApi(Resource):
     @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -793,7 +836,6 @@ class PluginFetchInstallTasksApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def get(self, tenant_id: str):
@@ -811,7 +853,6 @@ class PluginFetchInstallTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def get(self, tenant_id: str, task_id: str):
@@ -827,7 +868,6 @@ class PluginDeleteInstallTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str, task_id: str):
@@ -843,7 +883,6 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -859,7 +898,6 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str, task_id: str, identifier: str):
@@ -872,11 +910,11 @@ class PluginDeleteInstallTaskItemApi(Resource):
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
 class PluginUpgradeFromMarketplaceApi(Resource):
     @console_ns.expect(console_ns.models[ParserMarketplaceUpgrade.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -895,11 +933,11 @@ class PluginUpgradeFromMarketplaceApi(Resource):
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
 class PluginUpgradeFromGithubApi(Resource):
     @console_ns.expect(console_ns.models[ParserGithubUpgrade.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -927,14 +965,20 @@ class PluginUninstallApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_DELETE, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
         args = ParserUninstall.model_validate(console_ns.payload)
 
         try:
-            return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
+            return {
+                "success": PluginService.uninstall(
+                    tenant_id,
+                    args.plugin_installation_id,
+                    preserve_credentials=args.preserve_credentials,
+                )
+            }
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 
@@ -955,7 +999,7 @@ class PluginChangePermissionApi(Resource):
         args = ParserPermissionChange.model_validate(console_ns.payload)
 
         set_permission_result = PluginPermissionService.change_permission(
-            tenant_id, args.install_permission, args.debug_permission
+            tenant_id, args.install_permission, args.debug_permission, session=db.session()
         )
         if not set_permission_result:
             return jsonable_encoder({"success": False, "message": "Failed to set permission"})
@@ -971,12 +1015,12 @@ class PluginFetchPermissionApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        permission = PluginPermissionService.get_permission(tenant_id)
+        permission = PluginPermissionService.get_permission(tenant_id, session=db.session())
         if not permission:
             return jsonable_encoder(
                 {
-                    "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                    "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+                    "install_permission": TenantPluginInstallPermission.EVERYONE,
+                    "debug_permission": TenantPluginDebugPermission.EVERYONE,
                 }
             )
 
@@ -995,7 +1039,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1076,6 +1120,7 @@ class PluginChangeAutoUpgradeApi(Resource):
             auto_upgrade.exclude_plugins,
             auto_upgrade.include_plugins,
             category=args.category,
+            session=db.session(),
         )
         if not set_auto_upgrade_strategy_result:
             return jsonable_encoder({"success": False, "message": "Failed to set auto upgrade strategy"})
@@ -1093,11 +1138,9 @@ class PluginFetchAutoUpgradeApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str):
         args = ParserAutoUpgradeFetch.model_validate(request.args.to_dict(flat=True))
-        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category)
+        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category, session=db.session())
         auto_upgrade_dict = (
-            _auto_upgrade_settings_to_dict(auto_upgrade)
-            if auto_upgrade
-            else _default_auto_upgrade_settings(tenant_id, args.category)
+            _auto_upgrade_settings_to_dict(auto_upgrade) if auto_upgrade else _missing_auto_upgrade_settings(tenant_id)
         )
 
         return jsonable_encoder(
@@ -1122,7 +1165,11 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         args = ParserExcludePlugin.model_validate(console_ns.payload)
 
         return jsonable_encoder(
-            {"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args.plugin_id, args.category)}
+            {
+                "success": PluginAutoUpgradeService.exclude_plugin(
+                    tenant_id, args.plugin_id, args.category, session=db.session()
+                )
+            }
         )
 
 

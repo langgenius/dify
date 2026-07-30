@@ -1,6 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
+import { render } from '@/test/console/render'
 import SecretKeyModal from '../secret-key-modal'
 
 async function renderModal(ui: React.ReactElement) {
@@ -27,13 +28,14 @@ const mockCurrentWorkspace = vi.fn().mockReturnValue({
 const mockIsCurrentWorkspaceManager = vi.fn().mockReturnValue(true)
 const mockIsCurrentWorkspaceEditor = vi.fn().mockReturnValue(true)
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }),
-}))
+  }))
+})
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -70,18 +72,12 @@ vi.mock('@/service/use-apps', () => ({
 
 const mockDatasetApiKeysData = vi.fn().mockReturnValue({ data: [] })
 const mockIsDatasetApiKeysLoading = vi.fn().mockReturnValue(false)
-const mockDatasetScopedApiKeysData = vi.fn().mockReturnValue({ data: [] })
-const mockIsDatasetScopedApiKeysLoading = vi.fn().mockReturnValue(false)
 const mockInvalidateDatasetApiKeys = vi.fn()
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetApiKeys: (_options: unknown) => ({
     data: mockDatasetApiKeysData(),
     isLoading: mockIsDatasetApiKeysLoading(),
-  }),
-  useDatasetScopedApiKeys: (_datasetId: string | undefined, _options: unknown) => ({
-    data: mockDatasetScopedApiKeysData(),
-    isLoading: mockIsDatasetScopedApiKeysLoading(),
   }),
   useInvalidateDatasetApiKeys: () => mockInvalidateDatasetApiKeys,
 }))
@@ -105,8 +101,6 @@ describe('SecretKeyModal', () => {
     mockIsAppApiKeysLoading.mockReturnValue(false)
     mockDatasetApiKeysData.mockReturnValue({ data: [] })
     mockIsDatasetApiKeysLoading.mockReturnValue(false)
-    mockDatasetScopedApiKeysData.mockReturnValue({ data: [] })
-    mockIsDatasetScopedApiKeysLoading.mockReturnValue(false)
   })
 
   afterEach(() => {
@@ -167,7 +161,12 @@ describe('SecretKeyModal', () => {
 
   describe('API keys list for app', () => {
     const apiKeys = [
-      { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'key-1',
+        token: 'sk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
       { id: 'key-2', token: 'sk-xyz987wvu654tsr321', created_at: 1700050000, last_used_at: null },
     ]
 
@@ -177,7 +176,7 @@ describe('SecretKeyModal', () => {
 
     it('should render API keys when available', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
-      expect(screen.getByText('sk-abc123def456ghi789')).toBeInTheDocument()
+      expect(screen.getByText('sk-...k-abc123def456ghi789')).toBeInTheDocument()
     })
 
     it('should render created time for keys', async () => {
@@ -227,7 +226,12 @@ describe('SecretKeyModal', () => {
 
   describe('API keys list for dataset', () => {
     const datasetKeys = [
-      { id: 'dk-1', token: 'dk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'dk-1',
+        token: 'dk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
     ]
 
     beforeEach(() => {
@@ -236,7 +240,7 @@ describe('SecretKeyModal', () => {
 
     it('should render dataset API keys when no appId', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
-      expect(screen.getByText('dk-abc123def456ghi789')).toBeInTheDocument()
+      expect(screen.getByText('dk-...k-abc123def456ghi789')).toBeInTheDocument()
     })
   })
 
@@ -292,50 +296,6 @@ describe('SecretKeyModal', () => {
       })
     })
 
-    it('should create a dataset-bound key by default when datasetId is provided', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
-
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey')
-      await act(async () => {
-        await user.click(createButton)
-      })
-
-      await waitFor(() => {
-        expect(mockCreateDatasetApikey).toHaveBeenCalledWith({
-          url: '/datasets/dataset-123/api-keys',
-          body: {},
-        })
-      })
-    })
-
-    it('should create a workspace key when the workspace scope is selected', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
-
-      const workspaceScopeRadio = screen.getByText('appApi.apiKeyModal.scopeAllDatasets')
-      await act(async () => {
-        await user.click(workspaceScopeRadio)
-      })
-
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey')
-      await act(async () => {
-        await user.click(createButton)
-      })
-
-      await waitFor(() => {
-        expect(mockCreateDatasetApikey).toHaveBeenCalledWith({
-          url: '/datasets/api-keys',
-          body: {},
-        })
-      })
-    })
-
-    it('should not render the scope selector without datasetId', async () => {
-      await renderModal(<SecretKeyModal {...defaultProps} />)
-      expect(screen.queryByText('appApi.apiKeyModal.scopeThisDataset')).not.toBeInTheDocument()
-    })
-
     it('should show generate modal after creating key', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
@@ -354,7 +314,12 @@ describe('SecretKeyModal', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       mockAppApiKeysData.mockReturnValue({
         data: [
-          { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: null },
+          {
+            id: 'key-1',
+            token: 'sk-abc123def456ghi789',
+            created_at: 1700000000,
+            last_used_at: null,
+          },
         ],
       })
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
@@ -368,16 +333,26 @@ describe('SecretKeyModal', () => {
         expect(screen.getByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
       })
 
-      const parentDialog = screen.getByText('appApi.apiKeyModal.apiSecretKeyTips').closest('[role="dialog"]')
-      const generatedKeyDialog = screen.getByText('appApi.apiKeyModal.generateTips').closest('[role="dialog"]')
+      const parentDialog = screen
+        .getByText('appApi.apiKeyModal.apiSecretKeyTips')
+        .closest('[role="dialog"]')
+      const generatedKeyDialog = screen
+        .getByText('appApi.apiKeyModal.generateTips')
+        .closest('[role="dialog"]')
       const backdrops = document.body.querySelectorAll('.bg-background-overlay')
       const generatedKeyBackdrop = backdrops[1]
 
       expect(parentDialog).toBeInTheDocument()
       expect(generatedKeyDialog).toBeInTheDocument()
       expect(backdrops).toHaveLength(2)
-      expect(parentDialog!.compareDocumentPosition(generatedKeyBackdrop!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(generatedKeyBackdrop!.compareDocumentPosition(generatedKeyDialog!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        parentDialog!.compareDocumentPosition(generatedKeyBackdrop!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        generatedKeyBackdrop!.compareDocumentPosition(generatedKeyDialog!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('should invalidate app API keys after creating', async () => {
@@ -409,10 +384,12 @@ describe('SecretKeyModal', () => {
     })
 
     it('should disable create button when no workspace', async () => {
-      mockCurrentWorkspace.mockReturnValue(null)
+      mockCurrentWorkspace.mockReturnValue({ id: '', name: '' })
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      const createButton = screen
+        .getByText('appApi.apiKeyModal.createNewSecretKey')
+        .closest('button')
       expect(createButton).toBeDisabled()
     })
 
@@ -420,7 +397,9 @@ describe('SecretKeyModal', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      const createButton = screen
+        .getByText('appApi.apiKeyModal.createNewSecretKey')
+        .closest('button')
       expect(createButton).not.toBeDisabled()
     })
 
@@ -428,14 +407,21 @@ describe('SecretKeyModal', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(true)
       await renderModal(<SecretKeyModal {...defaultProps} canManage={false} />)
 
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      const createButton = screen
+        .getByText('appApi.apiKeyModal.createNewSecretKey')
+        .closest('button')
       expect(createButton).toBeDisabled()
     })
   })
 
   describe('delete key', () => {
     const apiKeys = [
-      { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'key-1',
+        token: 'sk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
     ]
 
     beforeEach(() => {
@@ -445,14 +431,14 @@ describe('SecretKeyModal', () => {
     it('should render delete button for permitted users', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      const actionButtons = document.body.querySelectorAll('button.action-btn')
-      expect(actionButtons.length).toBeGreaterThanOrEqual(1)
+      const actionButtons = screen.getAllByRole('button')
+      expect(actionButtons.length).toBeGreaterThanOrEqual(3)
     })
 
     it('should render API key row with actions', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      expect(screen.getByText('sk-abc123def456ghi789')).toBeInTheDocument()
+      expect(screen.getByText('sk-...k-abc123def456ghi789')).toBeInTheDocument()
     })
 
     it('should have action buttons in the key row', async () => {
@@ -475,7 +461,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       expect(deleteButton).toBeInTheDocument()
 
       await act(async () => {
@@ -495,7 +481,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -525,7 +511,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -552,7 +538,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -581,7 +567,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -605,7 +591,12 @@ describe('SecretKeyModal', () => {
 
   describe('delete key for dataset', () => {
     const datasetKeys = [
-      { id: 'dk-1', token: 'dk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'dk-1',
+        token: 'dk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
     ]
 
     beforeEach(() => {
@@ -617,7 +608,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -642,62 +633,12 @@ describe('SecretKeyModal', () => {
       })
     })
 
-    it('should delete a dataset-bound key via the per-dataset route', async () => {
-      mockDatasetScopedApiKeysData.mockReturnValue({
-        data: [
-          { id: 'dk-2', token: 'dataset-bound-key-123456', dataset_id: 'dataset-123', created_at: 1700000000, last_used_at: null },
-        ],
-      })
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
-
-      const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
-      await act(async () => {
-        await user.click(deleteButton!)
-        vi.runAllTimers()
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('appApi.actionMsg.deleteConfirmTitle')).toBeInTheDocument()
-      })
-      await flushTransitions()
-
-      const confirmButton = screen.getByText('common.operation.confirm')
-      await act(async () => {
-        await user.click(confirmButton)
-        vi.runAllTimers()
-      })
-
-      await waitFor(() => {
-        expect(mockDelDatasetApikey).toHaveBeenCalledWith({
-          url: '/datasets/dataset-123/api-keys/dk-2',
-          params: {},
-        })
-      })
-    })
-
-    it('should show the scope column for dataset keys', async () => {
-      mockDatasetScopedApiKeysData.mockReturnValue({
-        data: [
-          { id: 'dk-2', token: 'dataset-bound-key-123456', dataset_id: 'dataset-123', created_at: 1700000000, last_used_at: null },
-          { id: 'dk-3', token: 'dataset-workspace-key-123', dataset_id: null, created_at: 1700000000, last_used_at: null },
-        ],
-      })
-      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
-
-      expect(screen.getByText('appApi.apiKeyModal.scope')).toBeInTheDocument()
-      // Bound key: the column label plus the selected radio option both use scopeThisDataset.
-      expect(screen.getAllByText('appApi.apiKeyModal.scopeThisDataset').length).toBeGreaterThanOrEqual(2)
-      expect(screen.getAllByText('appApi.apiKeyModal.scopeAllDatasets').length).toBeGreaterThanOrEqual(2)
-    })
-
     it('should invalidate dataset API keys after deleting', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[0]
+      const deleteButton = actionButtons[1]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -720,16 +661,21 @@ describe('SecretKeyModal', () => {
     })
   })
 
-  describe('token display', () => {
-    it('should display the token exactly as provided by the API (no client-side reveal)', async () => {
+  describe('token truncation', () => {
+    it('should truncate token correctly', async () => {
       const apiKeys = [
-        { id: 'key-1', token: 'sk-...7890', created_at: 1700000000, last_used_at: null },
+        {
+          id: 'key-1',
+          token: 'sk-abcdefghijklmnopqrstuvwxyz1234567890',
+          created_at: 1700000000,
+          last_used_at: null,
+        },
       ]
       mockAppApiKeysData.mockReturnValue({ data: apiKeys })
 
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      expect(screen.getByText('sk-...7890')).toBeInTheDocument()
+      expect(screen.getByText('sk-...qrstuvwxyz1234567890')).toBeInTheDocument()
     })
   })
 

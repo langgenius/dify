@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from graphon.variables.segments import Segment
@@ -500,11 +500,15 @@ class QueueStopEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy
+    reason: str | None = None
 
     def get_stop_reason(self) -> str:
         """
         To stop reason
         """
+        if self.reason:
+            return self.reason
+
         reason_mapping = {
             QueueStopEvent.StopBy.USER_MANUAL: "Stopped by user.",
             QueueStopEvent.StopBy.ANNOTATION_REPLY: "Stopped by annotation reply.",

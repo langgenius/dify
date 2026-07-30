@@ -7,10 +7,12 @@ const mockUseDatasetDetailContextWithSelector = vi.fn()
 const mockUsePublishedPipelineProcessingParams = vi.fn()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (value: unknown) => unknown) => mockUseDatasetDetailContextWithSelector(selector),
+  useDatasetDetailContextWithSelector: (selector: (value: unknown) => unknown) =>
+    mockUseDatasetDetailContextWithSelector(selector),
 }))
 vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineProcessingParams: (params: PipelineProcessingParamsRequest) => mockUsePublishedPipelineProcessingParams(params),
+  usePublishedPipelineProcessingParams: (params: PipelineProcessingParamsRequest) =>
+    mockUsePublishedPipelineProcessingParams(params),
 }))
 
 describe('useInputVariables', () => {

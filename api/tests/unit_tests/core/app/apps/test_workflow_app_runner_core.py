@@ -17,15 +17,18 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeSucceededEvent,
     QueueReasoningChunkEvent,
+    QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
+    GraphRunAbortedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -344,10 +347,20 @@ class TestWorkflowBasedAppRunner:
             "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
             _Dispatch(),
         )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
+            lambda **_: [
+                HumanInputRequired(
+                    form_id="form",
+                    form_content="content",
+                    node_id="node-1",
+                    node_title="Node",
+                )
+            ],
+        )
 
-        reason = HumanInputRequired(
-            form_id="form",
-            form_content="content",
+        reason = HitlRequired(
+            session_id="form",
             node_id="node-1",
             node_title="Node",
         )
@@ -361,6 +374,23 @@ class TestWorkflowBasedAppRunner:
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
         assert emails
+
+    def test_handle_graph_aborted_publishes_stopped_terminal(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                del publish_from
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        workflow_entry = SimpleNamespace()
+
+        runner._handle_event(workflow_entry, GraphRunAbortedEvent(reason="User requested stop", outputs={}))
+
+        event = published[-1]
+        assert isinstance(event, QueueStopEvent)
+        assert event.get_stop_reason() == "User requested stop"
 
     def test_handle_node_events_publishes_queue_events(self):
         published: list[object] = []

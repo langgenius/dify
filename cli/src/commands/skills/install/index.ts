@@ -22,13 +22,26 @@ export default class SkillsInstall extends Command {
   ]
 
   static override args = {
-    dir: Args.string({ description: 'force install into a single explicit directory (bypasses detection)' }),
+    dir: Args.string({
+      description: 'force install into a single explicit directory (bypasses detection)',
+    }),
   }
 
   static override flags = {
-    yes: Flags.boolean({ char: 'y', description: 'write the skill (otherwise dry-run)', default: false }),
-    agent: Flags.stringArray({ description: 'restrict to specific detected agents (repeatable or comma-separated)', default: [], multiple: true }),
-    stdout: Flags.boolean({ description: 'print SKILL.md to stdout and write nothing', default: false }),
+    yes: Flags.boolean({
+      char: 'y',
+      description: 'write the skill (otherwise dry-run)',
+      default: false,
+    }),
+    agent: Flags.stringArray({
+      description: 'restrict to specific detected agents (repeatable or comma-separated)',
+      default: [],
+      multiple: true,
+    }),
+    stdout: Flags.boolean({
+      description: 'print SKILL.md to stdout and write nothing',
+      default: false,
+    }),
   }
 
   async run(argv: string[]): Promise<CommandOutput> {
@@ -36,10 +49,16 @@ export default class SkillsInstall extends Command {
 
     const dir = args.dir
     const hasDir = dir !== undefined && dir !== ''
-    const agents = flags.agent.flatMap(a => a.split(',')).map(s => s.trim()).filter(s => s.length > 0)
+    const agents = flags.agent
+      .flatMap((a) => a.split(','))
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
 
     if (flags.stdout && (flags.yes || hasDir || agents.length > 0))
-      throw newError(ErrorCode.IllegalArgumentError, '--stdout writes nothing; do not combine it with --yes, --agent, or [dir]')
+      throw newError(
+        ErrorCode.IllegalArgumentError,
+        '--stdout writes nothing; do not combine it with --yes, --agent, or [dir]',
+      )
 
     if (hasDir && agents.length > 0)
       throw newError(ErrorCode.IllegalArgumentError, 'pass either [dir] or --agent, not both')
@@ -52,8 +71,7 @@ export default class SkillsInstall extends Command {
       agents,
     })
 
-    if (result.kind === 'usage')
-      throw newError(ErrorCode.IllegalArgumentError, result.message)
+    if (result.kind === 'usage') throw newError(ErrorCode.IllegalArgumentError, result.message)
 
     return raw(result.text)
   }

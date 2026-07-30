@@ -2,8 +2,8 @@
 
 This checker intentionally stays conservative. It only reports a hard schema
 mismatch when both sides are statically known for the same 2xx status code:
-a documented ``@ns.response(..., Model)`` and an actual ``dump_response(Model, ...)``
-or ``Model.model_validate(...).model_dump()`` return.
+a documented ``@ns.response(..., Model)`` and an actual ``dump_response(Model, ...)``,
+``Model(...).model_dump()``, or ``Model.model_validate(...).model_dump()`` return.
 
 Raw dictionaries, raw lists, ``None`` responses, streaming helpers, missing
 response schemas, and returns with non-literal status codes are classified as
@@ -28,6 +28,7 @@ from typing import Any, Literal
 HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put"}
 NO_BODY_STATUSES = {HTTPStatus.NO_CONTENT.value, HTTPStatus.RESET_CONTENT.value, HTTPStatus.NOT_MODIFIED.value}
 DEFAULT_CONTROLLER_DIRS = ("controllers/console", "controllers/service_api", "controllers/web")
+IGNORE_COMMENT_MARKERS = ("response-contract:ignore",)
 
 type Classification = Literal["valid", "mismatch", "unknown", "refactorable"]
 type ActualKind = Literal[
@@ -41,6 +42,7 @@ type ActualKind = Literal[
     "unknown",
 ]
 type MethodNode = ast.FunctionDef | ast.AsyncFunctionDef
+type ModelValueSource = Literal["constructor", "model_validate"]
 
 HTTP_STATUS_NAMES = {status.name: status.value for status in HTTPStatus}
 HTTP_STATUS_NAMES.update({f"HTTP_{status.value}_{status.name}": status.value for status in HTTPStatus})
@@ -109,18 +111,22 @@ class VariableAssignmentSummary:
     """Track whether a local name is safe to treat as one specific response model."""
 
     known_models: set[str] = field(default_factory=set)
+    known_sources: set[ModelValueSource] = field(default_factory=set)
     has_unknown_assignment: bool = False
 
-    def add_known(self, model: str) -> None:
+    def add_known(self, model: str, source: ModelValueSource) -> None:
         self.known_models.add(model)
+        self.known_sources.add(source)
 
     def add_unknown(self) -> None:
         self.has_unknown_assignment = True
 
-    def single_known_model(self) -> str | None:
+    def single_known_model(self) -> tuple[str, ModelValueSource] | None:
         if self.has_unknown_assignment or len(self.known_models) != 1:
             return None
-        return next(iter(self.known_models))
+        model = next(iter(self.known_models))
+        source: ModelValueSource = "constructor" if self.known_sources == {"constructor"} else "model_validate"
+        return model, source
 
 
 def dotted_name(node: ast.AST) -> str | None:
@@ -249,11 +255,23 @@ def model_name_from_model_validate_call(node: ast.AST) -> str | None:
     return None
 
 
+def model_value_from_model_validate_call(node: ast.AST) -> tuple[str, ModelValueSource] | None:
+    if model_name := model_name_from_model_validate_call(node):
+        return model_name, "model_validate"
+    return None
+
+
 def model_name_from_constructor_call(node: ast.AST) -> str | None:
     if not isinstance(node, ast.Call):
         return None
     if isinstance(node.func, ast.Name) and is_probable_model_name(node.func.id):
         return node.func.id
+    return None
+
+
+def model_value_from_constructor_call(node: ast.AST) -> tuple[str, ModelValueSource] | None:
+    if model_name := model_name_from_constructor_call(node):
+        return model_name, "constructor"
     return None
 
 
@@ -272,6 +290,10 @@ def model_name_from_model_value(node: ast.AST) -> str | None:
     return model_name_from_model_validate_call(node) or model_name_from_constructor_call(node)
 
 
+def model_value_from_model_value(node: ast.AST) -> tuple[str, ModelValueSource] | None:
+    return model_value_from_model_validate_call(node) or model_value_from_constructor_call(node)
+
+
 def model_name_from_dump_response(node: ast.AST) -> str | None:
     if not isinstance(node, ast.Call):
         return None
@@ -287,7 +309,7 @@ def model_name_from_dump_response(node: ast.AST) -> str | None:
 
 
 def actual_kind_from_expr(
-    expr: ast.AST | None, variable_models: dict[str, str] | None = None
+    expr: ast.AST | None, variable_models: dict[str, tuple[str, ModelValueSource]] | None = None
 ) -> tuple[ActualKind, str | None]:
     if expr is None:
         return "none", None
@@ -299,10 +321,14 @@ def actual_kind_from_expr(
     if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Attribute) and expr.func.attr == "model_dump":
         dumped_value = expr.func.value
         if isinstance(dumped_value, ast.Name) and variable_models:
-            # A variable dump can match today, but it bypasses dump_response and
-            # is easier to drift; keep it visible as refactorable.
-            model_name = variable_models.get(dumped_value.id)
-            if model_name:
+            model_assignment = variable_models.get(dumped_value.id)
+            if model_assignment:
+                model_name, source = model_assignment
+                if source == "constructor":
+                    return "model", model_name
+                # A variable dump from model_validate can match today, but it
+                # bypasses dump_response and is easier to drift; keep it visible
+                # as refactorable.
                 return "model_dump_variable", model_name
 
     model_dump_model = model_name_from_model_dump(expr)
@@ -325,7 +351,9 @@ def actual_kind_from_expr(
     return "unknown", None
 
 
-def actual_response_from_return(return_node: ast.Return, variable_models: dict[str, str]) -> ActualResponse:
+def actual_response_from_return(
+    return_node: ast.Return, variable_models: dict[str, tuple[str, ModelValueSource]]
+) -> ActualResponse:
     status: int | None = 200
     body_expr = return_node.value
 
@@ -363,18 +391,21 @@ def target_names(target: ast.AST) -> Iterable[str]:
 
 
 def record_assignment(
-    assignments: defaultdict[str, VariableAssignmentSummary], targets: Iterable[str], model_name: str | None
+    assignments: defaultdict[str, VariableAssignmentSummary],
+    targets: Iterable[str],
+    model_assignment: tuple[str, ModelValueSource] | None,
 ) -> None:
     for target in targets:
-        if model_name is None:
+        if model_assignment is None:
             # Once a name receives an unknown value, later model_dump() calls on it
             # are no longer a reliable signal for the returned schema.
             assignments[target].add_unknown()
         else:
-            assignments[target].add_known(model_name)
+            model_name, source = model_assignment
+            assignments[target].add_known(model_name, source)
 
 
-def variable_model_assignments_for_method(method: MethodNode) -> dict[str, str]:
+def variable_model_assignments_for_method(method: MethodNode) -> dict[str, tuple[str, ModelValueSource]]:
     """Infer local variables that are unambiguously assigned one response model."""
 
     assignments: defaultdict[str, VariableAssignmentSummary] = defaultdict(VariableAssignmentSummary)
@@ -385,10 +416,10 @@ def variable_model_assignments_for_method(method: MethodNode) -> dict[str, str]:
                 record_assignment(
                     assignments,
                     (name for target in targets for name in target_names(target)),
-                    model_name_from_model_value(value),
+                    model_value_from_model_value(value),
                 )
             case ast.AnnAssign(target=target, value=value) if value is not None:
-                record_assignment(assignments, target_names(target), model_name_from_model_value(value))
+                record_assignment(assignments, target_names(target), model_value_from_model_value(value))
             case ast.AugAssign(target=target) | ast.For(target=target) | ast.AsyncFor(target=target):
                 # Mutation and loop targets overwrite prior values with runtime-dependent data.
                 record_assignment(assignments, target_names(target), None)
@@ -399,9 +430,13 @@ def variable_model_assignments_for_method(method: MethodNode) -> dict[str, str]:
             case ast.ExceptHandler(name=name) if name:
                 assignments[name].add_unknown()
             case ast.NamedExpr(target=target, value=value):
-                record_assignment(assignments, target_names(target), model_name_from_model_value(value))
+                record_assignment(assignments, target_names(target), model_value_from_model_value(value))
 
-    return {name: model for name, summary in assignments.items() if (model := summary.single_known_model()) is not None}
+    return {
+        name: assignment
+        for name, summary in assignments.items()
+        if (assignment := summary.single_known_model()) is not None
+    }
 
 
 def actual_responses_for_method(method: MethodNode) -> list[ActualResponse]:
@@ -545,12 +580,57 @@ def iter_controller_files(paths: Iterable[Path]) -> Iterable[Path]:
             yield from sorted(child for child in path.rglob("*.py") if child.is_file())
 
 
+def node_start_lineno(node: ast.ClassDef | MethodNode) -> int:
+    decorator_lines = [decorator.lineno for decorator in node.decorator_list]
+    if decorator_lines:
+        return min(decorator_lines)
+    return node.lineno
+
+
+def line_has_ignore_marker(line: str) -> bool:
+    _, marker, comment = line.partition("#")
+    if not marker:
+        return False
+    normalized = comment.lower()
+    return any(ignore_marker in normalized for ignore_marker in IGNORE_COMMENT_MARKERS)
+
+
+def node_ignore_scan_end_lineno(node: ast.ClassDef | MethodNode) -> int:
+    if isinstance(node, ast.ClassDef):
+        return node.lineno
+    return node.end_lineno or node.lineno
+
+
+def node_has_ignore_comment(lines: Sequence[str], node: ast.ClassDef | MethodNode) -> bool:
+    start = node_start_lineno(node)
+    end = node_ignore_scan_end_lineno(node)
+    if any(line_has_ignore_marker(line) for line in lines[start - 1 : end]):
+        return True
+
+    line_index = start - 2
+    while line_index >= 0:
+        stripped = lines[line_index].strip()
+        if not stripped:
+            line_index -= 1
+            continue
+        if not stripped.startswith("#"):
+            break
+        if line_has_ignore_marker(lines[line_index]):
+            return True
+        line_index -= 1
+    return False
+
+
 def checks_for_file(file_path: Path, repo_root: Path) -> list[ContractCheck]:
-    module = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
+    source = file_path.read_text(encoding="utf-8")
+    lines = source.splitlines()
+    module = ast.parse(source, filename=str(file_path))
     checks: list[ContractCheck] = []
 
     for node in module.body:
         if not isinstance(node, ast.ClassDef):
+            continue
+        if node_has_ignore_comment(lines, node):
             continue
 
         class_routes = routes_from_decorators(node.decorator_list)
@@ -558,6 +638,8 @@ def checks_for_file(file_path: Path, repo_root: Path) -> list[ContractCheck]:
 
         for item in node.body:
             if not isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef) or item.name not in HTTP_METHODS:
+                continue
+            if node_has_ignore_comment(lines, item):
                 continue
 
             routes = routes_from_decorators(item.decorator_list) or class_routes

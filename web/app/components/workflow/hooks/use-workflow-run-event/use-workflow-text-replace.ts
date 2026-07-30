@@ -6,17 +6,21 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 export const useWorkflowTextReplace = () => {
   const workflowStore = useWorkflowStore()
 
-  const handleWorkflowTextReplace = useCallback((params: TextReplaceResponse) => {
-    const { data: { text } } = params
-    const {
-      workflowRunningData,
-      setWorkflowRunningData,
-    } = workflowStore.getState()
-    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.resultText = text
-      draft.resultTextSelectorKey = undefined
-    }))
-  }, [workflowStore])
+  const handleWorkflowTextReplace = useCallback(
+    (params: TextReplaceResponse) => {
+      const {
+        data: { text },
+      } = params
+      const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
+      setWorkflowRunningData(
+        produce(workflowRunningData!, (draft) => {
+          draft.resultText = text
+          draft.resultTextSelectorKey = undefined
+        }),
+      )
+    },
+    [workflowStore],
+  )
 
   return {
     handleWorkflowTextReplace,

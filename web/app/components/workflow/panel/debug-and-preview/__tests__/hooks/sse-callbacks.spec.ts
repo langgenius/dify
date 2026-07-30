@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
 
@@ -43,8 +43,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../../hooks', () => ({
+vi.mock('../../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
@@ -83,9 +86,12 @@ describe('useChat – handleSend SSE callbacks', () => {
   function setupAndSend(config: any = {}) {
     const hook = renderHook(() => useChat(config))
     act(() => {
-      hook.result.current.handleSend({ query: 'test' }, {
-        onGetSuggestedQuestions: vi.fn().mockResolvedValue({ data: ['q1'] }),
-      })
+      hook.result.current.handleSend(
+        { query: 'test' },
+        {
+          onGetSuggestedQuestions: vi.fn().mockResolvedValue({ data: ['q1'] }),
+        },
+      )
     })
     return hook
   }
@@ -122,7 +128,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.content).toContain('Hello')
     })
 
@@ -137,7 +145,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-123')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-123')
       expect(answer).toBeDefined()
     })
 
@@ -188,7 +196,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'late-id')
+      const answer = result.current.chatList.find((item) => item.id === 'late-id')
       expect(answer).toBeDefined()
     })
 
@@ -211,7 +219,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const question = result.current.chatList.find(item => !item.isAnswer)
+      const question = result.current.chatList.find((item) => !item.isAnswer)
       expect(question!.id).toBe('question-msg-first')
     })
   })
@@ -224,8 +232,12 @@ describe('useChat – handleSend SSE callbacks', () => {
       const { result } = setupAndSend()
 
       act(() => {
-        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'let me ', node_id: 'llm' } })
-        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'think', node_id: 'llm' } })
+        capturedCallbacks.onReasoning({
+          data: { message_id: 'm-1', reasoning: 'let me ', node_id: 'llm' },
+        })
+        capturedCallbacks.onReasoning({
+          data: { message_id: 'm-1', reasoning: 'think', node_id: 'llm' },
+        })
       })
 
       const answer = findAnswer(result)
@@ -238,20 +250,28 @@ describe('useChat – handleSend SSE callbacks', () => {
       const { result } = setupAndSend()
 
       act(() => {
-        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'a', node_id: 'llm-1' } })
-        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'b', node_id: 'llm-2' } })
+        capturedCallbacks.onReasoning({
+          data: { message_id: 'm-1', reasoning: 'a', node_id: 'llm-1' },
+        })
+        capturedCallbacks.onReasoning({
+          data: { message_id: 'm-1', reasoning: 'b', node_id: 'llm-2' },
+        })
         capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'c' } })
       })
 
-      expect(findAnswer(result)!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b', '_': 'c' })
+      expect(findAnswer(result)!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b', _: 'c' })
     })
 
     it('should ignore empty reasoning and mark finished when is_final is set', () => {
       const { result } = setupAndSend()
 
       act(() => {
-        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'done', node_id: 'llm' } })
-        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: '', node_id: 'llm', is_final: true } })
+        capturedCallbacks.onReasoning({
+          data: { message_id: 'm-1', reasoning: 'done', node_id: 'llm' },
+        })
+        capturedCallbacks.onReasoning({
+          data: { message_id: 'm-1', reasoning: '', node_id: 'llm', is_final: true },
+        })
       })
 
       const answer = findAnswer(result)
@@ -302,7 +322,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         await capturedCallbacks.onCompleted(true, 'Something went wrong')
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-err')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-err')
       expect(answer!.content).toBe('Something went wrong')
       expect(answer!.isError).toBe(true)
     })
@@ -329,9 +349,12 @@ describe('useChat – handleSend SSE callbacks', () => {
       })
 
       act(() => {
-        hook.result.current.handleSend({ query: 'test' }, {
-          onGetSuggestedQuestions: mockGetSuggested,
-        })
+        hook.result.current.handleSend(
+          { query: 'test' },
+          {
+            onGetSuggestedQuestions: mockGetSuggested,
+          },
+        )
       })
 
       await act(async () => {
@@ -352,9 +375,12 @@ describe('useChat – handleSend SSE callbacks', () => {
       })
 
       act(() => {
-        hook.result.current.handleSend({ query: 'test' }, {
-          onGetSuggestedQuestions: mockGetSuggested,
-        })
+        hook.result.current.handleSend(
+          { query: 'test' },
+          {
+            onGetSuggestedQuestions: mockGetSuggested,
+          },
+        )
       })
 
       await act(async () => {
@@ -394,7 +420,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-1')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-1')
       expect(answer!.citation).toEqual([{ id: 'r1' }])
     })
 
@@ -413,7 +439,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         capturedCallbacks.onMessageEnd({ metadata: {}, files: [] })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-1')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-1')
       expect(answer!.citation).toEqual([])
     })
   })
@@ -438,7 +464,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         capturedCallbacks.onMessageEnd({ metadata: {}, files: [] })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-1')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-1')
       expect(answer!.content).toBe('replaced')
     })
   })
@@ -456,7 +482,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.status).toBe('running')
       expect(answer!.workflowProcess!.tracing).toEqual([])
     })
@@ -488,7 +516,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       startNode('n1', 'trace-1')
       startWorkflow({ workflow_run_id: 'wfr-2', task_id: 'task-2' })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.status).toBe('running')
       expect(answer!.workflowProcess!.tracing.length).toBe(1)
     })
@@ -505,7 +535,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'wf-msg-id')
+      const answer = result.current.chatList.find((item) => item.id === 'wf-msg-id')
       expect(answer).toBeDefined()
     })
   })
@@ -519,8 +549,27 @@ describe('useChat – handleSend SSE callbacks', () => {
         capturedCallbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.status).toBe('succeeded')
+    })
+
+    it('should store workflow finished error on workflow process', () => {
+      const { result } = setupAndSend()
+      startWorkflow()
+
+      act(() => {
+        capturedCallbacks.onWorkflowFinished({
+          data: { status: 'failed', error: 'Invalid upload file' },
+        })
+      })
+
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
     })
   })
 
@@ -535,7 +584,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('iter-1')
@@ -559,7 +610,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       const trace = answer!.workflowProcess!.tracing.find((t: any) => t.id === 'iter-1')
       expect(trace).toBeDefined()
       expect(trace!.node_id).toBe('n-iter')
@@ -582,7 +635,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       expect((answer!.workflowProcess!.tracing[0] as any).output).toBeUndefined()
     })
@@ -599,7 +654,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('loop-1')
@@ -623,7 +680,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('loop-1')
@@ -647,7 +706,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       expect((answer!.workflowProcess!.tracing[0] as any).output).toBeUndefined()
     })
@@ -659,7 +720,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       startWorkflow()
       startNode('node-1', 'trace-1')
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('trace-1')
@@ -673,7 +736,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       startNode('node-1', 'trace-1')
       startNode('node-1', 'trace-1-v2')
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('trace-1-v2')
@@ -691,7 +756,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('retry-1')
@@ -706,11 +773,18 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onNodeFinished({
-          data: { node_id: 'node-1', id: 'trace-1', status: 'succeeded', outputs: { text: 'done' } },
+          data: {
+            node_id: 'node-1',
+            id: 'trace-1',
+            status: 'succeeded',
+            outputs: { text: 'done' },
+          },
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('trace-1')
@@ -729,7 +803,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('trace-1')
@@ -754,8 +830,12 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
-      const agentTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'agent-node')
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
+      const agentTrace = answer!.workflowProcess!.tracing.find(
+        (t: any) => t.node_id === 'agent-node',
+      )
       expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(1)
     })
 
@@ -769,8 +849,12 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
-      const agentTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'agent-node')
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
+      const agentTrace = answer!.workflowProcess!.tracing.find(
+        (t: any) => t.node_id === 'agent-node',
+      )
       expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(1)
     })
 
@@ -786,8 +870,12 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
-      const agentTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'agent-node')
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
+      const agentTrace = answer!.workflowProcess!.tracing.find(
+        (t: any) => t.node_id === 'agent-node',
+      )
       expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(1)
       expect((agentTrace!.execution_metadata!.agent_log as any[])[0].content).toBe('v2')
     })
@@ -804,19 +892,13 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
-      const agentTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'agent-node')
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
+      const agentTrace = answer!.workflowProcess!.tracing.find(
+        (t: any) => t.node_id === 'agent-node',
+      )
       expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(2)
-    })
-
-    it('should not crash when node_id is not found in tracing', () => {
-      setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onAgentLog({
-          data: { node_id: 'nonexistent-node', message_id: 'log-1', content: 'noop' },
-        })
-      })
     })
   })
 
@@ -828,11 +910,18 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
+          data: {
+            node_id: 'human-node',
+            form_token: 'token-1',
+            form_content: '{{#$output.answer#}}',
+            inputs: [],
+          },
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.humanInputFormDataList).toHaveLength(1)
       expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node')
       expect((answer!.humanInputFormDataList![0] as any).form_token).toBe('token-1')
@@ -845,7 +934,12 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
+          data: {
+            node_id: 'human-node',
+            form_token: 'token-1',
+            form_content: '{{#$output.answer#}}',
+            inputs: [],
+          },
         })
       })
 
@@ -855,7 +949,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.humanInputFormDataList).toHaveLength(1)
       expect((answer!.humanInputFormDataList![0] as any).form_token).toBe('token-2')
     })
@@ -876,7 +972,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.humanInputFormDataList).toHaveLength(2)
       expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node-1')
       expect(answer!.humanInputFormDataList![1]!.node_id).toBe('human-node-2')
@@ -893,7 +991,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       const trace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'human-node')
       expect(trace!.status).toBe('paused')
     })
@@ -906,7 +1006,12 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
+          data: {
+            node_id: 'human-node',
+            form_token: 'token-1',
+            form_content: '{{#$output.answer#}}',
+            inputs: [],
+          },
         })
       })
 
@@ -916,15 +1021,19 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.humanInputFormDataList).toHaveLength(0)
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
       expect(answer!.humanInputFilledFormDataList![0]!.node_id).toBe('human-node')
       expect(answer!.humanInputFilledFormDataList![0]!.submitted_data).toEqual({ answer: 'yes' })
-      expect(answer!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
-        form_content: '{{#$output.answer#}}',
-        inputs: [],
-      }))
+      expect(answer!.humanInputFilledFormDataList![0]).toEqual(
+        expect.objectContaining({
+          form_content: '{{#$output.answer#}}',
+          inputs: [],
+        }),
+      )
     })
   })
 
@@ -945,7 +1054,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       const form = answer!.humanInputFormDataList!.find((f: any) => f.node_id === 'human-node')
       expect(form!.expiration_time).toBe('2025-01-01T00:00:00Z')
     })
@@ -960,7 +1071,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         capturedCallbacks.onWorkflowPaused({ data: {} })
       })
 
-      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
       expect(answer!.workflowProcess!.status).toBe('paused')
     })
   })

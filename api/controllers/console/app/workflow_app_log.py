@@ -181,7 +181,7 @@ class WorkflowAppLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -225,7 +225,7 @@ class WorkflowArchivedLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model: App):
         """

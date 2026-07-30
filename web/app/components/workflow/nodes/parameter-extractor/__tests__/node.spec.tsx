@@ -1,8 +1,6 @@
 import type { ParameterExtractorNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
-import {
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import Node from '../node'
@@ -14,14 +12,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
     <div>{defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'no-model'}</div>
   ),
 }))
 
 const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
 
-const createData = (overrides: Partial<ParameterExtractorNodeType> = {}): ParameterExtractorNodeType => ({
+const createData = (
+  overrides: Partial<ParameterExtractorNodeType> = {},
+): ParameterExtractorNodeType => ({
   title: 'Parameter Extractor',
   desc: '',
   type: BlockEnum.ParameterExtractor,
@@ -50,12 +50,7 @@ describe('parameter-extractor/node', () => {
   })
 
   it('renders the readonly model selector when a model is configured', () => {
-    render(
-      <Node
-        id="node-1"
-        data={createData()}
-      />,
-    )
+    render(<Node id="node-1" data={createData()} />)
 
     expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
   })

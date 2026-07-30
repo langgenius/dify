@@ -24,7 +24,9 @@ const mockGetBrowserTimezone = vi.mocked(getBrowserTimezone)
 describe('SocialAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>)
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+    )
     mockUseLocale.mockReturnValue('zh-Hans')
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
   })
@@ -62,14 +64,19 @@ describe('SocialAuth', () => {
 
     it('should preserve invite token when adding timezone', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams('invite_token=invite-123') as unknown as ReturnType<typeof useSearchParams>,
+        new URLSearchParams('invite_token=invite-123') as unknown as ReturnType<
+          typeof useSearchParams
+        >,
       )
 
       render(<SocialAuth />)
 
       const githubLink = screen.getByRole('link', { name: 'login.withGitHub' })
       expect(githubLink).toHaveAttribute('href', expect.stringContaining('invite_token=invite-123'))
-      expect(githubLink).toHaveAttribute('href', expect.stringContaining('timezone=Asia%2FShanghai'))
+      expect(githubLink).toHaveAttribute(
+        'href',
+        expect.stringContaining('timezone=Asia%2FShanghai'),
+      )
       expect(githubLink).toHaveAttribute('href', expect.stringContaining('language=zh-Hans'))
     })
   })
@@ -80,7 +87,9 @@ describe('SocialAuth', () => {
 
       render(<SocialAuth />)
 
-      expect(screen.getByRole('link', { name: 'login.withGitHub' }).getAttribute('href')).not.toContain('timezone=')
+      expect(
+        screen.getByRole('link', { name: 'login.withGitHub' }).getAttribute('href'),
+      ).not.toContain('timezone=')
     })
   })
 })

@@ -46,10 +46,16 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockDelete).not.toHaveBeenCalled()
-    expect(mockToastError).toHaveBeenCalledWith('pluginTrigger.subscription.list.item.actions.deleteConfirm.confirmInputWarning')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'pluginTrigger.subscription.list.item.actions.deleteConfirm.confirmInputWarning',
+    )
   })
 
   it('should allow deletion after matching input name', () => {
@@ -66,11 +72,17 @@ describe('DeleteConfirm', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputPlaceholder/),
+      screen.getByPlaceholderText(
+        /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputPlaceholder/,
+      ),
       { target: { value: 'Subscription One' } },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockDelete).toHaveBeenCalledWith('sub-1', expect.any(Object))
     expect(mockRefetch).toHaveBeenCalledTimes(1)
@@ -92,7 +104,11 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockToastError).toHaveBeenCalledWith('network error')
   })

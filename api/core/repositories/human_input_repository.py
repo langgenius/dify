@@ -17,8 +17,8 @@ from core.workflow.human_input_adapter import (
     InteractiveSurfaceDeliveryMethod,
     is_human_input_webapp_enabled,
 )
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin
@@ -92,6 +92,9 @@ class HumanInputFormEntity(Protocol):
 
     @property
     def selected_action_id(self) -> str | None: ...
+
+    @property
+    def created_at(self) -> datetime: ...
 
     @property
     def submitted_data(self) -> Mapping[str, Any] | None: ...
@@ -177,6 +180,11 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
     @override
     def selected_action_id(self) -> str | None:
         return self._form_model.selected_action_id
+
+    @property
+    @override
+    def created_at(self) -> datetime:
+        return self._form_model.created_at
 
     @property
     @override
@@ -571,6 +579,13 @@ class HumanInputFormSubmissionRepository:
             if recipient_model is None or recipient_model.form is None:
                 return None
             return HumanInputFormRecord.from_models(recipient_model.form, recipient_model)
+
+    def get_by_form_id(self, form_id: str) -> HumanInputFormRecord | None:
+        with session_factory.create_session() as session:
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                return None
+            return HumanInputFormRecord.from_models(form_model, None)
 
     def get_by_form_id_and_recipient_type(
         self,

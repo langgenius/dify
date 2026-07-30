@@ -1,15 +1,39 @@
-import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@/test/console/render'
 import useWorkspacePluginInstallPermission from '../use-workspace-plugin-install-permission'
 
 let mockWorkspacePermissionKeys: string[] = []
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: { current_version: '1.0.0' },
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    langGeniusVersionInfo: {
+      current_env: '',
+      current_version: '1.0.0',
+      latest_version: '',
+      release_date: '',
+      release_notes: '',
+      version: '',
+      can_auto_update: false,
+    },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => ({
+    langGeniusVersionInfo: {
+      current_env: '',
+      current_version: '1.0.0',
+      latest_version: '',
+      release_date: '',
+      release_notes: '',
+      version: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
 
 describe('useWorkspacePluginInstallPermission', () => {
   beforeEach(() => {
@@ -23,21 +47,25 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(true)
     expect(result.current.canUpdatePlugin).toBe(true)
-    expect(result.current.canViewInstalledPlugins).toBe(true)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
 
-  it('should grant update, view, and manage capabilities but not install with plugin.manage', () => {
-    mockWorkspacePermissionKeys = ['plugin.manage']
+  it('should not expose installed plugin list viewing as a permission capability', () => {
+    const { result } = renderHook(() => useWorkspacePluginInstallPermission())
+
+    expect('canViewInstalledPlugins' in result.current).toBe(false)
+  })
+
+  it('should grant delete capability but not install or update with plugin.delete', () => {
+    mockWorkspacePermissionKeys = ['plugin.delete']
 
     const { result } = renderHook(() => useWorkspacePluginInstallPermission())
 
     expect(result.current.canInstallPlugin).toBe(false)
-    expect(result.current.canUpdatePlugin).toBe(true)
-    expect(result.current.canViewInstalledPlugins).toBe(true)
-    expect(result.current.canManagePlugin).toBe(true)
+    expect(result.current.canUpdatePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(true)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
@@ -49,8 +77,7 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(false)
     expect(result.current.canUpdatePlugin).toBe(false)
-    expect(result.current.canViewInstalledPlugins).toBe(false)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(true)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
@@ -62,8 +89,7 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(false)
     expect(result.current.canUpdatePlugin).toBe(false)
-    expect(result.current.canViewInstalledPlugins).toBe(false)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(true)
   })
@@ -73,8 +99,7 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(false)
     expect(result.current.canUpdatePlugin).toBe(false)
-    expect(result.current.canViewInstalledPlugins).toBe(false)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })

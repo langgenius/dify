@@ -66,25 +66,29 @@ describe('useAppInputsFormSchema', () => {
       },
     }
 
-    const { result } = renderHook(() => useAppInputsFormSchema({
-      appDetail: {
-        id: 'app-1',
-        mode: AppModeEnum.COMPLETION,
-      } as never,
-    }))
+    const { result } = renderHook(() =>
+      useAppInputsFormSchema({
+        appDetail: {
+          id: 'app-1',
+          mode: AppModeEnum.COMPLETION,
+        } as never,
+      }),
+    )
 
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.inputFormSchema).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        variable: 'question',
-        type: 'text-input',
-      }),
-      expect.objectContaining({
-        variable: '#image#',
-        type: InputVarType.singleFile,
-        allowed_file_extensions: ['.png'],
-      }),
-    ]))
+    expect(result.current.inputFormSchema).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          variable: 'question',
+          type: 'text-input',
+        }),
+        expect.objectContaining({
+          variable: '#image#',
+          type: InputVarType.singleFile,
+          allowed_file_extensions: ['.png'],
+        }),
+      ]),
+    )
   })
 
   it('should build workflow schemas from start node variables', () => {
@@ -112,12 +116,14 @@ describe('useAppInputsFormSchema', () => {
       features: {},
     }
 
-    const { result } = renderHook(() => useAppInputsFormSchema({
-      appDetail: {
-        id: 'app-2',
-        mode: AppModeEnum.WORKFLOW,
-      } as never,
-    }))
+    const { result } = renderHook(() =>
+      useAppInputsFormSchema({
+        appDetail: {
+          id: 'app-2',
+          mode: AppModeEnum.WORKFLOW,
+        } as never,
+      }),
+    )
 
     expect(result.current.inputFormSchema).toEqual([
       expect.objectContaining({
@@ -129,12 +135,14 @@ describe('useAppInputsFormSchema', () => {
   })
 
   it('should return an empty schema when app detail is unavailable', () => {
-    const { result } = renderHook(() => useAppInputsFormSchema({
-      appDetail: {
-        id: 'missing-app',
-        mode: AppModeEnum.CHAT,
-      } as never,
-    }))
+    const { result } = renderHook(() =>
+      useAppInputsFormSchema({
+        appDetail: {
+          id: 'missing-app',
+          mode: AppModeEnum.CHAT,
+        } as never,
+      }),
+    )
 
     expect(result.current.inputFormSchema).toEqual([])
   })

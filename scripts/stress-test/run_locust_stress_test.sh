@@ -21,10 +21,12 @@ NC='\033[0m' # No Color
 
 # Configuration
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-REPORT_DIR="${STRESS_TEST_DIR}/reports"
-CSV_PREFIX="${REPORT_DIR}/locust_${TIMESTAMP}"
-HTML_REPORT="${REPORT_DIR}/locust_report_${TIMESTAMP}.html"
-SUMMARY_REPORT="${REPORT_DIR}/locust_summary_${TIMESTAMP}.txt"
+START_EPOCH=$(date +%s)
+REPORT_ROOT="${STRESS_TEST_DIR}/reports"
+REPORT_DIR="${REPORT_ROOT}/${TIMESTAMP}"
+CSV_PREFIX="${REPORT_DIR}/locust"
+HTML_REPORT="${REPORT_DIR}/locust_report.html"
+SUMMARY_REPORT="${REPORT_DIR}/locust_summary.txt"
 
 # Create reports directory if it doesn't exist
 mkdir -p "${REPORT_DIR}"
@@ -111,6 +113,7 @@ echo
 
 # Use SSE stress test script
 LOCUST_SCRIPT="${STRESS_TEST_DIR}/sse_benchmark.py"
+LOCUST_RUN=(uvx --from locust locust)
 
 # Prepare Locust command
 if [ "$choice" = "2" ]; then
@@ -119,7 +122,7 @@ if [ "$choice" = "2" ]; then
     echo
     
     # Run with web UI
-    uv --project api run locust \
+    "${LOCUST_RUN[@]}" \
         -f ${LOCUST_SCRIPT} \
         --host http://localhost:5001 \
         --web-port 8089
@@ -128,7 +131,7 @@ else
     echo
     
     # Run in headless mode with CSV output
-    uv --project api run locust \
+    "${LOCUST_RUN[@]}" \
         -f ${LOCUST_SCRIPT} \
         --host http://localhost:5001 \
         --users $USERS \
@@ -139,6 +142,22 @@ else
         --csv=$CSV_PREFIX \
         --html=$HTML_REPORT \
         2>&1 | tee $SUMMARY_REPORT
+    SSE_METRICS_REPORT=$(python3 - <<EOF
+from pathlib import Path
+import shutil
+
+reports = [
+    p for p in Path("${REPORT_ROOT}").glob("sse_metrics_*.json")
+    if p.stat().st_mtime >= ${START_EPOCH}
+]
+if reports:
+    source = max(reports, key=lambda p: p.stat().st_mtime)
+    target = Path("${REPORT_DIR}") / source.name
+    if source != target:
+        shutil.move(str(source), str(target))
+    print(target)
+EOF
+)
     
     echo
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
@@ -150,6 +169,11 @@ else
     echo -e "  ${YELLOW}HTML Report:${NC} $HTML_REPORT"
     echo -e "  ${YELLOW}CSV Stats:${NC}   ${CSV_PREFIX}_stats.csv"
     echo -e "  ${YELLOW}CSV History:${NC} ${CSV_PREFIX}_stats_history.csv"
+    if [ -n "$SSE_METRICS_REPORT" ]; then
+        echo -e "  ${YELLOW}SSE Metrics:${NC} $SSE_METRICS_REPORT"
+    else
+        echo -e "  ${YELLOW}SSE Metrics:${NC} not found"
+    fi
     echo
     echo -e "${CYAN}View HTML report:${NC}"
     echo "  open $HTML_REPORT  # macOS"
@@ -184,14 +208,22 @@ try:
                 print(f"  RPS:                {row.get('Requests/s', 'N/A')}")
                 break
                 
-        # Show SSE-specific metrics
         print()
         print("SSE Streaming Metrics:")
-        for row in rows:
-            if 'Time to First Event' in row.get('Name', ''):
-                print(f"  Time to First Event: {row.get('Median Response Time', 'N/A')} ms (median)")
-            elif 'Stream Duration' in row.get('Name', ''):
-                print(f"  Stream Duration:     {row.get('Median Response Time', 'N/A')} ms (median)")
+        import json
+        sse_metrics_report = "${SSE_METRICS_REPORT}"
+        if sse_metrics_report:
+            with open(sse_metrics_report, 'r') as metrics_file:
+                metrics = json.load(metrics_file).get("metrics", {})
+            print(f"  Total Connections:   {metrics.get('total_connections', 'N/A')}")
+            print(f"  Total Events:        {metrics.get('total_events', 'N/A')}")
+            print(f"  Connection Rate:     {metrics.get('overall_conn_rate', 0):.2f} conn/s")
+            print(f"  Event Throughput:    {metrics.get('overall_event_rate', 0):.2f} events/s")
+            print(f"  TTFE:                {metrics.get('ttfe_p50', 0):.1f} ms p50 / {metrics.get('ttfe_p95', 0):.1f} ms p95")
+            print(f"  Stream Duration:     {metrics.get('stream_duration_p50', 0):.1f} ms p50 / {metrics.get('stream_duration_p95', 0):.1f} ms p95")
+            print(f"  Inter-event Latency: {metrics.get('inter_event_latency_p50', 0):.1f} ms p50 / {metrics.get('inter_event_latency_p95', 0):.1f} ms p95")
+        else:
+            print("  No SSE metrics JSON report found for this run")
                 
 except Exception as e:
     print(f"Could not parse metrics: {e}")

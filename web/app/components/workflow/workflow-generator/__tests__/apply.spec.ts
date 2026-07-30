@@ -1,6 +1,11 @@
 import type { GeneratedGraph } from '../types'
 import { AppModeEnum } from '@/types/app'
-import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from '../apply'
+import {
+  applyToCurrentApp,
+  applyToNewApp,
+  WorkflowApplyHashCollisionError,
+  WorkflowApplyOrphanError,
+} from '../apply'
 
 // Stub the service calls so each test can assert what was POSTed without
 // touching real fetch / next router state.
@@ -21,7 +26,12 @@ vi.mock('@/service/workflow', () => ({
 
 const makeGraph = (): GeneratedGraph => ({
   nodes: [
-    { id: 'node-1', type: 'custom', position: { x: 0, y: 0 }, data: { type: 'start', title: 'Start' } } as never,
+    {
+      id: 'node-1',
+      type: 'custom',
+      position: { x: 0, y: 0 },
+      data: { type: 'start', title: 'Start' },
+    } as never,
   ],
   edges: [],
   viewport: { x: 0, y: 0, zoom: 0.7 },
@@ -40,10 +50,12 @@ describe('applyToNewApp', () => {
     const graph = makeGraph()
     const result = await applyToNewApp({ mode: 'workflow', graph, instruction: 'Summarize a URL' })
 
-    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
-      mode: AppModeEnum.WORKFLOW,
-      icon_type: 'emoji',
-    }))
+    expect(mockCreateApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: AppModeEnum.WORKFLOW,
+        icon_type: 'emoji',
+      }),
+    )
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
       url: 'apps/new-app-1/workflows/draft',
       params: {
@@ -67,24 +79,34 @@ describe('applyToNewApp', () => {
       instruction: 'A chat bot that answers questions',
     })
 
-    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ mode: AppModeEnum.ADVANCED_CHAT }))
+    expect(mockCreateApp).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: AppModeEnum.ADVANCED_CHAT }),
+    )
     expect(result.appMode).toBe(AppModeEnum.ADVANCED_CHAT)
   })
 
   // The derived name keeps the user instruction recognisable in the apps list
   // — strip trailing punctuation and never produce an empty string.
   it('should derive a sensible app name from the instruction', async () => {
-    await applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   Build a translator.   ' })
+    await applyToNewApp({
+      mode: 'workflow',
+      graph: makeGraph(),
+      instruction: '   Build a translator.   ',
+    })
 
-    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Build a translator' }))
+    expect(mockCreateApp).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Build a translator' }),
+    )
   })
 
   // Instruction-only-of-punctuation must still produce a usable, non-empty
   // app name so create-app doesn't fail validation.
-  it('should fall back to "Generated Workflow" when the instruction is empty', async () => {
-    await applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' })
+  it('should reject an empty instruction before creating an app', async () => {
+    await expect(
+      applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' }),
+    ).rejects.toThrow('Cannot create a generated app without an instruction.')
 
-    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Generated Workflow' }))
+    expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   // When the planner picks a name + emoji, those win over the
@@ -99,10 +121,12 @@ describe('applyToNewApp', () => {
       icon: '📰',
     })
 
-    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'URL Summarizer',
-      icon: '📰',
-    }))
+    expect(mockCreateApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'URL Summarizer',
+        icon: '📰',
+      }),
+    )
   })
 
   // When the planner returns whitespace-only values (older prompts / model
@@ -117,10 +141,12 @@ describe('applyToNewApp', () => {
       icon: '',
     })
 
-    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Summarize a URL',
-      icon: '🤖',
-    }))
+    expect(mockCreateApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Summarize a URL',
+        icon: '🤖',
+      }),
+    )
   })
 
   // Sync failure must roll back the createApp so the user isn't left with an
@@ -132,11 +158,13 @@ describe('applyToNewApp', () => {
     mockSyncWorkflowDraft.mockRejectedValueOnce(syncErr)
     mockDeleteApp.mockResolvedValueOnce(undefined)
 
-    await expect(applyToNewApp({
-      mode: 'workflow',
-      graph: makeGraph(),
-      instruction: 'x',
-    })).rejects.toBe(syncErr)
+    await expect(
+      applyToNewApp({
+        mode: 'workflow',
+        graph: makeGraph(),
+        instruction: 'x',
+      }),
+    ).rejects.toBe(syncErr)
 
     expect(mockDeleteApp).toHaveBeenCalledWith('doomed')
   })
@@ -153,8 +181,7 @@ describe('applyToNewApp', () => {
     let caught: unknown
     try {
       await applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: 'x' })
-    }
-    catch (e) {
+    } catch (e) {
       caught = e
     }
     expect(caught).toBeInstanceOf(WorkflowApplyOrphanError)
@@ -240,9 +267,9 @@ describe('applyToCurrentApp', () => {
     // ``status`` field, which is what ``isHashCollisionResponse`` consults.
     mockSyncWorkflowDraft.mockRejectedValueOnce({ status: 409, code: 'draft_workflow_not_sync' })
 
-    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() }))
-      .rejects
-      .toBeInstanceOf(WorkflowApplyHashCollisionError)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBeInstanceOf(
+      WorkflowApplyHashCollisionError,
+    )
   })
 
   // Non-409 errors (5xx, network) MUST NOT be misclassified as hash
@@ -258,8 +285,24 @@ describe('applyToCurrentApp', () => {
     const original = { status: 500, code: 'internal_server_error' }
     mockSyncWorkflowDraft.mockRejectedValueOnce(original)
 
-    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() }))
-      .rejects
-      .toBe(original)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(original)
+  })
+
+  it('should NOT translate string or null sync rejections', async () => {
+    mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'h1',
+      features: {},
+      environment_variables: [],
+      conversation_variables: [],
+    })
+
+    // String error
+    const strError = 'some string error'
+    mockSyncWorkflowDraft.mockRejectedValueOnce(strError)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(strError)
+
+    // Null error
+    mockSyncWorkflowDraft.mockRejectedValueOnce(null)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBeNull()
   })
 })

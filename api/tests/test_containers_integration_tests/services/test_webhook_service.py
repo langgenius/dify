@@ -41,7 +41,7 @@ class TestWebhookService:
 
             # Mock feature service
             mock_feature_service.get_system_features.return_value.is_allow_register = True
-            mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
+            mock_feature_service.is_workspace_creation_allowed.return_value = True
 
             yield {
                 "async_service": mock_async_service,
@@ -125,6 +125,9 @@ class TestWebhookService:
             version="1.0",
         )
         db_session_with_containers.add(workflow)
+        db_session_with_containers.flush()
+
+        app.workflow_id = workflow.id
         db_session_with_containers.flush()
 
         # Create webhook trigger

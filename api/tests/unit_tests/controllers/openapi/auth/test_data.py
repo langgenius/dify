@@ -11,26 +11,27 @@ from controllers.openapi.auth.data import (
     RequestContext,
     current_edition,
 )
+from enums.deployment_edition import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 
 
 def test_current_edition_saas():
     with patch("controllers.openapi.auth.data.dify_config") as cfg:
-        cfg.EDITION = "CLOUD"
+        cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         cfg.ENTERPRISE_ENABLED = True
         assert current_edition() == Edition.SAAS
 
 
 def test_current_edition_ee():
     with patch("controllers.openapi.auth.data.dify_config") as cfg:
-        cfg.EDITION = "SELF_HOSTED"
+        cfg.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
         cfg.ENTERPRISE_ENABLED = True
         assert current_edition() == Edition.EE
 
 
 def test_current_edition_ce():
     with patch("controllers.openapi.auth.data.dify_config") as cfg:
-        cfg.EDITION = "SELF_HOSTED"
+        cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         cfg.ENTERPRISE_ENABLED = False
         assert current_edition() == Edition.CE
 
