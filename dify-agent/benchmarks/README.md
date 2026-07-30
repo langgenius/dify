@@ -1,76 +1,124 @@
-# Local Docker service A/B benchmark
+# Local Docker Agent, Runtime, and capability A/B benchmarks
 
-This harness compares two `dify-agent` service builds on the same local Docker
-Engine. It uses the real FastAPI server, scheduler, runner, SSE route, Redis
-store, and plugin-daemon adapters, but replaces model and tool dependencies with
-a deterministic in-network fake. It does not call real model, plugin, or
-Knowledge services.
+This harness compares baseline and candidate code on one local Docker Engine
+with deterministic dependencies. It has three independent profiles:
 
-## Run it
+| Profile | Measured boundary |
+| --- | --- |
+| `agent` | FastAPI Agent service, scheduler, runner, Redis, and fake model/tool |
+| `runtime` | Direct shellctl HTTP, shellctl-runner, tmux, SQLite, and filesystem |
+| `capability` | Agent through local Runtime and Agent Stub for Shell, Config, Drive, and files |
 
-From the repository root:
+The local Runtime profile measures the same shellctl data plane that runs inside
+an E2B sandbox. It does not measure E2B create/connect/pause/kill/snapshot,
+platform HTTPS latency, billing, or production capacity.
+
+Capability detects both Agent runtime contracts. Current builds use an
+execution binding plus the `dify.runtime` layer; releases without
+`/execution-bindings` use the legacy `dify.shell` provider directly against the
+same shellctl container. The selected contract is part of the measured
+production code, while the workload and Runtime data plane stay unchanged.
+
+## Commands
 
 ```bash
+# Existing Agent profile
 make -C dify-agent bench-docker-smoke
 make -C dify-agent bench-docker-ab
-make -C dify-agent bench-docker-ab BASE_REF=<git-ref-or-sha>
-make -C dify-agent bench-docker-ab \
-  BASE_REF=<baseline-sha> \
-  CANDIDATE_REF=<candidate-sha>
-make -C dify-agent bench-docker-ab KEEP_CONTAINERS=1
+
+# Direct shellctl Runtime profile
+make -C dify-agent bench-docker-runtime-smoke
+make -C dify-agent bench-docker-runtime-ab
+
+# Agent -> Runtime capability profile
+make -C dify-agent bench-docker-capability-smoke
+make -C dify-agent bench-docker-capability-ab
 ```
 
-The default baseline is `origin/main`. The default candidate is the current
-worktree, including tracked and untracked production inputs under
-`dify-agent/src` plus `pyproject.toml`, `uv.lock`, and `Dockerfile`.
-
-For a fast harness iteration, run one scenario with reduced trials:
+All A/B commands accept `BASE_REF`, `CANDIDATE_REF`, `BENCH_SCENARIO`,
+`BENCH_QUICK=1`, and `KEEP_CONTAINERS=1`. The capability command can pin one
+component while comparing the other:
 
 ```bash
-make -C dify-agent bench-docker-ab \
-  BENCH_QUICK=1 \
-  BENCH_SCENARIO=single_1_chunk_c1
+# Compare only Runtime; use one Agent build on both sides.
+make -C dify-agent bench-docker-capability-ab PIN_AGENT_REF=<ref>
+
+# Compare only Agent; use one Runtime build on both sides.
+make -C dify-agent bench-docker-capability-ab PIN_RUNTIME_REF=<ref>
 ```
 
-`BENCH_QUICK=1` is a correctness/development aid, not a performance result.
+`PIN_AGENT_REF` and `PIN_RUNTIME_REF` are mutually exclusive. With no
+`CANDIDATE_REF`, component-specific tracked and untracked production inputs in
+the current worktree are included. Baselines and explicit candidates are built
+from `git archive`.
 
-## Read the output
+`BENCH_QUICK=1` reduces warmup and measurement to one and two operations. It is
+only a wiring/correctness aid, not a performance result.
+
+Smoke commands run one operation of the default scenario. Set
+`BENCH_SCENARIO=<scenario-id>` to select another scenario, or `FULL_SMOKE=1` to
+use that scenario's configured warmup and measurement window.
+
+## Deterministic scenarios
+
+Agent keeps the original five workloads unchanged. Runtime adds no-op, 1 MiB
+output, 1000×4 KiB files, a 16 MiB file, and concurrency 10. Capability adds
+Shell no-op/resume, Config pull (3 skills and 10 files), Drive pull, 16 MiB
+signed upload/download, and Shell concurrency 10.
+
+Each ABBA block owns a fresh Compose project and named volumes. Runtime jobs use
+unique benchmark directories. After measurement, the driver deletes jobs and
+the orchestrator verifies that SQLite rows, tmux sessions, job artifacts,
+materialized Homes, Workspaces, and benchmark files do not remain.
+
+The local capability topology explicitly grants Runtime Landlock write access
+to its benchmark-only `/mnt/drive` volume. That fixed setting is part of the
+environment fingerprint, and the volume is checked for residue after every
+block.
+
+## Results
 
 Artifacts are written under the ignored
-`dify-agent/benchmarks/results/<timestamp>-*/` directory. The top level contains
-the baseline and candidate results, all run samples, a machine-readable
-comparison, and `comparison.md`. Each block retains Docker samples, Redis
-snapshots, the exact run samples, and Agent/Redis/Fake service logs.
+`dify-agent/benchmarks/results/<timestamp>-<profile>-*/` directory:
 
-The primary report is intentionally small:
+- v3 baseline/candidate results and component identities
+- `comparison.json` and a compact `comparison.md`
+- all operation samples
+- raw Docker Engine stats
+- Redis before/after snapshots where applicable
+- Runtime cleanup state and service logs
 
-- Correctness separates attempted, admitted, terminal, and successful runs,
-  plus deterministic ledger and SSE/Redis replay checks.
-- Latency reports create-run p95, time-to-first-event p95, terminal e2e
-  p50/p95, and Runtime overhead p50/p95.
-- Throughput reports terminal and successful runs/s. Deterministic events per
-  successful run remains a workload check rather than a throughput headline.
-- Resource efficiency reports Agent and Redis CPU seconds/successful run,
-  memory GB-seconds/successful run, Agent peak memory delta, internal network
-  bytes/successful run, Redis commands and command mix, and Redis storage.
-- Environment validity reports Docker stats boundary coverage and Fake
-  dependency CPU/response latency.
+The Markdown headline is intentionally limited to correctness, p95 start and
+Runtime overhead, throughput, CPU per successful operation, memory GB-seconds
+per successful operation, and useful file throughput. Capability reports Agent
+and Runtime costs separately and as a total.
 
-Performance classifications are report-only:
+Network, block I/O, peak PID, peak memory delta, Redis commands, shell jobs, and
+Stub calls remain diagnostic JSON. A changed shell-job, Stub-call, or Redis
+command mix is a `behavior_change`, not a performance regression by itself.
 
-- Latency uses block-aware bootstrap without pairing unrelated run ordinals.
-- Throughput and resource metrics use the two ABBA pairs descriptively; both
-  pairs must cross a regression threshold to report `possible_regression`.
-- `possible_regression` highlights a repeatable threshold signal.
-- `inconclusive` means local noise prevents a directional conclusion.
-- `behavior_change` means Redis commands per successful run increased by at
-  least one in both ABBA pairs.
+Performance signals are report-only:
 
-Only startup, comparability, terminal-state, SSE sequence, or fake-ledger
-correctness failures return a non-zero exit code. With `KEEP_CONTAINERS=1`, a
-failed benchmark-prefixed Compose project is retained for diagnosis; successful
-blocks are still cleaned up.
+- p95 Runtime overhead: candidate is over 10% and over 1 ms slower
+- operations/s or useful payload MiB/s: candidate is over 10% lower
+- CPU/op or memory GB-s/op: candidate is over 10% higher
+- a confidence interval crossing zero: `inconclusive`
 
-Do not compare separate invocations or machines. The ABBA ordering and clean
-Compose project per block are designed only for the paired comparison produced
-by a single invocation.
+Latency uses blocked bootstrap across the paired ABBA samples. Metrics that
+exist only once per block use the direction of both A/B block pairs instead of
+manufacturing a confidence interval from two aggregates. If baseline and
+candidate have identical production-input hashes, measured deltas can only be
+`no_regression` or `inconclusive`.
+
+Fake response p99 includes model, tool, and Agent Stub requests. It is
+diagnostic; a material A/B increase or Fake CPU saturation invalidates the
+environment, rather than treating a large deterministic file transfer as an
+Agent regression.
+
+Startup, terminal state, SSE/output integrity, ledger bytes/checksums,
+comparability, and explicit Runtime cleanup are correctness gates and return a
+non-zero status.
+
+Only compare baseline and candidate from the same invocation. Local Docker
+results are deterministic code A/B evidence, not an E2B cost or SaaS capacity
+forecast.
