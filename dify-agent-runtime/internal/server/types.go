@@ -198,6 +198,38 @@ func LoadCredentialManifest(path string) ([]Credential, error) {
 	return req.Credentials, nil
 }
 
+// LoadCredentialManifestDir reads all credential manifest files from a
+// directory and returns the merged credentials. Files are sorted by name for
+// deterministic load order. Only files with ".yaml", ".yml", or ".json"
+// extensions are processed; all other files (including dotfiles, READMEs,
+// .gitignore, etc.) are silently skipped.
+//
+// Later files override earlier ones on provider/name conflicts (last-wins),
+// mirroring the session-shadows-system precedence used by the resolver.
+func LoadCredentialManifestDir(dir string) ([]Credential, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("read credential manifest dir %s: %w", dir, err)
+	}
+
+	var all []Credential
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(entry.Name()))
+		if ext != ".yaml" && ext != ".yml" && ext != ".json" {
+			continue
+		}
+		creds, err := LoadCredentialManifest(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, creds...)
+	}
+	return all, nil
+}
+
 // PrepareResponse is the response for PUT /v1/prepare.
 type PrepareResponse struct {
 	Registered int `json:"registered"`

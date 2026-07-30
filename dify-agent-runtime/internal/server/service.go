@@ -100,7 +100,19 @@ func (s *Service) initEgressProxy() error {
 	// sandbox session's own credentials are set later via PUT /v1/prepare
 	// (see PrepareCredentials) into a per-sandbox_id map that never touches
 	// this system tier or any other session's map (see egressproxy.Resolver).
-	if s.config.EgressProxySystemCredentials != "" {
+	//
+	// Directory mode (preferred): load all .yaml/.yml/.json files from a
+	// directory. Legacy single-file mode: load one manifest file.
+	switch {
+	case s.config.EgressProxySystemCredentialsDir != "":
+		creds, err := LoadCredentialManifestDir(s.config.EgressProxySystemCredentialsDir)
+		if err != nil {
+			return fmt.Errorf("system credentials dir: %w", err)
+		}
+		resolver.SetSystemCredentials(credentialsToStoredMap(creds))
+		s.systemCredentials = creds
+		log.Printf("egressproxy: loaded %d system credential(s) from dir %s", len(creds), s.config.EgressProxySystemCredentialsDir)
+	case s.config.EgressProxySystemCredentials != "":
 		creds, err := LoadCredentialManifest(s.config.EgressProxySystemCredentials)
 		if err != nil {
 			return fmt.Errorf("system credentials manifest: %w", err)

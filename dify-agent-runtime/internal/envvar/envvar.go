@@ -55,12 +55,17 @@ const (
 	// EnvEgressProxyUpstream overrides the upstream proxy URL (empty = direct).
 	EnvEgressProxyUpstream = "SHELLCTL_EGRESSPROXY_UPSTREAM"
 
-	// EnvEgressProxySystemCredentialsFile points to a JSON manifest of
-	// system-level credentials (same shape as the PUT /v1/prepare body:
-	// {"credentials": [...]}) that gets registered with the resolver at
-	// startup, before any agent-backend-supplied credentials. Credentials
-	// supplied later by agent-backend (via /v1/prepare or /v1/jobs/run)
-	// override system entries that share the same "provider/name" ref.
+	// EnvEgressProxySystemCredentialsDir points to a directory of credential
+	// manifest files (YAML or JSON, same shape as the PUT /v1/prepare body:
+	// {"credentials": [...]}) that get registered with the resolver at startup,
+	// before any agent-backend-supplied credentials. All .yaml/.yml/.json files
+	// in the directory are loaded and merged. Credentials supplied later by
+	// agent-backend (via /v1/prepare or /v1/jobs/run) override system entries
+	// that share the same "provider/name" ref.
+	EnvEgressProxySystemCredentialsDir = "SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_DIR"
+
+	// EnvEgressProxySystemCredentialsFile is a legacy alias that points to a
+	// single credential manifest file. Prefer EnvEgressProxySystemCredentialsDir.
 	EnvEgressProxySystemCredentialsFile = "SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_FILE"
 )
 

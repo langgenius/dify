@@ -58,11 +58,12 @@ type Config struct {
 	RunnerExitCommand            []string
 
 	// Egress proxy settings
-	EgressProxyEnabled           bool
-	EgressProxyAddr              string
-	EgressProxyCADir             string
-	EgressProxyUpstream          string
-	EgressProxySystemCredentials string
+	EgressProxyEnabled              bool
+	EgressProxyAddr                 string
+	EgressProxyCADir                string
+	EgressProxyUpstream             string
+	EgressProxySystemCredentialsDir string
+	EgressProxySystemCredentials    string // legacy single-file mode
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -113,6 +114,9 @@ func DefaultConfig() *Config {
 	}
 	if v := envOrFallback(envvar.EnvEgressProxyUpstream, envvar.EnvCredProxyUpstream); v != "" {
 		cfg.EgressProxyUpstream = v
+	}
+	if v := os.Getenv(envvar.EnvEgressProxySystemCredentialsDir); v != "" {
+		cfg.EgressProxySystemCredentialsDir = v
 	}
 	if v := os.Getenv(envvar.EnvEgressProxySystemCredentialsFile); v != "" {
 		cfg.EgressProxySystemCredentials = v

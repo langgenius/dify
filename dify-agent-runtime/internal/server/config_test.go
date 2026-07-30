@@ -70,3 +70,19 @@ func TestConfigNoEgressProxySystemCredentials(t *testing.T) {
 		t.Errorf("expected empty system credentials path, got %q", cfg.EgressProxySystemCredentials)
 	}
 }
+
+func TestConfigEgressProxySystemCredentialsDirFromEnv(t *testing.T) {
+	t.Setenv("SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_DIR", "/etc/shellctl/credentials")
+	cfg := DefaultConfig()
+	if cfg.EgressProxySystemCredentialsDir != "/etc/shellctl/credentials" {
+		t.Errorf("expected system credentials dir from env, got %q", cfg.EgressProxySystemCredentialsDir)
+	}
+}
+
+func TestConfigNoEgressProxySystemCredentialsDir(t *testing.T) {
+	t.Setenv("SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_DIR", "")
+	cfg := DefaultConfig()
+	if cfg.EgressProxySystemCredentialsDir != "" {
+		t.Errorf("expected empty system credentials dir, got %q", cfg.EgressProxySystemCredentialsDir)
+	}
+}

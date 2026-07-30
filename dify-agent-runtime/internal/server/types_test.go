@@ -123,6 +123,69 @@ func TestLoadCredentialManifestInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestLoadCredentialManifestDir(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write two manifest files and one non-manifest file (should be skipped).
+	if err := os.WriteFile(filepath.Join(dir, "tavily.yaml"), []byte(`
+credentials:
+  - provider: tavily
+    name: api_key
+    value: tvly-aaa
+`), 0600); err != nil {
+		t.Fatalf("write tavily.yaml: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "github.json"), []byte(`{
+  "credentials": [
+    {"provider": "github", "name": "token", "value": "ghp-bbb"}
+  ]
+}`), 0600); err != nil {
+		t.Fatalf("write github.json: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("not a manifest"), 0600); err != nil {
+		t.Fatalf("write README.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("*.cred.yaml"), 0600); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	creds, err := LoadCredentialManifestDir(dir)
+	if err != nil {
+		t.Fatalf("LoadCredentialManifestDir: %v", err)
+	}
+	if len(creds) != 2 {
+		t.Fatalf("expected 2 credentials, got %d", len(creds))
+	}
+
+	refs := map[string]string{}
+	for _, c := range creds {
+		refs[c.Ref()] = c.Value
+	}
+	if refs["tavily/api_key"] != "tvly-aaa" {
+		t.Errorf("tavily/api_key: got %q", refs["tavily/api_key"])
+	}
+	if refs["github/token"] != "ghp-bbb" {
+		t.Errorf("github/token: got %q", refs["github/token"])
+	}
+}
+
+func TestLoadCredentialManifestDirEmpty(t *testing.T) {
+	dir := t.TempDir()
+	creds, err := LoadCredentialManifestDir(dir)
+	if err != nil {
+		t.Fatalf("LoadCredentialManifestDir on empty dir: %v", err)
+	}
+	if len(creds) != 0 {
+		t.Fatalf("expected 0 credentials from empty dir, got %d", len(creds))
+	}
+}
+
+func TestLoadCredentialManifestDirMissing(t *testing.T) {
+	if _, err := LoadCredentialManifestDir("/nonexistent/credentials"); err == nil {
+		t.Fatal("expected error for missing directory")
+	}
+}
+
 // newTestService builds a minimal Service with an egress resolver and a
 // scratch RuntimeDir, sufficient for exercising PrepareCredentials.
 func newTestService(t *testing.T) *Service {
