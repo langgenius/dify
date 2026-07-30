@@ -66,9 +66,7 @@ const List = ({ onSelect, tools, viewType, unInstalledPlugins, className }: List
           />
         ))}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <ToolActionPreviewCard payload={payload as ToolActionPreviewPayload | undefined} />
-        )}
+        {({ payload }) => <ToolActionPreviewCard payload={payload} />}
       </PreviewCard>
       {unInstalledPlugins.map((item) => {
         return <UninstalledItem key={item.plugin_id} payload={item} />

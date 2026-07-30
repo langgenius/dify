@@ -73,10 +73,11 @@ export function AgentLogSourcePicker({
         aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
         className="mt-0 w-fit max-w-full min-w-22"
       >
-        <ComboboxValue placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}>
-          {(selectedValue: AgentLogSourceResponse[]) => {
-            if (selectedValue.length === 0)
-              return t(($) => $['agentDetail.logs.filters.source.all'])
+        <ComboboxValue<AgentLogSourceResponse, true>
+          placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
+        >
+          {(selectedValue) => {
+            if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
             if (selectedValue.length === 1) return selectedValue[0]!.app_name
             return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
           }}
@@ -117,8 +118,8 @@ export function AgentLogSourcePicker({
                   <ComboboxGroupLabel className="px-1 pt-2 pb-1">
                     {getSourceGroupLabel(group, t)}
                   </ComboboxGroupLabel>
-                  <ComboboxCollection>
-                    {(source: AgentLogSourceResponse) => (
+                  <ComboboxCollection<AgentLogSourceResponse>>
+                    {(source) => (
                       <ComboboxItem
                         key={source.id}
                         value={source}

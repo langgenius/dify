@@ -163,10 +163,8 @@ export default function AddMemberOrGroupDialog() {
               )}
               {hasResults ? (
                 <>
-                  <ComboboxList className="max-h-none p-1">
-                    {(subject: Subject) => (
-                      <SubjectItem key={getSubjectValue(subject)} subject={subject} />
-                    )}
+                  <ComboboxList<Subject> className="max-h-none p-1">
+                    {(subject) => <SubjectItem key={getSubjectValue(subject)} subject={subject} />}
                   </ComboboxList>
                   {isFetchingNextPage && <Loading />}
                   <div ref={anchorRef} className="h-0" />

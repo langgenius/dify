@@ -91,9 +91,7 @@ const Tools = ({
           />
         ))}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <ToolActionPreviewCard payload={payload as ToolActionPreviewPayload | undefined} />
-        )}
+        {({ payload }) => <ToolActionPreviewCard payload={payload} />}
       </PreviewCard>
     </div>
   )

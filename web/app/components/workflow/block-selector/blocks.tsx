@@ -194,7 +194,7 @@ const Blocks = ({
       )}
       {!isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => <BlockPreviewCard payload={payload as BlockPreviewPayload | undefined} />}
+        {({ payload }) => <BlockPreviewCard payload={payload} />}
       </PreviewCard>
     </div>
   )
