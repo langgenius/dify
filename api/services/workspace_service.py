@@ -7,6 +7,7 @@ from enums.cloud_plan import CloudPlan
 from enums.deployment_edition import DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
+from services.billing_service import BillingService
 from services.feature_service import FeatureService
 
 
@@ -20,6 +21,46 @@ def _set_credit_pool_info(
 
 
 class WorkspaceService:
+    @classmethod
+    def get_current_workspace_summary(cls, tenant: Tenant, account_id: str, *, session: Session) -> dict[str, object]:
+        tenant_account_join = session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account_id)
+            .limit(1)
+        )
+        assert tenant_account_join is not None, "TenantAccountJoin not found"
+
+        plan: str | None = None
+        credits: int | None = None
+        if dify_config.BILLING_ENABLED:
+            billing_info = BillingService.get_info(tenant.id, exclude_vector_space=True)
+            subscription_plan: str = billing_info["subscription"]["plan"]
+            plan = subscription_plan if billing_info["enabled"] else None
+
+            from services.credit_pool_service import CreditPoolService
+
+            effective_pool = None
+            if subscription_plan != CloudPlan.SANDBOX:
+                paid_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="paid", session=session)
+                if paid_pool is not None and (
+                    paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used
+                ):
+                    effective_pool = paid_pool
+
+            if effective_pool is None:
+                effective_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="trial", session=session)
+
+            if effective_pool is not None:
+                credits = effective_pool.remaining_credits
+
+        return {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": tenant_account_join.role,
+            "plan": plan,
+            "credits": credits,
+        }
+
     @classmethod
     def get_tenant_info(cls, tenant: Tenant, session: Session):
         if not tenant:
