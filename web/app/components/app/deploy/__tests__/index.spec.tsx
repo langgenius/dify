@@ -10,6 +10,36 @@ const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+const mockBuiltInEnvironment = vi.hoisted(() => ({
+  appDetail: {
+    enable_api: false,
+    enable_site: true,
+    id: 'app-1',
+    maintainer: 'user-2',
+    mode: 'workflow',
+  },
+  mcpServerDetail: {
+    status: 'active',
+  },
+  publishedWorkflow: {
+    created_at: 1_710_000_100,
+    created_by: {
+      id: 'user-2',
+      name: 'Alice',
+    },
+    graph: {
+      nodes: [{ data: { type: 'start' }, id: 'start' }],
+    },
+    marked_comment: 'Production-ready workflow',
+    marked_name: 'Release 7',
+    updated_at: 1_710_000_200,
+    updated_by: {
+      id: 'user-3',
+      name: 'Bob',
+    } as { id: string; name: string } | null,
+    version: '2026-07-30.1',
+  },
+}))
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -22,6 +52,7 @@ vi.mock('react-i18next', async () => {
     'deployments.deployTab.undeployConfirmTitle': 'Undeploy {{name}}?',
     'deployments.deployTab.undeployConfirmWarning':
       'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
+    'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
 })
@@ -32,13 +63,32 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: (timestamp: number) =>
+      timestamp === mockBuiltInEnvironment.publishedWorkflow.updated_at
+        ? '03-09 16:03'
+        : '03-09 16:01',
+  }),
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useMCPServerDetail: () => ({
+    data: mockBuiltInEnvironment.mcpServerDetail,
+  }),
+}))
+
+vi.mock('@/service/use-workflow', () => ({
+  useAppWorkflow: () => ({
+    data: mockBuiltInEnvironment.publishedWorkflow,
+  }),
+}))
+
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       appDetail: {
-        id: 'app-1',
-        mode: 'workflow',
-        maintainer: 'user-2',
+        ...mockBuiltInEnvironment.appDetail,
         permission_keys: appPermissionKeys,
       },
     }),
@@ -57,6 +107,16 @@ vi.mock('@/context/permission-state', async () => {
 describe('AppDeploy', () => {
   beforeEach(() => {
     appPermissionKeys = [AppACLPermission.Deploy]
+    mockBuiltInEnvironment.appDetail.enable_api = false
+    mockBuiltInEnvironment.appDetail.enable_site = true
+    mockBuiltInEnvironment.mcpServerDetail.status = 'active'
+    mockBuiltInEnvironment.publishedWorkflow.graph.nodes = [
+      { data: { type: 'start' }, id: 'start' },
+    ]
+    mockBuiltInEnvironment.publishedWorkflow.updated_by = {
+      id: 'user-3',
+      name: 'Bob',
+    }
   })
 
   it('renders the built-in environment and mock deployment list', () => {
@@ -72,6 +132,83 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('cell', { name: /Canary/ })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: /Preview/ })).toBeInTheDocument()
     expect(screen.getAllByRole('row')).toHaveLength(9)
+  })
+
+  it('renders the built-in version, access points, and publisher from live app data', () => {
+    render(<AppDeploy />)
+
+    const builtInEnvironment = within(
+      screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
+    )
+
+    expect(builtInEnvironment.getByRole('button', { name: 'Release 7' })).toBeInTheDocument()
+    expect(builtInEnvironment.queryByRole('button', { name: 'Sprint-42' })).not.toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.outOfService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'MCP · agentV2.agentDetail.access.status.inService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'common.settings.trigger · agentV2.agentDetail.access.status.outOfService',
+      }),
+    ).toBeInTheDocument()
+    expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Bob')).toBeInTheDocument()
+  })
+
+  it('shows only the trigger access point as active for a published trigger workflow', () => {
+    mockBuiltInEnvironment.appDetail.enable_api = true
+    mockBuiltInEnvironment.publishedWorkflow.graph.nodes = [
+      { data: { type: 'trigger-webhook' }, id: 'trigger' },
+    ]
+
+    render(<AppDeploy />)
+
+    const builtInEnvironment = within(
+      screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
+    )
+
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.outOfService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.outOfService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'MCP · agentV2.agentDetail.access.status.outOfService',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      builtInEnvironment.getByRole('button', {
+        name: 'common.settings.trigger · agentV2.agentDetail.access.status.inService',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('uses the publisher when the published workflow has no later updater', () => {
+    mockBuiltInEnvironment.publishedWorkflow.updated_by = null
+
+    render(<AppDeploy />)
+
+    const builtInEnvironment = within(
+      screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
+    )
+    expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Alice')).toBeInTheDocument()
   })
 
   it('does not render deployment controls without app deploy ACL permission', () => {
@@ -383,7 +520,7 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows the compact version preview when there is no description', async () => {
+  it('shows the built-in published workflow details on hover', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
 
@@ -391,13 +528,9 @@ describe('AppDeploy', () => {
       .getByRole('heading', { name: 'deployments.studio.builtInTitle' })
       .closest('section')
     if (!builtInSection) throw new Error('Built-in environment section was not rendered')
-    await user.hover(within(builtInSection).getByRole('button', { name: 'Sprint-42' }))
+    await user.hover(within(builtInSection).getByRole('button', { name: 'Release 7' }))
 
-    expect(await screen.findByText('Published 17 days ago by Minco')).toBeInTheDocument()
-    expect(
-      screen.queryByText(
-        'Fixed several critical bugs affecting data synchronization and optimized page loading speed. Enhanced system stability and user experience through backend improvements.',
-      ),
-    ).not.toBeInTheDocument()
+    expect(await screen.findByText('Published 17 days ago by Alice')).toBeInTheDocument()
+    expect(screen.getByText('Production-ready workflow')).toBeInTheDocument()
   })
 })
