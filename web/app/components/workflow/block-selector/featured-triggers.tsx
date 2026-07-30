@@ -1,4 +1,5 @@
 'use client'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { TFunction } from 'i18next'
 import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
@@ -227,18 +228,10 @@ const FeaturedTriggers = ({
         )}
       </CollapsiblePanel>
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <FeaturedTriggerPreviewCard
-            payload={payload as FeaturedTriggerPreviewPayload | undefined}
-          />
-        )}
+        {({ payload }) => <FeaturedTriggerPreviewCard payload={payload} />}
       </PreviewCard>
       <PreviewCard handle={triggerActionPreviewCardHandle}>
-        {({ payload }) => (
-          <TriggerPluginActionPreviewCard
-            payload={payload as TriggerPluginActionPreviewPayload | undefined}
-          />
-        )}
+        {({ payload }) => <TriggerPluginActionPreviewCard payload={payload} />}
       </PreviewCard>
     </Collapsible>
   )
@@ -247,7 +240,7 @@ const FeaturedTriggers = ({
 type FeaturedTriggerUninstalledItemProps = {
   plugin: Plugin
   language: Locale
-  previewCardHandle: ReturnType<typeof createPreviewCardHandle<FeaturedTriggerPreviewPayload>>
+  previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
   t: TFunction
 }

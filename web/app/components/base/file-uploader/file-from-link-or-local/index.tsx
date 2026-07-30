@@ -13,7 +13,7 @@ import { useStore } from '../store'
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
   showFromLocal?: boolean
-  trigger: (open: boolean) => React.ReactNode
+  trigger: (open: boolean) => React.ReactElement
   fileConfig: FileUpload
 }
 const FileFromLinkOrLocal = ({
@@ -49,7 +49,7 @@ const FileFromLinkOrLocal = ({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={trigger(open) as React.ReactElement} />
+      <PopoverTrigger render={trigger(open)} />
       <PopoverContent
         placement="top"
         sideOffset={4}

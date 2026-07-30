@@ -103,7 +103,7 @@ const InputsFormContent = ({ showTip }: Props) => {
             />
           )}
           {form.type === InputVarType.select && (
-            <Select
+            <Select<string>
               value={(inputsFormValue?.[form.variable] ?? form.default ?? '') || null}
               onValueChange={(value) => value && handleFormChange(form.variable, value)}
             >

@@ -196,7 +196,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
 
           return (
             <BlockSelectorPreviewCardContent>
-              <SnippetDetailCard snippet={payload as SnippetListItemData} />
+              <SnippetDetailCard snippet={payload} />
             </BlockSelectorPreviewCardContent>
           )
         }}

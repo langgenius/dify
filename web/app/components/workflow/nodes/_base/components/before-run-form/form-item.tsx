@@ -190,7 +190,7 @@ const FormItem: FC<Props> = ({
         )}
 
         {type === InputVarType.select && (
-          <Select
+          <Select<string>
             value={value || payload.default || null}
             onValueChange={(nextValue) => {
               if (!nextValue) return

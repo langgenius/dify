@@ -1686,11 +1686,6 @@
       "count": 5
     }
   },
-  "web/app/components/base/markdown-blocks/button.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/markdown-blocks/code-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 9
@@ -5753,11 +5748,6 @@
     }
   },
   "web/app/components/workflow/utils/workflow.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/variable-inspect/display-content.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
     }

@@ -220,8 +220,8 @@ export function SourceAppPicker({
             {(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && apps.length === 0 && (
               <SourceAppPickerSkeleton />
             )}
-            <ComboboxList className="max-h-none p-0">
-              {(app: App) => <SourceAppOption key={app.id} app={app} />}
+            <ComboboxList<App> className="max-h-none p-0">
+              {(app) => <SourceAppOption key={app.id} app={app} />}
             </ComboboxList>
             {!(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && (
               <ComboboxEmpty>{t(($) => $['createModal.appSearchEmpty'])}</ComboboxEmpty>

@@ -102,11 +102,7 @@ const TriggerPluginList = ({
         />
       ))}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <TriggerPluginActionPreviewCard
-            payload={payload as TriggerPluginActionPreviewPayload | undefined}
-          />
-        )}
+        {({ payload }) => <TriggerPluginActionPreviewCard payload={payload} />}
       </PreviewCard>
     </div>
   )

@@ -214,9 +214,7 @@ const StartBlocks = ({
         ))}
       </div>
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <StartBlockPreviewCard payload={payload as StartBlockPreviewPayload | undefined} t={t} />
-        )}
+        {({ payload }) => <StartBlockPreviewCard payload={payload} t={t} />}
       </PreviewCard>
     </div>
   )
