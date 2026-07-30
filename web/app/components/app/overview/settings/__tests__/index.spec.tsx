@@ -71,7 +71,6 @@ const buildModalContext = (): ModalContextState => ({
   setShowExternalKnowledgeAPIModal: vi.fn(),
   setShowOpeningModal: vi.fn(),
   setShowUpdatePluginModal: vi.fn(),
-  setShowTriggerEventsLimitModal: vi.fn(),
 })
 
 vi.mock('@/context/modal-context', () => ({

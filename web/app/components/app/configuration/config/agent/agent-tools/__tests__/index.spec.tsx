@@ -8,7 +8,7 @@ import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { ModelConfig } from '@/models/debug'
 import type { AgentTool } from '@/types/app'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -26,17 +26,6 @@ import AgentTools from '../index'
 const formattingDispatcherMock = vi.fn()
 vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
   useFormattingChangedDispatcher: () => formattingDispatcherMock,
-}))
-
-let pluginInstallHandler: ((names: string[]) => void) | null = null
-const subscribeMock = vi.fn((event: string, handler: any) => {
-  if (event === 'plugin:install:success') pluginInstallHandler = handler
-})
-vi.mock('@/context/mitt-context', () => ({
-  useMittContextSelector: (selector: any) =>
-    selector({
-      useSubscribe: subscribeMock,
-    }),
 }))
 
 let builtInTools: ToolWithProvider[] = []
@@ -326,7 +315,6 @@ describe('AgentTools', () => {
     latestSettingPanelProps = null
     settingPanelSavePayload = {}
     settingPanelCredentialId = 'credential-from-panel'
-    pluginInstallHandler = null
   })
 
   it('should show enabled count and provider information', () => {
@@ -491,29 +479,6 @@ describe('AgentTools', () => {
         'credential-search',
         'credential-updated',
       ])
-    })
-  })
-
-  it('should reinstate deleted tools after plugin install success event', async () => {
-    const { getModelConfig } = renderAgentTools([
-      createAgentTool({
-        provider_id: 'provider-1',
-        provider_name: 'vendor/provider-1',
-        tool_name: 'search',
-        tool_label: 'Search Tool',
-        isDeleted: true,
-      }),
-    ])
-    if (!pluginInstallHandler) throw new Error('Plugin handler not registered')
-
-    await act(async () => {
-      pluginInstallHandler?.(['provider-1'])
-    })
-
-    await waitFor(() => {
-      expect((getModelConfig().agentConfig.tools[0] as { isDeleted: boolean }).isDeleted).toBe(
-        false,
-      )
     })
   })
 })

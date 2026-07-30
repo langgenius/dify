@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
+import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -60,9 +61,13 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
   },
 })
 
-const renderProvider = (
-  children: React.ReactNode = <div data-testid="modal-context-test-child" />,
-) => {
+const ModalBlockingState = () => {
+  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
+
+  return <output>{hasBlockingModalOpen ? 'blocked' : 'clear'}</output>
+}
+
+const renderProvider = (children: React.ReactNode = <ModalBlockingState />) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
@@ -112,10 +117,12 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
     expect(screen.getAllByText('3000')).toHaveLength(2)
+    expect(screen.getByText('blocked')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
     await waitFor(() => {
       expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
     })
@@ -141,13 +148,20 @@ describe('ModalContextProvider trigger events limit modal', () => {
     const setItemSpy = vi.spyOn(localStorage, 'setItem')
     const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider()
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ModalContextProvider>
+        <ModalBlockingState />
+      </ModalContextProvider>,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
     expect(setItemSpy).not.toHaveBeenCalled()
   })
 
@@ -167,13 +181,20 @@ describe('ModalContextProvider trigger events limit modal', () => {
     })
     const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider()
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ModalContextProvider>
+        <ModalBlockingState />
+      </ModalContextProvider>,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
   })
 
   it('closes the trigger events limit modal and opens pricing when upgrading', async () => {
@@ -199,5 +220,6 @@ describe('ModalContextProvider trigger events limit modal', () => {
       expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument(),
     )
     expect(screen.queryByText('400')).not.toBeInTheDocument()
+    expect(screen.getByText('blocked')).toBeInTheDocument()
   })
 })

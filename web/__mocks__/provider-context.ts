@@ -10,7 +10,6 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshModelProviders: noop,
   isLoadingModelProviders: false,
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,

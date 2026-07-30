@@ -458,7 +458,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {

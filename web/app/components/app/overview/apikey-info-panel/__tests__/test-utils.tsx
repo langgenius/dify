@@ -42,7 +42,6 @@ const defaultProviderContext = {
   refreshModelProviders: noop,
   isLoadingModelProviders: false,
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: false,
   plan: defaultPlan,
   isFetchedPlan: false,

@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "スキルのアップロードに失敗しました。",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": ".zip または .skill ファイルをアップロードしてください。",
+  "agentDetail.configure.skills.upload.sizeLimit": "Skill パッケージのサイズは {{sizeLimit}} 以下にしてください。",
   "agentDetail.configure.skills.upload.success": "スキルをアップロードしました。",
   "agentDetail.configure.skills.upload.title": "スキルをアップロード",
   "agentDetail.configure.skills.upload.warning.files": "Markdown ファイルのみを使用する場合は、「ファイル」にアップロードし、プロンプト内で参照してください。",

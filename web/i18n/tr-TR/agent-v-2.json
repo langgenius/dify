@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Beceri yüklenemedi.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Bir .zip veya .skill dosyası yükleyin.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Beceri paketi en fazla {{sizeLimit}} boyutunda olmalıdır.",
   "agentDetail.configure.skills.upload.success": "Beceri yüklendi.",
   "agentDetail.configure.skills.upload.title": "Beceri yükle",
   "agentDetail.configure.skills.upload.warning.files": "Yalnızca Markdown dosyalarını kullanmanız gerekiyorsa bunları Dosyalar bölümüne yükleyin ve isteminizde referans verin.",
