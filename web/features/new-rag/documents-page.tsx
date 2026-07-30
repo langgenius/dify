@@ -39,6 +39,7 @@ import {
   documentDisplayStatus,
   newestTaskByDocument,
   sourceName,
+  taskCanRetry,
   taskIsActive,
   taskNeedsAttention,
   taskVersionIsAfter,
@@ -279,6 +280,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
+  const { mutateAsync: retryProcessingTask } = useMutation({
+    mutationFn: async (task: DocumentProcessingTask) => {
+      const updated = documentTaskFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
+          {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              task_id: task.id,
+              task_kind: task.taskKind ?? 'document',
+            },
+          },
+        ),
+      )
+      if (!updated) throw new Error('KnowledgeFS returned a non-document task')
+      return updated
+    },
+  })
   const {
     configureModelSetup,
     ensureModelSetupReady,
@@ -1622,6 +1640,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       setReindexing(true)
       try {
         if (!(await ensureModelSetupReady())) return
+        const document = documents.find((candidate) => candidate.id === documentId)
+        const retryableTask = document?.active ? undefined : taskByDocument.get(documentId)
+        if (retryableTask && taskCanRetry(retryableTask)) {
+          await retryProcessingTask(retryableTask)
+          toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
+          refreshDocumentsAndTasks()
+          return
+        }
         const result = await reindexDocuments({
           body: { documentIds: [documentId] },
           params: { control_space_id: knowledgeSpaceId },
@@ -1645,12 +1671,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [
       canWrite,
+      documents,
       ensureModelSetupReady,
       handleWritePermissionDenied,
       knowledgeSpaceId,
       refreshDocumentsAndTasks,
       reindexDocuments,
+      retryProcessingTask,
       t,
+      taskByDocument,
     ],
   )
 
