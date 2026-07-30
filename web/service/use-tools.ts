@@ -10,7 +10,9 @@ import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/w
 import type { AppIconType } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
+// oxlint-disable-next-line no-restricted-imports
 import { del, get, post, put } from './base'
+import { consoleClient, consoleQuery } from './client'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'
@@ -248,9 +250,13 @@ export const useUpdateMCPServer = () => {
 
 export const useRefreshMCPServerCode = () => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
+    mutationKey: consoleQuery.apps.byAppId.server.refresh.post.mutationKey(),
     mutationFn: (appID: string) => {
-      return get<MCPServerDetail>(`apps/${appID}/server/refresh`)
+      return consoleClient.apps.byAppId.server.refresh.post({
+        params: {
+          app_id: appID,
+        },
+      })
     },
   })
 }
