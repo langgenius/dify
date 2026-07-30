@@ -119,12 +119,8 @@ type Credential struct {
 	// If nil, the credential is only resolved via __secret:provider/name__ placeholders.
 	Inject *InjectPolicy `json:"inject,omitempty" yaml:"inject,omitempty"`
 	// EnvName overrides the environment variable name used to expose this
-	// credential's __secret:provider/name__ placeholder to system-tier jobs
-	// (see Service.systemCredentialPlaceholderEnv). If empty, a name is
-	// derived from Provider and Name (e.g. "github"/"token" -> "GITHUB_TOKEN").
-	// Only meaningful for system-tier credentials loaded via
-	// LoadCredentialManifest; ignored for session credentials set via
-	// PUT /v1/prepare.
+	// credential's __secret:provider/name__ placeholder to jobs. If empty,
+	// a name is derived from Provider and Name.
 	EnvName string `json:"env_name,omitempty" yaml:"env_name,omitempty"`
 }
 
@@ -162,23 +158,15 @@ func (c *Credential) Ref() string {
 }
 
 // PrepareRequest is the HTTP request body for PUT /v1/prepare.
-//
-// SandboxID scopes these credentials to one sandbox session: they are
-// persisted to a session-specific file and made visible only to egress
-// traffic from jobs run with the same sandbox_id (see RunJobRequest). They
-// never affect the system tier or any other session.
+// SandboxID scopes these credentials to one sandbox session.
 type PrepareRequest struct {
 	SandboxID   string       `json:"sandbox_id" yaml:"sandbox_id"`
 	Credentials []Credential `json:"credentials" yaml:"credentials"`
 }
 
-// LoadCredentialManifest reads a credential manifest file (same shape as
-// PrepareRequest: {"credentials": [...]}) and returns its credentials. It is
-// used to seed the resolver with system-level credentials at startup, before
-// any sandbox session credentials are registered.
-//
-// The format is chosen by the file extension: ".yaml"/".yml" is parsed as
-// YAML, everything else (including ".json") is parsed as JSON.
+// LoadCredentialManifest reads a credential manifest file and returns its
+// credentials. Format is chosen by file extension: .yaml/.yml as YAML,
+// everything else as JSON.
 func LoadCredentialManifest(path string) ([]Credential, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -199,13 +187,8 @@ func LoadCredentialManifest(path string) ([]Credential, error) {
 }
 
 // LoadCredentialManifestDir reads all credential manifest files from a
-// directory and returns the merged credentials. Files are sorted by name for
-// deterministic load order. Only files with ".yaml", ".yml", or ".json"
-// extensions are processed; all other files (including dotfiles, READMEs,
-// .gitignore, etc.) are silently skipped.
-//
-// Later files override earlier ones on provider/name conflicts (last-wins),
-// mirroring the session-shadows-system precedence used by the resolver.
+// directory and returns the merged credentials. Only .yaml/.yml/.json files
+// are processed. Later files override earlier ones on provider/name conflicts.
 func LoadCredentialManifestDir(dir string) ([]Credential, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

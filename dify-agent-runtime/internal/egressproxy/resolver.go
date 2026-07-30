@@ -2,12 +2,6 @@
 // the sandbox. It intercepts all outbound HTTP/HTTPS requests, resolves
 // __secret:provider/name__ placeholders, and proactively injects credentials
 // as HTTP headers based on domain-matching policies.
-//
-// Credentials come from two independent tiers: a system tier seeded once at
-// startup, and a per-sandbox-session tier set via the prepare API and scoped
-// strictly to the sandbox_id supplied with each request (see Resolver). In a
-// future iteration the proxy will also enforce SSRF/access policies and
-// rate-limiting.
 package egressproxy
 
 import (
@@ -26,8 +20,7 @@ import (
 var placeholderPattern = regexp.MustCompile(`__secret:([a-zA-Z0-9_]+/[a-zA-Z0-9_]+)__`)
 
 // CredentialInjectionPolicyType enumerates the supported proactive credential
-// injection strategies. New strategies (e.g. AWS SigV4 request signing) can
-// be added alongside SimpleHeader without changing the Resolver's public API.
+// injection strategies.
 type CredentialInjectionPolicyType string
 
 const (
@@ -146,7 +139,6 @@ func NewResolver() *Resolver {
 }
 
 // SetSystemCredentials replaces the entire system-tier credential set.
-// Intended to be called once at startup (e.g. from LoadCredentialManifest).
 func (r *Resolver) SetSystemCredentials(creds map[string]*StoredCredential) {
 	if creds == nil {
 		creds = make(map[string]*StoredCredential)
@@ -157,8 +149,7 @@ func (r *Resolver) SetSystemCredentials(creds map[string]*StoredCredential) {
 }
 
 // SetSessionCredentials replaces the credential set for one sandbox session,
-// identified by sandboxID. This only ever affects that session's own map;
-// it never mutates the system tier or any other session's credentials.
+// identified by sandboxID.
 func (r *Resolver) SetSessionCredentials(sandboxID string, creds map[string]*StoredCredential) {
 	if creds == nil {
 		creds = make(map[string]*StoredCredential)
@@ -168,8 +159,7 @@ func (r *Resolver) SetSessionCredentials(sandboxID string, creds map[string]*Sto
 	r.sessions[sandboxID] = creds
 }
 
-// ClearSession removes a sandbox session's credentials entirely (e.g. on
-// teardown). The system tier and other sessions are unaffected.
+// ClearSession removes a sandbox session's credentials.
 func (r *Resolver) ClearSession(sandboxID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -83,10 +83,7 @@ func (s *Service) initEgressProxy() error {
 	s.egressCAFiles = caFiles
 	log.Printf("egressproxy: CA generated in %s", caDir)
 
-	// Best-effort: also install the CA into the system trust store so tools
-	// that don't honor SSL_CERT_FILE/CURL_CA_BUNDLE/etc. (apt-get, wget, ...)
-	// trust it too. Non-fatal on failure since EgressProxyEnv's per-tool env
-	// vars remain a working fallback for most jobs.
+	// Best-effort: also install the CA into the system trust store.
 	if err := egressproxy.InstallSystemTrust(caFiles.CertPath); err != nil {
 		log.Printf("egressproxy: system trust install failed (falling back to per-tool env vars): %v", err)
 	} else {
@@ -96,13 +93,7 @@ func (s *Service) initEgressProxy() error {
 	resolver := egressproxy.NewResolver()
 	s.egressResolver = resolver
 
-	// Seed the resolver's system tier with startup-level credentials. Each
-	// sandbox session's own credentials are set later via PUT /v1/prepare
-	// (see PrepareCredentials) into a per-sandbox_id map that never touches
-	// this system tier or any other session's map (see egressproxy.Resolver).
-	//
-	// Directory mode (preferred): load all .yaml/.yml/.json files from a
-	// directory. Legacy single-file mode: load one manifest file.
+	// Seed the resolver's system tier with startup-level credentials.
 	switch {
 	case s.config.EgressProxySystemCredentialsDir != "":
 		creds, err := LoadCredentialManifestDir(s.config.EgressProxySystemCredentialsDir)
@@ -146,11 +137,7 @@ func (s *Service) initEgressProxy() error {
 }
 
 // PrepareCredentials registers creds as the complete credential set for one
-// sandbox session (sandboxID), scoped strictly to that session: it never
-// touches the system tier or any other session's credentials. The set is
-// persisted to a session-specific manifest file under the runtime's
-// credentials directory (see sessionCredentialsPath) so it survives outside
-// of any single in-memory map keyed by something other than sandboxID.
+// sandbox session (sandboxID) and persists them to disk.
 func (s *Service) PrepareCredentials(sandboxID string, creds []Credential) error {
 	if s.egressResolver == nil {
 		return NewServerError(409, "egressproxy_disabled", "Egress proxy is not enabled")
@@ -252,11 +239,8 @@ func buildInjectionPolicy(inject *InjectPolicy) *egressproxy.CredentialInjection
 	}
 }
 
-// EgressProxyEnv returns the env vars that should be injected into an agent
-// job when the egress proxy is active. sandboxID is embedded in the proxy
-// URL so the proxy can scope credential resolution to that job's sandbox
-// session (see egressproxy.Proxy.ProxyURLForSandbox). Returns nil if the
-// egress proxy is disabled.
+// EgressProxyEnv returns the env vars for routing jobs through the egress
+// proxy. Returns nil if the egress proxy is disabled.
 func (s *Service) EgressProxyEnv(sandboxID string) map[string]string {
 	if s.egressProxy == nil || s.egressCAFiles == nil {
 		return nil
@@ -279,19 +263,9 @@ func (s *Service) EgressProxyEnv(sandboxID string) map[string]string {
 }
 
 // systemCredentialPlaceholderEnv returns env var names mapped to
-// __secret:provider/name__ placeholders for every system-tier credential, so
-// job scripts can reference system credentials by name without ever seeing
-// their real values. Without this, a script author would have no way to
-// discover or use a system credential's __secret:provider/name__ ref, making
-// system-tier registration effectively inert for anything but proactive
-// header injection.
-//
-// The placeholder is only ever resolved by the egress proxy when it later
-// appears in an outbound HTTP request (header or URL) that traverses it (see
-// egressproxy.Resolver.ReplaceAllFor); referencing one of these env vars
-// outside of such a request has no effect. Session credentials (registered
-// via PUT /v1/prepare) are intentionally excluded: callers that register
-// those already know their own provider/name refs.
+// __secret:provider/name__ placeholders for every system-tier credential,
+// so job scripts can reference system credentials by name without seeing
+// their real values. Session credentials are excluded.
 func (s *Service) systemCredentialPlaceholderEnv() map[string]string {
 	if len(s.systemCredentials) == 0 {
 		return nil
@@ -312,11 +286,7 @@ func (s *Service) systemCredentialPlaceholderEnv() map[string]string {
 
 // sessionCredentialPlaceholderEnv returns env var names mapped to
 // __secret:provider/name__ placeholders for every credential registered to
-// sandboxID's session (via PUT /v1/prepare), so a job run with that
-// sandbox_id can reference its own credentials by name without repeating
-// them in RunJobRequest.Env. Same placeholder-resolution caveat as
-// systemCredentialPlaceholderEnv applies. Returns nil for an unknown or
-// empty sandboxID.
+// sandboxID's session. Returns nil for an unknown or empty sandboxID.
 func (s *Service) sessionCredentialPlaceholderEnv(sandboxID string) map[string]string {
 	if sandboxID == "" {
 		return nil
@@ -494,8 +464,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		return nil, err
 	}
 
-	// Merge egress proxy env vars into the job environment so agent processes
-	// route through the MITM proxy and trust its CA cert.
+	// Merge egress proxy env vars into the job environment.
 	env := req.Env
 	if proxyEnv := s.EgressProxyEnv(req.SandboxID); proxyEnv != nil {
 		if env == nil {
@@ -508,11 +477,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		}
 	}
 
-	// Expose this job's sandbox session credentials (registered via PUT
-	// /v1/prepare) as __secret:provider/name__ placeholder env vars first, so
-	// they take priority over same-named system placeholders below (mirroring
-	// the resolver's own session-shadows-system precedence); see
-	// sessionCredentialPlaceholderEnv.
+	// Session credentials take priority over same-named system placeholders.
 	if placeholderEnv := s.sessionCredentialPlaceholderEnv(req.SandboxID); placeholderEnv != nil {
 		if env == nil {
 			env = make(map[string]string)
@@ -524,9 +489,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		}
 	}
 
-	// Expose system-tier credentials to the job as __secret:provider/name__
-	// placeholder env vars so scripts can reference them by name; see
-	// systemCredentialPlaceholderEnv.
+	// System-tier credential placeholders.
 	if placeholderEnv := s.systemCredentialPlaceholderEnv(); placeholderEnv != nil {
 		if env == nil {
 			env = make(map[string]string)

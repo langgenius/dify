@@ -22,7 +22,6 @@ type CAFiles struct {
 
 // GenerateCA creates a self-signed CA certificate and private key in dir.
 // The CA is used by the MITM proxy to generate per-host TLS certificates.
-// Files are created with restricted permissions (0600 for key, 0644 for cert).
 func GenerateCA(dir string) (*CAFiles, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, fmt.Errorf("egressproxy: mkdir %s: %w", dir, err)
@@ -61,15 +60,11 @@ func GenerateCA(dir string) (*CAFiles, error) {
 	certPath := filepath.Join(dir, "ca.crt")
 	keyPath := filepath.Join(dir, "ca.key")
 
-	// Write certificate (world-readable so agent processes can trust it).
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 	if err := os.WriteFile(certPath, certPEM, 0644); err != nil {
 		return nil, fmt.Errorf("egressproxy: write CA cert: %w", err)
 	}
 
-	// Write private key as RSA PKCS#1 (restricted).
-	// tls.X509KeyPair (used by goproxy) supports both RSA and EC keys, but we
-	// stick to RSA here for compatibility with existing deployments.
 	keyPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
@@ -82,22 +77,12 @@ func GenerateCA(dir string) (*CAFiles, error) {
 }
 
 // systemTrustAnchorPath is where the CA cert is copied for
-// update-ca-certificates to pick up. Debian/Ubuntu-based images (see
-// docker/Dockerfile) scan this directory for additional trust anchors.
+// update-ca-certificates to pick up.
 const systemTrustAnchorPath = "/usr/local/share/ca-certificates/dify-agent-egress-proxy-ca.crt"
 
-// InstallSystemTrust copies the CA certificate at certPath into the system
-// trust anchors directory and runs update-ca-certificates, so tools that
-// don't honor SSL_CERT_FILE/CURL_CA_BUNDLE/etc. (apt-get, wget, ...) also
-// trust it. This requires write access to systemTrustAnchorPath's directory
-// and /etc/ssl/certs, which docker/Dockerfile grants to the non-root `dify`
-// user at build time; update-ca-certificates itself performs no privileged
-// syscalls, only filesystem writes.
-//
-// Failures here are non-fatal: callers should log and continue, since the
-// per-tool env vars set by Service.EgressProxyEnv remain a working fallback
-// for most jobs even if system-wide trust installation fails (e.g. on
-// images that haven't granted the necessary permissions).
+// InstallSystemTrust copies the CA certificate into the system trust anchors
+// and runs update-ca-certificates. Failures are non-fatal; callers should log
+// and continue.
 func InstallSystemTrust(certPath string) error {
 	certPEM, err := os.ReadFile(certPath)
 	if err != nil {

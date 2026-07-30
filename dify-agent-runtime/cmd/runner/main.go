@@ -173,11 +173,8 @@ func childMode() {
 		jobDir := filepath.Dir(scriptPath)
 		cfg := landlock.ConfigFromEnv(home, cwd, jobDir)
 
-		// The egress proxy's CA cert (set via SSL_CERT_FILE / CURL_CA_BUNDLE
-		// etc. by Service.EgressProxyEnv) lives under the server's home
-		// directory (e.g. /home/dify/.local/share/shellctl/runtime/egressproxy-ca),
-		// not the per-binding HOME that Landlock grants RW access to. Add its
-		// parent directory as a read-only path so curl, pip, etc. can read it.
+		// Grant read access to the egress proxy CA cert directory, which
+		// lives outside the per-binding HOME that Landlock grants.
 		if caCert := os.Getenv("SSL_CERT_FILE"); caCert != "" {
 			cfg.ROPaths = append(cfg.ROPaths, filepath.Dir(caCert))
 		}

@@ -14,13 +14,7 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
-// proxyAuthorizationHeader is the standard forward-proxy header a client
-// sends to authenticate itself to this proxy. It is repurposed here to carry
-// the sandbox_id identifying which job/session a request belongs to: the
-// job's HTTP_PROXY/HTTPS_PROXY env var embeds sandbox_id as Basic-Auth
-// userinfo (see Service.EgressProxyEnv), and net/http's Transport
-// automatically sends it as "Proxy-Authorization: Basic base64(sandbox_id:)"
-// on both CONNECT and plain-HTTP proxied requests.
+// proxyAuthorizationHeader carries the sandbox_id as Basic-Auth userinfo.
 const proxyAuthorizationHeader = "Proxy-Authorization"
 
 // sandboxIDFromProxyAuth extracts the sandbox_id embedded as the username of
@@ -73,18 +67,6 @@ type Config struct {
 }
 
 // NewProxy creates a new credential proxy but does not start it.
-//
-// It is built on github.com/elazarl/goproxy rather than mitmproxy-go: the
-// latter always pre-resolves the destination hostname itself (in this
-// process's own network namespace) before dialing the upstream proxy with a
-// bare IP. In this container's network topology, that IP is frequently
-// unreachable from the upstream proxy's own network attachments, and for
-// hosts outside this process's network entirely (no shared network with
-// local_sandbox) resolution fails outright. goproxy's upstream chaining
-// (Tr.Proxy / NewConnectDialToProxy) instead forwards the literal, unresolved
-// hostname to the upstream proxy (matching the standard CONNECT/forward-proxy
-// semantics of net/http.Transport), letting the upstream proxy resolve it
-// using its own network view.
 func NewProxy(cfg *Config) (*Proxy, error) {
 	if cfg.Resolver == nil {
 		return nil, fmt.Errorf("egressproxy: resolver is required")
@@ -124,16 +106,9 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 		if err != nil {
 			return nil, fmt.Errorf("egressproxy: parse upstream proxy url: %w", err)
 		}
-		// Route both plain-HTTP forwarding and the post-MITM decrypted
-		// request round-trip through the upstream proxy.
 		px.Tr.Proxy = http.ProxyURL(upstreamURL)
-		// Route raw CONNECT tunneling (non-MITM'd, e.g. the initial CONNECT
-		// dial performed by goproxy itself) through the upstream proxy too,
-		// using the literal, unresolved hostname.
 		px.ConnectDial = px.NewConnectDialToProxy(cfg.UpstreamProxy)
 	} else {
-		// Prevent reading HTTP(S)_PROXY from the environment to avoid proxy
-		// loops (this process's own env sets HTTP_PROXY to itself).
 		px.Tr.Proxy = nil
 		px.ConnectDial = nil
 	}
@@ -143,11 +118,6 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 		TLSConfig: goproxy.TLSConfigFromCA(&caCert),
 	}
 	px.OnRequest().HandleConnectFunc(func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		// Extract sandbox_id from the CONNECT request's Proxy-Authorization
-		// header (see Service.EgressProxyEnv) and stash it in ctx.UserData.
-		// goproxy propagates UserData from this outer CONNECT ctx to the
-		// per-request ctx used for each MITM'd, decrypted request in the
-		// tunnel, so makeInterceptor can read it back below.
 		ctx.UserData = sandboxIDFromProxyAuth(ctx.Req.Header)
 		return mitmAction, host
 	})
@@ -162,15 +132,10 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 	}, nil
 }
 
-// makeInterceptor returns a request handler that:
-// 1. Proactively injects credential headers based on domain-matching policies.
-// 2. Scans request headers and URL for __secret:provider/name__ placeholders and resolves them.
-//
-// Both phases are scoped to the sandbox_id identified for this request: for
-// MITM'd HTTPS traffic it comes from ctx.UserData (set during the CONNECT
-// phase); for plain-HTTP traffic (no CONNECT involved) it is read directly
-// off the request's own Proxy-Authorization header. That header is always
-// stripped before forwarding so it never reaches the upstream origin server.
+// makeInterceptor returns a request handler that injects credential headers
+// and resolves __secret:provider/name__ placeholders, scoped to the sandbox_id
+// identified for the request. The Proxy-Authorization header is stripped before
+// forwarding.
 func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	return func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 		sandboxID, _ := ctx.UserData.(string)
@@ -186,10 +151,8 @@ func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.Pr
 			return req, nil
 		}
 
-		// Phase 1: Proactive header injection based on domain policies.
 		resolver.InjectHeadersFor(sandboxID, req)
 
-		// Phase 2: Placeholder replacement in existing headers.
 		for key, values := range req.Header {
 			for i, v := range values {
 				replaced := resolver.ReplaceAllFor(sandboxID, v)
@@ -199,7 +162,6 @@ func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.Pr
 			}
 		}
 
-		// Phase 3: Placeholder replacement in URL query parameters.
 		if req.URL.RawQuery != "" {
 			replaced := resolver.ReplaceAllFor(sandboxID, req.URL.RawQuery)
 			if replaced != req.URL.RawQuery {
@@ -211,10 +173,7 @@ func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.Pr
 	}
 }
 
-// makeResponseLogger returns a response handler that logs the outcome of
-// each forwarded request. When the round-trip itself fails (e.g. dial or DNS
-// errors upstream), no response reaches this handler; goproxy logs those
-// failures itself via ctx.Warnf/px.Logger.
+// makeResponseLogger logs the status of each forwarded response.
 func makeResponseLogger() func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 	return func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 		if resp == nil || ctx.Req == nil {
@@ -260,20 +219,13 @@ func (p *Proxy) Addr() string {
 	return p.addr
 }
 
-// ProxyURL returns the full proxy URL for use in HTTP_PROXY/HTTPS_PROXY. It
-// carries no sandbox_id, so requests made with it only ever see system-tier
-// credentials (see Resolver).
+// ProxyURL returns the proxy URL without sandbox_id.
 func (p *Proxy) ProxyURL() string {
 	return "http://" + p.addr
 }
 
 // ProxyURLForSandbox returns the proxy URL with sandboxID embedded as
-// Basic-Auth userinfo (no password), for use in a job's HTTP_PROXY/
-// HTTPS_PROXY env vars. net/http's Transport automatically sends this as a
-// "Proxy-Authorization: Basic ..." header on outbound requests, which this
-// proxy decodes (see sandboxIDFromProxyAuth) to scope credential resolution
-// to that sandbox session. If sandboxID is empty, this is equivalent to
-// ProxyURL.
+// Basic-Auth userinfo. If sandboxID is empty, equivalent to ProxyURL.
 func (p *Proxy) ProxyURLForSandbox(sandboxID string) string {
 	if sandboxID == "" {
 		return p.ProxyURL()

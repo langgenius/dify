@@ -56,12 +56,7 @@ const (
 	EnvEgressProxyUpstream = "SHELLCTL_EGRESSPROXY_UPSTREAM"
 
 	// EnvEgressProxySystemCredentialsDir points to a directory of credential
-	// manifest files (YAML or JSON, same shape as the PUT /v1/prepare body:
-	// {"credentials": [...]}) that get registered with the resolver at startup,
-	// before any agent-backend-supplied credentials. All .yaml/.yml/.json files
-	// in the directory are loaded and merged. Credentials supplied later by
-	// agent-backend (via /v1/prepare or /v1/jobs/run) override system entries
-	// that share the same "provider/name" ref.
+	// manifest files loaded at startup. All .yaml/.yml/.json files are merged.
 	EnvEgressProxySystemCredentialsDir = "SHELLCTL_EGRESSPROXY_SYSTEM_CREDENTIALS_DIR"
 
 	// EnvEgressProxySystemCredentialsFile is a legacy alias that points to a
