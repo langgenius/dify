@@ -104,6 +104,16 @@ class CollectionPointStats:
         )
 
 
+@dataclass(frozen=True)
+class TidbStorageUsage:
+    row_based_bytes: int
+    columnar_bytes: int
+
+    @property
+    def total_bytes(self) -> int:
+        return self.row_based_bytes + self.columnar_bytes
+
+
 def _parse_overheads(value: str) -> list[int]:
     overheads = []
     for item in value.split(","):
@@ -120,7 +130,7 @@ def _normalize_model_name(model_name: str) -> str:
     return model_name.strip().split("/")[-1]
 
 
-def _tidb_storage_usage_bytes(binding: TidbAuthBinding, timeout: float) -> int:
+def _tidb_storage_usage(binding: TidbAuthBinding, timeout: float) -> TidbStorageUsage:
     endpoint = _binding_qdrant_endpoint(binding, timeout)
     if not endpoint:
         raise ValueError("qdrant_endpoint is empty")
@@ -134,7 +144,7 @@ def _tidb_storage_usage_bytes(binding: TidbAuthBinding, timeout: float) -> int:
     storage = data.get("usage", {}).get("storage", {})
     row_based = int(storage.get("row_based") or 0)
     columnar = int(storage.get("columnar") or 0)
-    return row_based + columnar
+    return TidbStorageUsage(row_based_bytes=row_based, columnar_bytes=columnar)
 
 
 def _extract_qdrant_endpoint(cluster_response: dict[str, Any]) -> str | None:
@@ -490,6 +500,11 @@ def _mb(value: int | float | Decimal) -> float:
     return round(float(value) / 1024 / 1024, 4)
 
 
+def _estimated_storage_bytes(point_count: int, dimension: int, overhead_bytes: int) -> int:
+    # Calibration candidate: two float32 vector copies plus per-point overhead.
+    return point_count * (dimension * 4 * 2 + overhead_bytes)
+
+
 def _log(message: str, quiet: bool) -> None:
     if not quiet:
         click.echo(message, err=True)
@@ -510,9 +525,9 @@ def _log(message: str, quiet: bool) -> None:
 @click.option("--default-dim", default=3072, show_default=True, help="Fallback embedding dimension.")
 @click.option(
     "--overheads",
-    default="3584,5120,8192",
+    default="3584,4096,4608",
     show_default=True,
-    help="Comma-separated per-point overhead bytes to compare.",
+    help="Comma-separated per-point overhead bytes for estimates using two copies of each float32 vector.",
 )
 @click.option("--fetch-qdrant-dim/--no-fetch-qdrant-dim", default=True, show_default=True)
 @click.option("--include-annotations/--exclude-annotations", default=True, show_default=True)
@@ -534,6 +549,13 @@ def _log(message: str, quiet: bool) -> None:
     show_default=True,
     help="Start candidate scan from a random active TiDB binding offset.",
 )
+@click.option(
+    "--min-estimated-mb",
+    default=0.0,
+    show_default=True,
+    type=click.FloatRange(min=0),
+    help="Skip the TiDB usage request when the first local estimate is below this MiB threshold.",
+)
 @click.option("--timeout", default=10.0, show_default=True, help="HTTP timeout for TiDB/Qdrant calls.")
 @click.option("--output", type=click.Path(dir_okay=False, path_type=Path), help="CSV output path. Defaults to stdout.")
 @click.option("--quiet", is_flag=True, help="Suppress progress logs. CSV output is unaffected.")
@@ -548,6 +570,7 @@ def sample_vector_space_usage(
     candidate_page_size: int,
     max_candidates: int,
     random_offset: bool,
+    min_estimated_mb: float,
     timeout: float,
     output: Path | None,
     quiet: bool,
@@ -577,7 +600,11 @@ def sample_vector_space_usage(
     fieldnames = [
         "tenant_id",
         "cluster_id",
+        "tidb_actual_bytes",
         "tidb_actual_mb",
+        "tidb_row_based_bytes",
+        "tidb_columnar_bytes",
+        "raw_vector_bytes",
         "total_points",
         "segment_points",
         "child_chunk_points",
@@ -592,9 +619,9 @@ def sample_vector_space_usage(
     for overhead in overhead_values:
         fieldnames.extend(
             [
-                f"estimated_mb_o{overhead}",
-                f"diff_mb_o{overhead}",
-                f"ratio_o{overhead}",
+                f"estimated_mb_x2_o{overhead}",
+                f"diff_mb_x2_o{overhead}",
+                f"ratio_x2_o{overhead}",
             ]
         )
 
@@ -608,22 +635,6 @@ def sample_vector_space_usage(
             tenant = binding.tenant_id
             errors = []
             dim_cache: dict[str, int | None] = {}
-            _log(f"[{index}/{len(bindings)}] tenant={tenant} cluster={binding.cluster_id}: fetching TiDB usage", quiet)
-
-            try:
-                actual_bytes = _tidb_storage_usage_bytes(binding, timeout)
-                _log(
-                    f"[{index}/{len(bindings)}] tenant={tenant}: TiDB actual={_mb(actual_bytes)} MB",
-                    quiet,
-                )
-            except Exception as exc:
-                actual_bytes = 0
-                errors.append(f"tidb_usage:{exc.__class__.__name__}:{exc}")
-                _log(
-                    f"[{index}/{len(bindings)}] tenant={tenant}: failed to fetch TiDB usage: "
-                    f"{exc.__class__.__name__}: {exc}",
-                    quiet,
-                )
 
             _log(f"[{index}/{len(bindings)}] tenant={tenant}: counting local vector points", quiet)
             collection_stats = _dataset_stats_for_tenant(tenant)
@@ -638,6 +649,7 @@ def sample_vector_space_usage(
             annotation_points = 0
             dim_sources: dict[str, int] = {}
             dims: dict[str, int] = {}
+            raw_vector_bytes = 0
             estimated_by_overhead = dict.fromkeys(overhead_values, 0)
 
             for stat in collection_stats:
@@ -651,6 +663,7 @@ def sample_vector_space_usage(
                 )
                 dim_sources[dim_source] = dim_sources.get(dim_source, 0) + 1
                 dims[str(dim)] = dims.get(str(dim), 0) + stat.total_points
+                raw_vector_bytes += stat.total_points * dim * 4
 
                 total_points += stat.total_points
                 segment_points += stat.segment_points
@@ -660,7 +673,7 @@ def sample_vector_space_usage(
                 annotation_points += stat.annotation_points
 
                 for overhead in overhead_values:
-                    estimated_by_overhead[overhead] += stat.total_points * (dim * 4 + overhead)
+                    estimated_by_overhead[overhead] += _estimated_storage_bytes(stat.total_points, dim, overhead)
 
             _log(
                 f"[{index}/{len(bindings)}] tenant={tenant}: points={total_points}, "
@@ -668,10 +681,42 @@ def sample_vector_space_usage(
                 quiet,
             )
 
+            screening_overhead = overhead_values[0]
+            screening_estimated_bytes = estimated_by_overhead[screening_overhead]
+            if screening_estimated_bytes < min_estimated_mb * 1024 * 1024:
+                _log(
+                    f"[{index}/{len(bindings)}] tenant={tenant}: skipping TiDB usage; "
+                    f"estimate={_mb(screening_estimated_bytes)} MiB is below {min_estimated_mb} MiB",
+                    quiet,
+                )
+                continue
+
+            _log(f"[{index}/{len(bindings)}] tenant={tenant} cluster={binding.cluster_id}: fetching TiDB usage", quiet)
+            try:
+                storage_usage = _tidb_storage_usage(binding, timeout)
+                actual_bytes = storage_usage.total_bytes
+                _log(
+                    f"[{index}/{len(bindings)}] tenant={tenant}: TiDB actual={_mb(actual_bytes)} MiB",
+                    quiet,
+                )
+            except Exception as exc:
+                storage_usage = None
+                actual_bytes = None
+                errors.append(f"tidb_usage:{exc.__class__.__name__}:{exc}")
+                _log(
+                    f"[{index}/{len(bindings)}] tenant={tenant}: failed to fetch TiDB usage: "
+                    f"{exc.__class__.__name__}: {exc}",
+                    quiet,
+                )
+
             row: dict[str, Any] = {
                 "tenant_id": tenant,
                 "cluster_id": binding.cluster_id,
-                "tidb_actual_mb": _mb(actual_bytes),
+                "tidb_actual_bytes": actual_bytes if actual_bytes is not None else "",
+                "tidb_actual_mb": _mb(actual_bytes) if actual_bytes is not None else "",
+                "tidb_row_based_bytes": storage_usage.row_based_bytes if storage_usage else "",
+                "tidb_columnar_bytes": storage_usage.columnar_bytes if storage_usage else "",
+                "raw_vector_bytes": raw_vector_bytes,
                 "total_points": total_points,
                 "segment_points": segment_points,
                 "child_chunk_points": child_chunk_points,
@@ -685,11 +730,15 @@ def sample_vector_space_usage(
             }
 
             for overhead, estimated_bytes in estimated_by_overhead.items():
-                diff_bytes = estimated_bytes - actual_bytes
-                ratio = round(estimated_bytes / actual_bytes, 6) if actual_bytes > 0 else ""
-                row[f"estimated_mb_o{overhead}"] = _mb(estimated_bytes)
-                row[f"diff_mb_o{overhead}"] = _mb(diff_bytes)
-                row[f"ratio_o{overhead}"] = ratio
+                row[f"estimated_mb_x2_o{overhead}"] = _mb(estimated_bytes)
+                if actual_bytes is None:
+                    row[f"diff_mb_x2_o{overhead}"] = ""
+                    row[f"ratio_x2_o{overhead}"] = ""
+                else:
+                    row[f"diff_mb_x2_o{overhead}"] = _mb(estimated_bytes - actual_bytes)
+                    row[f"ratio_x2_o{overhead}"] = (
+                        round(estimated_bytes / actual_bytes, 6) if actual_bytes > 0 else ""
+                    )
 
             writer.writerow(row)
             _log(f"[{index}/{len(bindings)}] tenant={tenant}: row written", quiet)
