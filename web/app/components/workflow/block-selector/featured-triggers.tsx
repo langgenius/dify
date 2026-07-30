@@ -58,13 +58,11 @@ const FeaturedTriggers = ({
 }: FeaturedTriggersProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
-    [],
+  const [previewCardHandle] = useState(() =>
+    createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
   )
-  const triggerActionPreviewCardHandle = useMemo(
-    () => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
-    [],
+  const [triggerActionPreviewCardHandle] = useState(() =>
+    createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
   )
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
