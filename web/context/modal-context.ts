@@ -1,7 +1,6 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type {
@@ -60,9 +59,6 @@ export type ModalContextState = {
     > | null>
   >
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
-  setShowTriggerEventsLimitModal: Dispatch<
-    SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>
-  >
 }
 
 export const ModalContext = createContext<ModalContextState>({
@@ -75,7 +71,6 @@ export const ModalContext = createContext<ModalContextState>({
   setShowExternalKnowledgeAPIModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
-  setShowTriggerEventsLimitModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
