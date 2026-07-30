@@ -98,6 +98,17 @@ const uploadExclusionReasonKey = {
 } as const
 
 async function findBackgroundTask(knowledgeSpaceId: string, taskId: string, signal?: AbortSignal) {
+  return (await findBackgroundTasks(knowledgeSpaceId, new Set([taskId]), signal)).get(taskId)
+}
+
+async function findBackgroundTasks(
+  knowledgeSpaceId: string,
+  taskIds: ReadonlySet<string>,
+  signal?: AbortSignal,
+) {
+  const remainingTaskIds = new Set(taskIds)
+  const tasks = new Map<string, DocumentProcessingTask>()
+  if (!remainingTaskIds.size) return tasks
   let cursor: string | undefined
   for (let page = 0; page < MAX_AUTO_CURSOR_PAGES; page += 1) {
     const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get(
@@ -107,12 +118,18 @@ async function findBackgroundTask(knowledgeSpaceId: string, taskId: string, sign
       },
       { signal },
     )
-    const task = response.data.find((candidate) => candidate.id === taskId)
-    if (task) return documentTaskFromApi(task)
+    for (const candidate of response.data) {
+      if (!remainingTaskIds.has(candidate.id)) continue
+      const task = documentTaskFromApi(candidate)
+      if (!task) continue
+      tasks.set(task.id, task)
+      remainingTaskIds.delete(task.id)
+    }
+    if (!remainingTaskIds.size) return tasks
     cursor = response.next_cursor ?? undefined
-    if (!cursor) return undefined
+    if (!cursor) return tasks
   }
-  return undefined
+  return tasks
 }
 
 type UploadExclusionReasonKey =
@@ -310,12 +327,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }),
         getNextPageParam: (lastPage) => lastPage.next_cursor,
         initialPageParam: null as string | null,
-        refetchInterval: (query) =>
-          query.state.data?.pages.some((page) =>
-            page.data.some((task) => task.state === 'queued' || task.state === 'running'),
-          )
-            ? BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL
-            : false,
       }),
     [documentPermissionDenied, knowledgeSpaceId],
   )
@@ -1804,7 +1815,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [activeTasks])
 
   useEffect(() => {
-    if (permissionDenied || !orderedFailedTasksRef.current.length) return
+    if (permissionDenied || !tasksOpen || !orderedFailedTasksRef.current.length) return
     let canceled = false
     let timeout: number | undefined
     const cancelRequests = new Set<() => void>()
@@ -1823,68 +1834,73 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           (_, index) => pollableTasks[(offset + index) % pollableTasks.length]!,
         )
         failedTaskPollOffsetRef.current += MAX_TASK_EVENT_STREAMS
-        await Promise.allSettled(
-          tasksToPoll.map(async (task) => {
-            const requestGeneration = (failedTaskPollGenerationsRef.current.get(task.id) ?? 0) + 1
-            failedTaskPollGenerationsRef.current.set(task.id, requestGeneration)
-            const requestController = new AbortController()
-            let requestTimeout: number | undefined
-            let rejectDeadline: ((reason?: unknown) => void) | undefined
-            const cancelRequest = () => {
+        const requestGenerations = new Map<string, number>()
+        for (const task of tasksToPoll) {
+          const requestGeneration = (failedTaskPollGenerationsRef.current.get(task.id) ?? 0) + 1
+          failedTaskPollGenerationsRef.current.set(task.id, requestGeneration)
+          requestGenerations.set(task.id, requestGeneration)
+        }
+        const requestController = new AbortController()
+        let requestTimeout: number | undefined
+        let rejectDeadline: ((reason?: unknown) => void) | undefined
+        const cancelRequest = () => {
+          requestController.abort()
+          rejectDeadline?.(new DOMException('Task snapshot request aborted', 'AbortError'))
+        }
+        try {
+          const request = findBackgroundTasks(
+            knowledgeSpaceId,
+            new Set(tasksToPoll.map((task) => task.id)),
+            requestController.signal,
+          )
+          const deadline = new Promise<never>((_resolve, reject) => {
+            rejectDeadline = reject
+            requestTimeout = window.setTimeout(() => {
               requestController.abort()
-              rejectDeadline?.(new DOMException('Task snapshot request aborted', 'AbortError'))
-            }
-            try {
-              const request = findBackgroundTask(
-                knowledgeSpaceId,
-                task.id,
-                requestController.signal,
-              )
-              const deadline = new Promise<never>((_resolve, reject) => {
-                rejectDeadline = reject
-                requestTimeout = window.setTimeout(() => {
-                  requestController.abort()
-                  reject(new DOMException('Task snapshot request timed out', 'TimeoutError'))
-                }, FAILED_TASK_POLL_REQUEST_TIMEOUT)
+              reject(new DOMException('Task snapshot request timed out', 'TimeoutError'))
+            }, FAILED_TASK_POLL_REQUEST_TIMEOUT)
+          })
+          cancelRequests.add(cancelRequest)
+          const snapshots = await Promise.race([request, deadline])
+          for (const task of tasksToPoll) {
+            const snapshot = snapshots.get(task.id)
+            if (
+              !snapshot ||
+              canceled ||
+              failedTaskPollGenerationsRef.current.get(task.id) !== requestGenerations.get(task.id)
+            )
+              continue
+            const currentVersion = currentTaskVersionRef.current.get(task.id)
+            if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt)) continue
+            handleTaskUpdated(snapshot)
+          }
+        } catch (error) {
+          for (const task of tasksToPoll) {
+            if (
+              canceled ||
+              failedTaskPollGenerationsRef.current.get(task.id) !== requestGenerations.get(task.id)
+            )
+              continue
+            if (responseStatus(error) === 403) {
+              const currentTaskVersion = currentTaskVersionRef.current.get(task.id)
+              const deniedVersion =
+                currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
+                  ? currentTaskVersion
+                  : task.updatedAt
+              failedPollAuxiliaryDenialsRef.current.set(task.id, {
+                taskListGeneration: taskListGenerationRef.current,
+                taskVersion: deniedVersion,
               })
-              cancelRequests.add(cancelRequest)
-              const snapshot = await Promise.race([request, deadline])
-              if (!snapshot) return
-              if (
-                canceled ||
-                failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
-              )
-                return
-              const currentVersion = currentTaskVersionRef.current.get(task.id)
-              if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt)) return
-              handleTaskUpdated(snapshot)
-            } catch (error) {
-              if (
-                canceled ||
-                failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
-              )
-                return
-              if (responseStatus(error) === 403) {
-                const currentTaskVersion = currentTaskVersionRef.current.get(task.id)
-                const deniedVersion =
-                  currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
-                    ? currentTaskVersion
-                    : task.updatedAt
-                failedPollAuxiliaryDenialsRef.current.set(task.id, {
-                  taskListGeneration: taskListGenerationRef.current,
-                  taskVersion: deniedVersion,
-                })
-                denyAuxiliaryTaskRead(task.id, deniedVersion)
-                return
-              }
-              if (!taskSnapshotErrorIsTransient(error))
-                blockedFailedTaskPollVersionsRef.current.set(task.id, task.updatedAt)
-            } finally {
-              if (requestTimeout !== undefined) window.clearTimeout(requestTimeout)
-              cancelRequests.delete(cancelRequest)
+              denyAuxiliaryTaskRead(task.id, deniedVersion)
+              continue
             }
-          }),
-        )
+            if (!taskSnapshotErrorIsTransient(error))
+              blockedFailedTaskPollVersionsRef.current.set(task.id, task.updatedAt)
+          }
+        } finally {
+          if (requestTimeout !== undefined) window.clearTimeout(requestTimeout)
+          cancelRequests.delete(cancelRequest)
+        }
       }
       if (!canceled) timeout = window.setTimeout(() => void pollNextBatch(), 5000)
     }
@@ -1902,6 +1918,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     handleTaskUpdated,
     knowledgeSpaceId,
     permissionDenied,
+    tasksOpen,
   ])
 
   const toggleDocument = useCallback(

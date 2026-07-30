@@ -389,8 +389,9 @@ vi.mock('@/service/client', () => ({
                   : input,
                 options,
               )
+              const snapshots = Array.isArray(snapshot) ? snapshot : snapshot ? [snapshot] : []
               return {
-                data: snapshot ? [taskApiResponse(snapshot)] : [],
+                data: snapshots.map(taskApiResponse),
                 next_cursor: null,
               }
             },
@@ -549,6 +550,14 @@ const source = (overrides: Partial<Source> = {}): Source => ({
   uri: 'notion://support',
   ...overrides,
 })
+
+function openTasksDrawer() {
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: /dataset\.newKnowledge\.tasksWithAttention/,
+    }),
+  )
+}
 
 describe('DocumentsPage', () => {
   beforeEach(() => {
@@ -4371,7 +4380,7 @@ describe('DocumentsPage', () => {
     expect(action).toHaveFocus()
   })
 
-  it('rotates a bounded task event stream pool without polling every cursor page', async () => {
+  it('rotates a bounded task event stream pool without a duplicate list poller', async () => {
     vi.useFakeTimers()
     streamProcessingTaskEvents.mockImplementation(async function* () {
       await new Promise<void>(() => {})
@@ -4397,20 +4406,7 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(12)
       const taskOptions = tasksInfiniteOptions.mock.lastCall?.[0]
-      expect(
-        taskOptions?.refetchInterval?.({
-          state: {
-            data: {
-              pages: [
-                {
-                  data: [taskApiResponse(task({ id: 'active-0' }))],
-                  next_cursor: null,
-                },
-              ],
-            },
-          },
-        }),
-      ).toBe(5000)
+      expect(taskOptions?.refetchInterval).toBeUndefined()
       expect(
         screen.getByRole('button', {
           name: 'dataset.newKnowledge.tasksWithAttention:{"count":20}',
@@ -5066,6 +5062,23 @@ describe('DocumentsPage', () => {
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
+  it('does not poll terminal tasks while the background-task drawer is closed', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'closed-drawer-failure', state: 'failed' })] }],
+    }
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(60000))
+      expect(getTaskSnapshot).not.toHaveBeenCalled()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('polls failed tasks through a bounded exact-snapshot pool for external retries', async () => {
     vi.useFakeTimers()
     documentsQuery.data = { pages: [{ items: [document()] }] }
@@ -5083,6 +5096,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       await act(async () => {})
@@ -5226,6 +5240,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       tasksQuery.data = {
@@ -5262,6 +5277,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
 
@@ -5285,7 +5301,7 @@ describe('DocumentsPage', () => {
     }
   })
 
-  it('advances failed-task polling when a snapshot request never settles', async () => {
+  it('advances one batched failed-task poll when a snapshot request never settles', async () => {
     vi.useFakeTimers()
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
@@ -5297,28 +5313,26 @@ describe('DocumentsPage', () => {
         },
       ],
     }
-    getTaskSnapshot.mockImplementation((input: { params: { taskId: string } }) => {
-      if (input.params.taskId !== 'failed-0') return new Promise<DocumentProcessingTask>(() => {})
-      return Promise.resolve(
-        task({
-          id: 'failed-0',
-          state: 'dispatch_pending',
-          updatedAt: '2026-07-20T10:02:00Z',
-        }),
+    getTaskSnapshot
+      .mockReturnValueOnce(new Promise<DocumentProcessingTask[]>(() => {}))
+      .mockResolvedValueOnce(
+        Array.from({ length: 6 }, (_, index) =>
+          task({
+            id: `failed-${index}`,
+            state: index === 0 ? 'dispatch_pending' : 'failed',
+            updatedAt: '2026-07-20T10:02:00Z',
+          }),
+        ),
       )
-    })
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
-      expect(getTaskSnapshot).toHaveBeenCalledTimes(6)
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
       await act(async () => vi.advanceTimersByTime(3000))
       await act(async () => vi.advanceTimersByTime(5000))
-      expect(getTaskSnapshot).toHaveBeenCalledTimes(12)
-      expect(getTaskSnapshot).toHaveBeenCalledWith(
-        expect.objectContaining({ params: expect.objectContaining({ taskId: 'failed-0' }) }),
-        expect.anything(),
-      )
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -5335,6 +5349,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
 
@@ -5381,14 +5396,10 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       expect(streamProcessingTaskEvents).not.toHaveBeenCalled()
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
-        }),
-      )
       expect(screen.getByText('LATEST_FAILURE')).toBeInTheDocument()
     } finally {
       rendered.unmount()
@@ -5439,14 +5450,10 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       await act(async () => {})
       expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
-        }),
-      )
       expect(screen.getByText('NEW_FAILURE')).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
@@ -5475,6 +5482,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
 
@@ -5544,6 +5552,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
 
@@ -5591,6 +5600,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(pollSignal?.aborted).toBe(false)
       rendered.unmount()
@@ -5875,6 +5885,7 @@ describe('DocumentsPage', () => {
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     try {
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
 
@@ -5882,6 +5893,7 @@ describe('DocumentsPage', () => {
       rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
       documentsQuery.error = null
       rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      openTasksDrawer()
       await act(async () => vi.advanceTimersByTime(5000))
 
       expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
@@ -6185,7 +6197,6 @@ describe('DocumentsPage', () => {
   })
 
   it('rechecks a same-version active lifecycle after a denied terminal snapshot', async () => {
-    const user = userEvent.setup()
     const taskVersion = '2026-07-20T10:03:00Z'
     const sharedTaskData = {
       pages: [{ items: [task({ id: 'denied-active-retry', updatedAt: taskVersion })] }],
@@ -6201,6 +6212,7 @@ describe('DocumentsPage', () => {
       )
     streamFailedTaskThenWait('denied-active-retry')
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    openTasksDrawer()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = sharedTaskData
@@ -6209,11 +6221,6 @@ describe('DocumentsPage', () => {
     act(() => notifyTaskQuerySuccess())
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
-      }),
-    )
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
