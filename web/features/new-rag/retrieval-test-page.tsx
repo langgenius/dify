@@ -26,6 +26,7 @@ import {
   formatDuration,
   researchTaskIsActive,
   retrievalTestRecords,
+  shouldRefreshResearchPartials,
 } from './retrieval-test-model'
 import { newKnowledgeDocumentDetailPath, newKnowledgeQualityPath } from './routes'
 import { streamKnowledgeQuery } from './services/knowledge-query-events'
@@ -595,6 +596,16 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     enabled: Boolean(selectedResearchTask),
     refetchInterval: researchTaskIsActive(selectedResearchTask) ? 1000 : false,
   })
+  const refetchResearchPartials = researchPartialsQuery.refetch
+  const previousSelectedResearchTaskRef = useRef<KnowledgeFsResearchTaskResponse | undefined>(
+    undefined,
+  )
+  useEffect(() => {
+    const previousTask = previousSelectedResearchTaskRef.current
+    previousSelectedResearchTaskRef.current = selectedResearchTask
+    if (!shouldRefreshResearchPartials(previousTask, selectedResearchTask)) return
+    void refetchResearchPartials()
+  }, [refetchResearchPartials, selectedResearchTask])
 
   const historicalEvidence = extractRetrievalEvidence(traceEvidenceQuery.data)
   const researchEvidence = extractRetrievalEvidence(researchPartialsQuery.data)

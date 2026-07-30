@@ -333,6 +333,17 @@ export function researchTaskIsActive(task?: KnowledgeFsResearchTaskResponse) {
   return task ? activeResearchStages.has(task.stage) : false
 }
 
+export function shouldRefreshResearchPartials(
+  previousTask: KnowledgeFsResearchTaskResponse | undefined,
+  task: KnowledgeFsResearchTaskResponse | undefined,
+) {
+  return Boolean(
+    task?.stage === 'completed' &&
+    previousTask?.id === task.id &&
+    researchTaskIsActive(previousTask),
+  )
+}
+
 export function formatDuration(milliseconds: number) {
   const seconds = Math.max(0, Math.round(milliseconds / 1000))
   if (seconds < 60) return `${seconds}s`

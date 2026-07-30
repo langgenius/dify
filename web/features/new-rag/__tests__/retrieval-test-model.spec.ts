@@ -7,6 +7,7 @@ import {
   formatDuration,
   researchTaskIsActive,
   retrievalTestRecords,
+  shouldRefreshResearchPartials,
 } from '../retrieval-test-model'
 
 describe('retrieval test model', () => {
@@ -159,5 +160,26 @@ describe('retrieval test model', () => {
   it('formats research durations in seconds and minutes', () => {
     expect(formatDuration(12_000)).toBe('12s')
     expect(formatDuration(303_000)).toBe('5min 3s')
+  })
+
+  it('refreshes partials when an active research task becomes completed', () => {
+    const activeTask = {
+      id: 'research-1',
+      stage: 'generating',
+    } as KnowledgeFsResearchTaskResponse
+    const completedTask = {
+      id: 'research-1',
+      stage: 'completed',
+    } as KnowledgeFsResearchTaskResponse
+
+    expect(shouldRefreshResearchPartials(activeTask, completedTask)).toBe(true)
+    expect(shouldRefreshResearchPartials(completedTask, completedTask)).toBe(false)
+    expect(shouldRefreshResearchPartials(undefined, completedTask)).toBe(false)
+    expect(
+      shouldRefreshResearchPartials(activeTask, {
+        ...completedTask,
+        id: 'research-2',
+      }),
+    ).toBe(false)
   })
 })
