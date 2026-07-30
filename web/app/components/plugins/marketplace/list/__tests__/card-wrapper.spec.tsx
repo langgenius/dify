@@ -47,20 +47,21 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permis
 
 vi.mock('../../detail-dialog', () => ({
   default: ({
+    isInstalled,
     open,
     onOpenChange,
   }: {
+    isInstalled: boolean
     open: boolean
     onOpenChange: (open: boolean) => void
-  }) => open
-    ? (
-        <div role="dialog" aria-label="marketplace detail">
-          <button type="button" onClick={() => onOpenChange(false)}>
-            close detail
-          </button>
-        </div>
-      )
-    : null,
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="marketplace detail" data-installed={isInstalled}>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          close detail
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../../utils', () => ({
@@ -140,10 +141,13 @@ describe('CardWrapper', () => {
 
   it('opens and closes marketplace detail dialog from the detail action', async () => {
     const user = userEvent.setup()
-    renderCardWrapper({ showInstallButton: true })
+    renderCardWrapper({ showInstallButton: true, isInstalled: true })
 
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
-    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toHaveAttribute(
+      'data-installed',
+      'true',
+    )
 
     await user.click(screen.getByRole('button', { name: 'close detail' }))
     expect(screen.queryByRole('dialog', { name: 'marketplace detail' })).not.toBeInTheDocument()
