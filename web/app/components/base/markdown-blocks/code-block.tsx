@@ -2,7 +2,6 @@ import type { JSX } from 'react'
 import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
 import ReactEcharts from 'echarts-for-react'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
@@ -14,6 +13,10 @@ import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base 
 import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+
+const shikiLanguageAliasMap: Record<string, BundledLanguage> = {
+  dotenv: 'bash',
+}
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
@@ -78,7 +81,7 @@ const ShikiCodeBlock = memo(
 
       void highlightCode({
         code,
-        language: language as BundledLanguage,
+        language: shikiLanguageAliasMap[language] ?? (language as BundledLanguage),
         theme,
       })
         .then((result) => {
@@ -545,9 +548,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
-          </ActionButton>
+          <CopyIcon
+            className="mx-0 action-btn size-6 rounded-lg p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            content={String(children).replace(/\n$/, '')}
+          />
         </div>
       </div>
       {renderCodeContent}
