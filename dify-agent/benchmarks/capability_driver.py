@@ -199,7 +199,9 @@ async def run_block(settings: CapabilityDriverSettings) -> BlockResult:
             fake_client=fake_client,
         )
         redis_after.storage_bytes = await calculate_storage_bytes(redis, prefix=settings.redis_prefix)
-        drive_cleaned = settings.external_runtime or await _cleanup_drive(runtime_client, observations, scenario=scenario)
+        drive_cleaned = settings.external_runtime or await _cleanup_drive(
+            runtime_client, observations, scenario=scenario
+        )
         if settings.external_runtime:
             jobs_empty = True
             (settings.results_dir / "runtime-jobs-after.json").write_text(
@@ -615,10 +617,7 @@ async def _run_timed(
         )
         while True:
             now = time.perf_counter()
-            successful = sum(
-                observation.sample.terminal_status == "succeeded"
-                for observation in observations
-            )
+            successful = sum(observation.sample.terminal_status == "succeeded" for observation in observations)
             minimum_met = minimum_successful_runs is None or successful >= minimum_successful_runs
             if (now >= minimum_deadline and minimum_met) or now >= maximum_deadline:
                 break

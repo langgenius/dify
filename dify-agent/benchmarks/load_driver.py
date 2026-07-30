@@ -319,10 +319,7 @@ async def _run_for_duration(
         sequence = worker_index
         while True:
             now = time.perf_counter()
-            successful = sum(
-                observation.sample.terminal_status == "succeeded"
-                for observation in observations
-            )
+            successful = sum(observation.sample.terminal_status == "succeeded" for observation in observations)
             minimum_met = minimum_successful_runs is None or successful >= minimum_successful_runs
             if (now >= minimum_deadline and minimum_met) or now >= maximum_deadline:
                 break
