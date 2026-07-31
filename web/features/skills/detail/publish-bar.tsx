@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 const PUBLISH_SKILL_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
 
-export type SkillPublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
+type SkillPublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
 type SkillPublishBarProps = {
   children?: ReactNode

@@ -62,7 +62,8 @@ import {
   isSkillImageFile,
   isSkillPdfFile,
   isTextFile,
-  metadataInputClassName,
+  metadataKeyInputClassName,
+  metadataValueInputClassName,
   parseCsvRows,
   parseMarkdownContent,
   refreshSkillDetailAfterConflict,
@@ -1057,7 +1058,7 @@ export function FileEditor({
                             ref={metadataKeyInputRef}
                             value={metadataKey}
                             placeholder={t(($) => $['skillManagement.detail.metadataKey'])}
-                            className={metadataInputClassName}
+                            className={metadataKeyInputClassName}
                             onChange={(event) => setMetadataKey(event.target.value)}
                             onKeyDown={(event) => {
                               if (event.key === 'Escape') handleCancelAddMetadata()
@@ -1069,13 +1070,13 @@ export function FileEditor({
                             className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                             onClick={handleCancelAddMetadata}
                           >
-                            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                            <span aria-hidden className="i-ri-delete-bin-line size-3.5" />
                           </button>
                         </div>
                         <input
                           value={metadataValue}
                           placeholder={t(($) => $['skillManagement.detail.metadataValue'])}
-                          className={metadataInputClassName}
+                          className={metadataValueInputClassName}
                           onChange={(event) => setMetadataValue(event.target.value)}
                           onKeyDown={(event) => {
                             if (event.key === 'Escape') {
