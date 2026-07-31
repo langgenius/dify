@@ -17,7 +17,6 @@ from core.human_input_v2.channel_management import (
     DingTalkIMCandidate,
     FeishuIMCandidate,
     NewSecret,
-    SaveEmailChannelCommand,
     SaveIMChannelCommand,
     SlackIMCandidate,
 )
@@ -26,11 +25,12 @@ from core.human_input_v2.channel_management import TestIMChannelCommand as IMTes
 from core.human_input_v2.email_channel import NewAPIKey, ResendCandidate
 from core.human_input_v2.shared import NormalizedEmail
 from services.human_input_channel_management_composition import (
-    ResendControlPlaneHandler,
     UnimplementedIMChannelHandler,
     build_human_input_channel_management_context,
     build_human_input_channel_management_service,
 )
+from services.human_input_email_channel_manager import HumanInputEmailChannelManager
+from services.human_input_resend_channel import ResendEmailProviderValidator
 
 
 def test_composition_registers_resend_and_three_explicit_im_stubs(sqlite_engine) -> None:
@@ -45,7 +45,8 @@ def test_composition_registers_resend_and_three_explicit_im_stubs(sqlite_engine)
         ChannelRef(ChannelKind.IM, ChannelProvider.DING_TALK),
     }
     email_handler = next(handler for handler in service._registry.handlers() if handler.ref.kind is ChannelKind.EMAIL)
-    assert isinstance(email_handler, ResendControlPlaneHandler)
+    assert isinstance(email_handler, HumanInputEmailChannelManager)
+    assert isinstance(email_handler._validator, ResendEmailProviderValidator)
     im_handlers = [handler for handler in service._registry.handlers() if handler.ref.kind is ChannelKind.IM]
     context = build_human_input_channel_management_context(
         workspace_id="workspace-1",
@@ -100,9 +101,21 @@ def test_im_placeholders_reject_every_operation_without_infrastructure(ref, cand
         assert result.failure.code == "im_channel_management_not_implemented"
 
 
-def test_resend_save_and_test_remain_unimplemented_without_infrastructure(sqlite_engine) -> None:
+def test_resend_test_dispatches_through_injected_provider_adapter(sqlite_engine) -> None:
+    class Validator:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str | None]] = []
+
+        def validate(self, _settings) -> None:
+            self.calls.append(("validate", None))
+
+        def send_test(self, _settings, recipient) -> None:
+            self.calls.append(("send_test", str(recipient)))
+
+    validator = Validator()
     service = build_human_input_channel_management_service(
         session_maker=sessionmaker(sqlite_engine, class_=Session),
+        email_validator=validator,
     )
     context = build_human_input_channel_management_context(
         workspace_id="workspace-1",
@@ -115,25 +128,14 @@ def test_resend_save_and_test_remain_unimplemented_without_infrastructure(sqlite
         "Sender",
         NewAPIKey("request-key"),
     )
-    statements: list[str] = []
+    result = service.test_channel(context, EmailTestChannelCommand(ref, candidate))
 
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
-        statements.append(statement)
-
-    event.listen(sqlite_engine, "before_cursor_execute", record_statement)
-    try:
-        results = (
-            service.save_channel(context, SaveEmailChannelCommand(ref, candidate)),
-            service.test_channel(context, EmailTestChannelCommand(ref, candidate)),
-        )
-    finally:
-        event.remove(sqlite_engine, "before_cursor_execute", record_statement)
-
-    for result in results:
-        assert result.failure is not None
-        assert result.failure.category is ChannelFailureCategory.UNSUPPORTED_OPERATION
-        assert result.failure.code == "resend_provider_connectivity_not_implemented"
-    assert statements == []
+    assert result.test_result is not None
+    assert result.test_result.summary.recipient_email == context.actor_email
+    assert validator.calls == [
+        ("validate", None),
+        ("send_test", "operator@example.com"),
+    ]
 
 
 def test_collection_has_bounded_queries_and_performs_no_provider_io(sqlite_engine) -> None:

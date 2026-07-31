@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from importlib import import_module
 from inspect import unwrap
 from types import SimpleNamespace
@@ -26,11 +27,13 @@ from core.human_input_v2.channel_management import (
     ChannelScope,
     ChannelScopeKind,
     ChannelStatus,
+    ChannelTestResult,
     ChannelView,
     HumanInputChannelManagementContext,
     ResendChannelSummary,
+    ResendChannelTestSummary,
 )
-from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, NormalizedEmail, UtcTimestamp, WorkspaceId
 from enums.deployment_edition import DeploymentEdition
 
 _CONTEXT = HumanInputChannelManagementContext(
@@ -142,7 +145,7 @@ def test_collection_uses_trusted_context_and_preserves_product_order(
                 ),
             )
 
-    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_context", lambda **kwargs: _CONTEXT)
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_context", lambda **_kwargs: _CONTEXT)
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_service", Service)
     api = WorkspaceHumanInputChannelsApi()
     handler = unwrap(api.get)
@@ -195,6 +198,104 @@ def test_save_rejects_route_candidate_mismatch_before_service_work(
             "code": "channel_candidate_mismatch",
         }
     }
+
+
+def test_resend_save_dispatches_and_returns_safe_configured_view(
+    app: Flask,
+    monkeypatch,
+) -> None:
+    class Service:
+        def save_channel(self, context, command):
+            assert context is _CONTEXT
+            assert command.ref == ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+            assert command.candidate.api_key.value == "re_secret"
+            return ChannelOperationResult.success(_resend_view(configured=True))
+
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_context", lambda **_kwargs: _CONTEXT)
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_service", Service)
+    api = WorkspaceHumanInputChannelApi()
+    handler = unwrap(api.put)
+
+    with app.test_request_context(
+        method="PUT",
+        json={
+            "candidate": {
+                "provider": "resend",
+                "sender_email": "sender@example.com",
+                "sender_name": "Sender",
+                "api_key": "re_secret",
+            }
+        },
+    ):
+        payload = handler(
+            api,
+            "workspace-1",
+            SimpleNamespace(id="account-1", email="operator@example.com"),
+            "email",
+            "resend",
+        )
+
+    assert payload["configured"] is True
+    assert payload["summary"]["api_key_configured"] is True
+    assert "re_secret" not in repr(payload)
+
+
+def test_resend_test_dispatches_and_returns_candidate_result(
+    app: Flask,
+    monkeypatch,
+) -> None:
+    checked_at = UtcTimestamp(datetime(2026, 7, 31, 10, tzinfo=UTC))
+
+    class Service:
+        def test_channel(self, context, command):
+            assert context is _CONTEXT
+            assert command.ref == ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+            return ChannelOperationResult.tested(
+                ChannelTestResult(
+                    ref=command.ref,
+                    scope=ChannelScope(ChannelScopeKind.WORKSPACE, "workspace-1"),
+                    status=ChannelStatus.CONNECTED,
+                    summary=ResendChannelTestSummary(
+                        recipient_email=context.actor_email,
+                        sender_email=command.candidate.sender_email,
+                        sender_name=command.candidate.sender_name,
+                    ),
+                    checked_at=checked_at,
+                )
+            )
+
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_context", lambda **_kwargs: _CONTEXT)
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_service", Service)
+    api = WorkspaceHumanInputChannelTestApi()
+    handler = unwrap(api.post)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "candidate": {
+                "provider": "resend",
+                "sender_email": "sender@example.com",
+                "sender_name": "Sender",
+                "api_key": "re_secret",
+            }
+        },
+    ):
+        payload = handler(
+            api,
+            "workspace-1",
+            SimpleNamespace(id="account-1", email="operator@example.com"),
+            "email",
+            "resend",
+        )
+
+    assert payload["status"] == "connected"
+    assert payload["summary"] == {
+        "provider": "resend",
+        "recipient_email": "operator@example.com",
+        "sender_email": "sender@example.com",
+        "sender_name": "Sender",
+    }
+    assert "re_secret" not in repr(payload)
 
 
 @pytest.mark.parametrize(
@@ -257,7 +358,7 @@ def test_im_candidate_test_returns_explicit_unimplemented_response(
                 "im_channel_management_not_implemented",
             )
 
-    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_context", lambda **kwargs: _CONTEXT)
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_context", lambda **_kwargs: _CONTEXT)
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_channel_management_service", Service)
     api = WorkspaceHumanInputChannelTestApi()
     handler = unwrap(api.post)
@@ -298,7 +399,7 @@ def test_unexpected_channel_failure_has_stable_safe_response(
     monkeypatch.setattr(
         _CONTROLLER_MODULE,
         "build_human_input_channel_management_context",
-        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("provider-secret")),
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("provider-secret")),
     )
     api = WorkspaceHumanInputChannelApi()
     handler = unwrap(api.get)

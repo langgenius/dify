@@ -25,6 +25,7 @@ from core.human_input_v2.email_channel import (
     DeleteEmailConfigurationResult,
     DeleteEmailConfigurationStatus,
     EmailChannelConfiguration,
+    EmailProviderOperationError,
     EmailProviderValidationError,
     NewAPIKey,
     ProtectedAPIKey,
@@ -79,7 +80,7 @@ class FakeRepository:
         self.current = replace(configuration, updated_at=now)
         return UpdateEmailConfigurationResult(UpdateEmailConfigurationStatus.UPDATED, self.current)
 
-    def delete(self, workspace_id):
+    def delete(self, _workspace_id):
         self.writes.append("delete")
         if self.current is None:
             return DeleteEmailConfigurationResult(DeleteEmailConfigurationStatus.NOT_CONFIGURED)
@@ -216,6 +217,23 @@ def test_unexpected_provider_failure_is_sanitized() -> None:
     assert "raw response" not in repr(result)
 
 
+def test_classified_provider_failure_preserves_safe_code() -> None:
+    repository = FakeRepository()
+    validator = FakeValidator()
+    validator.failure = EmailProviderOperationError("provider_rate_limited")
+
+    result = _manager(repository, validator).save(
+        _CONTEXT,
+        _save(ResendCandidate(NormalizedEmail("new@example.com"), "New", NewAPIKey("sensitive-key"))),
+    )
+
+    assert result.failure is not None
+    assert result.failure.category is ChannelFailureCategory.PROVIDER_FAILURE
+    assert result.failure.code == "provider_rate_limited"
+    assert repository.writes == []
+    assert "sensitive-key" not in repr(result)
+
+
 def test_retained_key_is_revealed_for_validation_and_preserved_on_update() -> None:
     current = _configuration()
     repository = FakeRepository(current)
@@ -290,7 +308,7 @@ def test_credential_protection_failure_is_sanitized(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     class FailingProtector(FakeProtector):
-        def protect(self, workspace_id, api_key):
+        def protect(self, _workspace_id, api_key):
             raise RuntimeError(f"failed to protect {api_key}")
 
     repository = FakeRepository()

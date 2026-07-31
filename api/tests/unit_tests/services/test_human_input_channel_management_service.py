@@ -84,6 +84,7 @@ class FakeHandler:
         return self._result(context)
 
     def test(self, context, command):
+        del command
         self.calls.append("test")
         self.contexts.append(context)
         summary = (
@@ -106,10 +107,12 @@ class FakeHandler:
         )
 
     def save(self, context, command):
+        del command
         self.calls.append("save")
         return self.get(context)
 
     def delete(self, context, command):
+        del command
         self.calls.append("delete")
         return self.get(context)
 
@@ -205,6 +208,7 @@ def test_facade_dispatches_candidate_test_without_returning_a_persisted_view() -
 def test_facade_rejects_wrong_success_variant_from_test_handler() -> None:
     class InvalidTestHandler(FakeHandler):
         def test(self, context, command):
+            del command
             return self._result(context)
 
     email = InvalidTestHandler(ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND), [])

@@ -7,20 +7,20 @@ resource for channel configuration:
 | --- | --- | --- |
 | `GET` | `/console/api/workspaces/current/human-input/channels` | List every supported channel in product order |
 | `GET` | `/console/api/workspaces/current/human-input/channels/{kind}/{provider}` | Read persisted state |
-| `PUT` | `/console/api/workspaces/current/human-input/channels/{kind}/{provider}` | Validate and dispatch a reserved save request |
+| `PUT` | `/console/api/workspaces/current/human-input/channels/{kind}/{provider}` | Validate and save a candidate |
 | `DELETE` | `/console/api/workspaces/current/human-input/channels/{kind}/{provider}` | Delete persisted configuration |
-| `POST` | `/console/api/workspaces/current/human-input/channels/{kind}/{provider}/test` | Validate and dispatch a reserved test request |
+| `POST` | `/console/api/workspaces/current/human-input/channels/{kind}/{provider}/test` | Validate and test a candidate without persistence |
 
 Supported complete references are `email/resend`, `im/slack`, `im/feishu`, and
-`im/ding_talk`. This change implements the control-plane API only.
-Provider-dependent operations remain unimplemented, and Delivery Runtime
-behavior is intentionally unspecified.
+`im/ding_talk`. Resend read, validated save, delete and operator-targeted test
+operations are functional. Delivery Runtime behavior is owned separately.
 
-Resend read and delete use the existing Email control-plane repository. Resend
-save and test return `unsupported_operation` with code
-`resend_provider_connectivity_not_implemented` before repository, credential,
-or provider work. The three IM references return `unsupported_operation` with
-code `im_channel_management_not_implemented`.
+Resend uses the existing Email manager, Workspace-scoped credential protection,
+and a request-scoped provider adapter. Save validates a Full access API key and
+the exact verified sender domain through `GET /domains` without sending Email.
+Test performs the same validation and sends one idempotent test Email to the
+authenticated operator. The three IM references return `unsupported_operation`
+with code `im_channel_management_not_implemented`.
 
 Enterprise does not enter these channel-management routes. Every canonical
 Channels collection, item, and test path returns HTTP `501` from a shared
@@ -47,8 +47,9 @@ Resend save:
 ```
 
 The DTO maps a non-blank `api_key` to a new-secret candidate and an omitted or
-blank value to an explicit retain-existing directive. Production save remains
-unimplemented until provider connectivity is delivered.
+blank value to an explicit retain-existing directive. The API key must have
+Resend Full access so save can verify the sender domain without sending Email.
+A sending-only key returns `provider_full_access_required`.
 
 The canonical DTOs reserve provider-discriminated IM request shapes, but IM
 read, save, delete, and test operations are not implemented by this change.
@@ -81,8 +82,9 @@ credential-free summaries:
 }
 ```
 
-Candidate-test DTOs remain distinct from persisted views for the later
-connectivity change. This API change does not send a Resend test Email.
+Candidate-test DTOs remain distinct from persisted views. A successful Resend
+test sends one Email to the authenticated operator and returns only safe
+candidate sender, recipient, status and timestamp fields.
 
 No response includes plaintext, encrypted, or masked credential material,
 provider request bodies, headers, or raw exception text.
@@ -112,5 +114,6 @@ Community and Cloud channel-operation errors have one stable shape:
 The Enterprise edition gate uses the existing Console HTTP error shape with
 `code: "not_implemented"` and `status: 501`.
 
-Provider-dependent operations are explicit stubs in this change; therefore no
-provider body, exception, header, or credential can cross the API boundary.
+Provider bodies, exception text, headers and credentials never cross the API
+boundary. Provider validation, quota, rate-limit and transport failures use
+stable safe codes.

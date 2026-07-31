@@ -156,6 +156,7 @@ class _RecordingTransaction:
         self.commit_status = commit_status
 
     def load_authorization_context(self, *, proof: object) -> AuthorizationContext:
+        del proof
         self.events.append("context_loaded")
         return self.context
 

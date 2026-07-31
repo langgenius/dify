@@ -12,8 +12,8 @@ The Community and Cloud Workspace Channels PRD requires Email to appear first be
 
 - Expose the existing facade through one canonical owner/admin Workspace Console surface.
 - Preserve complete channel/provider discriminators and provider-specific candidate DTOs.
-- Compose provider-independent Resend reads and deletes without adding business logic to controllers.
-- Keep every provider-dependent operation explicit and unimplemented.
+- Compose complete Resend reads, validated saves, deletes and operator-targeted tests without adding business logic to controllers.
+- Keep every IM provider-dependent operation explicit and unimplemented.
 - Retire the non-functional Email provider stub so Resend has one configuration authority.
 - Keep the existing IM sync and Contact binding changes aligned with the facade boundary.
 - Keep Enterprise deployment-wide IM ownership, configuration and provider behavior untouched.
@@ -23,7 +23,6 @@ The Community and Cloud Workspace Channels PRD requires Email to appear first be
 - Implement frontend repository hooks or replace the mock UI.
 - Implement IM directory synchronization, background sync workers or Contact binding APIs.
 - Implement OAuth authorization redirects, callbacks or event subscriptions.
-- Implement provider-dependent Resend save or test behavior.
 - Implement Slack, Feishu or DingTalk provider connectivity, credential protection, persistence or lifecycle behavior.
 - Implement, validate or change Enterprise deployment-wide IM ownership or configuration behavior.
 - Define or implement Delivery Runtime behavior.
@@ -41,8 +40,8 @@ The canonical routes are:
 | -------- | ----------------------------------------------------------------------------- | ---------------------------------------------- |
 | `GET`    | `/console/api/workspaces/current/human-input/channels`                        | Ordered collection plus isolated safe failures |
 | `GET`    | `/console/api/workspaces/current/human-input/channels/<kind>/<provider>`      | One persisted-state view                       |
-| `POST`   | `/console/api/workspaces/current/human-input/channels/<kind>/<provider>/test` | Reserved provider-dependent operation          |
-| `PUT`    | `/console/api/workspaces/current/human-input/channels/<kind>/<provider>`      | Reserved provider-dependent operation          |
+| `POST`   | `/console/api/workspaces/current/human-input/channels/<kind>/<provider>/test` | Test one candidate without persistence         |
+| `PUT`    | `/console/api/workspaces/current/human-input/channels/<kind>/<provider>`      | Validate and save one candidate                |
 | `DELETE` | `/console/api/workspaces/current/human-input/channels/<kind>/<provider>`      | One unconfigured persisted-state view          |
 
 The first release accepts only:
@@ -60,7 +59,7 @@ The collection evaluates references in product order as Email, Slack, Feishu and
 
 The Console API defines a discriminated union for Resend, Slack, Feishu and DingTalk candidates. The controller validates that path kind/provider, request discriminator and candidate type agree before constructing a command.
 
-The Resend DTO preserves the future create/update key distinction: a non-blank key maps to a new secret candidate and an omitted or blank key maps to explicit retention. This change validates and maps that transport shape but does not execute Resend save or test connectivity.
+The Resend DTO preserves the create/update key distinction: a non-blank key maps to a new secret candidate and an omitted or blank key maps to explicit retention. Production dispatch executes the existing Email manager, which reveals a retained key only within the trusted Workspace boundary, validates the complete candidate, and protects a new key before persistence.
 
 Canonical IM DTO variants reserve complete new-secret and CAS shapes for a future implementation. Every canonical IM operation returns `unsupported_operation` before IM persistence, credential protection or provider I/O. Existing legacy IM DTOs and their 501 routes remain unchanged.
 
@@ -68,9 +67,9 @@ Email concurrency snapshots remain internal and are not exposed through the tran
 
 ### 3. Transport responses keep persisted views and candidate tests separate
 
-Collection and item reads return credential-free persisted `ChannelView` projections. Candidate-test response DTOs remain distinct from persisted views, but production test execution is deferred.
+Collection and item reads return credential-free persisted `ChannelView` projections. Candidate-test response DTOs remain distinct from persisted views and a successful Resend test reports only the authenticated operator recipient, candidate sender identity, safe status and timestamp.
 
-Delete returns the resulting unconfigured `ChannelView`. Resend save/test and every IM operation return explicit unsupported-operation results before provider or persistence work.
+Save returns the resulting configured `ChannelView`; delete returns the resulting unconfigured `ChannelView`. Resend test does not persist. Every IM operation returns an explicit unsupported-operation result before provider or persistence work.
 
 No canonical response contains plaintext, encrypted or masked credentials. Resend exposes only `api_key_configured`; the IM placeholders return no persisted summary.
 
@@ -104,19 +103,25 @@ This change targets Community and Cloud. Its composition root does not inspect d
 A composition function creates:
 
 - one SQLAlchemy Email repository;
-- one provider-independent Resend handler over the existing Email manager;
+- one Workspace-scoped Email credential protector;
+- one request-scoped Resend validation and test-delivery adapter;
+- one Resend Email manager with complete management behavior;
 - three explicit unimplemented handlers for Slack, Feishu and DingTalk;
 - one registry and facade.
 
 Controllers receive or construct only the facade and DTO mappers. They do not import channel ORM records or provider SDKs, and they do not call repositories directly.
 
-Email repository sessions remain operation-scoped for reads and deletes. Resend save/test and all IM placeholders return before repository, credential or provider work.
+Email repository sessions remain operation-scoped, so provider I/O does not run inside an open database transaction. All IM placeholders return before repository, credential or provider work.
 
-### 7. Provider-dependent operations remain a separate change
+### 7. Resend management connectivity is request-scoped
 
-This change does not compose or define provider-dependent Resend behavior. Delivery Runtime is outside this design and remains unspecified.
+The production Email manager receives a concrete Resend adapter without using the process-global Resend SDK credential. The adapter sends outbound calls through Dify's HTTP safety boundary with one candidate API key held only for the request.
 
-The production Resend control-plane handler delegates only provider-independent get/delete behavior to the existing Email manager. Save and test return `unsupported_operation` with `resend_provider_connectivity_not_implemented` before reading configuration or exposing a credential.
+Save validation calls Resend `GET /domains`, requires a Full access API key, and accepts only an exact verified sender domain with sending enabled. This non-delivery check avoids sending an Email during save. Sending-only keys are rejected with `provider_full_access_required` because they cannot prove domain usability without delivery.
+
+Test performs the same complete-candidate validation, then calls `POST /emails` exactly once with a unique idempotency key and the authenticated operator Email as the only recipient. It does not fall back to system mail and does not persist the candidate.
+
+Provider authentication, domain, sender, quota, rate-limit, malformed-response and transport failures map to stable safe codes. Raw response bodies, request headers and credentials do not cross the adapter boundary. Delivery Runtime remains outside this design and is not changed by management connectivity.
 
 Slack, Feishu and DingTalk have no provider client, credential protector or repository wiring in this change. Their complete references remain registered only so the canonical API returns a stable unimplemented response rather than accidentally exposing the old configuration authority.
 
@@ -133,7 +138,8 @@ Functional support commitments in this change apply only to Community and Cloud.
 - [One collection request reads four handlers] → Keep reads independent, prohibit provider I/O, assert query counts and return partial safe failures.
 - [A generic route becomes an untyped configuration bag] → Keep discriminated DTO unions and reject path/body mismatch before composition or provider work.
 - [Controllers accidentally rebuild channel rules] → Limit them to authentication, DTO mapping, context construction, facade calls and result mapping; enforce import-boundary tests.
-- [Reserved mutations look functional before connectivity lands] → Return one explicit `resend_provider_connectivity_not_implemented` code and document the boundary.
+- [Non-destructive validation cannot inspect domains with a sending-only Resend key] → Require a Full access key and return a stable field-safe permission error rather than sending during save.
+- [An automatic transport retry could duplicate a test Email] → Disable transport retries and attach a unique Resend idempotency key to the single provider invocation.
 - [IM placeholders are mistaken for working integrations] → Return one explicit `im_channel_management_not_implemented` code and document that no IM provider or persistence work occurs.
 - [Community and Cloud wiring accidentally couples to Enterprise IM state] → Reject Enterprise requests in one pre-dispatch edition guard, keep edition and deployment identity resolution out of the composition root and assert that shared IM ownership fields remain unset.
 - [Removing the Email stub surprises a latent caller] → Confirm repository-wide absence of callers and replace generated/manual API documentation in the same change.
@@ -141,7 +147,7 @@ Functional support commitments in this change apply only to Community and Cloud.
 ## Migration Plan
 
 1. Add canonical DTOs, response mappers and route contract tests.
-2. Add request-scoped composition with provider-independent Resend read/delete behavior and explicit provider stubs.
+2. Add request-scoped composition with complete Resend management behavior and explicit IM provider stubs.
 3. Wire canonical routes to the facade.
 4. Leave active IM API-contract and sync changes unchanged.
 5. Remove only the obsolete Email provider 501 route after repository-wide caller checks.

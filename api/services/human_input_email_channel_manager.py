@@ -32,6 +32,7 @@ from core.human_input_v2.email_channel import (
     EmailChannelConfiguration,
     EmailChannelRepository,
     EmailCredentialProtector,
+    EmailProviderOperationError,
     EmailProviderValidationError,
     EmailProviderValidator,
     NewAPIKey,
@@ -223,6 +224,8 @@ class HumanInputEmailChannelManager:
                 self._validator.send_test(settings, send_to)
         except EmailProviderValidationError as error:
             return ChannelOperationResult.failed(ChannelFailureCategory.VALIDATION_FAILURE, error.code)
+        except EmailProviderOperationError as error:
+            return ChannelOperationResult.failed(ChannelFailureCategory.PROVIDER_FAILURE, error.code)
         except Exception:
             return ChannelOperationResult.failed(ChannelFailureCategory.PROVIDER_FAILURE, "provider_failure")
         return None

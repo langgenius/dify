@@ -93,30 +93,36 @@ class Repository:
         self.requeued = None
 
     def claim(self, attempt_id, *, now):
+        del now
         assert attempt_id == DeliveryAttemptId("attempt-1")
         return self.claim_value
 
     def bind_prepared(self, claim, *, snapshot, payload_fingerprint, now):
+        del payload_fingerprint
         data = replace(claim.data, configuration_snapshot=snapshot)
         return ClaimedDeliveryAttempt(replace(claim.attempt, updated_at=now, provider_response=data.to_frozen()), data)
 
     def complete(self, claim, *, outcome, now):
+        del claim, now
         self.completed = outcome
         return True
 
     def requeue(self, claim, *, outcome, scheduled_at, now):
+        del claim, scheduled_at, now
         self.requeued = outcome
         return True
 
 
 class Protector:
     def reveal(self, workspace_id, protected):
+        del workspace_id
         assert protected == ProtectedRenderedEmailRequest("ciphertext")
         return serialize_rendered_email_request(_request())
 
 
 class Resolver:
     def resolve(self, workspace_id, channel, *, expected=None):
+        del workspace_id, channel, expected
         return ResolvedEmailChannelSnapshot(
             ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW),
             _CHANNEL,
@@ -133,6 +139,7 @@ class Adapter:
         self.outcome = outcome
 
     def send(self, prepared):
+        del prepared
         return self.outcome
 
 

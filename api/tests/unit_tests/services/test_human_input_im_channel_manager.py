@@ -98,6 +98,7 @@ class FakeProviderPort:
         self.calls = 0
 
     def prepare(self, context, candidate, current):
+        del context, candidate, current
         self.calls += 1
         return ConfirmedIMConfiguration(
             IMProvider.SLACK,
@@ -113,6 +114,7 @@ class FakeProviderPort:
         )
 
     def test(self, context, candidate, current):
+        del context, candidate, current
         self.calls += 1
         return IMProviderTestResult(
             self.provider_tenant_id,
@@ -262,6 +264,7 @@ def test_each_supported_im_provider_has_one_handler_and_one_view() -> None:
 def test_im_provider_failure_is_mapped_without_raw_diagnostics() -> None:
     class FailingProviderPort(FakeProviderPort):
         def test(self, context, candidate, current):
+            del context, candidate, current
             raise IMProviderConfigurationError("permission_denied", provider_failure=True)
 
     manager = HumanInputIMChannelManager(_SLACK_REF, FakeRepository(), FailingProviderPort())

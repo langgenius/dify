@@ -101,6 +101,7 @@ class _DeterministicHasher:
 
 class _FailingAuditWriter:
     def append(self, session: Session, fact: OTPChallengeAuditFact) -> None:
+        del session, fact
         raise RuntimeError("audit failed")
 
 

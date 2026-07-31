@@ -26,6 +26,16 @@ class EmailProviderValidationError(Exception):
         self.code = code
 
 
+class EmailProviderOperationError(Exception):
+    """Classified provider or transport failure containing only a stable safe code."""
+
+    code: str
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
 class EmailProviderValidator(Protocol):
     """Concrete provider I/O implemented outside the domain package."""
 

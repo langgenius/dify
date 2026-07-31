@@ -69,6 +69,7 @@ class EmailRepository:
         return self.current if self.current.workspace_id == workspace_id else None
 
     def create(self, configuration):
+        del configuration
         self.writes.append("create")
         return CreateEmailConfigurationResult(CreateEmailConfigurationStatus.CONFLICT, None)
 
@@ -88,17 +89,19 @@ class EmailRepository:
 
 class EmailValidator:
     def validate(self, settings):
-        return None
+        del settings
 
     def send_test(self, settings, recipient):
-        return None
+        del settings, recipient
 
 
 class EmailProtector:
     def protect(self, workspace_id, api_key):
+        del api_key
         return ProtectedAPIKey(f"{workspace_id}:protected")
 
     def reveal(self, workspace_id, protected_api_key):
+        del workspace_id, protected_api_key
         return "existing-key"
 
 
@@ -113,6 +116,7 @@ class IMRepository:
         return None
 
     def create_integration(self, integration):
+        del integration
         self.mutations.append("create")
         raise AssertionError("create is not used by this test")
 
@@ -124,12 +128,14 @@ class IMRepository:
         return self.current
 
     def compare_and_swap_delete(self, deletion):
+        del deletion
         self.mutations.append("delete")
         raise AssertionError("delete is not used by this test")
 
 
 class IMProviderPort:
     def prepare(self, context, candidate, current):
+        del context, candidate, current
         return ConfirmedIMConfiguration(
             provider=IMProvider.SLACK,
             provider_tenant_id="slack-workspace",
@@ -144,6 +150,7 @@ class IMProviderPort:
         )
 
     def test(self, context, candidate, current):
+        del context, candidate, current
         return IMProviderTestResult(
             provider_tenant_id="slack-workspace",
             status=IMIntegrationStatus.CONNECTED,

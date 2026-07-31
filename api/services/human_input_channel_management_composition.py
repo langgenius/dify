@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,7 +18,7 @@ from core.human_input_v2.channel_management import (
     HumanInputChannelManagementContext,
 )
 from core.human_input_v2.channel_management.commands import SaveChannelCommand, TestChannelCommand
-from core.human_input_v2.email_channel import ResendProviderSettings
+from core.human_input_v2.email_channel import EmailProviderValidator
 from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
 from extensions.ext_database import db
 from repositories.human_input_v2.email_channel import SQLAlchemyEmailChannelRepository
@@ -27,6 +27,7 @@ from services.human_input_email_channel_manager import (
     DifyEmailCredentialProtector,
     HumanInputEmailChannelManager,
 )
+from services.human_input_resend_channel import ResendEmailProviderValidator
 
 _UNIMPLEMENTED_IM_REFS = (
     ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
@@ -40,64 +41,6 @@ _UNIMPLEMENTED_IM_CAPABILITIES = frozenset(
         ChannelCapability.DELETE,
     )
 )
-_RESEND_CONNECTIVITY_UNIMPLEMENTED_CODE = "resend_provider_connectivity_not_implemented"
-
-
-class _UnavailableResendValidator:
-    """Sentinel dependency hidden behind the production Resend API stub."""
-
-    def validate(self, settings: ResendProviderSettings) -> None:
-        del settings
-        raise AssertionError("Resend provider connectivity is not composed")
-
-    def send_test(self, settings: ResendProviderSettings, recipient: NormalizedEmail) -> None:
-        del settings, recipient
-        raise AssertionError("Resend provider connectivity is not composed")
-
-
-@dataclass(slots=True)
-class ResendControlPlaneHandler:
-    """Expose provider-independent Resend state while connectivity is deferred."""
-
-    delegate: HumanInputEmailChannelManager
-    ref: ChannelRef = field(default=HumanInputEmailChannelManager.ref, init=False)
-    capabilities: frozenset[ChannelCapability] = field(
-        default=HumanInputEmailChannelManager.capabilities,
-        init=False,
-    )
-
-    def get(self, context: HumanInputChannelManagementContext) -> ChannelOperationResult:
-        return self.delegate.get(context)
-
-    def test(
-        self,
-        context: HumanInputChannelManagementContext,
-        command: TestChannelCommand,
-    ) -> ChannelOperationResult:
-        del context, command
-        return self._connectivity_unimplemented()
-
-    def save(
-        self,
-        context: HumanInputChannelManagementContext,
-        command: SaveChannelCommand,
-    ) -> ChannelOperationResult:
-        del context, command
-        return self._connectivity_unimplemented()
-
-    def delete(
-        self,
-        context: HumanInputChannelManagementContext,
-        command: DeleteChannelCommand,
-    ) -> ChannelOperationResult:
-        return self.delegate.delete(context, command)
-
-    @staticmethod
-    def _connectivity_unimplemented() -> ChannelOperationResult:
-        return ChannelOperationResult.failed(
-            ChannelFailureCategory.UNSUPPORTED_OPERATION,
-            _RESEND_CONNECTIVITY_UNIMPLEMENTED_CODE,
-        )
 
 
 @dataclass(slots=True)
@@ -146,17 +89,16 @@ class UnimplementedIMChannelHandler:
 def build_human_input_channel_management_service(
     *,
     session_maker: sessionmaker[Session] | None = None,
+    email_validator: EmailProviderValidator | None = None,
 ) -> HumanInputChannelManagementService:
-    """Compose provider-independent Resend operations and explicit provider stubs."""
+    """Compose functional Resend management and explicit IM provider stubs."""
 
     operation_sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
     email_repository = SQLAlchemyEmailChannelRepository(operation_sessions)
-    email_handler = ResendControlPlaneHandler(
-        HumanInputEmailChannelManager(
-            email_repository,
-            _UnavailableResendValidator(),
-            DifyEmailCredentialProtector(),
-        )
+    email_handler = HumanInputEmailChannelManager(
+        email_repository,
+        email_validator or ResendEmailProviderValidator(),
+        DifyEmailCredentialProtector(),
     )
     im_handlers = tuple(UnimplementedIMChannelHandler(ref) for ref in _UNIMPLEMENTED_IM_REFS)
     return HumanInputChannelManagementService(
@@ -180,7 +122,6 @@ def build_human_input_channel_management_context(
 
 
 __all__ = [
-    "ResendControlPlaneHandler",
     "UnimplementedIMChannelHandler",
     "build_human_input_channel_management_context",
     "build_human_input_channel_management_service",

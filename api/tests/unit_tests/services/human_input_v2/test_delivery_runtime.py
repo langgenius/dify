@@ -95,6 +95,7 @@ def test_resolver_rejects_wrong_scope_channel_and_credential_failure() -> None:
 
     class FailingProtector(Protector):
         def reveal(self, workspace_id, protected):
+            del workspace_id, protected
             raise RuntimeError("decryption failed")
 
     credential_failure = TenantEmailConfigurationSnapshotResolver(

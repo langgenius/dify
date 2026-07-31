@@ -53,11 +53,11 @@ Every Community and Cloud Channels route MUST require an authenticated, initiali
 - **THEN** the API MUST return `unsupported_operation` with code `im_channel_management_not_implemented`
 - **AND** it MUST NOT perform IM provider, credential-protection or persistence work
 
-#### Scenario: Resend provider-dependent operation is requested
+#### Scenario: Resend management operation is requested
 
-- **WHEN** an authenticated caller saves or tests a Resend candidate
-- **THEN** the API MUST return `unsupported_operation` with code `resend_provider_connectivity_not_implemented`
-- **AND** it MUST NOT load or write Email configuration, reveal or protect credentials, send Email or perform provider work
+- **WHEN** an authenticated caller reads, saves, tests or deletes a Resend candidate
+- **THEN** the API MUST dispatch the operation through the common facade and Email manager
+- **AND** provider I/O MUST remain behind the Resend adapter
 
 ### Requirement: Community and Cloud support MUST NOT alter Enterprise IM behavior
 
@@ -103,7 +103,7 @@ The API MUST define separate Resend, Slack, Feishu and DingTalk candidate varian
 
 ### Requirement: Email credential directives MUST have unambiguous transport semantics
 
-The Resend DTO MUST distinguish a non-blank new API key from an omitted or blank retain-existing directive. This change defines and validates that transport contract without executing provider-dependent save behavior.
+The Resend DTO MUST distinguish a non-blank new API key from an omitted or blank retain-existing directive. Production save and test MUST execute that explicit directive through the Email manager without returning credential material.
 
 #### Scenario: Email is configured for the first time
 
@@ -115,7 +115,45 @@ The Resend DTO MUST distinguish a non-blank new API key from an omitted or blank
 
 - **WHEN** a Resend request omits the API key or submits a blank value
 - **THEN** the API MUST map that input to explicit existing-key retention
-- **AND** production dispatch MUST return the Resend connectivity unimplemented result before configuration or credential work
+- **AND** the current Workspace credential MUST be revealed only for transient provider validation
+- **AND** the protected credential MUST remain unchanged after a successful retained-key update
+
+### Requirement: Resend save and test MUST be functional and safely separated
+
+Resend save MUST validate the complete candidate without sending Email before persisting it. Resend test MUST validate the complete candidate and send exactly one test Email to the authenticated operator without persisting it.
+
+#### Scenario: Resend candidate is saved
+
+- **WHEN** a Full access API key can list domains and the exact sender domain is verified with sending enabled
+- **THEN** save MUST persist the protected candidate through the existing Email repository
+- **AND** it MUST return the resulting credential-free configured view
+- **AND** it MUST NOT send an Email
+
+#### Scenario: Sending-only key is submitted
+
+- **WHEN** Resend reports that the candidate key is restricted to sending and cannot inspect domains
+- **THEN** save or test MUST return a validation failure with code `provider_full_access_required`
+- **AND** no configuration MUST be created or replaced
+
+#### Scenario: Sender domain is unusable
+
+- **WHEN** the exact sender domain is absent, not verified or has sending disabled
+- **THEN** save or test MUST return the corresponding stable sender-domain failure
+- **AND** no configuration MUST be created or replaced
+
+#### Scenario: Resend candidate is tested
+
+- **WHEN** the candidate validates and Resend accepts the test message
+- **THEN** test MUST send exactly one Email to the authenticated operator Email
+- **AND** the provider request MUST carry a unique idempotency key
+- **AND** the response MUST be a credential-free candidate-test result
+- **AND** no part of the candidate MUST be persisted
+
+#### Scenario: Resend provider or transport fails
+
+- **WHEN** Resend rejects the candidate, exhausts quota, rate limits, returns a malformed response or cannot be reached
+- **THEN** the API MUST return a stable validation or provider failure
+- **AND** no provider body, request header, exception text or credential material MUST appear in the response or logs
 
 ### Requirement: Non-Resend channel operations MUST remain explicit placeholders
 
@@ -139,7 +177,7 @@ Slack, Feishu and DingTalk MUST remain unimplemented in this change. Their regis
 
 ### Requirement: Persisted views MUST remain credential-free
 
-Read and delete responses MUST contain only persisted-state views. Reserved candidate-test response DTOs MUST remain structurally distinct from persisted views for the later connectivity change.
+Read, save and delete responses MUST contain only persisted-state views. Candidate-test response DTOs MUST remain structurally distinct from persisted views.
 
 #### Scenario: Channel delete succeeds
 
@@ -200,7 +238,7 @@ The non-functional Email provider route MUST be removed or made unavailable when
 #### Scenario: Canonical API is enabled
 
 - **WHEN** the unified Channels controllers are registered
-- **THEN** Resend reads, deletes and reserved mutations MUST dispatch through the common management facade
+- **THEN** Resend reads, validated saves, deletes and operator-targeted tests MUST dispatch through the common management facade
 - **AND** no controller MUST call Email persistence directly
 
 #### Scenario: Legacy stub path is requested
