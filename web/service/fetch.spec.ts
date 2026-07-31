@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { APPDEPLOY_WEB_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
 import { base } from './fetch'
 
@@ -19,40 +19,27 @@ describe('base', () => {
   })
 
   describe('Public API routing', () => {
-    it.each([
-      {
-        shareCode: 'env-appdeploy',
-        expectedPrefix: APPDEPLOY_WEB_API_PREFIX,
-      },
-      {
-        shareCode: 'legacy-app',
-        expectedPrefix: PUBLIC_API_PREFIX,
-      },
-    ])(
-      'should route $shareCode through the expected public API prefix',
-      async ({ shareCode, expectedPrefix }) => {
-        window.history.replaceState({}, '', `/workflow/${shareCode}`)
-        const fetchSpy = vi
-          .spyOn(globalThis, 'fetch')
-          .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
+    it('should keep ordinary workflow webapps on the Dify public API', async () => {
+      window.history.replaceState({}, '', '/workflow/legacy-app')
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
 
-        await base('/site', {}, { isPublicAPI: true })
+      await base('/site', {}, { isPublicAPI: true })
 
-        const [request] = fetchSpy.mock.calls[0]!
-        expect(request).toBeInstanceOf(Request)
-        if (!(request instanceof Request))
-          throw new TypeError('Expected fetch to receive a Request')
-        expect(request.url).toBe(`${expectedPrefix}/site`)
-        expect(request.headers.get('X-App-Code')).toBe(shareCode)
-      },
-    )
+      const [request] = fetchSpy.mock.calls[0]!
+      expect(request).toBeInstanceOf(Request)
+      if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
+      expect(request.url).toBe(`${PUBLIC_API_PREFIX}/site`)
+      expect(request.headers.get('X-App-Code')).toBe('legacy-app')
+    })
 
-    it('should send signing in to Dify even while an app-deploy app is being opened', async () => {
-      // The signin page carries the share code in redirect_url, so routing on
-      // the code alone sent /login to the app-deploy gateway, which does not
-      // serve it. Authentication belongs to Dify: it issues the token the
-      // environment later exchanges for a passport.
-      window.history.replaceState({}, '', '/webapp-signin?redirect_url=%2Fworkflow%2Fenv-appdeploy')
+    it('should send sign in to Dify while opening an environment webapp', async () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/webapp-signin?redirect_url=%2Fworkflow%2Fenvironments%2Fenv-1%2Fworkflow-app',
+      )
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
@@ -64,19 +51,34 @@ describe('base', () => {
       expect(request.url).toBe(`${PUBLIC_API_PREFIX}/login`)
     })
 
+    it.each(['/passport', '/webapp/permission', '/workflows/run', 'parameters', 'meta'])(
+      'should route %s to the environment webapp API',
+      async (path) => {
+        window.history.replaceState({}, '', '/workflow/environments/env-1/workflow-app')
+        const fetchSpy = vi
+          .spyOn(globalThis, 'fetch')
+          .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
+
+        await base(path, {}, { isPublicAPI: true })
+
+        const [request] = fetchSpy.mock.calls[0]!
+        if (!(request instanceof Request))
+          throw new TypeError('Expected fetch to receive a Request')
+        const expectedPath = path.startsWith('/') ? path : `/${path}`
+        expect(request.url).toBe(
+          `${PUBLIC_API_PREFIX}/environments/env-1/webapps/workflow-app${expectedPath}`,
+        )
+      },
+    )
+
     it.each([
-      '/passport',
       '/login/status',
-      '/webapp/permission',
-      '/workflows/run',
-      // Callers pass some paths bare; matching only the slashed form sent
-      // these to Dify's public API, where the env- code does not exist.
-      'parameters',
-      'meta',
-    ])('should keep %s on the app-deploy gateway', async (path) => {
-      // /login/status is ours even though /login is not, so the split cannot
-      // be expressed by excluding an auth prefix.
-      window.history.replaceState({}, '', '/workflow/env-appdeploy')
+      '/email-code-login/validity',
+      '/forgot-password',
+      '/forgot-password/validity',
+      '/enterprise/sso/members/oidc/login',
+    ])('should keep environment auth path %s on Dify public API', async (path) => {
+      window.history.replaceState({}, '', '/workflow/environments/env-1/workflow-app')
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
@@ -85,8 +87,7 @@ describe('base', () => {
 
       const [request] = fetchSpy.mock.calls[0]!
       if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
-      const expectedPath = path.startsWith('/') ? path : `/${path}`
-      expect(request.url).toBe(`${APPDEPLOY_WEB_API_PREFIX}${expectedPath}`)
+      expect(request.url).toBe(`${PUBLIC_API_PREFIX}${path}`)
     })
   })
 

@@ -209,6 +209,7 @@ class EndUserType(StrEnum):
     """Persisted type values for the ``end_users.type`` column."""
 
     BROWSER = "browser"
+    APP_DEPLOY = "app-deploy"
     MCP = "mcp"
     OPENAPI = "openapi"
     SERVICE_API = "service-api"

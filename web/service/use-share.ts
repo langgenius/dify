@@ -13,8 +13,8 @@ import {
   getHumanInputForm,
   submitHumanInputForm,
 } from './share'
-import { resolveShareCode } from './share-code'
 import { useInvalid } from './use-base'
+import { resolveWebAppAddress } from './webapp-address'
 
 const NAME_SPACE = 'webapp'
 
@@ -69,7 +69,7 @@ export const useGetWebAppAccessModeByCode = (code: string | null) => {
 }
 
 export const useGetWebAppInfo = () => {
-  const shareCode = resolveShareCode() || null
+  const shareCode = resolveWebAppAddress()?.code || null
   return useQuery({
     queryKey: shareQueryKeys.appInfo(shareCode),
     queryFn: () => {
@@ -79,7 +79,7 @@ export const useGetWebAppInfo = () => {
 }
 
 export const useGetWebAppParams = () => {
-  const shareCode = resolveShareCode() || null
+  const shareCode = resolveWebAppAddress()?.code || null
   return useQuery({
     queryKey: shareQueryKeys.appParams(shareCode),
     queryFn: () => {
@@ -89,7 +89,7 @@ export const useGetWebAppParams = () => {
 }
 
 export const useGetWebAppMeta = () => {
-  const shareCode = resolveShareCode() || null
+  const shareCode = resolveWebAppAddress()?.code || null
   return useQuery({
     queryKey: shareQueryKeys.appMeta(shareCode),
     queryFn: () => {
