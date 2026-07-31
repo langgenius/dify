@@ -51,6 +51,7 @@ import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
 import { MiddleSkeleton, TemplatesSkeleton } from './loading-skeletons'
 import s from './style.module.css'
+import { useMiddleRevealDeadline } from './use-middle-reveal-deadline'
 
 const TryApp = dynamic(() => import('../try-app'), { ssr: false })
 const CreateAppModal = dynamic(() => import('../create-app-modal'), { ssr: false })
@@ -71,6 +72,7 @@ const homeContinueWorkAppsInput = {
 }
 
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
+
 function getLocaleQueryInput(locale?: string) {
   return locale ? { query: { language: locale } } : {}
 }
@@ -156,8 +158,9 @@ const Apps = ({ children, onSuccess }: { children?: ReactNode; onSuccess?: () =>
   const learnDifyQuery = useLearnDifyAppList({
     enabled: shouldShowLearnDify,
   })
-  const isMiddlePending =
-    continueWorkQuery.isPending || (shouldShowLearnDify && learnDifyQuery.isPending)
+  const isMiddlePending = useMiddleRevealDeadline(
+    continueWorkQuery.isPending || (shouldShowLearnDify && learnDifyQuery.isPending),
+  )
   const trackHomeTourCompleted = useCallback(
     (
       completedTaskIds: StepByStepTourTaskId[],

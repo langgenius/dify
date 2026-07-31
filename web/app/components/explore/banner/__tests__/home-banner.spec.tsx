@@ -3,11 +3,29 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
+  ensureSystemFeatures: vi.fn(),
   getHomeBanners: vi.fn(),
+  systemFeaturesQueryOptions: vi.fn(),
 }))
 
 vi.mock('../data', () => ({
   getHomeBanners: mocks.getHomeBanners,
+}))
+
+vi.mock('@/context/query-client-server', () => ({
+  getQueryClientServer: () => ({
+    ensureQueryData: mocks.ensureSystemFeatures,
+  }),
+}))
+
+vi.mock('@/service/server', () => ({
+  serverConsoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: mocks.systemFeaturesQueryOptions,
+      },
+    },
+  },
 }))
 
 vi.mock('../banner', () => ({
@@ -36,10 +54,23 @@ async function renderHomeBanner() {
 describe('HomeBanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.ensureSystemFeatures.mockResolvedValue({ enable_explore_banner: true })
+    mocks.systemFeaturesQueryOptions.mockReturnValue({
+      queryKey: ['console', 'system-features', 'get'],
+    })
     mocks.getHomeBanners.mockResolvedValue([])
   })
 
-  it('requests and renders banners without a feature gate', async () => {
+  it('skips the banner request but retains the greeting shell when the server feature gate is disabled', async () => {
+    mocks.ensureSystemFeatures.mockResolvedValue({ enable_explore_banner: false })
+
+    await renderHomeBanner()
+
+    expect(mocks.getHomeBanners).not.toHaveBeenCalled()
+    expect(screen.getByTestId('home-banner')).toHaveAttribute('data-banner-ids', '')
+  })
+
+  it('requests and renders banners when the server feature gate is enabled', async () => {
     mocks.getHomeBanners.mockResolvedValue([{ id: 'banner-1' }, { id: 'banner-2' }])
 
     await renderHomeBanner()
@@ -49,21 +80,15 @@ describe('HomeBanner', () => {
       'data-banner-ids',
       'banner-1,banner-2',
     )
-    expect(screen.getByTestId('home-banner')).toHaveAttribute(
-      'data-reserves-carousel-space',
-      'true',
-    )
+    expect(screen.getByTestId('home-banner')).not.toHaveAttribute('data-reserves-carousel-space')
   })
 
-  it('retains the greeting shell when the banner request fails', async () => {
+  it('retains the greeting shell without reserving carousel space when the banner request fails', async () => {
     mocks.getHomeBanners.mockRejectedValue(new Error('Banner request failed'))
 
     await renderHomeBanner()
 
     expect(screen.getByTestId('home-banner')).toHaveAttribute('data-banner-ids', '')
-    expect(screen.getByTestId('home-banner')).toHaveAttribute(
-      'data-reserves-carousel-space',
-      'true',
-    )
+    expect(screen.getByTestId('home-banner')).not.toHaveAttribute('data-reserves-carousel-space')
   })
 })

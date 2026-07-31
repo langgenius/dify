@@ -246,10 +246,9 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
 type BannerProps = {
   banners: BannerType[]
-  reserveCarouselSpace?: boolean
 }
 
-export function Banner({ banners, reserveCarouselSpace = false }: BannerProps) {
+export function Banner({ banners }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const userProfile = useAtomValue(userProfileAtom)
@@ -279,7 +278,7 @@ export function Banner({ banners, reserveCarouselSpace = false }: BannerProps) {
         </p>
       </div>
 
-      {enabledBanners.length > 0 ? (
+      {enabledBanners.length > 0 && (
         <Carousel
           opts={CAROUSEL_OPTIONS}
           plugins={carouselPlugins}
@@ -292,11 +291,7 @@ export function Banner({ banners, reserveCarouselSpace = false }: BannerProps) {
             language={locale}
           />
         </Carousel>
-      ) : reserveCarouselSpace ? (
-        <div className="@container/banner w-full">
-          <div aria-hidden="true" className="h-56 w-full @min-[996px]/banner:h-46" />
-        </div>
-      ) : null}
+      )}
     </div>
   )
 }

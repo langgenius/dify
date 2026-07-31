@@ -190,22 +190,12 @@ describe('Banner', () => {
   afterEach(cleanup)
 
   it('renders the greeting shell without a carousel when no enabled banner exists', () => {
-    render(<Banner banners={[createMockBanner('1', 'disabled')]} />)
+    const { container } = render(<Banner banners={[createMockBanner('1', 'disabled')]} />)
 
     expect(screen.getByText('Welcome back, Evan👋')).toBeInTheDocument()
     expect(screen.getByText('What if… this is where your next idea begins.')).toBeInTheDocument()
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
-  })
-
-  it('reserves the carousel height for the Home server boundary when no banner is available', () => {
-    const { container } = render(
-      <Banner banners={[createMockBanner('1', 'disabled')]} reserveCarouselSpace />,
-    )
-
-    const reservation = container.querySelector('[aria-hidden="true"]')
-
-    expect(reservation).toHaveClass('h-56', '@min-[996px]/banner:h-46')
-    expect(reservation?.parentElement).toHaveClass('@container/banner', 'w-full')
+    expect(container.querySelector('[aria-hidden="true"]')).toBeNull()
   })
 
   it('labels the carousel and renders only enabled banners', () => {

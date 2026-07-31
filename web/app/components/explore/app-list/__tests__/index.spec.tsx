@@ -622,7 +622,7 @@ describe('AppList', () => {
       expect(mockLearnDifyQuery.useQuery).toHaveBeenCalledWith({ enabled: true })
     })
 
-    it('should keep middle and templates skeletons while Continue Work is pending', async () => {
+    it('should reveal ready templates when the middle safety deadline expires', async () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -640,10 +640,39 @@ describe('AppList', () => {
         await vi.advanceTimersByTimeAsync(5000)
       })
 
-      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(2)
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
-    it('should keep ready continue work hidden while learn dify is loading', () => {
+    it('should render Continue Work when its request resolves after the middle deadline', async () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceAppsLoading = true
+
+      const { queryClient } = renderAppList()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      const lateApps = [createWorkspaceApp({ name: 'Late Continue Work' })]
+      const [recentAppsQuery] = queryClient.getQueryCache().findAll({
+        queryKey: ['console', 'apps', 'recent', 'get'],
+      })
+      expect(recentAppsQuery).toBeDefined()
+
+      await act(async () => {
+        queryClient.setQueryData(recentAppsQuery?.queryKey ?? [], { data: lateApps })
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      expect(queryClient.getQueryData(recentAppsQuery?.queryKey ?? [])).toEqual({ data: lateApps })
+      expect(screen.getByText('Late Continue Work')).toBeInTheDocument()
+    })
+
+    it('should reveal ready Continue Work when the Learn Dify deadline expires', async () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -659,6 +688,14 @@ describe('AppList', () => {
         screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
       ).not.toBeInTheDocument()
       expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(2)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      expect(screen.getByText('Ready Continue Work')).toBeInTheDocument()
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
     it('should not show the learn dify placeholder when the section is hidden', () => {
