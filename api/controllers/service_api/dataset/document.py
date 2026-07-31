@@ -85,6 +85,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     ProcessRule,
     RetrievalModel,
 )
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.summary_index_service import SummaryIndexService
 
@@ -784,6 +785,7 @@ class DocumentAddByFileApi(DatasetApiResource):
             mimetype=file.mimetype,
             user=current_user,
             source="datasets",
+            default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
         )
         data_source = {
             "type": "upload_file",
@@ -859,6 +861,7 @@ def _update_document_by_file(
                 mimetype=file.mimetype,
                 user=current_user,
                 source="datasets",
+                default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)

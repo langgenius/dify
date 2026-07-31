@@ -210,6 +210,32 @@ class TestFileService:
             # Default
             assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
             assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="pdf",
+                    file_size=6 * 1024 * 1024,
+                    default_file_size_limit=7,
+                )
+                is True
+            )
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="pdf",
+                    file_size=8 * 1024 * 1024,
+                    default_file_size_limit=7,
+                )
+                is False
+            )
+
+            # Media-specific limits are not affected by the knowledge document override.
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="jpg",
+                    file_size=11 * 1024 * 1024,
+                    default_file_size_limit=100,
+                )
+                is False
+            )
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")

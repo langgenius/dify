@@ -73,11 +73,14 @@ const CreateFormPipeline = () => {
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
   const fileUploadConfig = useMemo(
-    () =>
-      fileUploadConfigResponse ?? {
-        file_size_limit: 15,
-        batch_count_limit: 5,
-      },
+    () => ({
+      ...fileUploadConfigResponse,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
+      batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
+    }),
     [fileUploadConfigResponse],
   )
 

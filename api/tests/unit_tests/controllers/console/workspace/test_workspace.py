@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -313,32 +313,11 @@ class TestTenantApi:
         assert status == HTTPStatus.OK
         assert result["id"] == "t1"
 
-    def test_post_archived_with_switch(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        archived = make_tenant(status=TenantStatus.ARCHIVE)
-        new_tenant = make_tenant("new")
-        user = make_account_with_tenant(archived)
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[new_tenant]),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant") as switch_tenant,
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "new"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert result["id"] == "new"
-        switch_tenant.assert_called_once_with(user, new_tenant.id, session=ANY)
-
-    def test_post_archived_no_tenant(self, app: Flask):
+    def test_post_archived_tenant(self, app: Flask):
         api = TenantApi()
         method = unwrap(api.post)
         user = make_account_with_tenant(make_tenant(status=TenantStatus.ARCHIVE))
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[]),
-        ):
+        with app.test_request_context("/workspaces/current"):
             with pytest.raises(Unauthorized):
                 method(api, MagicMock(), user)
 

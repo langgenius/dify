@@ -33,6 +33,7 @@ from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
@@ -363,6 +364,7 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
                 content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=current_user,
+                default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)

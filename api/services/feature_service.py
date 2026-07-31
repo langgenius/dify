@@ -250,6 +250,21 @@ class FeatureService:
         return knowledge_rate_limit
 
     @classmethod
+    def get_knowledge_file_size_limit(cls, tenant_id: str | None) -> int:
+        default_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT
+        if not dify_config.BILLING_ENABLED or not tenant_id:
+            return default_limit
+
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        if billing_info["enabled"] and billing_info["subscription"]["plan"] in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        ):
+            return max(default_limit, dify_config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN)
+
+        return default_limit
+
+    @classmethod
     def _resolve_human_input_email_delivery_enabled(cls, *, features: FeatureModel, tenant_id: str | None) -> bool:
         if dify_config.ENTERPRISE_ENABLED or not dify_config.BILLING_ENABLED:
             return True
