@@ -15,6 +15,7 @@ import io
 from collections.abc import AsyncIterator
 from decimal import Decimal
 import json
+import os
 import time
 from typing import ClassVar, cast
 import zipfile
@@ -25,19 +26,22 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResul
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from benchmarks.scenario import (
-    AgentBenchmarkScenario,
-    BenchmarkScenario,
-    CapabilityBenchmarkScenario,
-    load_scenario_manifest,
-)
+from benchmarks.scenario import CapacityScenario, load_scenario_manifest
 from benchmarks.schemas import FakeDependencyLedger
 
 
 _MODEL_NAME = "benchmark-model"
-_TOOL_NAME = "benchmark_tool"
 _SHELL_TOOL_NAME = "shell_run"
 _ZERO_PRICE = Decimal(0)
+
+
+def _benchmark_data_url(path: str) -> str:
+    """Return the public data-plane URL used by an external E2B Sandbox."""
+    base_url = os.environ.get(
+        "BENCH_PUBLIC_DATA_BASE_URL",
+        "http://fake-deps:5002/__bench",
+    ).rstrip("/")
+    return f"{base_url}/{path.lstrip('/')}"
 
 
 class PluginInvokeRequest(BaseModel):
@@ -55,6 +59,7 @@ class PrepareLedgerRequest(BaseModel):
     benchmark_run_id: str
     scenario_id: str
     scenario_version: int
+    payload_bytes: int | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -66,21 +71,24 @@ class BenchmarkLedgerStore:
         self._lock = asyncio.Lock()
         self._ledgers: dict[str, FakeDependencyLedger] = {}
         self._files: dict[str, tuple[str, str, bytes]] = {}
+        self._scenarios: dict[str, CapacityScenario] = {}
 
     async def reset(self) -> None:
         """Remove all prior warmup and measurement ledgers."""
         async with self._lock:
             self._ledgers.clear()
             self._files.clear()
+            self._scenarios.clear()
 
     async def prepare(
         self,
         *,
         benchmark_run_id: str,
-        scenario: CapabilityBenchmarkScenario,
+        scenario: CapacityScenario,
     ) -> None:
         async with self._lock:
             _ = self._get_or_create(benchmark_run_id, scenario)
+            self._scenarios[benchmark_run_id] = scenario.model_copy(deep=True)
 
     async def read(self, benchmark_run_id: str) -> FakeDependencyLedger:
         """Return a defensive copy of one run ledger."""
@@ -90,11 +98,19 @@ class BenchmarkLedgerStore:
                 raise KeyError(benchmark_run_id)
             return ledger.model_copy(deep=True)
 
+    async def read_scenario(self, benchmark_run_id: str) -> CapacityScenario:
+        """Return the per-run scenario, including benchmark-only payload overrides."""
+        async with self._lock:
+            scenario = self._scenarios.get(benchmark_run_id)
+            if scenario is None:
+                raise KeyError(benchmark_run_id)
+            return scenario.model_copy(deep=True)
+
     async def begin_model_call(
         self,
         *,
         benchmark_run_id: str,
-        scenario: BenchmarkScenario | CapabilityBenchmarkScenario,
+        scenario: CapacityScenario,
     ) -> int:
         """Register a model request and return its one-based round number."""
         async with self._lock:
@@ -124,14 +140,13 @@ class BenchmarkLedgerStore:
         self,
         *,
         benchmark_run_id: str,
-        scenario: BenchmarkScenario,
+        scenario: CapacityScenario,
         elapsed_ms: float,
     ) -> None:
         """Record one deterministic tool response."""
         async with self._lock:
             ledger = self._get_or_create(benchmark_run_id, scenario)
             ledger.tool_calls += 1
-            ledger.tool_response_bytes += scenario.tool_response_bytes
             ledger.tool_elapsed_ms.append(elapsed_ms)
 
     async def record_capability_tool_plan(self, *, benchmark_run_id: str) -> None:
@@ -191,16 +206,14 @@ class BenchmarkLedgerStore:
     def _get_or_create(
         self,
         benchmark_run_id: str,
-        scenario: BenchmarkScenario | CapabilityBenchmarkScenario,
+        scenario: CapacityScenario,
     ) -> FakeDependencyLedger:
         ledger = self._ledgers.get(benchmark_run_id)
         if ledger is None:
             ledger = FakeDependencyLedger(
                 benchmark_run_id=benchmark_run_id,
-                profile="capability" if isinstance(scenario, CapabilityBenchmarkScenario) else "agent",
                 scenario_id=scenario.id,
                 scenario_version=scenario.version,
-                dependency_budget_ms=scenario.dependency_budget_ms,
             )
             self._ledgers[benchmark_run_id] = ledger
         elif ledger.scenario_id != scenario.id or ledger.scenario_version != scenario.version:
@@ -208,8 +221,7 @@ class BenchmarkLedgerStore:
         return ledger
 
 
-agent_manifest = load_scenario_manifest(profile="agent")
-capability_manifest = load_scenario_manifest(profile="capability")
+scenario_manifest = load_scenario_manifest()
 ledger_store = BenchmarkLedgerStore()
 app = FastAPI(title="Dify Agent deterministic benchmark dependencies")
 
@@ -230,13 +242,18 @@ async def reset_ledgers() -> dict[str, str]:
 @app.post("/__bench/prepare")
 async def prepare_ledger(request: PrepareLedgerRequest) -> dict[str, str]:
     try:
-        scenario = capability_manifest.get(request.scenario_id)
+        scenario = scenario_manifest.get(request.scenario_id)
     except KeyError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if not isinstance(scenario, CapabilityBenchmarkScenario):
-        raise HTTPException(status_code=422, detail="scenario is not a capability workload")
     if scenario.version != request.scenario_version:
         raise HTTPException(status_code=409, detail="scenario version mismatch")
+    if request.payload_bytes is not None:
+        if scenario.workload != "file" or request.payload_bytes < 1:
+            raise HTTPException(
+                status_code=422,
+                detail="payload_bytes is only valid as a positive file override",
+            )
+        scenario = scenario.model_copy(update={"payload_bytes": request.payload_bytes})
     await ledger_store.prepare(benchmark_run_id=request.benchmark_run_id, scenario=scenario)
     return {"status": "prepared"}
 
@@ -254,7 +271,7 @@ async def get_ledger(benchmark_run_id: str) -> FakeDependencyLedger:
 async def invoke_llm(tenant_id: str, request: PluginInvokeRequest) -> StreamingResponse:
     """Emit deterministic Graphon LLM chunks using the production daemon envelope."""
     del tenant_id
-    scenario, benchmark_run_id = _resolve_benchmark_identity(request)
+    scenario, benchmark_run_id = await _resolve_benchmark_identity(request)
     round_number = await ledger_store.begin_model_call(
         benchmark_run_id=benchmark_run_id,
         scenario=scenario,
@@ -270,11 +287,8 @@ async def invoke_llm(tenant_id: str, request: PluginInvokeRequest) -> StreamingR
             elapsed_ms=(time.perf_counter_ns() - started_ns) / 1_000_000,
         )
         if round_number <= scenario.tool_rounds:
-            if isinstance(scenario, CapabilityBenchmarkScenario):
-                await ledger_store.record_capability_tool_plan(benchmark_run_id=benchmark_run_id)
-                item = _capability_tool_call_chunk(scenario=scenario, round_number=round_number)
-            else:
-                item = _tool_call_chunk(round_number)
+            await ledger_store.record_capability_tool_plan(benchmark_run_id=benchmark_run_id)
+            item = _capability_tool_call_chunk(scenario=scenario, round_number=round_number)
             await ledger_store.record_model_item(
                 benchmark_run_id=benchmark_run_id,
                 text_chunk=False,
@@ -300,21 +314,10 @@ async def invoke_llm(tenant_id: str, request: PluginInvokeRequest) -> StreamingR
 
 @app.post("/plugin/{tenant_id}/dispatch/tool/invoke")
 async def invoke_tool(tenant_id: str, request: PluginInvokeRequest) -> StreamingResponse:
-    """Return a fixed-size text observation through the production tool envelope."""
+    """Reject unexpected plugin-tool calls; capacity workloads use the Shell layer."""
     del tenant_id
-    scenario, benchmark_run_id = _resolve_benchmark_identity(request)
-    if not isinstance(scenario, AgentBenchmarkScenario):
-        raise HTTPException(status_code=409, detail="capability workloads do not invoke plugin tools")
-    started_ns = time.perf_counter_ns()
-    await asyncio.sleep(scenario.tool_delay_ms / 1000)
-    await ledger_store.record_tool_call(
-        benchmark_run_id=benchmark_run_id,
-        scenario=scenario,
-        elapsed_ms=(time.perf_counter_ns() - started_ns) / 1_000_000,
-    )
-    response_text = "x" * scenario.tool_response_bytes
-    data = {"type": "text", "message": {"text": response_text}}
-    return StreamingResponse(iter([_wrap_data(data)]), media_type="text/event-stream")
+    del request
+    raise HTTPException(status_code=409, detail="capacity workloads do not invoke plugin tools")
 
 
 @app.get("/inner/api/agent-config/{benchmark_run_id}/manifest")
@@ -383,55 +386,6 @@ async def config_file_pull(benchmark_run_id: str, name: str) -> Response:
     return Response(payload, media_type="application/octet-stream")
 
 
-@app.get("/inner/api/drive/{drive_ref}/manifest")
-async def drive_manifest(
-    drive_ref: str,
-    prefix: str = "",
-    include_download_url: bool = False,
-) -> dict[str, object]:
-    started_ns = time.perf_counter_ns()
-    benchmark_run_id = drive_ref.removeprefix("agent-")
-    scenario = await _capability_scenario(benchmark_run_id)
-    await ledger_store.record_stub_call(
-        benchmark_run_id=benchmark_run_id,
-        name="drive_manifest",
-        elapsed_ms=_elapsed_ms(started_ns),
-    )
-    items: list[dict[str, object]] = []
-    for index in range(scenario.drive_file_count):
-        key = f"drive/file-{index}.bin"
-        if prefix and key != prefix and not key.startswith(prefix.rstrip("/") + "/"):
-            continue
-        payload = _fixed_payload(f"drive:{key}", scenario.item_bytes)
-        item: dict[str, object] = {
-            "key": key,
-            "size": len(payload),
-            "hash": hashlib.sha256(payload).hexdigest(),
-            "mime_type": "application/octet-stream",
-        }
-        if include_download_url:
-            item["download_url"] = f"http://fake-deps:5002/__bench/drive/{benchmark_run_id}/{index}"
-        items.append(item)
-    return {"items": items}
-
-
-@app.get("/__bench/drive/{benchmark_run_id}/{index}")
-async def download_drive_file(benchmark_run_id: str, index: int) -> Response:
-    started_ns = time.perf_counter_ns()
-    scenario = await _capability_scenario(benchmark_run_id)
-    if index < 0 or index >= scenario.drive_file_count:
-        raise HTTPException(status_code=404, detail="drive item not found")
-    key = f"drive/file-{index}.bin"
-    payload = _fixed_payload(f"drive:{key}", scenario.item_bytes)
-    await ledger_store.record_stub_call(
-        benchmark_run_id=benchmark_run_id,
-        name="drive_download",
-        payload=payload,
-        elapsed_ms=_elapsed_ms(started_ns),
-    )
-    return Response(payload, media_type="application/octet-stream")
-
-
 @app.post("/inner/api/upload/file/request")
 async def request_file_upload(request: Request) -> dict[str, object]:
     started_ns = time.perf_counter_ns()
@@ -447,7 +401,7 @@ async def request_file_upload(request: Request) -> dict[str, object]:
     encoded_name = base64.urlsafe_b64encode(filename.encode()).decode().rstrip("=")
     return {
         "data": {
-            "url": f"http://fake-deps:5002/__bench/files/upload/{benchmark_run_id}/{encoded_name}",
+            "url": _benchmark_data_url(f"files/upload/{benchmark_run_id}/{encoded_name}"),
         }
     }
 
@@ -492,7 +446,7 @@ async def request_file_download(request: Request) -> dict[str, object]:
             "filename": filename,
             "mime_type": "application/octet-stream",
             "size": len(content),
-            "download_url": f"http://fake-deps:5002/__bench/files/download/{record_id}",
+            "download_url": _benchmark_data_url(f"files/download/{record_id}"),
         }
     }
 
@@ -513,18 +467,11 @@ async def download_file(record_id: str) -> Response:
     return Response(payload, media_type="application/octet-stream")
 
 
-async def _capability_scenario(benchmark_run_id: str) -> CapabilityBenchmarkScenario:
+async def _capability_scenario(benchmark_run_id: str) -> CapacityScenario:
     try:
-        ledger = await ledger_store.read(benchmark_run_id)
+        return await ledger_store.read_scenario(benchmark_run_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="capability ledger was not prepared") from exc
-    try:
-        scenario = capability_manifest.get(ledger.scenario_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if not isinstance(scenario, CapabilityBenchmarkScenario):
-        raise HTTPException(status_code=422, detail="ledger scenario is not a capability workload")
-    return scenario
 
 
 def _fixed_payload(label: str, size: int) -> bytes:
@@ -585,9 +532,9 @@ def _required_string(payload: dict[str, object], name: str) -> str:
     return value
 
 
-def _resolve_benchmark_identity(
+async def _resolve_benchmark_identity(
     request: PluginInvokeRequest,
-) -> tuple[AgentBenchmarkScenario | CapabilityBenchmarkScenario, str]:
+) -> tuple[CapacityScenario, str]:
     credentials = request.data.get("credentials")
     if not isinstance(credentials, dict):
         raise HTTPException(status_code=422, detail="benchmark credentials are required")
@@ -601,30 +548,29 @@ def _resolve_benchmark_identity(
     if not isinstance(scenario_version, int):
         raise HTTPException(status_code=422, detail="scenario_version is required")
     try:
-        profile = credentials.get("benchmark_profile", "agent")
-        selected_manifest = capability_manifest if profile == "capability" else agent_manifest
-        scenario = selected_manifest.get(scenario_id)
+        scenario = await ledger_store.read_scenario(benchmark_run_id)
     except KeyError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if scenario.version != scenario_version:
+    if scenario.id != scenario_id or scenario.version != scenario_version:
         raise HTTPException(status_code=409, detail="scenario version mismatch")
-    if not isinstance(scenario, (AgentBenchmarkScenario, CapabilityBenchmarkScenario)):
-        raise HTTPException(status_code=422, detail="scenario profile does not support fake dependencies")
     return scenario, benchmark_run_id
 
 
 def _capability_tool_call_chunk(
     *,
-    scenario: CapabilityBenchmarkScenario,
+    scenario: CapacityScenario,
     round_number: int,
 ) -> LLMResultChunk:
     script = _capability_script(scenario)
+    arguments: dict[str, str | float] = {"script": script}
+    if scenario.workload == "file":
+        arguments["timeout"] = 120.0
     tool_call = AssistantPromptMessage.ToolCall(
         id=f"benchmark-shell-call-{round_number}",
         type="function",
         function=AssistantPromptMessage.ToolCall.ToolCallFunction(
             name=_SHELL_TOOL_NAME,
-            arguments=json.dumps({"script": script}, separators=(",", ":")),
+            arguments=json.dumps(arguments, separators=(",", ":")),
         ),
     )
     return LLMResultChunk(
@@ -637,10 +583,10 @@ def _capability_tool_call_chunk(
     )
 
 
-def _capability_script(scenario: CapabilityBenchmarkScenario) -> str:
-    if scenario.workload in {"shell", "shell_resume"}:
+def _capability_script(scenario: CapacityScenario) -> str:
+    if scenario.workload in {"shell", "resume"}:
         return "set -eu\nprintf 'DIFY_CAPABILITY_SHELL_OK\\n'"
-    if scenario.workload != "file_roundtrip":
+    if scenario.workload != "file":
         raise ValueError(f"{scenario.workload} does not use shell_run")
     return "\n".join(
         [
@@ -659,25 +605,6 @@ def _capability_script(scenario: CapabilityBenchmarkScenario) -> str:
             '"$(sha256sum "$workdir/download/payload.bin" | cut -d\' \' -f1)"',
             "printf 'DIFY_CAPABILITY_FILE_OK\\n'",
         ]
-    )
-
-
-def _tool_call_chunk(round_number: int) -> LLMResultChunk:
-    tool_call = AssistantPromptMessage.ToolCall(
-        id=f"benchmark-tool-call-{round_number}",
-        type="function",
-        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-            name=_TOOL_NAME,
-            arguments='{"query":"benchmark"}',
-        ),
-    )
-    return LLMResultChunk(
-        model=_MODEL_NAME,
-        delta=LLMResultChunkDelta(
-            index=0,
-            message=AssistantPromptMessage(content="", tool_calls=[tool_call]),
-            finish_reason="tool_calls",
-        ),
     )
 
 

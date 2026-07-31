@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "basic",
+      "version": 1,
+      "workload": "basic",
+      "model_rounds": 1,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0
+    },
+    {
+      "id": "shell",
+      "version": 1,
+      "workload": "shell",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0
+    },
+    {
+      "id": "resume",
+      "version": 1,
+      "workload": "resume",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0
+    },
+    {
+      "id": "config",
+      "version": 1,
+      "workload": "config",
+      "model_rounds": 1,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "config_skill_count": 3,
+      "config_file_count": 10,
+      "item_bytes": 4096
+    },
+    {
+      "id": "file",
+      "version": 1,
+      "workload": "file",
+      "model_rounds": 2,
+      "text_chunks": 1,
+      "model_delay_ms": 10.0,
+      "chunk_interval_ms": 0.0,
+      "payload_bytes": 16777216
+    }
+  ]
+}

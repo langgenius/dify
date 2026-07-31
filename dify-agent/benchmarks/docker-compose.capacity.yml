@@ -1,14 +1,7 @@
 services:
   redis:
     image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
-    command:
-      - redis-server
-      - --save
-      - ""
-      - --appendonly
-      - "no"
-      - --maxmemory-policy
-      - noeviction
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory-policy", "noeviction"]
     cpus: 2.0
     mem_limit: 512m
     healthcheck:
@@ -16,8 +9,7 @@ services:
       interval: 1s
       timeout: 1s
       retries: 30
-    volumes:
-      - redis-data:/data
+    volumes: [redis-data:/data]
     networks: [benchmark]
 
   fake-deps:
@@ -25,6 +17,8 @@ services:
     command: ["python", "-m", "benchmarks.fake_deps"]
     cpus: 2.0
     mem_limit: 512m
+    environment:
+      BENCH_PUBLIC_DATA_BASE_URL: ${BENCH_PUBLIC_DATA_BASE_URL:-http://fake-deps:5002/__bench}
     healthcheck:
       test:
         [
@@ -39,19 +33,16 @@ services:
     networks: [benchmark]
 
   runtime:
-    image: ${BENCH_RUNTIME_IMAGE:?BENCH_RUNTIME_IMAGE is required}
+    image: ${BENCH_RUNTIME_IMAGE:-dify-agent-runtime-benchmark-unused}
     command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--state-dir", "/state"]
     cpus: 4.0
     mem_limit: 2g
-    environment:
-      SHELLCTL_LANDLOCK_RW_PATHS: /mnt/drive
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5004/healthz"]
       interval: 1s
       timeout: 2s
       retries: 60
-    volumes:
-      - runtime-state:/state
+    volumes: [runtime-state:/state]
     networks: [benchmark]
 
   agent:
@@ -68,8 +59,8 @@ services:
         "1",
         "--no-access-log",
       ]
-    cpus: 4.0
-    mem_limit: 1g
+    cpus: 2.0
+    mem_limit: 2g
     environment:
       DIFY_AGENT_REDIS_URL: redis://redis:6379/0
       DIFY_AGENT_REDIS_PREFIX: dify-agent-bench
@@ -77,7 +68,7 @@ services:
       DIFY_AGENT_PLUGIN_DAEMON_API_KEY: benchmark-only
       DIFY_AGENT_INNER_API_URL: http://fake-deps:5002
       DIFY_AGENT_INNER_API_KEY: benchmark-only
-      DIFY_AGENT_RUNTIME_BACKEND: local
+      DIFY_AGENT_RUNTIME_BACKEND: ${BENCH_RUNTIME_BACKEND:?BENCH_RUNTIME_BACKEND is required}
       DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT: http://runtime:5004
       DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT: /state/materialized-homes
       DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT: /state/workspaces
@@ -85,7 +76,10 @@ services:
       DIFY_AGENT_SHELL_PROVIDER: shellctl
       DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://runtime:5004
       DIFY_AGENT_SHELL_HOME_ROOT: /state/homes
-      DIFY_AGENT_STUB_API_BASE_URL: http://agent:5050/agent-stub
+      DIFY_AGENT_E2B_API_KEY: ${BENCH_E2B_API_KEY:-}
+      DIFY_AGENT_E2B_TEMPLATE: ${BENCH_E2B_TEMPLATE:-}
+      DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS: ${BENCH_E2B_ACTIVE_TIMEOUT_SECONDS:-900}
+      DIFY_AGENT_STUB_API_BASE_URL: ${BENCH_AGENT_STUB_API_BASE_URL:?BENCH_AGENT_STUB_API_BASE_URL is required}
       DIFY_AGENT_SERVER_SECRET_KEY: YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI
       DIFY_AGENT_RUN_RETENTION_SECONDS: "3600"
       DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "10"
@@ -95,8 +89,6 @@ services:
       redis:
         condition: service_healthy
       fake-deps:
-        condition: service_healthy
-      runtime:
         condition: service_healthy
     healthcheck:
       test:
@@ -108,48 +100,71 @@ services:
         ]
       interval: 1s
       timeout: 2s
-      retries: 60
+      retries: 90
     networks: [benchmark]
 
-  capability-driver:
+  agent-stub-proxy:
     image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
-    command: ["python", "-m", "benchmarks.capability_driver"]
+    command:
+      [
+        "uvicorn",
+        "benchmarks.agent_stub_proxy:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+        "--workers",
+        "1",
+        "--no-access-log",
+      ]
+    cpus: 1.0
+    mem_limit: 256m
+    environment:
+      BENCH_AGENT_STUB_UPSTREAM: http://agent:5050
+      BENCH_FAKE_DEPS_UPSTREAM: http://fake-deps:5002
+    ports: ["127.0.0.1:${BENCH_STUB_PROXY_HOST_PORT:-15050}:8080"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=1)",
+        ]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+    networks: [benchmark]
+
+  driver:
+    image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
+    command: ["python", "-m", "benchmarks.capacity_driver"]
     cpus: 2.0
     mem_limit: 1g
     environment:
+      BENCH_MODE: ${BENCH_MODE:?BENCH_MODE is required}
       BENCH_AGENT_URL: http://agent:5050
       BENCH_RUNTIME_URL: http://runtime:5004
       BENCH_FAKE_DEPS_URL: http://fake-deps:5002
       BENCH_REDIS_URL: redis://redis:6379/0
       DIFY_AGENT_REDIS_PREFIX: dify-agent-bench
       BENCH_RESULTS_DIR: /results
-      BENCH_TARGET: ${BENCH_TARGET:?BENCH_TARGET is required}
-      BENCH_TARGET_ID: ${BENCH_TARGET_ID:?BENCH_TARGET_ID is required}
       BENCH_SCENARIO_ID: ${BENCH_SCENARIO_ID:?BENCH_SCENARIO_ID is required}
       BENCH_BLOCK_ID: ${BENCH_BLOCK_ID:?BENCH_BLOCK_ID is required}
-      BENCH_PAIR_INDEX: ${BENCH_PAIR_INDEX:?BENCH_PAIR_INDEX is required}
-      BENCH_WARMUP_RUNS: ${BENCH_WARMUP_RUNS:-}
-      BENCH_TRIAL_RUNS: ${BENCH_TRIAL_RUNS:-}
-      BENCH_WARMUP_SECONDS: ${BENCH_WARMUP_SECONDS:-}
-      BENCH_DURATION_SECONDS: ${BENCH_DURATION_SECONDS:-}
-      BENCH_RESULT_SCENARIO_ID: ${BENCH_RESULT_SCENARIO_ID:-}
-      BENCH_CONCURRENCY: ${BENCH_CONCURRENCY:-}
-      BENCH_MIN_SUCCESSFUL_RUNS: ${BENCH_MIN_SUCCESSFUL_RUNS:-}
-      BENCH_MAX_DURATION_SECONDS: ${BENCH_MAX_DURATION_SECONDS:-}
-      BENCH_BINDING_POOL_SIZE: ${BENCH_BINDING_POOL_SIZE:-}
-      BENCH_WARMUP_ONCE_PER_WORKER: ${BENCH_WARMUP_ONCE_PER_WORKER:-}
+      BENCH_CONCURRENCY: ${BENCH_CONCURRENCY:?BENCH_CONCURRENCY is required}
+      BENCH_WARMUP_SECONDS: ${BENCH_WARMUP_SECONDS:?BENCH_WARMUP_SECONDS is required}
+      BENCH_MEASUREMENT_SECONDS: ${BENCH_MEASUREMENT_SECONDS:?BENCH_MEASUREMENT_SECONDS is required}
+      BENCH_MIN_SUCCESSFUL_RUNS: ${BENCH_MIN_SUCCESSFUL_RUNS:?BENCH_MIN_SUCCESSFUL_RUNS is required}
+      BENCH_MAX_DURATION_SECONDS: ${BENCH_MAX_DURATION_SECONDS:?BENCH_MAX_DURATION_SECONDS is required}
+      BENCH_E2B_API_KEY: ${BENCH_E2B_API_KEY:-}
     volumes:
       - type: bind
         source: ${BENCH_RESULTS_DIR:?BENCH_RESULTS_DIR is required}
         target: /results
-    depends_on:
-      agent:
-        condition: service_healthy
     networks: [benchmark]
 
 networks:
   benchmark:
-    internal: true
 
 volumes:
   redis-data:

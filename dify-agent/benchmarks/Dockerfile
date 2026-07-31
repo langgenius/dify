@@ -1,4 +1,4 @@
-# Harness image shared by baseline and candidate benchmark blocks.
+# Harness image shared by both local Runtime modes.
 FROM python:3.12-slim-bookworm AS base
 
 WORKDIR /app/dify-agent
@@ -18,4 +18,4 @@ ENV PYTHONPATH=/app/dify-agent
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "-m", "benchmarks.load_driver"]
+CMD ["python", "-m", "benchmarks.capacity_driver"]
