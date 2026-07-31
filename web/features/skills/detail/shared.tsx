@@ -117,8 +117,11 @@ const codeEditorExtensions = new Map<string, CodeLanguage>([
   ['python', CodeLanguage.python3],
 ])
 
-export const metadataInputClassName =
-  'h-6 w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[14px]/5 text-text-primary outline-hidden placeholder:text-text-quaternary hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+export const metadataKeyInputClassName =
+  '[field-sizing:content] max-w-[calc(100%-28px)] min-w-0 rounded-[5px] border-0 bg-transparent px-1 py-0.5 system-sm-medium text-text-tertiary outline-hidden placeholder:text-text-quaternary hover:bg-state-base-hover focus:bg-components-input-bg-active focus:text-text-placeholder focus:shadow-xs focus:inset-ring-1 focus:inset-ring-components-input-border-active'
+
+export const metadataValueInputClassName =
+  'h-6 w-full rounded-md border-0 bg-transparent px-1 py-0.5 text-[14px]/5 text-text-primary outline-hidden placeholder:text-text-quaternary hover:bg-state-base-hover focus:bg-components-input-bg-active focus:shadow-xs focus:inset-ring-1 focus:inset-ring-components-input-border-active'
 
 type MarkdownMetadataEntry = {
   key: string

@@ -260,20 +260,20 @@ export function EditableMetadataField({
   valuePlaceholder?: string
 }) {
   const controlClassName =
-    'w-full resize-none rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[14px]/5 text-text-primary outline-hidden transition-[background-color,border-color,box-shadow] placeholder:text-text-quaternary hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+    'w-full resize-none rounded-md border-0 bg-transparent px-1 py-0.5 text-[14px]/5 text-text-primary outline-hidden transition-[background-color,box-shadow] placeholder:text-text-quaternary hover:bg-state-base-hover focus:bg-components-input-bg-active focus:shadow-xs focus:inset-ring-1 focus:inset-ring-components-input-border-active'
 
   return (
     <div className="flex w-full flex-col gap-0.5" onBlurCapture={onBlurCapture}>
       <div className="flex h-6 items-center gap-1">
         {readOnly || !onLabelChange ? (
-          <span className="min-w-0 truncate px-1 py-0.5 system-xs-medium text-text-tertiary">
+          <span className="min-w-0 truncate px-1 py-0.5 system-sm-medium text-text-tertiary">
             {label}
           </span>
         ) : (
           <input
             aria-label={label}
             value={label}
-            className="max-w-full min-w-0 rounded-[5px] border border-transparent bg-transparent px-1 py-0.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:text-text-placeholder focus:shadow-xs"
+            className="[field-sizing:content] max-w-[calc(100%-28px)] min-w-0 rounded-[5px] border-0 bg-transparent px-1 py-0.5 system-sm-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus:bg-components-input-bg-active focus:text-text-placeholder focus:shadow-xs focus:inset-ring-1 focus:inset-ring-components-input-border-active"
             onChange={(event) => onLabelChange(event.target.value)}
           />
         )}
@@ -284,7 +284,7 @@ export function EditableMetadataField({
             className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={onRemove}
           >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            <span aria-hidden className="i-ri-delete-bin-line size-3.5" />
           </button>
         )}
       </div>
