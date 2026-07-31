@@ -64,6 +64,7 @@ import {
   isTextFile,
   metadataKeyInputClassName,
   metadataValueInputClassName,
+  normalizeSkillDraftContentForEditing,
   parseCsvRows,
   parseMarkdownContent,
   refreshSkillDetailAfterConflict,
@@ -129,7 +130,8 @@ export function FileEditor({
   const { t } = useTranslation('skill')
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const initialContent = file && isTextFile(file) ? (file.content ?? '') : ''
+  const initialContent =
+    file && isTextFile(file) ? normalizeSkillDraftContentForEditing(file.content ?? '') : ''
   const initialSavedAt = detail?.updated_at ? detail.updated_at * 1000 : undefined
   const [draftContent, setDraftContent] = useState(initialContent)
   const [markdownMode, setMarkdownMode] = useState<'live' | 'source'>('live')
@@ -170,20 +172,24 @@ export function FileEditor({
   const isMarkdown = isMarkdownFile(file)
   const isSkillManifestFile = filePath === 'SKILL.md'
   const isCsv = isCsvFile(file)
+  const editableDraftContent = useMemo(
+    () => normalizeSkillDraftContentForEditing(draftContent),
+    [draftContent],
+  )
   const markdownContent = useMemo(
     () =>
       isSkillManifestFile
-        ? parseMarkdownContent(draftContent)
+        ? parseMarkdownContent(editableDraftContent)
         : {
-            body: stripSkillFrontmatterForDisplay(draftContent),
+            body: stripSkillFrontmatterForDisplay(editableDraftContent),
             description: '',
             displayName: '',
             metadata: [],
             name: '',
           },
-    [draftContent, isSkillManifestFile],
+    [editableDraftContent, isSkillManifestFile],
   )
-  const csvRows = useMemo(() => parseCsvRows(draftContent), [draftContent])
+  const csvRows = useMemo(() => parseCsvRows(editableDraftContent), [editableDraftContent])
   const hasPublishedVersion = !!detail?.latest_published_version_id
   const latestPublishedAt = detail?.latest_published_at
   const hasUnpublishedChanges =
@@ -237,6 +243,19 @@ export function FileEditor({
   useEffect(() => {
     setDisplayNameDraft(markdownContent.displayName)
   }, [markdownContent.displayName])
+
+  useEffect(() => {
+    if (editableDraftContent === draftContent) return
+
+    draftContentRef.current = editableDraftContent
+    if (lastSavedContentRef.current === draftContent)
+      lastSavedContentRef.current = editableDraftContent
+    if (saveConflictContentRef.current === draftContent)
+      saveConflictContentRef.current = editableDraftContent
+    setDraftContent(editableDraftContent)
+    setSaveStatus(editableDraftContent === lastSavedContentRef.current ? 'saved' : 'dirty')
+    setExternalContentRevision((revision) => revision + 1)
+  }, [draftContent, editableDraftContent])
   const shouldFetchTextFileContent = !!file && isTextFile(file) && file.content == null
   const textContentQuery = useQuery({
     queryKey: ['skill-file-text-content', skillId, selectedVersionId, filePath, fileHash],
@@ -372,8 +391,9 @@ export function FileEditor({
               ? findFileByPath(refetchedDetail.files ?? [], currentFile.path)
               : undefined
             if (latestFile && isTextFile(latestFile) && latestFile.content != null)
-              lastSavedContentRef.current = latestFile.content
-            else if (currentFileContent != null) lastSavedContentRef.current = currentFileContent
+              lastSavedContentRef.current = normalizeSkillDraftContentForEditing(latestFile.content)
+            else if (currentFileContent != null)
+              lastSavedContentRef.current = normalizeSkillDraftContentForEditing(currentFileContent)
             if (refetchedDetail) {
               detailRef.current = refetchedDetail
               fileMutationCoordinator.latestDetail = refetchedDetail
@@ -437,7 +457,10 @@ export function FileEditor({
 
   useEffect(() => {
     const currentFile = fileRef.current
-    const nextContent = currentFile && isTextFile(currentFile) ? (currentFile.content ?? '') : ''
+    const nextContent =
+      currentFile && isTextFile(currentFile)
+        ? normalizeSkillDraftContentForEditing(currentFile.content ?? '')
+        : ''
 
     draftContentRef.current = nextContent
     lastSavedContentRef.current = nextContent
@@ -455,13 +478,14 @@ export function FileEditor({
   useEffect(() => {
     if (!file || !isTextFile(file) || file.content == null) return
     if (draftContentRef.current !== lastSavedContentRef.current) return
-    if (file.content === lastSavedContentRef.current) return
+    const nextContent = normalizeSkillDraftContentForEditing(file.content)
+    if (nextContent === lastSavedContentRef.current) return
 
-    draftContentRef.current = file.content
-    lastSavedContentRef.current = file.content
+    draftContentRef.current = nextContent
+    lastSavedContentRef.current = nextContent
     saveConflictContentRef.current = null
     setHasSaveConflict(false)
-    setDraftContent(file.content)
+    setDraftContent(nextContent)
     setSavedAt(detail?.updated_at ? detail.updated_at * 1000 : undefined)
     setSaveStatus('saved')
     setExternalContentRevision((revision) => revision + 1)
@@ -470,12 +494,13 @@ export function FileEditor({
   useEffect(() => {
     if (!shouldFetchTextFileContent || textContentQuery.data == null) return
     if (draftContentRef.current !== lastSavedContentRef.current) return
+    const nextContent = normalizeSkillDraftContentForEditing(textContentQuery.data)
 
-    draftContentRef.current = textContentQuery.data
-    lastSavedContentRef.current = textContentQuery.data
+    draftContentRef.current = nextContent
+    lastSavedContentRef.current = nextContent
     saveConflictContentRef.current = null
     setHasSaveConflict(false)
-    setDraftContent(textContentQuery.data)
+    setDraftContent(nextContent)
     setSaveStatus('saved')
     setExternalContentRevision((revision) => revision + 1)
   }, [shouldFetchTextFileContent, textContentQuery.data])
@@ -942,7 +967,7 @@ export function FileEditor({
   }
 
   return (
-    <main className="relative my-1 mr-1 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
+    <main className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
       <FileTabs
         files={openFiles}
         onClose={onCloseFile}
@@ -950,7 +975,7 @@ export function FileEditor({
         previewPath={previewFilePath}
         selectedPath={selectedPath}
       />
-      <div className="mt-px min-h-0 flex-1">
+      <div className="mt-px min-h-0 flex-1 overflow-hidden">
         {isTextContentPending ? (
           <div aria-busy="true" className="h-full cursor-not-allowed" />
         ) : isTextContentError ? (
@@ -1181,7 +1206,7 @@ export function FileEditor({
               key={editorRenderKey}
               editorRef={sourceTextareaRef}
               readOnly={readonly}
-              value={draftContent}
+              value={editableDraftContent}
               placeholder={t(($) => $['skillManagement.detail.referenceFiles.livePlaceholder'])}
               onChange={handleContentChange}
               onKeyDown={(event) => handleTextEditorKeyDown(event)}
@@ -1231,7 +1256,7 @@ export function FileEditor({
               ref={sourceTextareaRef}
               key={editorRenderKey}
               readOnly={readonly}
-              value={draftContent}
+              value={editableDraftContent}
               spellCheck={false}
               className={cn(
                 'h-full w-full resize-none rounded-xl border border-divider-regular bg-background-default p-4 font-mono text-[13px]/[20px] text-text-secondary outline-hidden read-only:bg-background-section',
@@ -1314,13 +1339,8 @@ export function FileEditor({
         )}
       </div>
       {!readonly && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-          <SkillPublishBar
-            metaLabel={publishMetaText}
-            onOpenVersions={onOpenVersions}
-            onPublish={handlePublish}
-            state={publishState}
-          >
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-4">
+          <div className="relative flex max-w-[calc(100%-2rem)] justify-center">
             <SkillPublishConfirmPanel
               loading={publishing}
               onCancel={() => setPublishConfirmOpen(false)}
@@ -1332,7 +1352,13 @@ export function FileEditor({
               referenceCount={detail?.reference_count ?? 0}
               skillId={skillId}
             />
-          </SkillPublishBar>
+            <SkillPublishBar
+              metaLabel={publishMetaText}
+              onOpenVersions={onOpenVersions}
+              onPublish={handlePublish}
+              state={publishState}
+            />
+          </div>
         </div>
       )}
       {readonly && selectedVersion && (

@@ -402,7 +402,7 @@ export function SkillPublishConfirmPanel({
     <div
       role="dialog"
       aria-labelledby="skill-publish-confirm-title"
-      className="absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+      className="pointer-events-auto absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5"
     >
       <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
         <h2

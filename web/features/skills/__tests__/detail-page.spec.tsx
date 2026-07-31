@@ -909,21 +909,7 @@ describe('SkillDetailPage', () => {
   })
 
   it('shows Skill manifest placeholders for an empty draft', async () => {
-    mocks.skillDetail = createDefaultSkillDraftDetail({
-      files: [
-        {
-          id: 'file-1',
-          path: 'SKILL.md',
-          kind: 'file',
-          storage: 'text',
-          mime_type: 'text/markdown',
-          content: '---\nname: \ndescription: \nmetadata:\n  display-name: Untitled skill\n---\n\n',
-          tool_file_id: null,
-          size: 72,
-          hash: 'hash-1',
-        },
-      ],
-    })
+    mocks.skillDetail = createDefaultSkillDraftDetail()
 
     renderSkillDetailPage()
 
@@ -934,8 +920,38 @@ describe('SkillDetailPage', () => {
       screen.getByPlaceholderText('skill.skillManagement.detail.skillDescriptionPlaceholder'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('skill.skillManagement.detail.referenceFiles.livePlaceholder'),
+      screen.queryByText(
+        'Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.',
+      ),
+    ).not.toBeInTheDocument()
+  })
+
+  it('treats a newly created empty Skill draft as Builder creation mode', async () => {
+    mocks.skillDetail = createDefaultSkillDraftDetail({
+      description: '',
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '<!-- dify-skill-empty-draft -->\n',
+          tool_file_id: null,
+          size: 32,
+          hash: 'hash-1',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByText('skill.skillManagement.detail.builder.promptTitle'),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByText('skill.skillManagement.detail.builder.editIntro'),
+    ).not.toBeInTheDocument()
   })
 
   it('does not render the code editor when external file content fails to load', async () => {
