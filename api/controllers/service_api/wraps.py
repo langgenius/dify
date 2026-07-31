@@ -12,7 +12,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from configs import dify_config
@@ -313,7 +313,11 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         # A bound key may only call endpoints carrying one of its dataset ids; endpoints
         # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
         # per request (not cached) so scope changes take effect immediately.
-        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(db.session(), api_token.id)
+        # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
+        # typed helper accepts it (runtime proxies every Session method through unchanged).
+        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(
+            cast(Session, db.session), api_token.id
+        )
         if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
             raise Forbidden("The API key is not authorized to access this knowledge base.")
 
