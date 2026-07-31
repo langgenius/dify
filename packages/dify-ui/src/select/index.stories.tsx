@@ -27,6 +27,14 @@ const cityItems = [
   { label: 'Paris', value: 'paris' },
 ]
 
+const deploymentRegionItems = [
+  { label: 'US East', value: 'us-east' },
+  { label: 'Europe West', value: 'eu-west' },
+  { label: 'Asia Pacific', value: 'ap-southeast' },
+] as const
+
+type DeploymentRegion = (typeof deploymentRegionItems)[number]['value']
+
 const meta = {
   title: 'Base/Form/Select',
   component: Select,
@@ -35,7 +43,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
+          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single- or multiple-value pickers with groups, labels, separators, and keyboard selection.',
       },
     },
   },
@@ -326,6 +334,68 @@ const ControlledDemo = () => {
 
 export const Controlled: Story = {
   render: () => <ControlledDemo />,
+}
+
+const MultipleControlledDemo = () => {
+  const [value, setValue] = React.useState<DeploymentRegion[]>(['us-east', 'eu-west'])
+
+  return (
+    <div className={triggerWidth}>
+      <Select<DeploymentRegion, true>
+        items={deploymentRegionItems}
+        multiple
+        value={value}
+        onValueChange={setValue}
+      >
+        <SelectLabel>Deployment regions</SelectLabel>
+        <SelectTrigger>
+          <SelectValue<DeploymentRegion, true>>
+            {(selectedRegions) => {
+              if (!selectedRegions?.length) return 'Choose regions'
+
+              const [firstSelectedRegion] = selectedRegions
+              if (!firstSelectedRegion) return 'Choose regions'
+
+              const firstRegion = deploymentRegionItems.find(
+                (item) => item.value === firstSelectedRegion,
+              )
+              const additionalRegionCount = selectedRegions.length - 1
+              const firstRegionLabel = firstRegion?.label ?? firstSelectedRegion
+
+              return additionalRegionCount > 0
+                ? `${firstRegionLabel} (+${additionalRegionCount} more)`
+                : firstRegionLabel
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent listProps={{ 'aria-label': 'Deployment region options' }}>
+          {deploymentRegionItems.map((item) => (
+            <SelectItem<DeploymentRegion> key={item.value} value={item.value}>
+              <SelectItemText>{item.label}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+export const MultipleControlled: Story = {
+  render: () => <MultipleControlledDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Deployment regions' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveTextContent('US East (+1 more)')
+    await userEvent.click(trigger)
+
+    const asiaPacificOption = await body.findByRole('option', { name: 'Asia Pacific' })
+    await userEvent.click(asiaPacificOption)
+
+    await expect(trigger).toHaveTextContent('US East (+2 more)')
+    await expect(asiaPacificOption).toHaveAttribute('aria-selected', 'true')
+  },
 }
 
 export const InForm: Story = {

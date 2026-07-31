@@ -70,8 +70,8 @@ export const TagSearchContent = ({
           )}
         </ComboboxInputGroup>
       </div>
-      <ComboboxList className="max-h-58">
-        {(tag: TagComboboxItem) => {
+      <ComboboxList<TagComboboxItem> className="max-h-58">
+        {(tag) => {
           if (isCreateTagOption(tag) && canManageTags) {
             return (
               <Fragment key={tag.id}>

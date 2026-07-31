@@ -2003,8 +2003,11 @@ class DatasetRetrieval:
             results = session.scalars(
                 select(Dataset)
                 .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
-                .where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
-                .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
+                .where(
+                    Dataset.tenant_id == tenant_id,
+                    Dataset.id.in_(dataset_ids),
+                    (subquery.c.available_document_count > 0) | (Dataset.provider == "external"),
+                )
             ).all()
 
         available_datasets = []

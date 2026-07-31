@@ -89,6 +89,27 @@ describe('Select wrappers', () => {
       expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
       expect(new FormData(form).get('city')).toBe('seattle')
     })
+
+    it('should expose a controlled null value to a typed multiple value renderer', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select<string, true> multiple value={null}>
+          <SelectTrigger aria-label="city select">
+            <SelectValue<string, true>>
+              {(selectedValue) =>
+                selectedValue === null ? 'No cities selected' : selectedValue.join(', ')
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem<string> value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByText('No cities selected')).toBeInTheDocument()
+    })
   })
 
   describe('SelectTrigger', () => {

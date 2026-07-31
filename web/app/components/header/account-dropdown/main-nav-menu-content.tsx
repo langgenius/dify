@@ -57,6 +57,8 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 function AppearanceSubmenu() {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const currentTheme: Theme =
+    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
 
   return (
     <DropdownMenuSub>
@@ -71,23 +73,35 @@ function AppearanceSubmenu() {
         sideOffset={6}
         popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
-        <DropdownMenuRadioGroup
-          value={theme || 'system'}
-          onValueChange={(value) => setTheme(value as Theme)}
+        <DropdownMenuRadioGroup<Theme>
+          value={currentTheme}
+          onValueChange={(nextTheme) => setTheme(nextTheme)}
         >
-          <DropdownMenuRadioItem value="light" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
+          <DropdownMenuRadioItem<Theme>
+            value="light"
+            closeOnClick
+            className="mx-0 h-8 gap-1 px-2 py-1"
+          >
             <MainNavRadioItemContent
               iconClassName="i-ri-sun-line"
               label={t(($) => $['account.appearanceLight'], { ns: 'common' })}
             />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
+          <DropdownMenuRadioItem<Theme>
+            value="dark"
+            closeOnClick
+            className="mx-0 h-8 gap-1 px-2 py-1"
+          >
             <MainNavRadioItemContent
               iconClassName="i-ri-moon-line"
               label={t(($) => $['account.appearanceDark'], { ns: 'common' })}
             />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
+          <DropdownMenuRadioItem<Theme>
+            value="system"
+            closeOnClick
+            className="mx-0 h-8 gap-1 px-2 py-1"
+          >
             <MainNavRadioItemContent
               iconClassName="i-ri-computer-line"
               label={t(($) => $['account.appearanceSystem'], { ns: 'common' })}

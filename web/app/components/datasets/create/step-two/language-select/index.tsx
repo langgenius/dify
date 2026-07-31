@@ -8,6 +8,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { languages } from '@/i18n-config/language'
@@ -39,7 +40,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({ currentLanguage, onSelect, d
             'cursor-not-allowed bg-components-button-tertiary-bg-disabled text-components-button-tertiary-text-disabled hover:bg-components-button-tertiary-bg-disabled',
         )}
       >
-        {currentLanguage || <span>&nbsp;</span>}
+        <SelectValue placeholder={<span>&nbsp;</span>} />
       </SelectTrigger>
       <SelectContent placement="bottom-start" sideOffset={4} popupClassName="w-max">
         {supportedLanguages.map(({ prompt_name }) => (

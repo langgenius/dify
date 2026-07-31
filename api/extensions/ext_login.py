@@ -72,10 +72,11 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
             workspace_id = request.headers.get("X-WORKSPACE-ID")
             if workspace_id:
                 tenant_account_join = session.execute(
-                    select(Tenant, TenantAccountJoin)
-                    .where(Tenant.id == workspace_id)
-                    .where(TenantAccountJoin.tenant_id == Tenant.id)
-                    .where(TenantAccountJoin.role == "owner")
+                    select(Tenant, TenantAccountJoin).where(
+                        Tenant.id == workspace_id,
+                        TenantAccountJoin.tenant_id == Tenant.id,
+                        TenantAccountJoin.role == "owner",
+                    )
                 ).one_or_none()
                 if tenant_account_join:
                     tenant, ta = tenant_account_join
