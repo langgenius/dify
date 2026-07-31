@@ -93,6 +93,33 @@ const mockBuiltInTools = vi.hoisted(() => [
   },
 ])
 
+const wikipediaProvider = {
+  id: 'wikipedia',
+  name: 'Wikipedia',
+  author: 'Dify',
+  description: { en_US: 'Wikipedia tools' },
+  icon: 'wikipedia.svg',
+  icon_dark: 'wikipedia-dark.svg',
+  label: { en_US: 'Wikipedia' },
+  type: 'builtin',
+  team_credentials: {},
+  is_team_authorization: true,
+  allow_delete: false,
+  labels: [],
+  meta: {},
+  tools: [
+    {
+      name: 'wikipedia_search',
+      author: 'Dify',
+      label: { en_US: 'Wikipedia Search' },
+      description: { en_US: 'Search Wikipedia.' },
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    },
+  ],
+}
+
 vi.mock('@/app/components/base/prompt-editor', () => ({
   __esModule: true,
   default: (props: PromptEditorProps) => {
@@ -927,6 +954,60 @@ describe('AgentPromptEditor', () => {
           ],
         }),
       ])
+    })
+
+    it('should show configured providers and actions before other available tools', () => {
+      mockBuiltInTools.unshift(wikipediaProvider)
+      const configuredDuckDuckGoTranslateTool: AgentTool = {
+        ...duckDuckGoProviderTool,
+        actions: [
+          {
+            id: 'duckduckgo-translate',
+            name: 'DuckDuckGo Translate',
+            toolName: 'ddg_translate',
+            description: 'Translate search results.',
+          },
+        ],
+      }
+
+      const view = render(
+        <AgentPromptSlashMenu
+          view="tools"
+          categories={[{ key: 'tools', label: 'Tools', icon: 'i-ri-box-3-line' }]}
+          skills={[]}
+          files={[]}
+          configuredTools={[configuredDuckDuckGoTranslateTool]}
+          onAddProviderTools={vi.fn()}
+          knowledgeRetrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onInsertToken={vi.fn()}
+        />,
+      )
+
+      try {
+        const providerButtons = screen
+          .getAllByRole('button')
+          .filter(
+            (button) =>
+              button.textContent?.includes('DuckDuckGo') ||
+              button.textContent?.includes('Wikipedia'),
+          )
+
+        expect(providerButtons).toHaveLength(2)
+        expect(providerButtons[0]).toHaveTextContent('DuckDuckGo')
+        expect(providerButtons[1]).toHaveTextContent('Wikipedia')
+
+        fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
+        const actionButtons = screen.getAllByRole('button', {
+          name: /DuckDuckGo (Search|Translate)/,
+        })
+        expect(actionButtons[0]).toHaveTextContent('DuckDuckGo Translate')
+        expect(actionButtons[1]).toHaveTextContent('DuckDuckGo Search')
+      } finally {
+        view.unmount()
+        mockBuiltInTools.shift()
+      }
     })
 
     it('should close the slash menu when the trailing slash is deleted', async () => {
