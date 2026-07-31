@@ -36,8 +36,8 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -1039,7 +1039,7 @@ export function FileTree({
             }}
           />
         </div>
-        <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
+        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport tabIndex={-1}>
             <ScrollAreaContent
               className={cn(
@@ -1182,7 +1182,7 @@ export function FileTree({
               onRetry={handleRetryUpload}
             />
           )}
-        </ScrollAreaRoot>
+        </ScrollArea>
         <AlertDialog open={!!deleteNode} onOpenChange={(open) => !open && setDeleteNode(undefined)}>
           <AlertDialogContent className="p-6">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
