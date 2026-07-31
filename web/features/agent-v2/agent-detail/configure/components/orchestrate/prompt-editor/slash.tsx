@@ -329,20 +329,23 @@ function AgentPromptToolRows({
   const configuredCliTools = ENABLE_AGENT_CLI_TOOLS
     ? configuredTools.filter((tool) => tool.kind === 'cli')
     : []
-  const availableProviders = useMemo(() => {
-    if (activeTab === 'all') return [...builtInTools, ...workflowTools, ...customTools, ...mcpTools]
-    if (activeTab === ToolType.BuiltIn) return builtInTools
-    if (activeTab === ToolType.Workflow) return workflowTools
-    if (activeTab === ToolType.Custom) return customTools
-    if (activeTab === ToolType.MCP) return mcpTools
-
-    return []
-  }, [activeTab, builtInTools, customTools, mcpTools, workflowTools])
-
   const selectedTools = useMemo(
     () => configuredTools.flatMap(toSelectedToolValue),
     [configuredTools],
   )
+  const availableProviders = useMemo(() => {
+    let providers: ToolWithProvider[] = []
+    if (activeTab === 'all')
+      providers = [...builtInTools, ...workflowTools, ...customTools, ...mcpTools]
+    if (activeTab === ToolType.BuiltIn) providers = builtInTools
+    if (activeTab === ToolType.Workflow) providers = workflowTools
+    if (activeTab === ToolType.Custom) providers = customTools
+    if (activeTab === ToolType.MCP) providers = mcpTools
+
+    return prioritizeItems(providers, (provider) =>
+      provider.tools.some((tool) => isToolSelected(selectedTools, provider, tool)),
+    )
+  }, [activeTab, builtInTools, customTools, mcpTools, selectedTools, workflowTools])
   const tabs = [
     { key: 'all' as const, label: t(($) => $['agentDetail.configure.tools.toolTabs.all']) },
     {
@@ -435,7 +438,9 @@ function AgentPromptToolRows({
                     onToggle={() => toggleProvider(provider.id)}
                   />
                   {expandedProviderIds.has(provider.id) &&
-                    provider.tools.map((tool) => (
+                    prioritizeItems(provider.tools, (tool) =>
+                      isToolSelected(selectedTools, provider, tool),
+                    ).map((tool) => (
                       <AgentPromptProviderToolActionRow
                         key={tool.name}
                         tool={tool}
@@ -451,6 +456,18 @@ function AgentPromptToolRows({
 }
 
 type ToolPromptTab = ToolType | 'cli'
+
+function prioritizeItems<T>(items: T[], isPriority: (item: T) => boolean) {
+  const priorityItems: T[] = []
+  const remainingItems: T[] = []
+
+  items.forEach((item) => {
+    if (isPriority(item)) priorityItems.push(item)
+    else remainingItems.push(item)
+  })
+
+  return [...priorityItems, ...remainingItems]
+}
 
 function getLocalizedText(text: Record<string, string> | undefined | null, language: string) {
   if (!text) return ''
