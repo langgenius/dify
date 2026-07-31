@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview runs the finished agent the way your users will see it, with clean replies and chat features.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Preview your agent",
   "agentDetail.configure.skills.add": "Add skill",
-  "agentDetail.configure.skills.detail.contentRegion": "Skill detail content",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} FILES",
   "agentDetail.configure.skills.detail.files": "Files",
   "agentDetail.configure.skills.empty.description": "Skills give the agent reusable expertise it can call while working",

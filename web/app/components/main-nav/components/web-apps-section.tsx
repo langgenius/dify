@@ -16,8 +16,8 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -213,15 +213,16 @@ const WebAppsSectionContent = () => {
         </div>
       )}
       {appsExpanded && (
-        <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden overscroll-contain">
+        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRef}
             aria-busy={installedAppsQuery.isPending || installedAppsQuery.isFetchingNextPage}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
-            className="overflow-x-hidden"
+            style={{ overflowX: 'hidden' }}
+            className="overscroll-contain"
             role="region"
           >
-            <ScrollAreaContent className="w-full max-w-full min-w-0! px-2">
+            <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
               {installedAppsQuery.isPending && <WebAppsSkeleton />}
               {!installedAppsQuery.isPending && installedAppsQuery.isError && (
                 <div
@@ -277,7 +278,7 @@ const WebAppsSectionContent = () => {
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       )}
       <AlertDialog
         open={uninstallDialogAppId !== null}
