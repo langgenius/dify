@@ -895,8 +895,9 @@ class AccountService:
         email: str,
         account: Account | None = None,
         code: str | None = None,
-        additional_data: dict[str, Any] = {},
+        additional_data: dict[str, Any] | None = None,
     ):
+        additional_data = dict(additional_data) if additional_data else {}
         if not code:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
@@ -910,8 +911,9 @@ class AccountService:
         cls,
         email: str,
         code: str | None = None,
-        additional_data: dict[str, Any] = {},
+        additional_data: dict[str, Any] | None = None,
     ):
+        additional_data = dict(additional_data) if additional_data else {}
         if not code:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
@@ -938,8 +940,9 @@ class AccountService:
         email: str,
         account: Account | None = None,
         code: str | None = None,
-        additional_data: dict[str, Any] = {},
+        additional_data: dict[str, Any] | None = None,
     ):
+        additional_data = dict(additional_data) if additional_data else {}
         if not code:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
