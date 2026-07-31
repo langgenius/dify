@@ -1173,7 +1173,7 @@ class RagPipelineService:
         Get debug workflow run list
         Only return triggered_from == debugging
 
-        :param app_model: app model
+        :param pipeline: pipeline
         :param args: request args
         """
         limit = int(args.get("limit", 20))
@@ -1196,7 +1196,7 @@ class RagPipelineService:
         """
         Get workflow run detail
 
-        :param app_model: app model
+        :param pipeline: pipeline
         :param run_id: workflow run id
         """
         return self._workflow_run_repo.get_workflow_run_by_id(
