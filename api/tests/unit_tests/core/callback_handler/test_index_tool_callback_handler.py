@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
@@ -5,7 +7,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, SessionTransaction
 
 import core.callback_handler.index_tool_callback_handler as callback_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -14,7 +16,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import CreatorUserRole, DatasetQuerySource, DataSourceType, DocumentCreatedFrom
 
 
 class _DatabaseBinding:
@@ -22,6 +24,15 @@ class _DatabaseBinding:
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
+
+
+@dataclass(frozen=True)
+class _CallerSessionBoundary:
+    """Caller session state that callback-owned transactions must not disturb."""
+
+    session: Session
+    transaction: SessionTransaction
+    pending_query: DatasetQuery
 
 
 @pytest.fixture
@@ -39,6 +50,38 @@ def handler(mock_queue_manager, sqlite_engine: Engine, monkeypatch: pytest.Monke
         user_id=str(uuid4()),
         invoke_from=InvokeFrom.DEBUGGER,
     )
+
+
+@pytest.fixture
+def caller_session_boundary(sqlite_engine: Engine) -> Iterator[_CallerSessionBoundary]:
+    """Keep an unflushed caller transaction open to prove callback isolation."""
+
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        pending_query = DatasetQuery(
+            dataset_id=str(uuid4()),
+            content="caller-owned pending query",
+            source=DatasetQuerySource.APP,
+            source_app_id=str(uuid4()),
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=str(uuid4()),
+        )
+        session.add(pending_query)
+        transaction = session.get_transaction()
+        assert transaction is not None
+
+        yield _CallerSessionBoundary(
+            session=session,
+            transaction=transaction,
+            pending_query=pending_query,
+        )
+
+        assert session.get_transaction() is transaction
+        assert list(session.new) == [pending_query]
+        assert not session.dirty
+        assert not session.deleted
+
+    with Session(sqlite_engine) as observer_session:
+        assert observer_session.get(DatasetQuery, pending_query.id) is None
 
 
 def _dataset_document(*, doc_form: IndexStructureType) -> DatasetDocument:
@@ -71,7 +114,6 @@ def _segment(document: DatasetDocument, *, index_node_id: str) -> DocumentSegmen
 
 
 class TestOnQuery:
-    @pytest.mark.parametrize("sqlite_session", [(DatasetQuery,)], indirect=True)
     @pytest.mark.parametrize(
         ("invoke_from", "expected_role"),
         [
@@ -85,6 +127,7 @@ class TestOnQuery:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
         sqlite_session: Session,
+        caller_session_boundary: _CallerSessionBoundary,
         mock_queue_manager,
         invoke_from: InvokeFrom,
         expected_role: str,
@@ -98,20 +141,18 @@ class TestOnQuery:
             invoke_from=invoke_from,
         )
 
-        handler.on_query("test query", str(uuid4()), sqlite_session)
+        handler.on_query("test query", str(uuid4()), caller_session_boundary.session)
 
-        assert not sqlite_session.in_transaction()
-        sqlite_session.expire_all()
         dataset_query = sqlite_session.scalar(select(DatasetQuery))
         assert dataset_query is not None
         assert dataset_query.created_by_role == expected_role
 
-    @pytest.mark.parametrize("sqlite_session", [(DatasetQuery,)], indirect=True)
     def test_on_query_none_values_roll_back_independent_transaction(
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
         sqlite_session: Session,
+        caller_session_boundary: _CallerSessionBoundary,
         mock_queue_manager,
     ) -> None:
         monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
@@ -124,36 +165,41 @@ class TestOnQuery:
         )
 
         with pytest.raises(IntegrityError):
-            handler.on_query(None, None, sqlite_session)  # type: ignore[arg-type]
+            handler.on_query(None, None, caller_session_boundary.session)  # type: ignore[arg-type]
 
         assert sqlite_session.scalar(select(DatasetQuery)) is None
 
 
 class TestOnToolEnd:
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_on_tool_end_no_metadata(self, handler: DatasetIndexToolCallbackHandler, sqlite_session: Session) -> None:
+    def test_on_tool_end_no_metadata(
+        self,
+        handler: DatasetIndexToolCallbackHandler,
+        caller_session_boundary: _CallerSessionBoundary,
+    ) -> None:
         document = Document.model_construct(page_content="content", metadata=None, provider="dify")
 
-        handler.on_tool_end([document], sqlite_session)
+        handler.on_tool_end([document], caller_session_boundary.session)
 
-        assert not sqlite_session.in_transaction()
-
-    @pytest.mark.parametrize("sqlite_session", [(DatasetDocument,)], indirect=True)
     def test_on_tool_end_dataset_document_not_found(
-        self, handler: DatasetIndexToolCallbackHandler, sqlite_session: Session
+        self,
+        handler: DatasetIndexToolCallbackHandler,
+        sqlite_session: Session,
+        caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
         document = Document(
             page_content="content",
             metadata={"document_id": str(uuid4()), "doc_id": "node-1"},
         )
 
-        handler.on_tool_end([document], sqlite_session)
+        handler.on_tool_end([document], caller_session_boundary.session)
 
         assert sqlite_session.scalar(select(DatasetDocument)) is None
 
-    @pytest.mark.parametrize("sqlite_session", [(DatasetDocument, ChildChunk, DocumentSegment)], indirect=True)
     def test_on_tool_end_parent_child_index_with_child(
-        self, handler: DatasetIndexToolCallbackHandler, sqlite_session: Session
+        self,
+        handler: DatasetIndexToolCallbackHandler,
+        sqlite_session: Session,
+        caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
         dataset_document = _dataset_document(doc_form=IndexStructureType.PARENT_CHILD_INDEX)
         sqlite_session.add(dataset_document)
@@ -179,14 +225,16 @@ class TestOnToolEnd:
             metadata={"document_id": dataset_document.id, "doc_id": child.index_node_id},
         )
 
-        handler.on_tool_end([document], sqlite_session)
+        handler.on_tool_end([document], caller_session_boundary.session)
 
         sqlite_session.expire_all()
         assert sqlite_session.get(DocumentSegment, segment.id).hit_count == 1  # type: ignore[union-attr]
 
-    @pytest.mark.parametrize("sqlite_session", [(DatasetDocument, DocumentSegment)], indirect=True)
     def test_on_tool_end_non_parent_child_index(
-        self, handler: DatasetIndexToolCallbackHandler, sqlite_session: Session
+        self,
+        handler: DatasetIndexToolCallbackHandler,
+        sqlite_session: Session,
+        caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
         dataset_document = _dataset_document(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         sqlite_session.add(dataset_document)
@@ -203,17 +251,17 @@ class TestOnToolEnd:
             },
         )
 
-        handler.on_tool_end([document], sqlite_session)
+        handler.on_tool_end([document], caller_session_boundary.session)
 
         sqlite_session.expire_all()
         assert sqlite_session.get(DocumentSegment, segment.id).hit_count == 1  # type: ignore[union-attr]
 
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_on_tool_end_empty_documents(
-        self, handler: DatasetIndexToolCallbackHandler, sqlite_session: Session
+        self,
+        handler: DatasetIndexToolCallbackHandler,
+        caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
-        handler.on_tool_end([], sqlite_session)
-        assert not sqlite_session.in_transaction()
+        handler.on_tool_end([], caller_session_boundary.session)
 
 
 class TestReturnRetrieverResourceInfo:
