@@ -1,9 +1,10 @@
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import event, inspect
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import Executable
 
 import core.workflow.nodes.agent_v2.binding_resolver as resolver_module
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
@@ -103,9 +104,19 @@ def _binding(
     )
 
 
-def _bind_factory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+def _bind_factory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> list[Executable]:
+    scalar_statements: list[Executable] = []
+
+    class RecordingSession(Session):
+        pass
+
+    def record_statement(execute_state: ORMExecuteState) -> None:
+        scalar_statements.append(execute_state.statement)
+
+    event.listen(RecordingSession, "do_orm_execute", record_statement)
+    factory = sessionmaker(bind=sqlite_engine, class_=RecordingSession, expire_on_commit=False)
     monkeypatch.setattr(resolver_module.session_factory, "create_session", factory)
+    return scalar_statements
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
@@ -206,7 +217,7 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
+    scalar_statements = _bind_factory(monkeypatch, sqlite_engine)
 
     bundle = WorkflowAgentBindingResolver().resolve(
         **ids,
@@ -215,6 +226,8 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
+    assert binding.id in scalar_statements[0].compile().params.values()
+    assert pinned_snapshot.id in scalar_statements[-1].compile().params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
