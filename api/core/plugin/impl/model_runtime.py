@@ -13,6 +13,7 @@ from configs import dify_config
 from core.llm_generator.output_parser.structured_output import (
     invoke_llm_with_structured_output as invoke_llm_with_structured_output_helper,
 )
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
@@ -130,7 +131,7 @@ class PluginModelRuntime(ModelRuntime):
         self._plugin_service = plugin_service
 
     @override
-    def fetch_model_providers(self) -> Sequence[ProviderEntity]:
+    def fetch_model_providers(self) -> Sequence[PluginModelProviderDeclaration]:
         return self._plugin_service.fetch_plugin_model_providers(tenant_id=self.tenant_id, client=self.client)
 
     @override
