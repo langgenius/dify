@@ -350,6 +350,28 @@ function getFileTreeButton(path: string) {
   return fileButton
 }
 
+function createDataTransfer(files: File[] = []) {
+  const data = new Map<string, string>()
+  const types = files.length > 0 ? ['Files'] : []
+  const setDragImage = vi.fn()
+
+  return {
+    dataTransfer: {
+      dropEffect: 'none',
+      effectAllowed: 'uninitialized',
+      files,
+      getData: (type: string) => data.get(type) ?? '',
+      setData: (type: string, value: string) => {
+        data.set(type, value)
+        if (!types.includes(type)) types.push(type)
+      },
+      setDragImage,
+      types,
+    } as unknown as DataTransfer,
+    setDragImage,
+  }
+}
+
 async function openFileTreeActions(user: ReturnType<typeof userEvent.setup>, path: string) {
   const treeItem = getFileTreeItem(path)
   await user.click(within(treeItem).getByRole('button', { name: 'common.operation.more' }))
@@ -2497,6 +2519,163 @@ describe('SkillDetailPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('agentV2.skillManagement.detail.createFolderMenu')).toBeInTheDocument()
     expect(screen.getByText('agentV2.skillManagement.detail.uploadFilesMenu')).toBeInTheDocument()
+  })
+
+  it('uploads externally dragged files to the highlighted folder', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'directory-1',
+          path: 'references',
+          kind: 'directory',
+          storage: 'text',
+          mime_type: null,
+          content: null,
+          tool_file_id: null,
+          size: 0,
+          hash: 'directory-hash',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    const folder = await waitFor(() => getFileTreeItem('references'))
+    const upload = new File(['guide'], 'guide.md', { type: 'text/markdown' })
+    const { dataTransfer } = createDataTransfer([upload])
+    fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
+
+    expect(folder).toHaveClass('ring-state-accent-solid')
+    expect(screen.getByLabelText('Upload to references')).toBeInTheDocument()
+
+    fireEvent.drop(folder.closest('li')!, { dataTransfer })
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillFile).toHaveBeenCalledWith(
+        upload,
+        expect.objectContaining({
+          onProgress: expect.any(Function),
+          xhr: expect.any(XMLHttpRequest),
+        }),
+      )
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'upsert_tool_file',
+            path: 'references/guide.md',
+            tool_file_id: 'tool-file-1',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('moves the complete multi-selection and uses the designed drag preview', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+        {
+          id: 'directory-1',
+          path: 'references',
+          kind: 'directory',
+          storage: 'text',
+          mime_type: null,
+          content: null,
+          tool_file_id: null,
+          size: 0,
+          hash: 'directory-hash',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    const skillFile = await waitFor(() => getFileTreeItem('SKILL.md'))
+    const exampleFile = getFileTreeItem('scripts/example.ts')
+    const targetFolder = getFileTreeItem('references')
+    fireEvent.click(getFileTreeButton('SKILL.md'))
+    fireEvent.click(getFileTreeButton('scripts/example.ts'), { metaKey: true })
+
+    const { dataTransfer, setDragImage } = createDataTransfer()
+    fireEvent.dragStart(exampleFile, { dataTransfer })
+    expect(setDragImage).toHaveBeenCalledOnce()
+    expect(setDragImage.mock.calls[0]?.[0]).toHaveTextContent('2 items')
+    expect(skillFile).toHaveClass('opacity-30')
+    expect(exampleFile).toHaveClass('opacity-30')
+
+    fireEvent.dragOver(targetFolder.closest('li')!, { dataTransfer })
+    expect(screen.getByLabelText('Move to references')).toBeInTheDocument()
+    fireEvent.drop(targetFolder.closest('li')!, { dataTransfer })
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'rename',
+            path: 'SKILL.md',
+            target_path: 'references/SKILL.md',
+          }),
+        }),
+        expect.anything(),
+      )
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'rename',
+            path: 'scripts/example.ts',
+            target_path: 'references/example.ts',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('expands a collapsed folder after a two-second drag hover', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    const folder = await waitFor(() => getFileTreeItem('scripts'))
+    fireEvent.doubleClick(folder)
+    expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
+
+    vi.useFakeTimers()
+    try {
+      const { dataTransfer } = createDataTransfer([new File(['x'], 'x.txt')])
+      fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
+      act(() => vi.advanceTimersByTime(1999))
+      expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(1))
+      expect(getFileTreeItem('scripts/example.ts')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('deletes a file through the file tree action menu', async () => {

@@ -5,6 +5,7 @@ import type {
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DragEvent, FocusEvent, MouseEvent } from 'react'
+import type { SkillDropOperation, SkillDropTarget } from './file-tree-dnd'
 import type {
   FileTreeInlineAction,
   FileTreeNode,
@@ -49,6 +50,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
+import { SkillDropDestinationHint, SkillUploadStatusPanel } from './file-tree-dnd'
 import { FileTreeItem, FileTreeNameInput, RootFileActionMenuItems } from './file-tree-items'
 import {
   createUploadItemId,
@@ -173,127 +175,6 @@ function FileSearchDialog({
   )
 }
 
-function SkillUploadStatusPanel({
-  items,
-  onDismiss,
-}: {
-  items: SkillUploadQueueItem[]
-  onDismiss: () => void
-}) {
-  const { t } = useTranslation('agentV2')
-  if (items.length === 0) return null
-
-  const uploadedCount = items.filter((item) => item.status === 'uploaded').length
-  const failedCount = items.filter((item) => item.status === 'failed').length
-  const completedCount = uploadedCount + failedCount
-  const activeItem = items.find((item) => item.status === 'uploading' || item.status === 'saving')
-  const averageProgress =
-    items.reduce((sum, item) => {
-      if (item.status === 'uploaded' || item.status === 'failed') return sum + 100
-      return sum + item.progress
-    }, 0) / items.length
-  const hasActiveUpload = Boolean(activeItem)
-  const hasFailures = failedCount > 0
-
-  return (
-    <div className="mb-3 space-y-2">
-      <div className="overflow-hidden rounded-lg border border-divider-regular bg-background-default shadow-xs">
-        <div className="flex h-9 items-center gap-2 px-3">
-          <span
-            aria-hidden
-            className={cn(
-              'size-4 shrink-0',
-              hasFailures
-                ? 'i-ri-error-warning-line text-text-warning-secondary'
-                : 'i-ri-upload-cloud-2-line text-text-accent',
-            )}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="truncate system-xs-semibold text-text-secondary">
-              {hasActiveUpload
-                ? t(($) => $['skillManagement.detail.uploadFilesProgress'], {
-                    completed: completedCount,
-                    total: items.length,
-                  })
-                : t(($) => $['skillManagement.detail.uploadFilesStatus'])}
-            </div>
-            {activeItem && (
-              <div className="truncate system-2xs-regular text-text-tertiary">
-                {activeItem.name}
-              </div>
-            )}
-          </div>
-          {!hasActiveUpload && (
-            <button
-              type="button"
-              className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['skillManagement.detail.uploadStatusDismiss'])}
-              onClick={onDismiss}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </button>
-          )}
-        </div>
-        {hasActiveUpload && (
-          <div className="h-1 bg-components-progress-bar-bg">
-            <div
-              className="h-full bg-components-progress-bar-progress-solid transition-[width]"
-              style={{ width: `${averageProgress}%` }}
-            />
-          </div>
-        )}
-      </div>
-      {!hasActiveUpload && (
-        <div
-          className={cn(
-            'flex min-h-8 items-center gap-2 rounded-lg border px-3 py-2 system-xs-regular shadow-xs',
-            hasFailures
-              ? 'border-components-badge-status-light-warning-halo bg-state-warning-hover text-text-secondary'
-              : 'border-state-success-active bg-state-success-hover text-text-secondary',
-          )}
-        >
-          <span
-            aria-hidden
-            className={cn(
-              'size-4 shrink-0',
-              hasFailures
-                ? 'i-ri-alert-line text-text-warning-secondary'
-                : 'i-ri-checkbox-circle-fill text-text-success',
-            )}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="truncate">
-              {t(($) => $['skillManagement.detail.uploadFilesResult'], {
-                failed: failedCount,
-                uploaded: uploadedCount,
-              })}
-            </div>
-            {hasFailures && (
-              <div className="mt-1 space-y-1">
-                {items
-                  .filter((item) => item.status === 'failed')
-                  .map((item) => (
-                    <div key={item.id} className="truncate text-text-tertiary">
-                      {item.name}: {item.error}
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-          <button
-            type="button"
-            className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t(($) => $['skillManagement.detail.uploadStatusDismiss'])}
-            onClick={onDismiss}
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function FileTree({
   collapsed,
   detail,
@@ -321,8 +202,9 @@ export function FileTree({
   const referencesRegionRef = useRef<HTMLDivElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
-  const [draggingPath, setDraggingPath] = useState<string>()
-  const [dropTargetPath, setDropTargetPath] = useState<string>()
+  const [draggingPaths, setDraggingPaths] = useState<string[]>([])
+  const [dropTarget, setDropTarget] = useState<SkillDropTarget>()
+  const [collapsedFolderPaths, setCollapsedFolderPaths] = useState<string[]>([])
   const [referencesOpen, setReferencesOpen] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState<string[]>([])
@@ -330,6 +212,16 @@ export function FileTree({
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
   const [uploadItems, setUploadItems] = useState<SkillUploadQueueItem[]>([])
   const [deleteNode, setDeleteNode] = useState<FileTreeNode>()
+  const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
+  const cancelUploadRef = useRef(false)
+  const uploadBatchRef = useRef<
+    | {
+        files: File[]
+        itemIds: string[]
+        targetDirectory: string | undefined
+      }
+    | undefined
+  >(undefined)
 
   const handleReferencesRegionBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
     const nextTarget = event.relatedTarget
@@ -493,6 +385,12 @@ export function FileTree({
       status: 'uploading' as const,
     }))
     setUploadItems(nextUploadItems)
+    uploadBatchRef.current = {
+      files: filesToUpload,
+      itemIds: nextUploadItems.map((item) => item.id),
+      targetDirectory,
+    }
+    cancelUploadRef.current = false
 
     let latestDetail = detail
     let lastUploadedPath = ''
@@ -502,14 +400,27 @@ export function FileTree({
     for (const [index, file] of filesToUpload.entries()) {
       const item = nextUploadItems[index]
       if (!item) continue
+      if (cancelUploadRef.current) {
+        failedCount += 1
+        patchUploadItem(item.id, {
+          error: tCommon(($) => $['operation.cancel']),
+          progress: 100,
+          status: 'failed',
+        })
+        continue
+      }
 
       try {
         patchUploadItem(item.id, { progress: 0, status: 'uploading' })
+        const xhr = new XMLHttpRequest()
+        activeUploadXhrRef.current = xhr
         const uploadedFile = await uploadSkillFile(file, {
           onProgress: (progress) => {
             patchUploadItem(item.id, { progress: Math.min(progress, 99) })
           },
+          xhr,
         })
+        activeUploadXhrRef.current = undefined
         patchUploadItem(item.id, { progress: 100, status: 'saving' })
 
         const path = getUploadPath(file, targetDirectory)
@@ -536,6 +447,7 @@ export function FileTree({
         successCount += 1
         patchUploadItem(item.id, { progress: 100, status: 'uploaded' })
       } catch (error) {
+        activeUploadXhrRef.current = undefined
         failedCount += 1
         patchUploadItem(item.id, {
           error:
@@ -561,6 +473,25 @@ export function FileTree({
     }
 
     toast.success(t(($) => $['skillManagement.detail.uploadFileSuccess']))
+  }
+
+  const handleCancelUpload = () => {
+    cancelUploadRef.current = true
+    activeUploadXhrRef.current?.abort()
+  }
+
+  const handleRetryUpload = () => {
+    const batch = uploadBatchRef.current
+    if (!batch) return
+
+    const failedIds = new Set(
+      uploadItems.filter((item) => item.status === 'failed').map((item) => item.id),
+    )
+    const failedFiles = batch.files.filter((_, index) => {
+      const itemId = batch.itemIds[index]
+      return itemId ? failedIds.has(itemId) : false
+    })
+    void handleUploadFiles(failedFiles, batch.targetDirectory)
   }
 
   const handleItemSelect = (node: FileTreeNode, event: MouseEvent<HTMLElement>) => {
@@ -643,6 +574,7 @@ export function FileTree({
     try {
       let lastTargetPath = ''
       let latestDetail = detail
+      const movedTargetPaths: string[] = []
       for (const sourcePath of movablePaths) {
         const targetPath = joinSkillPath(targetDirectory, getPathBaseName(sourcePath))
         if (sourcePath === targetPath) continue
@@ -664,18 +596,18 @@ export function FileTree({
         )
         latestDetail = nextDetail
         lastTargetPath = targetPath
+        movedTargetPaths.push(targetPath)
       }
 
+      if (movedTargetPaths.length === 0) return
       toast.success(
-        movablePaths.length > 1
+        movedTargetPaths.length > 1
           ? t(($) => $['skillManagement.detail.moveFilesSuccess'])
           : t(($) => $['skillManagement.detail.moveFileSuccess']),
       )
       setSkillDetailCache(queryClient, skillId, latestDetail)
       invalidateSkillDetail(queryClient, skillId)
-      setSelectedPaths(
-        movablePaths.map((path) => joinSkillPath(targetDirectory, getPathBaseName(path))),
-      )
+      setSelectedPaths(movedTargetPaths)
       if (lastTargetPath) onSelect(lastTargetPath, latestDetail.files)
     } catch (error) {
       showSkillErrorToast(
@@ -930,17 +862,18 @@ export function FileTree({
     if (readonly) return
 
     event.preventDefault()
-    event.dataTransfer.dropEffect = Array.from(event.dataTransfer.types).includes('Files')
-      ? 'copy'
+    const operation: SkillDropOperation = Array.from(event.dataTransfer.types).includes('Files')
+      ? 'upload'
       : 'move'
-    setDropTargetPath('')
+    event.dataTransfer.dropEffect = operation === 'upload' ? 'copy' : 'move'
+    setDropTarget({ operation, path: '' })
   }
 
   const handleRootDrop = (event: DragEvent<HTMLElement>) => {
     if (readonly) return
 
     event.preventDefault()
-    setDropTargetPath(undefined)
+    setDropTarget(undefined)
 
     const droppedFiles = Array.from(event.dataTransfer.files)
     if (droppedFiles.length > 0) {
@@ -956,7 +889,7 @@ export function FileTree({
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))
       return
 
-    setDropTargetPath(undefined)
+    setDropTarget(undefined)
   }
 
   const handleRootClick = (event: MouseEvent<HTMLElement>) => {
@@ -1089,12 +1022,13 @@ export function FileTree({
             }}
           />
         </div>
-        <ScrollAreaRoot className="min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport tabIndex={-1}>
             <ScrollAreaContent
               className={cn(
-                'flex min-h-full min-w-0 flex-col px-1 pb-3',
-                dropTargetPath === '' && 'bg-state-base-hover',
+                'relative flex min-h-full min-w-0 flex-col rounded-lg px-1 pt-1 pb-3',
+                dropTarget?.path === '' &&
+                  'bg-components-dropzone-bg-accent before:pointer-events-none before:absolute before:inset-0.5 before:z-10 before:rounded-lg before:border-[1.5px] before:border-dashed before:border-components-dropzone-border-accent',
               )}
               onDragLeave={handleRootDragLeave}
               onDragOver={handleRootDragOver}
@@ -1125,7 +1059,7 @@ export function FileTree({
                       {t(($) => $['skillManagement.detail.noFiles'])}
                     </p>
                   ) : (
-                    <ul className="min-w-0 space-y-0.5">
+                    <ul className="min-w-0 space-y-px">
                       {inlineAction?.kind === 'create' && inlineAction.parentPath === undefined && (
                         <FileTreeNameInput
                           loading={fileMutation.isPending}
@@ -1139,9 +1073,10 @@ export function FileTree({
                       )}
                       {tree.map((node) => (
                         <FileTreeItem
+                          collapsedFolderPaths={collapsedFolderPaths}
                           detail={detail}
-                          draggingPath={draggingPath}
-                          dropTargetPath={dropTargetPath}
+                          draggingPaths={draggingPaths}
+                          dropTarget={dropTarget}
                           inlineAction={inlineAction}
                           inlineActionLoading={fileMutation.isPending}
                           key={node.id}
@@ -1170,11 +1105,21 @@ export function FileTree({
                             })
                           }
                           onSelect={onSelect}
-                          onSetDraggingPath={setDraggingPath}
-                          onSetDropTarget={(targetPath) => {
-                            setDropTargetPath(targetPath)
-                          }}
+                          onExpandFolder={(path) =>
+                            setCollapsedFolderPaths((paths) =>
+                              paths.filter((folderPath) => folderPath !== path),
+                            )
+                          }
+                          onSetDraggingPaths={setDraggingPaths}
+                          onSetDropTarget={setDropTarget}
                           onSubmitInlineAction={handleSubmitInlineAction}
+                          onToggleFolder={(path) =>
+                            setCollapsedFolderPaths((paths) =>
+                              paths.includes(path)
+                                ? paths.filter((folderPath) => folderPath !== path)
+                                : [...paths, path],
+                            )
+                          }
                           onUploadFiles={(filesToUpload, targetDirectory) => {
                             void handleUploadFiles(filesToUpload, targetDirectory)
                           }}
@@ -1210,6 +1155,16 @@ export function FileTree({
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
+          {dropTarget ? (
+            <SkillDropDestinationHint target={dropTarget} />
+          ) : (
+            <SkillUploadStatusPanel
+              items={uploadItems}
+              onCancel={handleCancelUpload}
+              onDismiss={() => setUploadItems([])}
+              onRetry={handleRetryUpload}
+            />
+          )}
         </ScrollAreaRoot>
         <AlertDialog open={!!deleteNode} onOpenChange={(open) => !open && setDeleteNode(undefined)}>
           <AlertDialogContent className="p-6">
@@ -1234,7 +1189,6 @@ export function FileTree({
           </AlertDialogContent>
         </AlertDialog>
         <div className="mx-4 border-t border-divider-subtle py-3">
-          <SkillUploadStatusPanel items={uploadItems} onDismiss={() => setUploadItems([])} />
           <div ref={referencesRegionRef} onBlur={handleReferencesRegionBlur}>
             <button
               type="button"

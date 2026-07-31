@@ -66,6 +66,7 @@ export async function uploadSkillFile(
   file: File,
   options?: {
     onProgress?: (progress: number) => void
+    xhr?: XMLHttpRequest
   },
 ) {
   const body = new FormData()
@@ -81,7 +82,7 @@ export async function uploadSkillFile(
 
       const response = await upload(
         {
-          xhr: new XMLHttpRequest(),
+          xhr: options.xhr ?? new XMLHttpRequest(),
           data: body,
           onprogress: onProgress,
         },

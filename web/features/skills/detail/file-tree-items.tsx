@@ -5,6 +5,7 @@ import type {
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DragEvent, MouseEvent, ReactElement } from 'react'
+import type { SkillDropTarget } from './file-tree-dnd'
 import type { FileTreeInlineAction, FileTreeNode } from './shared'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -24,9 +25,9 @@ import {
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { setSkillFileDragPreview } from './file-tree-drag-preview'
 import {
   getDraggedSkillPaths,
-  getPathDirName,
   getSkillFileIconClass,
   skillFileDragPathsType,
   skillFileDragType,
@@ -350,9 +351,10 @@ export function RootFileActionMenuItems({
 }
 
 export function FileTreeItem({
+  collapsedFolderPaths,
   detail,
-  draggingPath,
-  dropTargetPath,
+  draggingPaths,
+  dropTarget,
   inlineAction,
   inlineActionLoading,
   node,
@@ -366,17 +368,20 @@ export function FileTreeItem({
   onMove,
   onRename,
   onSelect,
-  onSetDraggingPath,
+  onExpandFolder,
+  onSetDraggingPaths,
   onSetDropTarget,
   onSubmitInlineAction,
+  onToggleFolder,
   onUploadFiles,
   readonly,
   selectedPaths,
   selectedPath,
 }: {
+  collapsedFolderPaths: string[]
   detail: SkillDetailResponse | undefined
-  draggingPath: string | undefined
-  dropTargetPath: string | undefined
+  draggingPaths: string[]
+  dropTarget: SkillDropTarget | undefined
   inlineAction: FileTreeInlineAction | undefined
   inlineActionLoading: boolean
   node: FileTreeNode
@@ -390,19 +395,22 @@ export function FileTreeItem({
   onMove: (sourcePaths: string[], targetDirectory: string | undefined) => void
   onRename: (node: FileTreeNode) => void
   onSelect: (path: string) => void
-  onSetDraggingPath: (path: string | undefined) => void
-  onSetDropTarget: (path: string | undefined) => void
+  onExpandFolder: (path: string) => void
+  onSetDraggingPaths: (paths: string[]) => void
+  onSetDropTarget: (target: SkillDropTarget | undefined) => void
   onSubmitInlineAction: (name: string) => void
+  onToggleFolder: (path: string) => void
   onUploadFiles: (files: File[], targetDirectory: string | undefined) => void
   readonly: boolean
   selectedPaths: string[]
   selectedPath: string | undefined
 }) {
   const contextUploadInputRef = useRef<HTMLInputElement>(null)
-  const isDragging = draggingPath === node.path
-  const nodeDropTargetPath = node.type === 'directory' ? node.path : getPathDirName(node.path)
-  const isDropTarget = dropTargetPath === nodeDropTargetPath
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const isDragging = draggingPaths.includes(node.path)
+  const isDropTarget = node.type === 'directory' && dropTarget?.path === node.path
   const isSelected = selectedPaths.includes(node.path)
+  const isCollapsed = collapsedFolderPaths.includes(node.path)
   const actionsVisible = isSelected || selectedPath === node.path
   const isRenaming = inlineAction?.kind === 'rename' && inlineAction.path === node.path
   const childCreateAction =
@@ -410,23 +418,39 @@ export function FileTreeItem({
       ? inlineAction
       : undefined
 
+  useEffect(
+    () => () => {
+      if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
+    },
+    [],
+  )
+
   const handleDragStart = (event: DragEvent<HTMLElement>) => {
     if (readonly) {
       event.preventDefault()
       return
     }
 
+    const sourcePaths = isSelected ? selectedPaths : [node.path]
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData(skillFileDragType, node.path)
-    event.dataTransfer.setData(
-      skillFileDragPathsType,
-      JSON.stringify(isSelected ? selectedPaths : [node.path]),
-    )
-    onSetDraggingPath(node.path)
+    event.dataTransfer.setData(skillFileDragPathsType, JSON.stringify(sourcePaths))
+    setSkillFileDragPreview(event, {
+      count: sourcePaths.length,
+      iconClassName:
+        node.type === 'directory'
+          ? 'i-ri-folder-5-line text-text-secondary'
+          : node.file
+            ? getSkillFileIconClass(node.file)
+            : 'i-ri-file-line text-text-secondary',
+      name: node.name,
+    })
+    onSetDraggingPaths(sourcePaths)
   }
 
   const handleDragEnd = () => {
-    onSetDraggingPath(undefined)
+    if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
+    onSetDraggingPaths([])
     onSetDropTarget(undefined)
   }
 
@@ -435,10 +459,15 @@ export function FileTreeItem({
 
     event.preventDefault()
     event.stopPropagation()
-    event.dataTransfer.dropEffect = Array.from(event.dataTransfer.types).includes('Files')
-      ? 'copy'
-      : 'move'
-    onSetDropTarget(nodeDropTargetPath)
+    const operation = Array.from(event.dataTransfer.types).includes('Files') ? 'upload' : 'move'
+    event.dataTransfer.dropEffect = operation === 'upload' ? 'copy' : 'move'
+    onSetDropTarget({ operation, path: node.path })
+    if (isCollapsed && node.children?.length && !expandTimerRef.current) {
+      expandTimerRef.current = setTimeout(() => {
+        onExpandFolder(node.path)
+        expandTimerRef.current = undefined
+      }, 2000)
+    }
   }
 
   const handleDragLeave = (event: DragEvent<HTMLElement>) => {
@@ -446,6 +475,10 @@ export function FileTreeItem({
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))
       return
 
+    if (expandTimerRef.current) {
+      clearTimeout(expandTimerRef.current)
+      expandTimerRef.current = undefined
+    }
     onSetDropTarget(undefined)
   }
 
@@ -454,16 +487,20 @@ export function FileTreeItem({
 
     event.preventDefault()
     event.stopPropagation()
+    if (expandTimerRef.current) {
+      clearTimeout(expandTimerRef.current)
+      expandTimerRef.current = undefined
+    }
     onSetDropTarget(undefined)
 
     const droppedFiles = Array.from(event.dataTransfer.files)
     if (droppedFiles.length > 0) {
-      onDropFiles(droppedFiles, nodeDropTargetPath || undefined)
+      onDropFiles(droppedFiles, node.path)
       return
     }
 
     const sourcePaths = getDraggedSkillPaths(event.dataTransfer)
-    if (sourcePaths.length > 0) onMove(sourcePaths, nodeDropTargetPath || undefined)
+    if (sourcePaths.length > 0) onMove(sourcePaths, node.path)
   }
 
   const nameNode = <span className="w-0 min-w-0 flex-1 truncate">{node.name}</span>
@@ -527,9 +564,9 @@ export function FileTreeItem({
               draggable={!readonly}
               className={cn(
                 'group flex h-6 w-full min-w-0 items-center gap-2 rounded-md pr-1.5 pl-2 system-xs-regular text-text-secondary outline-hidden transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid',
+                isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid ring-inset',
                 isSelected && 'bg-state-accent-hover text-text-accent',
-                isDragging && 'opacity-50',
+                isDragging && 'opacity-30',
               )}
               role="button"
               tabIndex={0}
@@ -541,6 +578,7 @@ export function FileTreeItem({
               }}
               onDragEnd={handleDragEnd}
               onDragStart={handleDragStart}
+              onDoubleClick={() => onToggleFolder(node.path)}
               onKeyDown={(event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return
                 event.preventDefault()
@@ -568,8 +606,8 @@ export function FileTreeItem({
             </div>,
           )
         )}
-        {(childCreateAction || (node.children && node.children.length > 0)) && (
-          <ul className="ml-4 min-w-0 border-l border-divider-subtle pl-1">
+        {(childCreateAction || (!isCollapsed && node.children && node.children.length > 0)) && (
+          <ul className="ml-4 min-w-0 space-y-px border-l border-divider-subtle pl-1">
             {childCreateAction && (
               <FileTreeNameInput
                 loading={inlineActionLoading}
@@ -581,9 +619,10 @@ export function FileTreeItem({
             )}
             {node.children?.map((child) => (
               <FileTreeItem
+                collapsedFolderPaths={collapsedFolderPaths}
                 detail={detail}
-                draggingPath={draggingPath}
-                dropTargetPath={dropTargetPath}
+                draggingPaths={draggingPaths}
+                dropTarget={dropTarget}
                 inlineAction={inlineAction}
                 inlineActionLoading={inlineActionLoading}
                 key={child.id}
@@ -598,9 +637,11 @@ export function FileTreeItem({
                 onMove={onMove}
                 onRename={onRename}
                 onSelect={onSelect}
-                onSetDraggingPath={onSetDraggingPath}
+                onExpandFolder={onExpandFolder}
+                onSetDraggingPaths={onSetDraggingPaths}
                 onSetDropTarget={onSetDropTarget}
                 onSubmitInlineAction={onSubmitInlineAction}
+                onToggleFolder={onToggleFolder}
                 onUploadFiles={onUploadFiles}
                 readonly={readonly}
                 selectedPaths={selectedPaths}
@@ -630,21 +671,15 @@ export function FileTreeItem({
   }
 
   return (
-    <li
-      className="min-w-0"
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-    >
+    <li className="min-w-0">
       {renderWithContextMenu(
         <div
           data-skill-file-tree-item
           draggable={!readonly}
           className={cn(
             'group flex h-6 w-full min-w-0 items-center rounded-md pr-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
-            isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid',
             (selectedPath === node.path || isSelected) && 'bg-state-accent-hover text-text-accent',
-            isDragging && 'opacity-50',
+            isDragging && 'opacity-30',
           )}
           onDragEnd={handleDragEnd}
           onDragStart={handleDragStart}
