@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   skillDetailKey: vi.fn((_options: unknown): unknown[] => ['skill-detail']),
   skillDetailQueryOptions: vi.fn((_options: unknown) => ({})),
   skillListKey: vi.fn((_options: unknown): unknown[] => ['skills']),
+  skillTags: [] as { count: number; tag: string }[],
   skillMetadataMutationFn: vi.fn(),
   skillReferencesQueryOptions: vi.fn((_options: unknown) => ({})),
   skillTagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
@@ -102,6 +103,11 @@ vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: () => '2026-07-21 12:00',
   }),
+}))
+
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: ({ show }: { show: boolean }) =>
+    show ? <div role="dialog">common.tag.manageTags</div> : null,
 }))
 
 vi.mock('@/next/link', () => ({
@@ -399,6 +405,11 @@ describe('SkillDetailPage', () => {
     mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
     mocks.skillVersionsKey.mockImplementation((options) => ['skill-versions', options])
     mocks.skillListKey.mockImplementation((options) => ['skills', options])
+    mocks.skillTags = [
+      { count: 3, tag: 'Search' },
+      { count: 2, tag: 'Productivity' },
+      { count: 1, tag: 'Utilities' },
+    ]
     mocks.skillTagsKey.mockImplementation((options) => ['skill-tags', options])
     mocks.skillTagsQueryOptions.mockImplementation(() => ({
       queryKey: ['skill-tags'],
@@ -427,6 +438,12 @@ describe('SkillDetailPage', () => {
       queryKey: ['skill-references', options],
       queryFn: async () => ({
         data: [],
+      }),
+    }))
+    mocks.skillTagsQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-tags'],
+      queryFn: async () => ({
+        data: mocks.skillTags,
       }),
     }))
     mocks.saveDraftFileMutationFn.mockImplementation(
@@ -462,7 +479,7 @@ describe('SkillDetailPage', () => {
       async (input: { body: { display_name?: string; tags?: string[] } }) => {
         const nextDetail = createSkillDetail({
           display_name: input.body.display_name ?? 'Untitled skill',
-          tags: input.body.tags ?? [],
+          tags: input.body.tags ?? mocks.skillDetail?.tags ?? [],
           updated_at: 1784638491,
         })
         mocks.skillDetail = {
@@ -505,6 +522,268 @@ describe('SkillDetailPage', () => {
       name: 'guide.md',
       mime_type: 'text/markdown',
       size: 10,
+    })
+  })
+
+  it('opens the inline tag selector with workspace tag options', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    const addTagButton = await screen.findByRole('combobox', {
+      name: 'agentV2.skillManagement.detail.addTag',
+    })
+    await user.click(addTagButton)
+
+    expect(
+      await screen.findByRole('combobox', {
+        name: 'common.tag.selectorPlaceholder',
+      }),
+    ).toHaveFocus()
+    expect(screen.getByRole('option', { name: 'Search' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Productivity' })).toBeInTheDocument()
+    expect(screen.getByRole('separator')).toHaveClass('my-0')
+    expect(
+      screen
+        .getByRole('button', { name: 'common.tag.manageTags' })
+        .querySelector('.i-ri-price-tag-3-line'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('saves selected workspace tags when the selector closes', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'Search' }))
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            expected_updated_at: 1784638487,
+            tags: ['Search'],
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('removes a selected tag when it is unchecked and the selector closes', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      tags: ['Search', 'Productivity'],
+    })
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'Search' }))
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            tags: ['Productivity'],
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('renders an unmatched search as a create action instead of a tag checkbox', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    )
+    await user.type(
+      await screen.findByRole('combobox', {
+        name: 'common.tag.selectorPlaceholder',
+      }),
+      'BrandNew',
+    )
+
+    expect(
+      await screen.findByRole('option', {
+        name: "common.tag.create 'BrandNew'",
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'BrandNew' })).not.toBeInTheDocument()
+  })
+
+  it('creates and binds an unmatched tag when the create action is selected', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    )
+    await user.type(
+      await screen.findByRole('combobox', {
+        name: 'common.tag.selectorPlaceholder',
+      }),
+      'BrandNew',
+    )
+    await user.click(
+      await screen.findByRole('option', {
+        name: "common.tag.create 'BrandNew'",
+      }),
+    )
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            tags: ['BrandNew'],
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('shows an added tag only after the metadata request finishes', async () => {
+    const user = userEvent.setup()
+    let resolveMutation: ((detail: SkillDetailResponse) => void) | undefined
+    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-detail'],
+      queryFn: async () => mocks.skillDetail,
+    }))
+    mocks.skillMetadataMutationFn.mockImplementation(
+      () =>
+        new Promise<SkillDetailResponse>((resolve) => {
+          resolveMutation = resolve
+        }),
+    )
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'Search' }))
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    expect(screen.queryByText('Search')).not.toBeInTheDocument()
+
+    await act(async () => {
+      const nextDetail = createSkillDetail({
+        tags: ['Search'],
+        updated_at: 1784638491,
+      })
+      mocks.skillDetail = nextDetail
+      resolveMutation?.(nextDetail)
+    })
+
+    expect(await screen.findByText('Search')).toBeInTheDocument()
+  })
+
+  it('opens tag management from the selector', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'agentV2.skillManagement.detail.addTag',
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: 'common.tag.manageTags' }))
+
+    expect(await screen.findByRole('dialog')).toHaveTextContent('common.tag.manageTags')
+  })
+
+  it('removes an existing tag from its badge action', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      tags: ['Search', 'Productivity', 'Utilities', 'Pre-sales'],
+    })
+    renderSkillDetailPage()
+
+    expect(await screen.findByText('Search')).toBeInTheDocument()
+    expect(screen.getByText('Productivity')).toBeInTheDocument()
+    expect(screen.getByText('Utilities')).toBeInTheDocument()
+    expect(screen.getByText('Pre-sales')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.skillManagement.detail.removeTag:{"tag":"Search"}',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            tags: ['Productivity', 'Utilities', 'Pre-sales'],
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('hides a removed tag only after the metadata request finishes', async () => {
+    const user = userEvent.setup()
+    let resolveMutation: ((detail: SkillDetailResponse) => void) | undefined
+    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-detail'],
+      queryFn: async () => mocks.skillDetail,
+    }))
+    mocks.skillDetail = createSkillDetail({
+      tags: ['Search', 'Productivity'],
+    })
+    mocks.skillMetadataMutationFn.mockImplementation(
+      () =>
+        new Promise<SkillDetailResponse>((resolve) => {
+          resolveMutation = resolve
+        }),
+    )
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.removeTag:{"tag":"Search"}',
+      }),
+    )
+
+    expect(screen.getByText('Search')).toBeInTheDocument()
+    expect(screen.getByText('Productivity')).toBeInTheDocument()
+
+    await act(async () => {
+      const nextDetail = createSkillDetail({
+        tags: ['Productivity'],
+        updated_at: 1784638491,
+      })
+      mocks.skillDetail = nextDetail
+      resolveMutation?.(nextDetail)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Search')).not.toBeInTheDocument()
     })
   })
 
@@ -564,43 +843,6 @@ describe('SkillDetailPage', () => {
     expect(await screen.findByText('agentV2.skillManagement.detail.loadFailed')).toBeInTheDocument()
     expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
-  })
-
-  it('lists existing skill tags when adding a tag', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({
-      tags: ['existing'],
-    })
-    mocks.skillTagsQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-tags'],
-      queryFn: async () => ({
-        data: [
-          { tag: 'existing', count: 1 },
-          { tag: 'operations', count: 2 },
-        ],
-      }),
-    }))
-    renderSkillDetailPage()
-
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
-    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.detail.addTag' }))
-    await user.click(
-      screen.getByRole('combobox', { name: 'agentV2.skillManagement.detail.addTag' }),
-    )
-    await user.click(await screen.findByRole('option', { name: 'operations' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
-
-    await waitFor(() => {
-      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: expect.objectContaining({
-            tags: ['existing', 'operations'],
-          }),
-        }),
-        expect.anything(),
-      )
-    })
-    expect(screen.queryByRole('option', { name: 'existing' })).not.toBeInTheDocument()
   })
 
   it('sends only one autosave request while the first save is pending', async () => {
