@@ -123,6 +123,7 @@
   "skillManagement.detail.savedAt": "Saved {{time}}",
   "skillManagement.detail.saving": "Saving...",
   "skillManagement.detail.searchFiles": "ファイルを検索",
+  "skillManagement.detail.showMoreReferences": "さらに {{count}} 件を表示",
   "skillManagement.detail.skillDescriptionPlaceholder": "この Skill の用途と、Agent がいつ使うべきかを説明します。",
   "skillManagement.detail.skillNamePlaceholder": "この Skill に名前を付けます。小文字、数字、ハイフンのみ使用できます。エクスポート時のフォルダー名になります",
   "skillManagement.detail.unpublishedChanges": "未公開の変更",

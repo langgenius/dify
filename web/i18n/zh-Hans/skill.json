@@ -142,6 +142,7 @@
   "skillManagement.detail.savedAt": "{{time}}已保存",
   "skillManagement.detail.saving": "保存中...",
   "skillManagement.detail.searchFiles": "查找文件",
+  "skillManagement.detail.showMoreReferences": "显示其余 {{count}} 个",
   "skillManagement.detail.skillDescriptionPlaceholder": "描述这个 Skill 的作用，以及 Agent 什么时候应该使用它。",
   "skillManagement.detail.skillNamePlaceholder": "命名这个 Skill，仅支持小写字母、数字和连字符。导出时会作为文件夹名",
   "skillManagement.detail.unpublishedChanges": "未发布的更改",

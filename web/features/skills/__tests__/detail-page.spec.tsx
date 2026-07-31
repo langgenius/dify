@@ -1693,8 +1693,18 @@ describe('SkillDetailPage', () => {
     )
 
     const referenceList = await screen.findByTestId('skill-publish-reference-list')
+    expect(referenceList).not.toHaveAttribute('data-scrollable')
+    expect(within(referenceList).getAllByRole('link')).toHaveLength(5)
+    expect(within(referenceList).queryByText('Reference 6')).not.toBeInTheDocument()
+
+    await user.click(
+      within(referenceList).getByRole('button', {
+        name: 'skill.skillManagement.detail.showMoreReferences:{"count":6}',
+      }),
+    )
+
     expect(referenceList).toHaveAttribute('data-scrollable', 'true')
-    expect(referenceList).toHaveClass('max-h-[314px]', 'overflow-y-auto')
+    expect(referenceList).toHaveClass('max-h-[240px]', 'overflow-y-auto')
     expect(within(referenceList).getAllByRole('link')).toHaveLength(11)
   })
 
