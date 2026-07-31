@@ -82,6 +82,13 @@ const CardWrapperComponent = ({
             {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
           </Button>
         </div>
+        <MarketplaceDetailDialog
+          isInstalled={isInstalled}
+          open={isShowMarketplaceDetail}
+          plugin={plugin}
+          onInstall={showInstallFromMarketplace}
+          onOpenChange={handleMarketplaceDetailOpenChange}
+        />
         {isShowInstallFromMarketplace && (
           <InstallFromMarketplace
             manifest={plugin}
@@ -90,12 +97,6 @@ const CardWrapperComponent = ({
             onSuccess={hideInstallFromMarketplace}
           />
         )}
-        <MarketplaceDetailDialog
-          isInstalled={isInstalled}
-          open={isShowMarketplaceDetail}
-          plugin={plugin}
-          onOpenChange={handleMarketplaceDetailOpenChange}
-        />
       </div>
     )
   }

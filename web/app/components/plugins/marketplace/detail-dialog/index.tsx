@@ -4,14 +4,17 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTheme } from 'next-themes'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getPluginLinkInMarketplace } from '../utils'
+
+const MARKETPLACE_INSTALL_MESSAGE_TYPE = 'dify-marketplace:install-plugin'
 
 type MarketplaceDetailDialogProps = {
   isInstalled: boolean
   open: boolean
   plugin: Plugin
+  onInstall: () => void
   onOpenChange: (open: boolean) => void
 }
 
@@ -19,11 +22,13 @@ function MarketplaceDetailDialog({
   isInstalled,
   open,
   plugin,
+  onInstall,
   onOpenChange,
 }: MarketplaceDetailDialogProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const { theme } = useTheme()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const pluginLabel = plugin.label[locale] ?? plugin.label['en-US'] ?? plugin.name
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
@@ -34,6 +39,28 @@ function MarketplaceDetailDialog({
     theme,
     view: 'modal',
   })
+
+  useEffect(() => {
+    if (!open || isInstalled) return
+
+    const marketplaceOrigin = new URL(detailURL, window.location.href).origin
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow || event.origin !== marketplaceOrigin)
+        return
+      if (
+        typeof event.data !== 'object' ||
+        event.data === null ||
+        event.data.type !== MARKETPLACE_INSTALL_MESSAGE_TYPE ||
+        event.data.pluginUniqueIdentifier !== plugin.latest_package_identifier
+      )
+        return
+
+      onInstall()
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [detailURL, isInstalled, onInstall, open, plugin.latest_package_identifier])
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) setIsLoading(true)
@@ -72,6 +99,7 @@ function MarketplaceDetailDialog({
           </div>
         </div>
         <iframe
+          ref={iframeRef}
           className={cn(
             'size-full border-0 bg-background-default transition-opacity',
             isLoading ? 'opacity-0' : 'opacity-100',
