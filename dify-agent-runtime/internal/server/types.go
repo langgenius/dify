@@ -13,9 +13,8 @@ import (
 // RunJobRequest is the HTTP request body for POST /v1/jobs/run.
 //
 // Credentials are never passed here. Callers must first register them for a
-// sandbox_id via PUT /v1/prepare, then reference them from the script/env
-// using __secret:provider/name__ placeholders (resolved by the egress proxy
-// at request time) or rely on the proxy's proactive header injection.
+// sandbox_id via PUT /v1/prepare; the egress proxy then proactively injects
+// them into outbound HTTP requests based on each credential's inject policy.
 type RunJobRequest struct {
 	Script string            `json:"script"`
 	Cwd    *string           `json:"cwd,omitempty"`
@@ -154,8 +153,9 @@ type Credential struct {
 	// Value is the actual secret. For simple credentials this is a string;
 	// for structured credentials (e.g. AWS) this is a JSON object.
 	Value CredentialValue `json:"value" yaml:"value"`
-	// Inject defines how the credential is automatically injected into HTTP requests.
-	// If nil, the credential is only resolved via __secret:provider/name__ placeholders.
+	// Inject defines how the credential is automatically injected into HTTP
+	// requests by the egress proxy. Required for the credential to take effect
+	// at the network layer.
 	Inject *InjectPolicy `json:"inject,omitempty" yaml:"inject,omitempty"`
 	// EnvName overrides the environment variable name used to expose this
 	// credential's __secret:provider/name__ placeholder to jobs. If empty,
@@ -221,7 +221,7 @@ type AWSSigV4Inject struct {
 	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
 }
 
-// Ref returns the canonical credential reference used in placeholders: "provider/name".
+// Ref returns the canonical credential reference: "provider/name".
 func (c *Credential) Ref() string {
 	return c.Provider + "/" + c.Name
 }

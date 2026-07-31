@@ -28,59 +28,6 @@ func TestResolverResolveForSystemTier(t *testing.T) {
 	}
 }
 
-func TestResolverReplaceAllFor(t *testing.T) {
-	r := NewResolver()
-	r.SetSystemCredentials(map[string]*StoredCredential{
-		"github/token":             {Value: "ghp_realtoken123"},
-		"dify_agent_stub/auth_jwe": {Value: "eyJhbGci..."},
-	})
-
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "single placeholder in header value",
-			input: "Bearer __secret:dify_agent_stub/auth_jwe__",
-			want:  "Bearer eyJhbGci...",
-		},
-		{
-			name:  "multiple placeholders",
-			input: "token=__secret:github/token__&auth=__secret:dify_agent_stub/auth_jwe__",
-			want:  "token=ghp_realtoken123&auth=eyJhbGci...",
-		},
-		{
-			name:  "no placeholders",
-			input: "just a normal string",
-			want:  "just a normal string",
-		},
-		{
-			name:  "unresolved placeholder left intact",
-			input: "__secret:unknown/ref__",
-			want:  "__secret:unknown/ref__",
-		},
-		{
-			name:  "mixed resolved and unresolved",
-			input: "__secret:github/token__ and __secret:unknown/key__",
-			want:  "ghp_realtoken123 and __secret:unknown/key__",
-		},
-		{
-			name:  "placeholder is entire string",
-			input: "__secret:github/token__",
-			want:  "ghp_realtoken123",
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := r.ReplaceAllFor("", tc.input)
-			if got != tc.want {
-				t.Errorf("ReplaceAllFor(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestResolverInjectHeadersFor(t *testing.T) {
 	r := NewResolver()
 	r.SetSystemCredentials(map[string]*StoredCredential{
@@ -293,8 +240,8 @@ func TestResolverInjectHeadersForAWSSigV4(t *testing.T) {
 }
 
 // TestResolverInjectHeadersForAWSSigV4StripsFakeSignature verifies that a
-// client-supplied fake signature (from aws cli using placeholder env vars)
-// is stripped before re-signing with real credentials.
+// client-supplied fake signature is stripped before re-signing with real
+// credentials.
 func TestResolverInjectHeadersForAWSSigV4StripsFakeSignature(t *testing.T) {
 	r := NewResolver()
 	credJSON := []byte(`{"access_key_id":"AKIAIOSFODNN7EXAMPLE","secret_access_key":"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"}`)
@@ -308,8 +255,8 @@ func TestResolverInjectHeadersForAWSSigV4StripsFakeSignature(t *testing.T) {
 		},
 	})
 
-	// Simulate aws cli with placeholder env vars: it signs with the
-	// placeholder as the access key, producing a fake signature.
+	// Simulate a client that signed with dummy credentials, producing a
+	// fake signature the proxy must overwrite.
 	req, _ := http.NewRequest("GET", "https://s3.us-east-1.amazonaws.com/bucket/key", nil)
 	req.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=__secret:aws/s3_prod__/20260731/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=fakesig")
 	req.Header.Set("X-Amz-Date", "20260731T120000Z")
@@ -416,21 +363,5 @@ func TestResolverInjectHeadersForAWSSigV4BodyReplay(t *testing.T) {
 	// Verify it's a 64-char hex string.
 	if len(sha) != 64 {
 		t.Errorf("expected 64-char hex hash, got %d chars: %q", len(sha), sha)
-	}
-}
-
-// TestResolverReplaceAllForSkipsNonStringValue verifies that placeholders for
-// structured (non-string) credentials are left intact.
-func TestResolverReplaceAllForSkipsNonStringValue(t *testing.T) {
-	r := NewResolver()
-	credJSON := []byte(`{"access_key_id":"AKIAIOSFODNN7EXAMPLE","secret_access_key":"secret"}`)
-	r.SetSystemCredentials(map[string]*StoredCredential{
-		"aws/creds": {Value: credJSON},
-	})
-
-	input := "__secret:aws/creds__"
-	got := r.ReplaceAllFor("", input)
-	if got != input {
-		t.Errorf("expected placeholder to be left intact for non-string value, got %q", got)
 	}
 }

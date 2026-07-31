@@ -22,9 +22,7 @@ This guide demonstrates the multi-tenant egress credential proxy system for Dify
 │  │  :tavily/    │    │  └────────────────┘  │     │  (e.g.   │      │
 │  │  api_key__   │    │                      │     │  tavily) │      │
 │  └──────────────┘    │  1. Inject headers   │     └──────────┘      │
-│                      │  2. Replace          │                       │
-│                      │     placeholders     │                       │
-│                      │  3. Strip Proxy-Auth │                       │
+│                      │  2. Strip Proxy-Auth │                       │
 │                      └──────────────────────┘                       │
 │                                                                     │
 │  system-credentials.yaml ──▶ loaded at startup into system tier     │
@@ -41,8 +39,7 @@ This guide demonstrates the multi-tenant egress credential proxy system for Dify
 - **Egress MITM Proxy** (`127.0.0.1:18080`): Intercepts all outbound HTTP/HTTPS traffic from agent jobs. For HTTPS, it performs TLS interception using a per-container CA (generated fresh at startup, installed into the system trust store). The proxy:
   1. Extracts `sandbox_id` from the `Proxy-Authorization` header (embedded as Basic-Auth userinfo in the proxy URL).
   2. **Proactively injects** credential headers based on domain-matching policies (e.g. `Authorization: Bearer <token>` for `api.tavily.com`).
-  3. **Replaces placeholders** like `__secret:tavily/api_key__` in request headers and URL query parameters with resolved credential values.
-  4. Strips the `Proxy-Authorization` header before forwarding.
+  3. Strips the `Proxy-Authorization` header before forwarding.
 
 - **Squid SSRF proxy** (`agent_ssrf_proxy:3128`): Upstream of the egress proxy. Enforces network-level egress restrictions (deny private networks, allow public internet).
 

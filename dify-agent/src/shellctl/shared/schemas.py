@@ -163,9 +163,9 @@ class RunJobRequest(ShellctlModel):
     `env` augments the runner's inherited process environment instead of
     replacing it, so callers can preset script-local variables without losing
     ambient values such as `PATH`. Credentials are never passed here; callers
-    must first register them for a `sandbox_id` via `PUT /v1/prepare`, then
-    reference them from the script/env using `__secret:provider/name__`
-    placeholders or rely on the proxy's proactive header injection.
+    must first register them for a `sandbox_id` via `PUT /v1/prepare`; the
+    egress proxy then proactively injects them into outbound HTTP requests
+    based on each credential's inject policy.
     """
 
     script: str

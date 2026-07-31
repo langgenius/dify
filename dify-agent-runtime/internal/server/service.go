@@ -187,14 +187,42 @@ func isValidSandboxID(sandboxID string) bool {
 	return validSandboxIDPattern.MatchString(sandboxID)
 }
 
-// writeFileAtomic writes data to path via a temp file + rename so concurrent
-// readers never observe a partially written file.
+// writeFileAtomic writes data to path via a uniquely-named temp file in the
+// same directory + rename, so concurrent callers for the same path never
+// race on a shared temp filename. Readers never observe a partially written
+// file.
 func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, perm); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	cleanup := func() { _ = os.Remove(tmpName) }
+	wrote := false
+	defer func() {
+		if !wrote {
+			cleanup()
+		}
+	}()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, perm); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	wrote = true
+	return nil
 }
 
 // credentialsToStoredMap converts API-level Credential values into the

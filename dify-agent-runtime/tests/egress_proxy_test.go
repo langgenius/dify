@@ -6,7 +6,7 @@
 // reachable only from inside that container's docker network as "echo-backend".
 // A job script issues a real outbound curl request; the echo backend reflects
 // back the headers it received, which we assert against to prove the proxy
-// actually injected credentials / resolved placeholders over the wire.
+// actually injected credentials over the wire.
 //
 // Provisioned by `make integration-up` (see Makefile) and exercised via
 // `make integration-test` / `make integration`.
@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -114,43 +113,6 @@ func TestEgressProxyCredentialInjection(t *testing.T) {
 	auth, _ := headers["authorization"].(string)
 	if auth != "Bearer sk-integration-test-secret" {
 		t.Errorf("expected injected Authorization header, got %q (full output: %s)", auth, output)
-	}
-}
-
-// TestEgressProxyPlaceholderReplacement verifies __secret:provider/name__
-// placeholders in job-supplied headers are resolved for real outbound
-// requests traversing the egress proxy.
-func TestEgressProxyPlaceholderReplacement(t *testing.T) {
-	tgt, ok := egressTarget()
-	if !ok {
-		t.Skip("SHELLCTL_EGRESS_GO_URL not set; egress proxy container not available")
-	}
-
-	const sandboxID = "sandbox-placeholder-replacement"
-	prepareResp := doPutWithToken(t, tgt, egressAuthToken, "/v1/prepare", map[string]any{
-		"sandbox_id": sandboxID,
-		"credentials": []map[string]any{
-			{
-				"provider": "testprovider",
-				"name":     "placeholder",
-				"value":    "resolved-secret-value",
-			},
-		},
-	})
-	assertStatus(t, prepareResp, 200)
-	readBody(t, prepareResp)
-
-	result := runJobWithToken(t, tgt, egressAuthToken, map[string]any{
-		"script":     `curl -s -H "X-Custom-Token: __secret:testprovider/placeholder__" http://echo-backend:8080/`,
-		"timeout":    15,
-		"sandbox_id": sandboxID,
-	})
-	assertJobDone(t, result)
-	assertExitCode(t, result, 0)
-
-	output := result["output"].(string)
-	if !strings.Contains(output, "resolved-secret-value") {
-		t.Errorf("expected resolved placeholder to reach echo backend, got: %s", output)
 	}
 }
 

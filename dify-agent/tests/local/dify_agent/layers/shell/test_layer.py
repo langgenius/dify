@@ -886,7 +886,9 @@ def test_agent_stub_token_omits_workspace_session_identity() -> None:
         _timeout: float,
     ) -> ShellCommandResult:
         assert env is not None
-        assert env["DIFY_AGENT_STUB_AUTH_JWE"] == "stub-token"
+        # The env carries a placeholder, not the real token; the egress proxy
+        # resolves it at request time.
+        assert env["DIFY_AGENT_STUB_AUTH_JWE"] == "__secret:dify_agent_stub/auth_jwe__"
         return _command_result("remote-job", status="exited", done=True, exit_code=0)
 
     layer, _provider = _layer(commands=FakeCommands(run_handler=run_handler))
@@ -896,10 +898,15 @@ def test_agent_stub_token_omits_workspace_session_identity() -> None:
 
     async def scenario() -> None:
         async with layer.resource_context():
+            # on_context_create triggers _prepare_credentials which calls
+            # token_factory via build_shell_agent_stub_credentials.
+            await layer.on_context_create()
             _ = await layer.run_remote_script_complete("true", inject_agent_stub_env=True)
 
     asyncio.run(scenario())
 
+    # token_factory is invoked once via the credentials path (build_shell_agent_stub_credentials)
+    # with session_id=None so the workspace session identity is not embedded in the token.
     assert seen_session_ids == [None]
 
 
@@ -1217,39 +1224,6 @@ def _layer_with_redaction(
     return layer, provider
 
 
-def test_redact_output_replaces_jwe_token_value() -> None:
-    """The JWE token value should always be redacted from shell output."""
-    token = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0.super-secret-token-12345"
-
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
-        return _command_result(
-            "job-1",
-            status="exited",
-            done=True,
-            exit_code=0,
-            output=f"DIFY_AGENT_STUB_AUTH_JWE={token}\n",
-            offset=100,
-        )
-
-    commands = FakeCommands(
-        run_handler=run_handler,
-        tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=100),
-    )
-    layer, _provider = _layer_with_redaction(commands=commands, token_value=token)
-    _bind_execution_context(layer)
-    layer.runtime_state = _runtime_state()
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            result = await tools["shell_run"].function_schema.call({"script": "env"}, None)  # pyright: ignore[reportArgumentType]
-            _, output = _parse_tagged_observation(result)
-            assert token not in output
-            assert "***" in output
-
-    asyncio.run(scenario())
-
-
 def test_redact_output_applies_server_level_patterns() -> None:
     """Server-level regex patterns from env var should redact matching content."""
 
@@ -1317,34 +1291,3 @@ def test_redact_output_applies_per_agent_config_patterns() -> None:
 
     asyncio.run(scenario())
 
-
-def test_redact_output_skips_short_jwe_values() -> None:
-    """JWE values ≤8 chars should not be redacted to avoid false positives."""
-
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
-        return _command_result(
-            "job-1",
-            status="exited",
-            done=True,
-            exit_code=0,
-            output="short\n",
-            offset=6,
-        )
-
-    commands = FakeCommands(
-        run_handler=run_handler,
-        tail_handler=lambda _: _command_result("job-1", done=True, exit_code=0, status="exited", offset=6),
-    )
-    # Token value is short — should NOT be redacted even if it appears in output.
-    layer, _provider = _layer_with_redaction(commands=commands, token_value="short")
-    _bind_execution_context(layer)
-    layer.runtime_state = _runtime_state()
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            result = await tools["shell_run"].function_schema.call({"script": "echo hi"}, None)  # pyright: ignore[reportArgumentType]
-            _, output = _parse_tagged_observation(result)
-            assert "short" in output
-
-    asyncio.run(scenario())

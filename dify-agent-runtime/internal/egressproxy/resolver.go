@@ -1,22 +1,17 @@
 // Package egressproxy implements the in-process egress proxy that runs inside
-// the sandbox. It intercepts all outbound HTTP/HTTPS requests, resolves
-// __secret:provider/name__ placeholders, and proactively injects credentials
-// based on domain-matching policies (see package providers).
+// the sandbox. It intercepts all outbound HTTP/HTTPS requests and proactively
+// injects credentials based on domain-matching policies (see package
+// providers).
 package egressproxy
 
 import (
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/providers"
 )
-
-// placeholderPattern matches __secret:<provider>/<name>__ tokens.
-// Group 1 captures the full ref ("provider/name").
-var placeholderPattern = regexp.MustCompile(`__secret:([a-zA-Z0-9_]+/[a-zA-Z0-9_]+)__`)
 
 // StoredCredential holds a credential's value and optional injection policy.
 // Value is interpreted by the Inject policy: simple.Policy expects a string
@@ -27,7 +22,7 @@ type StoredCredential struct {
 }
 
 // Resolver is a thread-safe credential store scoped by sandbox session.
-// It supports both placeholder replacement and proactive header injection.
+// It supports proactive header injection based on domain-matching policies.
 //
 // Credentials live in two independent tiers:
 //
@@ -98,41 +93,6 @@ func (r *Resolver) ResolveFor(sandboxID, ref string) *StoredCredential {
 		}
 	}
 	return r.system[ref]
-}
-
-// ReplaceAllFor scans s for all __secret:provider/name__ placeholders and
-// replaces each with the value resolved for sandboxID (session, falling back
-// to system). Unresolved placeholders are left intact. Placeholders whose
-// credential Value is not a string (e.g. structured credentials used only for
-// injection policies) are also left intact — they are not meant to be
-// substituted into request text.
-func (r *Resolver) ReplaceAllFor(sandboxID, s string) string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return placeholderPattern.ReplaceAllStringFunc(s, func(match string) string {
-		groups := placeholderPattern.FindStringSubmatch(match)
-		if len(groups) < 2 {
-			return match
-		}
-		ref := groups[1]
-		var cred *StoredCredential
-		if sandboxID != "" {
-			if session, ok := r.sessions[sandboxID]; ok {
-				cred = session[ref]
-			}
-		}
-		if cred == nil {
-			cred = r.system[ref]
-		}
-		if cred == nil {
-			return match
-		}
-		if sv, ok := cred.Value.(string); ok {
-			return sv
-		}
-		// Non-string values (structured credentials) are not substituted.
-		return match
-	})
 }
 
 // InjectHeadersFor proactively injects credential-derived headers into the

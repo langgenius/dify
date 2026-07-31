@@ -4,9 +4,8 @@
 // session token).
 //
 // Any client-supplied AWS auth headers are stripped before re-signing, so
-// both unsigned requests (curl) and placeholder-signed requests (aws cli with
-// placeholder env vars) work transparently — the proxy overwrites the
-// signature with real credentials.
+// both unsigned requests (curl) and requests signed with dummy credentials
+// work transparently — the proxy overwrites the signature with real credentials.
 //
 // The body signing mode is auto-detected from the client's
 // X-Amz-Content-Sha256 header:
@@ -63,8 +62,8 @@ var _ interface {
 func (p *Policy) Domains() []string { return p.Domains_ }
 
 // awsSigV4Headers are the request headers that SigV4 produces and that must
-// be stripped before re-signing (whether the client signed with a placeholder
-// or a real key).
+// be stripped before re-signing (whether the client signed with dummy
+// credentials or a real key).
 var awsSigV4Headers = []string{
 	"Authorization",
 	"X-Amz-Date",

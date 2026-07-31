@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/elazarl/goproxy"
@@ -17,21 +18,41 @@ import (
 // proxyAuthorizationHeader carries the sandbox_id as Basic-Auth userinfo.
 const proxyAuthorizationHeader = "Proxy-Authorization"
 
+// validSandboxIDPattern restricts sandbox_id to the same charset/length
+// enforced by the server's PrepareCredentials path, so a job cannot supply
+// an out-of-contract sandbox_id (e.g. extremely long, path-traversal-shaped)
+// to the resolver. Matches server.validSandboxIDPattern.
+var validSandboxIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
+
+// errInvalidSandboxID is returned when the Proxy-Authorization userinfo is
+// present but does not parse into a valid sandbox_id. Callers should reject
+// the request with this error rather than silently proceeding.
+var errInvalidSandboxID = fmt.Errorf("invalid sandbox_id in Proxy-Authorization")
+
 // sandboxIDFromProxyAuth extracts the sandbox_id embedded as the username of
-// a "Proxy-Authorization: Basic ..." header. Returns "" if absent or
-// malformed.
-func sandboxIDFromProxyAuth(h http.Header) string {
+// a "Proxy-Authorization: Basic ..." header. Returns ("", nil) if the header
+// is absent (no sandbox scoping requested). Returns ("", errInvalidSandboxID)
+// if the header is present but malformed or fails validation. Validation
+// prevents cross-session confusion / DoS via out-of-contract sandbox IDs in
+// the resolver maps.
+func sandboxIDFromProxyAuth(h http.Header) (string, error) {
 	value := h.Get(proxyAuthorizationHeader)
 	const prefix = "Basic "
+	if value == "" {
+		return "", nil
+	}
 	if !strings.HasPrefix(value, prefix) {
-		return ""
+		return "", errInvalidSandboxID
 	}
 	decoded, err := base64.StdEncoding.DecodeString(value[len(prefix):])
 	if err != nil {
-		return ""
+		return "", errInvalidSandboxID
 	}
 	sandboxID, _, _ := strings.Cut(string(decoded), ":")
-	return sandboxID
+	if !validSandboxIDPattern.MatchString(sandboxID) {
+		return "", errInvalidSandboxID
+	}
+	return sandboxID, nil
 }
 
 const (
@@ -62,7 +83,7 @@ type Config struct {
 	// CAKeyPath is the path to the CA private key for TLS interception.
 	CAKeyPath string
 
-	// Resolver is the credential resolver used for placeholder replacement.
+	// Resolver is the credential resolver used for header injection.
 	Resolver *Resolver
 }
 
@@ -117,8 +138,14 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 		Action:    goproxy.ConnectMitm,
 		TLSConfig: goproxy.TLSConfigFromCA(&caCert),
 	}
+	rejectAction := &goproxy.ConnectAction{Action: goproxy.ConnectReject}
 	px.OnRequest().HandleConnectFunc(func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		ctx.UserData = sandboxIDFromProxyAuth(ctx.Req.Header)
+		sandboxID, err := sandboxIDFromProxyAuth(ctx.Req.Header)
+		if err != nil {
+			log.Printf("egressproxy: rejecting CONNECT %s: %v", host, err)
+			return rejectAction, host
+		}
+		ctx.UserData = sandboxID
 		return mitmAction, host
 	})
 
@@ -133,14 +160,21 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 }
 
 // makeInterceptor returns a request handler that injects credential headers
-// and resolves __secret:provider/name__ placeholders, scoped to the sandbox_id
-// identified for the request. The Proxy-Authorization header is stripped before
-// forwarding.
+// scoped to the sandbox_id identified for the request. The
+// Proxy-Authorization header is stripped before forwarding. Requests
+// carrying an invalid sandbox_id are rejected with 400.
 func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	return func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 		sandboxID, _ := ctx.UserData.(string)
 		if sandboxID == "" {
-			sandboxID = sandboxIDFromProxyAuth(req.Header)
+			// HTTP (non-CONNECT) requests don't go through HandleConnectFunc;
+			// re-extract and validate here.
+			sid, err := sandboxIDFromProxyAuth(req.Header)
+			if err != nil {
+				log.Printf("egressproxy: rejecting %s %s: %v", req.Method, req.URL.String(), err)
+				return req, goproxy.NewResponse(req, goproxy.ContentTypeText, http.StatusBadRequest, "invalid sandbox_id\n")
+			}
+			sandboxID = sid
 		}
 		req.Header.Del(proxyAuthorizationHeader)
 
@@ -152,22 +186,6 @@ func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.Pr
 		}
 
 		resolver.InjectHeadersFor(sandboxID, req)
-
-		for key, values := range req.Header {
-			for i, v := range values {
-				replaced := resolver.ReplaceAllFor(sandboxID, v)
-				if replaced != v {
-					req.Header[key][i] = replaced
-				}
-			}
-		}
-
-		if req.URL.RawQuery != "" {
-			replaced := resolver.ReplaceAllFor(sandboxID, req.URL.RawQuery)
-			if replaced != req.URL.RawQuery {
-				req.URL.RawQuery = replaced
-			}
-		}
 
 		return req, nil
 	}

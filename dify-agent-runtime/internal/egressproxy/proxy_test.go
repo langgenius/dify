@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -142,38 +144,6 @@ func TestProxyHTTPSMitmCredentialInjection(t *testing.T) {
 
 	if got := resp.Header.Get("X-Got-Auth"); got != "Bearer s3cr3t" {
 		t.Fatalf("expected injected Authorization header %q, got %q", "Bearer s3cr3t", got)
-	}
-}
-
-// TestProxyPlaceholderReplacement verifies __secret:provider/name__
-// placeholders embedded in request headers are resolved.
-func TestProxyPlaceholderReplacement(t *testing.T) {
-	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Got-Custom", r.Header.Get("X-Custom"))
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer backend.Close()
-
-	resolver := NewResolver()
-	resolver.SetSystemCredentials(map[string]*StoredCredential{"myprovider/mysecret": {Value: "hunter2"}})
-
-	proxy, caPool := newTestProxy(t, resolver, "")
-	client := clientThroughProxy(t, proxy, caPool)
-
-	req, err := http.NewRequest(http.MethodGet, backend.URL+"/x", nil)
-	if err != nil {
-		t.Fatalf("new request: %v", err)
-	}
-	req.Header.Set("X-Custom", "prefix-__secret:myprovider/mysecret__-suffix")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("GET through proxy: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if got, want := resp.Header.Get("X-Got-Custom"), "prefix-hunter2-suffix"; got != want {
-		t.Fatalf("expected placeholder-resolved header %q, got %q", want, got)
 	}
 }
 
@@ -330,5 +300,121 @@ func TestProxyUpstreamChainingPreservesHostname(t *testing.T) {
 	wantTarget := unresolvableHost + ":" + port
 	if seen[0] != wantTarget {
 		t.Fatalf("upstream CONNECT target: got %q, want literal unresolved hostname %q", seen[0], wantTarget)
+	}
+}
+
+func TestSandboxIDFromProxyAuthValidation(t *testing.T) {
+	cases := []struct {
+		name    string
+		setup   func() http.Header
+		wantID  string
+		wantErr bool
+	}{
+		{
+			name: "valid",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte("sandbox-a:")))
+				return h
+			},
+			wantID:  "sandbox-a",
+			wantErr: false,
+		},
+		{
+			name: "valid with dashes and underscores",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte("sandbox_a-b:")))
+				return h
+			},
+			wantID:  "sandbox_a-b",
+			wantErr: false,
+		},
+		{
+			name:    "missing header (no sandbox scoping)",
+			setup:   func() http.Header { return http.Header{} },
+			wantID:  "",
+			wantErr: false,
+		},
+		{
+			name: "empty user",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte(":")))
+				return h
+			},
+			wantID:  "",
+			wantErr: true,
+		},
+		{
+			name:    "non-basic scheme",
+			setup:   func() http.Header { h := http.Header{}; h.Set(proxyAuthorizationHeader, "Bearer token"); return h },
+			wantID:  "",
+			wantErr: true,
+		},
+		{
+			name: "invalid base64",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic !!!notbase64!!!")
+				return h
+			},
+			wantID:  "",
+			wantErr: true,
+		},
+		{
+			name: "path traversal attempt",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte("../escape:")))
+				return h
+			},
+			wantID:  "",
+			wantErr: true,
+		},
+		{
+			name: "too long",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte(strings.Repeat("a", 129)+":")))
+				return h
+			},
+			wantID:  "",
+			wantErr: true,
+		},
+		{
+			name: "invalid char dot",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte("sandbox.a:")))
+				return h
+			},
+			wantID:  "",
+			wantErr: true,
+		},
+		{
+			name: "invalid char slash",
+			setup: func() http.Header {
+				h := http.Header{}
+				h.Set(proxyAuthorizationHeader, "Basic "+base64.StdEncoding.EncodeToString([]byte("sandbox/a:")))
+				return h
+			},
+			wantID:  "",
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := sandboxIDFromProxyAuth(tc.setup())
+			if got != tc.wantID {
+				t.Errorf("sandboxIDFromProxyAuth(%q) id = %q, want %q", tc.name, got, tc.wantID)
+			}
+			if tc.wantErr && err == nil {
+				t.Errorf("sandboxIDFromProxyAuth(%q) expected error, got nil", tc.name)
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("sandboxIDFromProxyAuth(%q) expected no error, got %v", tc.name, err)
+			}
+		})
 	}
 }
