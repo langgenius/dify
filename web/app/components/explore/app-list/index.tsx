@@ -1,6 +1,5 @@
 'use client'
 
-import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
@@ -9,7 +8,7 @@ import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -43,12 +42,15 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { fetchAppDetail } from '@/service/explore'
 import { useLearnDifyAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
+import {
+  getHomeContinueWorkQueryOptions,
+  getHomeTemplatesQueryOptions,
+} from './home-queries-client'
 import { MiddleSkeleton, TemplatesSkeleton } from './loading-skeletons'
 import s from './style.module.css'
 import { useMiddleRevealDeadline } from './use-middle-reveal-deadline'
@@ -60,45 +62,7 @@ const DSLConfirmModal = dynamic(
   { ssr: false },
 )
 
-type ExploreAppListData = {
-  categories: string[]
-  allList: App[]
-}
-
-const homeContinueWorkAppsInput = {
-  query: {
-    limit: 8,
-  },
-}
-
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
-
-function getLocaleQueryInput(locale?: string) {
-  return locale ? { query: { language: locale } } : {}
-}
-
-function getExploreAppListQueryOptions(locale?: string) {
-  const input = getLocaleQueryInput(locale)
-  const language = input.query?.language
-
-  return queryOptions<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.get.queryKey({ input }), language],
-    queryFn: async () => {
-      const { categories, recommended_apps } = await fetchAppList(language)
-      return {
-        categories,
-        allList: [...recommended_apps].sort((a, b) => a.position - b.position),
-      }
-    },
-  })
-}
-
-function getContinueWorkAppsQueryOptions() {
-  return consoleQuery.apps.recent.get.queryOptions({
-    input: homeContinueWorkAppsInput,
-    select: (response): RecentAppResponse[] => response.data,
-  })
-}
 
 function TemplatesErrorState({
   isRetrying,
@@ -131,13 +95,13 @@ function TemplatesErrorState({
   )
 }
 
-const Apps = ({ children, onSuccess }: { children?: ReactNode; onSuccess?: () => void }) => {
+export const HomeAppListContent = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [templatesQuery, continueWorkQuery] = useQueries({
-    queries: [getExploreAppListQueryOptions(locale), getContinueWorkAppsQueryOptions()],
+    queries: [getHomeTemplatesQueryOptions(locale), getHomeContinueWorkQueryOptions()],
   })
   const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
@@ -497,70 +461,60 @@ const Apps = ({ children, onSuccess }: { children?: ReactNode; onSuccess?: () =>
     templatesQuery.isError || (!templatesQuery.isPending && !templatesQuery.data)
 
   return (
-    <div
-      className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden border-l-[0.5px] border-divider-regular',
-      )}
-    >
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        {children}
-
-        {isMiddlePending ? (
-          <MiddleSkeleton />
-        ) : (
-          <>
-            <ContinueWork apps={continueWorkQuery.data ?? []} />
-            {shouldRenderCommittedLearnDify && (
-              <LearnDifyContent
-                canCreate={canCreateApp}
-                className="pb-0"
-                forceVisible={shouldForceShowLearnDifyForTour}
-                items={learnDifyQuery.data ?? []}
-                onCreate={handleCreateFromLearnDify}
-                onHide={
-                  shouldForceShowLearnDifyForTour ? undefined : () => setLearnDifyHidden(true)
-                }
-                onTry={handleTryAppFromLearnDify}
-                stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}
-              />
-            )}
-          </>
-        )}
-
-        {isMiddlePending || templatesQuery.isPending ? (
-          <TemplatesSkeleton />
-        ) : isTemplatesError ? (
-          <TemplatesErrorState
-            isRetrying={templatesQuery.isFetching}
-            onRetry={() => void templatesQuery.refetch()}
-          />
-        ) : (
-          <>
-            <ExploreAppListHeader
-              allCategoriesEn={allCategoriesEn}
-              categories={visibleCategories}
-              currCategory={activeCategory}
-              keywords={keywords}
-              onCategoryChange={setCurrCategory}
-              onKeywordsChange={handleKeywordsChange}
+    <>
+      {isMiddlePending ? (
+        <MiddleSkeleton />
+      ) : (
+        <>
+          <ContinueWork apps={continueWorkQuery.data ?? []} />
+          {shouldRenderCommittedLearnDify && (
+            <LearnDifyContent
+              canCreate={canCreateApp}
+              className="pb-0"
+              forceVisible={shouldForceShowLearnDifyForTour}
+              items={learnDifyQuery.data ?? []}
+              onCreate={handleCreateFromLearnDify}
+              onHide={shouldForceShowLearnDifyForTour ? undefined : () => setLearnDifyHidden(true)}
+              onTry={handleTryAppFromLearnDify}
+              stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}
             />
+          )}
+        </>
+      )}
 
-            <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-              <nav className={cn(s.appList, 'grid shrink-0 content-start gap-3 px-8')}>
-                {searchFilteredList.map((app) => (
-                  <AppCard
-                    key={app.app_id}
-                    app={app}
-                    canCreate={canCreateApp}
-                    onCreate={() => handleCreateFromAppList(app)}
-                    onTry={handleTryApp}
-                  />
-                ))}
-              </nav>
-            </div>
-          </>
-        )}
-      </div>
+      {isMiddlePending || templatesQuery.isPending ? (
+        <TemplatesSkeleton />
+      ) : isTemplatesError ? (
+        <TemplatesErrorState
+          isRetrying={templatesQuery.isFetching}
+          onRetry={() => void templatesQuery.refetch()}
+        />
+      ) : (
+        <>
+          <ExploreAppListHeader
+            allCategoriesEn={allCategoriesEn}
+            categories={visibleCategories}
+            currCategory={activeCategory}
+            keywords={keywords}
+            onCategoryChange={setCurrCategory}
+            onKeywordsChange={handleKeywordsChange}
+          />
+
+          <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
+            <nav className={cn(s.appList, 'grid shrink-0 content-start gap-3 px-8')}>
+              {searchFilteredList.map((app) => (
+                <AppCard
+                  key={app.app_id}
+                  app={app}
+                  canCreate={canCreateApp}
+                  onCreate={() => handleCreateFromAppList(app)}
+                  onTry={handleTryApp}
+                />
+              ))}
+            </nav>
+          </div>
+        </>
+      )}
       {isShowCreateModal && (
         <CreateAppModal
           appIconType={currApp?.app.icon_type || 'emoji'}
@@ -599,8 +553,21 @@ const Apps = ({ children, onSuccess }: { children?: ReactNode; onSuccess?: () =>
           onCreate={handleShowFromTryApp}
         />
       )}
-    </div>
+    </>
   )
 }
+
+const Apps = ({ children, onSuccess }: { children?: ReactNode; onSuccess?: () => void }) => (
+  <div
+    className={cn(
+      'flex h-full min-h-0 flex-col overflow-hidden border-l-[0.5px] border-divider-regular',
+    )}
+  >
+    <div className="flex flex-1 flex-col overflow-y-auto">
+      {children}
+      <HomeAppListContent onSuccess={onSuccess} />
+    </div>
+  </div>
+)
 
 export default React.memo(Apps)
