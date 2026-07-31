@@ -76,7 +76,9 @@ export interface DocumentCompilationExecutionContext {
 /**
  * Performs one resumable execution. Before resolving, a successful processor advances the durable
  * checkpoint through `smoke_eval_passed`; the runtime then owns the final `published` transition.
- * Throw `DocumentCompilationProcessingError` to opt a known transient failure into retry.
+ * Throw `DocumentCompilationProcessingError` for an explicit compilation policy. Provider errors
+ * that expose `retryable: true` retain that contract so transient model/runtime failures can resume
+ * from the last durable checkpoint instead of becoming terminal on their first attempt.
  */
 export type DocumentCompilationAttemptProcessor = (
   context: DocumentCompilationExecutionContext,
@@ -686,11 +688,34 @@ export function defaultDocumentCompilationErrorClassifier(
   if (error instanceof DocumentCompilationProcessingError) {
     return { code: error.code, message: error.message, retryable: error.retryable };
   }
+  if (isRetryableProviderError(error)) {
+    return {
+      code: providerErrorCode(error),
+      message: errorMessage(error),
+      retryable: true,
+    };
+  }
   return {
     code: "DOCUMENT_COMPILATION_FAILED",
     message: errorMessage(error),
     retryable: false,
   };
+}
+
+function isRetryableProviderError(
+  error: unknown,
+): error is Error & { readonly code?: unknown; readonly retryable: true } {
+  return (
+    error instanceof Error &&
+    "retryable" in error &&
+    (error as { readonly retryable?: unknown }).retryable === true
+  );
+}
+
+function providerErrorCode(error: { readonly code?: unknown }): string {
+  return typeof error.code === "string" && error.code.trim()
+    ? error.code
+    : "DOCUMENT_COMPILATION_RETRYABLE";
 }
 
 function normalizeErrorClassification(

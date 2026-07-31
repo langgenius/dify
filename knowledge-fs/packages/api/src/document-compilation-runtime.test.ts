@@ -10,6 +10,7 @@ import {
   type DocumentCompilationExecutionContext,
   DocumentCompilationProcessingError,
   createDocumentCompilationRuntime,
+  defaultDocumentCompilationErrorClassifier,
 } from "./document-compilation-runtime";
 
 const attemptId = "018f0d60-7a49-7cc2-9c1b-5b36f18fa101";
@@ -98,6 +99,23 @@ describe("createDocumentCompilationRuntime", () => {
         retryable: false,
       }).cause,
     ).toBeUndefined();
+  });
+
+  it("uses a stable fallback code only for retryable Error instances", () => {
+    expect(
+      defaultDocumentCompilationErrorClassifier(
+        Object.assign(new Error("provider temporarily unavailable"), { retryable: true }),
+      ),
+    ).toEqual({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      message: "provider temporarily unavailable",
+      retryable: true,
+    });
+    expect(defaultDocumentCompilationErrorClassifier({ retryable: true })).toEqual({
+      code: "DOCUMENT_COMPILATION_FAILED",
+      message: "Document compilation execution failed",
+      retryable: false,
+    });
   });
 
   it.each([null, [], {}, { attemptId: 42 }, { attemptId: "not-a-uuid" }])(
@@ -304,6 +322,39 @@ describe("createDocumentCompilationRuntime", () => {
       executionAttempts: 2,
       runState: "succeeded",
     });
+  });
+
+  it("automatically retries a retryable Dify model runtime timeout", async () => {
+    const currentTime = startedAt;
+    const attempts = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => currentTime);
+    await startAttempt(attempts, { maxExecutionAttempts: 5 });
+    await dispatchPendingAttempts(attempts, queue, currentTime);
+    const runtime = createRuntime({
+      attempts,
+      initialRetryDelayMs: 2_000,
+      now: () => currentTime,
+      processor: async () => {
+        throw Object.assign(new Error("Dify model runtime request timed out"), {
+          code: "dify_model_runtime_timeout",
+          retryable: true,
+        });
+      },
+      queue,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 0,
+      retryScheduled: 1,
+    });
+    await expect(attempts.get(attemptId)).resolves.toMatchObject({
+      executionAttempts: 1,
+      lastErrorCode: "dify_model_runtime_timeout",
+      lastErrorMessage: "Dify model runtime request timed out",
+      retryAt: new Date(startedAt + 2_000).toISOString(),
+      runState: "retry_wait",
+    });
+    await expect(queue.status("job-1")).resolves.toMatchObject({ status: "completed" });
   });
 
   it("treats unknown failures as terminal, truncates diagnostics, and only acks redelivery", async () => {
