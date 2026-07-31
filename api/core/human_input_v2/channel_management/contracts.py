@@ -5,32 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from core.human_input_v2 import channel_identity as _channel_identity
+from core.human_input_v2.channel_identity import ChannelKind, ChannelRef
 from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
 
-
-class ChannelKind(StrEnum):
-    EMAIL = "email"
-    IM = "im"
-
-
-class ChannelProvider(StrEnum):
-    RESEND = "resend"
-    FEISHU = "feishu"
-    SLACK = "slack"
-    DING_TALK = "ding_talk"
-
-
-_EMAIL_PROVIDERS = frozenset((ChannelProvider.RESEND,))
-
-
-@dataclass(frozen=True, slots=True)
-class ChannelRef:
-    kind: ChannelKind
-    provider: ChannelProvider
-
-    def __post_init__(self) -> None:
-        if (self.provider in _EMAIL_PROVIDERS) != (self.kind is ChannelKind.EMAIL):
-            raise ValueError("channel kind and provider do not match")
+ChannelProvider = _channel_identity.ChannelProvider
 
 
 class ChannelScopeKind(StrEnum):

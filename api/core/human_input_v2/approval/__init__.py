@@ -8,17 +8,22 @@ importing transport, provider, database-session, or ORM concerns.
 from .delivery import (
     ConsoleEndpointConfiguration,
     DeliveryAttempt,
+    DeliveryAttemptData,
     DeliveryEndpoint,
     DeliveryEndpointConfiguration,
     EmailEndpointConfiguration,
     EmailProviderConfiguration,
     EndpointAccessCapability,
     IMEndpointConfiguration,
+    LegacyDeliveryAttemptData,
+    ProtectedRenderedEmailRequest,
+    SafeDeliveryOutcome,
     UploadCapability,
     UploadCapabilityRef,
     UploadFileAssociation,
     WebEndpointConfiguration,
 )
+from .delivery_ports import ClaimedDeliveryAttempt, DeliveryAttemptRepository
 from .form import (
     FormCreation,
     FormInactiveReason,
@@ -55,7 +60,7 @@ from .otp import (
     VerifiedEmailOTPProofPrimitive,
     authorize_email_otp_proof,
 )
-from .ports import FormDefinitionProjection, FormDeliveryProjection, FormRepository
+from .ports import FormDefinitionProjection, FormDeliveryProjection, FormRepository, RenderedEmailRequestProtector
 from .recipient_resolution import (
     ApprovalSubject,
     CanonicalSubjectKey,
@@ -130,6 +135,7 @@ __all__ = [
     "AuthorizedSubmission",
     "AuthorizedSubmissionCommit",
     "CanonicalSubjectKey",
+    "ClaimedDeliveryAttempt",
     "Clock",
     "ConsoleEndpointConfiguration",
     "ConsoleEndpointPlan",
@@ -144,6 +150,8 @@ __all__ = [
     "CurrentInitiatorRecipientSpecification",
     "DebugRecipientReplacement",
     "DeliveryAttempt",
+    "DeliveryAttemptData",
+    "DeliveryAttemptRepository",
     "DeliveryCapabilitySnapshot",
     "DeliveryEndpoint",
     "DeliveryEndpointConfiguration",
@@ -185,6 +193,7 @@ __all__ = [
     "InvalidApproverGrantError",
     "InvalidSelectedActionError",
     "JSONPrimitive",
+    "LegacyDeliveryAttemptData",
     "MatchedRecipientSource",
     "OTPChallenge",
     "OTPChallengePublicPrimitive",
@@ -197,6 +206,7 @@ __all__ = [
     "OTPReplacementDecision",
     "OTPVerificationDecision",
     "OneTimeEmailRecipientSpecification",
+    "ProtectedRenderedEmailRequest",
     "RecipientRejectionReason",
     "RecipientResolutionFailureReason",
     "RecipientResolver",
@@ -204,9 +214,11 @@ __all__ = [
     "RecipientSpecification",
     "RecipientSpecificationKind",
     "RejectedRecipient",
+    "RenderedEmailRequestProtector",
     "ResolvedApprovalPlan",
     "ResolvedApprover",
     "RetryableSubmissionPersistenceError",
+    "SafeDeliveryOutcome",
     "SubjectSnapshot",
     "SubmissionActor",
     "SubmissionAttemptScope",

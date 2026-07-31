@@ -62,13 +62,14 @@ class SQLAlchemyFormRepository:
         self._session_maker = session_maker
 
     def create_form(self, creation: FormCreation) -> HumanInputForm:
-        """Persist the complete form/grant/endpoint snapshot in one transaction."""
+        """Persist the complete form/grant/endpoint/attempt snapshot in one transaction."""
 
         try:
             with self._session_maker() as session, session.begin():
                 session.add(form_to_record(creation.form))
                 session.add_all(grant_to_record(grant) for grant in creation.form.grants)
                 session.add_all(endpoint_to_record(endpoint) for endpoint in creation.endpoints)
+                session.add_all(delivery_attempt_to_record(attempt) for attempt in creation.attempts)
                 session.flush()
             return creation.form
         except SQLAlchemyError as error:

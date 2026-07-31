@@ -1,6 +1,7 @@
 """Transaction and query-shape contracts for the SQLAlchemy Form adapter."""
 
 from collections.abc import Iterator
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.approval import (
     CanonicalSubjectKey,
     DeliveryAttempt,
+    DeliveryAttemptData,
     DeliveryEndpoint,
     EmailAddressApprovalSubject,
     EmailEndpointPlan,
@@ -24,6 +26,7 @@ from core.human_input_v2.approval import (
     FrozenJSONObject,
     HumanInputForm,
     MatchedRecipientSource,
+    ProtectedRenderedEmailRequest,
     RecipientSourceKind,
     ResolvedApprovalPlan,
     ResolvedApprover,
@@ -32,6 +35,8 @@ from core.human_input_v2.approval import (
     UploadCapabilityRef,
     UploadFileAssociation,
 )
+from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
+from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity, DeliveryOutcome
 from core.human_input_v2.entities import (
     HumanInputDeliveryAttemptStatus,
     HumanInputV2FormKind,
@@ -42,6 +47,7 @@ from core.human_input_v2.shared import (
     ApproverGrantId,
     DeliveryAttemptId,
     DeliveryEndpointId,
+    EmailProviderId,
     FormId,
     NormalizedEmail,
     UploadCapabilityId,
@@ -52,6 +58,7 @@ from core.human_input_v2.shared import (
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.human_input_v2 import (
+    FormDeliveryProviderResponse,
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
     HumanInputV2FormDeliveryAttempt,
@@ -60,6 +67,7 @@ from models.human_input_v2 import (
     HumanInputV2FormUploadToken,
 )
 from models.model import UploadFile
+from repositories.human_input_v2.form.delivery_repository import SQLAlchemyDeliveryAttemptRepository
 from repositories.human_input_v2.form.repository import FormPersistenceError, SQLAlchemyFormRepository
 
 _NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
@@ -198,6 +206,157 @@ def test_create_form_persists_form_grants_and_endpoints_in_one_transaction(repos
         assert session.scalar(select(sa.func.count(HumanInputV2Form.id))) == 1
         assert session.scalar(select(sa.func.count(HumanInputV2FormApproverGrant.id))) == 2
         assert session.scalar(select(sa.func.count(HumanInputV2FormDeliveryEndpoint.id))) == 3
+
+
+def test_create_form_and_delivery_attempt_lifecycle_are_atomic_and_cas_guarded(repository_context) -> None:
+    repository, session_maker = repository_context
+    creation = _creation()
+    endpoint = creation.endpoints[0]
+    data = DeliveryAttemptData(
+        protected_request=ProtectedRenderedEmailRequest("ciphertext"),
+        selected_channel=ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND),
+        payload_fingerprint="a" * 64,
+        idempotency_key="hitl-v2-key",
+    )
+    attempt = DeliveryAttempt(
+        id=DeliveryAttemptId("attempt-queued"),
+        endpoint_ref=endpoint.ref,
+        attempt_number=1,
+        status=HumanInputDeliveryAttemptStatus.QUEUED,
+        scheduled_at=_NOW,
+        started_at=None,
+        finished_at=None,
+        provider_message_id=None,
+        failure_code=None,
+        failure_reason=None,
+        provider_response=data.to_frozen(),
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    repository.create_form(replace(creation, attempts=(attempt,)))
+    delivery_repository = SQLAlchemyDeliveryAttemptRepository(session_maker)
+
+    assert delivery_repository.list_due_ids(now=_NOW, limit=10) == (DeliveryAttemptId("attempt-queued"),)
+    claim = delivery_repository.claim(DeliveryAttemptId("attempt-queued"), now=_NOW)
+    assert claim is not None
+    assert delivery_repository.claim(DeliveryAttemptId("attempt-queued"), now=_NOW) is None
+    bound = delivery_repository.bind_prepared(
+        claim,
+        snapshot=ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW),
+        payload_fingerprint="a" * 64,
+        now=_NOW,
+    )
+    assert bound is not None
+    assert delivery_repository.complete(
+        bound,
+        outcome=DeliveryOutcome.accepted("message-1"),
+        now=_NOW,
+    )
+    assert not delivery_repository.complete(
+        bound,
+        outcome=DeliveryOutcome.accepted("message-1"),
+        now=_NOW,
+    )
+
+    with session_maker() as session:
+        record = session.get(HumanInputV2FormDeliveryAttempt, "attempt-queued")
+        assert record is not None
+        assert record.status is HumanInputDeliveryAttemptStatus.SENT
+        assert record.provider_message_id == "message-1"
+
+
+def test_stale_sending_recovery_respects_the_provider_idempotency_horizon(repository_context) -> None:
+    repository, session_maker = repository_context
+    creation = _creation()
+    data = DeliveryAttemptData(
+        protected_request=ProtectedRenderedEmailRequest("ciphertext"),
+        selected_channel=ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND),
+        payload_fingerprint="a" * 64,
+        idempotency_key="hitl-v2-key",
+    )
+
+    def sending_attempt(
+        *,
+        attempt_id: str,
+        endpoint: DeliveryEndpoint,
+        started_at: UtcTimestamp,
+    ) -> DeliveryAttempt:
+        return DeliveryAttempt(
+            id=DeliveryAttemptId(attempt_id),
+            endpoint_ref=endpoint.ref,
+            attempt_number=1,
+            status=HumanInputDeliveryAttemptStatus.SENDING,
+            scheduled_at=started_at,
+            started_at=started_at,
+            finished_at=None,
+            provider_message_id=None,
+            failure_code=None,
+            failure_reason=None,
+            provider_response=data.to_frozen(),
+            created_at=started_at,
+            updated_at=UtcTimestamp(_NOW.value - timedelta(minutes=10)),
+        )
+
+    recoverable = sending_attempt(
+        attempt_id="attempt-recoverable",
+        endpoint=creation.endpoints[0],
+        started_at=UtcTimestamp(_NOW.value - timedelta(hours=1)),
+    )
+    unknown = sending_attempt(
+        attempt_id="attempt-unknown",
+        endpoint=creation.endpoints[1],
+        started_at=UtcTimestamp(_NOW.value - timedelta(hours=24)),
+    )
+    repository.create_form(replace(creation, attempts=(recoverable, unknown)))
+    delivery_repository = SQLAlchemyDeliveryAttemptRepository(session_maker)
+
+    recovered = delivery_repository.recover_stale(
+        stale_before=UtcTimestamp(_NOW.value - timedelta(minutes=5)),
+        idempotency_cutoff=UtcTimestamp(_NOW.value - timedelta(hours=23)),
+        now=_NOW,
+        limit=10,
+    )
+
+    assert recovered == 2
+    with session_maker() as session:
+        recoverable_record = session.get(HumanInputV2FormDeliveryAttempt, "attempt-recoverable")
+        unknown_record = session.get(HumanInputV2FormDeliveryAttempt, "attempt-unknown")
+        assert recoverable_record is not None
+        assert recoverable_record.status is HumanInputDeliveryAttemptStatus.QUEUED
+        assert unknown_record is not None
+        assert unknown_record.status is HumanInputDeliveryAttemptStatus.FAILED
+        assert unknown_record.failure_code == "delivery_outcome_unknown"
+
+
+def test_claim_marks_a_malformed_durable_payload_as_failed(repository_context) -> None:
+    repository, session_maker = repository_context
+    creation = _creation()
+    endpoint = creation.endpoints[0]
+    attempt = DeliveryAttempt(
+        id=DeliveryAttemptId("attempt-malformed"),
+        endpoint_ref=endpoint.ref,
+        attempt_number=1,
+        status=HumanInputDeliveryAttemptStatus.QUEUED,
+        scheduled_at=_NOW,
+        started_at=None,
+        finished_at=None,
+        provider_message_id=None,
+        failure_code=None,
+        failure_reason=None,
+        provider_response=FrozenJSONObject.from_mapping({"legacy": True}),
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    repository.create_form(replace(creation, attempts=(attempt,)))
+    delivery_repository = SQLAlchemyDeliveryAttemptRepository(session_maker)
+
+    assert delivery_repository.claim(attempt.id, now=_NOW) is None
+
+    with session_maker() as session:
+        record = session.get_one(HumanInputV2FormDeliveryAttempt, str(attempt.id))
+        assert record.status is HumanInputDeliveryAttemptStatus.FAILED
+        assert record.failure_code == "delivery_payload_unavailable"
+        assert record.provider_response == FormDeliveryProviderResponse({"legacy": True})
 
 
 def test_create_form_rolls_back_every_record_when_one_endpoint_conflicts(repository_context) -> None:

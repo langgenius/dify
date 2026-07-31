@@ -175,11 +175,16 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.human_input_v2_delivery_tasks",
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    beat_schedule["human_input_v2_delivery_publisher"] = {
+        "task": ("tasks.human_input_v2_delivery_tasks.publish_due_human_input_v2_delivery_attempts_task"),
+        "schedule": timedelta(minutes=1),
+    }
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {

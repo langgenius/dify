@@ -1,0 +1,106 @@
+from dataclasses import replace
+from datetime import UTC, datetime
+
+import pytest
+
+from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
+from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity, DeliveryPreparationError
+from core.human_input_v2.email_channel import EmailChannelConfiguration, ProtectedAPIKey
+from core.human_input_v2.shared import (
+    EmailProviderId,
+    NormalizedEmail,
+    UtcTimestamp,
+    WorkspaceId,
+)
+from services.human_input_v2.delivery_runtime import TenantEmailConfigurationSnapshotResolver
+
+_NOW = UtcTimestamp(datetime(2026, 7, 31, 8, tzinfo=UTC))
+_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+
+
+class Repository:
+    def __init__(self, configuration):
+        self.configuration = configuration
+
+    def load(self, workspace_id):
+        assert workspace_id == WorkspaceId("workspace-1")
+        return self.configuration
+
+
+class Protector:
+    def reveal(self, workspace_id, protected):
+        assert workspace_id == WorkspaceId("workspace-1")
+        assert protected == ProtectedAPIKey("ciphertext")
+        return "secret-api-key"
+
+
+def _configuration() -> EmailChannelConfiguration:
+    return EmailChannelConfiguration(
+        id=EmailProviderId("configuration-1"),
+        workspace_id=WorkspaceId("workspace-1"),
+        sender_email=NormalizedEmail("sender@example.com"),
+        sender_name="Dify",
+        protected_api_key=ProtectedAPIKey("ciphertext"),
+        configured_by_account_id=None,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+
+
+def test_resolver_returns_detached_send_time_snapshot() -> None:
+    resolver = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()), Protector())
+
+    snapshot = resolver.resolve(WorkspaceId("workspace-1"), _CHANNEL)
+
+    assert snapshot.identity == ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW)
+    assert snapshot.credential.value == "secret-api-key"
+    assert "secret-api-key" not in repr(snapshot)
+
+
+def test_resolver_rejects_missing_or_rotated_configuration() -> None:
+    missing = TenantEmailConfigurationSnapshotResolver(Repository(None), Protector())
+    with pytest.raises(DeliveryPreparationError) as missing_error:
+        missing.resolve(WorkspaceId("workspace-1"), _CHANNEL)
+    assert missing_error.value.code == "provider_not_configured"
+
+    resolver = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()), Protector())
+    with pytest.raises(DeliveryPreparationError) as changed_error:
+        resolver.resolve(
+            WorkspaceId("workspace-1"),
+            _CHANNEL,
+            expected=ConfigurationSnapshotIdentity(
+                EmailProviderId("configuration-2"),
+                _NOW,
+            ),
+        )
+    assert changed_error.value.code == "provider_configuration_changed"
+
+
+def test_resolver_rejects_wrong_scope_channel_and_credential_failure() -> None:
+    wrong_scope = TenantEmailConfigurationSnapshotResolver(
+        Repository(replace(_configuration(), workspace_id=WorkspaceId("workspace-2"))),
+        Protector(),
+    )
+    with pytest.raises(DeliveryPreparationError) as scope_error:
+        wrong_scope.resolve(WorkspaceId("workspace-1"), _CHANNEL)
+    assert scope_error.value.code == "provider_configuration_scope_mismatch"
+
+    resolver = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()), Protector())
+    with pytest.raises(DeliveryPreparationError) as channel_error:
+        resolver.resolve(
+            WorkspaceId("workspace-1"),
+            ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
+        )
+    assert channel_error.value.code == "unsupported_email_channel"
+
+    class FailingProtector(Protector):
+        def reveal(self, workspace_id, protected):
+            raise RuntimeError("decryption failed")
+
+    credential_failure = TenantEmailConfigurationSnapshotResolver(
+        Repository(_configuration()),
+        FailingProtector(),
+    )
+    with pytest.raises(DeliveryPreparationError) as credential_error:
+        credential_failure.resolve(WorkspaceId("workspace-1"), _CHANNEL)
+    assert credential_error.value.code == "provider_credential_unavailable"
