@@ -99,6 +99,12 @@ const tasksQueryState = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
+const retryTaskMutationState = vi.hoisted(() => ({
+  isError: false,
+  isPending: false,
+  mutateAsync: vi.fn(),
+}))
+
 const overviewQueryState = vi.hoisted(() => ({
   health: { isError: false, isFetching: false, isPending: false },
   inventory: { isError: false, isFetching: false, isPending: false },
@@ -172,6 +178,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         refetch: vi.fn(),
       }
     },
+    useMutation: () => retryTaskMutationState,
   }
 })
 
@@ -189,6 +196,15 @@ vi.mock('@/service/client', () => {
         spaces: {
           byControlSpaceId: {
             backgroundTasks: {
+              byTaskKind: {
+                byTaskId: {
+                  retry: {
+                    post: {
+                      mutationOptions: () => ({}),
+                    },
+                  },
+                },
+              },
               get: {
                 infiniteOptions: () => ({}),
               },
@@ -212,6 +228,9 @@ describe('KnowledgeOverviewPage', () => {
     tasksQueryState.isError = false
     tasksQueryState.isPending = false
     tasksQueryState.isRefetching = false
+    retryTaskMutationState.isError = false
+    retryTaskMutationState.isPending = false
+    retryTaskMutationState.mutateAsync.mockResolvedValue(undefined)
     for (const state of Object.values(overviewQueryState)) {
       state.isError = false
       state.isFetching = false
@@ -229,6 +248,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.outcomes.buckets = []
     queryData.inventory.index_coverage.indexed = 4
     queryData.tasks[0]!.operation = 'source_sync'
+    queryData.tasks[0]!.can_retry = false
     queryData.tasks[0]!.progress_completed = 1
     queryData.tasks[0]!.progress_percent = 100
     queryData.tasks[0]!.progress_total = 1
@@ -466,6 +486,52 @@ describe('KnowledgeOverviewPage', () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+
+  it('disables both onboarding entries after starting navigation', async () => {
+    const user = userEvent.setup()
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 0
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    const connectSource = screen.getByRole('link', {
+      name: 'dataset.newKnowledge.overview.connectSource',
+    })
+    const uploadFiles = screen.getByRole('link', {
+      name: 'dataset.newKnowledge.overview.uploadFiles',
+    })
+    await user.click(connectSource)
+
+    expect(connectSource).toHaveAttribute('aria-busy', 'true')
+    expect(connectSource).toHaveAttribute('aria-disabled', 'true')
+    expect(uploadFiles).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('keeps failed first-source onboarding visible and retries the real task', async () => {
+    const user = userEvent.setup()
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 0
+    queryData.tasks[0]!.can_retry = true
+    queryData.tasks[0]!.operation = 'document_upload'
+    queryData.tasks[0]!.state = 'failed'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.documentUploadFailed')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+
+    expect(retryTaskMutationState.mutateAsync).toHaveBeenCalledWith({
+      params: {
+        control_space_id: 'space-1',
+        task_id: 'task-1',
+        task_kind: 'source',
+      },
+    })
+    expect(tasksQueryState.refetch).toHaveBeenCalledOnce()
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
+    ).toBeInTheDocument()
   })
 
   it('hides write-only onboarding actions for a read-only user', () => {

@@ -9,7 +9,10 @@ const queryMock = vi.hoisted(() => ({
         control_space_id: string
         permission_keys?: string[]
         state?: 'active' | 'provisioning'
-        technical_summary: { name: string }
+        technical_summary: {
+          model_profile?: Record<string, unknown> | null
+          name: string
+        }
       }
     | undefined,
   error: null as unknown,
@@ -96,12 +99,22 @@ describe('KnowledgeSpaceShell', () => {
     queryMock.data = {
       control_space_id: 'space-1',
       state: 'active',
-      technical_summary: { name: 'Support knowledge' },
+      technical_summary: {
+        model_profile: {
+          pendingModelConfiguration: {
+            embeddingSelection: { model: 'openai/text-embedding-3-large' },
+            retrievalProfile: { defaultMode: 'fast' },
+          },
+        },
+        name: 'Support knowledge',
+      },
     }
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.settings.retrievalMode.fast')).toBeInTheDocument()
+    expect(screen.queryByText('text-embedding-3-large')).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.overviewTitle' }),
     ).toHaveAttribute('href', '/datasets/new/space-1')
@@ -139,6 +152,20 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByText('dataset.newKnowledge.apiAccessInactive')).toBeInTheDocument()
+  })
+
+  it('does not invent sidebar metadata when the summary profile is unavailable', () => {
+    queryMock.data = {
+      control_space_id: 'space-1',
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    expect(
+      screen.queryByText('dataset.newKnowledge.settings.retrievalMode.fast'),
+    ).not.toBeInTheDocument()
   })
 
   it('marks settings as the current navigation item', () => {

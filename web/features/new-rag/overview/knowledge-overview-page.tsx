@@ -28,7 +28,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react'
 import { useAtomValue } from 'jotai'
@@ -66,6 +66,14 @@ const OVERVIEW_REFRESH_INTERVAL = 2000
 const overviewWindowParser = parseAsStringLiteral(WINDOWS)
   .withDefault('24h')
   .withOptions({ history: 'push' })
+
+function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
+  return (
+    task.operation === 'document_processing' ||
+    task.operation === 'document_upload' ||
+    task.operation.includes('import')
+  )
+}
 
 function compactNumber(value: number) {
   return Intl.NumberFormat().format(value)
@@ -1201,15 +1209,23 @@ function InventoryPanel({
 function Onboarding({
   canConnectSource,
   canUpload,
+  failedTask,
   indexingTask,
   knowledgeSpaceId,
+  onRetryTask,
 }: {
   canConnectSource: boolean
   canUpload: boolean
+  failedTask?: KnowledgeFsBackgroundTaskResponse
   indexingTask?: KnowledgeFsBackgroundTaskResponse
   knowledgeSpaceId: string
+  onRetryTask: () => Promise<unknown>
 }) {
   const { t } = useTranslation('dataset')
+  const [pendingAction, setPendingAction] = useState<'source' | 'upload'>()
+  const retryTaskMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(),
+  )
   const actionCount = Number(canConnectSource) + Number(canUpload)
   const description = canConnectSource
     ? canUpload
@@ -1218,6 +1234,26 @@ function Onboarding({
     : canUpload
       ? t(($) => $['newKnowledge.uploadFilesDescription'])
       : t(($) => $['newKnowledge.overview.readOnlyDescription'])
+  const failedTaskDescription =
+    failedTask?.operation === 'document_upload' || failedTask?.operation === 'document_processing'
+      ? t(($) => $['newKnowledge.documentUploadFailed'])
+      : t(($) => $['newKnowledge.addSourceFailed'])
+  const retryFailedTask = async () => {
+    if (!failedTask?.can_retry || retryTaskMutation.isPending) return
+
+    try {
+      await retryTaskMutation.mutateAsync({
+        params: {
+          control_space_id: knowledgeSpaceId,
+          task_id: failedTask.id,
+          task_kind: failedTask.task_kind,
+        },
+      })
+      await onRetryTask()
+    } catch {
+      // Mutation state keeps the retry feedback visible.
+    }
+  }
 
   if (indexingTask)
     return (
@@ -1249,7 +1285,7 @@ function Onboarding({
     <section
       className={cn(
         'h-auto min-w-0 rounded-xl bg-background-section p-4',
-        actionCount > 0 && 'md:h-54.75',
+        actionCount > 0 && !failedTask && 'md:h-54.75',
       )}
     >
       <div aria-hidden className="flex h-4 items-center gap-1.5 text-text-tertiary">
@@ -1257,14 +1293,37 @@ function Onboarding({
         <span className="i-custom-public-llm-jina size-4" />
         <span className="i-custom-public-common-notion size-4" />
         <span className="i-custom-public-common-google-drive size-4" />
-        <span className="i-ri-links-line size-4" />
+        <span className="i-custom-public-common-confluence size-4" />
         <span className="i-ri-more-fill size-4" />
       </div>
-      <div className="mt-3 h-10.5">
+      <div className={cn('mt-3', failedTask ? 'min-h-10.5' : 'h-10.5')}>
         <h2 className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['newKnowledge.overview.noSources'])}
         </h2>
-        <p className="mt-1 body-xs-regular text-text-tertiary">{description}</p>
+        {failedTask ? (
+          <div
+            role="alert"
+            className="mt-1 flex min-h-6 items-center justify-between gap-3 text-text-destructive"
+          >
+            <p className="body-xs-regular">
+              {retryTaskMutation.isError
+                ? t(($) => $['newKnowledge.detailErrorDescription'])
+                : failedTaskDescription}
+            </p>
+            {failedTask.can_retry && (
+              <Button
+                size="small"
+                variant="secondary"
+                loading={retryTaskMutation.isPending}
+                onClick={() => void retryFailedTask()}
+              >
+                {t(($) => $['newKnowledge.retryTask'])}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <p className="mt-1 body-xs-regular text-text-tertiary">{description}</p>
+        )}
       </div>
       {actionCount > 0 && (
         <div
@@ -1273,10 +1332,40 @@ function Onboarding({
           {canConnectSource && (
             <Link
               aria-label={t(($) => $['newKnowledge.overview.connectSource'])}
-              className="flex h-26.25 flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              aria-busy={pendingAction === 'source' || undefined}
+              aria-disabled={pendingAction !== undefined}
+              className={cn(
+                'flex h-26.25 flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                pendingAction !== undefined && 'pointer-events-none opacity-50',
+              )}
               href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
+              tabIndex={pendingAction === undefined ? undefined : -1}
+              onClick={(event) => {
+                if (
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return
+                if (pendingAction !== undefined) {
+                  event.preventDefault()
+                  return
+                }
+                setPendingAction('source')
+              }}
             >
-              <span aria-hidden className="i-ri-node-tree size-6 text-text-accent" />
+              <span
+                aria-hidden
+                className={cn(
+                  'size-6 text-text-accent',
+                  pendingAction === 'source'
+                    ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                    : 'i-ri-node-tree',
+                )}
+              />
               <span className="mt-2 system-md-semibold text-text-primary">
                 {t(($) => $['newKnowledge.overview.connectSource'])}
               </span>
@@ -1288,10 +1377,40 @@ function Onboarding({
           {canUpload && (
             <Link
               aria-label={t(($) => $['newKnowledge.overview.uploadFiles'])}
-              className="flex h-26.25 flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              aria-busy={pendingAction === 'upload' || undefined}
+              aria-disabled={pendingAction !== undefined}
+              className={cn(
+                'flex h-26.25 flex-col items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg text-center outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                pendingAction !== undefined && 'pointer-events-none opacity-50',
+              )}
               href={`${newKnowledgeDocumentsPath(knowledgeSpaceId)}?upload=1`}
+              tabIndex={pendingAction === undefined ? undefined : -1}
+              onClick={(event) => {
+                if (
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return
+                if (pendingAction !== undefined) {
+                  event.preventDefault()
+                  return
+                }
+                setPendingAction('upload')
+              }}
             >
-              <span aria-hidden className="i-ri-file-text-line size-6 text-text-accent" />
+              <span
+                aria-hidden
+                className={cn(
+                  'size-6 text-text-accent',
+                  pendingAction === 'upload'
+                    ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                    : 'i-ri-file-text-line',
+                )}
+              />
               <span className="mt-2 system-md-semibold text-text-primary">
                 {t(($) => $['newKnowledge.overview.uploadFiles'])}
               </span>
@@ -1394,12 +1513,12 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     }),
   )
   const indexingTask = tasks.find(
-    (task) =>
-      ACTIVE_TASK_STATES.has(task.state) &&
-      (task.operation === 'document_processing' ||
-        task.operation === 'document_upload' ||
-        task.operation.includes('import')),
+    (task) => ACTIVE_TASK_STATES.has(task.state) && isFirstSourceTask(task),
   )
+  const latestFirstSourceTask = tasks
+    .filter(isFirstSourceTask)
+    .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0]
+  const failedTask = latestFirstSourceTask?.state === 'failed' ? latestFirstSourceTask : undefined
   const pageLoading =
     tasksQuery.isPending ||
     statsQuery.isPending ||
@@ -1479,8 +1598,10 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             <Onboarding
               canConnectSource={canConnectSource}
               canUpload={canUpload}
+              failedTask={failedTask}
               knowledgeSpaceId={knowledgeSpaceId}
               indexingTask={indexingTask}
+              onRetryTask={tasksQuery.refetch}
             />
           </div>
         )}
@@ -1489,7 +1610,9 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             <Onboarding
               canConnectSource={canConnectSource}
               canUpload={canUpload}
+              failedTask={failedTask}
               knowledgeSpaceId={knowledgeSpaceId}
+              onRetryTask={tasksQuery.refetch}
             />
           </div>
         )}
