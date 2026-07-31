@@ -16,7 +16,7 @@
 
 ## 3. Compose The Control-Plane API
 
-- [x] 3.1 Add a request-scoped composition module with the Email repository, provider-independent Resend read/delete behavior, three IM placeholders, registry and facade.
+- [ ] 3.1 Add a request-scoped composition module with the Email repository, provider-independent Resend read/delete behavior, three IM placeholders, registry and facade.
 - [x] 3.2 Add composition tests proving exactly four complete refs are registered and duplicate refs fail fast.
 - [x] 3.3 Add a trusted-context factory for Community and Cloud Workspace and actor facts while leaving shared IM ownership fields unset.
 - [x] 3.4 Add import-boundary tests proving controllers and DTO mappers do not import channel ORM records or provider SDKs and composition imports no provider SDK/HTTP client.
