@@ -47,19 +47,19 @@ const statusDotSkeletonVariants = cva(
 
 type StatusDotVariants = VariantProps<typeof statusDotVariants>
 
-export type StatusDotStatus = NonNullable<StatusDotVariants['status']>
-export type StatusDotSize = NonNullable<StatusDotVariants['size']>
+type StatusDotStatus = NonNullable<StatusDotVariants['status']>
+type StatusDotSize = NonNullable<StatusDotVariants['size']>
 
-export type StatusDotProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type StatusDotProps = Omit<React.ComponentProps<'span'>, 'children'> & {
   status?: StatusDotStatus
   size?: StatusDotSize
 }
 
-export type StatusDotSkeletonProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type StatusDotSkeletonProps = Omit<React.ComponentProps<'span'>, 'children'> & {
   size?: StatusDotSize
 }
 
-export function StatusDot({
+function StatusDot({
   className,
   status = 'success',
   size = 'medium',
@@ -81,7 +81,7 @@ export function StatusDot({
   )
 }
 
-export function StatusDotSkeleton({
+function StatusDotSkeleton({
   className,
   size = 'medium',
   'aria-hidden': ariaHidden,
@@ -101,3 +101,7 @@ export function StatusDotSkeleton({
     />
   )
 }
+
+export { StatusDot, StatusDotSkeleton }
+
+export type { StatusDotProps, StatusDotSkeletonProps, StatusDotStatus }

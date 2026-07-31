@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { DrawerSnapPoint } from '.'
+import type { DrawerProps } from '.'
 import * as React from 'react'
 import {
   createDrawerHandle,
@@ -308,6 +308,7 @@ export const Positions: Story = {
 
 const snapTopMarginRem = 1
 const visibleSnapPointRem = 30
+type DrawerSnapPoint = NonNullable<DrawerProps['snapPoints']>[number]
 const initialSnapPoint: DrawerSnapPoint = `${visibleSnapPointRem + snapTopMarginRem}rem`
 const snapPoints = [initialSnapPoint, 1] satisfies DrawerSnapPoint[]
 

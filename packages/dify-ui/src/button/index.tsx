@@ -6,7 +6,7 @@ import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
-export const buttonVariants = cva(
+const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-disabled:cursor-not-allowed',
   {
     variants: {
@@ -100,13 +100,13 @@ export const buttonVariants = cva(
   },
 )
 
-export type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
+type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
   VariantProps<typeof buttonVariants> & {
     loading?: boolean
     className?: string
   }
 
-export function Button({
+function Button({
   className,
   variant,
   size,
@@ -136,3 +136,7 @@ export function Button({
     </BaseButton>
   )
 }
+
+export { Button, buttonVariants }
+
+export type { ButtonProps }

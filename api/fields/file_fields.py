@@ -15,6 +15,7 @@ class UploadConfig(ResponseModel):
     image_file_size_limit: int
     video_file_size_limit: int
     audio_file_size_limit: int
+    skill_file_size_limit: int
     workflow_file_upload_limit: int
     image_file_batch_limit: int
     single_chunk_attachment_limit: int

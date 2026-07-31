@@ -37,12 +37,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: vi.fn(() => ({
-    buildTheme: vi.fn(),
-  })),
-}))
-
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
 vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
 

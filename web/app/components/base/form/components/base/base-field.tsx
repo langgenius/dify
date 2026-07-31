@@ -277,7 +277,7 @@ const BaseField = ({
           )}
           {formItemType === FormTypeEnum.select &&
             (multiple ? (
-              <Select
+              <Select<string, true>
                 multiple
                 items={memorizedOptions}
                 value={Array.isArray(value) ? value : []}
@@ -289,9 +289,9 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={translatedPlaceholder}>
-                    {(selectedValue: string[]) =>
-                      selectedValue.length
+                  <SelectValue<string, true> placeholder={translatedPlaceholder}>
+                    {(selectedValue) =>
+                      selectedValue?.length
                         ? t(($) => $['dynamicSelect.selected'], {
                             ns: 'common',
                             count: selectedValue.length,
@@ -310,7 +310,7 @@ const BaseField = ({
                 </SelectContent>
               </Select>
             ) : (
-              <Select
+              <Select<string>
                 items={memorizedOptions}
                 value={getSingleSelectValue(value, memorizedOptions)}
                 disabled={disabled}
@@ -324,7 +324,7 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={translatedPlaceholder}>
+                  <SelectValue<string> placeholder={translatedPlaceholder}>
                     {(nextValue) =>
                       getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)
                     }
@@ -352,7 +352,7 @@ const BaseField = ({
           )}
           {formItemType === FormTypeEnum.dynamicSelect &&
             (multiple ? (
-              <Select
+              <Select<string, true>
                 multiple
                 items={dynamicOptions}
                 value={Array.isArray(value) ? value : []}
@@ -364,9 +364,9 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={dynamicPlaceholder}>
-                    {(selectedValue: string[]) =>
-                      selectedValue.length
+                  <SelectValue<string, true> placeholder={dynamicPlaceholder}>
+                    {(selectedValue) =>
+                      selectedValue?.length
                         ? t(($) => $['dynamicSelect.selected'], {
                             ns: 'common',
                             count: selectedValue.length,
@@ -395,7 +395,7 @@ const BaseField = ({
                 </SelectContent>
               </Select>
             ) : (
-              <Select
+              <Select<string>
                 items={dynamicOptions}
                 value={getSingleSelectValue(value, dynamicOptions)}
                 disabled={disabled || isDynamicOptionsLoading}
@@ -409,7 +409,7 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={dynamicPlaceholder}>
+                  <SelectValue<string> placeholder={dynamicPlaceholder}>
                     {(nextValue) =>
                       getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)
                     }

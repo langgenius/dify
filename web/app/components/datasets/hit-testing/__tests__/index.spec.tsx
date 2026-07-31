@@ -288,13 +288,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(() => () => 'https://docs.example.com'),
 }))
 
-// Mock provider context for retrieval method config
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(() => ({
-    supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
-  })),
-}))
-
 // Mock model list hook - include all exports used by child components
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: vi.fn(() => ({

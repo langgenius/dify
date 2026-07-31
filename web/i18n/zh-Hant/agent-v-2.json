@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Skill 上傳失敗。",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "請上傳 .zip 或 .skill 檔案。",
+  "agentDetail.configure.skills.upload.sizeLimit": "Skill 套件大小不得超過 {{sizeLimit}}。",
   "agentDetail.configure.skills.upload.success": "Skill 已上傳。",
   "agentDetail.configure.skills.upload.title": "上傳 Skill",
   "agentDetail.configure.skills.upload.warning.files": "如果只需要使用 Markdown 檔案，請將它們上傳到「檔案」，並在你的提示詞中引用。",

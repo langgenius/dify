@@ -823,7 +823,6 @@ project-excludes = [
   "services/test_agent_file_request_service.py",
   "services/test_annotation_service.py",
   "services/test_api_token_service.py",
-  "services/test_app_dsl_service.py",
   "services/test_app_generate_service.py",
   "services/test_app_generate_service_streaming_integration.py",
   "services/test_app_model_config_service.py",
