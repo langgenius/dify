@@ -22,6 +22,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 from pydantic_ai.settings import ModelSettings
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSessionSnapshot
@@ -512,6 +513,43 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
         LifecycleState.SUSPENDED,
     ]
     assert sink.statuses["run-1"] == "succeeded"
+
+
+def test_runner_passes_configured_request_limit_to_pydantic_ai(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_usage_limits: list[UsageLimits] = []
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")
+
+    class FakeAgent:
+        async def run(self, *_args: object, **kwargs: object) -> FakeAgentRunResult:
+            usage_limits = kwargs["usage_limits"]
+            assert isinstance(usage_limits, UsageLimits)
+            seen_usage_limits.append(usage_limits)
+            return FakeAgentRunResult("done", [])
+
+    def fake_create_agent(*_args: object, **_kwargs: object) -> FakeAgent:
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+    request = _request().model_copy(update={"request_limit": 125})
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-request-limit",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert [limits.request_limit for limits in seen_usage_limits] == [125]
 
 
 def test_runner_emits_complete_plugin_usage_in_terminal_event(monkeypatch: pytest.MonkeyPatch) -> None:

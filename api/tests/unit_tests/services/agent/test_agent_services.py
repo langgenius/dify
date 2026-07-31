@@ -5419,6 +5419,7 @@ class TestWorkflowAgentDraftBindingSync:
             current_snapshot_id="snapshot-1",
             node_job_config=WorkflowNodeJobConfig(
                 workflow_prompt="Summarize the upstream result.",
+                request_limit=125,
                 declared_outputs=[
                     DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary"),
                     DeclaredOutputConfig(
@@ -5453,6 +5454,7 @@ class TestWorkflowAgentDraftBindingSync:
             "current_snapshot_id": "snapshot-1",
         }
         assert node_data["agent_task"] == "Summarize the upstream result."
+        assert node_data["request_limit"] == 125
         assert node_data["agent_declared_outputs"][0]["name"] == "summary"
         assert node_data["agent_declared_outputs"][0]["type"] == "string"
         assert node_data["agent_declared_outputs"][0]["description"] == "Short summary"
@@ -5573,6 +5575,7 @@ class TestWorkflowAgentDraftBindingSync:
                                 "type": "agent",
                                 "version": "2",
                                 "agent_task": "Summarize the upstream result.",
+                                "request_limit": 125,
                                 "agent_declared_outputs": [
                                     {
                                         "name": "summary",
@@ -5614,6 +5617,7 @@ class TestWorkflowAgentDraftBindingSync:
         assert binding.current_snapshot_id == "snapshot-2"
         assert binding.node_job_config_dict == WorkflowNodeJobConfig(
             workflow_prompt="Summarize the upstream result.",
+            request_limit=125,
             declared_outputs=[
                 DeclaredOutputConfig(
                     name="summary",

@@ -4,6 +4,11 @@ import re
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
 
+from dify_agent.protocol import (
+    DEFAULT_AGENT_REQUEST_LIMIT,
+    MAX_AGENT_REQUEST_LIMIT,
+    MIN_AGENT_REQUEST_LIMIT,
+)
 from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
@@ -1108,6 +1113,11 @@ class WorkflowNodeJobConfig(BaseModel):
     schema_version: int = 1
     mode: WorkflowNodeJobMode = WorkflowNodeJobMode.TELL_AGENT_WHAT_TO_DO
     workflow_prompt: str = ""
+    request_limit: int = Field(
+        default=DEFAULT_AGENT_REQUEST_LIMIT,
+        ge=MIN_AGENT_REQUEST_LIMIT,
+        le=MAX_AGENT_REQUEST_LIMIT,
+    )
     previous_node_output_refs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)

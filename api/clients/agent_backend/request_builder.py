@@ -39,9 +39,12 @@ from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerC
 from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import (
+    DEFAULT_AGENT_REQUEST_LIMIT,
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
+    MAX_AGENT_REQUEST_LIMIT,
+    MIN_AGENT_REQUEST_LIMIT,
     CreateRunRequest,
     DeferredToolResultsPayload,
     LayerExitSignals,
@@ -203,6 +206,11 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
     workflow_node_job_prompt: str
     user_prompt: str
+    request_limit: int = Field(
+        default=DEFAULT_AGENT_REQUEST_LIMIT,
+        ge=MIN_AGENT_REQUEST_LIMIT,
+        le=MAX_AGENT_REQUEST_LIMIT,
+    )
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
@@ -665,6 +673,7 @@ class AgentBackendRunRequestBuilder:
 
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
+            request_limit=run_input.request_limit,
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,

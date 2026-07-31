@@ -685,6 +685,7 @@ export type WorkflowNodeJobConfig = {
   metadata?: WorkflowNodeJobMetadata
   mode?: WorkflowNodeJobMode
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  request_limit?: number
   schema_version?: number
   workflow_prompt?: string
 }

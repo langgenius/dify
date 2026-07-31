@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "此集成安裝自 GitHub。請前往集成重新安裝",
   "nodes.agent.pluginNotInstalled": "此集成未安裝",
   "nodes.agent.pluginNotInstalledDesc": "此集成安裝自 GitHub。請前往集成重新安裝",
+  "nodes.agent.requestLimit.label": "模型請求次數上限",
+  "nodes.agent.requestLimit.tooltip": "單次智慧代理執行允許的模型請求次數上限。",
   "nodes.agent.roster.change": "更換",
   "nodes.agent.roster.editInConsole": "在 Agent Console 中編輯",
   "nodes.agent.roster.editInConsoleDisabled": "你沒有管理 Agents 的權限",

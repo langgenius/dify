@@ -455,6 +455,32 @@ describe('agent/panel', () => {
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('spinbutton', { name: 'workflow.nodes.agent.requestLimit.label' }),
+    ).toHaveValue(50)
+  })
+
+  it('saves the configured model request limit to workflow draft node data', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({ request_limit: 75 })}
+        panelProps={panelProps}
+      />,
+    )
+
+    const input = screen.getByRole('spinbutton', {
+      name: 'workflow.nodes.agent.requestLimit.label',
+    })
+    expect(input).toHaveValue(75)
+
+    fireEvent.change(input, { target: { value: '125' } })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request_limit: 125,
+      }),
+    )
   })
 
   it('opens and closes the roster agent layered panel', () => {

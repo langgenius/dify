@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Integrasi ini diinstal dari GitHub. Silakan buka Integrasis untuk menginstal ulang",
   "nodes.agent.pluginNotInstalled": "Integrasi ini tidak diinstal",
   "nodes.agent.pluginNotInstalledDesc": "Integrasi ini diinstal dari GitHub. Silakan buka Integrasis untuk menginstal ulang",
+  "nodes.agent.requestLimit.label": "Batas Permintaan Model",
+  "nodes.agent.requestLimit.tooltip": "Jumlah maksimum permintaan model yang diizinkan dalam satu proses Agen.",
   "nodes.agent.roster.change": "Ubah",
   "nodes.agent.roster.editInConsole": "Edit di Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "Anda tidak memiliki izin untuk mengelola Agents",

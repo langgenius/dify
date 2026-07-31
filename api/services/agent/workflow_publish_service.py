@@ -58,6 +58,7 @@ class WorkflowAgentPublishService:
     _AGENT_BINDING_KEY = "agent_binding"
     _AGENT_TASK_KEY = "agent_task"
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
+    _AGENT_REQUEST_LIMIT_KEY = "request_limit"
 
     @classmethod
     def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
@@ -101,6 +102,7 @@ class WorkflowAgentPublishService:
             node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             if node_job.workflow_prompt is not None:
                 node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
+            node_data[cls._AGENT_REQUEST_LIMIT_KEY] = node_job.request_limit
             node_data[cls._AGENT_DECLARED_OUTPUTS_KEY] = [
                 output.model_dump(mode="json") for output in node_job.declared_outputs
             ]
@@ -557,6 +559,15 @@ class WorkflowAgentPublishService:
         if isinstance(agent_task, str):
             node_job.workflow_prompt = agent_task
             node_job.previous_node_output_refs = cls._previous_node_output_refs_from_prompt(agent_task)
+
+        request_limit_payload = node_data.get(cls._AGENT_REQUEST_LIMIT_KEY)
+        if request_limit_payload is not None:
+            try:
+                node_job.request_limit = WorkflowNodeJobConfig.model_validate(
+                    {cls._AGENT_REQUEST_LIMIT_KEY: request_limit_payload}
+                ).request_limit
+            except ValidationError as exc:
+                raise ValueError("Workflow Agent node has invalid request_limit.") from exc
 
         declared_outputs_payload = node_data.get(cls._AGENT_DECLARED_OUTPUTS_KEY)
         if declared_outputs_payload is not None:

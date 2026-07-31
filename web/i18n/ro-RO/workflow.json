@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Acest integrare este instalat de pe GitHub. Vă rugăm să accesați Integrări pentru a reinstala",
   "nodes.agent.pluginNotInstalled": "Acest integrare nu este instalat",
   "nodes.agent.pluginNotInstalledDesc": "Acest integrare este instalat de pe GitHub. Vă rugăm să accesați Integrări pentru a reinstala",
+  "nodes.agent.requestLimit.label": "Număr maxim de solicitări ale modelului",
+  "nodes.agent.requestLimit.tooltip": "Numărul maxim de solicitări ale modelului permise într-o rulare a agentului.",
   "nodes.agent.roster.change": "Schimbă",
   "nodes.agent.roster.editInConsole": "Editează în Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "Nu aveți permisiunea de a gestiona Agents",

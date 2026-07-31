@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Цей інтеграція встановлюється з GitHub. Будь ласка, перейдіть до Інтеграції для перевстановлення",
   "nodes.agent.pluginNotInstalled": "Цей інтеграція не встановлено",
   "nodes.agent.pluginNotInstalledDesc": "Цей інтеграція встановлюється з GitHub. Будь ласка, перейдіть до Інтеграції для перевстановлення",
+  "nodes.agent.requestLimit.label": "Максимум запитів до моделі",
+  "nodes.agent.requestLimit.tooltip": "Максимальна кількість запитів до моделі за один запуск агента.",
   "nodes.agent.roster.change": "Змінити",
   "nodes.agent.roster.editInConsole": "Редагувати в Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "У вас немає прав на керування Agents",

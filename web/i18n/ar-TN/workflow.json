@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "تم تثبيت هذا الملحق من GitHub. يرجى الانتقال إلى الملحقات لإعادة التثبيت",
   "nodes.agent.pluginNotInstalled": "هذا الملحق غير مثبت",
   "nodes.agent.pluginNotInstalledDesc": "تم تثبيت هذا الملحق من GitHub. يرجى الانتقال إلى الملحقات لإعادة التثبيت",
+  "nodes.agent.requestLimit.label": "الحد الأقصى لطلبات النموذج",
+  "nodes.agent.requestLimit.tooltip": "الحد الأقصى لعدد طلبات النموذج المسموح بها في تشغيل واحد للوكيل.",
   "nodes.agent.roster.change": "تغيير",
   "nodes.agent.roster.editInConsole": "تعديل في Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "ليس لديك إذن لإدارة Agents",

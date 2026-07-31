@@ -102,6 +102,14 @@ def test_request_builder_outputs_dify_agent_create_run_request():
     assert "purpose" not in dumped
 
 
+def test_workflow_request_builder_forwards_request_limit():
+    run_input = _run_input().model_copy(update={"request_limit": 125})
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+
+    assert request.request_limit == 125
+
+
 def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     layers = {layer.name: layer for layer in request.composition.layers}

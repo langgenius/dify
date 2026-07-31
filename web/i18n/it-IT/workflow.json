@@ -444,6 +444,8 @@
   "nodes.agent.pluginNotFoundDesc": "Questo integrazione viene installato da GitHub. Vai su Integrazione per reinstallare",
   "nodes.agent.pluginNotInstalled": "Questo integrazione non è installato",
   "nodes.agent.pluginNotInstalledDesc": "Questo integrazione viene installato da GitHub. Vai su Integrazione per reinstallare",
+  "nodes.agent.requestLimit.label": "Richieste massime al modello",
+  "nodes.agent.requestLimit.tooltip": "Numero massimo di richieste al modello consentite in un'esecuzione dell'agente.",
   "nodes.agent.roster.change": "Cambia",
   "nodes.agent.roster.editInConsole": "Modifica in Agent Console",
   "nodes.agent.roster.editInConsoleDisabled": "Non hai i permessi per gestire gli Agents",

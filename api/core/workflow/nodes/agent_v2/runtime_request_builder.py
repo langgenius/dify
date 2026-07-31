@@ -256,6 +256,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
+                request_limit=node_job.request_limit,
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
