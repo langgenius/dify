@@ -800,6 +800,47 @@ class TestDifyNodeFactoryCreateNode:
         assert "structured_output_switch_on" not in data
         assert LLMNodeData.model_validate(data).structured_output_enabled is True
 
+    def test_create_node_drops_missing_jinja_variables_before_constructor(
+        self,
+        monkeypatch,
+        factory,
+    ):
+        created_node = object()
+        constructor = _node_constructor(return_value=created_node)
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+        monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
+        factory.graph_runtime_state.variable_pool.get.side_effect = lambda selector: {
+            ("source-node", "present"): sentinel.present_variable,
+        }.get(tuple(selector))
+
+        node_config = {
+            "id": "llm-node-id",
+            "data": {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "{{ present }}{% if missing is defined %}x{% endif %}"}],
+                "prompt_config": {
+                    "jinja2_variables": [
+                        {"variable": "present", "value_selector": ["source-node", "present"]},
+                        {"variable": "missing", "value_selector": ["source-node", "missing"]},
+                    ]
+                },
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            },
+        }
+
+        factory.create_node(node_config)
+
+        data = constructor.call_args.kwargs["data"]
+        assert isinstance(data, Mapping)
+        assert data["prompt_config"]["jinja2_variables"] == [
+            {"variable": "present", "value_selector": ["source-node", "present"]},
+        ]
+        factory.graph_runtime_state.variable_pool.get.assert_any_call(["source-node", "present"])
+        factory.graph_runtime_state.variable_pool.get.assert_any_call(["source-node", "missing"])
+
     def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
         factory.graph_init_params = SimpleNamespace(
             workflow_id="workflow-id",
