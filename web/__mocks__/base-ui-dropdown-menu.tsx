@@ -12,10 +12,19 @@ type DropdownMenuProps = {
   onOpenChange?: (open: boolean) => void
 }
 
-type DropdownMenuTriggerProps = React.HTMLAttributes<HTMLElement> & {
+type TriggerHtmlProps = React.HTMLAttributes<HTMLElement> & {
+  'data-testid'?: string
+  'data-disabled'?: string
+  'data-popup-open'?: string
+}
+
+type DropdownMenuTriggerProps = TriggerHtmlProps & {
   children?: ReactNode
+  disabled?: boolean
   nativeButton?: boolean
-  render?: React.ReactElement
+  render?:
+    | React.ReactElement
+    | ((props: TriggerHtmlProps, state: { open: boolean }) => React.ReactElement)
 }
 
 type DropdownMenuContentProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -51,15 +60,32 @@ export const DropdownMenuTrigger = ({
   render,
   nativeButton: _nativeButton,
   onClick,
+  disabled,
   ...props
 }: DropdownMenuTriggerProps) => {
   const { open, onOpenChange } = React.useContext(DropdownMenuContext)
-  const node = render ?? children
-  const isNativeButton = React.isValidElement(node) && node.type === 'button'
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (disabled) return
     onClick?.(event)
     if (!event.defaultPrevented) onOpenChange(!open)
   }
+
+  if (typeof render === 'function') {
+    return render(
+      {
+        ...props,
+        'aria-disabled': disabled || undefined,
+        'data-testid': props['data-testid'] ?? 'dropdown-menu-trigger',
+        'data-disabled': disabled ? '' : undefined,
+        'data-popup-open': open ? '' : undefined,
+        onClick: handleClick,
+      },
+      { open },
+    )
+  }
+
+  const node = render ?? children
+  const isNativeButton = React.isValidElement(node) && node.type === 'button'
 
   if (React.isValidElement(node)) {
     const triggerElement = node as React.ReactElement<Record<string, unknown>>
@@ -80,6 +106,10 @@ export const DropdownMenuTrigger = ({
         ...childProps,
         'data-testid':
           childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'dropdown-menu-trigger',
+        'data-disabled': disabled ? '' : undefined,
+        'data-popup-open': open ? '' : undefined,
+        disabled: isNativeButton ? disabled : undefined,
+        'aria-disabled': !isNativeButton && disabled ? true : childProps['aria-disabled'],
         role,
         tabIndex:
           childProps.tabIndex ?? triggerProps.tabIndex ?? (role === 'button' ? 0 : undefined),

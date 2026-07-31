@@ -12,10 +12,18 @@ type PopoverProps = {
   onOpenChange?: (open: boolean) => void
 }
 
-type PopoverTriggerProps = React.HTMLAttributes<HTMLElement> & {
+type TriggerHtmlProps = React.HTMLAttributes<HTMLElement> & {
+  'data-testid'?: string
+  'data-popover-trigger'?: string
+  'data-popup-open'?: string
+}
+
+type PopoverTriggerProps = TriggerHtmlProps & {
   children?: ReactNode
   nativeButton?: boolean
-  render?: React.ReactElement
+  render?:
+    | React.ReactElement
+    | ((props: TriggerHtmlProps, state: { open: boolean }) => React.ReactElement)
 }
 
 type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -84,6 +92,21 @@ export const PopoverTrigger = ({
   ...props
 }: PopoverTriggerProps) => {
   const { open, onOpenChange } = React.useContext(PopoverContext)
+  if (typeof render === 'function') {
+    const triggerProps: TriggerHtmlProps = {
+      ...props,
+      'data-testid': props['data-testid'] ?? 'popover-trigger',
+      'data-popover-trigger': 'true',
+      'data-popup-open': open ? '' : undefined,
+      onClick: (event: React.MouseEvent<HTMLElement>) => {
+        onClick?.(event)
+        if (event.defaultPrevented) return
+        onOpenChange(!open)
+      },
+    }
+    return render(triggerProps, { open })
+  }
+
   const node = render ?? children
 
   if (React.isValidElement(node)) {

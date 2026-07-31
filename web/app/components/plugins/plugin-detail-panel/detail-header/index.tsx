@@ -209,12 +209,12 @@ const DetailHeader = ({
                 pluginID={plugin_id}
                 currentVersion={version}
                 onSelect={handleVersionSelect}
-                trigger={
+                trigger={(open) => (
                   <Badge
                     className={cn(
                       'mx-1',
-                      versionPicker.isShow && 'bg-state-base-hover',
-                      (versionPicker.isShow || (canUpdatePlugin && isFromMarketplace)) &&
+                      open && 'bg-state-base-hover',
+                      (open || (canUpdatePlugin && isFromMarketplace)) &&
                         'hover:bg-state-base-hover',
                     )}
                     uppercase={false}
@@ -231,7 +231,7 @@ const DetailHeader = ({
                     }
                     hasRedCornerMark={hasNewVersion}
                   />
-                }
+                )}
               />
             )}
 

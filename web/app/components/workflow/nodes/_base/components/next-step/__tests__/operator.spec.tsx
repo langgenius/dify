@@ -81,15 +81,9 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 }))
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    trigger,
-    onSelect,
-  }: {
-    trigger: ((open: boolean) => ReactNode) | ReactNode
-    onSelect: (type: BlockEnum) => void
-  }) => (
+  default: ({ trigger, onSelect }: { trigger: ReactNode; onSelect: (type: BlockEnum) => void }) => (
     <div>
-      {typeof trigger === 'function' ? trigger(false) : trigger}
+      {trigger}
       <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
         select-http
       </button>

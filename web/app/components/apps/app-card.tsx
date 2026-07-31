@@ -651,8 +651,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                 }
                 disabled={isExporting}
                 className={cn(
-                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
-                  isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover',
                 )}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1291,10 +1290,7 @@ export function AppCard({
                         })
                   }
                   disabled={isExporting}
-                  className={cn(
-                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed',
-                    isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-                  )}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()

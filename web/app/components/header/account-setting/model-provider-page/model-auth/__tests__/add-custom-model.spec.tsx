@@ -106,9 +106,13 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('popover-trigger'))
+    const trigger = screen.getByTestId('popover-trigger')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(trigger)
 
     // The portal should be "open"
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
     expect(screen.getByText('gpt-4')).toBeInTheDocument()
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()

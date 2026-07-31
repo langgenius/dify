@@ -31,9 +31,28 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
   }
 
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+  type TriggerProps = React.HTMLAttributes<HTMLElement> & {
+    'data-popup-open'?: string
+    'data-testid'?: string
+  }
+
+  const PopoverTrigger = ({
+    render,
+  }: {
+    render:
+      | React.ReactNode
+      | ((props: TriggerProps, state: { open: boolean }) => React.ReactElement)
+  }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
-    return <div onClick={() => setOpen(!open)}>{render}</div>
+    const props: TriggerProps = {
+      'data-testid': 'popover-trigger',
+      'data-popup-open': open ? '' : undefined,
+      onClick: () => setOpen(!open),
+    }
+
+    if (typeof render === 'function') return render(props, { open })
+
+    return <div {...props}>{render}</div>
   }
 
   const PopoverContent = ({ children }: { children: React.ReactNode }) => {
@@ -112,8 +131,12 @@ describe('SubscriptionSelectorEntry', () => {
   it('should render placeholder when open without selection', () => {
     render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={vi.fn()} />)
 
+    const trigger = screen.getByTestId('popover-trigger')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
     fireEvent.click(screen.getByRole('button'))
 
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByText('pluginTrigger.subscription.selectPlaceholder')).toBeInTheDocument()
   })
 
