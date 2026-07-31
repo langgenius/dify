@@ -393,7 +393,7 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("GET", "http://172.21.0.5/api/health")
 
-    msg = str(exc_info.value)
+    msg = exc_info.value
     assert "172.21.0.5" in msg, f"URL should appear in the error, got: {msg!r}"
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in msg, "Error must tell the user which env var to set; got: " + msg
     # The remediation hint must include a concrete example, otherwise users
@@ -418,7 +418,7 @@ def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) ->
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("GET", "http://10.0.0.1/internal")
 
-    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in exc_info.value
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -452,5 +452,5 @@ def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client) 
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("POST", "http://10.0.0.42/v1/chat/completions")
 
-    assert "10.0.0.42" in str(exc_info.value)
-    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+assert "10.0.0.42" in exc_info.value
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in exc_info.value
