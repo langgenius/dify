@@ -50,7 +50,7 @@ func TestLoadCredentialManifest(t *testing.T) {
 				"value": "sk-system-default",
 				"inject": {
 					"type": "http-header",
-					"http_header": {
+					"config": {
 						"name": "Authorization",
 						"expr": "Bearer {{.Value}}",
 						"domains": ["api.custom-saas.example"]
