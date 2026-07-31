@@ -10,7 +10,12 @@ from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapa
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
+    KnowledgeFSCatQuery,
+    KnowledgeFSDiffQuery,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSFindQuery,
+    KnowledgeFSGrepQuery,
+    KnowledgeFSListQuery,
     KnowledgeFSProductRerankProfile,
     KnowledgeFSProductRetrievalProfile,
     KnowledgeFSProductScoreThreshold,
@@ -21,6 +26,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSpaceUpdatePayload,
+    KnowledgeFSStatQuery,
+    KnowledgeFSTreeQuery,
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionAbortPayload,
     KnowledgeFSUploadSessionCompletePayload,
@@ -109,6 +116,43 @@ class RecordingRemote:
 
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
         self.requests.append(request)
+        if request.operation_id in {"listKnowledgeFs", "findKnowledgeFs"}:
+            return {"items": [], "path": "/knowledge", "truncated": False}
+        if request.operation_id == "treeKnowledgeFs":
+            return {
+                "path": "/knowledge",
+                "root": {
+                    "kind": "directory",
+                    "metadata": {},
+                    "name": "knowledge",
+                    "path": "/knowledge",
+                },
+                "truncated": False,
+            }
+        if request.operation_id == "grepKnowledgeFs":
+            return {"matches": [], "path": "/knowledge", "truncated": False}
+        if request.operation_id == "diffKnowledgeFs":
+            return {
+                "mode": "line",
+                "newPath": "/knowledge/new.md",
+                "oldPath": "/knowledge/old.md",
+                "operations": [],
+                "stats": {"delete": 0, "equal": 0, "insert": 0},
+            }
+        if request.operation_id == "catKnowledgeFs":
+            return {
+                "contentType": "text/markdown",
+                "path": "/knowledge/readme.md",
+                "text": "hello",
+                "truncated": False,
+            }
+        if request.operation_id == "statKnowledgeFs":
+            return {
+                "metadata": {},
+                "path": "/knowledge/readme.md",
+                "resourceType": "document",
+                "targetId": "document-1",
+            }
         if request.operation_id in {"getSettings", "updateSettings"}:
             return {
                 "configurationState": "pending-validation",
@@ -346,6 +390,91 @@ class ActiveSettingsRemote(RecordingRemote):
                 "updatedAt": "2026-07-28T00:01:00Z",
             }
         return super().execute_json(request)
+
+
+def test_knowledge_fs_commands_use_independent_manifest_operations_and_query_contracts() -> None:
+    remote = RecordingRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
+    common = {
+        "tenant_id": "tenant-1",
+        "account_id": "account-1",
+        "control_space_id": "control-1",
+    }
+
+    facade.list_knowledge_fs(
+        **common,
+        query=KnowledgeFSListQuery(
+            path="/knowledge",
+            limit=25,
+            cursor="cursor-1",
+            consistency_class="path-consistent",
+        ),
+    )
+    facade.tree_knowledge_fs(
+        **common,
+        query=KnowledgeFSTreeQuery(path="/knowledge", limit=20, depth=3),
+    )
+    facade.grep_knowledge_fs(
+        **common,
+        query=KnowledgeFSGrepQuery(path="/knowledge", query="TODO", limit=10, timeout_ms=500),
+    )
+    facade.find_knowledge_fs(
+        **common,
+        query=KnowledgeFSFindQuery(
+            path="/knowledge",
+            limit=15,
+            name_contains="readme",
+            resource_type="document",
+        ),
+    )
+    facade.diff_knowledge_fs(
+        **common,
+        query=KnowledgeFSDiffQuery(
+            old_path="/knowledge/old.md",
+            new_path="/knowledge/new.md",
+            mode="line",
+            semantic=True,
+        ),
+    )
+    cat = facade.cat_knowledge_fs(
+        **common,
+        query=KnowledgeFSCatQuery(path="/knowledge/readme.md"),
+    )
+    facade.stat_knowledge_fs(
+        **common,
+        query=KnowledgeFSStatQuery(path="/knowledge/readme.md"),
+    )
+
+    assert [call["operation_id"] for call in broker.calls] == [
+        "listKnowledgeFs",
+        "treeKnowledgeFs",
+        "grepKnowledgeFs",
+        "findKnowledgeFs",
+        "diffKnowledgeFs",
+        "catKnowledgeFs",
+        "statKnowledgeFs",
+    ]
+    assert [request.operation_id for request in remote.requests] == [
+        "listKnowledgeFs",
+        "treeKnowledgeFs",
+        "grepKnowledgeFs",
+        "findKnowledgeFs",
+        "diffKnowledgeFs",
+        "catKnowledgeFs",
+        "statKnowledgeFs",
+    ]
+    assert remote.requests[0].query == (
+        ("path", "/knowledge"),
+        ("limit", "25"),
+        ("cursor", "cursor-1"),
+        ("consistencyClass", "path-consistent"),
+    )
+    assert ("q", "TODO") in remote.requests[2].query
+    assert ("nameContains", "readme") in remote.requests[3].query
+    assert ("semantic", "true") in remote.requests[4].query
+    assert all(request.method == "GET" and request.payload is None for request in remote.requests)
+    assert cat.text == "hello"
 
 
 def test_facade_propagates_remote_io_failure() -> None:

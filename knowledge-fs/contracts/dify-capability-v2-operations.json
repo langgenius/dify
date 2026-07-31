@@ -143,6 +143,23 @@
       "resourceType": "job"
     },
     {
+      "action": "knowledge_fs.cat",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "catKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/cat",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "upload_sessions.complete",
       "allowedCallerKinds": [
         "interactive",
@@ -405,6 +422,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "knowledge_fs.diff",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "diffKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/diff",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_spaces.fence",
       "allowedCallerKinds": [
         "service",
@@ -414,6 +448,23 @@
       "operationId": "fenceCapabilityKnowledgeSpace",
       "parentResourceBinding": null,
       "path": "/internal/knowledge-spaces/{id}/capability-fence",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.find",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "findKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/find",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -796,6 +847,23 @@
       "resourceType": "job"
     },
     {
+      "action": "knowledge_fs.grep",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "grepKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/grep",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "sources.files.import",
       "allowedCallerKinds": [
         "interactive",
@@ -936,6 +1004,23 @@
       "operationId": "listGoldenQuestions",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/golden-questions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.ls",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/ls",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -1462,6 +1547,23 @@
       "resourceType": "job"
     },
     {
+      "action": "knowledge_fs.stat",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "statKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/stat",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "research_tasks.stream",
       "allowedCallerKinds": [
         "interactive",
@@ -1498,6 +1600,23 @@
         "pathParameter": "sourceId"
       },
       "resourceType": "source"
+    },
+    {
+      "action": "knowledge_fs.tree",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "treeKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/tree",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
     },
     {
       "action": "golden-questions.write",

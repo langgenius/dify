@@ -22,8 +22,12 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSCatQuery,
+    KnowledgeFSCatResponse,
     KnowledgeFSCrawlPreviewPageListResponse,
     KnowledgeFSCrawlPreviewSelectionPayload,
+    KnowledgeFSDiffQuery,
+    KnowledgeFSDiffResponse,
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
@@ -37,11 +41,16 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionListResponse,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionRemotePayload,
     KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSGoldenQuestionUpdateRemotePayload,
+    KnowledgeFSGrepQuery,
+    KnowledgeFSGrepResponse,
+    KnowledgeFSListQuery,
+    KnowledgeFSListResponse,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewBaseStatsResponse,
@@ -88,8 +97,12 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceUpdatePayload,
+    KnowledgeFSStatQuery,
+    KnowledgeFSStatResponse,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSTraceListResponse,
+    KnowledgeFSTreeQuery,
+    KnowledgeFSTreeResponse,
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionAbortPayload,
     KnowledgeFSUploadSessionCompletePayload,
@@ -190,6 +203,166 @@ class KnowledgeFSDataFacade:
             operation_id="getSettings",
         )
         return KnowledgeFSSettingsResponse.model_validate(raw)
+
+    def list_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSListQuery,
+    ) -> KnowledgeFSListResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("path", query.path),
+                ("limit", query.limit),
+                ("cursor", query.cursor),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSListResponse.model_validate(raw)
+
+    def tree_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSTreeQuery,
+    ) -> KnowledgeFSTreeResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="treeKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("path", query.path),
+                ("limit", query.limit),
+                ("cursor", query.cursor),
+                ("depth", query.depth),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSTreeResponse.model_validate(raw)
+
+    def grep_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSGrepQuery,
+    ) -> KnowledgeFSGrepResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="grepKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("path", query.path),
+                ("limit", query.limit),
+                ("cursor", query.cursor),
+                ("q", query.query),
+                ("timeoutMs", query.timeout_ms),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSGrepResponse.model_validate(raw)
+
+    def find_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSFindQuery,
+    ) -> KnowledgeFSListResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="findKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("path", query.path),
+                ("limit", query.limit),
+                ("cursor", query.cursor),
+                ("metadataKey", query.metadata_key),
+                ("metadataValue", query.metadata_value),
+                ("nameContains", query.name_contains),
+                ("resourceType", query.resource_type),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSListResponse.model_validate(raw)
+
+    def diff_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSDiffQuery,
+    ) -> KnowledgeFSDiffResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="diffKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("oldPath", query.old_path),
+                ("newPath", query.new_path),
+                ("mode", query.mode),
+                ("semantic", query.semantic),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSDiffResponse.model_validate(raw)
+
+    def cat_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSCatQuery,
+    ) -> KnowledgeFSCatResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="catKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("path", query.path),
+                ("limit", query.limit),
+                ("cursor", query.cursor),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSCatResponse.model_validate(raw)
+
+    def stat_knowledge_fs(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        query: KnowledgeFSStatQuery,
+    ) -> KnowledgeFSStatResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="statKnowledgeFs",
+            query=_knowledge_fs_query(
+                ("path", query.path),
+                ("consistencyClass", query.consistency_class),
+            ),
+        )
+        return KnowledgeFSStatResponse.model_validate(raw)
 
     def get_overview_stats(
         self, *, tenant_id: str, account_id: str, control_space_id: str
@@ -1856,6 +2029,15 @@ def _path_segment(value: str) -> str:
     ):
         raise KnowledgeFSOperationUnavailableError("KnowledgeFS product path parameter is invalid")
     return normalized
+
+
+def _knowledge_fs_query(*items: tuple[str, object | None]) -> tuple[tuple[str, str], ...]:
+    def serialize(value: object) -> str:
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return str(value)
+
+    return tuple((name, serialize(value)) for name, value in items if value is not None)
 
 
 def _assert_ready(operation_id: str) -> None:

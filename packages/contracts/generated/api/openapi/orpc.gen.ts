@@ -35,6 +35,27 @@ import {
   zGetPermittedExternalAppsQuery,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreePath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
   zGetWorkspacesByWorkspaceIdMembersQuery,
   zGetWorkspacesByWorkspaceIdMembersResponse,
@@ -520,6 +541,168 @@ export const apps2 = {
   imports,
 }
 
+export const get14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCat',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/cat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse)
+
+export const cat = {
+  get: get14,
+}
+
+export const get15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiff',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/diff',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse)
+
+export const diff = {
+  get: get15,
+}
+
+export const get16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFind',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/find',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse)
+
+export const find = {
+  get: get16,
+}
+
+export const get17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrep',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/grep',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse)
+
+export const grep = {
+  get: get17,
+}
+
+export const get18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLs',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/ls',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse)
+
+export const ls = {
+  get: get18,
+}
+
+export const get19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStat',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/stat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse)
+
+export const stat = {
+  get: get19,
+}
+
+export const get20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTree',
+    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/tree',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreePath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse)
+
+export const tree = {
+  get: get20,
+}
+
+export const fs = {
+  cat,
+  diff,
+  find,
+  grep,
+  ls,
+  stat,
+  tree,
+}
+
+export const byControlSpaceId = {
+  fs,
+}
+
+export const spaces = {
+  byControlSpaceId,
+}
+
+export const knowledgeFs = {
+  spaces,
+}
+
 export const delete3 = oc
   .route({
     inputStructure: 'detailed',
@@ -552,7 +735,7 @@ export const byMemberId = {
   patch,
 }
 
-export const get14 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -586,7 +769,7 @@ export const post11 = oc
   .output(zPostWorkspacesByWorkspaceIdMembersResponse)
 
 export const members = {
-  get: get14,
+  get: get21,
   post: post11,
   byMemberId,
 }
@@ -606,7 +789,7 @@ export const switch_ = {
   post: post12,
 }
 
-export const get15 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -618,13 +801,14 @@ export const get15 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get15,
+  get: get22,
   apps: apps2,
+  knowledgeFs,
   members,
   switch: switch_,
 }
 
-export const get16 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -635,7 +819,7 @@ export const get16 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get16,
+  get: get23,
   byWorkspaceId,
 }
 

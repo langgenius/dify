@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, RootModel, field_validator, model_validator
 
 from fields.base import ResponseModel
 from models.knowledge_fs import (
@@ -132,6 +132,192 @@ class KnowledgeFSCursorQuery(BaseModel):
     cursor: str | None = Field(default=None, min_length=1, max_length=1_000)
 
     model_config = ConfigDict(extra="forbid")
+
+
+type KnowledgeFSConsistencyClass = Literal[
+    "path-consistent",
+    "snapshot-consistent",
+    "cache-consistent",
+    "eventual-preview",
+]
+type KnowledgeFSResourceType = Literal["source", "document", "node", "artifact", "evidence", "workspace"]
+
+KNOWLEDGE_FS_PATH_PATTERN = r"^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\s]+)*$"
+
+
+class KnowledgeFSListQuery(BaseModel):
+    path: str = Field(min_length=1, max_length=4_096, pattern=KNOWLEDGE_FS_PATH_PATTERN)
+    limit: int = Field(default=20, ge=1, le=100)
+    cursor: str | None = Field(default=None, min_length=1, max_length=8_192)
+    consistency_class: KnowledgeFSConsistencyClass | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSTreeQuery(KnowledgeFSListQuery):
+    depth: int | None = Field(default=None, ge=1, le=8)
+
+
+class KnowledgeFSGrepQuery(KnowledgeFSListQuery):
+    query: str = Field(min_length=1, max_length=4_000)
+    timeout_ms: int | None = Field(default=None, ge=1, le=10_000)
+
+    @field_validator("query", mode="before")
+    @classmethod
+    def normalize_query(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class KnowledgeFSFindQuery(KnowledgeFSListQuery):
+    metadata_key: str | None = Field(default=None, min_length=1, max_length=120)
+    metadata_value: str | None = Field(default=None, min_length=1, max_length=4_000)
+    name_contains: str | None = Field(default=None, min_length=1, max_length=240)
+    resource_type: KnowledgeFSResourceType | None = None
+
+
+class KnowledgeFSCatQuery(BaseModel):
+    path: str = Field(min_length=1, max_length=4_096, pattern=KNOWLEDGE_FS_PATH_PATTERN)
+    cursor: str | None = Field(default=None, min_length=1, max_length=8_192)
+    limit: int | None = Field(default=None, ge=1, le=100)
+    consistency_class: KnowledgeFSConsistencyClass | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSStatQuery(BaseModel):
+    path: str = Field(min_length=1, max_length=4_096, pattern=KNOWLEDGE_FS_PATH_PATTERN)
+    consistency_class: KnowledgeFSConsistencyClass | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSDiffQuery(BaseModel):
+    old_path: str = Field(min_length=1, max_length=4_096, pattern=KNOWLEDGE_FS_PATH_PATTERN)
+    new_path: str = Field(min_length=1, max_length=4_096, pattern=KNOWLEDGE_FS_PATH_PATTERN)
+    mode: Literal["line", "word"] | None = None
+    semantic: bool | None = None
+    consistency_class: KnowledgeFSConsistencyClass | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSEntryResponse(ResponseModel):
+    kind: Literal["directory", "resource"]
+    metadata: dict[str, JsonValue]
+    name: str
+    path: str
+    resource_type: KnowledgeFSResourceType | None = Field(
+        default=None, validation_alias=AliasChoices("resource_type", "resourceType")
+    )
+    target_id: str | None = Field(default=None, validation_alias=AliasChoices("target_id", "targetId"))
+    version: int | None = Field(default=None, ge=1)
+
+
+class KnowledgeFSListResponse(ResponseModel):
+    consistency_class: KnowledgeFSConsistencyClass | None = Field(
+        default=None, validation_alias=AliasChoices("consistency_class", "consistencyClass")
+    )
+    items: list[KnowledgeFSEntryResponse]
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+    path: str
+    preview: bool | None = None
+    truncated: bool
+
+
+class KnowledgeFSTreeNodeResponse(KnowledgeFSEntryResponse):
+    children: list[KnowledgeFSTreeNodeResponse] | None = None
+
+
+class KnowledgeFSTreeResponse(ResponseModel):
+    consistency_class: KnowledgeFSConsistencyClass | None = Field(
+        default=None, validation_alias=AliasChoices("consistency_class", "consistencyClass")
+    )
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+    path: str
+    preview: bool | None = None
+    root: KnowledgeFSTreeNodeResponse
+    truncated: bool
+
+
+class KnowledgeFSGrepMatchResponse(ResponseModel):
+    end_offset: int = Field(ge=0, validation_alias=AliasChoices("end_offset", "endOffset"))
+    kind: Literal["node", "segment"]
+    metadata: dict[str, JsonValue]
+    node_id: str | None = Field(default=None, validation_alias=AliasChoices("node_id", "nodeId"))
+    path: str
+    segment_id: str | None = Field(default=None, validation_alias=AliasChoices("segment_id", "segmentId"))
+    snippet: str
+    start_offset: int = Field(ge=0, validation_alias=AliasChoices("start_offset", "startOffset"))
+
+
+class KnowledgeFSGrepResponse(ResponseModel):
+    matches: list[KnowledgeFSGrepMatchResponse]
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+    path: str
+    truncated: bool
+
+
+class KnowledgeFSDiffOperationResponse(ResponseModel):
+    kind: Literal["equal", "insert", "delete"]
+    new_end: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("new_end", "newEnd"))
+    new_start: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("new_start", "newStart"))
+    old_end: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("old_end", "oldEnd"))
+    old_start: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("old_start", "oldStart"))
+    text: str
+
+
+class KnowledgeFSSemanticDiffChangeResponse(ResponseModel):
+    category: str
+    evidence: list[str]
+    summary: str
+
+
+class KnowledgeFSSemanticDiffResponse(ResponseModel):
+    changes: list[KnowledgeFSSemanticDiffChangeResponse]
+    metadata: dict[str, JsonValue]
+    model: str | None = None
+    summary: str
+
+
+class KnowledgeFSDiffStatsResponse(ResponseModel):
+    delete: int = Field(ge=0)
+    equal: int = Field(ge=0)
+    insert: int = Field(ge=0)
+
+
+class KnowledgeFSDiffResponse(ResponseModel):
+    mode: Literal["line", "word"]
+    new_path: str = Field(validation_alias=AliasChoices("new_path", "newPath"))
+    old_path: str = Field(validation_alias=AliasChoices("old_path", "oldPath"))
+    operations: list[KnowledgeFSDiffOperationResponse]
+    semantic: KnowledgeFSSemanticDiffResponse | None = None
+    stats: KnowledgeFSDiffStatsResponse
+
+
+class KnowledgeFSCatResponse(ResponseModel):
+    content_type: str = Field(validation_alias=AliasChoices("content_type", "contentType"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+    path: str
+    text: str
+    truncated: bool
+
+
+class KnowledgeFSStatResponse(ResponseModel):
+    consistency_class: KnowledgeFSConsistencyClass | None = Field(
+        default=None, validation_alias=AliasChoices("consistency_class", "consistencyClass")
+    )
+    content_type: str | None = Field(default=None, validation_alias=AliasChoices("content_type", "contentType"))
+    metadata: dict[str, JsonValue]
+    parser_status: Literal["pending", "parsed", "failed"] | None = Field(
+        default=None, validation_alias=AliasChoices("parser_status", "parserStatus")
+    )
+    path: str
+    resource_type: KnowledgeFSResourceType = Field(validation_alias=AliasChoices("resource_type", "resourceType"))
+    sha256: str | None = None
+    size_bytes: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("size_bytes", "sizeBytes"))
+    target_id: str = Field(validation_alias=AliasChoices("target_id", "targetId"))
+    preview: bool | None = None
+    version: int | None = Field(default=None, ge=1)
 
 
 class KnowledgeFSQualityListQuery(KnowledgeFSCursorQuery):

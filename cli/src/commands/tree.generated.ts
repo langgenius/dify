@@ -22,6 +22,13 @@ import GetApp from '@/commands/get/app/index'
 import GetMember from '@/commands/get/member/index'
 import GetWorkspace from '@/commands/get/workspace/index'
 import ImportStudioApp from '@/commands/import/studio-app/index'
+import KnowledgeFsCat from '@/commands/knowledge/fs/cat/index'
+import KnowledgeFsDiff from '@/commands/knowledge/fs/diff/index'
+import KnowledgeFsFind from '@/commands/knowledge/fs/find/index'
+import KnowledgeFsGrep from '@/commands/knowledge/fs/grep/index'
+import KnowledgeFsLs from '@/commands/knowledge/fs/ls/index'
+import KnowledgeFsStat from '@/commands/knowledge/fs/stat/index'
+import KnowledgeFsTree from '@/commands/knowledge/fs/tree/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 import SetMember from '@/commands/set/member/index'
@@ -90,6 +97,21 @@ export const commandTree: CommandTree = {
   import: {
     subcommands: {
       'studio-app': { command: ImportStudioApp, subcommands: {} },
+    },
+  },
+  knowledge: {
+    subcommands: {
+      fs: {
+        subcommands: {
+          cat: { command: KnowledgeFsCat, subcommands: {} },
+          diff: { command: KnowledgeFsDiff, subcommands: {} },
+          find: { command: KnowledgeFsFind, subcommands: {} },
+          grep: { command: KnowledgeFsGrep, subcommands: {} },
+          ls: { command: KnowledgeFsLs, subcommands: {} },
+          stat: { command: KnowledgeFsStat, subcommands: {} },
+          tree: { command: KnowledgeFsTree, subcommands: {} },
+        },
+      },
     },
   },
   resume: {

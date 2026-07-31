@@ -443,15 +443,40 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
         "document",
     )
     expected_product_operations = {
+        "catKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/cat",
+            "knowledge_fs.cat",
+        ),
         "createKnowledgeSpaceSource": (
             "POST",
             "/knowledge-spaces/{id}/sources",
             "sources.create",
         ),
+        "diffKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/diff",
+            "knowledge_fs.diff",
+        ),
+        "findKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/find",
+            "knowledge_fs.find",
+        ),
         "getKnowledgeSpaceProductSettings": (
             "GET",
             "/knowledge-spaces/{id}/product-settings",
             "knowledge_spaces.settings.read",
+        ),
+        "grepKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/grep",
+            "knowledge_fs.grep",
+        ),
+        "listKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/ls",
+            "knowledge_fs.ls",
         ),
         "listBackgroundTasks": (
             "GET",
@@ -472,6 +497,16 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
             "GET",
             "/knowledge-spaces/{id}/sources",
             "sources.list",
+        ),
+        "statKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/stat",
+            "knowledge_fs.stat",
+        ),
+        "treeKnowledgeFs": (
+            "GET",
+            "/knowledge-spaces/{id}/fs/tree",
+            "knowledge_fs.tree",
         ),
         "updateKnowledgeSpaceProductSettings": (
             "PATCH",

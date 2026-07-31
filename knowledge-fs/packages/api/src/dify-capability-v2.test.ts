@@ -209,12 +209,17 @@ describe("Dify Capability v2 request guard", () => {
       resourceType: "namespace",
     });
     const expected = {
+      catKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/cat", "knowledge_fs.cat"],
       createKnowledgeSpaceSource: ["POST", "/knowledge-spaces/{id}/sources", "sources.create"],
+      diffKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/diff", "knowledge_fs.diff"],
+      findKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/find", "knowledge_fs.find"],
       getKnowledgeSpaceProductSettings: [
         "GET",
         "/knowledge-spaces/{id}/product-settings",
         "knowledge_spaces.settings.read",
       ],
+      grepKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/grep", "knowledge_fs.grep"],
+      listKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/ls", "knowledge_fs.ls"],
       getKnowledgeSpaceProfileMigration: [
         "GET",
         "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
@@ -230,6 +235,8 @@ describe("Dify Capability v2 request guard", () => {
         "/knowledge-spaces/{id}/research-tasks",
         "research_tasks.list",
       ],
+      statKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/stat", "knowledge_fs.stat"],
+      treeKnowledgeFs: ["GET", "/knowledge-spaces/{id}/fs/tree", "knowledge_fs.tree"],
       listKnowledgeSpaceSources: ["GET", "/knowledge-spaces/{id}/sources", "sources.list"],
       updateKnowledgeSpaceProductSettings: [
         "PATCH",

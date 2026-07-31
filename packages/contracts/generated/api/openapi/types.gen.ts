@@ -268,6 +268,146 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 
 export type JsonValue = unknown
 
+export type KnowledgeFsCatResponse = {
+  content_type: string
+  next_cursor?: string | null
+  path: string
+  text: string
+  truncated: boolean
+}
+
+export type KnowledgeFsConsistencyClass =
+  | 'cache-consistent'
+  | 'eventual-preview'
+  | 'path-consistent'
+  | 'snapshot-consistent'
+
+export type KnowledgeFsDiffOperationResponse = {
+  kind: 'delete' | 'equal' | 'insert'
+  new_end?: number | null
+  new_start?: number | null
+  old_end?: number | null
+  old_start?: number | null
+  text: string
+}
+
+export type KnowledgeFsDiffResponse = {
+  mode: 'line' | 'word'
+  new_path: string
+  old_path: string
+  operations: Array<KnowledgeFsDiffOperationResponse>
+  semantic?: KnowledgeFsSemanticDiffResponse | null
+  stats: KnowledgeFsDiffStatsResponse
+}
+
+export type KnowledgeFsDiffStatsResponse = {
+  delete: number
+  equal: number
+  insert: number
+}
+
+export type KnowledgeFsEntryResponse = {
+  kind: 'directory' | 'resource'
+  metadata: {
+    [key: string]: JsonValue
+  }
+  name: string
+  path: string
+  resource_type?: KnowledgeFsResourceType | null
+  target_id?: string | null
+  version?: number | null
+}
+
+export type KnowledgeFsGrepMatchResponse = {
+  end_offset: number
+  kind: 'node' | 'segment'
+  metadata: {
+    [key: string]: JsonValue
+  }
+  node_id?: string | null
+  path: string
+  segment_id?: string | null
+  snippet: string
+  start_offset: number
+}
+
+export type KnowledgeFsGrepResponse = {
+  matches: Array<KnowledgeFsGrepMatchResponse>
+  next_cursor?: string | null
+  path: string
+  truncated: boolean
+}
+
+export type KnowledgeFsListResponse = {
+  consistency_class?: KnowledgeFsConsistencyClass | null
+  items: Array<KnowledgeFsEntryResponse>
+  next_cursor?: string | null
+  path: string
+  preview?: boolean | null
+  truncated: boolean
+}
+
+export type KnowledgeFsResourceType =
+  | 'artifact'
+  | 'document'
+  | 'evidence'
+  | 'node'
+  | 'source'
+  | 'workspace'
+
+export type KnowledgeFsSemanticDiffChangeResponse = {
+  category: string
+  evidence: Array<string>
+  summary: string
+}
+
+export type KnowledgeFsSemanticDiffResponse = {
+  changes: Array<KnowledgeFsSemanticDiffChangeResponse>
+  metadata: {
+    [key: string]: JsonValue
+  }
+  model?: string | null
+  summary: string
+}
+
+export type KnowledgeFsStatResponse = {
+  consistency_class?: KnowledgeFsConsistencyClass | null
+  content_type?: string | null
+  metadata: {
+    [key: string]: JsonValue
+  }
+  parser_status?: 'failed' | 'parsed' | 'pending' | null
+  path: string
+  preview?: boolean | null
+  resource_type: KnowledgeFsResourceType
+  sha256?: string | null
+  size_bytes?: number | null
+  target_id: string
+  version?: number | null
+}
+
+export type KnowledgeFsTreeNodeResponse = {
+  children?: Array<KnowledgeFsTreeNodeResponse> | null
+  kind: 'directory' | 'resource'
+  metadata: {
+    [key: string]: JsonValue
+  }
+  name: string
+  path: string
+  resource_type?: KnowledgeFsResourceType | null
+  target_id?: string | null
+  version?: number | null
+}
+
+export type KnowledgeFsTreeResponse = {
+  consistency_class?: KnowledgeFsConsistencyClass | null
+  next_cursor?: string | null
+  path: string
+  preview?: boolean | null
+  root: KnowledgeFsTreeNodeResponse
+  truncated: boolean
+}
+
 export type Marketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
@@ -1051,6 +1191,250 @@ export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses = {
 
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse =
   PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    cursor?: string
+    limit?: number
+    path: string
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/cat'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponses = {
+  200: KnowledgeFsCatResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    mode?: 'line' | 'word'
+    new_path: string
+    old_path: string
+    semantic?: boolean
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/diff'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponses = {
+  200: KnowledgeFsDiffResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    cursor?: string
+    limit?: number
+    metadata_key?: string
+    metadata_value?: string
+    name_contains?: string
+    path: string
+    resource_type?: 'artifact' | 'document' | 'evidence' | 'node' | 'source' | 'workspace'
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/find'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponses = {
+  200: KnowledgeFsListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    cursor?: string
+    limit?: number
+    path: string
+    query: string
+    timeout_ms?: number
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/grep'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponses = {
+  200: KnowledgeFsGrepResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    cursor?: string
+    limit?: number
+    path: string
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/ls'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponses = {
+  200: KnowledgeFsListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    path: string
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/stat'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponses = {
+  200: KnowledgeFsStatResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeData = {
+  body?: never
+  path: {
+    control_space_id: string
+    workspace_id: string
+  }
+  query: {
+    consistency_class?:
+      | 'cache-consistent'
+      | 'eventual-preview'
+      | 'path-consistent'
+      | 'snapshot-consistent'
+    cursor?: string
+    depth?: number
+    limit?: number
+    path: string
+  }
+  url: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/tree'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeError =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponses = {
+  200: KnowledgeFsTreeResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponses]
 
 export type GetWorkspacesByWorkspaceIdMembersData = {
   body?: never

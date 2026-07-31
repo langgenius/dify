@@ -11,9 +11,18 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBadCaseCreatePayload,
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSCatQuery,
+    KnowledgeFSCatResponse,
+    KnowledgeFSDiffQuery,
+    KnowledgeFSDiffResponse,
     KnowledgeFSDocumentReindexPayload,
+    KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionResponse,
+    KnowledgeFSGrepQuery,
+    KnowledgeFSGrepResponse,
+    KnowledgeFSListQuery,
+    KnowledgeFSListResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
@@ -29,10 +38,122 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceListItemResponse,
+    KnowledgeFSStatResponse,
+    KnowledgeFSTreeResponse,
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
+    listing = KnowledgeFSListQuery(path="/knowledge", limit=100)
+    grep = KnowledgeFSGrepQuery(path="/knowledge/docs", query="  TODO  ")
+    finding = KnowledgeFSFindQuery(path="/knowledge", resource_type="document")
+    diff = KnowledgeFSDiffQuery(
+        old_path="/knowledge/docs/old.md",
+        new_path="/knowledge/docs/new.md",
+        semantic=True,
+    )
+    cat = KnowledgeFSCatQuery(path="/workspaces/current")
+
+    assert listing.limit == 100
+    assert grep.query == "TODO"
+    assert finding.resource_type == "document"
+    assert diff.semantic is True
+    assert cat.limit is None
+
+    with pytest.raises(ValidationError):
+        KnowledgeFSListQuery(path="/invalid", limit=20)
+    with pytest.raises(ValidationError):
+        KnowledgeFSGrepQuery(path="/knowledge", query=" ")
+    with pytest.raises(ValidationError):
+        KnowledgeFSListQuery(path="/knowledge", limit=101)
+
+
+def test_knowledge_fs_responses_translate_each_kfs_wire_shape() -> None:
+    entry = {
+        "kind": "resource",
+        "metadata": {"owner": "docs"},
+        "name": "readme.md",
+        "path": "/knowledge/docs/readme.md",
+        "resourceType": "document",
+        "targetId": "document-1",
+        "version": 2,
+    }
+    listing = KnowledgeFSListResponse.model_validate(
+        {
+            "consistencyClass": "path-consistent",
+            "items": [entry],
+            "nextCursor": "cursor-1",
+            "path": "/knowledge/docs",
+            "truncated": True,
+        }
+    )
+    tree = KnowledgeFSTreeResponse.model_validate(
+        {
+            "path": "/knowledge",
+            "root": {
+                "kind": "directory",
+                "metadata": {},
+                "name": "knowledge",
+                "path": "/knowledge",
+                "children": [entry],
+            },
+            "truncated": False,
+        }
+    )
+    grep = KnowledgeFSGrepResponse.model_validate(
+        {
+            "matches": [
+                {
+                    "endOffset": 8,
+                    "kind": "segment",
+                    "metadata": {},
+                    "path": "/knowledge/docs/readme.md",
+                    "segmentId": "segment-1",
+                    "snippet": "TODO",
+                    "startOffset": 4,
+                }
+            ],
+            "path": "/knowledge",
+            "truncated": False,
+        }
+    )
+    diff = KnowledgeFSDiffResponse.model_validate(
+        {
+            "mode": "line",
+            "newPath": "/knowledge/docs/new.md",
+            "oldPath": "/knowledge/docs/old.md",
+            "operations": [{"kind": "insert", "newStart": 1, "newEnd": 1, "text": "new"}],
+            "stats": {"delete": 0, "equal": 0, "insert": 1},
+        }
+    )
+    cat = KnowledgeFSCatResponse.model_validate(
+        {
+            "contentType": "text/markdown",
+            "path": "/knowledge/docs/readme.md",
+            "text": "hello",
+            "truncated": False,
+        }
+    )
+    stat = KnowledgeFSStatResponse.model_validate(
+        {
+            "metadata": {},
+            "path": "/knowledge/docs/readme.md",
+            "resourceType": "document",
+            "sizeBytes": 5,
+            "targetId": "document-1",
+        }
+    )
+
+    assert listing.model_dump(mode="json")["next_cursor"] == "cursor-1"
+    assert tree.root.children
+    assert tree.root.children[0].target_id == "document-1"
+    assert grep.matches[0].start_offset == 4
+    assert diff.new_path == "/knowledge/docs/new.md"
+    assert cat.content_type == "text/markdown"
+    assert stat.size_bytes == 5
 
 
 def test_space_list_item_serializes_naive_database_timestamps_as_utc() -> None:

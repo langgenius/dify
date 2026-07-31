@@ -39,6 +39,7 @@ difyctl describe app <app-id>                            # inspect parameters
 difyctl run app <app-id> "hello"                         # run, blocking
 difyctl run app <app-id> "hello" -o json | jq .answer    # JSON output
 difyctl run app <app-id> --input name=world --input topic=cats   # workflow inputs
+difyctl knowledge fs ls <space-id> /knowledge            # inspect KnowledgeFS
 ```
 
 Background docs: `difyctl help account`, `difyctl help external`, `difyctl help environment`, `difyctl help agent`.
@@ -72,6 +73,24 @@ Detection is by config-directory existence (`~/.claude`, `~/.codex`, `~/.config/
 | `-o text` | kubectl-describe style human text (`describe`, `run`). |
 
 Errors emit JSON envelope to stderr in `-o json` mode; else human message. Exit codes deterministic.
+
+## KnowledgeFS filesystem commands
+
+Each `difyctl knowledge fs` leaf maps to its own read-only OpenAPI endpoint:
+
+```sh
+difyctl knowledge fs ls <space-id> /knowledge --limit 20
+difyctl knowledge fs tree <space-id> /knowledge --depth 2
+difyctl knowledge fs cat <space-id> /knowledge/docs/readme.md
+difyctl knowledge fs grep <space-id> TODO /knowledge
+difyctl knowledge fs find <space-id> /knowledge --name-contains readme
+difyctl knowledge fs stat <space-id> /knowledge/docs/readme.md
+difyctl knowledge fs diff <space-id> /knowledge/old.md /knowledge/new.md
+```
+
+Use `-o json` or `-o yaml` for structured output. `ls`, `tree`, `grep`, and
+`find` support `--limit` and `--cursor`; run a leaf command with `--help` for
+its exact argument, flag, and agent-guide contract.
 
 ## Configuration
 

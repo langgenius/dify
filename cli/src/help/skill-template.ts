@@ -12,7 +12,7 @@
 // with a snapshot test (see SKILL-SPEC.md §10, decision D2).
 export const SKILL_TEMPLATE = `---
 name: difyctl
-description: Drive the difyctl CLI to manage Dify apps, workspaces, members and runs. Use when the task involves difyctl or operating a Dify instance from the command line.
+description: Drive the difyctl CLI to manage Dify apps, workspaces, knowledge spaces, members and runs. Use when the task involves difyctl or operating a Dify instance from the command line.
 ---
 
 # difyctl

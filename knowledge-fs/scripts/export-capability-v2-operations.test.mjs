@@ -20,7 +20,56 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 93);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 100);
+    assert.deepEqual(
+      document.operations
+        .filter((operation) => operation.operationId.endsWith("KnowledgeFs"))
+        .map(({ action, method, operationId, path }) => ({ action, method, operationId, path })),
+      [
+        {
+          action: "knowledge_fs.cat",
+          method: "GET",
+          operationId: "catKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/cat",
+        },
+        {
+          action: "knowledge_fs.diff",
+          method: "GET",
+          operationId: "diffKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/diff",
+        },
+        {
+          action: "knowledge_fs.find",
+          method: "GET",
+          operationId: "findKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/find",
+        },
+        {
+          action: "knowledge_fs.grep",
+          method: "GET",
+          operationId: "grepKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/grep",
+        },
+        {
+          action: "knowledge_fs.ls",
+          method: "GET",
+          operationId: "listKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/ls",
+        },
+        {
+          action: "knowledge_fs.stat",
+          method: "GET",
+          operationId: "statKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/stat",
+        },
+        {
+          action: "knowledge_fs.tree",
+          method: "GET",
+          operationId: "treeKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/tree",
+        },
+      ],
+    );
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "getKnowledgeSpaceProfileMigration",

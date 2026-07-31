@@ -36,6 +36,7 @@ const CandidateVisibilityScanBudgetExceededResponse = {
 
 export const listKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/ls",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -74,6 +75,7 @@ export const listKnowledgeFsRoute = createRoute({
 
 export const treeKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "treeKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/tree",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -112,6 +114,7 @@ export const treeKnowledgeFsRoute = createRoute({
 
 export const grepKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "grepKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/grep",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -150,6 +153,7 @@ export const grepKnowledgeFsRoute = createRoute({
 
 export const findKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "findKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/find",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -188,6 +192,7 @@ export const findKnowledgeFsRoute = createRoute({
 
 export const diffKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "diffKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/diff",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -262,6 +267,7 @@ export const openNodeKnowledgeFsRoute = createRoute({
 
 export const catKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "catKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/cat",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -300,6 +306,7 @@ export const catKnowledgeFsRoute = createRoute({
 
 export const statKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "statKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/stat",
   request: {
     params: KnowledgeSpaceParamsSchema,
