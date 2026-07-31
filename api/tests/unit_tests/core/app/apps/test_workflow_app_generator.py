@@ -17,6 +17,7 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 
+
 def _workflow(
     *,
     workflow_id: str = "workflow",
