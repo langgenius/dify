@@ -84,6 +84,29 @@ function BuilderModelSelector({
   )
 }
 
+function SkillBuilderThinkingMessage({ seconds }: { seconds: number }) {
+  const { t } = useTranslation('skill')
+
+  return (
+    <div
+      aria-live="polite"
+      className="flex items-center gap-2 system-xs-regular text-text-tertiary"
+    >
+      <span aria-hidden className="i-ri-sparkling-2-line size-3.5 animate-pulse" />
+      <span>{t(($) => $['skillManagement.detail.builder.thinking'], { seconds })}</span>
+      <span aria-hidden className="flex items-center gap-0.5">
+        {[0, 1, 2].map((index) => (
+          <span
+            key={index}
+            className="size-1 animate-bounce rounded-full bg-text-quaternary"
+            style={{ animationDelay: `${index * 120}ms` }}
+          />
+        ))}
+      </span>
+    </div>
+  )
+}
+
 export function SkillBuilderPanel({
   detail,
   onDraftDetailChange,
@@ -98,7 +121,6 @@ export function SkillBuilderPanel({
   skillId: string
 }) {
   const { t } = useTranslation('skill')
-  const { t: tAgentV2 } = useTranslation('agentV2')
   const queryClient = useQueryClient()
   const [prompt, setPrompt] = useState('')
   const initialBuilderModeRef = useRef({
@@ -132,6 +154,7 @@ export function SkillBuilderPanel({
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
   const [isSending, setIsSending] = useState(false)
+  const [thinkingElapsedSeconds, setThinkingElapsedSeconds] = useState(0)
   const isSendingRef = useRef(false)
   const isComposingRef = useRef(false)
   const detailRef = useRef(detail)
@@ -213,6 +236,16 @@ export function SkillBuilderPanel({
     }
   }, [])
 
+  useEffect(() => {
+    if (!isSending) return
+
+    const timer = window.setInterval(() => {
+      setThinkingElapsedSeconds((currentSeconds) => currentSeconds + 1)
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [isSending])
+
   const handleRestart = () => {
     assistAbortControllerRef.current?.abort()
     assistAbortControllerRef.current = null
@@ -223,6 +256,7 @@ export function SkillBuilderPanel({
     setAttachments([])
     setIsUploadingAttachment(false)
     setIsSending(false)
+    setThinkingElapsedSeconds(0)
     isSendingRef.current = false
   }
 
@@ -231,6 +265,7 @@ export function SkillBuilderPanel({
     assistAbortControllerRef.current = null
     isSendingRef.current = false
     setIsSending(false)
+    setThinkingElapsedSeconds(0)
     onClose()
   }
 
@@ -326,6 +361,7 @@ export function SkillBuilderPanel({
     setPrompt('')
     setAttachments([])
     setIsSending(true)
+    setThinkingElapsedSeconds(0)
 
     void sendSkillAssistMessage({
       skillId,
@@ -371,18 +407,21 @@ export function SkillBuilderPanel({
       },
       onCompleted: (hasError, errorMessage) => {
         setIsSending(false)
+        setThinkingElapsedSeconds(0)
         isSendingRef.current = false
         assistAbortControllerRef.current = null
         if (hasError && errorMessage) toast.error(errorMessage)
       },
       onError: (errorMessage) => {
         setIsSending(false)
+        setThinkingElapsedSeconds(0)
         isSendingRef.current = false
         assistAbortControllerRef.current = null
         if (errorMessage) toast.error(errorMessage)
       },
     }).catch((error: unknown) => {
       setIsSending(false)
+      setThinkingElapsedSeconds(0)
       isSendingRef.current = false
       assistAbortControllerRef.current = null
       toast.error(
@@ -444,9 +483,7 @@ export function SkillBuilderPanel({
                   {message.content ? (
                     <Markdown content={message.content} className="text-[13px]! leading-5!" />
                   ) : (
-                    <span className="system-xs-regular text-text-tertiary">
-                      {tAgentV2(($) => $['agentDetail.configure.answer.thinking'])}
-                    </span>
+                    <SkillBuilderThinkingMessage seconds={thinkingElapsedSeconds} />
                   )}
                 </div>
               ))}

@@ -908,6 +908,36 @@ describe('SkillDetailPage', () => {
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
+  it('shows Skill manifest placeholders for an empty draft', async () => {
+    mocks.skillDetail = createDefaultSkillDraftDetail({
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '---\nname: \ndescription: \nmetadata:\n  display-name: Untitled skill\n---\n\n',
+          tool_file_id: null,
+          size: 72,
+          hash: 'hash-1',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.skillNamePlaceholder'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('skill.skillManagement.detail.skillDescriptionPlaceholder'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('skill.skillManagement.detail.referenceFiles.livePlaceholder'),
+    ).toBeInTheDocument()
+  })
+
   it('does not render the code editor when external file content fails to load', async () => {
     mocks.fetchSkillFileBlob.mockRejectedValue(new Error('content unavailable'))
     mocks.skillDetail = createSkillDetail({
@@ -1969,6 +1999,9 @@ describe('SkillDetailPage', () => {
         }),
       )
     })
+    expect(
+      await screen.findByText('skill.skillManagement.detail.builder.thinking:{"seconds":0}'),
+    ).toBeInTheDocument()
     expect(
       await screen.findByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeDisabled()

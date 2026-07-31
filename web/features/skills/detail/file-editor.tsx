@@ -969,7 +969,9 @@ export function FileEditor({
                       <EditableMetadataField
                         label="name"
                         value={markdownContent.name}
-                        valuePlaceholder="Name this skill. Lowercase letters, numbers, hyphens. Becomes the folder name on export"
+                        valuePlaceholder={t(
+                          ($) => $['skillManagement.detail.skillNamePlaceholder'],
+                        )}
                         readOnly={readonly}
                         onValueChange={
                           readonly
@@ -989,7 +991,9 @@ export function FileEditor({
                       <EditableMetadataField
                         label="description"
                         value={markdownContent.description}
-                        valuePlaceholder="Describe what this Skill does and when agents should use it."
+                        valuePlaceholder={t(
+                          ($) => $['skillManagement.detail.skillDescriptionPlaceholder'],
+                        )}
                         multiline
                         readOnly={readonly}
                         onValueChange={
