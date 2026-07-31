@@ -194,7 +194,7 @@ export function DocumentChunkTreePanel({
   }
 
   return (
-    <aside className="min-h-52 overflow-hidden">
+    <aside className="min-h-52 overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
       <h2 className="px-2 pb-2 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.documentContents'])}
       </h2>
@@ -232,7 +232,7 @@ export function DocumentChunkTreePanel({
             currentFocusedChunkId ? `document-chunk-treeitem-${currentFocusedChunkId}` : undefined
           }
           aria-label={t(($) => $['newKnowledge.documentContents'])}
-          className="max-h-[70vh] overflow-auto py-1 pr-4 pl-1 outline-hidden"
+          className="max-h-[70vh] overflow-auto py-1 pr-4 pl-1 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"
           role="tree"
           tabIndex={0}
           onBlur={() => setTreeHasFocus(false)}

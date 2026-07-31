@@ -119,7 +119,7 @@ export function DocumentChunkDetail({
       >
         {chunks.length ? (
           <div
-            className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:px-0"
+            className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:h-full xl:max-h-none xl:px-0"
             data-testid="chunk-content-scroll"
           >
             {chunks.map((chunk) => {
