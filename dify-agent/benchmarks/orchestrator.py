@@ -86,9 +86,7 @@ class CapacityOptions:
                 raise ValueError("BENCH_E2B_API_KEY and BENCH_E2B_TEMPLATE are required")
             required = self.concurrency or max(CONCURRENCY_LEVELS)
             if self.e2b_max_concurrency is None or self.e2b_max_concurrency < required:
-                raise ValueError(
-                    f"BENCH_E2B_MAX_CONCURRENCY must be at least {required} for the selected matrix"
-                )
+                raise ValueError(f"BENCH_E2B_MAX_CONCURRENCY must be at least {required} for the selected matrix")
 
 
 class BenchmarkCommandError(RuntimeError):
@@ -132,9 +130,7 @@ def run_capacity(options: CapacityOptions) -> tuple[Path, bool]:
     tunnel_name: str | None = None
     public_tunnel: tuple[int, str] | None = None
     try:
-        if options.mode == "local-e2b" and any(
-            point.scenario.workload != "basic" for point in matrix
-        ):
+        if options.mode == "local-e2b" and any(point.scenario.workload != "basic" for point in matrix):
             host_port = _available_loopback_port()
             tunnel_name = f"dify-agent-bench-{run_id[-12:]}-tunnel"
             public_origin = _start_agent_stub_tunnel(
@@ -279,9 +275,7 @@ def _run_compose_block(
         sampler.write_jsonl(block_dir / "docker-stats.jsonl")
         result_path = block_dir / "block-result.json"
         if not result_path.exists():
-            raise BenchmarkCommandError(
-                f"capacity driver did not write {result_path}\n{driver.stdout}{driver.stderr}"
-            )
+            raise BenchmarkCommandError(f"capacity driver did not write {result_path}\n{driver.stdout}{driver.stderr}")
         result = BlockResult.model_validate_json(result_path.read_text())
         redis_commands_per_run = result.resources.redis_commands_per_run
         result.resources = summarize_resource_window(
@@ -364,9 +358,7 @@ def _build_target_images(root: Path, *, mode: BenchmarkMode) -> TargetIdentity:
     dirty_paths = [*_AGENT_INPUTS, "dify-agent/benchmarks"]
     if mode == "local-runtime":
         dirty_paths.extend(_RUNTIME_INPUTS)
-    dirty = bool(
-        _run_command(["git", "status", "--porcelain", "--", *dirty_paths], cwd=root).stdout.strip()
-    )
+    dirty = bool(_run_command(["git", "status", "--porcelain", "--", *dirty_paths], cwd=root).stdout.strip())
     content_hash = _hash_paths(root, _AGENT_INPUTS)
     agent_tag = f"dify-agent-bench:{commit[:12]}-{content_hash[:12]}"
     _run_command(
@@ -481,9 +473,7 @@ def _capture_environment(
             root,
             ("dify-agent/benchmarks", "dify-agent/pyproject.toml", "dify-agent/uv.lock"),
         ),
-        scenario_manifest_hash=_hash_file(
-            root / "dify-agent" / "benchmarks" / "capacity_scenarios.json"
-        ),
+        scenario_manifest_hash=_hash_file(root / "dify-agent" / "benchmarks" / "capacity_scenarios.json"),
         redis_image=_REDIS_IMAGE,
         e2b_template=e2b_template,
         resource_limits=limits,
@@ -516,7 +506,9 @@ def _write_combined_artifacts(invocation_dir: Path, blocks: Sequence[BlockResult
                 output.write("\n")
     with (invocation_dir / "docker-stats.jsonl").open("w") as output:
         for block in blocks:
-            path = invocation_dir / "blocks" / f"{block.scenario_id}-c{block.requested_concurrency}" / "docker-stats.jsonl"
+            path = (
+                invocation_dir / "blocks" / f"{block.scenario_id}-c{block.requested_concurrency}" / "docker-stats.jsonl"
+            )
             if path.exists():
                 output.write(path.read_text())
     _write_json(

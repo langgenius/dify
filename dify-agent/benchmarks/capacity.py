@@ -58,9 +58,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
     """Convert one measured block into the stable, friendly-unit report row."""
     reasons = list(block.invalid_reasons)
     successful_samples = [sample for sample in block.samples if sample.terminal_status == "succeeded"]
-    terminal_values = [
-        sample.terminal_e2e_ms for sample in successful_samples if sample.terminal_e2e_ms is not None
-    ]
+    terminal_values = [sample.terminal_e2e_ms for sample in successful_samples if sample.terminal_e2e_ms is not None]
     e2b_active_values = [
         sample.e2b_active_seconds for sample in successful_samples if sample.e2b_active_seconds is not None
     ]
@@ -68,8 +66,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
     enough_concurrency = block.outcomes.observed_max_active >= math.ceil(0.9 * block.requested_concurrency)
     if not enough_samples:
         reasons.append(
-            f"completed {block.outcomes.successful_runs} successful Runs; "
-            f"{block.minimum_successful_runs} required"
+            f"completed {block.outcomes.successful_runs} successful Runs; {block.minimum_successful_runs} required"
         )
     if not enough_concurrency:
         reasons.append(
@@ -77,17 +74,19 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
             f"requested concurrency {block.requested_concurrency}"
         )
     missing_e2b_active = (
-        block.mode == "local-e2b"
-        and block.workload != "basic"
-        and len(e2b_active_values) != len(successful_samples)
+        block.mode == "local-e2b" and block.workload != "basic" and len(e2b_active_values) != len(successful_samples)
     )
     if missing_e2b_active:
         reasons.append("one or more successful Runs lacked E2B active-window evidence")
 
-    correctness_invalid = missing_e2b_active or not block.valid or any(
-        not sample.ledger_valid or not sample.event_replay_valid or not sample.cleanup_valid
-        for sample in block.samples
-        if sample.terminal_status == "succeeded"
+    correctness_invalid = (
+        missing_e2b_active
+        or not block.valid
+        or any(
+            not sample.ledger_valid or not sample.event_replay_valid or not sample.cleanup_valid
+            for sample in block.samples
+            if sample.terminal_status == "succeeded"
+        )
     )
     saturated = (
         not enough_samples
@@ -117,10 +116,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
     payload_mib_per_second = None
     if block.workload == "file" and block.elapsed_seconds > 0:
         payload_mib_per_second = (
-            block.outcomes.successful_runs
-            * block.samples[0].payload_bytes
-            / 1024**2
-            / block.elapsed_seconds
+            block.outcomes.successful_runs * block.samples[0].payload_bytes / 1024**2 / block.elapsed_seconds
             if block.samples
             else 0
         )
@@ -209,10 +205,7 @@ def render_capacity_markdown(result: CapacityResult) -> str:
     if invalid:
         lines.extend(["", "## Point diagnostics", ""])
         for point in invalid:
-            lines.append(
-                f"- `{point.scenario_id}` c{point.requested_concurrency}: "
-                + "; ".join(point.reasons)
-            )
+            lines.append(f"- `{point.scenario_id}` c{point.requested_concurrency}: " + "; ".join(point.reasons))
     lines.extend(
         [
             "",

@@ -271,6 +271,5 @@ def test_terminal_failure_reason_includes_compact_runtime_error() -> None:
     )
 
     assert reasons == [
-        "one or more Runs reached an unexpected terminal status: "
-        "BindingAcquireError: tmux socket disappeared"
+        "one or more Runs reached an unexpected terminal status: BindingAcquireError: tmux socket disappeared"
     ]
