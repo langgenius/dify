@@ -57,7 +57,7 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
 type ServerURLSectionProps = {
   serverURL: string
   serverPublished: boolean
-  canRegenerateMCPServerCode: boolean
+  canManageMCP: boolean
   genLoading: boolean
   onRegenerate: () => void
 }
@@ -65,7 +65,7 @@ type ServerURLSectionProps = {
 const ServerURLSection: FC<ServerURLSectionProps> = ({
   serverURL,
   serverPublished,
-  canRegenerateMCPServerCode,
+  canManageMCP,
   genLoading,
   onRegenerate,
 }) => {
@@ -90,14 +90,14 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
                     type="button"
                     className={cn(
                       'rounded-md p-1 outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
-                      canRegenerateMCPServerCode
+                      canManageMCP
                         ? 'cursor-pointer hover:bg-state-base-hover'
                         : 'cursor-not-allowed',
                     )}
                     aria-label={
                       t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' }) || ''
                     }
-                    disabled={!canRegenerateMCPServerCode}
+                    disabled={!canManageMCP}
                     onClick={onRegenerate}
                   >
                     <span
@@ -224,7 +224,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
     serverActivated,
     serverURL,
     detail,
-    canRegenerateMCPServerCode,
+    canManageMCP,
     toggleDisabled,
     isMinimalState,
     appUnpublished,
@@ -402,7 +402,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
               <ServerURLSection
                 serverURL={serverURL}
                 serverPublished={serverPublished}
-                canRegenerateMCPServerCode={canRegenerateMCPServerCode}
+                canManageMCP={canManageMCP}
                 genLoading={genLoading}
                 onRegenerate={openConfirmDelete}
               />

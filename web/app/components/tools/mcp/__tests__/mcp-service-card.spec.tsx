@@ -63,7 +63,6 @@ type MockHookState = {
       }
     | undefined
   canManageMCP: boolean
-  canRegenerateMCPServerCode: boolean
   toggleDisabled: boolean
   isMinimalState: boolean
   appUnpublished: boolean
@@ -87,7 +86,6 @@ const createDefaultHookState = (overrides: Partial<MockHookState> = {}): MockHoo
     parameters: {},
   },
   canManageMCP: true,
-  canRegenerateMCPServerCode: true,
   toggleDisabled: false,
   isMinimalState: false,
   appUnpublished: false,
@@ -154,10 +152,9 @@ describe('MCPServiceCard', () => {
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
-    it('should keep status visible and disable management controls without app permissions', () => {
+    it('should keep status visible and disable management controls without app edit permission', () => {
       mockHookState = createDefaultHookState({
         canManageMCP: false,
-        canRegenerateMCPServerCode: false,
         toggleDisabled: true,
       })
 
@@ -177,23 +174,6 @@ describe('MCPServiceCard', () => {
         name: /appOverview\.overview\.appInfo\.regenerate/i,
       })
       expect(regenerateButton).toBeDisabled()
-    })
-
-    it('should allow regeneration with app release permission without enabling edit controls', () => {
-      mockHookState = createDefaultHookState({
-        canManageMCP: false,
-        canRegenerateMCPServerCode: true,
-        toggleDisabled: true,
-      })
-
-      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
-
-      expect(screen.getByRole('button', { name: /tools\.mcp\.server\.edit/i })).toBeDisabled()
-      expect(
-        screen.getByRole('button', {
-          name: /appOverview\.overview\.appInfo\.regenerate/i,
-        }),
-      ).toBeEnabled()
     })
 
     it('should render edit button in full state', () => {

@@ -224,7 +224,7 @@ class TestAppMCPServerRefreshController:
         assert hasattr(AppMCPServerRefreshController, "post")
         assert not hasattr(AppMCPServerRefreshController, "get")
 
-    def test_post_requires_release_and_version_permission(self):
+    def test_post_requires_app_edit_permission(self):
         method = AppMCPServerRefreshController.post
         while "rbac_permission_required" not in method.__code__.co_qualname:
             method = method.__wrapped__
@@ -251,7 +251,7 @@ class TestAppMCPServerRefreshController:
             tenant_id="tenant-1",
             account_id="account-1",
             resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_RELEASE_AND_VERSION,
+            scene=RBACPermission.APP_EDIT,
             resource_required=True,
             path_args={"app_id": "app-1"},
         )
