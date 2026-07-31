@@ -3204,6 +3204,23 @@ Update MCP server configuration for an application
 | 403 | Insufficient permissions |  |
 | 404 | Server not found |  |
 
+### [POST] /apps/{app_id}/server/refresh
+Refresh MCP server configuration and regenerate server code
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | App ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
+| 403 | Insufficient permissions |  |
+| 404 | Server not found |  |
+
 ### [POST] /apps/{app_id}/site
 Update application site configuration
 
@@ -5139,23 +5156,6 @@ Restore a published workflow version into the draft workflow
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
-
-### [GET] /apps/{server_id}/server/refresh
-Refresh MCP server configuration and regenerate server code
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| server_id | path | Server ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
-| 403 | Insufficient permissions |  |
-| 404 | Server not found |  |
 
 ### [GET] /auth/plugin/datasource/default-list
 #### Responses
