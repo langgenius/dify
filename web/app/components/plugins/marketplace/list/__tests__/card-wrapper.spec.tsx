@@ -49,14 +49,21 @@ vi.mock('../../detail-dialog', () => ({
   default: ({
     isInstalled,
     open,
+    onInstall,
     onOpenChange,
   }: {
     isInstalled: boolean
     open: boolean
+    onInstall: () => void
     onOpenChange: (open: boolean) => void
   }) =>
     open ? (
       <div role="dialog" aria-label="marketplace detail" data-installed={isInstalled}>
+        {!isInstalled && (
+          <button type="button" onClick={onInstall}>
+            install from detail
+          </button>
+        )}
         <button type="button" onClick={() => onOpenChange(false)}>
           close detail
         </button>
@@ -161,5 +168,16 @@ describe('CardWrapper', () => {
 
     fireEvent.click(screen.getByTestId('close-install-modal'))
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+  })
+
+  it('opens the same install modal from the marketplace detail dialog', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true })
+
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
+    await user.click(screen.getByRole('button', { name: 'install from detail' }))
+
+    expect(screen.getByTestId('install-modal')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
   })
 })
