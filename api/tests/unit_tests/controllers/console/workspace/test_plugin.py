@@ -1115,9 +1115,7 @@ class TestPluginFetchAutoUpgradeApi:
         method = unwrap(api.get)
 
         with (
-            app.test_request_context(
-                f"/?category={TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL.value}"
-            ),
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL.value}"),
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
                 return_value=None,

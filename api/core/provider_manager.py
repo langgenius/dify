@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -30,6 +30,8 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -961,6 +963,19 @@ class ProviderManager:
 
         provider_hosting_configuration = hosting_configuration.provider_map.get(provider_entity.provider)
         if provider_hosting_configuration is None or not provider_hosting_configuration.enabled:
+            return SystemConfiguration(enabled=False)
+
+        try:
+            plugin_provider_entity = PluginModelProviderDeclaration.model_validate(provider_entity)
+        except ValidationError:
+            return SystemConfiguration(enabled=False)
+
+        if plugin_provider_entity.installation_source != PluginInstallationSource.Marketplace:
+            return SystemConfiguration(enabled=False)
+
+        from core.plugin.plugin_service import PluginService
+
+        if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
 
         # Convert provider_records to dict
