@@ -382,7 +382,13 @@ describe('createWorkflowStreamHandlers', () => {
     vi.clearAllMocks()
   })
 
-  const setupHandlers = (overrides: { isPublicAPI?: boolean; isTimedOut?: () => boolean } = {}) => {
+  const setupHandlers = (
+    overrides: {
+      abortControllerRef?: { current: AbortController | null }
+      isPublicAPI?: boolean
+      isTimedOut?: () => boolean
+    } = {},
+  ) => {
     let completionRes = ''
     let currentTaskId: string | null = null
     let isStopping = false
@@ -415,6 +421,7 @@ describe('createWorkflowStreamHandlers', () => {
     const markEnded = vi.fn()
 
     const handlers = createWorkflowStreamHandlers({
+      abortControllerRef: overrides.abortControllerRef,
       getCompletionRes: () => completionRes,
       getWorkflowProcessData: () => workflowProcessData,
       isPublicAPI: overrides.isPublicAPI ?? false,
@@ -1021,5 +1028,89 @@ describe('createWorkflowStreamHandlers', () => {
     })
 
     expect(circularOutputSetup.setCompletionRes).toHaveBeenCalledWith('[object Object]')
+  })
+
+  it('should abort the active workflow stream before opening resume SSE on pause', () => {
+    const abortControllerRef = { current: null as AbortController | null }
+    const setup = setupHandlers({ isPublicAPI: true, abortControllerRef })
+    const handlers = setup.handlers as Required<
+      Pick<IOtherOptions, 'getAbortController' | 'onWorkflowPaused'>
+    >
+    const initialAbortController = new AbortController()
+    const abortSpy = vi.spyOn(initialAbortController, 'abort')
+
+    act(() => {
+      handlers.getAbortController(initialAbortController)
+      handlers.onWorkflowPaused({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_paused',
+        data: {
+          outputs: {},
+          paused_nodes: [],
+          reasons: [],
+          workflow_run_id: 'run-1',
+        },
+      })
+    })
+
+    expect(abortSpy).toHaveBeenCalledTimes(1)
+    expect(abortControllerRef.current).toBeNull()
+    expect(sseGetMock).toHaveBeenCalledWith(
+      '/workflow/run-1/events',
+      {},
+      expect.objectContaining({ isPublicAPI: true }),
+    )
+  })
+
+  it('should ignore stale stopped events from the initial stream after pause', () => {
+    const setup = setupHandlers()
+    const handlers = setup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowPaused' | 'onWorkflowFinished'>
+    >
+
+    act(() => {
+      handlers.onWorkflowPaused({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_paused',
+        data: {
+          outputs: {},
+          paused_nodes: [],
+          reasons: [],
+          workflow_run_id: 'run-1',
+        },
+      })
+      handlers.onWorkflowFinished({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-1',
+          workflow_id: 'wf-1',
+          status: WorkflowRunningStatus.Stopped,
+          outputs: null,
+          error: '',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    expect(setup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        status: WorkflowRunningStatus.Paused,
+      }),
+    )
+    expect(setup.onCompleted).not.toHaveBeenCalled()
+    expect(setup.setRespondingFalse).not.toHaveBeenCalled()
   })
 })
