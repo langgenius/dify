@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, Feedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { AnswerActionPosition } from './answer/operation'
@@ -62,7 +62,7 @@ export type ChatProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
-  themeBuilder?: ThemeBuilder
+  theme?: Theme
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
@@ -123,7 +123,7 @@ const Chat: FC<ChatProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   hideLogModal,
-  themeBuilder,
+  theme,
   switchSibling,
   showFeatureBar,
   showFileUpload,
@@ -242,7 +242,7 @@ const Chat: FC<ChatProps> = ({
                   key={item.id}
                   item={item}
                   questionIcon={questionIcon}
-                  theme={themeBuilder?.theme}
+                  theme={theme}
                   enableEdit={config?.questionEditEnable}
                   switchSibling={switchSibling}
                   hideAvatar={hideAvatar}
@@ -273,7 +273,7 @@ const Chat: FC<ChatProps> = ({
                   className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text"
                   onClick={onStopResponding}
                 >
-                  <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
+                  <div className="mr-1.25 i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
                   <span className="text-xs font-normal">
                     {t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}
                   </span>
@@ -298,7 +298,7 @@ const Chat: FC<ChatProps> = ({
                 onSend={onSend}
                 inputs={inputs}
                 inputsForm={inputsForm}
-                theme={themeBuilder?.theme}
+                theme={theme}
                 isResponding={isResponding}
                 readonly={readonly}
                 sendButtonLabel={sendButtonLabel}

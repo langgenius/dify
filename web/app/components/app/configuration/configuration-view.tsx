@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ConfigurationViewModel } from './hooks/use-configuration'
+import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
@@ -22,6 +23,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
@@ -37,7 +39,6 @@ import Loading from '@/app/components/base/loading'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
-import { MittProvider } from '@/context/mitt-context-provider'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import Link from '@/next/link'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -117,6 +118,23 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   const { t } = useTranslation()
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
   const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
+  const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
+    if (!installStatus.some((status) => status.success)) return
+
+    const installedPluginNames = plugins.map((plugin) => `${plugin.plugin_id}/${plugin.name}`)
+    const nextModelConfig = produce(contextValue.modelConfig, (draft) => {
+      draft.agentConfig.tools.forEach((tool) => {
+        if (
+          'provider_id' in tool &&
+          tool.isDeleted &&
+          installedPluginNames.includes(tool.provider_id)
+        ) {
+          tool.isDeleted = false
+        }
+      })
+    })
+    contextValue.setModelConfig(nextModelConfig)
+  }
 
   if (showLoading) {
     return (
@@ -129,9 +147,9 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   return (
     <ConfigContext.Provider value={contextValue}>
       <FeaturesProvider features={featuresData}>
-        <MittProvider>
+        <>
           <div className="flex h-full flex-col">
-            <div className="relative flex h-[200px] grow pt-14">
+            <div className="relative flex h-50 grow pt-14">
               <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
@@ -168,7 +186,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-[14px]" />
+                        <Divider type="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (
@@ -187,7 +205,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 </div>
               </div>
               <div
-                className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}
+                className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-140'}`}
               >
                 <Config />
               </div>
@@ -312,8 +330,8 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               onAutoAddPromptVariable={onAutoAddPromptVariable}
             />
           )}
-          <PluginDependency />
-        </MittProvider>
+          <PluginDependency onInstallComplete={isAgent ? handlePluginInstallComplete : undefined} />
+        </>
       </FeaturesProvider>
     </ConfigContext.Provider>
   )

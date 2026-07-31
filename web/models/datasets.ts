@@ -223,14 +223,6 @@ export type DataSetListResponse = {
   total: number
 }
 
-export type ExternalAPIListResponse = {
-  data: ExternalAPIItem[]
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
 export type QA = {
   question: string
   answer: string

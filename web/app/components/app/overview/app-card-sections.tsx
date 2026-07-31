@@ -132,7 +132,7 @@ export const WorkflowLaunchDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[560px]! max-w-[calc(100vw-2rem)]! p-0!">
+      <DialogContent className="w-140! max-w-[calc(100vw-2rem)]! p-0!">
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['overview.appInfo.workflowLaunchHiddenInputs.title'], {
@@ -355,7 +355,7 @@ export const AppCardOperations = ({
           <div
             className={cn(
               disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary',
-              'px-[3px] system-xs-medium',
+              'px-0.75 system-xs-medium',
               shouldTruncate && 'min-w-0 truncate',
             )}
           >
@@ -373,16 +373,16 @@ export const AppCardOperations = ({
               show={disabled}
             >
               <Button
-                className="min-w-[88px] rounded-r-none border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
+                className="min-w-22 rounded-r-none border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
                 size="small"
                 variant="secondary"
                 onClick={onClick}
                 disabled={disabled}
               >
-                <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
+                <div className="flex h-full min-w-22 items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
                   <div className="flex items-center justify-center gap-px">
                     <Icon className="size-3.5" />
-                    <div className="px-[3px] system-xs-medium">{label}</div>
+                    <div className="px-0.75 system-xs-medium">{label}</div>
                   </div>
                 </div>
               </Button>
@@ -409,7 +409,7 @@ export const AppCardOperations = ({
       const actionButton = (
         <Button
           className={cn(
-            'mr-1 max-w-full min-w-[88px] overflow-hidden [&>*]:max-w-full [&>*]:min-w-0',
+            'mr-1 max-w-full min-w-22 overflow-hidden *:max-w-full *:min-w-0',
             !shouldTruncate && 'shrink-0',
           )}
           size="small"

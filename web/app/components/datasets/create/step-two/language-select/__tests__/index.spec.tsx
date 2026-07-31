@@ -128,6 +128,7 @@ describe('LanguageSelect', () => {
             {children}
           </button>
         ),
+        SelectValue: ({ placeholder }: { placeholder?: React.ReactNode }) => <>{placeholder}</>,
         SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,

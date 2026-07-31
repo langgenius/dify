@@ -190,7 +190,7 @@ const createContextValue = (
   disableFeedback: false,
   handleFeedback: vi.fn(),
   currentChatInstanceRef: { current: { handleStop: vi.fn() } },
-  themeBuilder: undefined,
+  theme: undefined,
   clearChatList: false,
   setClearChatList: vi.fn(),
   isResponding: false,

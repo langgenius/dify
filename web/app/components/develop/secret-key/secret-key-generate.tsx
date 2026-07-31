@@ -31,7 +31,7 @@ const SecretKeyGenerateModal = ({
     >
       <DialogContent
         className={cn(
-          'w-full max-w-[480px] overflow-hidden! border-none px-8 text-left align-middle',
+          'w-full max-w-120 overflow-hidden! border-none px-8 text-left align-middle',
           className,
         )}
       >

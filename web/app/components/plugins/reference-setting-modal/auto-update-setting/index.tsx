@@ -143,7 +143,7 @@ const AutoUpdateSetting: FC<Props> = ({ payload, onChange }) => {
       return (
         <button
           type="button"
-          className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          className="group flex h-8 w-40 cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onClick}
         >
           <div className="flex w-0 grow items-center gap-x-1">

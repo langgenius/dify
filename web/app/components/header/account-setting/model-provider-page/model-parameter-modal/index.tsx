@@ -142,7 +142,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           }
         />
       ) : (
-        <div className="flex h-8 min-w-[296px] items-center gap-px overflow-hidden rounded-lg">
+        <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">
           <div className="min-w-0 flex-1">
             <ModelSelector
               defaultModel={provider || modelId ? { provider, model: modelId } : undefined}
@@ -172,7 +172,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       <PopoverContent
         placement={isInWorkflow ? 'left' : renderTrigger ? 'bottom-end' : 'left-start'}
         sideOffset={4}
-        popupClassName={cn(popupClassName, 'w-[400px] rounded-2xl')}
+        popupClassName={cn(popupClassName, 'w-100 rounded-2xl')}
       >
         <div className="relative px-3 pt-3.5 pb-1">
           <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
@@ -182,7 +182,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             <span className="i-ri-close-line size-4 text-text-tertiary" />
           </PopoverClose>
         </div>
-        <div className="max-h-[420px] overflow-y-auto">
+        <div className="max-h-105 overflow-y-auto">
           {renderTrigger && (
             <div className="px-4 pt-2 pb-4">
               <ModelSelector
@@ -243,7 +243,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </div>
         {!hideDebugWithMultipleModel && (
           <div
-            className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
+            className="flex h-12.5 cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {debugWithMultipleModel

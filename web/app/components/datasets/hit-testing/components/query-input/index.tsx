@@ -230,7 +230,7 @@ const QueryInput = ({
           text.length > 200 ||
           (images.length > 0 && !isAllUploaded)
         }
-        className="w-[88px]"
+        className="w-22"
       >
         <RiPlayCircleLine className="mr-1 size-4" />
         {t(($) => $['input.testing'], { ns: 'datasetHitTesting' })}
@@ -266,7 +266,7 @@ const QueryInput = ({
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             >
               <RiEqualizer2Line className="size-3.5 text-components-button-secondary-text" />
-              <div className="flex items-center justify-center gap-1 px-[3px]">
+              <div className="flex items-center justify-center gap-1 px-0.75">
                 <span className="system-xs-medium text-components-button-secondary-text">
                   {t(($) => $.settingTitle, { ns: 'datasetHitTesting' })}
                 </span>

@@ -24,11 +24,11 @@ export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: H
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
         <Tooltip>
           <TooltipTrigger>
-            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
+            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning">
               {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
-          <TooltipContent className="w-[180px]">
+          <TooltipContent className="w-45">
             <div className="font-extrabold">
               {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
             </div>

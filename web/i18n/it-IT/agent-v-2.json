@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Impossibile caricare l’abilità.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Carica un file .zip o .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Il pacchetto di abilità deve avere una dimensione massima di {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "Abilità caricata.",
   "agentDetail.configure.skills.upload.title": "Carica abilità",
   "agentDetail.configure.skills.upload.warning.files": "Se devi usare solo file Markdown, caricali in File e richiamali nel tuo prompt.",

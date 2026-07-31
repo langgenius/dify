@@ -33,7 +33,7 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
             {hasChildren && (
               <RiArrowDropDownLine
                 className={cn(
-                  'absolute top-[50%] left-[-18px] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary',
+                  'absolute top-[50%] -left-4.5 h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary',
                   fold && 'rotate-270 text-text-accent',
                 )}
                 onClick={() => setFold((isFolded) => !isFolded)}
@@ -41,7 +41,7 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
             )}
             <div
               className={cn(
-                'ml-[7px] h-6 truncate system-sm-medium leading-6 text-text-secondary',
+                'ml-1.75 h-6 truncate system-sm-medium leading-6 text-text-secondary',
                 isRoot && rootClassName,
               )}
             >
@@ -58,14 +58,14 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
             )}
           </div>
           {payload.description && (
-            <div className="ml-[7px] flex">
+            <div className="ml-1.75 flex">
               <div className="w-0 grow truncate system-xs-regular text-text-tertiary">
                 {payload.description}
               </div>
             </div>
           )}
           {hasEnum && (
-            <div className="ml-[7px] flex">
+            <div className="ml-1.75 flex">
               <div className="w-0 grow system-xs-regular text-text-quaternary">
                 {payload.enum!.map((value, index) => (
                   <span key={index}>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -303,16 +303,16 @@ const ChatInputArea = ({
     <>
       <div
         className={cn(
-          'pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          'pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-2.25 shadow-md',
           isDragActive &&
             'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className="px-[9px] pt-[9px]">
+        <div className="px-2.25 pt-2.25">
           <FileListInChatInput fileConfig={visionConfig!} />
         </div>
-        <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px]">
+        <div className="relative max-h-39.5 overflow-x-hidden overflow-y-auto px-2.25">
           <div ref={wrapperRef} className="flex items-center justify-between">
             <div className="relative flex w-full grow items-center">
               <div
@@ -360,7 +360,7 @@ const ChatInputArea = ({
           </div>
         </div>
         {showVoiceInput && speechToTextTarget && (
-          <div className="px-[9px]">
+          <div className="px-2.25">
             <VoiceInput
               ref={voiceInputRef}
               target={speechToTextTarget}
@@ -372,7 +372,7 @@ const ChatInputArea = ({
             />
           </div>
         )}
-        {isMultipleLine && <div className="px-[9px]">{operation}</div>}
+        {isMultipleLine && <div className="px-2.25">{operation}</div>}
       </div>
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">

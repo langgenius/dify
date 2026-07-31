@@ -70,7 +70,7 @@ const DuplicateAppModal = ({
   return (
     <>
       <Dialog open={show}>
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none px-8 text-left align-middle">
+        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
           <button
             type="button"
             className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
@@ -79,7 +79,7 @@ const DuplicateAppModal = ({
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
-          <div className="relative mt-3 mb-9 text-xl leading-[30px] font-semibold text-text-primary">
+          <div className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
             {t(($) => $.duplicateTitle, { ns: 'app' })}
           </div>
           <div className="mb-9 system-sm-regular text-text-secondary">

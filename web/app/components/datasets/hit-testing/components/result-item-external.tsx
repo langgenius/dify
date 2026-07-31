@@ -55,7 +55,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
             if (!open) hideDetailModal()
           }}
         >
-          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-[800px]! flex-col overflow-hidden! border-none text-left align-middle">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-200! flex-col overflow-hidden! border-none text-left align-middle">
             <DialogCloseButton />
             <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
               {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}

@@ -54,15 +54,14 @@ const AppsContent = () => {
   const hideTryAppPanel = useCallback(() => {
     setIsShowTryAppPanel(false)
   }, [])
-  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: TryAppSelection) => {
-    if (showTryAppPanel) setCurrentTryAppParams(params)
-    else setCurrentTryAppParams(undefined)
-    setIsShowTryAppPanel(showTryAppPanel)
-  }
+  const openTryAppPanel = useCallback((selection: TryAppSelection) => {
+    setCurrentTryAppParams(selection)
+    setIsShowTryAppPanel(true)
+  }, [])
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const handleTryLearnDify = (params: TryAppSelection) => {
-    setShowTryAppPanel(true, params)
+    openTryAppPanel(params)
   }
   const handleCreateLearnDify = (app: App) => {
     if (!canCreateApp) return
@@ -97,10 +96,8 @@ const AppsContent = () => {
   )
 
   const [controlRefreshList, setControlRefreshList] = useState(0)
-  const [controlHideCreateFromTemplatePanel, setControlHideCreateFromTemplatePanel] = useState(0)
   const onSuccess = useCallback(() => {
     setControlRefreshList((prev) => prev + 1)
-    setControlHideCreateFromTemplatePanel((prev) => prev + 1)
   }, [])
 
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
@@ -196,10 +193,7 @@ const AppsContent = () => {
       <EducationExpireNotice />
       <AppListContext.Provider
         value={{
-          currentApp: currentTryAppParams,
-          isShowTryAppPanel,
-          setShowTryAppPanel,
-          controlHideCreateFromTemplatePanel,
+          openTryAppPanel,
         }}
       >
         <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">

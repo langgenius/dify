@@ -16,22 +16,50 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
+const DropdownMenu = Menu.Root
+const DropdownMenuTrigger = Menu.Trigger
+const DropdownMenuSub = Menu.SubmenuRoot
+const DropdownMenuGroup = Menu.Group
 
-export const DropdownMenu = Menu.Root
-export const DropdownMenuTrigger = Menu.Trigger
-export const DropdownMenuSub = Menu.SubmenuRoot
-export const DropdownMenuGroup = Menu.Group
-export const DropdownMenuRadioGroup = Menu.RadioGroup
+type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
+type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
+type DropdownMenuSubProps = Menu.SubmenuRoot.Props
+type DropdownMenuGroupProps = Menu.Group.Props
+type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
+  Menu.RadioGroup.Props,
+  'defaultValue' | 'onValueChange' | 'value'
+> & {
+  defaultValue?: Value
+  onValueChange?: (value: Value, eventDetails: Menu.RadioGroup.ChangeEventDetails) => void
+  value?: Value
+}
+type DropdownMenuItemVariant = MenuItemVariant
 
-export function DropdownMenuRadioItem({ className, ...props }: Menu.RadioItem.Props) {
+function DropdownMenuRadioGroup<Value = unknown>(
+  props: DropdownMenuRadioGroupProps<Value>,
+): React.JSX.Element {
+  return <Menu.RadioGroup {...props} />
+}
+
+type DropdownMenuRadioItemProps<Value = unknown> = Omit<
+  Menu.RadioItem.Props,
+  'className' | 'value'
+> & {
+  className?: string
+  value: Value
+}
+
+function DropdownMenuRadioItem<Value = unknown>({
+  className,
+  ...props
+}: DropdownMenuRadioItemProps<Value>) {
   return <Menu.RadioItem className={cn(menuItemClassName, className)} {...props} />
 }
 
-export function DropdownMenuRadioItemIndicator({
+function DropdownMenuRadioItemIndicator({
   className,
   ...props
-}: Omit<Menu.RadioItemIndicator.Props, 'children'>) {
+}: DropdownMenuRadioItemIndicatorProps) {
   return (
     <Menu.RadioItemIndicator className={cn(floatingItemIndicatorClassName, className)} {...props}>
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -39,14 +67,23 @@ export function DropdownMenuRadioItemIndicator({
   )
 }
 
-export function DropdownMenuCheckboxItem({ className, ...props }: Menu.CheckboxItem.Props) {
+type DropdownMenuRadioItemIndicatorProps = Omit<
+  Menu.RadioItemIndicator.Props,
+  'children' | 'className'
+> & { className?: string }
+
+type DropdownMenuCheckboxItemProps = Omit<Menu.CheckboxItem.Props, 'className'> & {
+  className?: string
+}
+
+function DropdownMenuCheckboxItem({ className, ...props }: DropdownMenuCheckboxItemProps) {
   return <Menu.CheckboxItem className={cn(menuItemClassName, className)} {...props} />
 }
 
-export function DropdownMenuCheckboxItemIndicator({
+function DropdownMenuCheckboxItemIndicator({
   className,
   ...props
-}: Omit<Menu.CheckboxItemIndicator.Props, 'children'>) {
+}: DropdownMenuCheckboxItemIndicatorProps) {
   return (
     <Menu.CheckboxItemIndicator
       className={cn(floatingItemIndicatorClassName, className)}
@@ -57,7 +94,16 @@ export function DropdownMenuCheckboxItemIndicator({
   )
 }
 
-export function DropdownMenuLabel({ className, ...props }: Menu.GroupLabel.Props) {
+type DropdownMenuCheckboxItemIndicatorProps = Omit<
+  Menu.CheckboxItemIndicator.Props,
+  'children' | 'className'
+> & { className?: string }
+
+type DropdownMenuLabelProps = Omit<Menu.GroupLabel.Props, 'className'> & {
+  className?: string
+}
+
+function DropdownMenuLabel({ className, ...props }: DropdownMenuLabelProps) {
   return <Menu.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
 }
 
@@ -118,7 +164,7 @@ function renderDropdownMenuPopup({
   )
 }
 
-export function DropdownMenuContent({
+function DropdownMenuContent({
   children,
   placement = 'bottom-end',
   sideOffset = 4,
@@ -140,11 +186,12 @@ export function DropdownMenuContent({
   })
 }
 
-type DropdownMenuSubTriggerProps = Menu.SubmenuTrigger.Props & {
-  variant?: MenuItemVariant
+type DropdownMenuSubTriggerProps = Omit<Menu.SubmenuTrigger.Props, 'className'> & {
+  variant?: DropdownMenuItemVariant
+  className?: string
 }
 
-export function DropdownMenuSubTrigger({
+function DropdownMenuSubTrigger({
   className,
   variant = 'default',
   children,
@@ -176,7 +223,7 @@ type DropdownMenuSubContentProps = {
   popupProps?: DropdownMenuContentProps['popupProps']
 }
 
-export function DropdownMenuSubContent({
+function DropdownMenuSubContent({
   children,
   placement = 'left-start',
   sideOffset = 4,
@@ -198,15 +245,12 @@ export function DropdownMenuSubContent({
   })
 }
 
-type DropdownMenuItemProps = Menu.Item.Props & {
-  variant?: MenuItemVariant
+type DropdownMenuItemProps = Omit<Menu.Item.Props, 'className'> & {
+  variant?: DropdownMenuItemVariant
+  className?: string
 }
 
-export function DropdownMenuItem({
-  className,
-  variant = 'default',
-  ...props
-}: DropdownMenuItemProps) {
+function DropdownMenuItem({ className, variant = 'default', ...props }: DropdownMenuItemProps) {
   return (
     <Menu.Item
       data-variant={variant}
@@ -216,11 +260,12 @@ export function DropdownMenuItem({
   )
 }
 
-type DropdownMenuLinkItemProps = Menu.LinkItem.Props & {
-  variant?: MenuItemVariant
+type DropdownMenuLinkItemProps = Omit<Menu.LinkItem.Props, 'className'> & {
+  variant?: DropdownMenuItemVariant
+  className?: string
 }
 
-export function DropdownMenuLinkItem({
+function DropdownMenuLinkItem({
   className,
   variant = 'default',
   closeOnClick = true,
@@ -236,6 +281,49 @@ export function DropdownMenuLinkItem({
   )
 }
 
-export function DropdownMenuSeparator({ className, ...props }: Menu.Separator.Props) {
+type DropdownMenuSeparatorProps = Omit<Menu.Separator.Props, 'className'> & {
+  className?: string
+}
+
+function DropdownMenuSeparator({ className, ...props }: DropdownMenuSeparatorProps) {
   return <Menu.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
+}
+
+export {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuCheckboxItemIndicator,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuLinkItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+}
+
+export type {
+  DropdownMenuCheckboxItemIndicatorProps,
+  DropdownMenuCheckboxItemProps,
+  DropdownMenuContentProps,
+  DropdownMenuGroupProps,
+  DropdownMenuItemProps,
+  DropdownMenuLabelProps,
+  DropdownMenuLinkItemProps,
+  DropdownMenuProps,
+  DropdownMenuRadioGroupProps,
+  DropdownMenuRadioItemIndicatorProps,
+  DropdownMenuRadioItemProps,
+  DropdownMenuSeparatorProps,
+  DropdownMenuSubContentProps,
+  DropdownMenuSubProps,
+  DropdownMenuSubTriggerProps,
+  DropdownMenuTriggerProps,
+  Placement,
 }

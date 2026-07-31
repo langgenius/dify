@@ -64,7 +64,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
           sideOffset={4}
           popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >
-          <div className="relative w-[591px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+          <div className="relative w-147.75 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="border-b-[0.5px] border-divider-regular p-2">
               <Input
                 showLeftIcon
@@ -78,12 +78,12 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
               aria-label={t(($) => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}
               value={value}
               onValueChange={(nextValue) => onChange(nextValue)}
-              className="max-h-[264px] overflow-y-auto p-1"
+              className="max-h-66 overflow-y-auto p-1"
             >
               {filteredLabelList.map((label) => (
                 <label
                   key={label.name}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
                 >
                   <Checkbox className="shrink-0" value={label.name} />
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
@@ -92,7 +92,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
                   <Tag03 className="size-6 text-text-quaternary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">
+                  <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>
                 </div>

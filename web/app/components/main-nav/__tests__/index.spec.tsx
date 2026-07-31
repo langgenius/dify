@@ -737,7 +737,7 @@ describe('MainNav', () => {
 
     const accountButton = screen.getByRole('button', { name: 'common.account.account' })
     expect(accountButton).toHaveTextContent('Evan Z')
-    expect(accountButton).toHaveClass('max-w-[180px]', 'gap-3', 'py-1', 'pr-4', 'pl-1')
+    expect(accountButton).toHaveClass('max-w-45', 'gap-3', 'py-1', 'pr-4', 'pl-1')
     expect(accountButton).not.toHaveClass('justify-center', 'p-1')
   })
 
@@ -1137,6 +1137,65 @@ describe('MainNav', () => {
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
+  })
+
+  it('opens About from its real Help menu owner and restores focus when closed', async () => {
+    const user = userEvent.setup()
+    mockConsoleState.current = {
+      ...consoleState,
+      langGeniusVersionInfo: {
+        ...consoleState.langGeniusVersionInfo,
+        latest_version: '1.1.0',
+        release_notes: 'https://github.com/langgenius/dify/releases/tag/1.1.0',
+      },
+    }
+    renderMainNav()
+
+    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    await user.click(helpButton)
+    await user.click(await screen.findByRole('menuitem', { name: /common\.userProfile\.about/ }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'common.userProfile.about' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+      'href',
+      'https://dify.ai/privacy',
+    )
+    expect(screen.getByRole('link', { name: 'common.about.changeLog' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify/releases',
+    )
+    expect(screen.getByRole('link', { name: 'common.about.updateNow' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify/releases/tag/1.1.0',
+    )
+    expect(screen.queryByRole('button', { name: 'common.about.changeLog' })).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'common.userProfile.about' }),
+      ).not.toBeInTheDocument()
+      expect(helpButton).toHaveFocus()
+    })
+  })
+
+  it('shows the open-source license in About for non-Cloud editions', async () => {
+    const user = userEvent.setup()
+    renderMainNav({ deployment_edition: 'COMMUNITY' })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(await screen.findByRole('menuitem', { name: /common\.userProfile\.about/ }))
+
+    expect(await screen.findByRole('link', { name: 'Open Source License' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify/blob/main/LICENSE',
+    )
+    expect(screen.queryByRole('link', { name: 'Privacy Policy' })).not.toBeInTheDocument()
   })
 
   it('closes the help menu from the support upgrade action', async () => {

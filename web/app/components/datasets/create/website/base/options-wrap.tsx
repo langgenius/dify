@@ -27,12 +27,12 @@ const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }
   return (
     <div className={cn(className, !fold ? 'mb-0' : 'mb-3')}>
       <div
-        className="flex h-[26px] cursor-pointer items-center gap-x-1 py-1 select-none"
+        className="flex h-6.5 cursor-pointer items-center gap-x-1 py-1 select-none"
         onClick={foldToggle}
       >
         <div className="flex grow items-center">
           <RiEqualizer2Line className="mr-1 size-4 text-text-secondary" />
-          <span className="text-[13px] leading-[16px] font-semibold text-text-secondary uppercase">
+          <span className="text-[13px] leading-4 font-semibold text-text-secondary uppercase">
             {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
         </div>

@@ -68,7 +68,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<SnippetListItemData>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<SnippetListItemData>())
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -196,7 +196,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
 
           return (
             <BlockSelectorPreviewCardContent>
-              <SnippetDetailCard snippet={payload as SnippetListItemData} />
+              <SnippetDetailCard snippet={payload} />
             </BlockSelectorPreviewCardContent>
           )
         }}

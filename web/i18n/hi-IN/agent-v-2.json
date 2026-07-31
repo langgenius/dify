@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "कौशल अपलोड करने में विफल।",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "एक .zip या .skill फ़ाइल अपलोड करें।",
+  "agentDetail.configure.skills.upload.sizeLimit": "Skill पैकेज का आकार {{sizeLimit}} या इससे कम होना चाहिए।",
   "agentDetail.configure.skills.upload.success": "कौशल अपलोड हो गया।",
   "agentDetail.configure.skills.upload.title": "कौशल अपलोड करें",
   "agentDetail.configure.skills.upload.warning.files": "यदि आपको केवल Markdown फ़ाइलों का उपयोग करना है, तो उन्हें फ़ाइलें में अपलोड करें और अपने प्रॉम्प्ट में उनका संदर्भ दें।",

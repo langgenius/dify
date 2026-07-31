@@ -21,7 +21,7 @@ import {
   ComboboxTrigger,
   ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LogSourceIcon } from './source-icon'
 
@@ -34,6 +34,10 @@ const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<'a
 }
 
 const getSourceLabel = (source: AgentLogSourceResponse) => source.app_name
+
+type AgentLogSourceComboboxGroup = Omit<AgentLogSourceGroupResponse, 'sources'> & {
+  items: AgentLogSourceResponse[]
+}
 
 export function AgentLogSourcePicker({
   value,
@@ -53,13 +57,17 @@ export function AgentLogSourcePicker({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const [inputValue, setInputValue] = useState('')
-  const sources = groups.flatMap((group) => group.sources ?? [])
+  const sourceGroups = useMemo<AgentLogSourceComboboxGroup[]>(
+    () => groups.map(({ sources, ...group }) => ({ ...group, items: sources ?? [] })),
+    [groups],
+  )
+  const sources = sourceGroups.flatMap((group) => group.items)
   const selectedSources = sources.filter((source) => value.includes(source.id))
 
   return (
     <Combobox<AgentLogSourceResponse, true>
       multiple
-      items={groups}
+      items={sourceGroups}
       value={selectedSources}
       itemToStringLabel={getSourceLabel}
       onValueChange={(nextSources) => {
@@ -73,10 +81,11 @@ export function AgentLogSourcePicker({
         aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
         className="mt-0 w-fit max-w-full min-w-22"
       >
-        <ComboboxValue placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}>
-          {(selectedValue: AgentLogSourceResponse[]) => {
-            if (selectedValue.length === 0)
-              return t(($) => $['agentDetail.logs.filters.source.all'])
+        <ComboboxValue<AgentLogSourceResponse, true>
+          placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
+        >
+          {(selectedValue) => {
+            if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
             if (selectedValue.length === 1) return selectedValue[0]!.app_name
             return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
           }}
@@ -111,14 +120,14 @@ export function AgentLogSourcePicker({
         )}
         {!isLoading && !isError && (
           <>
-            <ComboboxList className="max-h-69 p-2 pt-1">
-              {groups.map((group) => (
-                <ComboboxGroup key={group.type} items={group.sources ?? []}>
+            <ComboboxList<AgentLogSourceComboboxGroup> className="max-h-69 p-2 pt-1">
+              {(group) => (
+                <ComboboxGroup key={group.type} items={group.items}>
                   <ComboboxGroupLabel className="px-1 pt-2 pb-1">
                     {getSourceGroupLabel(group, t)}
                   </ComboboxGroupLabel>
-                  <ComboboxCollection>
-                    {(source: AgentLogSourceResponse) => (
+                  <ComboboxCollection<AgentLogSourceResponse>>
+                    {(source) => (
                       <ComboboxItem
                         key={source.id}
                         value={source}
@@ -133,7 +142,7 @@ export function AgentLogSourcePicker({
                     )}
                   </ComboboxCollection>
                 </ComboboxGroup>
-              ))}
+              )}
             </ComboboxList>
             <ComboboxEmpty className="px-3 py-3 text-center system-xs-regular">
               {t(($) => $['agentDetail.logs.filters.source.empty'])}
