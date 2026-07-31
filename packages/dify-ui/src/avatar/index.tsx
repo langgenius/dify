@@ -15,9 +15,9 @@ const avatarSizeClasses = {
   '3xl': { root: 'size-16', text: 'text-2xl' },
 } as const
 
-export type AvatarSize = keyof typeof avatarSizeClasses
+type AvatarSize = keyof typeof avatarSizeClasses
 
-export type AvatarProps = {
+type AvatarProps = {
   name: string
   avatar: string | null
   size?: AvatarSize
@@ -25,11 +25,11 @@ export type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-type AvatarRootProps = BaseAvatar.Root.Props & {
+type AvatarRootProps = Omit<BaseAvatar.Root.Props, 'className'> & {
   size?: AvatarSize
+  className?: string
 }
-
-export function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
+function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
   return (
     <BaseAvatar.Root
       className={cn(
@@ -42,11 +42,11 @@ export function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps
   )
 }
 
-type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
+type AvatarFallbackProps = Omit<BaseAvatar.Fallback.Props, 'className'> & {
   size?: AvatarSize
+  className?: string
 }
-
-export function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
+function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
   return (
     <BaseAvatar.Fallback
       className={cn(
@@ -59,9 +59,10 @@ export function AvatarFallback({ size = 'md', className, ...props }: AvatarFallb
   )
 }
 
-type AvatarImageProps = BaseAvatar.Image.Props
-
-export function AvatarImage({ className, ...props }: AvatarImageProps) {
+type AvatarImageProps = Omit<BaseAvatar.Image.Props, 'className'> & {
+  className?: string
+}
+function AvatarImage({ className, ...props }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
       className={cn('absolute inset-0 size-full object-cover', className)}
@@ -70,13 +71,7 @@ export function AvatarImage({ className, ...props }: AvatarImageProps) {
   )
 }
 
-export const Avatar = ({
-  name,
-  avatar,
-  size = 'md',
-  className,
-  onLoadingStatusChange,
-}: AvatarProps) => {
+const Avatar = ({ name, avatar, size = 'md', className, onLoadingStatusChange }: AvatarProps) => {
   return (
     <AvatarRoot size={size} className={className}>
       {avatar && (
@@ -86,3 +81,7 @@ export const Avatar = ({
     </AvatarRoot>
   )
 }
+
+export { Avatar, AvatarFallback, AvatarImage, AvatarRoot }
+
+export type { AvatarFallbackProps, AvatarImageProps, AvatarProps, AvatarRootProps, AvatarSize }

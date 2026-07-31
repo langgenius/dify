@@ -1,4 +1,3 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -22,6 +21,7 @@ import {
   toDayjs,
 } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
+import { getMarkdownButtonAppearance } from './button-appearance'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -71,17 +71,6 @@ function isSafeName(name: unknown): name is string {
     !PROTOTYPE_POISON_KEYS.has(name)
   )
 }
-
-const VALID_BUTTON_VARIANTS = new Set<string>([
-  'primary',
-  'warning',
-  'secondary',
-  'secondary-accent',
-  'ghost',
-  'ghost-accent',
-  'tertiary',
-])
-const VALID_BUTTON_SIZES = new Set<string>(['small', 'medium', 'large'])
 
 type HastText = {
   type: 'text'
@@ -391,21 +380,16 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         }
 
         if (child.tagName === SUPPORTED_TAGS.BUTTON) {
-          const rawVariant = str(child.properties.dataVariant)
-          const rawSize = str(child.properties.dataSize)
-          const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
-            ? (rawVariant as ButtonProps['variant'])
-            : undefined
-          const size = VALID_BUTTON_SIZES.has(rawSize)
-            ? (rawSize as ButtonProps['size'])
-            : undefined
+          const appearance = getMarkdownButtonAppearance(
+            child.properties.dataVariant,
+            child.properties.dataSize,
+          )
 
           return (
             <Button
-              variant={variant}
-              size={size}
-              className="mt-4"
               key={key}
+              {...appearance}
+              className="mt-4"
               disabled={isSubmitting}
               onClick={onSubmit}
             >

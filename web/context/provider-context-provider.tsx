@@ -72,7 +72,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
-  const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
   const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
   const [licenseLimit, setLicenseLimit] = useState({
     workspace_members: {
@@ -120,7 +119,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
       }
 
       if (data.model_load_balancing_enabled) setModelLoadBalancingEnabled(true)
-      if (data.dataset_operator_enabled) setDatasetOperatorEnabled(true)
       if (data.webapp_copyright_enabled) setWebappCopyrightEnabled(true)
       setLicenseLimit({ workspace_members: resolveMemberInviteLimit(data) })
       if (data.is_allow_transfer_workspace)
@@ -207,7 +205,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         onPlanInfoChanged: fetchPlan,
         enableReplaceWebAppLogo,
         modelLoadBalancingEnabled,
-        datasetOperatorEnabled,
         enableEducationPlan,
         isEducationWorkspace,
         isEducationAccount: isEducationDataFetchedAfterMount

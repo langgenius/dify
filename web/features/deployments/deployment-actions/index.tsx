@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentProps } from 'react'
+import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
 import type { DeploymentActionAppInstance } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -32,8 +32,8 @@ type DeploymentActionsMenuProps = {
   appInstance: DeploymentActionAppInstance
   className?: string
   triggerClassName?: string
-  placement: ComponentProps<typeof DropdownMenuContent>['placement']
-  sideOffset?: ComponentProps<typeof DropdownMenuContent>['sideOffset']
+  placement: DropdownMenuContentProps['placement']
+  sideOffset?: DropdownMenuContentProps['sideOffset']
 }
 
 function DeploymentActionsMenuContent({
