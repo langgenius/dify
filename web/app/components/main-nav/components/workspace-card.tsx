@@ -7,16 +7,19 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -126,7 +129,7 @@ function WorkspaceCardTrigger({
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
             <span
-              className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary"
+              className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary"
               title={name}
             >
               {name}
@@ -259,26 +262,25 @@ export function WorkspaceCard() {
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
-  const { enableBilling } = useProviderContext()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const showCloudBilling = deploymentEdition === 'CLOUD' && enableBilling
+  const { setShowPricingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
     void queryClient.prefetchQuery(workspacesQueryOptions)
   }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
-      <WorkspaceCardSkeleton
-        showCloudBilling={showCloudBilling}
-        showPlanAction={showCloudBilling}
-      />
+      <WorkspaceCardSkeleton showCloudBilling={isCloudEdition} showPlanAction={isCloudEdition} />
     )
   }
 
   const workspacePlan = isWorkspacePlan(currentWorkspace.plan) ? currentWorkspace.plan : null
-  const isFreePlan = workspacePlan === Plan.sandbox
+  const hasBillingPlan = typeof currentWorkspace.plan === 'string'
+  const showCloudBilling = isCloudEdition && hasBillingPlan
   const showPlanAction = showCloudBilling && workspacePlan !== null
+  const isFreePlan = workspacePlan === Plan.sandbox
   const planActionLabel = t(
     ($) => $[isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain'],
     { ns: 'billing' },
@@ -286,7 +288,7 @@ export function WorkspaceCard() {
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const renderWorkspaceStatus = () => {
     if (deploymentEdition === 'CLOUD')
-      return enableBilling && workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
+      return workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
     if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
     return null
   }
@@ -332,13 +334,11 @@ export function WorkspaceCard() {
             inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
             onOpenSettings={() => {
               setOpen(false)
-              setShowAccountSettingModal({
-                payload: enableBilling ? ACCOUNT_SETTING_TAB.BILLING : ACCOUNT_SETTING_TAB.MEMBERS,
-              })
+              setSettingsDestination(hasBillingPlan ? 'billing' : 'members')
             }}
             onInviteMembers={() => {
               setOpen(false)
-              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+              setSettingsDestination('members')
             }}
           />
           <WorkspaceSwitcher

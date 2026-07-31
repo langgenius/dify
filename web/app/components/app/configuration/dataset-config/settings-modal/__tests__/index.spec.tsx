@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
@@ -14,6 +13,7 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -50,7 +50,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 
 const mockUseModelList = vi.fn()
 const mockUseModelListAndDefaultModel = vi.fn()
@@ -81,11 +81,10 @@ vi.mock('@/service/use-common', async () => ({
   useMembers: vi.fn(),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
@@ -95,12 +94,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
   }),
 }))
 
@@ -208,9 +201,12 @@ const createDataset = (
 
 const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   })
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -396,9 +392,7 @@ describe('SettingsModal', () => {
       )
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
   })
 

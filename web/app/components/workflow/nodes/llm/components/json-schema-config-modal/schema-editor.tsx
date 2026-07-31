@@ -35,7 +35,7 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
       hideTopMenu={hideTopMenu}
       onFocus={onFocus}
       onBlur={onBlur}
-      topContent={isTruncated && <LargeDataAlert className="mx-1 mt-[-4px] mb-3" />}
+      topContent={isTruncated && <LargeDataAlert className="mx-1 -mt-1 mb-3" />}
     />
   )
 }

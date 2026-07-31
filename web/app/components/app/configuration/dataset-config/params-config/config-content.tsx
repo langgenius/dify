@@ -265,7 +265,7 @@ const ConfigContent: FC<Props> = ({
                     onCheckedChange={handleManuallyToggleRerank}
                   />
                 )}
-                <div className="ml-1 system-sm-semibold leading-[32px] text-text-secondary">
+                <div className="ml-1 system-sm-semibold leading-8 text-text-secondary">
                   {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
                 </div>
                 <Infotip
@@ -341,7 +341,7 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
-            <div className="text-[13px] leading-[32px] font-medium text-text-primary">
+            <div className="text-[13px] leading-8 font-medium text-text-primary">
               {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' })}
             </div>
             <Infotip

@@ -61,7 +61,7 @@ export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick 
       <PlanBadgeShell color="blue" allowHover={allowHover} onClick={onClick}>
         <SparklesSoft
           aria-hidden="true"
-          className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+          className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
         />
         <div className="system-xs-medium">
           <span className="p-1 whitespace-nowrap">

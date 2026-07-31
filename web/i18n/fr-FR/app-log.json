@@ -21,7 +21,7 @@
   "archives.empty.title": "Aucun journal archivé",
   "archives.error.description": "Actualisez la page ou réessayez plus tard.",
   "archives.error.title": "Impossible de charger les journaux archivés",
-  "archives.notice.action": "Voir les journaux archivés",
+  "archives.notice.action": "Ouvrir les journaux archivés",
   "archives.notice.description": "Certains journaux de cette période peuvent avoir été archivés.",
   "archives.summary.latest": "Dernière archive",
   "archives.summary.months": "Mois archivés",

@@ -21,7 +21,7 @@
   "archives.empty.title": "Arşivlenmiş günlük yok",
   "archives.error.description": "Sayfayı yenileyin veya daha sonra tekrar deneyin.",
   "archives.error.title": "Arşivlenmiş günlükler yüklenemedi",
-  "archives.notice.action": "Arşivlenmiş günlükleri görüntüle",
+  "archives.notice.action": "Arşivlenmiş günlükleri aç",
   "archives.notice.description": "Bu zaman aralığındaki bazı günlükler arşivlenmiş olabilir.",
   "archives.summary.latest": "En son arşiv",
   "archives.summary.months": "Arşivlenen aylar",

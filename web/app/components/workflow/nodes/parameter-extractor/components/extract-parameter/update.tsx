@@ -11,11 +11,11 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -92,18 +92,18 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
     [param.name, t],
   )
 
-  const [isShowModal, { setTrue: doShowModal, setFalse: doHideModal }] = useBoolean(!isAdd)
+  const [isShowModal, setIsShowModal] = useState(!isAdd)
 
   const hideModal = useCallback(() => {
-    doHideModal()
+    setIsShowModal(false)
     onCancel?.()
-  }, [onCancel, doHideModal])
+  }, [onCancel])
 
   const showAddModal = useCallback(() => {
     if (isAdd) setParam(DEFAULT_PARAM)
 
-    doShowModal()
-  }, [isAdd, doShowModal])
+    setIsShowModal(true)
+  }, [isAdd])
 
   const checkValid = useCallback(() => {
     let errMessage = ''
@@ -162,7 +162,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
             if (!open) hideModal()
           }}
         >
-          <DialogContent className="w-[400px]! max-w-[400px]! overflow-hidden! border-none p-4! text-left align-middle">
+          <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflow' })}
             </DialogTitle>
@@ -190,14 +190,16 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                     ns: 'workflow',
                   })}
                 >
-                  <Select
+                  <Select<ParamType>
                     value={param.type}
                     onValueChange={(value) => value && handleParamChange('type')(value)}
                   >
-                    <SelectTrigger className="w-full capitalize">{param.type}</SelectTrigger>
+                    <SelectTrigger className="w-full capitalize">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {TYPES.map((type) => (
-                        <SelectItem key={type} value={type} className="capitalize">
+                        <SelectItem<ParamType> key={type} value={type} className="capitalize">
                           <SelectItemText className="capitalize">{type}</SelectItemText>
                           <SelectItemIndicator />
                         </SelectItem>
@@ -237,7 +239,7 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                   })}
                 >
                   <>
-                    <div className="mb-1.5 text-xs leading-[18px] font-normal text-text-tertiary">
+                    <div className="mb-1.5 text-xs leading-4.5 font-normal text-text-tertiary">
                       {t(($) => $[`${i18nPrefix}.addExtractParameterContent.requiredContent`], {
                         ns: 'workflow',
                       })}
@@ -251,10 +253,10 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                 </Field>
               </div>
               <div className="mt-4 flex justify-end space-x-2">
-                <Button className="w-[95px]!" onClick={hideModal}>
+                <Button className="w-23.75!" onClick={hideModal}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
-                <Button className="w-[95px]!" variant="primary" onClick={handleSave}>
+                <Button className="w-23.75!" variant="primary" onClick={handleSave}>
                   {isAdd
                     ? t(($) => $['operation.add'], { ns: 'common' })
                     : t(($) => $['operation.save'], { ns: 'common' })}

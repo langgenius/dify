@@ -72,15 +72,17 @@ def test_remote_file_info_and_upload_config() -> None:
         image_file_size_limit=4,
         video_file_size_limit=5,
         audio_file_size_limit=6,
-        workflow_file_upload_limit=7,
-        image_file_batch_limit=8,
-        single_chunk_attachment_limit=9,
-        attachment_image_file_size_limit=10,
+        skill_file_size_limit=7,
+        workflow_file_upload_limit=8,
+        image_file_batch_limit=9,
+        single_chunk_attachment_limit=10,
+        attachment_image_file_size_limit=11,
     )
 
     dumped = config.model_dump(mode="json")
     assert dumped["file_upload_limit"] == 3
-    assert dumped["attachment_image_file_size_limit"] == 10
+    assert dumped["skill_file_size_limit"] == 7
+    assert dumped["attachment_image_file_size_limit"] == 11
 
 
 @pytest.mark.parametrize(

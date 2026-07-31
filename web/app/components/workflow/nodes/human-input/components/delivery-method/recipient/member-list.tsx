@@ -58,7 +58,7 @@ const MemberList: FC<Props> = ({
         </div>
       )}
       {filteredList.length > 0 && (
-        <div className="max-h-[248px] overflow-y-auto p-1">
+        <div className="max-h-62 overflow-y-auto p-1">
           {filteredList.map((account) => (
             <div
               key={account.id}

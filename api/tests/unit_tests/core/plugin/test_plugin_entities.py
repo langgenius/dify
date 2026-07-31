@@ -265,6 +265,11 @@ class TestPluginParameterEntities:
         with pytest.raises(ValueError, match="not found in tool config"):
             init_frontend_parameter(required_rule, PluginParameterType.STRING, None)
 
+        tools_rule = PluginParameter(name="tools", label=self._label(), required=True, default=None)
+        assert init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, []) == []
+        with pytest.raises(ValueError, match="not found in tool config"):
+            init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, None)
+
 
 class TestPluginDaemonEntities:
     def test_credential_type_helpers(self):

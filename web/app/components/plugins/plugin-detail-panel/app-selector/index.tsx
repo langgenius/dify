@@ -137,7 +137,7 @@ export function AppSelector({
         sideOffset={offset}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="relative min-h-20 w-97.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="flex flex-col gap-1 px-4 py-3">
             <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
               {t(($) => $['appSelector.label'], { ns: 'app' })}

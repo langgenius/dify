@@ -28,7 +28,7 @@ export function AppInfoDetailDrawer({ open, onClose, children }: AppInfoDetailDr
         <DrawerViewport>
           <DrawerPopup
             aria-label="App info"
-            className="border-divider-burn bg-app-detail-bg p-0 data-[swipe-direction=left]:top-2 data-[swipe-direction=left]:bottom-2 data-[swipe-direction=left]:left-2 data-[swipe-direction=left]:h-auto data-[swipe-direction=left]:w-[452px] data-[swipe-direction=left]:max-w-[calc(100vw-1rem)] data-[swipe-direction=left]:rounded-2xl data-[swipe-direction=left]:border-r"
+            className="border-divider-burn bg-app-detail-bg p-0 data-[swipe-direction=left]:top-2 data-[swipe-direction=left]:bottom-2 data-[swipe-direction=left]:left-2 data-[swipe-direction=left]:h-auto data-[swipe-direction=left]:w-113 data-[swipe-direction=left]:max-w-[calc(100vw-1rem)] data-[swipe-direction=left]:rounded-2xl data-[swipe-direction=left]:border-r"
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               {children}

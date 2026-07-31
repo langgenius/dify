@@ -3,10 +3,13 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContextSelector } from '@/context/modal-context'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -19,9 +22,7 @@ export function ArchivedLogsNotice() {
   })
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { enableBilling, plan } = useProviderContext()
-  const setShowAccountSettingModal = useModalContextSelector(
-    (state) => state.setShowAccountSettingModal,
-  )
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   if (
     deploymentEdition !== 'CLOUD' ||
@@ -53,11 +54,7 @@ export function ArchivedLogsNotice() {
         <Button
           variant="primary"
           className="shrink-0"
-          onClick={() =>
-            setShowAccountSettingModal({
-              payload: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
-            })
-          }
+          onClick={() => setSettingsDestination('workflow-log-archives')}
         >
           {t(($) => $['archives.notice.action'], { ns: 'appLog' })}
         </Button>

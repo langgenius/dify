@@ -128,7 +128,7 @@ export function AccessSubjectAddButton({
         onClick={() => {
           if (open) closeMenu()
         }}
-        className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
+        className="h-6 w-auto min-w-13 shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
       >
         <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
           <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
@@ -176,8 +176,8 @@ export function AccessSubjectAddButton({
               )}
               {hasResults ? (
                 <>
-                  <ComboboxList className="max-h-none p-1">
-                    {(subject: Subject) => (
+                  <ComboboxList<Subject> className="max-h-none p-1">
+                    {(subject) => (
                       <SubjectItem
                         key={getSubjectValue(subject)}
                         subject={subject}

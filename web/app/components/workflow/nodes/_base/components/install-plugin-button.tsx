@@ -1,4 +1,5 @@
-import type { ComponentProps, MouseEventHandler } from 'react'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
@@ -8,7 +9,7 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import { TaskStatus } from '@/app/components/plugins/types'
 import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 
-type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
+type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
   uniqueIdentifier: string
   extraIdentifiers?: string[]
   onSuccess?: () => void

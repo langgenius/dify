@@ -282,6 +282,7 @@ const WorkspaceRoleCheckboxList = ({
               </ul>
             ) : (
               <RadioGroup
+                aria-label={t(($) => $['role.workspaceRoles.title'], { ns: 'permission' })}
                 value={selectedRoleIds[0] ?? ''}
                 onValueChange={handleRadioValueChange}
                 className="flex-col items-stretch gap-0.5 pb-2"

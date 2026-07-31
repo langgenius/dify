@@ -148,7 +148,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
       style={{ width: `${panelWidth}px` }}
     >
       <div
-        className="absolute top-1/2 bottom-0 left-[3px] z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize rounded bg-gray-300"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
@@ -161,33 +161,33 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {hasInputTab && (
             <div
-              className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'INPUT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'}`}
+              className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'INPUT' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'}`}
               onClick={() => setSelectedTab('INPUT')}
             >
               {t(($) => $.input, { ns: 'runLog' })}
             </div>
           )}
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'RESULT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'RESULT' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? 'cursor-not-allowed! opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('RESULT')}
           >
             {t(($) => $.result, { ns: 'runLog' })}
           </div>
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'DETAIL' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'DETAIL' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? 'cursor-not-allowed! opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('DETAIL')}
           >
             {t(($) => $.detail, { ns: 'runLog' })}
           </div>
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'TRACING' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'TRACING' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? 'cursor-not-allowed! opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('TRACING')}
           >
             {t(($) => $.tracing, { ns: 'runLog' })}
           </div>
         </div>
         <div
-          className={`h-0 grow overflow-y-auto rounded-b-2xl ${currentTab === 'RESULT' || currentTab === 'TRACING' ? '!bg-background-section-burn' : 'bg-components-panel-bg'}`}
+          className={`h-0 grow overflow-y-auto rounded-b-2xl ${currentTab === 'RESULT' || currentTab === 'TRACING' ? 'bg-background-section-burn!' : 'bg-components-panel-bg'}`}
         >
           {currentTab === 'INPUT' && hasInputTab && (
             <>
@@ -196,7 +196,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
                   <div key={field.variable} className="mb-2 last-of-type:mb-0">
                     <FormItem
                       autoFocus={index === 0}
-                      className="!block"
+                      className="block!"
                       payload={field}
                       value={inputs[field.variable]}
                       onChange={(value) => handleValueChange(field.variable, value)}
@@ -277,7 +277,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-            <div className="flex h-full items-center justify-center !bg-background-section-burn">
+            <div className="flex h-full items-center justify-center bg-background-section-burn!">
               <Loading />
             </div>
           )}

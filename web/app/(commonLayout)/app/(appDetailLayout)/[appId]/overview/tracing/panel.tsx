@@ -251,7 +251,7 @@ const Panel: FC = () => {
   if (!isLoaded) {
     return (
       <div className="mb-3 flex items-center justify-between">
-        <div className="w-[200px]">
+        <div className="w-50">
           <Loading />
         </div>
       </div>

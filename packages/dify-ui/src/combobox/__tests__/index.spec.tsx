@@ -265,8 +265,8 @@ describe('Combobox wrappers', () => {
             <ComboboxInput aria-label="Search resources" />
           </ComboboxInputGroup>
           <ComboboxContent>
-            <ComboboxList>
-              {(item: string) => (
+            <ComboboxList<string>>
+              {(item) => (
                 <ComboboxItem key={item} value={item}>
                   <ComboboxItemText>{item}</ComboboxItemText>
                   <ComboboxItemIndicator />
@@ -300,15 +300,32 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Multiple selection chips', () => {
+    it('should expose a controlled null value to a typed multiple value renderer', async () => {
+      const screen = await renderWithSafeViewport(
+        <Combobox<string, true> multiple value={null}>
+          <ComboboxInputGroup>
+            <ComboboxValue<string, true>>
+              {(selectedValue) =>
+                selectedValue === null ? 'No reviewers selected' : selectedValue.join(', ')
+              }
+            </ComboboxValue>
+            <ComboboxInput aria-label="Reviewers" />
+          </ComboboxInputGroup>
+        </Combobox>,
+      )
+
+      await expect.element(screen.getByText('No reviewers selected')).toBeInTheDocument()
+    })
+
     it('should render chip wrappers and default remove button label', async () => {
       const screen = await renderWithSafeViewport(
         <Combobox multiple defaultValue={['maya']} items={['maya', 'nora']}>
           <ComboboxInputGroup>
             <ComboboxChips className="custom-chips" data-testid="chips">
-              <ComboboxValue>
-                {(selectedValue: string[]) => (
+              <ComboboxValue<string, true>>
+                {(selectedValue) => (
                   <React.Fragment>
-                    {selectedValue.map((item) => (
+                    {selectedValue?.map((item) => (
                       <ComboboxChip key={item} className="custom-chip">
                         <span>{item}</span>
                         <ComboboxChipRemove data-testid="remove-chip" />
@@ -337,10 +354,10 @@ describe('Combobox wrappers', () => {
         <Combobox multiple defaultValue={['maya']} items={['maya']}>
           <ComboboxInputGroup>
             <ComboboxChips>
-              <ComboboxValue>
-                {(selectedValue: string[]) => (
+              <ComboboxValue<string, true>>
+                {(selectedValue) => (
                   <React.Fragment>
-                    {selectedValue.map((item) => (
+                    {selectedValue?.map((item) => (
                       <ComboboxChip key={item}>
                         <span id="remove-maya">Remove Maya</span>
                         <ComboboxChipRemove aria-labelledby="remove-maya" />

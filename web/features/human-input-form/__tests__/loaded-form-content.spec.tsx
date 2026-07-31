@@ -36,7 +36,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/logo/dify-logo', () => ({
-  default: () => <div>dify logo</div>,
+  DifyLogo: () => <div>dify logo</div>,
 }))
 
 describe('LoadedFormContent', () => {

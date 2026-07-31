@@ -21,7 +21,7 @@
   "archives.empty.title": "Nessun log archiviato",
   "archives.error.description": "Aggiorna la pagina o riprova più tardi.",
   "archives.error.title": "Impossibile caricare i log archiviati",
-  "archives.notice.action": "Visualizza log archiviati",
+  "archives.notice.action": "Apri log archiviati",
   "archives.notice.description": "Alcuni log in questo intervallo di tempo potrebbero essere stati archiviati.",
   "archives.summary.latest": "Archivio più recente",
   "archives.summary.months": "Mesi archiviati",

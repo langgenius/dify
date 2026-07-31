@@ -37,8 +37,8 @@ const PermissionRoleChip = ({
 
   const chipRootClassName = cn(
     'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body px-1.5 py-0.5 system-xs-medium text-text-primary shadow-xs transition-colors',
-    'hover:bg-background-section-burn has-[[data-popup-open]]:bg-background-section-burn',
-    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-state-accent-solid',
+    'hover:bg-background-section-burn has-data-popup-open:bg-background-section-burn',
+    'has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
     className,
   )
 

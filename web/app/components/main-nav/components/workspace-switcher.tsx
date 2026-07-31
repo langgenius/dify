@@ -89,15 +89,15 @@ function WorkspaceSwitchControls({
             sideOffset={4}
             popupClassName="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
           >
-            <DropdownMenuRadioGroup
+            <DropdownMenuRadioGroup<WorkspaceSort>
               value={sort}
               onValueChange={(value) => {
-                onSortChange(value as WorkspaceSort)
+                onSortChange(value)
                 setSortMenuOpen(false)
               }}
             >
               {sortOptions.map((option) => (
-                <DropdownMenuRadioItem
+                <DropdownMenuRadioItem<WorkspaceSort>
                   key={option.value}
                   value={option.value}
                   className="mx-0 h-8 gap-1 px-2 py-1"

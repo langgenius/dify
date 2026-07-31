@@ -162,7 +162,7 @@ export const useVariableOptions = (
           return (
             <VariableMenuItem
               title={item.value}
-              icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
+              icon={<BracketsX className="h-3.5 w-3.5 text-text-accent" />}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -190,7 +190,7 @@ export const useVariableOptions = (
         return (
           <VariableMenuItem
             title={t(($) => $['promptEditor.variable.modal.add'], { ns: 'common' })}
-            icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
+            icon={<BracketsX className="h-3.5 w-3.5 text-text-accent" />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -233,7 +233,7 @@ export const useExternalToolOptions = (
               title={item.name}
               icon={
                 <AppIcon
-                  className="h-[14px]! w-[14px]!"
+                  className="h-3.5! w-3.5!"
                   icon={item.icon}
                   background={item.icon_background}
                 />
@@ -266,7 +266,7 @@ export const useExternalToolOptions = (
         return (
           <VariableMenuItem
             title={t(($) => $['promptEditor.variable.modal.addTool'], { ns: 'common' })}
-            icon={<Tool03 className="h-[14px] w-[14px] text-text-accent" />}
+            icon={<Tool03 className="h-3.5 w-3.5 text-text-accent" />}
             extraElement={<ArrowUpRight className="size-3 text-text-tertiary" />}
             queryString={queryString}
             isSelected={isSelected}

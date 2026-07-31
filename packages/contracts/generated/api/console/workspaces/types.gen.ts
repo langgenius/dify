@@ -616,6 +616,7 @@ export type PluginTaskResponse = {
 
 export type ParserUninstall = {
   plugin_installation_id: string
+  preserve_credentials?: boolean
 }
 
 export type ParserGithubUpgrade = {

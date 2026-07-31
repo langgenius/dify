@@ -18,7 +18,6 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
 
   return (
     <AccountDropdown
-      variant="mainNav"
       trigger={({ isOpen, ariaLabel }) => (
         <button
           type="button"
@@ -26,7 +25,7 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
           title={userProfile.name}
           className={cn(
             'flex min-w-0 shrink items-center rounded-full text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default disabled:hover:bg-transparent',
-            compact ? 'justify-center p-1' : 'max-w-[180px] gap-3 py-1 pr-4 pl-1',
+            compact ? 'justify-center p-1' : 'max-w-45 gap-3 py-1 pr-4 pl-1',
             isOpen && 'bg-state-base-hover',
           )}
         >

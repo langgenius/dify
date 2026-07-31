@@ -112,8 +112,8 @@ const ConditionNumberInput = ({
             >
               <div
                 className={cn(
-                  'w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg',
-                  isShort && 'w-[200px]',
+                  'w-74 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg',
+                  isShort && 'w-50',
                 )}
               >
                 <VarReferenceVars vars={variables} onChange={handleSelectVariable} />
