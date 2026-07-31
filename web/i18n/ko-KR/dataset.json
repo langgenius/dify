@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "그래프 관계",
   "newKnowledge.overview.indexCoverage": "지수 적용 범위",
   "newKnowledge.overview.indexedDocuments": "색인이 생성된 {{total}} 문서 중 {{indexed}}",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} 슬라이스",
   "newKnowledge.overview.indexing": "첫 번째 소스 색인 생성",
   "newKnowledge.overview.indexingConnectedDescription": "성공적으로 연결되었습니다. 문서를 동기화하고 색인화하는 데는 일반적으로 몇 분 정도 걸립니다.",
   "newKnowledge.overview.indexingDescription": "문서가 처리되면서 개요가 채워집니다.",

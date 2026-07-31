@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "روابط نمودار",
   "newKnowledge.overview.indexCoverage": "پوشش شاخص",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} از اسناد {{total}} نمایه شده است",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} بخش",
   "newKnowledge.overview.indexing": "نمایه سازی اولین منبع شما",
   "newKnowledge.overview.indexingConnectedDescription": "با موفقیت وصل شد. همگام سازی و نمایه سازی اسناد شما معمولا چند دقیقه طول می کشد.",
   "newKnowledge.overview.indexingDescription": "نمای کلی شما با پردازش اسناد تکمیل می شود.",

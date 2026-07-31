@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Relații din graf",
   "newKnowledge.overview.indexCoverage": "Acoperirea indexului",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} din {{total}} documente indexate",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} segmente",
   "newKnowledge.overview.indexing": "Se indexează prima sursă",
   "newKnowledge.overview.indexingConnectedDescription": "Conectarea a reușit. Sincronizarea și indexarea documentelor durează de obicei câteva minute.",
   "newKnowledge.overview.indexingDescription": "Prezentarea generală se va completa pe măsură ce documentele sunt procesate.",

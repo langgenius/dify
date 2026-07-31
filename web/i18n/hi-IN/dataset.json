@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "ग्राफ़ संबंध",
   "newKnowledge.overview.indexCoverage": "सूचकांक कवरेज",
   "newKnowledge.overview.indexedDocuments": "{{total}} दस्तावेज़ों में से {{indexed}} अनुक्रमित",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} स्लाइस",
   "newKnowledge.overview.indexing": "अपने पहले स्रोत को अनुक्रमित करना",
   "newKnowledge.overview.indexingConnectedDescription": "सफलतापूर्वक कनेक्ट हुआ. आपके दस्तावेज़ों को समन्वयित और अनुक्रमित करने में आमतौर पर कुछ मिनट लगते हैं।",
   "newKnowledge.overview.indexingDescription": "दस्तावेज़ संसाधित होते ही आपका अवलोकन भर जाएगा।",

@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Graph relations",
   "newKnowledge.overview.indexCoverage": "Index coverage",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} of {{total}} documents indexed",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} slices",
   "newKnowledge.overview.indexing": "Indexing your first source",
   "newKnowledge.overview.indexingConnectedDescription": "Connected successfully. Syncing and indexing your documents usually takes a few minutes.",
   "newKnowledge.overview.indexingDescription": "Your overview will fill in as documents are processed.",

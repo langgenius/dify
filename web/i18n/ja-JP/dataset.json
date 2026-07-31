@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "グラフ関係",
   "newKnowledge.overview.indexCoverage": "インデックスカバレッジ",
   "newKnowledge.overview.indexedDocuments": "{{total}} ドキュメント中 {{indexed}} がインデックス付けされました",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} スライス",
   "newKnowledge.overview.indexing": "最初のソースのインデックス作成",
   "newKnowledge.overview.indexingConnectedDescription": "正常に接続されました。ドキュメントの同期とインデックス作成には通常、数分かかります。",
   "newKnowledge.overview.indexingDescription": "文書が処理されると、概要が入力されます。",

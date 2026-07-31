@@ -56,6 +56,7 @@ type OverviewWindow = '24h' | '7d' | '30d'
 type ActivityRange = 'today' | '7d' | '30d' | '90d' | 'all'
 
 const WINDOWS: OverviewWindow[] = ['24h', '7d', '30d']
+const QUERY_OUTCOMES_WINDOW: OverviewWindow = '7d'
 const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'queued',
   'running',
@@ -743,11 +744,11 @@ function RecentActivity({
           <div
             role="table"
             aria-label={t(($) => $['newKnowledge.overview.recentActivity'])}
-            className="min-w-140"
+            className="min-w-151"
           >
             <div
               role="row"
-              className="grid grid-cols-[72px_minmax(280px,1fr)_140px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
+              className="grid grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
             >
               <span role="columnheader" className="opacity-0">
                 {t(($) => $['newKnowledge.overview.when'])}
@@ -768,16 +769,13 @@ function RecentActivity({
                     <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
                   </div>
                 ))
-              : tasks.slice(0, 5).map((task, index) => (
+              : tasks.slice(0, 5).map((task) => (
                   <div
                     key={task.id}
                     role="row"
-                    className={cn(
-                      'grid h-9 grid-cols-[72px_minmax(280px,1fr)_140px] items-center gap-3 px-0 system-xs-regular',
-                      index === 1 && '-mx-3 rounded-lg bg-state-base-hover px-3',
-                    )}
+                    className="-mx-3 grid h-9 grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 rounded-lg px-3 system-xs-regular transition-colors hover:bg-state-base-hover motion-reduce:transition-none"
                   >
-                    <span role="cell" className="text-text-tertiary">
+                    <span role="cell" className="whitespace-nowrap text-text-tertiary">
                       {formatWhen(task.updated_at)}
                     </span>
                     <span role="cell" className="min-w-0 truncate text-text-secondary">
@@ -1173,7 +1171,7 @@ function InventoryPanel({
                   value: compactNumber(inventory?.graph_relations.total ?? 0),
                 },
                 {
-                  detail: t(($) => $['newKnowledge.overview.indexedDocuments'], {
+                  detail: t(($) => $['newKnowledge.overview.indexedSlices'], {
                     indexed: inventory?.index_coverage.indexed ?? 0,
                     total: inventory?.index_coverage.total ?? 0,
                   }),
@@ -1363,7 +1361,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get.queryOptions({
       input: {
         params: { control_space_id: knowledgeSpaceId },
-        query: { window },
+        query: { window: QUERY_OUTCOMES_WINDOW },
       },
       refetchInterval: (query) =>
         overviewRefreshInterval({

@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "圖譜關係",
   "newKnowledge.overview.indexCoverage": "索引覆蓋率",
   "newKnowledge.overview.indexedDocuments": "已索引 {{indexed}} / {{total}} 個文件",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} 個切片",
   "newKnowledge.overview.indexing": "正在索引第一個資料來源",
   "newKnowledge.overview.indexingConnectedDescription": "連線成功。同步和建立文件索引通常需要幾分鐘。",
   "newKnowledge.overview.indexingDescription": "文件處理完成後，概覽資料會自動顯示。",

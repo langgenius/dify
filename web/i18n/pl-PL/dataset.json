@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Relacje graficzne",
   "newKnowledge.overview.indexCoverage": "Pokrycie indeksu",
   "newKnowledge.overview.indexedDocuments": "Indeksowane dokumenty {{indexed}} z {{total}}",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} fragmentów",
   "newKnowledge.overview.indexing": "Indeksowanie pierwszego źródła",
   "newKnowledge.overview.indexingConnectedDescription": "Połączono pomyślnie. Synchronizowanie i indeksowanie dokumentów zajmuje zwykle kilka minut.",
   "newKnowledge.overview.indexingDescription": "Przegląd zostanie uzupełniony w miarę przetwarzania dokumentów.",

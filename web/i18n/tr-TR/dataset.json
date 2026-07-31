@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Graf ilişkileri",
   "newKnowledge.overview.indexCoverage": "Dizin kapsamı",
   "newKnowledge.overview.indexedDocuments": "{{total}} belgenin {{indexed}} kadarı dizine eklendi",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} dilim",
   "newKnowledge.overview.indexing": "İlk kaynağınız dizine ekleniyor",
   "newKnowledge.overview.indexingConnectedDescription": "Bağlantı başarılı. Belgelerinizin senkronize edilmesi ve dizine eklenmesi genellikle birkaç dakika sürer.",
   "newKnowledge.overview.indexingDescription": "Belgeler işlendikçe genel bakışınız doldurulacaktır.",

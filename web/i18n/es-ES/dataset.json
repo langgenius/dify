@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Relaciones gráficas",
   "newKnowledge.overview.indexCoverage": "Cobertura del índice",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} de documentos {{total}} indexados",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} fragmentos",
   "newKnowledge.overview.indexing": "Indexando su primera fuente",
   "newKnowledge.overview.indexingConnectedDescription": "Conectado exitosamente. La sincronización e indexación de sus documentos suele tardar unos minutos.",
   "newKnowledge.overview.indexingDescription": "Su descripción general se completará a medida que se procesen los documentos.",

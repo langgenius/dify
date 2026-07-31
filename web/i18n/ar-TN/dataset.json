@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "علاقات الرسم البياني",
   "newKnowledge.overview.indexCoverage": "تغطية الفهرس",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} من وثائق {{total}} مفهرسة",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} شرائح",
   "newKnowledge.overview.indexing": "فهرسة المصدر الأول الخاص بك",
   "newKnowledge.overview.indexingConnectedDescription": "تم الاتصال بنجاح. عادةً ما تستغرق مزامنة مستنداتك وفهرستها بضع دقائق.",
   "newKnowledge.overview.indexingDescription": "سيتم ملء النظرة العامة الخاصة بك أثناء معالجة المستندات.",

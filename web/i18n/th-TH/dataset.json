@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "ความสัมพันธ์ในกราฟ",
   "newKnowledge.overview.indexCoverage": "ความครอบคลุมของดัชนี",
   "newKnowledge.overview.indexedDocuments": "จัดทำดัชนีเอกสารแล้ว {{indexed}} จาก {{total}} รายการ",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} ส่วน",
   "newKnowledge.overview.indexing": "กำลังจัดทำดัชนีแหล่งข้อมูลแรก",
   "newKnowledge.overview.indexingConnectedDescription": "เชื่อมต่อสำเร็จ โดยปกติการซิงค์และจัดทำดัชนีเอกสารจะใช้เวลาสักครู่",
   "newKnowledge.overview.indexingDescription": "ภาพรวมจะเติมข้อมูลเมื่อเอกสารได้รับการประมวลผล",

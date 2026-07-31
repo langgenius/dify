@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Relacije grafa",
   "newKnowledge.overview.indexCoverage": "Pokritost indeksa",
   "newKnowledge.overview.indexedDocuments": "Indeksiranih je {{indexed}} od {{total}} dokumentov",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} izsekov",
   "newKnowledge.overview.indexing": "Indeksiranje prvega vira",
   "newKnowledge.overview.indexingConnectedDescription": "Povezava je uspela. Sinhronizacija in indeksiranje dokumentov običajno trajata nekaj minut.",
   "newKnowledge.overview.indexingDescription": "Pregled se bo dopolnjeval med obdelavo dokumentov.",

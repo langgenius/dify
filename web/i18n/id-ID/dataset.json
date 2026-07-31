@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Hubungan grafik",
   "newKnowledge.overview.indexCoverage": "Cakupan indeks",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} dari dokumen {{total}} diindeks",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} potongan",
   "newKnowledge.overview.indexing": "Mengindeks sumber pertama Anda",
   "newKnowledge.overview.indexingConnectedDescription": "Berhasil terhubung. Menyinkronkan dan mengindeks dokumen Anda biasanya memerlukan waktu beberapa menit.",
   "newKnowledge.overview.indexingDescription": "Ikhtisar Anda akan terisi saat dokumen diproses.",

@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Graphenbeziehungen",
   "newKnowledge.overview.indexCoverage": "Indexabdeckung",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} von {{total}} Dokumenten indiziert",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} Segmente",
   "newKnowledge.overview.indexing": "Indizieren Sie Ihre erste Quelle",
   "newKnowledge.overview.indexingConnectedDescription": "Erfolgreich verbunden. Das Synchronisieren und Indizieren Ihrer Dokumente dauert normalerweise einige Minuten.",
   "newKnowledge.overview.indexingDescription": "Ihre Übersicht füllt sich mit der Bearbeitung der Dokumente.",

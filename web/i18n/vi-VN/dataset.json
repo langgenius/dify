@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Quan hệ đồ thị",
   "newKnowledge.overview.indexCoverage": "Phạm vi lập chỉ mục",
   "newKnowledge.overview.indexedDocuments": "Đã lập chỉ mục {{indexed}} trên {{total}} tài liệu",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} lát cắt",
   "newKnowledge.overview.indexing": "Đang lập chỉ mục nguồn đầu tiên",
   "newKnowledge.overview.indexingConnectedDescription": "Đã kết nối thành công. Quá trình đồng bộ và lập chỉ mục tài liệu thường mất vài phút.",
   "newKnowledge.overview.indexingDescription": "Trang tổng quan sẽ được cập nhật khi tài liệu được xử lý.",

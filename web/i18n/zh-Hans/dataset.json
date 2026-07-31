@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "图谱关系",
   "newKnowledge.overview.indexCoverage": "索引覆盖率",
   "newKnowledge.overview.indexedDocuments": "已索引 {{indexed}} / {{total}} 个文档",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} 个切片",
   "newKnowledge.overview.indexing": "正在索引第一个数据来源",
   "newKnowledge.overview.indexingConnectedDescription": "连接成功。同步和索引文档通常需要几分钟。",
   "newKnowledge.overview.indexingDescription": "文档处理完成后，概览数据会自动显示。",

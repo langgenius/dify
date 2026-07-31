@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Grafiekrelaties",
   "newKnowledge.overview.indexCoverage": "Indexdekking",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} van {{total}}-documenten geïndexeerd",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} segmenten",
   "newKnowledge.overview.indexing": "Het indexeren van uw eerste bron",
   "newKnowledge.overview.indexingConnectedDescription": "Succesvol verbonden. Het synchroniseren en indexeren van uw documenten duurt meestal enkele minuten.",
   "newKnowledge.overview.indexingDescription": "Uw overzicht wordt ingevuld naarmate de documenten worden verwerkt.",

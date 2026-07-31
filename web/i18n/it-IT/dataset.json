@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Relazioni tra grafici",
   "newKnowledge.overview.indexCoverage": "Copertura dell'indice",
   "newKnowledge.overview.indexedDocuments": "{{indexed}} dei documenti {{total}} indicizzati",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} segmenti",
   "newKnowledge.overview.indexing": "Indicizzazione della tua prima fonte",
   "newKnowledge.overview.indexingConnectedDescription": "Connesso con successo. La sincronizzazione e l'indicizzazione dei tuoi documenti richiedono in genere alcuni minuti.",
   "newKnowledge.overview.indexingDescription": "La tua panoramica verrà compilata man mano che i documenti vengono elaborati.",

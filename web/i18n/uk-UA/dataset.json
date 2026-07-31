@@ -348,6 +348,7 @@
   "newKnowledge.overview.graphRelations": "Зв’язки графа",
   "newKnowledge.overview.indexCoverage": "Покриття індексом",
   "newKnowledge.overview.indexedDocuments": "Проіндексовано документів: {{indexed}} із {{total}}",
+  "newKnowledge.overview.indexedSlices": "{{indexed}} / {{total}} фрагментів",
   "newKnowledge.overview.indexing": "Індексування першого джерела",
   "newKnowledge.overview.indexingConnectedDescription": "Підключення успішне. Синхронізація та індексування документів зазвичай тривають кілька хвилин.",
   "newKnowledge.overview.indexingDescription": "Огляд заповнюватиметься в міру обробки документів.",

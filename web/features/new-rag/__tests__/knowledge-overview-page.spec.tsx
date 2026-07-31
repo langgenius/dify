@@ -241,7 +241,7 @@ describe('KnowledgeOverviewPage', () => {
     vi.restoreAllMocks()
   })
 
-  it('refreshes the time-window queries when a user switches the overview range', async () => {
+  it('refreshes the metrics query when a user switches the overview range', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
@@ -252,6 +252,13 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(sevenDayTab).toHaveAttribute('aria-pressed', 'true')
     expect(queryOptionsMocks.stats).toHaveBeenLastCalledWith({
+      input: {
+        params: { control_space_id: 'space-1' },
+        query: { window: '7d' },
+      },
+      refetchInterval: expect.any(Function),
+    })
+    expect(queryOptionsMocks.outcomes).toHaveBeenLastCalledWith({
       input: {
         params: { control_space_id: 'space-1' },
         query: { window: '7d' },
@@ -531,7 +538,7 @@ describe('KnowledgeOverviewPage', () => {
     ).toBeInTheDocument()
     expect(
       within(inventorySection!).queryByText(
-        'dataset.newKnowledge.overview.indexedDocuments:{"indexed":0,"total":0}',
+        'dataset.newKnowledge.overview.indexedSlices:{"indexed":0,"total":0}',
       ),
     ).not.toBeInTheDocument()
   })
@@ -547,6 +554,17 @@ describe('KnowledgeOverviewPage', () => {
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'dataset.newKnowledge.overview.connectSource' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('labels index coverage as slices rather than documents', () => {
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByText('dataset.newKnowledge.overview.indexedSlices:{"indexed":4,"total":5}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":4,"total":5}'),
     ).not.toBeInTheDocument()
   })
 
