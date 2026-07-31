@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "스킬 업로드에 실패했습니다.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": ".zip 또는 .skill 파일을 업로드하세요.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Skill 패키지는 {{sizeLimit}} 이하여야 합니다.",
   "agentDetail.configure.skills.upload.success": "스킬을 업로드했습니다.",
   "agentDetail.configure.skills.upload.title": "스킬 업로드",
   "agentDetail.configure.skills.upload.warning.files": "Markdown 파일만 사용하려면 파일에 업로드하고 프롬프트에서 참조하세요.",

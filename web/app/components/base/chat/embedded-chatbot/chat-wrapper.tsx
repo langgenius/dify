@@ -49,7 +49,7 @@ const ChatWrapper = () => {
     disableFeedback,
     handleFeedback,
     currentChatInstanceRef,
-    themeBuilder,
+    theme,
     clearChatList,
     setClearChatList,
     setIsResponding,
@@ -464,7 +464,7 @@ const ChatWrapper = () => {
       suggestedQuestions={suggestedQuestions}
       answerIcon={answerIcon}
       hideProcessDetail
-      themeBuilder={themeBuilder}
+      theme={theme}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
       sendOnEnter={sendOnEnter}

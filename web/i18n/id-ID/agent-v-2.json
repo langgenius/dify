@@ -222,6 +222,7 @@
   "agentDetail.configure.skills.upload.failed": "Gagal mengunggah keterampilan.",
   "agentDetail.configure.skills.upload.fileType": "ZIP / SKILL",
   "agentDetail.configure.skills.upload.invalidFile": "Unggah file .zip atau .skill.",
+  "agentDetail.configure.skills.upload.sizeLimit": "Ukuran paket keterampilan tidak boleh lebih dari {{sizeLimit}}.",
   "agentDetail.configure.skills.upload.success": "Keterampilan diunggah.",
   "agentDetail.configure.skills.upload.title": "Unggah keterampilan",
   "agentDetail.configure.skills.upload.warning.files": "Jika Anda hanya perlu menggunakan file Markdown, unggah ke File dan rujuk file tersebut dalam prompt Anda.",

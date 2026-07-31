@@ -123,10 +123,9 @@ describe('OperationDropdown', () => {
   describe('Rendering', () => {
     it('should render trigger button with more icon', () => {
       render(<OperationDropdown {...defaultProps} />)
-      const button = screen.getByTestId('dropdown-trigger')
+      const button = screen.getByRole('button', { name: 'common.operation.more' })
       expect(button).toBeInTheDocument()
-      const svg = button?.querySelector('svg')
-      expect(svg).toBeInTheDocument()
+      expect(button.querySelector('.i-ri-more-fill')).toBeInTheDocument()
     })
 
     it('should render medium size by default', () => {

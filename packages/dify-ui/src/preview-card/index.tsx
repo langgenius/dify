@@ -7,8 +7,6 @@ import { cn } from '../cn'
 import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
-
 /**
  * PreviewCard follows Base UI's canonical semantics: a hover/focus-triggered
  * visual enhancement for a link that previews its destination.
@@ -21,10 +19,15 @@ export type { Placement }
  *   opening the popup is itself the trigger's purpose or its content must be
  *   accessible across input modes.
  */
-export const PreviewCard = BasePreviewCard.Root
-export const PreviewCardTrigger = BasePreviewCard.Trigger
-export const PreviewCardViewport = BasePreviewCard.Viewport
-export const createPreviewCardHandle = BasePreviewCard.createHandle
+const PreviewCard = BasePreviewCard.Root
+const PreviewCardTrigger = BasePreviewCard.Trigger
+const PreviewCardViewport = BasePreviewCard.Viewport
+const createPreviewCardHandle = BasePreviewCard.createHandle
+
+type PreviewCardProps<Payload = unknown> = BasePreviewCard.Root.Props<Payload>
+type PreviewCardHandle<Payload = unknown> = BasePreviewCard.Handle<Payload>
+type PreviewCardTriggerProps<Payload = unknown> = BasePreviewCard.Trigger.Props<Payload>
+type PreviewCardViewportProps = BasePreviewCard.Viewport.Props
 
 type PreviewCardContentProps = {
   children: React.ReactNode
@@ -40,7 +43,7 @@ type PreviewCardContentProps = {
   popupProps?: Omit<BasePreviewCard.Popup.Props, 'children' | 'className'>
 }
 
-export function PreviewCardContent({
+function PreviewCardContent({
   children,
   placement = 'bottom',
   sideOffset = 8,
@@ -75,4 +78,19 @@ export function PreviewCardContent({
       </BasePreviewCard.Positioner>
     </BasePreviewCard.Portal>
   )
+}
+
+export {
+  createPreviewCardHandle,
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+  PreviewCardViewport,
+}
+export type {
+  PreviewCardContentProps,
+  PreviewCardHandle,
+  PreviewCardProps,
+  PreviewCardTriggerProps,
+  PreviewCardViewportProps,
 }

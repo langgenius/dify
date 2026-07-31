@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
 import ServiceApi from '@/app/components/datasets/extra-info/service-api'
-import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -60,7 +59,7 @@ export function NewKnowledgeList({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
-  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
+  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
