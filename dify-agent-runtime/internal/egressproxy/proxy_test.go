@@ -12,6 +12,8 @@ import (
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers/simple"
 )
 
 // newTestProxy creates and starts a Proxy backed by a freshly generated CA,
@@ -80,12 +82,9 @@ func TestProxyHTTPCredentialInjection(t *testing.T) {
 	resolver.SetSystemCredentials(map[string]*StoredCredential{
 		"token": {
 			Value: "s3cr3t",
-			Inject: &CredentialInjectionPolicy{
-				Type: SimpleHeader,
-				SimpleHeader: &SimpleHeaderPolicy{
-					HeaderName: "Authorization",
-					Expr:       "Bearer {{.Value}}",
-				},
+			Inject: &simple.Policy{
+				HeaderName: "Authorization",
+				Expr:       "Bearer {{.Value}}",
 			},
 		},
 	})
@@ -118,12 +117,9 @@ func TestProxyHTTPSMitmCredentialInjection(t *testing.T) {
 	resolver.SetSystemCredentials(map[string]*StoredCredential{
 		"token": {
 			Value: "s3cr3t",
-			Inject: &CredentialInjectionPolicy{
-				Type: SimpleHeader,
-				SimpleHeader: &SimpleHeaderPolicy{
-					HeaderName: "Authorization",
-					Expr:       "Bearer {{.Value}}",
-				},
+			Inject: &simple.Policy{
+				HeaderName: "Authorization",
+				Expr:       "Bearer {{.Value}}",
 			},
 		},
 	})

@@ -16,6 +16,9 @@ import (
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/egressproxy"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers/aws"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers/simple"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -201,17 +204,16 @@ func credentialsToStoredMap(creds []Credential) map[string]*egressproxy.StoredCr
 	for i := range creds {
 		c := &creds[i]
 		stored[c.Ref()] = &egressproxy.StoredCredential{
-			Value:  c.Value,
+			Value:  json.RawMessage(c.Value),
 			Inject: buildInjectionPolicy(c.Inject),
 		}
 	}
 	return stored
 }
 
-// buildInjectionPolicy converts an API-level InjectPolicy into the
-// egressproxy's internal CredentialInjectionPolicy representation. Returns
-// nil if inject is nil or unrecognized.
-func buildInjectionPolicy(inject *InjectPolicy) *egressproxy.CredentialInjectionPolicy {
+// buildInjectionPolicy converts an API-level InjectPolicy into a
+// providers.Policy. Returns nil if inject is nil or unrecognized.
+func buildInjectionPolicy(inject *InjectPolicy) providers.Policy {
 	if inject == nil {
 		return nil
 	}
@@ -225,13 +227,20 @@ func buildInjectionPolicy(inject *InjectPolicy) *egressproxy.CredentialInjection
 		if expr == "" {
 			expr = "{{.Value}}"
 		}
-		return &egressproxy.CredentialInjectionPolicy{
-			Type: egressproxy.SimpleHeader,
-			SimpleHeader: &egressproxy.SimpleHeaderPolicy{
-				HeaderName: h.Name,
-				Domains:    h.Domains,
-				Expr:       expr,
-			},
+		return &simple.Policy{
+			HeaderName: h.Name,
+			Domains_:   h.Domains,
+			Expr:       expr,
+		}
+	case InjectTypeAWSSigV4:
+		a := inject.AWSSigV4
+		if a == nil {
+			return nil
+		}
+		return &aws.Policy{
+			Domains_: a.Domains,
+			Region:   a.Region,
+			Service:  a.Service,
 		}
 	default:
 		return nil
@@ -269,16 +278,12 @@ func (s *Service) systemCredentialPlaceholderEnv() map[string]string {
 	if len(s.systemCredentials) == 0 {
 		return nil
 	}
-	env := make(map[string]string, len(s.systemCredentials))
+	env := make(map[string]string)
 	for _, c := range s.systemCredentials {
-		name := c.EnvName
-		if name == "" {
-			name = defaultCredentialEnvName(c.Provider, c.Name)
+		ph := "__secret:" + c.Ref() + "__"
+		for _, name := range credentialEnvNames(c) {
+			env[name] = ph
 		}
-		if name == "" {
-			continue
-		}
-		env[name] = "__secret:" + c.Ref() + "__"
 	}
 	return env
 }
@@ -296,18 +301,32 @@ func (s *Service) sessionCredentialPlaceholderEnv(sandboxID string) map[string]s
 	if len(creds) == 0 {
 		return nil
 	}
-	env := make(map[string]string, len(creds))
+	env := make(map[string]string)
 	for _, c := range creds {
-		name := c.EnvName
-		if name == "" {
-			name = defaultCredentialEnvName(c.Provider, c.Name)
+		ph := "__secret:" + c.Ref() + "__"
+		for _, name := range credentialEnvNames(c) {
+			env[name] = ph
 		}
-		if name == "" {
-			continue
-		}
-		env[name] = "__secret:" + c.Ref() + "__"
 	}
 	return env
+}
+
+// credentialEnvNames returns the environment variable names under which a
+// credential's placeholder should be exposed. If EnvNames is set, those are
+// used. Otherwise, if EnvName is set, it is used. Otherwise, a name is
+// derived from Provider and Name.
+func credentialEnvNames(c Credential) []string {
+	if len(c.EnvNames) > 0 {
+		return c.EnvNames
+	}
+	name := c.EnvName
+	if name == "" {
+		name = defaultCredentialEnvName(c.Provider, c.Name)
+	}
+	if name == "" {
+		return nil
+	}
+	return []string{name}
 }
 
 // envNameSanitizer matches runs of characters that cannot appear in a POSIX

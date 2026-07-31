@@ -1,12 +1,43 @@
 package server
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/egressproxy"
 )
+
+// jsonStr wraps a Go string as a CredentialValue (JSON string literal), for
+// use as Credential.Value in tests.
+func jsonStr(s string) CredentialValue {
+	b, _ := json.Marshal(s)
+	return CredentialValue(b)
+}
+
+// rawStr extracts a Go string from a Credential.Value (CredentialValue) or
+// StoredCredential.Value (any holding json.RawMessage). Panics on failure.
+func rawStr(v any) string {
+	switch x := v.(type) {
+	case CredentialValue:
+		var s string
+		if err := json.Unmarshal(x, &s); err != nil {
+			panic(err)
+		}
+		return s
+	case json.RawMessage:
+		var s string
+		if err := json.Unmarshal(x, &s); err != nil {
+			panic(err)
+		}
+		return s
+	case string:
+		return x
+	default:
+		panic("unexpected value type")
+	}
+}
 
 func TestLoadCredentialManifest(t *testing.T) {
 	dir := t.TempDir()
@@ -39,7 +70,7 @@ func TestLoadCredentialManifest(t *testing.T) {
 	if len(creds) != 1 {
 		t.Fatalf("expected 1 credential, got %d", len(creds))
 	}
-	if creds[0].Ref() != "custom_saas/api_key" || creds[0].Value != "sk-system-default" {
+	if creds[0].Ref() != "custom_saas/api_key" || rawStr(creds[0].Value) != "sk-system-default" {
 		t.Errorf("unexpected credential: %+v", creds[0])
 	}
 }
@@ -71,7 +102,7 @@ credentials:
 	if len(creds) != 1 {
 		t.Fatalf("expected 1 credential, got %d", len(creds))
 	}
-	if creds[0].Ref() != "custom_saas/api_key" || creds[0].Value != "sk-system-default" {
+	if creds[0].Ref() != "custom_saas/api_key" || rawStr(creds[0].Value) != "sk-system-default" {
 		t.Errorf("unexpected credential: %+v", creds[0])
 	}
 	if creds[0].Inject == nil || creds[0].Inject.HTTPHeader == nil || creds[0].Inject.HTTPHeader.Name != "Authorization" {
@@ -159,7 +190,7 @@ credentials:
 
 	refs := map[string]string{}
 	for _, c := range creds {
-		refs[c.Ref()] = c.Value
+		refs[c.Ref()] = rawStr(c.Value)
 	}
 	if refs["tavily/api_key"] != "tvly-aaa" {
 		t.Errorf("tavily/api_key: got %q", refs["tavily/api_key"])
@@ -209,7 +240,7 @@ func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 		{
 			Provider: "custom_saas",
 			Name:     "api_key",
-			Value:    "sk-system-default",
+			Value:    jsonStr("sk-system-default"),
 			Inject: &InjectPolicy{
 				Type: InjectTypeHTTPHeader,
 				HTTPHeader: &HTTPHeaderInject{
@@ -222,24 +253,24 @@ func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 	}))
 
 	// No sandbox_id yet: only the system default is visible.
-	if cred := s.egressResolver.ResolveFor("sandbox-a", "custom_saas/api_key"); cred == nil || cred.Value != "sk-system-default" {
+	if cred := s.egressResolver.ResolveFor("sandbox-a", "custom_saas/api_key"); cred == nil || rawStr(cred.Value) != "sk-system-default" {
 		t.Fatalf("expected system credential, got %v", cred)
 	}
 
 	// sandbox-a registers its own override via PUT /v1/prepare.
 	if err := s.PrepareCredentials("sandbox-a", []Credential{
-		{Provider: "custom_saas", Name: "api_key", Value: "sk-sandbox-a-override"},
+		{Provider: "custom_saas", Name: "api_key", Value: jsonStr("sk-sandbox-a-override")},
 	}); err != nil {
 		t.Fatalf("PrepareCredentials: %v", err)
 	}
 
-	if cred := s.egressResolver.ResolveFor("sandbox-a", "custom_saas/api_key"); cred == nil || cred.Value != "sk-sandbox-a-override" {
+	if cred := s.egressResolver.ResolveFor("sandbox-a", "custom_saas/api_key"); cred == nil || rawStr(cred.Value) != "sk-sandbox-a-override" {
 		t.Fatalf("expected sandbox-a override, got %v", cred)
 	}
 
 	// A different sandbox session must still see only the system default:
 	// sandbox-a's registration must not leak across sessions.
-	if cred := s.egressResolver.ResolveFor("sandbox-b", "custom_saas/api_key"); cred == nil || cred.Value != "sk-system-default" {
+	if cred := s.egressResolver.ResolveFor("sandbox-b", "custom_saas/api_key"); cred == nil || rawStr(cred.Value) != "sk-system-default" {
 		t.Fatalf("expected sandbox-b to see system default, got %v", cred)
 	}
 
@@ -251,7 +282,7 @@ func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 
 func TestPrepareCredentialsRejectsInvalidSandboxID(t *testing.T) {
 	s := newTestService(t)
-	err := s.PrepareCredentials("../escape", []Credential{{Provider: "p", Name: "n", Value: "v"}})
+	err := s.PrepareCredentials("../escape", []Credential{{Provider: "p", Name: "n", Value: jsonStr("v")}})
 	if err == nil {
 		t.Fatal("expected error for invalid sandbox_id")
 	}
@@ -259,7 +290,7 @@ func TestPrepareCredentialsRejectsInvalidSandboxID(t *testing.T) {
 
 func TestPrepareCredentialsRequiresEgressProxyEnabled(t *testing.T) {
 	s := &Service{config: &Config{RuntimeDir: t.TempDir()}}
-	err := s.PrepareCredentials("sandbox-a", []Credential{{Provider: "p", Name: "n", Value: "v"}})
+	err := s.PrepareCredentials("sandbox-a", []Credential{{Provider: "p", Name: "n", Value: jsonStr("v")}})
 	if err == nil {
 		t.Fatal("expected error when egress proxy is disabled")
 	}
@@ -289,8 +320,8 @@ func TestDefaultCredentialEnvName(t *testing.T) {
 func TestSystemCredentialPlaceholderEnvInjectedIntoJob(t *testing.T) {
 	s := newTestService(t)
 	s.systemCredentials = []Credential{
-		{Provider: "custom_saas", Name: "api_key", Value: "sk-system-default"},
-		{Provider: "explicit", Name: "ref", Value: "sk-explicit", EnvName: "MY_CUSTOM_ENV"},
+		{Provider: "custom_saas", Name: "api_key", Value: jsonStr("sk-system-default")},
+		{Provider: "explicit", Name: "ref", Value: jsonStr("sk-explicit"), EnvName: "MY_CUSTOM_ENV"},
 	}
 
 	env := s.systemCredentialPlaceholderEnv()
@@ -308,7 +339,7 @@ func TestSystemCredentialPlaceholderEnvInjectedIntoJob(t *testing.T) {
 func TestSessionCredentialPlaceholderEnvScopedToSandbox(t *testing.T) {
 	s := newTestService(t)
 	if err := s.PrepareCredentials("sandbox-a", []Credential{
-		{Provider: "myprovider", Name: "mysecret", Value: "sk-sandbox-a"},
+		{Provider: "myprovider", Name: "mysecret", Value: jsonStr("sk-sandbox-a")},
 	}); err != nil {
 		t.Fatalf("PrepareCredentials: %v", err)
 	}

@@ -107,14 +107,53 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
+// CredentialValue is the credential's secret value. For simple credentials
+// this is a string; for structured credentials (e.g. AWS) this is a JSON
+// object. It wraps json.RawMessage so the raw bytes are preserved and
+// decoded by the injection policy at request time. It also implements
+// yaml.Unmarshaler so YAML manifests can use plain strings or nested maps.
+type CredentialValue json.RawMessage
+
+// UnmarshalJSON implements json.Unmarshaler. It accepts the raw JSON bytes
+// directly (string or object), preserving them for later decoding by the
+// injection policy.
+func (c *CredentialValue) UnmarshalJSON(data []byte) error {
+	*c = CredentialValue(data)
+	return nil
+}
+
+// UnmarshalYAML allows CredentialValue to be set from a YAML string or map.
+// YAML strings are wrapped as JSON strings; YAML maps are re-encoded as JSON.
+func (c *CredentialValue) UnmarshalYAML(node *yaml.Node) error {
+	// Try string first.
+	var s string
+	if err := node.Decode(&s); err == nil {
+		b, _ := json.Marshal(s)
+		*c = CredentialValue(b)
+		return nil
+	}
+	// Fall back to a generic map (structured credential).
+	var m map[string]any
+	if err := node.Decode(&m); err != nil {
+		return fmt.Errorf("credential value: expected string or map, got %v", err)
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("credential value: marshal map: %w", err)
+	}
+	*c = CredentialValue(b)
+	return nil
+}
+
 // Credential represents a secret with its identity and injection policy.
 type Credential struct {
 	// Provider identifies the credential source (e.g. "github", "dify_agent_stub").
 	Provider string `json:"provider" yaml:"provider"`
 	// Name identifies the credential within the provider (e.g. "token", "auth_jwe").
 	Name string `json:"name" yaml:"name"`
-	// Value is the actual secret.
-	Value string `json:"value" yaml:"value"`
+	// Value is the actual secret. For simple credentials this is a string;
+	// for structured credentials (e.g. AWS) this is a JSON object.
+	Value CredentialValue `json:"value" yaml:"value"`
 	// Inject defines how the credential is automatically injected into HTTP requests.
 	// If nil, the credential is only resolved via __secret:provider/name__ placeholders.
 	Inject *InjectPolicy `json:"inject,omitempty" yaml:"inject,omitempty"`
@@ -122,6 +161,13 @@ type Credential struct {
 	// credential's __secret:provider/name__ placeholder to jobs. If empty,
 	// a name is derived from Provider and Name.
 	EnvName string `json:"env_name,omitempty" yaml:"env_name,omitempty"`
+	// EnvNames exposes the credential's __secret:provider/name__ placeholder
+	// under multiple environment variable names. This is useful for
+	// structured credentials that need to populate several standard env vars
+	// (e.g. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN all
+	// pointing to the same placeholder). If both EnvName and EnvNames are
+	// set, all names are used.
+	EnvNames []string `json:"env_names,omitempty" yaml:"env_names,omitempty"`
 }
 
 // InjectType enumerates supported credential injection strategies.
@@ -130,6 +176,9 @@ type InjectType string
 const (
 	// InjectTypeHTTPHeader injects the credential as an HTTP request header.
 	InjectTypeHTTPHeader InjectType = "http-header"
+	// InjectTypeAWSSigV4 re-signs matching requests with AWS Signature
+	// Version 4 using the credential's structured value.
+	InjectTypeAWSSigV4 InjectType = "aws-sigv4"
 )
 
 // InjectPolicy defines how a credential is proactively injected into outbound HTTP requests.
@@ -137,6 +186,7 @@ const (
 type InjectPolicy struct {
 	Type       InjectType        `json:"type" yaml:"type"`
 	HTTPHeader *HTTPHeaderInject `json:"http_header,omitempty" yaml:"http_header,omitempty"`
+	AWSSigV4   *AWSSigV4Inject   `json:"aws_sigv4,omitempty" yaml:"aws_sigv4,omitempty"`
 }
 
 // HTTPHeaderInject injects a credential value as an HTTP request header.
@@ -149,6 +199,25 @@ type HTTPHeaderInject struct {
 	// Domains restricts injection to requests matching these host patterns.
 	// Supports wildcard prefix (e.g. "*.github.com", "api.example.com").
 	// Empty means inject on all domains.
+	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
+}
+
+// AWSSigV4Inject configures AWS Signature Version 4 re-signing. The
+// credential Value must be a JSON object with access_key_id and
+// secret_access_key (session_token optional). Client-supplied AWS auth
+// headers are stripped before re-signing, so both curl (no signature) and
+// aws cli (placeholder-based fake signature) work transparently.
+type AWSSigV4Inject struct {
+	// Region is the AWS region for signing. If empty, it is extracted from
+	// the request hostname (e.g. s3.us-east-1.amazonaws.com → us-east-1).
+	// For region-less services like Cloudflare R2, set this to "auto".
+	Region string `json:"region,omitempty" yaml:"region,omitempty"`
+	// Service is the AWS service name (e.g. "s3", "execute-api"). Defaults
+	// to "s3" if empty.
+	Service string `json:"service,omitempty" yaml:"service,omitempty"`
+	// Domains restricts signing to requests matching these host patterns.
+	// Supports wildcard prefix (e.g. "*.s3.amazonaws.com"). Empty means
+	// all domains.
 	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
 }
 

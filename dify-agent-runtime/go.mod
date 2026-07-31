@@ -3,6 +3,7 @@ module github.com/langgenius/dify/dify-agent-runtime
 go 1.26.5
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.43.0
 	github.com/elazarl/goproxy v1.8.5
 	github.com/landlock-lsm/go-landlock v0.9.0
 	github.com/spf13/cobra v1.10.2
@@ -13,6 +14,7 @@ require (
 )
 
 require (
+	github.com/aws/smithy-go v1.27.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
