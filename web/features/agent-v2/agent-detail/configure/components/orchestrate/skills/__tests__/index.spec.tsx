@@ -577,9 +577,7 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
+    await openUploadSkillDialog(user)
 
     expect(
       await screen.findByText(
@@ -593,9 +591,7 @@ describe('AgentSkills', () => {
     mocks.fileUploadConfig.skill_file_size_limit = 1
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
+    await openUploadSkillDialog(user)
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
