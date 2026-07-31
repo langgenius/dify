@@ -1,4 +1,7 @@
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  DatePickerProps,
+  TriggerProps,
+} from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
@@ -27,8 +30,8 @@ const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
     [onChange],
   )
 
-  const renderTrigger = useCallback(
-    ({ handleClickTrigger }: TriggerProps) => {
+  const renderTrigger = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
+    (props, _state, { handleClickTrigger }: TriggerProps) => {
       const hasValue = Boolean(value)
       const triggerText = value
         ? dayjs(value * 1000)
@@ -37,7 +40,7 @@ const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
         : t(($) => $['nodes.knowledgeRetrieval.metadata.panel.datePlaceholder'], { ns: 'workflow' })
 
       return (
-        <div className="group flex items-center">
+        <div {...props} className={cn('group flex items-center', props.className)}>
           <button
             type="button"
             className={cn(

@@ -160,8 +160,9 @@ const InstallPluginDropdown = ({
           accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
         />
         <DropdownMenuTrigger
-          render={
+          render={(props, state) => (
             <Button
+              {...props}
               variant={triggerVariant}
               disabled={disabled}
               title={buttonLabel}
@@ -169,19 +170,18 @@ const InstallPluginDropdown = ({
               className={cn(
                 'size-full p-2',
                 triggerClassName,
-                !disabled && isMenuOpen && triggerOpenClassName,
+                state.open && triggerOpenClassName,
+                props.className,
               )}
-            />
-          }
-        >
-          <>
-            <RiAddCircleFill className="size-4 shrink-0" />
-            <span className={cn(showTriggerArrow ? 'pl-1' : 'min-w-0 flex-1 px-0.5 text-left')}>
-              {buttonLabel}
-            </span>
-            {showTriggerArrow && <RiArrowDownSLine className="ml-1 size-4" />}
-          </>
-        </DropdownMenuTrigger>
+            >
+              <RiAddCircleFill className="size-4 shrink-0" />
+              <span className={cn(showTriggerArrow ? 'pl-1' : 'min-w-0 flex-1 px-0.5 text-left')}>
+                {buttonLabel}
+              </span>
+              {showTriggerArrow && <RiArrowDownSLine className="ml-1 size-4" />}
+            </Button>
+          )}
+        />
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}

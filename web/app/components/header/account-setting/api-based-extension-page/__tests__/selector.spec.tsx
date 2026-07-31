@@ -50,8 +50,6 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
 
@@ -94,6 +92,7 @@ describe('ApiBasedExtensionSelector', () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
       const trigger = screen.getByText('common.apiBasedExtension.selector.placeholder')
+
       fireEvent.click(trigger)
 
       // Assert
