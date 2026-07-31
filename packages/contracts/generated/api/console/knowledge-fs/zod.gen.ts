@@ -666,7 +666,11 @@ export const zKnowledgeFsControlSpaceVisibility = z.enum([
  */
 export const zKnowledgeFsSpaceUpdatePayload = z.object({
   description: z.string().max(2000).nullish(),
-  icon: z.string().max(255).nullish(),
+  icon: z
+    .string()
+    .max(72)
+    .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
+    .nullish(),
   name: z.string().min(1).max(40).nullish(),
   visibility: zKnowledgeFsControlSpaceVisibility.nullish(),
 })
@@ -1453,7 +1457,11 @@ export const zKnowledgeFsRetrievalProfileIntent = z.object({
 export const zKnowledgeFsSpaceCreatePayload = z.object({
   description: z.string().max(2000).nullish(),
   embedding: zKnowledgeFsModelIntent.nullish(),
-  icon: z.string().max(255).nullish(),
+  icon: z
+    .string()
+    .max(72)
+    .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
+    .nullish(),
   idempotency_key: z.string().min(1).max(255).nullish(),
   name: z.string().min(1).max(40),
   retrieval: zKnowledgeFsRetrievalProfileIntent.nullish(),
@@ -1577,6 +1585,121 @@ export const zKnowledgeFsPermissionResponse = z.object({
  */
 export const zKnowledgeFsPermissionListResponse = z.object({
   data: z.array(zKnowledgeFsPermissionResponse),
+})
+
+/**
+ * KnowledgeFSOverviewActivityActorResponse
+ */
+export const zKnowledgeFsOverviewActivityActorResponse = z.object({
+  id: z.string().nullish(),
+  type: z.enum(['member', 'system']),
+})
+
+/**
+ * KnowledgeFSOverviewActivityResourceResponse
+ */
+export const zKnowledgeFsOverviewActivityResourceResponse = z.object({
+  id: z.string().nullish(),
+  type: z.enum([
+    'document',
+    'knowledge-space',
+    'permission',
+    'profile',
+    'publication',
+    'query',
+    'source',
+    'worker',
+  ]),
+})
+
+/**
+ * KnowledgeFSOverviewActivityResponse
+ */
+export const zKnowledgeFsOverviewActivityResponse = z.object({
+  action: z.enum([
+    'document.failed',
+    'document.published',
+    'permission.updated',
+    'profile.published',
+    'query.completed',
+    'query.failed',
+    'query.requested',
+    'settings.updated',
+    'source.failed',
+    'source.synced',
+    'worker.failed',
+  ]),
+  actor: zKnowledgeFsOverviewActivityActorResponse,
+  details: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  id: z.string(),
+  occurred_at: z.iso.datetime(),
+  resource: zKnowledgeFsOverviewActivityResourceResponse,
+  result: z.enum(['canceled', 'failure', 'pending', 'success']),
+})
+
+/**
+ * KnowledgeFSOverviewActivityListResponse
+ */
+export const zKnowledgeFsOverviewActivityListResponse = z.object({
+  data: z.array(zKnowledgeFsOverviewActivityResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSOverviewAttentionActionResponse
+ */
+export const zKnowledgeFsOverviewAttentionActionResponse = z.object({
+  kind: z.enum(['open-resource', 'review-models', 'review-permissions']),
+  resource_id: z.string().nullish(),
+  resource_type: z.enum(['document', 'failed-query', 'knowledge-space', 'source']),
+})
+
+/**
+ * KnowledgeFSOverviewAttentionEvidenceResponse
+ */
+export const zKnowledgeFsOverviewAttentionEvidenceResponse = z.object({
+  code: z.string(),
+  observed_at: z.iso.datetime(),
+  value: z.union([z.number(), z.string()]).nullish(),
+})
+
+/**
+ * KnowledgeFSOverviewAttentionResourceResponse
+ */
+export const zKnowledgeFsOverviewAttentionResourceResponse = z.object({
+  id: z.string(),
+  type: z.enum(['document', 'failed-query', 'knowledge-space', 'source']),
+})
+
+/**
+ * KnowledgeFSOverviewAttentionResponse
+ */
+export const zKnowledgeFsOverviewAttentionResponse = z.object({
+  action: zKnowledgeFsOverviewAttentionActionResponse,
+  dismissed_until: z.iso.datetime().nullish(),
+  evidence: z.array(zKnowledgeFsOverviewAttentionEvidenceResponse),
+  issue_key: z.string(),
+  knowledge_space_id: z.string(),
+  resource: zKnowledgeFsOverviewAttentionResourceResponse,
+  revision: z.int().gte(1),
+  rule_id: z.enum([
+    'failed-document',
+    'low-quality-query',
+    'model-readiness',
+    'permission-readiness',
+    'stale-source',
+  ]),
+  severity: z.enum(['critical', 'info', 'warning']),
+  status: z.enum(['active', 'dismissed', 'resolved']),
+  title: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSOverviewAttentionListResponse
+ */
+export const zKnowledgeFsOverviewAttentionListResponse = z.object({
+  data: z.array(zKnowledgeFsOverviewAttentionResponse),
 })
 
 /**
@@ -2392,6 +2515,66 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdMembersPath = z.object({
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersResponse =
   zKnowledgeFsPermissionListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityQuery = z.object({
+  action: z
+    .enum([
+      'document.failed',
+      'document.published',
+      'permission.updated',
+      'profile.published',
+      'query.completed',
+      'query.failed',
+      'query.requested',
+      'settings.updated',
+      'source.failed',
+      'source.synced',
+      'worker.failed',
+    ])
+    .optional(),
+  cursor: z.string().min(1).max(512).optional(),
+  from_at: z.iso.datetime().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  resource_type: z
+    .enum([
+      'document',
+      'knowledge-space',
+      'permission',
+      'profile',
+      'publication',
+      'query',
+      'source',
+      'worker',
+    ])
+    .optional(),
+  result: z.enum(['canceled', 'failure', 'pending', 'success']).optional(),
+  to_at: z.iso.datetime().optional(),
+})
+
+/**
+ * KnowledgeFS activity
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponse =
+  zKnowledgeFsOverviewActivityListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionQuery = z.object({
+  include_dismissed: z.boolean().optional().default(false),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * KnowledgeFS attention findings
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponse =
+  zKnowledgeFsOverviewAttentionListResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthPath = z.object({
   control_space_id: z.string(),

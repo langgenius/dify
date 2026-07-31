@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC
 from functools import wraps
 from http import HTTPStatus
 from typing import Literal
@@ -97,6 +98,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMembersReplacePayload,
+    KnowledgeFSOverviewActivityListQuery,
+    KnowledgeFSOverviewActivityListResponse,
+    KnowledgeFSOverviewAttentionListQuery,
+    KnowledgeFSOverviewAttentionListResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewCountComparisonResponse,
     KnowledgeFSOverviewHealthResponse,
@@ -300,6 +305,8 @@ register_response_schema_models(
     KnowledgeFSTraceListResponse,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSLogicalDocumentResponse,
+    KnowledgeFSOverviewActivityListResponse,
+    KnowledgeFSOverviewAttentionListResponse,
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
@@ -986,6 +993,61 @@ class KnowledgeFSSpaceOverviewInventoryApi(Resource):
             control_space_id=control_space_id,
         )
         return dump_response(KnowledgeFSOverviewInventoryResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/attention")
+class KnowledgeFSSpaceOverviewAttentionApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewAttentionListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS attention findings",
+        console_ns.models[KnowledgeFSOverviewAttentionListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSOverviewAttentionListQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_overview_attention(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            include_dismissed=query.include_dismissed,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSOverviewAttentionListResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/activity")
+class KnowledgeFSSpaceOverviewActivityApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewActivityListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS activity",
+        console_ns.models[KnowledgeFSOverviewActivityListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSOverviewActivityListQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_overview_activity(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            action=query.action,
+            cursor=query.cursor,
+            from_at=query.from_at.astimezone(UTC).isoformat().replace("+00:00", "Z") if query.from_at else None,
+            limit=query.limit,
+            resource_type=query.resource_type,
+            result=query.result,
+            to_at=query.to_at.astimezone(UTC).isoformat().replace("+00:00", "Z") if query.to_at else None,
+        )
+        return dump_response(KnowledgeFSOverviewActivityListResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/health")

@@ -2,11 +2,14 @@
 
 import type {
   KnowledgeFsBackgroundTaskResponse,
-  KnowledgeFsOverviewHealthResponse,
+  KnowledgeFsOverviewActivityResponse,
+  KnowledgeFsOverviewAttentionResponse,
   KnowledgeFsOverviewQueryOutcomeBucketResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
+import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -43,13 +46,14 @@ import {
 import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { useMembers } from '@/service/use-common'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import {
   newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
-  newKnowledgeQualityPath,
   newKnowledgeRetrievalTestPath,
+  newKnowledgeSettingsPath,
 } from '../routes'
 
 type OverviewWindow = '24h' | '7d' | '30d'
@@ -62,6 +66,7 @@ const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'running',
 ])
 const TASK_PAGE_SIZE = 20
+const ACTIVITY_PAGE_SIZE = 20
 const OVERVIEW_REFRESH_INTERVAL = 2000
 const overviewWindowParser = parseAsStringLiteral(WINDOWS)
   .withDefault('24h')
@@ -252,7 +257,7 @@ function QueryOutcomesChart({
           data: buckets.map((bucket) => bucket.answered),
           name: t(($) => $['newKnowledge.overview.answered']),
           showSymbol: true,
-          smooth: true,
+          smooth: false,
           symbolSize: 6,
           type: 'line',
         },
@@ -260,7 +265,7 @@ function QueryOutcomesChart({
           data: buckets.map((bucket) => bucket.low_confidence),
           name: t(($) => $['newKnowledge.overview.lowConfidence']),
           showSymbol: true,
-          smooth: true,
+          smooth: false,
           symbolSize: 5,
           type: 'line',
         },
@@ -268,12 +273,12 @@ function QueryOutcomesChart({
           data: buckets.map((bucket) => bucket.no_evidence),
           name: t(($) => $['newKnowledge.overview.noEvidence']),
           showSymbol: true,
-          smooth: true,
+          smooth: false,
           symbolSize: 5,
           type: 'line',
         },
       ],
-      tooltip: { trigger: 'axis' },
+      tooltip: { confine: true, trigger: 'item' },
       xAxis: {
         axisLabel: { color: '#9ca3af', fontSize: 10, hideOverlap: true },
         axisLine: { lineStyle: { color: '#e5e7eb' } },
@@ -426,67 +431,45 @@ function OverviewErrorInline() {
   )
 }
 
-function HealthPanel({
+function AttentionPanel({
+  attention,
   empty,
   error,
-  health,
   knowledgeSpaceId,
   loading,
 }: {
+  attention: KnowledgeFsOverviewAttentionResponse[]
   empty: boolean
   error: boolean
-  health?: KnowledgeFsOverviewHealthResponse
   knowledgeSpaceId: string
   loading: boolean
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const [issuePage, setIssuePage] = useState(0)
-  const issueOrder = [
-    'query_availability',
-    'ingestion',
-    'index',
-    'profile_publication',
-    'source_freshness',
-    'worker_readiness',
-  ]
-  const issues = health
-    ? Object.entries(health.components)
-        .filter(([, component]) => component.state !== 'healthy')
-        .sort(([a], [b]) => issueOrder.indexOf(a) - issueOrder.indexOf(b))
-    : []
-  const issuePageCount = Math.max(1, Math.ceil(issues.length / 5))
+  const issuePageCount = Math.max(1, Math.ceil(attention.length / 5))
   const activeIssuePage = Math.min(issuePage, issuePageCount - 1)
-  const visibleIssues = issues.slice(activeIssuePage * 5, activeIssuePage * 5 + 5)
-  const issueLabel = (name: string) => {
-    if (name === 'query_availability') return t(($) => $['newKnowledge.overview.queryOutcomes'])
-    if (name === 'ingestion')
-      return t(($) => $['newKnowledge.overview.operation.document_processing'])
-    if (name === 'index') return t(($) => $['newKnowledge.overview.indexCoverage'])
-    if (name === 'profile_publication') return t(($) => $['newKnowledge.retrievalTest.title'])
-    if (name === 'source_freshness') return t(($) => $['newKnowledge.overview.freshness'])
-    return t(($) => $['newKnowledge.backgroundTasks'])
-  }
-  const issueAction = (name: string) => {
-    if (name === 'query_availability')
+  const visibleIssues = attention.slice(activeIssuePage * 5, activeIssuePage * 5 + 5)
+  const issueAction = (issue: KnowledgeFsOverviewAttentionResponse) => {
+    if (issue.action.kind === 'review-permissions')
+      return {
+        href: newKnowledgeSettingsPath(knowledgeSpaceId),
+        label: t(($) => $['newKnowledge.permission']),
+      }
+    if (issue.action.kind === 'review-models')
+      return {
+        href: newKnowledgeSettingsPath(knowledgeSpaceId),
+        label: t(($) => $['newKnowledge.retrievalTest.title']),
+      }
+    if (issue.action.resource_type === 'failed-query' || issue.rule_id === 'low-quality-query')
       return {
         href: newKnowledgeRetrievalTestPath(knowledgeSpaceId),
         label: t(($) => $['newKnowledge.overview.reviewConflict']),
       }
-    if (name === 'ingestion')
+    if (issue.action.resource_type === 'source')
       return {
         href: newKnowledgeDetailPath(knowledgeSpaceId),
         label: t(($) => $['newKnowledge.overview.fixSource']),
-      }
-    if (name === 'index')
-      return {
-        href: newKnowledgeDocumentsPath(knowledgeSpaceId),
-        label: t(($) => $['newKnowledge.overview.rebuildIndex']),
-      }
-    if (name === 'profile_publication')
-      return {
-        href: newKnowledgeQualityPath(knowledgeSpaceId),
-        label: t(($) => $['newKnowledge.overview.updateEvidence']),
       }
     return {
       href: newKnowledgeDocumentsPath(knowledgeSpaceId),
@@ -545,42 +528,42 @@ function HealthPanel({
               </div>
             ))}
           </div>
-        ) : issues.length ? (
+        ) : attention.length ? (
           <>
             <ul className="min-h-0 flex-1 overflow-hidden">
-              {visibleIssues.map(([name]) => (
-                <li key={name} className="flex h-12 min-w-0 items-center gap-4">
+              {visibleIssues.map((issue) => (
+                <li key={issue.issue_key} className="flex h-12 min-w-0 items-center gap-4">
                   <span
                     className={cn(
                       'shrink-0 rounded-md px-2 py-0.5 system-xs-medium',
-                      name === 'query_availability'
+                      issue.severity === 'critical'
                         ? 'bg-state-destructive-hover text-text-destructive'
-                        : name === 'ingestion'
+                        : issue.severity === 'warning'
                           ? 'bg-state-warning-hover text-text-warning'
                           : 'bg-background-section text-text-tertiary',
                     )}
                   >
-                    {name === 'query_availability'
+                    {issue.severity === 'critical'
                       ? t(($) => $['newKnowledge.overview.blocker'])
-                      : name === 'ingestion'
+                      : issue.severity === 'warning'
                         ? t(($) => $['newKnowledge.overview.serious'])
                         : t(($) => $['newKnowledge.overview.review'])}
                   </span>
                   <p className="min-w-0 flex-1 truncate system-sm-regular text-text-primary">
-                    {issueLabel(name)}
+                    {issue.title}
                   </p>
                   <Button
-                    render={<Link href={issueAction(name).href} />}
+                    render={<Link href={issueAction(issue).href} />}
                     nativeButton={false}
                     size="small"
-                    tone={name === 'query_availability' ? 'destructive' : 'default'}
-                    variant={name === 'query_availability' ? 'primary' : 'secondary'}
+                    tone={issue.severity === 'critical' ? 'destructive' : 'default'}
+                    variant={issue.severity === 'critical' ? 'primary' : 'secondary'}
                     className={cn(
-                      name === 'query_availability' &&
+                      issue.severity === 'critical' &&
                         'border-[#ff4d14] bg-[#ff4d14] hover:border-[#e64210] hover:bg-[#e64210]',
                     )}
                   >
-                    {issueAction(name).label}
+                    {issueAction(issue).label}
                   </Button>
                 </li>
               ))}
@@ -623,39 +606,105 @@ function HealthPanel({
   )
 }
 
-function operationLabel(
-  task: KnowledgeFsBackgroundTaskResponse,
+function activityOperationLabel(
+  activity: KnowledgeFsOverviewActivityResponse,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
 ) {
-  return t(($) => $[`newKnowledge.overview.operation.${task.operation}`])
+  if (activity.action.startsWith('source.'))
+    return t(($) => $['newKnowledge.overview.operation.source_sync'])
+  if (activity.action.startsWith('document.'))
+    return t(($) => $['newKnowledge.overview.operation.document_processing'])
+  if (activity.action.startsWith('query.'))
+    return t(($) => $['newKnowledge.overview.queryOutcomes'])
+  if (activity.action === 'permission.updated') return t(($) => $['newKnowledge.permission'])
+  if (activity.action === 'profile.published')
+    return t(($) => $['newKnowledge.retrievalTest.title'])
+  if (activity.action === 'settings.updated')
+    return t(($) => $['newKnowledge.overview.updateEvidence'])
+  return t(($) => $['newKnowledge.backgroundTasks'])
 }
 
 function activityLabel(
-  task: KnowledgeFsBackgroundTaskResponse,
+  activity: KnowledgeFsOverviewActivityResponse,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
 ) {
-  const operation = operationLabel(task, t)
-  if (task.state === 'completed')
+  const operation = activityOperationLabel(activity, t)
+  if (activity.result === 'success')
     return t(($) => $['newKnowledge.overview.activityCompleted'], { operation })
-  if (task.state === 'failed')
+  if (activity.result === 'failure')
     return t(($) => $['newKnowledge.overview.activityFailed'], { operation })
-  if (task.state === 'canceled')
+  if (activity.result === 'canceled')
     return t(($) => $['newKnowledge.overview.activityCanceled'], { operation })
-  if (task.state === 'queued')
-    return t(($) => $['newKnowledge.overview.activityQueued'], { operation })
-  return t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+  return activity.action === 'query.requested'
+    ? t(($) => $['newKnowledge.overview.activityQueued'], { operation })
+    : t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+}
+
+function compactIdentifier(value: string) {
+  const normalized = value.replace(/^dify-account:/, '')
+  return normalized.length > 16 ? `${normalized.slice(0, 8)}…${normalized.slice(-4)}` : normalized
+}
+
+function activityActor(
+  activity: KnowledgeFsOverviewActivityResponse,
+  members: Member[],
+  systemLabel: string,
+) {
+  if (activity.actor.type === 'system') return { avatar: null, name: systemLabel, system: true }
+
+  const accountId = activity.actor.id?.replace(/^dify-account:/, '')
+  const member = members.find((candidate) => candidate.id === accountId)
+  return {
+    avatar: member?.avatar_url ?? null,
+    name: member?.name || compactIdentifier(activity.actor.id || systemLabel),
+    system: false,
+  }
+}
+
+function ActivityActor({
+  activity,
+  members,
+  showName = true,
+  size = 'xxs',
+}: {
+  activity: KnowledgeFsOverviewActivityResponse
+  members: Member[]
+  showName?: boolean
+  size?: 'xxs' | 'xs'
+}) {
+  const { t } = useTranslation('dataset')
+  const actor = activityActor(
+    activity,
+    members,
+    t(($) => $['newKnowledge.overview.system']),
+  )
+
+  return (
+    <>
+      {actor.system ? (
+        <span className="system-2xs-semibold flex size-5 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
+          S
+        </span>
+      ) : (
+        <Avatar avatar={actor.avatar} name={actor.name} size={size} />
+      )}
+      {showName && <span className="truncate text-text-secondary">{actor.name}</span>}
+    </>
+  )
 }
 
 function RecentActivity({
+  activities,
   empty,
   error,
   indexing = false,
   loading,
+  members,
   onOpenAll,
   onRetry,
   retrying,
-  tasks,
 }: {
+  activities: KnowledgeFsOverviewActivityResponse[]
   empty: boolean
   error: boolean
   indexing?: boolean
@@ -663,7 +712,7 @@ function RecentActivity({
   onOpenAll: () => void
   onRetry: () => void
   retrying: boolean
-  tasks: KnowledgeFsBackgroundTaskResponse[]
+  members: Member[]
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -750,7 +799,7 @@ function RecentActivity({
         </Button>
       </header>
       <Panel className="flex h-63.5 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
-        {loading || tasks.length ? (
+        {loading || activities.length ? (
           <div
             role="table"
             aria-label={t(($) => $['newKnowledge.overview.recentActivity'])}
@@ -779,29 +828,24 @@ function RecentActivity({
                     <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
                   </div>
                 ))
-              : tasks.slice(0, 5).map((task) => (
+              : activities.slice(0, 5).map((activity) => (
                   <div
-                    key={task.id}
+                    key={activity.id}
                     role="row"
                     className="-mx-3 grid h-9 grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 rounded-lg px-3 system-xs-regular transition-colors hover:bg-state-base-hover motion-reduce:transition-none"
                   >
                     <span role="cell" className="whitespace-nowrap text-text-tertiary">
-                      {formatWhen(task.updated_at)}
+                      {formatWhen(activity.occurred_at)}
                     </span>
                     <span role="cell" className="min-w-0 truncate text-text-secondary">
                       <strong className="font-semibold text-text-primary">
-                        {operationLabel(task, t)}
+                        {activityOperationLabel(activity, t)}
                       </strong>
                       {' — '}
-                      {activityLabel(task, t)}
+                      {activityLabel(activity, t)}
                     </span>
                     <span role="cell" className="flex min-w-0 items-center gap-2">
-                      <span className="system-2xs-semibold flex size-5 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
-                        S
-                      </span>
-                      <span className="truncate text-text-secondary">
-                        {t(($) => $['newKnowledge.overview.system'])}
-                      </span>
+                      <ActivityActor activity={activity} members={members} />
                     </span>
                   </div>
                 ))}
@@ -819,34 +863,33 @@ function RecentActivity({
 }
 
 function ActivityDrawer({
+  activities,
   hasNextPage,
   isFetchingNextPage,
   loading,
+  members,
   onFetchNextPage,
   onOpenChange,
+  onRangeChange,
   open,
-  tasks,
+  range,
 }: {
+  activities: KnowledgeFsOverviewActivityResponse[]
   hasNextPage: boolean
   isFetchingNextPage: boolean
   loading: boolean
+  members: Member[]
   onFetchNextPage: () => void
   onOpenChange: (open: boolean) => void
+  onRangeChange: (range: ActivityRange) => void
   open: boolean
-  tasks: KnowledgeFsBackgroundTaskResponse[]
+  range: ActivityRange
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tDeployments } = useTranslation('deployments')
-  const [range, setRange] = useState<ActivityRange>('7d')
   const rangeTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreFilterFocusRef = useRef(false)
   const now = dayjs()
-  const filteredTasks = tasks.filter((task) => {
-    if (range === 'all') return true
-    const createdAt = dayjs(task.created_at)
-    if (range === 'today') return createdAt.isAfter(now.startOf('day'))
-    return createdAt.isAfter(now.subtract(Number.parseInt(range), 'day'))
-  })
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(i18n.language, {
@@ -860,9 +903,9 @@ function ActivityDrawer({
     () => new Intl.DateTimeFormat(i18n.language, { hour: 'numeric', minute: '2-digit' }),
     [i18n.language],
   )
-  const groups = filteredTasks.reduce<Record<string, KnowledgeFsBackgroundTaskResponse[]>>(
+  const groups = activities.reduce<Record<string, KnowledgeFsOverviewActivityResponse[]>>(
     (result, task) => {
-      const key = dayjs(task.created_at).format('YYYY-MM-DD')
+      const key = dayjs(task.occurred_at).format('YYYY-MM-DD')
       result[key] ??= []
       result[key].push(task)
       return result
@@ -885,7 +928,7 @@ function ActivityDrawer({
   }
   const clearFilters = () => {
     restoreFilterFocusRef.current = true
-    setRange('7d')
+    onRangeChange('7d')
   }
 
   useEffect(() => {
@@ -910,7 +953,10 @@ function ActivityDrawer({
                 </div>
               </header>
               <div className="flex h-9 shrink-0 border-b border-divider-subtle px-5">
-                <Select value={range} onValueChange={(value) => setRange(value as ActivityRange)}>
+                <Select
+                  value={range}
+                  onValueChange={(value) => onRangeChange(value as ActivityRange)}
+                >
                   <SelectTrigger
                     ref={rangeTriggerRef}
                     aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
@@ -945,7 +991,7 @@ function ActivityDrawer({
                       ))}
                     </div>
                   </div>
-                ) : filteredTasks.length ? (
+                ) : activities.length ? (
                   <>
                     {Object.entries(groups).map(([key, group]) => (
                       <section key={key}>
@@ -953,27 +999,38 @@ function ActivityDrawer({
                           {groupLabel(key)}
                         </h3>
                         <ul>
-                          {group.map((task) => (
+                          {group.map((activity) => (
                             <li
-                              key={task.id}
+                              key={activity.id}
                               className="flex min-h-13.5 items-start gap-3 px-5 py-2.5"
                             >
-                              <span className="system-2xs-semibold flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
-                                S
+                              <span className="flex size-6 shrink-0 items-center">
+                                <ActivityActor
+                                  activity={activity}
+                                  members={members}
+                                  showName={false}
+                                  size="xs"
+                                />
                               </span>
                               <div className="min-w-0 flex-1 leading-4">
                                 <p className="line-clamp-2 system-sm-regular text-text-secondary">
-                                  {activityLabel(task, t)}
+                                  {activityLabel(activity, t)}
                                 </p>
                                 <p className="system-xs-regular text-text-tertiary">
-                                  {t(($) => $['newKnowledge.overview.system'])}
+                                  {
+                                    activityActor(
+                                      activity,
+                                      members,
+                                      t(($) => $['newKnowledge.overview.system']),
+                                    ).name
+                                  }
                                 </p>
                               </div>
                               <time
                                 className="shrink-0 system-xs-regular text-text-tertiary"
-                                dateTime={task.updated_at}
+                                dateTime={activity.occurred_at}
                               >
-                                {timeFormatter.format(new Date(task.updated_at))}
+                                {timeFormatter.format(new Date(activity.occurred_at))}
                               </time>
                             </li>
                           ))}
@@ -1440,10 +1497,18 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     uploadAvailable && hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const [window, setWindow] = useQueryState('window', overviewWindowParser)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [activityRange, setActivityRange] = useState<ActivityRange>('7d')
+  const activityFrom = useMemo(() => {
+    if (activityRange === 'all') return undefined
+    if (activityRange === 'today') return dayjs().startOf('day').toISOString()
+    return dayjs().subtract(Number.parseInt(activityRange), 'day').toISOString()
+  }, [activityRange])
+  const membersQuery = useMembers()
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
       getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
+      queryKey: ['knowledge-fs-overview-activity', knowledgeSpaceId, activityRange],
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {
@@ -1505,17 +1570,40 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         }),
     }),
   )
-  const healthQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.health.get.queryOptions({
-      input: { params: { control_space_id: knowledgeSpaceId } },
-      refetchInterval: (query) =>
-        overviewRefreshInterval({
-          generatedAt: query.state.data?.generated_at,
-          hasActiveTasks,
-          latestTaskUpdatedAt,
-        }),
+  const attentionQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.attention.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { include_dismissed: false, limit: 100 },
+      },
+      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
     }),
   )
+  const activityPreviewQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: 5 },
+      },
+      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
+    }),
+  )
+  const activityDrawerQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.infiniteOptions({
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
+      initialPageParam: null as string | null,
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        query: {
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          ...(activityFrom ? { from_at: activityFrom } : {}),
+          limit: ACTIVITY_PAGE_SIZE,
+        },
+      }),
+    }),
+  )
+  const activities = activityDrawerQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const members = membersQuery.data?.accounts ?? []
   const indexingTask = tasks.find(
     (task) => ACTIVE_TASK_STATES.has(task.state) && isFirstSourceTask(task),
   )
@@ -1528,10 +1616,15 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     statsQuery.isPending ||
     outcomesQuery.isPending ||
     inventoryQuery.isPending ||
-    healthQuery.isPending
+    attentionQuery.isPending ||
+    activityPreviewQuery.isPending
   const firstLoadFailed =
     !pageLoading &&
-    (statsQuery.isError || outcomesQuery.isError || inventoryQuery.isError || healthQuery.isError)
+    (statsQuery.isError ||
+      outcomesQuery.isError ||
+      inventoryQuery.isError ||
+      attentionQuery.isError ||
+      activityPreviewQuery.isError)
   const hasContent =
     (statsQuery.data?.source_count ?? 0) > 0 || (statsQuery.data?.documents ?? 0) > 0
   const empty = !pageLoading && !statsQuery.isError && !hasContent
@@ -1546,7 +1639,8 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       statsQuery.refetch(),
       outcomesQuery.refetch(),
       inventoryQuery.refetch(),
-      healthQuery.refetch(),
+      attentionQuery.refetch(),
+      activityPreviewQuery.refetch(),
       tasksQuery.refetch(),
     ])
 
@@ -1682,10 +1776,10 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             showIndexing ? 'mt-4.5 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-3 gap-2.5',
           )}
         >
-          <HealthPanel
+          <AttentionPanel
+            attention={attentionQuery.data?.data ?? []}
             empty={showEmptyModules}
-            error={healthQuery.isError}
-            health={healthQuery.data}
+            error={attentionQuery.isError}
             knowledgeSpaceId={knowledgeSpaceId}
             loading={pageLoading}
           />
@@ -1698,17 +1792,18 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         </div>
         <div className="mt-3">
           <RecentActivity
+            activities={activityPreviewQuery.data?.data ?? []}
             empty={showEmptyModules}
-            error={tasksQuery.isError}
+            error={activityPreviewQuery.isError}
             indexing={showIndexing}
             loading={pageLoading}
-            retrying={tasksQuery.isRefetching}
-            tasks={tasks}
+            members={members}
+            retrying={activityPreviewQuery.isRefetching}
             onOpenAll={() => {
               setActivityOpen(true)
-              void tasksQuery.refetch()
+              void activityDrawerQuery.refetch()
             }}
-            onRetry={() => void tasksQuery.refetch()}
+            onRetry={() => void activityPreviewQuery.refetch()}
           />
         </div>
         <div className="mt-3">
@@ -1722,13 +1817,16 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         </div>
       </div>
       <ActivityDrawer
-        hasNextPage={Boolean(tasksQuery.hasNextPage)}
-        isFetchingNextPage={tasksQuery.isFetchingNextPage}
-        loading={tasksQuery.isPending || tasksQuery.isRefetching}
+        activities={activities}
+        hasNextPage={Boolean(activityDrawerQuery.hasNextPage)}
+        isFetchingNextPage={activityDrawerQuery.isFetchingNextPage}
+        loading={activityDrawerQuery.isPending || activityDrawerQuery.isRefetching}
+        members={members}
         open={activityOpen}
-        tasks={tasks}
-        onFetchNextPage={() => void tasksQuery.fetchNextPage()}
+        range={activityRange}
+        onFetchNextPage={() => void activityDrawerQuery.fetchNextPage()}
         onOpenChange={setActivityOpen}
+        onRangeChange={setActivityRange}
       />
     </main>
   )
