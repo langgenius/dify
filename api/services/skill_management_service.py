@@ -435,9 +435,7 @@ class SkillManagementService:
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
             skill_name = payload.name or self._generate_untitled_skill_name(session, tenant_id=tenant_id)
             display_name = payload.display_name or (_UNTITLED_DISPLAY_NAME if payload.name is None else skill_name)
-            description = payload.description or (
-                "" if payload.name is None else _UNTITLED_SKILL_DESCRIPTION
-            )
+            description = payload.description or ("" if payload.name is None else _UNTITLED_SKILL_DESCRIPTION)
             skill = Skill(
                 tenant_id=tenant_id,
                 name=skill_name,
