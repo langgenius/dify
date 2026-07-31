@@ -132,7 +132,7 @@ export function MCPAccessPointCard({
 
   const handleRegenerate = async () => {
     if (!canEdit || !detail?.id) return
-    await refreshServerCode(detail.id)
+    await refreshServerCode(appInfo.id)
     invalidateServerDetail(appInfo.id)
     setShowRegenerate(false)
   }
