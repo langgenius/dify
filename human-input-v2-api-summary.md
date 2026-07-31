@@ -62,7 +62,7 @@ Contact 上位概念保持如下：
 | `GET` | `/console/api/workspaces/current/human-input/im-integration` | 读取当前 Organization-level IM integration 摘要及 CAS revision。 |
 | `PUT` | `/console/api/workspaces/current/human-input/im-integration` | 创建 integration，或使用 `integration_id + config_version` CAS 更新当前配置。 |
 | `DELETE` | `/console/api/workspaces/current/human-input/im-integration` | 使用 `integration_id + config_version` CAS 解除当前 integration，并使后续读取回到 `Not configured`。 |
-| `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | 测试 IM provider credentials、所选 event transport 与 permission。 |
+| `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | 测试 IM provider credentials、当前部署 event transport compatibility 与 permission；request 不得覆盖 transport mode。 |
 | `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | 手动触发 IM directory sync；Dify 创建新 run 或复用当前 single active run。 |
 | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | 读取最近一次 IM sync run；UI 使用 `finished_at` 作为显式同步时间，不返回 `started_by`。 |
 | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | 必须指定一个真实 result bucket，并使用 `page / limit` 分页读取最近一次 sync run 的 reconciliation result；不支持 All 或 cursor。 |
@@ -291,9 +291,6 @@ message IMIntegration {
     json_name = "event_transport_mode",
     (validate.rules).enum = { defined_only: true, not_in: [0] }
   ];
-  repeated IMEventTransportMode supported_event_transport_modes = 10 [
-    json_name = "supported_event_transport_modes"
-  ];
 }
 
 message GetIMIntegrationReq {}
@@ -311,10 +308,6 @@ message UpsertIMIntegrationReq {
   optional int64 expected_config_version = 3 [
     json_name = "expected_config_version",
     (validate.rules).int64 = { gte: 1 }
-  ];
-  IMEventTransportMode event_transport_mode = 4 [
-    json_name = "event_transport_mode",
-    (validate.rules).enum = { defined_only: true, not_in: [0] }
   ];
 }
 
@@ -337,10 +330,6 @@ message DeleteIMIntegrationRes {}
 
 message TestIMIntegrationReq {
   IMIntegrationCredentials credentials = 1 [(validate.rules).message.required = true];
-  IMEventTransportMode event_transport_mode = 2 [
-    json_name = "event_transport_mode",
-    (validate.rules).enum = { defined_only: true, not_in: [0] }
-  ];
 }
 
 message TestIMIntegrationRes {

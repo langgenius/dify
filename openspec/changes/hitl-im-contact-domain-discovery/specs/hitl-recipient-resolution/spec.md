@@ -57,7 +57,7 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 - **THEN** 系统 MUST 只保留一个 canonical ApproverGrant；若该 email 未命中 Contact，则该 grant subject MUST 是 task-scoped EmailAddress，并 MUST 记录 `duplicated_email`
 
 ### Requirement: 默认通知策略必须遵循双渠道并行与 Email 必发规则
-对于同时具备 IM binding 和 Email 的 recipient，系统 MUST 并行创建 IM 与 Email delivery attempt。对于没有 IM binding 但有 Email 的 recipient，系统 MUST 发送 Email。系统 MUST NOT 因 IM 成功、IM 失败或 provider 能力差异而关闭 Email。
+对于同时具备 IM binding 和 Email 的 recipient，系统 MUST 并行创建 IM 与 Email delivery attempt。对于没有 IM binding 但有 Email 的 recipient，系统 MUST 发送 Email。系统 MUST NOT 因 IM 成功、IM 失败或 provider 能力差异而关闭 Email。IM control-plane 只负责解析当前是否存在有效 IM binding；是否走 Email、是否双发以及无 IM binding 时的通知行为 MUST 由 recipient resolution 与 delivery policy 决定，而不是由 IM binding resolution 决定。
 
 #### Scenario: IM 与 Email 并行发送
 - **WHEN** a recipient has both an IM binding and a usable email

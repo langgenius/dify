@@ -91,7 +91,7 @@ The pure reconciler MUST match provider entries against current snapshots and pr
 - **THEN** apply MUST delete every binding and append one removal fact for each removed scope binding
 
 ### Requirement: Effective IM binding resolution MUST hide control-plane details
-Consumers MUST receive one effective binding result using priority `workspace override > organization binding > Email fallback` without access to encrypted credentials, provider raw payloads or ORM identity records.
+Consumers MUST receive one effective binding result using priority `workspace override > organization binding > no valid IM binding` without access to encrypted credentials, provider raw payloads or ORM identity records. Effective IM binding resolution MUST answer only which IM binding is currently effective, if any. It MUST NOT itself choose Email fallback or other delivery-channel behavior.
 
 #### Scenario: Workspace override exists
 - **WHEN** a valid workspace binding and a valid organization binding both exist
@@ -101,13 +101,17 @@ Consumers MUST receive one effective binding result using priority `workspace ov
 - **WHEN** the workspace override is removed or reset to global
 - **THEN** resolution MUST expose the valid organization binding without copying it into workspace state
 
+#### Scenario: No valid IM binding exists
+- **WHEN** no valid workspace binding and no valid organization binding exist for the requested workspace and channel
+- **THEN** resolution MUST return a stable no-valid-im-binding result and MUST NOT reinterpret that result as Email fallback inside the IM control-plane
+
 #### Scenario: Binding provider mismatches Integration
 - **WHEN** a binding or identity belongs to a different Integration/provider than the requested channel
 - **THEN** resolution MUST return a stable invalid-binding result and MUST NOT expose the binding to consumers
 
 #### Scenario: Tenant-owned Integration is requested from another workspace
 - **WHEN** an Integration owner does not match the requested workspace
-- **THEN** resolution MUST reject the request before loading identities, bindings, or Email fallback candidates
+- **THEN** resolution MUST reject the request before loading identities, bindings, or integration-scoped resolution context
 
 ### Requirement: IM persistence ports MUST expose transaction-oriented operations
 IM persistence ports MUST provide configuration CAS, Integration-locked run creation, snapshot loading, revision-guarded plan apply and append-only results rather than generic CRUD per table.
