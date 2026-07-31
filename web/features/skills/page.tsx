@@ -78,7 +78,7 @@ function SkillIcon({ icon }: { icon?: string }) {
 
 function SkillTagBadge({ tag }: { tag: string }) {
   return (
-    <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+    <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
       <span className="max-w-28 truncate">{tag}</span>
     </span>
   )
