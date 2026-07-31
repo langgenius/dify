@@ -1,5 +1,6 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
+import type { CredentialPermission } from './permission-selector'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -17,7 +18,7 @@ import {
   useGetPluginOAuthUrlHook,
 } from '../hooks/use-credential'
 import OAuthClientSettings from './oauth-client-settings'
-import PermissionSelector, { type CredentialPermission } from './permission-selector'
+import PermissionSelector from './permission-selector'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload
@@ -66,7 +67,9 @@ const AddOAuthButton = ({
   // or Shared before kicking off the OAuth redirect. Default to only_me since
   // OAuth tokens are usually tied to an individual account.
   const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false)
-  const [pendingVisibility, setPendingVisibility] = useState<CredentialPermission>(PermissionLevel.onlyMe)
+  const [pendingVisibility, setPendingVisibility] = useState<CredentialPermission>(
+    PermissionLevel.onlyMe,
+  )
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
   const mergedOAuthData = useMemo<OAuthData>(() => {
@@ -296,10 +299,7 @@ const AddOAuthButton = ({
               <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
             </div>
             <div className="px-6 py-3">
-              <PermissionSelector
-                permission={pendingVisibility}
-                onChange={setPendingVisibility}
-              />
+              <PermissionSelector permission={pendingVisibility} onChange={setPendingVisibility} />
             </div>
             <div className="flex shrink-0 justify-end p-6 pt-5">
               <Button onClick={() => setIsVisibilityModalOpen(false)}>

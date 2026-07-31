@@ -1,4 +1,5 @@
 import type { PluginPayload } from '../types'
+import type { CredentialPermission } from './permission-selector'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -13,7 +14,7 @@ import {
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
-import PermissionSelector, { type CredentialPermission } from './permission-selector'
+import PermissionSelector from './permission-selector'
 
 export type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
