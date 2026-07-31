@@ -45,9 +45,7 @@ export function MarketplaceView({
             marketplaceNav={marketplaceNav}
           />
           {!isMarketplacePlatform && (
-            <StickySearchAndSwitchWrapper
-              pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-            />
+            <StickySearchAndSwitchWrapper pluginTypeSwitchClassName={pluginTypeSwitchClassName} />
           )}
           <ListWrapper
             showInstallButton={showInstallButton}
