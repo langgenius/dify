@@ -369,7 +369,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                                 content=[
                                     *dataset_image_contents,
                                     TextPromptMessageContent(data=self.query or tool_response_text),
-                                ]
+                                ],
                             )
                         )
 
