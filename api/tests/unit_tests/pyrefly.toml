@@ -836,7 +836,6 @@ project-excludes = [
   "services/test_clear_free_plan_tenant_expired_logs.py",
   "services/test_code_based_extension_service.py",
   "services/test_conversation_service.py",
-  "services/test_credential_permission_service.py",
   "services/test_credit_pool_service.py",
   "services/test_dataset_service_dataset.py",
   "services/test_dataset_service_document.py",

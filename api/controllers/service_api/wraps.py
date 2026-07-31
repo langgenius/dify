@@ -322,11 +322,12 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Forbidden("Dataset api access is not enabled.")
 
         tenant_account_join = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == api_token.tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.role.in_(["owner"]))
-            .where(Tenant.status == TenantStatus.NORMAL)
+            select(Tenant, TenantAccountJoin).where(
+                Tenant.id == api_token.tenant_id,
+                TenantAccountJoin.tenant_id == Tenant.id,
+                TenantAccountJoin.role.in_(["owner"]),
+                Tenant.status == TenantStatus.NORMAL,
+            )
         ).one_or_none()  # TODO: only owner information is required, so only one is returned.
         if tenant_account_join:
             tenant, ta = tenant_account_join
