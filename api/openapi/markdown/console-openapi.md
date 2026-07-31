@@ -22960,6 +22960,7 @@ Payload for updating a snippet.
 | file_upload_limit | integer |  | Yes |
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
+| knowledge_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
