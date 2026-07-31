@@ -1067,14 +1067,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/date-and-time-picker/time-picker/__tests__/index.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/date-and-time-picker/time-picker/index.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -3340,14 +3332,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/selector-entry.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
