@@ -232,7 +232,7 @@ func (p *Proxy) ProxyURLForSandbox(sandboxID string) string {
 	}
 	u := url.URL{
 		Scheme: "http",
-		User:   url.User(sandboxID),
+		User:   url.UserPassword(sandboxID, ""),
 		Host:   p.addr,
 	}
 	return u.String()
