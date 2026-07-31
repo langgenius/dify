@@ -147,6 +147,7 @@ import {
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse,
+  zGetWorkspacesCurrentSummaryResponse,
   zGetWorkspacesCurrentToolLabelsResponse,
   zGetWorkspacesCurrentToolProviderApiGetQuery,
   zGetWorkspacesCurrentToolProviderApiGetResponse,
