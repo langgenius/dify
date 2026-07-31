@@ -218,7 +218,7 @@ register_response_schema_models(
 class TenantListApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantListResponse.__name__])
     @console_account_admission()
-    def get(self, *, request_context: RequestContext):
+    def get(self, request_context: RequestContext):
         workspaces = application_services().workspace_queries.list_for_account(request_context)
         return dump_response(TenantListResponse, {"workspaces": workspaces}), HTTPStatus.OK
 

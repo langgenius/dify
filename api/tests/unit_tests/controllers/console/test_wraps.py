@@ -148,12 +148,13 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
         ):
 
-            @flask_admission.console_account_admission()
-            def get(*, request_context: RequestContext):
-                return request_context
+            class Handler:
+                @flask_admission.console_account_admission()
+                def get(self, request_context: RequestContext):
+                    return request_context
 
             with Flask(__name__).test_request_context():
-                result = get()
+                result = Handler().get()
 
         assert result == RequestContext(
             request_id="request-1",
