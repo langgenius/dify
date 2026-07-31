@@ -191,6 +191,28 @@ def test_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: py
     assert config.INTERNAL_FILES_URL == "http://api:5001"
 
 
+def test_empty_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: pytest.MonkeyPatch):
+    _clear_environment(monkeypatch)
+    monkeypatch.setenv("INTERNAL_FILES_URL", "")
+    monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
+    monkeypatch.setenv("FILES_URL", "https://files.example.com")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.INTERNAL_FILES_URL == "http://api:5001"
+
+
+def test_internal_files_url_falls_back_to_files_url(monkeypatch: pytest.MonkeyPatch):
+    _clear_environment(monkeypatch)
+    monkeypatch.setenv("INTERNAL_FILES_URL", "")
+    monkeypatch.setenv("SERVER_CONSOLE_API_URL", "")
+    monkeypatch.setenv("FILES_URL", "https://files.example.com")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.INTERNAL_FILES_URL == "https://files.example.com"
+
+
 def test_internal_files_url_prefers_explicit_value(monkeypatch: pytest.MonkeyPatch):
     _clear_environment(monkeypatch)
     monkeypatch.setenv("INTERNAL_FILES_URL", "http://files-internal:5001")

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import (
     AliasChoices,
@@ -12,6 +12,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -424,15 +425,24 @@ class FileAccessConfig(BaseSettings):
         default="",
     )
 
+    SERVER_CONSOLE_API_URL: str = Field(
+        description="Internal console API origin used as the fallback for internal file access.",
+        default="",
+    )
+
     INTERNAL_FILES_URL: str = Field(
         description="Internal base URL for file access within Docker network,"
         " used for plugin daemon and internal service communication."
         " Explicit INTERNAL_FILES_URL takes precedence; otherwise SERVER_CONSOLE_API_URL is used,"
         " then FILES_URL.",
-        validation_alias=AliasChoices("INTERNAL_FILES_URL", "SERVER_CONSOLE_API_URL"),
-        alias_priority=1,
         default="",
     )
+
+    @model_validator(mode="after")
+    def resolve_internal_files_url(self) -> Self:
+        if not self.INTERNAL_FILES_URL:
+            self.INTERNAL_FILES_URL = self.SERVER_CONSOLE_API_URL or self.FILES_URL
+        return self
 
     FILES_ACCESS_TIMEOUT: int = Field(
         description="Expiration time in seconds for file access URLs",
