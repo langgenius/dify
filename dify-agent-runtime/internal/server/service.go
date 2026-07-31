@@ -17,8 +17,12 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/egressproxy"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/providers"
-	"github.com/langgenius/dify/dify-agent-runtime/internal/providers/aws"
-	"github.com/langgenius/dify/dify-agent-runtime/internal/providers/simple"
+
+	// Blank imports register provider factories into the providers registry
+	// via their init() functions. Add new providers here.
+
+	_ "github.com/langgenius/dify/dify-agent-runtime/internal/providers/aws"
+	_ "github.com/langgenius/dify/dify-agent-runtime/internal/providers/simple"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -240,39 +244,17 @@ func credentialsToStoredMap(creds []Credential) map[string]*egressproxy.StoredCr
 }
 
 // buildInjectionPolicy converts an API-level InjectPolicy into a
-// providers.Policy. Returns nil if inject is nil or unrecognized.
+// providers.Policy via the registry. Returns nil if inject is nil.
 func buildInjectionPolicy(inject *InjectPolicy) providers.Policy {
 	if inject == nil {
 		return nil
 	}
-	switch inject.Type {
-	case InjectTypeHTTPHeader:
-		h := inject.HTTPHeader
-		if h == nil {
-			return nil
-		}
-		expr := h.Expr
-		if expr == "" {
-			expr = "{{.Value}}"
-		}
-		return &simple.Policy{
-			HeaderName: h.Name,
-			Domains_:   h.Domains,
-			Expr:       expr,
-		}
-	case InjectTypeAWSSigV4:
-		a := inject.AWSSigV4
-		if a == nil {
-			return nil
-		}
-		return &aws.Policy{
-			Domains_: a.Domains,
-			Region:   a.Region,
-			Service:  a.Service,
-		}
-	default:
+	policy, err := providers.Build(string(inject.Type), inject.Config)
+	if err != nil {
+		log.Printf("egressproxy: build injection policy (type=%s): %v", inject.Type, err)
 		return nil
 	}
+	return policy
 }
 
 // EgressProxyEnv returns the env vars for routing jobs through the egress

@@ -36,7 +36,30 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers"
 )
+
+// Config is the JSON/YAML payload for the "aws-sigv4" inject type.
+type Config struct {
+	Region  string   `json:"region,omitempty" yaml:"region,omitempty"`
+	Service string   `json:"service,omitempty" yaml:"service,omitempty"`
+	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
+}
+
+func init() {
+	providers.Register("aws-sigv4", func(config json.RawMessage) (providers.Policy, error) {
+		var c Config
+		if err := json.Unmarshal(config, &c); err != nil {
+			return nil, fmt.Errorf("parse aws-sigv4 config: %w", err)
+		}
+		return &Policy{
+			Domains_: c.Domains,
+			Region:   c.Region,
+			Service:  c.Service,
+		}, nil
+	})
+}
 
 // Credentials holds the three fields needed for AWS Signature Version 4.
 type Credentials struct {

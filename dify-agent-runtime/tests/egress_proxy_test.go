@@ -81,7 +81,7 @@ func TestEgressProxyCredentialInjection(t *testing.T) {
 				"value":    "sk-integration-test-secret",
 				"inject": map[string]any{
 					"type": "http-header",
-					"http_header": map[string]any{
+					"config": map[string]any{
 						"name":    "Authorization",
 						"expr":    "Bearer {{.Value}}",
 						"domains": []string{"echo-backend"},
@@ -144,7 +144,7 @@ func TestEgressProxyCredentialNotInjectedForNonMatchingDomain(t *testing.T) {
 				"value":    "sk-should-not-leak",
 				"inject": map[string]any{
 					"type": "http-header",
-					"http_header": map[string]any{
+					"config": map[string]any{
 						"name":    "X-Scoped-Test",
 						"expr":    "Bearer {{.Value}}",
 						"domains": []string{"some-other-host.internal"},
@@ -206,7 +206,7 @@ func TestEgressProxyUpstreamChaining(t *testing.T) {
 				"value":    "sk-upstream-chained-secret",
 				"inject": map[string]any{
 					"type": "http-header",
-					"http_header": map[string]any{
+					"config": map[string]any{
 						"name":    "Authorization",
 						"expr":    "Bearer {{.Value}}",
 						"domains": []string{"echo-backend"},

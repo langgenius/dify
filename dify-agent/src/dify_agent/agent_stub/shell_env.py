@@ -92,7 +92,7 @@ def build_shell_agent_stub_credentials(
             value=jwe,
             inject=InjectPolicy(
                 type="http-header",
-                http_header=HTTPHeaderInject(
+                config=HTTPHeaderInject(
                     name="Authorization",
                     expr="Bearer {{.Value}}",
                     domains=[domain] if domain else [],

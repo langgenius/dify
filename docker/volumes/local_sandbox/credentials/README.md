@@ -20,7 +20,7 @@ credentials:
     env_name: TAVILY_API_KEY
     inject:
       type: http-header
-      http_header:
+      config:
         name: Authorization
         expr: "Bearer {{.Value}}"
         domains:
@@ -43,7 +43,7 @@ credentials:
       - AWS_SESSION_TOKEN
     inject:
       type: aws-sigv4
-      aws_sigv4:
+      config:
         service: s3                     # defaults to "s3" if omitted
         # region: us-east-1             # omit to auto-extract from hostname
         domains:
@@ -68,7 +68,7 @@ credentials:
       - AWS_SECRET_ACCESS_KEY
     inject:
       type: aws-sigv4
-      aws_sigv4:
+      config:
         region: auto          # R2 is region-less; must set explicitly
         service: s3
         domains:
@@ -85,55 +85,4 @@ credentials:
 | `env_name` | Single env var name exposed to jobs as a `__secret:provider/name__` placeholder (optional; auto-derived as `PROVIDER_NAME` uppercased if omitted) |
 | `env_names` | Multiple env var names, all pointing to the same `__secret:provider/name__` placeholder (for structured credentials like AWS that need several standard env vars) |
 | `inject.type` | Injection policy: `http-header` or `aws-sigv4` |
-| `inject.http_header.name` | HTTP header to inject (e.g. `Authorization`) |
-| `inject.http_header.expr` | Go text/template with `{{.Value}}` (e.g. `Bearer {{.Value}}`) |
-| `inject.http_header.domains` | Host patterns to match (empty = all; supports `*.example.com`) |
-| `inject.aws_sigv4.region` | AWS region for signing (omit to auto-extract from hostname; use `auto` for R2) |
-| `inject.aws_sigv4.service` | AWS service name (e.g. `s3`, `execute-api`; defaults to `s3`) |
-| `inject.aws_sigv4.domains` | Host patterns to match (empty = all; supports `*.example.com`) |
-
-## How it works
-
-1. At container startup, the egress proxy loads all manifest files from this
-   directory (mounted read-only at `/etc/shellctl/credentials`).
-2. Credentials enter the resolver's **system tier** — shared across all sandbox
-   sessions, never mutated at runtime.
-3. When a job makes an outbound HTTP request through the proxy:
-   - If the request host matches a credential's `domains`, the proxy
-     **proactively injects** the credential (header or signature).
-   - If the request contains `__secret:provider/name__` placeholders in headers
-     or query params, the proxy **replaces** them with the real value (string
-     credentials only; structured credentials are not substituted into text).
-4. Jobs receive env vars like `TAVILY_API_KEY=__secret:tavily/api_key__` — a
-   placeholder, not the real secret. The proxy resolves it transparently.
-
-### AWS SigV4 details
-
-For `aws-sigv4` credentials, the proxy:
-
-1. **Strips** any client-supplied `Authorization`, `X-Amz-Date`,
-   `X-Amz-Content-Sha256`, and `X-Amz-Security-Token` headers.
-2. **Detects body signing mode** from the client's `X-Amz-Content-Sha256`:
-   - Hex SHA-256 hash: buffers body (≤10 MiB), computes hash, signs with it.
-   - `UNSIGNED-PAYLOAD`: signs headers only, no body hash.
-   - `STREAMING-UNSIGNED-PAYLOAD-TRAILER`: streams body through, signs headers only.
-   - Other `STREAMING-*` variants: rejected (cannot reproduce per-chunk signatures).
-   - Absent: treated as `UNSIGNED-PAYLOAD`.
-3. **Extracts region** from the hostname (e.g. `s3.us-east-1.amazonaws.com` →
-   `us-east-1`), or uses the explicit `region` from the policy. R2 hostnames
-   (`.r2.cloudflarestorage.com`) resolve to `auto`.
-4. **Re-signs** with real credentials using `aws-sdk-go-v2`.
-
-This means `aws cli` / `boto3` (which sign with placeholder env vars, producing
-a fake signature) and `curl` (which doesn't sign at all) both work — the proxy
-overwrites the signature with real credentials.
-
-### Limitations
-
-- `__secret:provider/name__` placeholders for structured (non-string) credentials
-  are not substituted into request text — they are only used via the injection
-  policy.
-- Chunk-signed streaming uploads (`STREAMING-AWS4-HMAC-SHA256-PAYLOAD`) are
-  rejected. Use unsigned payload mode instead.
-- Body buffering for signed mode is capped at 10 MiB.
-- SigV4 is sensitive to clock skew (±15 minutes). Ensure NTP is running.
+| `inject.config` | Type-specific config payload (see examples above) |

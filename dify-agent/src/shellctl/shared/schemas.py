@@ -145,7 +145,7 @@ class InjectPolicy(ShellctlModel):
     """Credential injection strategy (discriminated by type)."""
 
     type: str  # e.g. "http-header"
-    http_header: HTTPHeaderInject | None = None
+    config: HTTPHeaderInject | None = None
 
 
 class Credential(ShellctlModel):

@@ -1,6 +1,3 @@
-// Package simple implements the "simple-header" credential injection policy:
-// it renders a single HTTP header from a Go text/template evaluated against
-// the credential value.
 package simple
 
 import (
@@ -10,7 +7,34 @@ import (
 	"net/http"
 	"sync"
 	"text/template"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/providers"
 )
+
+// Config is the JSON/YAML payload for the "http-header" inject type.
+type Config struct {
+	Name    string   `json:"name" yaml:"name"`
+	Expr    string   `json:"expr,omitempty" yaml:"expr,omitempty"`
+	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
+}
+
+func init() {
+	providers.Register("http-header", func(config json.RawMessage) (providers.Policy, error) {
+		var c Config
+		if err := json.Unmarshal(config, &c); err != nil {
+			return nil, fmt.Errorf("parse http-header config: %w", err)
+		}
+		expr := c.Expr
+		if expr == "" {
+			expr = "{{.Value}}"
+		}
+		return &Policy{
+			HeaderName: c.Name,
+			Domains_:   c.Domains,
+			Expr:       expr,
+		}, nil
+	})
+}
 
 // Policy injects a single HTTP header on requests matching Domains. The
 // header value is rendered from Expr, a Go text/template evaluated with the

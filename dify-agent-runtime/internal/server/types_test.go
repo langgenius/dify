@@ -85,7 +85,7 @@ credentials:
     value: sk-system-default
     inject:
       type: http-header
-      http_header:
+      config:
         name: Authorization
         expr: "Bearer {{.Value}}"
         domains:
@@ -105,8 +105,18 @@ credentials:
 	if creds[0].Ref() != "custom_saas/api_key" || rawStr(creds[0].Value) != "sk-system-default" {
 		t.Errorf("unexpected credential: %+v", creds[0])
 	}
-	if creds[0].Inject == nil || creds[0].Inject.HTTPHeader == nil || creds[0].Inject.HTTPHeader.Name != "Authorization" {
-		t.Errorf("expected parsed inject policy, got %+v", creds[0].Inject)
+	if creds[0].Inject == nil || creds[0].Inject.Type != "http-header" {
+		t.Errorf("expected parsed inject policy with type http-header, got %+v", creds[0].Inject)
+	}
+	// Config should contain the raw JSON for the http_header payload.
+	var cfg struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(creds[0].Inject.Config, &cfg); err != nil {
+		t.Fatalf("unmarshal inject config: %v", err)
+	}
+	if cfg.Name != "Authorization" {
+		t.Errorf("expected inject config name=Authorization, got %q", cfg.Name)
 	}
 }
 
@@ -242,12 +252,8 @@ func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 			Name:     "api_key",
 			Value:    jsonStr("sk-system-default"),
 			Inject: &InjectPolicy{
-				Type: InjectTypeHTTPHeader,
-				HTTPHeader: &HTTPHeaderInject{
-					Name:    "Authorization",
-					Expr:    "Bearer {{.Value}}",
-					Domains: []string{"api.custom-saas.example"},
-				},
+				Type:   "http-header",
+				Config: json.RawMessage(`{"name":"Authorization","expr":"Bearer {{.Value}}","domains":["api.custom-saas.example"]}`),
 			},
 		},
 	}))

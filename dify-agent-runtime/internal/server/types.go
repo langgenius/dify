@@ -171,54 +171,49 @@ type Credential struct {
 }
 
 // InjectType enumerates supported credential injection strategies.
+// The actual set of supported types is determined at runtime by the
+// providers registry.
 type InjectType string
 
-const (
-	// InjectTypeHTTPHeader injects the credential as an HTTP request header.
-	InjectTypeHTTPHeader InjectType = "http-header"
-	// InjectTypeAWSSigV4 re-signs matching requests with AWS Signature
-	// Version 4 using the credential's structured value.
-	InjectTypeAWSSigV4 InjectType = "aws-sigv4"
-)
-
-// InjectPolicy defines how a credential is proactively injected into outbound HTTP requests.
-// The Type field selects the strategy; exactly one corresponding payload field should be set.
+// InjectPolicy defines how a credential is proactively injected into
+// outbound HTTP requests. Type selects the strategy; Config holds the
+// raw JSON payload that the corresponding provider package decodes.
 type InjectPolicy struct {
-	Type       InjectType        `json:"type" yaml:"type"`
-	HTTPHeader *HTTPHeaderInject `json:"http_header,omitempty" yaml:"http_header,omitempty"`
-	AWSSigV4   *AWSSigV4Inject   `json:"aws_sigv4,omitempty" yaml:"aws_sigv4,omitempty"`
+	Type   InjectType      `json:"type" yaml:"type"`
+	Config json.RawMessage `json:"config,omitempty" yaml:"config,omitempty"`
 }
 
-// HTTPHeaderInject injects a credential value as an HTTP request header.
-type HTTPHeaderInject struct {
-	// Name is the HTTP header name (e.g. "Authorization", "X-API-Key").
-	Name string `json:"name" yaml:"name"`
-	// Expr is a Go text/template rendered with the credential value
-	// available as {{.Value}} (e.g. "Bearer {{.Value}}").
-	Expr string `json:"expr,omitempty" yaml:"expr,omitempty"`
-	// Domains restricts injection to requests matching these host patterns.
-	// Supports wildcard prefix (e.g. "*.github.com", "api.example.com").
-	// Empty means inject on all domains.
-	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
-}
-
-// AWSSigV4Inject configures AWS Signature Version 4 re-signing. The
-// credential Value must be a JSON object with access_key_id and
-// secret_access_key (session_token optional). Client-supplied AWS auth
-// headers are stripped before re-signing, so both curl (no signature) and
-// aws cli (placeholder-based fake signature) work transparently.
-type AWSSigV4Inject struct {
-	// Region is the AWS region for signing. If empty, it is extracted from
-	// the request hostname (e.g. s3.us-east-1.amazonaws.com → us-east-1).
-	// For region-less services like Cloudflare R2, set this to "auto".
-	Region string `json:"region,omitempty" yaml:"region,omitempty"`
-	// Service is the AWS service name (e.g. "s3", "execute-api"). Defaults
-	// to "s3" if empty.
-	Service string `json:"service,omitempty" yaml:"service,omitempty"`
-	// Domains restricts signing to requests matching these host patterns.
-	// Supports wildcard prefix (e.g. "*.s3.amazonaws.com"). Empty means
-	// all domains.
-	Domains []string `json:"domains,omitempty" yaml:"domains,omitempty"`
+// UnmarshalYAML decodes Type and converts the config map to JSON bytes,
+// since json.RawMessage cannot be populated directly from YAML.
+func (i *InjectPolicy) UnmarshalYAML(node *yaml.Node) error {
+	// Walk the mapping nodes manually — yaml.v3 doesn't reliably populate
+	// *yaml.Node fields via struct decode.
+	var cfgNode *yaml.Node
+	for j := 0; j < len(node.Content)-1; j += 2 {
+		key := node.Content[j].Value
+		val := node.Content[j+1]
+		switch key {
+		case "type":
+			if err := val.Decode(&i.Type); err != nil {
+				return fmt.Errorf("inject: parse type: %w", err)
+			}
+		case "config":
+			cfgNode = val
+		}
+	}
+	if cfgNode == nil {
+		return nil
+	}
+	var v any
+	if err := cfgNode.Decode(&v); err != nil {
+		return fmt.Errorf("inject: decode config: %w", err)
+	}
+	jb, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("inject: marshal config to json: %w", err)
+	}
+	i.Config = jb
+	return nil
 }
 
 // Ref returns the canonical credential reference: "provider/name".
