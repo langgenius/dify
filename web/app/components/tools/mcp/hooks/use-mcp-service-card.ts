@@ -38,13 +38,13 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const { canEdit: canManageMCP, canReleaseAndVersion: canRegenerateMCPServerCode } = useMemo(
+  const canManageMCP = useMemo(
     () =>
       getAppACLCapabilities(appInfo.permission_keys, {
         currentUserId,
         resourceMaintainer: appInfo.maintainer,
         workspacePermissionKeys,
-      }),
+      }).canEdit,
     [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
@@ -120,11 +120,11 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
 
   // Handlers
   const handleGenCode = useCallback(async () => {
-    if (!canRegenerateMCPServerCode) return
+    if (!canManageMCP) return
 
     await refreshMCPServerCode(appId)
     invalidateMCPServerDetail(appId)
-  }, [canRegenerateMCPServerCode, refreshMCPServerCode, invalidateMCPServerDetail, appId])
+  }, [canManageMCP, refreshMCPServerCode, invalidateMCPServerDetail, appId])
 
   const handleStatusChange = useCallback(
     async (state: boolean) => {
@@ -155,10 +155,10 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   }, [])
 
   const openConfirmDelete = useCallback(() => {
-    if (!canRegenerateMCPServerCode) return
+    if (!canManageMCP) return
 
     setShowConfirmDelete(true)
-  }, [canRegenerateMCPServerCode])
+  }, [canManageMCP])
   const closeConfirmDelete = useCallback(() => setShowConfirmDelete(false), [])
   const openServerModal = useCallback(() => {
     if (!canManageMCP) return
@@ -183,7 +183,6 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
 
     // Permission & validation flags
     canManageMCP,
-    canRegenerateMCPServerCode,
     toggleDisabled,
     isMinimalState,
     appUnpublished,

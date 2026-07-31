@@ -3211,7 +3211,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
+| app_id | path | App ID | Yes | string (uuid) |
 
 #### Responses
 

@@ -182,7 +182,7 @@ class AppMCPServerController(Resource):
 class AppMCPServerRefreshController(Resource):
     @console_ns.doc("refresh_app_mcp_server")
     @console_ns.doc(description="Refresh MCP server configuration and regenerate server code")
-    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.response(200, "MCP server refreshed successfully", console_ns.models[AppMCPServerResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
@@ -190,7 +190,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
     @get_app_model
     def post(self, current_tenant_id: str, app_model: App):
