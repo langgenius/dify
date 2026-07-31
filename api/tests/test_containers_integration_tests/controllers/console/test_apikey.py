@@ -15,7 +15,7 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset
 from models.enums import ApiTokenType, DataSourceType
-from models.model import ApiToken, App, AppMode
+from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -211,114 +211,131 @@ class TestAppApiKeyResource:
 
 
 class TestDatasetApiKeyListResource:
-    """Tests for GET/POST /datasets/<resource_id>/api-keys (dataset-bound keys)."""
+    """Tests for GET/POST /datasets/api-keys with per-knowledge-base scope.
 
-    def test_create_dataset_bound_key(
+    Scope is expressed by DatasetApiTokenBinding rows: absent/empty ``dataset_ids``
+    on create makes an unrestricted key; a non-empty list binds the key to exactly
+    those knowledge bases.
+    """
+
+    def _bound_dataset_ids(self, session: Session, api_token_id: str) -> set[str]:
+        return {
+            str(dataset_id)
+            for dataset_id in session.scalars(
+                select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_token_id)
+            ).all()
+        }
+
+    def test_create_unbound_key(
         self,
         setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
         db_session_with_containers: Session,
     ) -> None:
         client, headers, dataset = setup_dataset
-
-        resp = client.post(f"/console/api/datasets/{dataset.id}/api-keys", headers=headers)
-
-        assert resp.status_code == 201
-        assert resp.json is not None
-        assert resp.json["token"].startswith("dataset-")
-        assert resp.json["dataset_id"] == dataset.id
-        api_token = db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == resp.json["id"]))
-        assert api_token is not None
-        assert api_token.dataset_id == dataset.id
-        assert api_token.tenant_id == dataset.tenant_id
-        assert api_token.type == ApiTokenType.DATASET
-
-    def test_list_includes_bound_and_workspace_scoped_keys(
-        self,
-        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
-        db_session_with_containers: Session,
-    ) -> None:
-        client, headers, dataset = setup_dataset
-
-        # A bound key via the per-dataset route and a workspace key via the tenant route.
-        bound_resp = client.post(f"/console/api/datasets/{dataset.id}/api-keys", headers=headers)
-        assert bound_resp.status_code == 201
-        workspace_resp = client.post("/console/api/datasets/api-keys", headers=headers)
-        assert workspace_resp.status_code == 200
-
-        resp = client.get(f"/console/api/datasets/{dataset.id}/api-keys", headers=headers)
-
-        assert resp.status_code == 200
-        assert resp.json is not None
-        scopes = {item["id"]: item["dataset_id"] for item in resp.json["data"]}
-        assert bound_resp.json is not None
-        assert workspace_resp.json is not None
-        assert scopes[bound_resp.json["id"]] == dataset.id
-        assert scopes[workspace_resp.json["id"]] is None
-
-    def test_list_excludes_keys_bound_to_other_datasets(
-        self,
-        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
-        db_session_with_containers: Session,
-    ) -> None:
-        client, headers, dataset = setup_dataset
-        # Capture ids up front: the commit below expires these instances and the
-        # subsequent request teardown detaches them, so reading dataset.id afterwards
-        # would raise DetachedInstanceError.
-        dataset_id = dataset.id
-        other_dataset = Dataset(
-            tenant_id=dataset.tenant_id,
-            name=f"Other Dataset {uuid4()}",
-            description="Second dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            created_by=dataset.created_by,
-            permission="only_me",
-            provider="vendor",
-        )
-        db_session_with_containers.add(other_dataset)
-        db_session_with_containers.commit()
-        other_dataset_id = other_dataset.id
-
-        other_resp = client.post(f"/console/api/datasets/{other_dataset_id}/api-keys", headers=headers)
-        assert other_resp.status_code == 201
-
-        resp = client.get(f"/console/api/datasets/{dataset_id}/api-keys", headers=headers)
-
-        assert resp.status_code == 200
-        assert resp.json is not None
-        assert other_resp.json is not None
-        assert other_resp.json["id"] not in {item["id"] for item in resp.json["data"]}
-
-    def test_workspace_route_creates_unbound_key(
-        self,
-        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
-        db_session_with_containers: Session,
-    ) -> None:
-        """The pre-existing workspace route must keep creating NULL-scoped keys."""
-        client, headers, _ = setup_dataset
+        tenant_id = dataset.tenant_id
 
         resp = client.post("/console/api/datasets/api-keys", headers=headers)
 
         assert resp.status_code == 200
         assert resp.json is not None
+        assert resp.json["token"].startswith("dataset-")
+        assert resp.json["dataset_ids"] == []
         api_token = db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == resp.json["id"]))
         assert api_token is not None
-        assert api_token.dataset_id is None
+        assert api_token.tenant_id == tenant_id
+        assert api_token.type == ApiTokenType.DATASET
+        # No bindings -> unrestricted key.
+        assert self._bound_dataset_ids(db_session_with_containers, resp.json["id"]) == set()
 
+    def test_create_scoped_key_persists_bindings(
+        self,
+        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
+        db_session_with_containers: Session,
+    ) -> None:
+        client, headers, dataset = setup_dataset
+        dataset_id = dataset.id
 
-class TestDatasetApiKeyResource:
-    """Tests for DELETE /datasets/<resource_id>/api-keys/<api_key_id>."""
+        resp = client.post(
+            "/console/api/datasets/api-keys",
+            headers=headers,
+            json={"dataset_ids": [dataset_id]},
+        )
 
-    def test_delete_bound_key(
+        assert resp.status_code == 200
+        assert resp.json is not None
+        assert resp.json["dataset_ids"] == [dataset_id]
+        assert self._bound_dataset_ids(db_session_with_containers, resp.json["id"]) == {dataset_id}
+
+    def test_create_rejects_dataset_outside_tenant(
         self,
         setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
     ) -> None:
-        client, headers, dataset = setup_dataset
-        create_resp = client.post(f"/console/api/datasets/{dataset.id}/api-keys", headers=headers)
-        assert create_resp.json is not None
+        """A dataset id that does not belong to the tenant is rejected with 400."""
+        client, headers, _ = setup_dataset
 
-        resp = client.delete(
-            f"/console/api/datasets/{dataset.id}/api-keys/{create_resp.json['id']}",
+        resp = client.post(
+            "/console/api/datasets/api-keys",
             headers=headers,
+            json={"dataset_ids": [str(uuid4())]},
         )
 
+        assert resp.status_code == 400
+
+    def test_list_reports_scope_for_each_key(
+        self,
+        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
+        db_session_with_containers: Session,
+    ) -> None:
+        client, headers, dataset = setup_dataset
+        dataset_id = dataset.id
+
+        scoped_resp = client.post(
+            "/console/api/datasets/api-keys",
+            headers=headers,
+            json={"dataset_ids": [dataset_id]},
+        )
+        assert scoped_resp.status_code == 200
+        unbound_resp = client.post("/console/api/datasets/api-keys", headers=headers)
+        assert unbound_resp.status_code == 200
+
+        resp = client.get("/console/api/datasets/api-keys", headers=headers)
+
+        assert resp.status_code == 200
+        assert resp.json is not None
+        assert scoped_resp.json is not None
+        assert unbound_resp.json is not None
+        scopes = {item["id"]: item["dataset_ids"] for item in resp.json["data"]}
+        assert scopes[scoped_resp.json["id"]] == [dataset_id]
+        assert scopes[unbound_resp.json["id"]] == []
+        # reveal-once: the list returns masked tokens, never the full secret.
+        listed = {item["id"]: item["token"] for item in resp.json["data"]}
+        assert listed[scoped_resp.json["id"]] != scoped_resp.json["token"]
+
+
+class TestDatasetApiKeyResource:
+    """Tests for DELETE /datasets/api-keys/<api_key_id>."""
+
+    def test_delete_key_removes_bindings(
+        self,
+        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
+        db_session_with_containers: Session,
+    ) -> None:
+        client, headers, dataset = setup_dataset
+        dataset_id = dataset.id
+        create_resp = client.post(
+            "/console/api/datasets/api-keys",
+            headers=headers,
+            json={"dataset_ids": [dataset_id]},
+        )
+        assert create_resp.json is not None
+        api_key_id = create_resp.json["id"]
+
+        resp = client.delete(f"/console/api/datasets/api-keys/{api_key_id}", headers=headers)
+
         assert resp.status_code == 204
+        assert db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == api_key_id)) is None
+        # The binding rows cascade away with the deleted key.
+        remaining = db_session_with_containers.scalars(
+            select(DatasetApiTokenBinding).where(DatasetApiTokenBinding.api_token_id == api_key_id)
+        ).all()
+        assert remaining == []
