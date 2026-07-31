@@ -46,7 +46,7 @@ export function SkillTagsEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
@@ -325,7 +325,7 @@ export function SkillTagsEditor({
 }
 
 export function SkillReferencesPanel({ skillId }: { referenceCount: number; skillId: string }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const referencesQuery = useQuery(
     consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
       input: {
@@ -381,7 +381,7 @@ export function SkillPublishConfirmPanel({
   referenceCount: number
   skillId: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const referencesQuery = useQuery(
     consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({

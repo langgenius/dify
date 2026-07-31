@@ -115,7 +115,7 @@ export function FileEditor({
   selectedVersionId: string | null
   skillId: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const initialContent = file && isTextFile(file) ? (file.content ?? '') : ''
@@ -144,6 +144,7 @@ export function FileEditor({
   const detailRef = useRef(detail)
   const fileRef = useRef(file)
   const pendingPublishAfterSaveRef = useRef(false)
+  const pendingDisplayNameRenameRef = useRef(false)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -152,12 +153,6 @@ export function FileEditor({
       context: { silent: true },
     }),
   )
-  const { mutateAsync: updateSkillMetadata } = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-
   const filePath = file?.path
   const codeLanguage = getSkillCodeLanguage(file)
   const isMarkdown = isMarkdownFile(file)
@@ -187,6 +182,7 @@ export function FileEditor({
       : null
   const latestPublishedAt = detail?.latest_published_at
   const hasUnpublishedChanges =
+    displayNameDraft !== markdownContent.displayName ||
     saveStatus === 'dirty' ||
     saveStatus === 'saving' ||
     saveStatus === 'error' ||
@@ -300,11 +296,13 @@ export function FileEditor({
 
       setHasSaveConflict(false)
       setSaveStatus('saving')
+      const shouldNotifyDisplayNameRename =
+        currentFile.path === 'SKILL.md' && pendingDisplayNameRenameRef.current
       try {
         const nextCachedDetail = await runSkillFileMutation(
           fileMutationCoordinator,
-          async (expectedUpdatedAt) => {
-            const nextDetail = await saveDraftFile({
+          async (expectedUpdatedAt) =>
+            saveDraftFile({
               params: {
                 skill_id: skillId,
               },
@@ -317,27 +315,7 @@ export function FileEditor({
                 path: currentFile.path,
                 size: content.length,
               },
-            })
-            const nextDisplayName =
-              currentFile.path === 'SKILL.md'
-                ? parseMarkdownContent(content).displayName.trim()
-                : ''
-            return nextDisplayName && nextDisplayName !== nextDetail.display_name
-              ? {
-                  ...nextDetail,
-                  ...(await updateSkillMetadata({
-                    params: {
-                      skill_id: skillId,
-                    },
-                    body: {
-                      display_name: nextDisplayName,
-                      expected_updated_at: nextDetail.updated_at,
-                    },
-                  })),
-                  files: nextDetail.files,
-                }
-              : nextDetail
-          },
+            }),
         )
 
         detailRef.current = nextCachedDetail
@@ -350,6 +328,10 @@ export function FileEditor({
         setSaveStatus(draftContentRef.current === content ? 'saved' : 'dirty')
         setSkillDetailCache(queryClient, skillId, nextCachedDetail)
         onDraftDetailChange(nextCachedDetail)
+        if (shouldNotifyDisplayNameRename) {
+          pendingDisplayNameRenameRef.current = false
+          toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
+        }
         return true
       } catch (error) {
         const errorPayload = await getAsyncSkillErrorPayload(error)
@@ -435,7 +417,6 @@ export function FileEditor({
       saveDraftFile,
       skillId,
       t,
-      updateSkillMetadata,
     ],
   )
   const canEditRef = useRef(canEdit)
@@ -847,6 +828,7 @@ export function FileEditor({
   const handleDisplayNameCommit = () => {
     if (!isSkillManifestFile || readonly || displayNameDraft === markdownContent.displayName) return
 
+    pendingDisplayNameRenameRef.current = true
     updateDraftContent(setMarkdownDisplayName(draftContentRef.current, displayNameDraft))
   }
 
@@ -1066,11 +1048,7 @@ export function FileEditor({
                             className="h-8 w-[280px] max-w-full rounded-lg border border-transparent bg-transparent px-0 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary hover:border-divider-regular hover:bg-background-default hover:px-2.5 focus-visible:border-divider-regular focus-visible:bg-background-default focus-visible:px-2.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                             onBlur={handleDisplayNameCommit}
                             onChange={(event) => {
-                              const nextDisplayName = event.target.value
-                              setDisplayNameDraft(nextDisplayName)
-                              updateDraftContent(
-                                setMarkdownDisplayName(draftContentRef.current, nextDisplayName),
-                              )
+                              setDisplayNameDraft(event.target.value)
                             }}
                             onKeyDown={(event) => {
                               if (event.key === 'Escape') {

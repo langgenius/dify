@@ -244,9 +244,7 @@ describe('SkillsPage', () => {
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
-    expect(
-      screen.getByText('agentV2.skillManagement.referenceCount:{"count":2}'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.referenceCount:{"count":2}')).toBeInTheDocument()
   })
 
   it('passes keyword and selected tags to the list query', async () => {
@@ -255,7 +253,7 @@ describe('SkillsPage', () => {
 
     await user.type(
       await screen.findByRole('searchbox', {
-        name: 'agentV2.skillManagement.searchLabel',
+        name: 'skill.skillManagement.searchLabel',
       }),
       'refund',
     )
@@ -271,7 +269,7 @@ describe('SkillsPage', () => {
       })
     })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.tags' }))
+    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.tags' }))
     await waitFor(() => {
       expect(screen.getAllByText('support').length).toBeGreaterThan(1)
     })
@@ -309,7 +307,7 @@ describe('SkillsPage', () => {
     renderSkillsPage()
 
     const skillList = await screen.findByRole('region', {
-      name: 'agentV2.skillManagement.listLabel',
+      name: 'skill.skillManagement.listLabel',
     })
     await screen.findByRole('heading', { name: 'Skill 1' })
     expect(within(skillList).getAllByRole('article')).toHaveLength(20)
@@ -338,7 +336,7 @@ describe('SkillsPage', () => {
     const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     renderSkillsPage()
 
-    await user.click(await screen.findByRole('button', { name: 'agentV2.skillManagement.create' }))
+    await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
 
     await waitFor(() => {
       expect(mocks.createSkillMutationFn).toHaveBeenCalledWith(
@@ -348,7 +346,7 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.createSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.createSuccess')
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -379,7 +377,7 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.importSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -395,7 +393,7 @@ describe('SkillsPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
       }),
     )
     await user.click(await screen.findByText('common.operation.duplicate'))
@@ -410,7 +408,7 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.duplicateSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
   })
 
   it('exports a published skill from the card action menu', async () => {
@@ -419,7 +417,7 @@ describe('SkillsPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
       }),
     )
     await user.click(await screen.findByText('common.operation.export'))
@@ -441,7 +439,7 @@ describe('SkillsPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
       }),
     )
 
@@ -454,7 +452,7 @@ describe('SkillsPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
       }),
     )
     await user.click(await screen.findByText('common.operation.delete'))
@@ -462,7 +460,7 @@ describe('SkillsPage', () => {
 
     expect(
       within(dialog).getByText(
-        'agentV2.skillManagement.deleteDialog.referencedDescription:{"count":2}',
+        'skill.skillManagement.deleteDialog.referencedDescription:{"count":2}',
       ),
     ).toBeInTheDocument()
 
@@ -481,7 +479,7 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.deleteSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
   })
 
   it('shows the empty-search state without create or import actions', async () => {
@@ -491,12 +489,12 @@ describe('SkillsPage', () => {
 
     renderSkillsPage()
 
-    expect(await screen.findByText('agentV2.skillManagement.emptySearch')).toBeInTheDocument()
+    expect(await screen.findByText('skill.skillManagement.emptySearch')).toBeInTheDocument()
     expect(
-      screen.queryByText('agentV2.skillManagement.emptyAction.createTitle'),
+      screen.queryByText('skill.skillManagement.emptyAction.createTitle'),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByText('agentV2.skillManagement.emptyAction.importTitle'),
+      screen.queryByText('skill.skillManagement.emptyAction.importTitle'),
     ).not.toBeInTheDocument()
   })
 })

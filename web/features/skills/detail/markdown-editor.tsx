@@ -28,7 +28,7 @@ export function MarkdownModeSwitch({
   mode: 'live' | 'source'
   onChange: (mode: 'live' | 'source') => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
 
   return (
     <div className="absolute top-3 right-3 z-10 flex h-8 items-center rounded-lg border border-divider-subtle bg-background-default p-0.5 shadow-xs">
@@ -355,7 +355,7 @@ export function VersionActionBar({
   restoring: boolean
   version: SkillVersionResponse
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { formatTime } = useTimestamp()
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
   const publishedAt = formatTime(

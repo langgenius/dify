@@ -25,7 +25,7 @@ import { DetailSkeleton, SkillDetailRightPanelRail } from './shell'
 import { VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const queryClient = useQueryClient()
   const [selectedPath, setSelectedPath] = useState<string>()
   const [openFilePaths, setOpenFilePaths] = useState<string[]>([])

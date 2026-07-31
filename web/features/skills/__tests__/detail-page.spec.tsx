@@ -547,12 +547,31 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('matches the Figma Skill sidebar navigation structure and spacing', async () => {
+    renderSkillDetailPage()
+
+    const sidebar = await screen.findByTestId('skill-detail-sidebar')
+    const header = screen.getByTestId('skill-detail-sidebar-header')
+
+    expect(sidebar).toHaveClass('w-[248px]', 'bg-background-body', 'p-1')
+    expect(sidebar.firstElementChild).toHaveClass('rounded-lg', 'bg-background-default')
+    expect(header).toHaveClass('h-12', 'py-2', 'pr-2', 'pl-1')
+    expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
+    expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
+    expect(header).toHaveTextContent('/SKILLS')
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.searchFiles',
+      }),
+    ).toHaveClass('size-8', 'rounded-[10px]')
+  })
+
   it('opens the inline tag selector with workspace tag options', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
     const addTagButton = await screen.findByRole('combobox', {
-      name: 'agentV2.skillManagement.detail.addTag',
+      name: 'skill.skillManagement.detail.addTag',
     })
     await user.click(addTagButton)
 
@@ -571,7 +590,7 @@ describe('SkillDetailPage', () => {
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     ).not.toBeInTheDocument()
   })
@@ -582,7 +601,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('combobox', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
@@ -610,7 +629,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('combobox', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
@@ -634,7 +653,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('combobox', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     )
     await user.type(
@@ -658,7 +677,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('combobox', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     )
     await user.type(
@@ -704,7 +723,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('combobox', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
@@ -730,7 +749,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('combobox', {
-        name: 'agentV2.skillManagement.detail.addTag',
+        name: 'skill.skillManagement.detail.addTag',
       }),
     )
     await user.click(await screen.findByRole('button', { name: 'common.tag.manageTags' }))
@@ -751,7 +770,7 @@ describe('SkillDetailPage', () => {
     expect(screen.getByText('Pre-sales')).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'agentV2.skillManagement.detail.removeTag:{"tag":"Search"}',
+        name: 'skill.skillManagement.detail.removeTag:{"tag":"Search"}',
       }),
     )
 
@@ -788,7 +807,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.removeTag:{"tag":"Search"}',
+        name: 'skill.skillManagement.detail.removeTag:{"tag":"Search"}',
       }),
     )
 
@@ -829,7 +848,7 @@ describe('SkillDetailPage', () => {
     })
     const { container } = renderSkillDetailPage()
 
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await screen.findByText('skill.skillManagement.detail.builder.title')
     fireEvent.click(getFileTreeButton('references/guide.md'))
 
     await waitFor(() => {
@@ -859,10 +878,10 @@ describe('SkillDetailPage', () => {
     })
     renderSkillDetailPage()
 
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await screen.findByText('skill.skillManagement.detail.builder.title')
     fireEvent.click(getFileTreeButton('scripts/action.ts'))
 
-    expect(await screen.findByText('agentV2.skillManagement.detail.loadFailed')).toBeInTheDocument()
+    expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
     expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
@@ -874,7 +893,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.type(getSourceEditor(), '\nNew instructions')
@@ -895,7 +914,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.type(getSourceEditor(), '\nNew instructions')
@@ -948,14 +967,14 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.type(getSourceEditor(), '\nMy tab changes')
 
     await waitFor(
       () => {
-        expect(toast.error).toHaveBeenCalledWith('agentV2.skillManagement.detail.saveConflict')
+        expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.detail.saveConflict')
       },
       { timeout: 4000 },
     )
@@ -963,7 +982,7 @@ describe('SkillDetailPage', () => {
     expect(mocks.skillDetailGetFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
       expect(
-        screen.getByText(/agentV2\.skillManagement\.detail\.saveConflictStatus/),
+        screen.getByText(/skill\.skillManagement\.detail\.saveConflictStatus/),
       ).toBeInTheDocument()
     })
 
@@ -1000,21 +1019,21 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.type(getSourceEditor(), '\nMy response error changes')
 
     await waitFor(
       () => {
-        expect(toast.error).toHaveBeenCalledWith('agentV2.skillManagement.detail.saveConflict')
+        expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.detail.saveConflict')
       },
       { timeout: 4000 },
     )
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
       expect(
-        screen.getByText(/agentV2\.skillManagement\.detail\.saveConflictStatus/),
+        screen.getByText(/skill\.skillManagement\.detail\.saveConflictStatus/),
       ).toBeInTheDocument()
     })
 
@@ -1035,7 +1054,7 @@ describe('SkillDetailPage', () => {
     const displayNameInput = await screen.findByDisplayValue('Untitled skill')
     await user.clear(displayNameInput)
     await user.type(displayNameInput, '333333333')
-    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.detail.publish' }))
+    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publish' }))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
@@ -1055,12 +1074,101 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('renames the skill from the sidebar title and keeps SKILL.md metadata in sync', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    const renameButton = await screen.findByRole('button', { name: 'common.operation.rename' })
+    expect(renameButton).toHaveClass('system-md-semibold', 'hover:bg-state-base-hover')
+
+    await user.click(renameButton)
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    expect(renameInput).toHaveFocus()
+    expect(renameInput).toHaveValue('Untitled skill')
+    expect(renameInput).toHaveProperty('selectionStart', 0)
+    expect(renameInput).toHaveProperty('selectionEnd', 'Untitled skill'.length)
+    expect(renameInput).toHaveClass(
+      'border-components-input-border-active',
+      'bg-components-input-bg-active',
+      'shadow-xs',
+    )
+
+    await user.clear(renameInput)
+    await user.type(renameInput, 'Renamed skill{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            content: expect.stringMatching(
+              /name: github-actions-failure-debugging[\s\S]*display-name: Renamed skill/,
+            ),
+            operation: 'upsert_text',
+            path: 'SKILL.md',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+    const savedContent = mocks.saveDraftFileMutationFn.mock.calls[0]?.[0].body.content
+    expect(savedContent).not.toContain('name: renamed-skill')
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.renameSkillSuccess')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
+        'Renamed skill',
+      )
+    })
+  })
+
+  it('updates display-name from the manifest editor without changing name', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    const displayNameInput = await screen.findByDisplayValue('Untitled skill')
+    await user.clear(displayNameInput)
+    await user.type(displayNameInput, 'Editor Display Name')
+    await user.tab()
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
+    })
+    const savedContent = mocks.saveDraftFileMutationFn.mock.calls.at(-1)?.[0].body.content
+    expect(savedContent).toMatch(
+      /name: github-actions-failure-debugging[\s\S]*display-name: Editor Display Name/,
+    )
+    expect(savedContent).not.toContain('name: editor-display-name')
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.renameSkillSuccess')
+  })
+
+  it('cancels an empty sidebar rename when the field loses focus', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(await screen.findByRole('button', { name: 'common.operation.rename' }))
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    await user.clear(renameInput)
+    await user.tab()
+
+    expect(
+      screen.queryByRole('textbox', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
+      'Untitled skill',
+    )
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
   it('marks the draft as published and disables publish until new edits are made', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
     const publishButton = await screen.findByRole('button', {
-      name: 'agentV2.skillManagement.detail.publish',
+      name: 'skill.skillManagement.detail.publish',
     })
     expect(publishButton).toBeEnabled()
 
@@ -1071,7 +1179,7 @@ describe('SkillDetailPage', () => {
     })
     await waitFor(() => {
       expect(document.body).toHaveTextContent(
-        'agentV2.skillManagement.detail.publishedVersion:{"number":2}',
+        'skill.skillManagement.detail.publishedVersion:{"number":2}',
       )
     })
     expect(publishButton).toBeDisabled()
@@ -1089,21 +1197,21 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.addMetadata',
+        name: 'skill.skillManagement.detail.addMetadata',
       }),
     )
     await user.type(
-      screen.getByPlaceholderText('agentV2.skillManagement.detail.metadataKey'),
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataKey'),
       'owner',
     )
     await user.type(
-      screen.getByPlaceholderText('agentV2.skillManagement.detail.metadataValue'),
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataValue'),
       'support{Enter}',
     )
     expect(await screen.findByText('owner')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.detail.publish' }))
+    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publish' }))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -1142,7 +1250,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.click(await screen.findByText('references'))
@@ -1160,7 +1268,7 @@ describe('SkillDetailPage', () => {
     expect(screen.queryByDisplayValue('Refund policy.')).not.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Refund Policy')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'agentV2.skillManagement.detail.addMetadata' }),
+      screen.queryByRole('button', { name: 'skill.skillManagement.detail.addMetadata' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1194,7 +1302,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(liveEditor)
     await user.type(liveEditor, 'First line{Enter}Second line')
-    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.detail.publish' }))
+    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publish' }))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -1212,9 +1320,9 @@ describe('SkillDetailPage', () => {
     const user = userEvent.setup()
     const { container } = renderSkillDetailPage()
 
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await screen.findByText('skill.skillManagement.detail.builder.title')
     expect(
-      await screen.findByText('agentV2.skillManagement.detail.builder.editIntro'),
+      await screen.findByText('skill.skillManagement.detail.builder.editIntro'),
     ).toBeInTheDocument()
     const attachmentInput = getBuilderAttachmentInput(container)
     expect(attachmentInput).not.toBeNull()
@@ -1229,7 +1337,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'agentV2.skillManagement.detail.builder.send',
+        name: 'skill.skillManagement.detail.builder.send',
       }),
     )
 
@@ -1237,7 +1345,7 @@ describe('SkillDetailPage', () => {
       expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           skillId: 'skill-1',
-          message: 'agentV2.skillManagement.detail.builder.attachmentOnlyMessage',
+          message: 'skill.skillManagement.detail.builder.attachmentOnlyMessage',
           attachments: [
             {
               mime_type: 'text/markdown',
@@ -1256,7 +1364,7 @@ describe('SkillDetailPage', () => {
     mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
     const { container } = renderSkillDetailPage()
 
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await screen.findByText('skill.skillManagement.detail.builder.title')
     const attachmentInput = getBuilderAttachmentInput(container)
     expect(attachmentInput).not.toBeNull()
 
@@ -1271,7 +1379,7 @@ describe('SkillDetailPage', () => {
     })
 
     const promptInput = screen.getByPlaceholderText(
-      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
     )
     await user.type(promptInput, 'Use the attached guide{Enter}')
 
@@ -1285,7 +1393,7 @@ describe('SkillDetailPage', () => {
     mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
     const { container } = renderSkillDetailPage()
 
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await screen.findByText('skill.skillManagement.detail.builder.title')
     const attachmentInput = getBuilderAttachmentInput(container)
     expect(attachmentInput).not.toBeNull()
 
@@ -1300,7 +1408,7 @@ describe('SkillDetailPage', () => {
     })
 
     const suggestion = screen.getByRole('button', {
-      name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+      name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
     })
     expect(suggestion).toBeDisabled()
 
@@ -1312,7 +1420,7 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const promptInput = await screen.findByPlaceholderText(
-      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
     )
     fireEvent.change(promptInput, { target: { value: 'ni' } })
     fireEvent.compositionStart(promptInput)
@@ -1326,7 +1434,7 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const promptInput = await screen.findByPlaceholderText(
-      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
     )
     vi.useFakeTimers()
     try {
@@ -1357,7 +1465,7 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const promptInput = await screen.findByPlaceholderText(
-      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
     )
     fireEvent.change(promptInput, { target: { value: 'Create a support triage skill' } })
     fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
@@ -1378,13 +1486,13 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const promptInput = await screen.findByPlaceholderText(
-      'agentV2.skillManagement.detail.builder.placeholder',
+      'skill.skillManagement.detail.builder.placeholder',
     )
     const sendButton = screen.getByRole('button', {
-      name: 'agentV2.skillManagement.detail.builder.send',
+      name: 'skill.skillManagement.detail.builder.send',
     })
     const suggestion = screen.getByRole('button', {
-      name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+      name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
     })
 
     expect(sendButton).toBeDisabled()
@@ -1400,7 +1508,7 @@ describe('SkillDetailPage', () => {
     const user = userEvent.setup({ applyAccept: false })
     const { container } = renderSkillDetailPage()
 
-    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await screen.findByText('skill.skillManagement.detail.builder.title')
     const attachmentInput = getBuilderAttachmentInput(container)
     expect(attachmentInput).not.toBeNull()
 
@@ -1413,7 +1521,7 @@ describe('SkillDetailPage', () => {
 
     expect(mocks.uploadSkillFile).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith(
-      'agentV2.skillManagement.detail.builder.attachUnsupported',
+      'skill.skillManagement.detail.builder.attachUnsupported',
     )
   })
 
@@ -1430,17 +1538,17 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.skillManagement.detail.publish' }),
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.publish' }),
     )
 
     expect(
-      await screen.findByText('agentV2.skillManagement.detail.publishReferencesTitle'),
+      await screen.findByText('skill.skillManagement.detail.publishReferencesTitle'),
     ).toBeInTheDocument()
     expect(await screen.findByText('Support Agent')).toBeInTheDocument()
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
     await user.click(
-      screen.getByRole('button', { name: 'agentV2.skillManagement.detail.publishUpdate' }),
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
     )
 
     await waitFor(() => {
@@ -1484,14 +1592,14 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.skillManagement.detail.versionHistory' }),
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
     )
     await user.click(await screen.findByRole('button', { name: /Rollback target/ }))
 
     expect(await screen.findByText(/Rollback instructions/)).toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'agentV2.skillManagement.detail.restoreVersion' }),
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
     )
 
     await waitFor(() => {
@@ -1544,14 +1652,14 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.skillManagement.detail.versionHistory' }),
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
     )
     await user.click(await screen.findByRole('button', { name: /#2/ }))
 
     expect(await screen.findAllByText('#2')).toHaveLength(2)
 
     await user.click(
-      screen.getByRole('button', { name: 'agentV2.skillManagement.detail.restoreVersion' }),
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
     )
 
     await waitFor(() => {
@@ -1590,7 +1698,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     const sourceEditor = getSourceEditor()
@@ -1599,7 +1707,7 @@ describe('SkillDetailPage', () => {
 
     await user.keyboard('/')
     expect(
-      await screen.findByText('agentV2.skillManagement.detail.referenceFiles.title'),
+      await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
     ).toBeInTheDocument()
 
     await user.keyboard('{ArrowRight}{Enter}')
@@ -1618,26 +1726,24 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
       }),
     )
 
     await waitFor(() => {
       expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+          message: 'skill.skillManagement.detail.builder.exampleIssueTriage',
         }),
       )
     })
     expect(
-      await screen.findByPlaceholderText(
-        'agentV2.skillManagement.detail.builder.modifyPlaceholder',
-      ),
+      await screen.findByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeDisabled()
 
     await user.click(
       screen.getByRole('button', {
-        name: 'agentV2.skillManagement.detail.builder.followUpDisplayName',
+        name: 'skill.skillManagement.detail.builder.followUpDisplayName',
       }),
     )
 
@@ -1683,12 +1789,12 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
       }),
     )
 
@@ -1724,12 +1830,12 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
       }),
     )
 
@@ -1770,7 +1876,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+        name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.type(getSourceEditor(), '\nAutosave in progress')
@@ -1782,7 +1888,7 @@ describe('SkillDetailPage', () => {
     )
 
     await openRootCreateMenu(user)
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
     await user.type(await screen.findByPlaceholderText('File name'), 'notes.md{Enter}')
 
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
@@ -1839,7 +1945,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
       }),
     )
 
@@ -1855,7 +1961,7 @@ describe('SkillDetailPage', () => {
       expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
     })
     await openRootCreateMenu(user)
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFolderMenu'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFolderMenu'))
     const folderNameInput = await screen.findByPlaceholderText('Folder name')
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -1885,7 +1991,7 @@ describe('SkillDetailPage', () => {
       expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
     })
     await openRootCreateMenu(user)
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     await user.type(fileNameInput, 'notes.md')
@@ -1965,7 +2071,7 @@ describe('SkillDetailPage', () => {
       expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
     })
     await openRootCreateMenu(user)
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
@@ -2000,7 +2106,7 @@ describe('SkillDetailPage', () => {
       expect(getFileTreeItem('scripts')).toBeInTheDocument()
     })
     await openFileTreeActions(user, 'scripts')
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFileMenu'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     expect(fileNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
@@ -2043,7 +2149,7 @@ describe('SkillDetailPage', () => {
       expect(getFileTreeItem('scripts')).toBeInTheDocument()
     })
     await openFileTreeActions(user, 'scripts')
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.createFolderMenu'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFolderMenu'))
     const folderNameInput = await screen.findByPlaceholderText('Folder name')
 
     expect(folderNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
@@ -2152,7 +2258,7 @@ describe('SkillDetailPage', () => {
     })
 
     expect(await screen.findByText('common.operation.rename...')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.skillManagement.detail.cutFile')).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.detail.cutFile')).toBeInTheDocument()
     expect(screen.getAllByText('⌘')).toHaveLength(2)
     expect(screen.getByText('X')).toBeInTheDocument()
     expect(screen.getByText('C')).toBeInTheDocument()
@@ -2181,7 +2287,7 @@ describe('SkillDetailPage', () => {
       ...primaryModifier,
     })
 
-    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.detail.copyFileSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
   })
 
   it('cuts the context-menu file with the displayed keyboard shortcut', async () => {
@@ -2198,7 +2304,7 @@ describe('SkillDetailPage', () => {
     await screen.findByText('common.operation.rename...')
 
     const cutMenuItem = screen.getByRole('menuitem', {
-      name: /agentV2\.skillManagement\.detail\.cutFile/,
+      name: /skill\.skillManagement\.detail\.cutFile/,
     })
     cutMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
     fireEvent.keyDown(cutMenuItem, {
@@ -2207,7 +2313,7 @@ describe('SkillDetailPage', () => {
       ...primaryModifier,
     })
 
-    expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.detail.cutFileSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.cutFileSuccess')
   })
 
   it('copies a file with the keyboard shortcut and pastes it into the selected folder', async () => {
@@ -2477,7 +2583,7 @@ describe('SkillDetailPage', () => {
       clientY: 520,
     })
     const rootMenuItem = (
-      await screen.findByText('agentV2.skillManagement.detail.createFileMenu')
+      await screen.findByText('skill.skillManagement.detail.createFileMenu')
     ).closest('[role="menuitem"]')
     if (!(rootMenuItem instanceof HTMLElement)) throw new Error('root menu item not found')
     fireEvent.keyDown(rootMenuItem, {
@@ -2515,10 +2621,10 @@ describe('SkillDetailPage', () => {
     })
 
     expect(
-      await screen.findByText('agentV2.skillManagement.detail.createFileMenu'),
+      await screen.findByText('skill.skillManagement.detail.createFileMenu'),
     ).toBeInTheDocument()
-    expect(screen.getByText('agentV2.skillManagement.detail.createFolderMenu')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.skillManagement.detail.uploadFilesMenu')).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.detail.createFolderMenu')).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.detail.uploadFilesMenu')).toBeInTheDocument()
   })
 
   it('uploads externally dragged files to the highlighted folder', async () => {
@@ -2721,10 +2827,10 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.skillManagement.detail.versionHistory' }),
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
     )
     await openVersionRowActions(user, 'Initial version')
-    await user.click(await screen.findByText('agentV2.skillManagement.detail.nameThisVersion'))
+    await user.click(await screen.findByText('skill.skillManagement.detail.nameThisVersion'))
     const dialog = await screen.findByRole('dialog')
     const [titleInput, noteInput] = within(dialog).getAllByRole('textbox')
     if (!titleInput || !noteInput) throw new Error('version info inputs not found')
@@ -2734,7 +2840,7 @@ describe('SkillDetailPage', () => {
     await user.clear(noteInput)
     await user.type(noteInput, 'Release note')
     await user.click(
-      within(dialog).getByRole('button', { name: 'agentV2.skillManagement.detail.publish' }),
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.detail.publish' }),
     )
 
     await waitFor(() => {
@@ -2770,7 +2876,7 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.skillManagement.detail.versionHistory' }),
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
     )
     await openVersionRowActions(user, 'Old version')
     await user.click(await screen.findByText('common.operation.delete'))

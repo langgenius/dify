@@ -97,7 +97,8 @@ export function SkillBuilderPanel({
   selectedFile: SkillFileResponse | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
+  const { t: tAgentV2 } = useTranslation('agentV2')
   const queryClient = useQueryClient()
   const [prompt, setPrompt] = useState('')
   const initialBuilderModeRef = useRef({
@@ -444,7 +445,7 @@ export function SkillBuilderPanel({
                     <Markdown content={message.content} className="text-[13px]! leading-5!" />
                   ) : (
                     <span className="system-xs-regular text-text-tertiary">
-                      {t(($) => $['agentDetail.configure.answer.thinking'])}
+                      {tAgentV2(($) => $['agentDetail.configure.answer.thinking'])}
                     </span>
                   )}
                 </div>

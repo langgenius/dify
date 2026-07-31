@@ -144,7 +144,7 @@ function FileActionMenuItems({
   onRename: () => void
   onUploadFiles: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
@@ -323,7 +323,7 @@ export function RootFileActionMenuItems({
   onCreateFolder: () => void
   onUploadFiles: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
 
   return (

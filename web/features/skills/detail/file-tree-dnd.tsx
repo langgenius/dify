@@ -42,7 +42,7 @@ export function SkillUploadStatusPanel({
   onDismiss: () => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   if (items.length === 0) return null
 

@@ -10,7 +10,7 @@ export function SkillDetailRightPanelRail({
   onOpenBuilder: () => void
   onOpenVersions: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
 
   return (
     <aside className="flex w-12 shrink-0 flex-col items-center gap-2 border-l border-divider-subtle bg-background-section py-3">

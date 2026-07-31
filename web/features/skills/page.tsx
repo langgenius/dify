@@ -128,7 +128,7 @@ function SkillPlaceholderState({
   onImport?: () => void
   title: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
 
   return (
     <section
@@ -217,7 +217,7 @@ function DeleteSkillDialog({
   skill: SkillResponse
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
@@ -283,7 +283,7 @@ function DeleteSkillDialog({
 }
 
 function SkillCard({ skill }: { skill: SkillResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
@@ -442,7 +442,7 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
 }
 
 function SkillTagFilter({ tags }: { tags: string[] }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const [selectedTags, setSelectedTags] = useQueryState(
     skillQueryParamNames.tag,
     skillTagQueryParser,
@@ -517,7 +517,7 @@ function SkillsToolbar({
   onImport: () => void
   tags: string[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const isMutating = creating || importing
 
@@ -581,7 +581,7 @@ function SkillGrid({
   onImport: () => void
   skills: SkillResponse[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
 
   return (
     <section
@@ -614,7 +614,7 @@ function SkillGrid({
 }
 
 export default function SkillsPage() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const router = useRouter()
   const queryClient = useQueryClient()
   const importInputRef = useRef<HTMLInputElement>(null)

@@ -55,7 +55,7 @@ function VersionRow({
   skillId: string
   version: SkillVersionResponse
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
@@ -333,7 +333,7 @@ export function VersionPanel({
   skillId: string
   versions: SkillVersionResponse[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation('skill')
 
   return (
     <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden bg-background-default">
