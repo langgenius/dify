@@ -17,16 +17,6 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 
-SQLITE_MODELS = (Workflow, App, EndUser, CustomizedSnippet)
-
-pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
-
-
-@pytest.fixture(autouse=True)
-def _create_sqlite_schema(sqlite_session: Session) -> None:
-    """Ensure every test receives an isolated schema for generator ORM state."""
-
-
 def _workflow(
     *,
     workflow_id: str = "workflow",
