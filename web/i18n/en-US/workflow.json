@@ -243,7 +243,7 @@
   "common.processData": "Process Data",
   "common.publish": "Publish",
   "common.publishToMarketplace": "Publish to Marketplace",
-  "common.publishToMarketplaceDescription": "Share this app with the community",
+  "common.publishToMarketplaceDescription": "List this app as a template",
   "common.publishToMarketplaceFailed": "Failed to publish to Marketplace",
   "common.publishUpdate": "Publish Update",
   "common.published": "Published",

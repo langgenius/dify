@@ -39,7 +39,7 @@ const SuggestedAction = ({
   const labelId = `${id}-label`
   const descriptionId = `${id}-description`
   const interactiveClassName = cn(
-    'group flex h-10 min-w-0 items-center gap-2 border-0 bg-transparent p-1 text-left outline-hidden transition-colors',
+    'group flex min-h-10 min-w-0 items-center gap-2 border-0 bg-transparent p-1 text-left outline-hidden transition-[min-height,background-color] duration-200 ease-out motion-reduce:transition-none',
     actionButton ? 'flex-1 rounded-l-lg' : 'w-full rounded-lg',
     disabled
       ? cn(
@@ -73,13 +73,18 @@ const SuggestedAction = ({
         </span>
         {description && (
           <span
-            id={descriptionId}
             className={cn(
-              'hidden truncate system-xs-regular text-text-tertiary',
-              !disabled && 'group-hover:block group-focus-visible:block',
+              'grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none',
+              !disabled &&
+                'group-hover:grid-rows-[1fr] group-hover:opacity-100 group-focus-visible:grid-rows-[1fr] group-focus-visible:opacity-100',
             )}
           >
-            {description}
+            <span
+              id={descriptionId}
+              className="min-h-0 truncate system-xs-regular text-text-tertiary"
+            >
+              {description}
+            </span>
           </span>
         )}
       </span>
