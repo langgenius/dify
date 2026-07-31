@@ -1,11 +1,12 @@
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 
 type ApiItem = {
   value: string
@@ -26,7 +27,10 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
     items.find((item) => item.value === value) || null,
   )
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
-  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
+  const queryClient = useQueryClient()
+  const externalKnowledgeApiQueryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
+    input: {},
+  }).queryKey
   const router = useRouter()
 
   useEffect(() => {
@@ -38,11 +42,8 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
     setShowExternalKnowledgeAPIModal({
       payload: { name: '', settings: { endpoint: '', api_key: '' } },
       onSaveCallback: async () => {
-        mutateExternalKnowledgeApis()
+        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
         router.refresh()
-      },
-      onCancelCallback: () => {
-        mutateExternalKnowledgeApis()
       },
       isEditMode: false,
     })

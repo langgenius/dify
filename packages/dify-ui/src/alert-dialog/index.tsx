@@ -7,10 +7,15 @@ import { Button } from '../button'
 import { cn } from '../cn'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
-export const AlertDialog = BaseAlertDialog.Root
-export const AlertDialogTrigger = BaseAlertDialog.Trigger
-export const AlertDialogTitle = BaseAlertDialog.Title
-export const AlertDialogDescription = BaseAlertDialog.Description
+const AlertDialog = BaseAlertDialog.Root
+const AlertDialogTrigger = BaseAlertDialog.Trigger
+const AlertDialogTitle = BaseAlertDialog.Title
+const AlertDialogDescription = BaseAlertDialog.Description
+
+type AlertDialogProps<Payload = unknown> = BaseAlertDialog.Root.Props<Payload>
+type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<Payload>
+type AlertDialogTitleProps = BaseAlertDialog.Title.Props
+type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
 
 type AlertDialogContentProps = {
   children: React.ReactNode
@@ -20,7 +25,7 @@ type AlertDialogContentProps = {
   initialFocus?: BaseAlertDialog.Popup.Props['initialFocus']
 }
 
-export function AlertDialogContent({
+function AlertDialogContent({
   children,
   className,
   backdropClassName,
@@ -49,7 +54,7 @@ export function AlertDialogContent({
 
 type AlertDialogActionsProps = React.ComponentProps<'div'>
 
-export function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
+function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
   return (
     <div
       className={cn('flex items-start justify-end gap-2 self-stretch p-6', className)}
@@ -63,7 +68,7 @@ type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
   closeProps?: Omit<BaseAlertDialog.Close.Props, 'children' | 'render'>
 }
 
-export function AlertDialogCancelButton({
+function AlertDialogCancelButton({
   children,
   closeProps,
   ...buttonProps
@@ -77,10 +82,32 @@ export function AlertDialogCancelButton({
 
 type AlertDialogConfirmButtonProps = ButtonProps
 
-export function AlertDialogConfirmButton({
+function AlertDialogConfirmButton({
   variant = 'primary',
   tone = 'destructive',
   ...props
 }: AlertDialogConfirmButtonProps) {
   return <Button variant={variant} tone={tone} {...props} />
+}
+
+export {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+}
+
+export type {
+  AlertDialogActionsProps,
+  AlertDialogCancelButtonProps,
+  AlertDialogConfirmButtonProps,
+  AlertDialogContentProps,
+  AlertDialogDescriptionProps,
+  AlertDialogProps,
+  AlertDialogTitleProps,
+  AlertDialogTriggerProps,
 }

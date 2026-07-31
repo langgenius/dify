@@ -16,9 +16,9 @@ import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrappe
 import { EmbeddedChatbotContext } from '@/app/components/base/chat/embedded-chatbot/context'
 import { useEmbeddedChatbot } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
+import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
-import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 
 type Props = Readonly<{
   appId: string
@@ -30,8 +30,11 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const themeBuilder = useThemeContext()
   const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
+  const theme = createTheme(
+    chatData.appData?.site?.chat_color_theme ?? null,
+    chatData.appData?.site?.chat_color_theme_inverted ?? false,
+  )
   const currentConversationId = chatData.currentConversationId
   const inputsForms = chatData.inputsForms
   useEffect(() => {
@@ -50,7 +53,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
           ...chatData,
           disableFeedback: true,
           isMobile,
-          themeBuilder,
+          theme,
         } as EmbeddedChatbotContextValue
       }
     >

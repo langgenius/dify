@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { SliderProps } from '.'
 import * as React from 'react'
 import {
   Slider,
@@ -49,7 +50,7 @@ function SliderDemo({
   value: initialValue = 50,
   defaultValue: _defaultValue,
   ...args
-}: React.ComponentProps<typeof Slider>) {
+}: SliderProps) {
   const [value, setValue] = React.useState(initialValue)
 
   return (
@@ -106,4 +107,38 @@ export const ComposedWithLabel: Story = {
       </SliderControl>
     </SliderRoot>
   ),
+}
+
+type PriceRange = readonly [number, number]
+
+function RangeSliderDemo() {
+  const [range, setRange] = React.useState<PriceRange>([25, 75])
+
+  return (
+    <div className="w-[320px] space-y-3">
+      <SliderRoot<PriceRange>
+        value={range}
+        onValueChange={setRange}
+        min={0}
+        max={100}
+        className="group/slider relative inline-flex w-full flex-col gap-1 data-disabled:opacity-30"
+      >
+        <SliderLabel>Price range</SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+          </SliderTrack>
+          <SliderThumb aria-label="Minimum price" />
+          <SliderThumb aria-label="Maximum price" />
+        </SliderControl>
+      </SliderRoot>
+      <div className="text-center system-sm-medium text-text-secondary">
+        {range[0]} – {range[1]}
+      </div>
+    </div>
+  )
+}
+
+export const Range: Story = {
+  render: () => <RangeSliderDemo />,
 }

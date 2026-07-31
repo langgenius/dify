@@ -19,7 +19,7 @@ MARKETPLACE_TIMEOUT = 30
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
     query = urlencode({"unique_identifier": plugin_unique_identifier})
-    return f"{marketplace_api_url / 'api/v1/plugins/download'}?{query}"
+    return f"{marketplace_api_url / 'api/v1/plugins/download-url'}?{query}"
 
 
 def download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
