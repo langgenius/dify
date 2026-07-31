@@ -212,7 +212,7 @@ const ModelProviderPage = ({
       <div className="flex shrink-0 items-center justify-end gap-2">
         {showWarning ? (
           <div className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]">
-            <div className="pointer-events-none absolute inset-[-1px] bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
+            <div className="pointer-events-none absolute -inset-px bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
             <div className="relative flex shrink-0 items-center gap-1">
               <span
                 aria-hidden

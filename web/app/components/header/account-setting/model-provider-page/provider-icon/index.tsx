@@ -26,9 +26,9 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
-      <div className={cn('py-[7px]', className)}>
-        {theme === Theme.dark && <AnthropicLight className="h-2.5 w-[90px]" />}
-        {theme === Theme.light && <AnthropicDark className="h-2.5 w-[90px]" />}
+      <div className={cn('py-1.75', className)}>
+        {theme === Theme.dark && <AnthropicLight className="h-2.5 w-22.5" />}
+        {theme === Theme.light && <AnthropicDark className="h-2.5 w-22.5" />}
       </div>
     )
   }

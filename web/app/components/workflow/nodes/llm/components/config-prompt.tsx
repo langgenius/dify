@@ -205,7 +205,7 @@ const ConfigPrompt: FC<Props> = ({
                 return (
                   <div key={item.id || index} className="group relative">
                     {canDrag && (
-                      <DragHandle className="absolute top-2 left-[-14px] hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />
+                      <DragHandle className="absolute top-2 -left-3.5 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />
                     )}
                     <ConfigPromptItem
                       instanceId={

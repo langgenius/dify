@@ -227,7 +227,7 @@ const CreateFormPipeline = () => {
   if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments) return <Loading type="app" />
 
   return (
-    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
+    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
           <LeftHeader

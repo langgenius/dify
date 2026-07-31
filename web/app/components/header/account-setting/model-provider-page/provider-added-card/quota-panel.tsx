@@ -180,7 +180,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   return (
     <div
       className={cn(
-        'relative h-16 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
+        'relative h-16 min-w-18 shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
         isExhausted
           ? 'border-state-destructive-border hover:bg-state-destructive-hover'
           : 'border-components-panel-border bg-third-party-model-bg-default',

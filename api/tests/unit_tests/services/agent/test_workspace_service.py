@@ -15,7 +15,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 
 
 def _scope() -> WorkspaceOwnerScope:
@@ -127,6 +127,59 @@ def test_create_binding_success_persists_new_workspace_and_binding(
     request = client.create_execution_binding_sync.call_args.args[0]
     assert request.existing_workspace_ref is None
     assert request.workspace_id == workspace.id
+    assert request.home_snapshot_ref == "home-ref"
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
+    indirect=True,
+)
+def test_create_binding_without_home_snapshot_uses_backend_default(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    client = _backend_client()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+
+    binding = AgentWorkspaceService.create_binding(
+        session=sqlite_session,
+        scope=_scope(),
+        agent_id="agent-1",
+        base_home_snapshot_id=None,
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    )
+    sqlite_session.commit()
+
+    stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
+    assert stored_binding is not None
+    assert stored_binding.base_home_snapshot_id is None
+    request = client.create_execution_binding_sync.call_args.args[0]
+    assert request.home_snapshot_ref is None
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
+    indirect=True,
+)
+def test_create_binding_rejects_missing_explicit_home_snapshot_before_backend_call(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    client = _backend_client()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+
+    with pytest.raises(AgentWorkspaceNotFoundError, match="base Home Snapshot is unavailable"):
+        AgentWorkspaceService.create_binding(
+            session=sqlite_session,
+            scope=_scope(),
+            agent_id="agent-1",
+            base_home_snapshot_id="missing-home",
+            agent_config_version_id="config-1",
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+
+    client.create_execution_binding_sync.assert_not_called()
 
 
 @pytest.mark.parametrize(

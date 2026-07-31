@@ -1039,7 +1039,7 @@ export const useInstallOrUpdate = ({
             }
             if (isInstalled) {
               if (item.type === 'package') {
-                await uninstallPlugin(installedPayload.installedId)
+                await uninstallPlugin(installedPayload.installedId, { preserveCredentials: true })
                 const response = await post<InstallPackageResponse>(
                   '/workspaces/current/plugin/install/pkg',
                   {

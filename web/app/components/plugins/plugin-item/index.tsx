@@ -295,7 +295,7 @@ const PluginItem: FC<Props> = ({
       </div>
       {/* BG Effect for Deprecated Plugin */}
       {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
-        <div className="absolute right-[-45px] bottom-[-71px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
+        <div className="absolute -right-11.25 -bottom-17.75 z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>
   )

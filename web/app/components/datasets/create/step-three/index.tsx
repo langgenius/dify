@@ -39,8 +39,8 @@ const StepThree = ({
 
   return (
     <div className="flex size-full max-h-full justify-center overflow-y-auto">
-      <div className="h-full max-w-[960px] shrink-0 grow overflow-y-auto px-14 sm:px-16">
-        <div className="mx-auto max-w-[640px] pt-10 pb-8">
+      <div className="h-full max-w-240 shrink-0 grow overflow-y-auto px-14 sm:px-16">
+        <div className="mx-auto max-w-160 pt-10 pb-8">
           {!datasetId && (
             <>
               <div className="flex flex-col gap-y-1 pb-3">
@@ -92,8 +92,8 @@ const StepThree = ({
         </div>
       </div>
       {!isMobile && (
-        <div className="shrink-0 pt-[88px] pr-8 text-xs">
-          <div className="flex w-[328px] flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
+        <div className="shrink-0 pt-22 pr-8 text-xs">
+          <div className="flex w-82 flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
             <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
               <RiBookOpenLine className="size-5 text-text-accent" />
             </div>

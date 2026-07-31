@@ -31,13 +31,13 @@ def upgrade():
         batch_op.create_index('agent_home_snapshot_tenant_agent_idx', ['tenant_id', 'agent_id'], unique=False)
 
     with op.batch_alter_table('agent_config_drafts', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('home_snapshot_id', models.types.StringUUID(), nullable=False))
+        batch_op.add_column(sa.Column('home_snapshot_id', models.types.StringUUID(), nullable=True))
 
     with op.batch_alter_table('agent_config_snapshots', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('home_snapshot_id', models.types.StringUUID(), nullable=False))
+        batch_op.add_column(sa.Column('home_snapshot_id', models.types.StringUUID(), nullable=True))
 
     with op.batch_alter_table('agent_runtime_sessions', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('home_snapshot_id', models.types.StringUUID(), nullable=False))
+        batch_op.add_column(sa.Column('home_snapshot_id', models.types.StringUUID(), nullable=True))
         batch_op.drop_index(batch_op.f('agent_runtime_session_conversation_scope_unique'), postgresql_where='(conversation_id IS NOT NULL)')
         batch_op.create_index('agent_runtime_session_conversation_scope_unique', ['tenant_id', 'conversation_id', 'agent_id', 'agent_config_snapshot_id', 'home_snapshot_id'], unique=True, postgresql_where=sa.text('conversation_id IS NOT NULL'))
 

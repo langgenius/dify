@@ -10,10 +10,10 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
-import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
+import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { basePath } from '@/utils/var'
@@ -142,7 +142,10 @@ const EmbeddedContent = ({
   const latestResolvedIframeUrlRef = useRef('')
 
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const themeBuilder = useThemeContext()
+  const theme = createTheme(
+    siteInfo?.chat_color_theme ?? null,
+    siteInfo?.chat_color_theme_inverted ?? false,
+  )
   const isTestEnv =
     langGeniusVersionInfo.current_env === 'TESTING' ||
     langGeniusVersionInfo.current_env === 'DEVELOPMENT'
@@ -171,18 +174,11 @@ const EmbeddedContent = ({
         url: appBaseUrl,
         token: accessToken,
         webAppRoute,
-        primaryColor: themeBuilder.theme?.primaryColor ?? '#1C64F2',
+        primaryColor: theme.primaryColor,
         isTestEnv,
         inputValues: hiddenInputValues,
       }),
-    [
-      accessToken,
-      appBaseUrl,
-      hiddenInputValues,
-      isTestEnv,
-      themeBuilder.theme?.primaryColor,
-      webAppRoute,
-    ],
+    [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, theme.primaryColor, webAppRoute],
   )
 
   const onClickCopy = async () => {
@@ -217,13 +213,6 @@ const EmbeddedContent = ({
       'noopener,noreferrer',
     )
   }
-
-  useEffect(() => {
-    themeBuilder.buildTheme(
-      siteInfo?.chat_color_theme ?? null,
-      siteInfo?.chat_color_theme_inverted ?? false,
-    )
-  }, [siteInfo?.chat_color_theme, siteInfo?.chat_color_theme_inverted, themeBuilder])
 
   return (
     <>
@@ -382,10 +371,7 @@ const Embedded = ({
       }}
     >
       <DialogContent
-        className={cn(
-          'flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!',
-          className,
-        )}
+        className={cn('flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!', className)}
       >
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}

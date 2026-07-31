@@ -115,7 +115,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-[640px]! max-w-none! p-8! pb-6!">
+      <DialogContent className="w-160! max-w-none! p-8! pb-6!">
         <DialogCloseButton className="top-8 right-8" />
         <DialogTitle className="pr-8 text-xl font-semibold text-text-primary">
           {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}

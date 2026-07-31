@@ -5,8 +5,8 @@ import type { Collection } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -106,7 +106,7 @@ const PluginsPanelResults = ({
   }, [autoLoadNextPage, containerRef, isFetching, isLastPage, loadNextPage])
 
   return (
-    <ScrollAreaRoot
+    <ScrollArea
       className={cn(
         'min-h-0 grow self-stretch overflow-hidden bg-components-panel-bg',
         contentFrameClassName,
@@ -175,7 +175,7 @@ const PluginsPanelResults = ({
       <ScrollAreaScrollbar>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
-    </ScrollAreaRoot>
+    </ScrollArea>
   )
 }
 

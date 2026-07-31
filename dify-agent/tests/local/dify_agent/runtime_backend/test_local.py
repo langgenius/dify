@@ -13,8 +13,6 @@ from dify_agent.runtime_backend import (
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
-    HomeSnapshotCreateError,
-    InitializeHomeSnapshotSpec,
 )
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 
@@ -138,42 +136,6 @@ class _FailThenSucceedFactory:
 
 
 @pytest.mark.anyio
-async def test_local_snapshot_initialize_creates_private_snapshot_directory() -> None:
-    factory = _Factory()
-    snapshots = LocalHomeSnapshotBackend(
-        endpoint="http://shellctl",
-        auth_token="",
-        snapshot_root="/snapshots",
-        client_factory=factory,  # pyright: ignore[reportArgumentType]
-    )
-    snapshot_ref = await snapshots.initialize(
-        InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
-    )
-
-    assert snapshot_ref == "home-home-1"
-    assert ("mkdir", "-p", "/snapshots/home-home-1") in factory.commands
-    assert ("chmod", "700", "/snapshots/home-home-1") in factory.commands
-
-
-@pytest.mark.anyio
-async def test_local_snapshot_create_failure_removes_partial_snapshot() -> None:
-    factory = _FailThenSucceedFactory()
-    snapshots = LocalHomeSnapshotBackend(
-        endpoint="http://shellctl",
-        auth_token="",
-        snapshot_root="/snapshots",
-        client_factory=factory,  # pyright: ignore[reportArgumentType]
-    )
-
-    with pytest.raises(HomeSnapshotCreateError, match="primary shellctl failure"):
-        await snapshots.initialize(
-            InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
-        )
-
-    assert ("rm", "-rf", "--", "/snapshots/home-home-1") in factory.commands
-
-
-@pytest.mark.anyio
 async def test_local_binding_create_materializes_home_and_new_workspace() -> None:
     factory = _Factory()
     backend = LocalExecutionBindingBackend(
@@ -198,11 +160,39 @@ async def test_local_binding_create_materializes_home_and_new_workspace() -> Non
 
     assert allocation.binding_ref == "binding-1:workspace-1"
     assert allocation.workspace_ref == "workspace-1"
-    assert ("test", "-d", "/snapshots/home-home-1") in factory.commands
+    assert factory.commands[0] == ("test", "-d", "/snapshots/home-home-1")
     assert ("mkdir", "-p", "/workspaces/workspace-1") in factory.commands
     assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
     assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands
     assert ("chmod", "700", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_binding_create_uses_empty_default_home_without_snapshot_access() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    allocation = await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref=None,
+        )
+    )
+
+    assert allocation.binding_ref == "binding-1:workspace-1"
+    assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
+    assert all("/snapshots" not in part for command in factory.commands for part in command)
 
 
 @pytest.mark.anyio

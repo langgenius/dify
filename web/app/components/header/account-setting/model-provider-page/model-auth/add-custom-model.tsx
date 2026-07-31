@@ -113,7 +113,7 @@ const AddCustomModel = ({
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          <div className="max-h-[304px] overflow-y-auto p-1">
+          <div className="max-h-76 overflow-y-auto p-1">
             {canAddedModels.map((model) => (
               <div
                 key={model.model}

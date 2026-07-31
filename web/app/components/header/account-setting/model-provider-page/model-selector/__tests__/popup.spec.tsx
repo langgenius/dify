@@ -16,16 +16,17 @@ import Popup from '../popup'
 
 let mockLanguage = 'en_US'
 
-const mockSetShowAccountSettingModal = vi.hoisted(() => vi.fn())
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
-
 const mockSearchParams = vi.hoisted(() => ({
   current: new URLSearchParams(),
 }))
+const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: () => [mockSearchParams.current.get('settings'), mockSetSettingsDestination],
+  }
+})
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => mockSearchParams.current,
 }))
@@ -1057,13 +1058,11 @@ describe('Popup', () => {
     fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
 
     expect(onHide).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
   })
 
-  it('should hide provider settings footer when current account settings tab is provider', () => {
-    mockSearchParams.current = new URLSearchParams('action=showSettings&tab=provider')
+  it('should hide provider settings footer when provider settings are already open', () => {
+    mockSearchParams.current = new URLSearchParams('settings=provider')
 
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
@@ -1095,20 +1094,18 @@ describe('Popup', () => {
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
     expect(onHide).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
   })
 
-  it('should only close the empty state selector when current account settings tab is provider', () => {
-    mockSearchParams.current = new URLSearchParams('action=showSettings&tab=provider')
+  it('should only close the empty state selector when provider settings are already open', () => {
+    mockSearchParams.current = new URLSearchParams('settings=provider')
     const onHide = vi.fn()
     renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
 
     expect(onHide).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
   })
 
   it('should render marketplace providers that are not installed', () => {

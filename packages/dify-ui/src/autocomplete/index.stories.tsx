@@ -370,8 +370,8 @@ const BasicTagAutocomplete = ({ size = 'medium' }: { size?: 'small' | 'medium' |
       <AutocompleteTrigger size={size} />
     </AutocompleteInputGroup>
     <AutocompleteContent>
-      <AutocompleteList>
-        {(item: Suggestion) => <TagSuggestionItem key={item.value} item={item} />}
+      <AutocompleteList<Suggestion>>
+        {(item) => <TagSuggestionItem key={item.value} item={item} />}
       </AutocompleteList>
       <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
     </AutocompleteContent>
@@ -387,8 +387,8 @@ const GroupedSuggestionList = () => {
         <AutocompleteGroup key={group.label} items={group.items}>
           {groupIndex > 0 && <AutocompleteSeparator />}
           <AutocompleteGroupLabel>{group.label}</AutocompleteGroupLabel>
-          <AutocompleteCollection>
-            {(item: Suggestion) => <SuggestionItem key={item.value} item={item} />}
+          <AutocompleteCollection<Suggestion>>
+            {(item) => <SuggestionItem key={item.value} item={item} />}
           </AutocompleteCollection>
         </AutocompleteGroup>
       ))}
@@ -408,8 +408,8 @@ const CommandPaletteList = () => {
           >
             {group.label}
           </AutocompleteGroupLabel>
-          <AutocompleteCollection>
-            {(item: Suggestion) => (
+          <AutocompleteCollection<Suggestion>>
+            {(item) => (
               <AutocompleteItem key={item.value} value={item} className="grid grid-cols-[1fr_auto]">
                 <span className="flex min-w-0 items-center gap-2">
                   {item.icon && (
@@ -516,8 +516,8 @@ const AsyncSearchDemo = () => {
           popupProps={{ 'aria-busy': isPending || undefined }}
         >
           <AutocompleteStatus>{status}</AutocompleteStatus>
-          <AutocompleteList>
-            {(item: Suggestion) => <SuggestionItem key={item.value} item={item} />}
+          <AutocompleteList<Suggestion>>
+            {(item) => <SuggestionItem key={item.value} item={item} />}
           </AutocompleteList>
         </AutocompleteContent>
       </Autocomplete>
@@ -643,8 +643,8 @@ const FuzzyMatchingDemo = () => {
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
         <AutocompleteContent>
-          <AutocompleteList>
-            {(item: Suggestion) => (
+          <AutocompleteList<Suggestion>>
+            {(item) => (
               <AutocompleteItem key={item.value} value={item}>
                 {item.icon && (
                   <span
@@ -730,8 +730,8 @@ export const InlineAutocomplete: Story = {
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
         <AutocompleteContent>
-          <AutocompleteList>
-            {(item: Suggestion) => <SuggestionItem key={item.value} item={item} dense />}
+          <AutocompleteList<Suggestion>>
+            {(item) => <SuggestionItem key={item.value} item={item} dense />}
           </AutocompleteList>
           <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
         </AutocompleteContent>
@@ -800,8 +800,8 @@ export const LimitResults: Story = {
           <AutocompleteStatus className="border-b border-divider-subtle">
             <LimitedStatus total={workflowSuggestions.length} />
           </AutocompleteStatus>
-          <AutocompleteList>
-            {(item: Suggestion) => <SuggestionItem key={item.value} item={item} />}
+          <AutocompleteList<Suggestion>>
+            {(item) => <SuggestionItem key={item.value} item={item} />}
           </AutocompleteList>
           <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
         </AutocompleteContent>
@@ -908,8 +908,8 @@ export const Empty: Story = {
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
         <AutocompleteContent>
-          <AutocompleteList>
-            {(item: Suggestion) => <TagSuggestionItem key={item.value} item={item} />}
+          <AutocompleteList<Suggestion>>
+            {(item) => <TagSuggestionItem key={item.value} item={item} />}
           </AutocompleteList>
           <AutocompleteEmpty>No tag suggestion. The custom text remains valid.</AutocompleteEmpty>
         </AutocompleteContent>
@@ -934,8 +934,8 @@ export const DisabledAndReadOnly: Story = {
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
         <AutocompleteContent>
-          <AutocompleteList>
-            {(item: Suggestion) => <TagSuggestionItem key={item.value} item={item} />}
+          <AutocompleteList<Suggestion>>
+            {(item) => <TagSuggestionItem key={item.value} item={item} />}
           </AutocompleteList>
         </AutocompleteContent>
       </Autocomplete>
@@ -952,8 +952,8 @@ export const DisabledAndReadOnly: Story = {
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
         <AutocompleteContent>
-          <AutocompleteList>
-            {(item: Suggestion) => <SuggestionItem key={item.value} item={item} />}
+          <AutocompleteList<Suggestion>>
+            {(item) => <SuggestionItem key={item.value} item={item} />}
           </AutocompleteList>
         </AutocompleteContent>
       </Autocomplete>

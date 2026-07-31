@@ -5,14 +5,6 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class InitializeHomeSnapshotRequest(BaseModel):
-    tenant_id: str = Field(min_length=1)
-    agent_id: str = Field(min_length=1)
-    home_snapshot_id: str = Field(min_length=1)
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
 class CreateHomeSnapshotFromBindingRequest(BaseModel):
     tenant_id: str = Field(min_length=1)
     agent_id: str = Field(min_length=1)
@@ -38,5 +30,4 @@ __all__ = [
     "CreateHomeSnapshotFromBindingRequest",
     "DeleteHomeSnapshotRequest",
     "HomeSnapshotResponse",
-    "InitializeHomeSnapshotRequest",
 ]

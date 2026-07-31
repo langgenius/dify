@@ -42,7 +42,7 @@ def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
         sa.Column("binding_id", sa.String(36)),
         sa.Column("agent_id", sa.String(36), nullable=False),
         sa.Column("agent_config_snapshot_id", sa.String(36)),
-        sa.Column("home_snapshot_id", sa.String(36), nullable=False),
+        sa.Column("home_snapshot_id", sa.String(36), nullable=True),
         sa.Column("backend_run_id", sa.String(255)),
         sa.Column("status", sa.String(32), nullable=False),
     )
@@ -110,7 +110,10 @@ def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
 
     inspector = sa.inspect(engine)
     assert "agent_runtime_sessions" not in inspector.get_table_names()
-    binding_columns = {column["name"] for column in inspector.get_columns("agent_workspace_bindings")}
+    binding_column_definitions = {
+        column["name"]: column for column in inspector.get_columns("agent_workspace_bindings")
+    }
+    binding_columns = set(binding_column_definitions)
     assert {
         "workspace_id",
         "agent_id",
@@ -125,6 +128,7 @@ def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
         "pending_tool_call_id",
     }.issubset(binding_columns)
     assert "active_guard" not in binding_columns
+    assert binding_column_definitions["base_home_snapshot_id"]["nullable"] is True
     binding_indexes = {index["name"] for index in inspector.get_indexes("agent_workspace_bindings")}
     assert "agent_workspace_binding_agent_active_unique" not in binding_indexes
     workspace_columns = {column["name"] for column in inspector.get_columns("agent_workspaces")}

@@ -659,19 +659,28 @@ class TestPluginInstallFromPkgApi:
 
 
 class TestPluginUninstallApi:
-    def test_uninstall(self, app: Flask):
+    @pytest.mark.parametrize("preserve_credentials", [False, True])
+    def test_uninstall(self, app: Flask, preserve_credentials: bool):
         api = PluginUninstallApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_installation_id": "x"}
+        payload = {
+            "plugin_installation_id": "x",
+            "preserve_credentials": preserve_credentials,
+        }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True),
+            patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True) as uninstall_mock,
         ):
             result = method(api, "t1")
 
         assert result["success"] is True
+        uninstall_mock.assert_called_once_with(
+            "t1",
+            "x",
+            preserve_credentials=preserve_credentials,
+        )
 
 
 class TestPluginChangePermissionApi:

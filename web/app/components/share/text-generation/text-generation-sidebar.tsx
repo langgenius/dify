@@ -83,7 +83,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
+        isPC ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
         isInstalledApp && 'rounded-l-2xl',
       )}
     >
@@ -114,7 +114,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             <div
               ref={handleDescRef}
               className={cn(
-                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}

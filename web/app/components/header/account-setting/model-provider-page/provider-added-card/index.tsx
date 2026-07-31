@@ -116,7 +116,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     return (
       <div
         className={cn(
-          'group relative mb-0 min-h-[120px] overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs',
+          'group relative mb-0 min-h-30 overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs',
           currentProviderName === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
           currentProviderName === 'langgenius/anthropic/anthropic' &&
             'bg-third-party-model-bg-anthropic',

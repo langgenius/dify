@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -139,7 +140,7 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const previewCardProps = () => ({
-  previewCardHandle: createPreviewCardHandle(),
+  previewCardHandle: createPreviewCardHandle<ModelSelectorPreviewPayload>(),
   onPreviewCardClose: vi.fn(),
 })
 
@@ -211,7 +212,7 @@ describe('PopupItem', () => {
     const onPreviewCardClose = vi.fn()
     renderWithCombobox(
       <PopupItem
-        previewCardHandle={createPreviewCardHandle()}
+        previewCardHandle={createPreviewCardHandle<ModelSelectorPreviewPayload>()}
         onPreviewCardClose={onPreviewCardClose}
         model={makeModel()}
         onHide={vi.fn()}

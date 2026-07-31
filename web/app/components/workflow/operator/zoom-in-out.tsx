@@ -147,7 +147,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     <div
       className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${workflowReadOnly && 'cursor-not-allowed! opacity-50'} `}
     >
-      <div className="flex h-8 w-[98px] items-center justify-between rounded-lg">
+      <div className="flex h-8 w-24.5 items-center justify-between rounded-lg">
         <TipPopup
           title={t(($) => $['operator.zoomOut'], { ns: 'workflow' })}
           shortcut="workflow.zoom-out"
@@ -173,7 +173,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={getWorkflowReadOnly()}
-            className="flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
+            className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
           >
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
           </DropdownMenuTrigger>
@@ -183,7 +183,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             alignOffset={-2}
             popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
           >
-            <div className="w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+            <div className="w-48 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
               {zoomOptions.map((options, groupIndex) => (
                 <Fragment key={options[0]!.key}>
                   {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}

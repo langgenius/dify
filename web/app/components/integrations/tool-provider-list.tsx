@@ -5,8 +5,8 @@ import type { ToolsContentInset } from '@/app/components/tools/content-inset'
 import type { Collection } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -188,7 +188,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const body = (
     <>
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-components-panel-bg">
-        <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
+        <ScrollArea className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
             aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
@@ -218,11 +218,11 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
                   <Empty
                     lightCard
                     text={t(($) => $.noTools, { ns: 'tools' })}
-                    className={cn('h-[224px] shrink-0', toolListFrameClassName)}
+                    className={cn('h-56 shrink-0', toolListFrameClassName)}
                   />
                 )}
               {isCollectionSearchEmpty && activeTab === 'builtin' && (
-                <div className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
+                <div className={cn('h-56 shrink-0', toolListFrameClassName)} />
               )}
               {enable_marketplace && activeTab === 'builtin' && (
                 <BuiltinMarketplacePanel
@@ -249,7 +249,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       </div>
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail

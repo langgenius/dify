@@ -5,18 +5,25 @@ import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
-export const Dialog = BaseDialog.Root
-export const DialogTrigger = BaseDialog.Trigger
-export const DialogTitle = BaseDialog.Title
-export const DialogDescription = BaseDialog.Description
-export const DialogPortal = BaseDialog.Portal
-export const createDialogHandle = BaseDialog.createHandle
+const Dialog = BaseDialog.Root
+const DialogTrigger = BaseDialog.Trigger
+const DialogTitle = BaseDialog.Title
+const DialogDescription = BaseDialog.Description
+const DialogPortal = BaseDialog.Portal
+const createDialogHandle = BaseDialog.createHandle
+
+type DialogProps<Payload = unknown> = BaseDialog.Root.Props<Payload>
+type DialogHandle<Payload = unknown> = BaseDialog.Handle<Payload>
+type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
+type DialogTitleProps = BaseDialog.Title.Props
+type DialogDescriptionProps = BaseDialog.Description.Props
+type DialogPortalProps = BaseDialog.Portal.Props
 
 type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
 }
 
-export function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
+function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
   return <BaseDialog.Backdrop {...props} className={cn(modalBackdropClassName, className)} />
 }
 
@@ -24,7 +31,7 @@ type DialogViewportProps = Omit<BaseDialog.Viewport.Props, 'className'> & {
   className?: string
 }
 
-export function DialogViewport({ className, ...props }: DialogViewportProps) {
+function DialogViewport({ className, ...props }: DialogViewportProps) {
   return <BaseDialog.Viewport className={cn('fixed inset-0 z-50', className)} {...props} />
 }
 
@@ -32,7 +39,7 @@ type DialogPopupProps = Omit<BaseDialog.Popup.Props, 'className'> & {
   className?: string
 }
 
-export function DialogPopup({ className, ...props }: DialogPopupProps) {
+function DialogPopup({ className, ...props }: DialogPopupProps) {
   return (
     <BaseDialog.Popup
       className={cn(
@@ -45,9 +52,11 @@ export function DialogPopup({ className, ...props }: DialogPopupProps) {
   )
 }
 
-type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
+type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children' | 'className'> & {
+  className?: string
+}
 
-export function DialogCloseButton({
+function DialogCloseButton({
   className,
   'aria-label': ariaLabel = 'Close',
   ...props
@@ -73,7 +82,7 @@ type DialogContentProps = {
   backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
 }
 
-export function DialogContent({
+function DialogContent({
   children,
   className,
   backdropClassName,
@@ -92,4 +101,32 @@ export function DialogContent({
       </DialogPopup>
     </DialogPortal>
   )
+}
+
+export {
+  createDialogHandle,
+  Dialog,
+  DialogBackdrop,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+  DialogViewport,
+}
+
+export type {
+  DialogBackdropProps,
+  DialogCloseButtonProps,
+  DialogContentProps,
+  DialogDescriptionProps,
+  DialogHandle,
+  DialogPopupProps,
+  DialogPortalProps,
+  DialogProps,
+  DialogTitleProps,
+  DialogTriggerProps,
+  DialogViewportProps,
 }

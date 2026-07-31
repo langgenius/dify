@@ -26,8 +26,8 @@ type MockReferenceSetting = {
   }
 }
 
-const { mockSetAccountSettingModal, mockSaveAutoUpgrade } = vi.hoisted(() => ({
-  mockSetAccountSettingModal: vi.fn(),
+const { mockSetSettingsDestination, mockSaveAutoUpgrade } = vi.hoisted(() => ({
+  mockSetSettingsDestination: vi.fn(),
   mockSaveAutoUpgrade: vi.fn(),
 }))
 
@@ -322,11 +322,10 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
   DialogCloseButton: () => <button type="button" aria-label="close" />,
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (
-    selector: (state: { setShowAccountSettingModal: typeof mockSetAccountSettingModal }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetAccountSettingModal }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
   default: ({

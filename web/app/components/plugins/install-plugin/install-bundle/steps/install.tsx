@@ -1,13 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type {
-  Dependency,
-  InstallStatus,
-  InstallStatusResponse,
-  Plugin,
-  VersionInfo,
-  VersionProps,
-} from '../../../types'
+import type { Dependency, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
+import type { InstallBundleCompleteCallback } from '../index'
 import type { ExposeRefs } from './install-multi'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -16,7 +10,6 @@ import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { useMittContextSelector } from '@/context/mitt-context'
 import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
 import { TaskStatus } from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
@@ -29,11 +22,7 @@ const i18nPrefix = 'installModal'
 type Props = Readonly<{
   allPlugins: Dependency[]
   onStartToInstall?: () => void
-  onInstalled: (
-    plugins: Plugin[],
-    installStatus: InstallStatus[],
-    versionInfo: VersionProps[],
-  ) => void
+  onInstalled: InstallBundleCompleteCallback
   onCancel: () => void
   isFromMarketPlace?: boolean
   isHideButton?: boolean
@@ -48,7 +37,6 @@ const Install: FC<Props> = ({
   isHideButton,
 }) => {
   const { t } = useTranslation()
-  const emit = useMittContextSelector((s) => s.emit)
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length
@@ -113,12 +101,6 @@ const Install: FC<Props> = ({
         const hasInstallSuccess = res.some((r) => r.status === TaskStatus.success)
         if (hasInstallSuccess) {
           refreshPluginList(undefined, true)
-          emit(
-            'plugin:install:success',
-            selectedPlugins.map((p) => {
-              return `${p.plugin_id}/${p.name}`
-            }),
-          )
         }
         return
       }
@@ -143,15 +125,6 @@ const Install: FC<Props> = ({
         }),
       )
       onInstalled(selectedPlugins, installStatus, getSelectedVersionInfo())
-      const hasInstallSuccess = installStatus.some((r) => r.success)
-      if (hasInstallSuccess) {
-        emit(
-          'plugin:install:success',
-          selectedPlugins.map((p) => {
-            return `${p.plugin_id}/${p.name}`
-          }),
-        )
-      }
     },
   })
   const handleInstall = () => {
@@ -251,13 +224,13 @@ const Install: FC<Props> = ({
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch">
             {!canInstall && (
-              <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+              <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             )}
             <Button
               variant="primary"
-              className="flex min-w-[72px] space-x-0.5"
+              className="flex min-w-18 space-x-0.5"
               disabled={
                 !canInstall ||
                 isInstalling ||

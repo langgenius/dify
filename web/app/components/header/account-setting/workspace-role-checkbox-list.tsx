@@ -5,7 +5,13 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
@@ -227,98 +233,102 @@ const WorkspaceRoleCheckboxList = ({
         </div>
       </div>
 
-      <ScrollArea
-        ref={containerRef}
-        className="min-h-0 flex-1"
-        slotClassNames={{ viewport: 'px-3 overscroll-contain' }}
-      >
-        {rolesLoading ? (
-          <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['role.loading'], { ns: 'permission' })}
-          </div>
-        ) : filteredRoles.length === 0 ? (
-          <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['role.noMatchingRoles'], { ns: 'permission' })}
-          </div>
-        ) : (
-          <>
-            {allowMultipleRoles ? (
-              <ul className="flex flex-col gap-0.5 pb-2">
-                {filteredRoles.map((role) => {
-                  const checked = selectedRoleIdSet.has(role.id)
-                  const disabled = disabledRoleIdSet.has(role.id)
-                  const handleToggle = () => toggleRole(role)
-
-                  return (
-                    <li key={role.id}>
-                      <div
-                        role="checkbox"
-                        aria-checked={checked}
-                        aria-disabled={disabled}
-                        tabIndex={disabled ? -1 : 0}
-                        className={cn(
-                          'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
-                          checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
-                          disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
-                        )}
-                        onClick={handleToggle}
-                        onKeyDown={(e) => {
-                          if (e.key === ' ' || e.key === 'Enter') {
-                            e.preventDefault()
-                            handleToggle()
-                          }
-                        }}
-                      >
-                        <Checkbox
-                          checked={checked}
-                          disabled={disabled}
-                          className="pointer-events-none mt-0.5"
-                        />
-                        {renderRoleText(role)}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+      <ScrollArea className="min-h-0 flex-1">
+        <ScrollAreaViewport ref={containerRef} className="overscroll-contain px-3">
+          <ScrollAreaContent>
+            {rolesLoading ? (
+              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['role.loading'], { ns: 'permission' })}
+              </div>
+            ) : filteredRoles.length === 0 ? (
+              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['role.noMatchingRoles'], { ns: 'permission' })}
+              </div>
             ) : (
-              <RadioGroup
-                value={selectedRoleIds[0] ?? ''}
-                onValueChange={handleRadioValueChange}
-                className="flex-col items-stretch gap-0.5 pb-2"
-                render={<ul />}
-              >
-                {filteredRoles.map((role) => {
-                  const checked = selectedRoleIdSet.has(role.id)
-                  const disabled = disabledRoleIdSet.has(role.id)
+              <>
+                {allowMultipleRoles ? (
+                  <ul className="flex flex-col gap-0.5 pb-2">
+                    {filteredRoles.map((role) => {
+                      const checked = selectedRoleIdSet.has(role.id)
+                      const disabled = disabledRoleIdSet.has(role.id)
+                      const handleToggle = () => toggleRole(role)
 
-                  return (
-                    <li key={role.id}>
-                      <RadioItem
-                        value={role.id}
-                        disabled={disabled}
-                        nativeButton
-                        render={
-                          <button
-                            type="button"
+                      return (
+                        <li key={role.id}>
+                          <div
+                            role="checkbox"
+                            aria-checked={checked}
+                            aria-disabled={disabled}
+                            tabIndex={disabled ? -1 : 0}
                             className={cn(
-                              'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
+                              'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
                               checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
                               disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                             )}
-                          />
-                        }
-                      >
-                        <RadioControl className="pointer-events-none mt-0.5" />
-                        {renderRoleText(role)}
-                      </RadioItem>
-                    </li>
-                  )
-                })}
-              </RadioGroup>
+                            onClick={handleToggle}
+                            onKeyDown={(e) => {
+                              if (e.key === ' ' || e.key === 'Enter') {
+                                e.preventDefault()
+                                handleToggle()
+                              }
+                            }}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              disabled={disabled}
+                              className="pointer-events-none mt-0.5"
+                            />
+                            {renderRoleText(role)}
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <RadioGroup
+                    aria-label={t(($) => $['role.workspaceRoles.title'], { ns: 'permission' })}
+                    value={selectedRoleIds[0] ?? ''}
+                    onValueChange={handleRadioValueChange}
+                    className="flex-col items-stretch gap-0.5 pb-2"
+                    render={<ul />}
+                  >
+                    {filteredRoles.map((role) => {
+                      const checked = selectedRoleIdSet.has(role.id)
+                      const disabled = disabledRoleIdSet.has(role.id)
+
+                      return (
+                        <li key={role.id}>
+                          <RadioItem
+                            value={role.id}
+                            disabled={disabled}
+                            nativeButton
+                            render={
+                              <button
+                                type="button"
+                                className={cn(
+                                  'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
+                                  checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
+                                  disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
+                                )}
+                              />
+                            }
+                          >
+                            <RadioControl className="pointer-events-none mt-0.5" />
+                            {renderRoleText(role)}
+                          </RadioItem>
+                        </li>
+                      )
+                    })}
+                  </RadioGroup>
+                )}
+                <div ref={anchorRef} className="h-0" />
+              </>
             )}
-            <div ref={anchorRef} className="h-0" />
-          </>
-        )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </>
   )

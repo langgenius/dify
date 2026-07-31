@@ -51,7 +51,7 @@ const Marketplace = ({
 
   return (
     <>
-      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-[14px]">
+      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-3.5">
         {isMarketplaceArrowVisible && (
           <Button
             aria-label={t(($) => $['marketplace.moreFrom'], { ns: 'plugin' })}
@@ -113,7 +113,7 @@ const Marketplace = ({
           </div>
         </div>
       </div>
-      <div className="mt-[-14px] shrink-0 grow bg-background-default-subtle pb-2">
+      <div className="-mt-3.5 shrink-0 grow bg-background-default-subtle pb-2">
         {isLoading && page === 1 && (
           <div className="absolute top-1/2 left-1/2 -translate-1/2">
             <Loading />

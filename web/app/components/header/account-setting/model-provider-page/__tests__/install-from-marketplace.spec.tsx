@@ -191,7 +191,7 @@ describe('InstallFromMarketplace', () => {
     )
     const target = document.querySelector<HTMLElement>(selector)
 
-    expect(target).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-[174px]')
+    expect(target).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-43.5')
     expect(target).toHaveAttribute('aria-hidden', 'true')
     expect(target?.parentElement).toContainElement(
       screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ }),

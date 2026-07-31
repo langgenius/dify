@@ -22,7 +22,7 @@ const UserInput = ({ variables = [], initialExpanded = true }: UserInputProps) =
       className={`rounded-xl border ${!expanded ? 'border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-none' : 'border-transparent bg-white shadow-xs'} `}
     >
       <div
-        className={`flex h-[18px] cursor-pointer items-center px-2 pt-4 text-[13px] font-semibold ${!expanded ? 'text-text-accent-secondary' : 'text-text-secondary'} `}
+        className={`flex h-4.5 cursor-pointer items-center px-2 pt-4 text-[13px] font-semibold ${!expanded ? 'text-text-accent-secondary' : 'text-text-secondary'} `}
         onClick={() => setExpanded(!expanded)}
       >
         <RiArrowDownSLine

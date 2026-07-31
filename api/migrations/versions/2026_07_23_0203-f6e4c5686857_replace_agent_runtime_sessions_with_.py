@@ -24,7 +24,7 @@ def upgrade():
     sa.Column('app_id', models.types.StringUUID(), nullable=False),
     sa.Column('workspace_id', models.types.StringUUID(), nullable=False),
     sa.Column('agent_id', models.types.StringUUID(), nullable=False),
-    sa.Column('base_home_snapshot_id', models.types.StringUUID(), nullable=False),
+    sa.Column('base_home_snapshot_id', models.types.StringUUID(), nullable=True),
     sa.Column('agent_config_version_id', models.types.StringUUID(), nullable=False),
     sa.Column('agent_config_version_kind', sa.String(length=32), nullable=False),
     sa.Column('backend_binding_ref', sa.String(length=255), nullable=False),
@@ -127,7 +127,7 @@ def downgrade():
     sa.Column('updated_at', postgresql.TIMESTAMP(), server_default=sa.text('CURRENT_TIMESTAMP'), autoincrement=False, nullable=False),
     sa.Column('pending_form_id', sa.UUID(), autoincrement=False, nullable=True),
     sa.Column('pending_tool_call_id', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
-    sa.Column('home_snapshot_id', sa.UUID(), autoincrement=False, nullable=False),
+    sa.Column('home_snapshot_id', sa.UUID(), autoincrement=False, nullable=True),
     sa.PrimaryKeyConstraint('id', name=op.f('agent_runtime_session_pkey'))
     )
     with op.batch_alter_table('agent_runtime_sessions', schema=None) as batch_op:
