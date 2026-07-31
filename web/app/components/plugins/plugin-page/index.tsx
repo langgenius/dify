@@ -215,7 +215,9 @@ const PluginPage = ({ plugins, marketplace }: PluginPageProps) => {
                       </Button>
                     }
                   />
-                  <TooltipContent>{t(($) => $['privilege.title'], { ns: 'plugin' })}</TooltipContent>
+                  <TooltipContent>
+                    {t(($) => $['privilege.title'], { ns: 'plugin' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
             </div>
