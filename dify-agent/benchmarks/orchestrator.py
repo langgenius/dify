@@ -81,6 +81,8 @@ class CapacityOptions:
     e2b_max_concurrency: int | None = None
 
     def __post_init__(self) -> None:
+        if self.concurrency is not None and self.concurrency < 1:
+            raise ValueError("BENCH_CONCURRENCY must be positive")
         if self.mode == "local-e2b":
             if not self.e2b_api_key or not self.e2b_template:
                 raise ValueError("BENCH_E2B_API_KEY and BENCH_E2B_TEMPLATE are required")
@@ -165,7 +167,7 @@ def run_capacity(options: CapacityOptions) -> tuple[Path, bool]:
                 command_failed = True
                 points.append(_invalid_point(matrix_point, f"{type(exc).__name__}: {exc}"))
                 logger.error("capacity point failed: %s", exc)
-                break
+                continue
             blocks.append(block)
             point = aggregate_capacity_point(block)
             points.append(point)
@@ -227,8 +229,6 @@ def _run_compose_block(
         "BENCH_CONCURRENCY": str(point.requested_concurrency),
         "BENCH_WARMUP_SECONDS": str(point.warmup_seconds),
         "BENCH_MEASUREMENT_SECONDS": str(point.measurement_seconds),
-        "BENCH_MIN_SUCCESSFUL_RUNS": str(point.minimum_successful_runs),
-        "BENCH_MAX_DURATION_SECONDS": str(point.maximum_seconds),
         "BENCH_RUNTIME_BACKEND": "e2b" if point.mode == "local-e2b" else "local",
         "BENCH_E2B_API_KEY": e2b_api_key or "",
         "BENCH_E2B_TEMPLATE": e2b_template or "",
@@ -753,7 +753,7 @@ def _parse_args() -> CapacityOptions:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("local-runtime", "local-e2b"))
     parser.add_argument("--scenario", choices=("basic", "shell", "resume", "config", "file"))
-    parser.add_argument("--concurrency", type=int, choices=CONCURRENCY_LEVELS)
+    parser.add_argument("--concurrency", type=int)
     parser.add_argument("--keep-containers", action="store_true")
     parser.add_argument("--results-root", type=Path)
     args = parser.parse_args()

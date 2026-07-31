@@ -23,9 +23,10 @@ make -C dify-agent bench-local-e2b
 ```
 
 Both commands run `basic`, `shell`, `resume`, `config`, and a 16 MiB `file`
-roundtrip at concurrency 1, 10, and 20. Each point warms up for 15 seconds and
-measures for at least 60 seconds. Basic, Shell, Resume, and Config require 100
-successful Runs; File requires 10. A point stops after at most 180 seconds.
+roundtrip at concurrency 1, 10, and 20. Each point warms up for 15 seconds,
+then admits Runs during a fixed 60-second measurement window. The driver waits
+for already admitted Runs to finish. Sample count is reported but is not a
+validity gate.
 
 For focused debugging:
 

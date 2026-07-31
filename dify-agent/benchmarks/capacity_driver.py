@@ -49,8 +49,6 @@ class CapacityDriverSettings:
     concurrency: int
     warmup_seconds: float
     measurement_seconds: float
-    minimum_successful_runs: int
-    maximum_duration_seconds: float
     e2b_api_key: str | None = field(default=None, repr=False)
 
     @classmethod
@@ -71,8 +69,6 @@ class CapacityDriverSettings:
             concurrency=int(_required_environment("BENCH_CONCURRENCY")),
             warmup_seconds=float(_required_environment("BENCH_WARMUP_SECONDS")),
             measurement_seconds=float(_required_environment("BENCH_MEASUREMENT_SECONDS")),
-            minimum_successful_runs=int(_required_environment("BENCH_MIN_SUCCESSFUL_RUNS")),
-            maximum_duration_seconds=float(_required_environment("BENCH_MAX_DURATION_SECONDS")),
             e2b_api_key=os.environ.get("BENCH_E2B_API_KEY") or None,
         )
 
@@ -154,8 +150,6 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
             await _reset(redis, fake_client)
             warmup = await _run_timed(
                 duration_seconds=settings.warmup_seconds,
-                maximum_duration_seconds=settings.warmup_seconds,
-                minimum_successful_runs=None,
                 scenario=scenario,
                 settings=settings,
                 agent_client=agent_client,
@@ -175,8 +169,6 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
             started_perf_ns = time.perf_counter_ns()
             observations = await _run_timed(
                 duration_seconds=settings.measurement_seconds,
-                maximum_duration_seconds=settings.maximum_duration_seconds,
-                minimum_successful_runs=settings.minimum_successful_runs,
                 scenario=scenario,
                 settings=settings,
                 agent_client=agent_client,
@@ -236,7 +228,6 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
         measurement_started_at_ns=measurement_started_at_ns,
         measurement_ended_at_ns=measurement_ended_at_ns,
         elapsed_seconds=elapsed_seconds,
-        minimum_successful_runs=settings.minimum_successful_runs,
         outcomes=outcomes,
         redis_before=redis_before,
         redis_after=redis_after,
@@ -598,8 +589,6 @@ async def _prepare_resume_snapshot_pool(
 async def _run_timed(
     *,
     duration_seconds: float,
-    maximum_duration_seconds: float,
-    minimum_successful_runs: int | None,
     scenario: CapacityScenario,
     settings: CapacityDriverSettings,
     agent_client: httpx.AsyncClient,
@@ -608,11 +597,8 @@ async def _run_timed(
     session_snapshots: Sequence[dict[str, object] | None],
     tracker: ActiveRunTracker | None,
 ) -> list[CapacityObservation]:
-    started = time.perf_counter()
-    minimum_deadline = started + duration_seconds
-    maximum_deadline = started + maximum_duration_seconds
+    deadline = time.perf_counter() + duration_seconds
     observations: list[CapacityObservation] = []
-    lock = asyncio.Lock()
 
     async def worker(worker_index: int) -> None:
         await asyncio.sleep(worker_index * 0.005)
@@ -623,11 +609,7 @@ async def _run_timed(
             session_snapshots=session_snapshots,
         )
         while True:
-            now = time.perf_counter()
-            async with lock:
-                successful = sum(observation.sample.terminal_status == "succeeded" for observation in observations)
-            minimum_met = minimum_successful_runs is None or successful >= minimum_successful_runs
-            if (now >= minimum_deadline and minimum_met) or now >= maximum_deadline:
+            if time.perf_counter() >= deadline:
                 return
             observation = await _run_once(
                 sequence=sequence,
@@ -640,8 +622,7 @@ async def _run_timed(
                 session_snapshot=session_snapshot,
                 tracker=tracker,
             )
-            async with lock:
-                observations.append(observation)
+            observations.append(observation)
             sequence += settings.concurrency
 
     await asyncio.gather(*(worker(index) for index in range(settings.concurrency)))

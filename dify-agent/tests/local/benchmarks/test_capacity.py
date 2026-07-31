@@ -64,7 +64,6 @@ def _block(
         measurement_started_at_ns=1,
         measurement_ended_at_ns=2,
         elapsed_seconds=10,
-        minimum_successful_runs=100,
         outcomes=RunOutcomeSummary(
             attempted_runs=successful,
             admitted_runs=successful,
@@ -94,7 +93,28 @@ def test_each_mode_expands_five_scenarios_at_three_concurrency_levels() -> None:
 
     assert len(runtime) == len(e2b) == 15
     assert {point.requested_concurrency for point in runtime} == {1, 10, 20}
-    assert next(point for point in runtime if point.scenario.id == "file").minimum_successful_runs == 10
+    assert all(point.measurement_seconds == 60 for point in runtime)
+
+
+def test_low_sample_count_does_not_invalidate_capacity_point() -> None:
+    point = aggregate_capacity_point(_block(concurrency=1, successful=1, observed_active=1))
+
+    assert point.status == "valid"
+    assert not point.reasons
+
+
+def test_filtered_matrix_accepts_positive_non_default_concurrency() -> None:
+    manifest = load_scenario_manifest()
+
+    matrix = build_capacity_matrix(
+        mode="local-e2b",
+        manifest=manifest,
+        scenario_id="file",
+        concurrency=5,
+    )
+
+    assert len(matrix) == 1
+    assert matrix[0].requested_concurrency == 5
 
 
 def test_aggregate_uses_friendly_per_run_units() -> None:
@@ -113,7 +133,7 @@ def test_high_concurrency_shortfall_is_saturated() -> None:
     point = aggregate_capacity_point(_block(successful=20, observed_active=5))
 
     assert point.status == "saturated"
-    assert any("required" in reason for reason in point.reasons)
+    assert any("below 90%" in reason for reason in point.reasons)
 
 
 def test_missing_e2b_active_window_is_invalid() -> None:
