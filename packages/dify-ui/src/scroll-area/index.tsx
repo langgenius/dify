@@ -1,29 +1,13 @@
 'use client'
 
-import type * as React from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
 
-const ScrollAreaRoot = BaseScrollArea.Root
-type ScrollAreaRootProps = BaseScrollArea.Root.Props
+const ScrollArea = BaseScrollArea.Root
+type ScrollAreaProps = BaseScrollArea.Root.Props
 
 const ScrollAreaContent = BaseScrollArea.Content
 type ScrollAreaContentProps = BaseScrollArea.Content.Props
-
-type ScrollAreaSlotClassNames = {
-  viewport?: string
-  content?: string
-  scrollbar?: string
-}
-type ScrollAreaOrientation = NonNullable<BaseScrollArea.Scrollbar.Props['orientation']>
-
-type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: React.ReactNode
-  orientation?: ScrollAreaOrientation
-  slotClassNames?: ScrollAreaSlotClassNames
-  label?: string
-  labelledBy?: string
-}
 
 const scrollAreaScrollbarClassName = cn(
   'group/scrollbar flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
@@ -89,37 +73,10 @@ function ScrollAreaCorner({ className, ...props }: ScrollAreaCornerProps) {
   return <BaseScrollArea.Corner className={cn(scrollAreaCornerClassName, className)} {...props} />
 }
 
-function ScrollArea({
-  children,
-  className,
-  orientation = 'vertical',
-  slotClassNames,
-  label,
-  labelledBy,
-  ...props
-}: ScrollAreaProps) {
-  return (
-    <ScrollAreaRoot className={className} {...props}>
-      <ScrollAreaViewport
-        aria-label={label}
-        aria-labelledby={labelledBy}
-        className={slotClassNames?.viewport}
-        role={label || labelledBy ? 'region' : undefined}
-      >
-        <ScrollAreaContent className={slotClassNames?.content}>{children}</ScrollAreaContent>
-      </ScrollAreaViewport>
-      <ScrollAreaScrollbar orientation={orientation} className={slotClassNames?.scrollbar}>
-        <ScrollAreaThumb />
-      </ScrollAreaScrollbar>
-    </ScrollAreaRoot>
-  )
-}
-
 export {
   ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -129,7 +86,6 @@ export type {
   ScrollAreaContentProps,
   ScrollAreaCornerProps,
   ScrollAreaProps,
-  ScrollAreaRootProps,
   ScrollAreaScrollbarProps,
   ScrollAreaThumbProps,
   ScrollAreaViewportProps,
