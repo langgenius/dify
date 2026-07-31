@@ -85,13 +85,21 @@ const AddApiKeyModal = ({ isShow, onClose }: AddApiKeyModalProps) => {
     <>
       <Dialog open={isShow} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-full max-w-[560px]! border-none">
-          <div className="flex flex-col gap-y-1 px-6 pt-6">
-            <DialogTitle className="title-xl-semi-bold text-text-primary">
+          <div className="relative flex flex-col gap-y-1 px-6 pt-6">
+            <DialogTitle className="title-lg-semi-bold text-text-primary">
               {t(($) => $['apiKeyModal.addTitle'], { ns: 'appApi' })}
             </DialogTitle>
             <div className="system-xs-regular text-text-tertiary">
               {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
             </div>
+            <button
+              type="button"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              className="absolute top-4 right-4 flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              onClick={handleClose}
+            >
+              <span className="i-ri-close-line size-5" aria-hidden="true" />
+            </button>
           </div>
 
           <div className="flex flex-col gap-y-3 px-6 py-4">
@@ -134,36 +142,39 @@ const AddApiKeyModal = ({ isShow, onClose }: AddApiKeyModalProps) => {
             {scope === 'specific' && (
               <div className="flex flex-col gap-y-2">
                 <div className="system-sm-semibold text-text-secondary">
-                  {selected.length > 0
-                    ? t(($) => $['apiKeyModal.selectedKnowledgeBasesCount'], {
-                        ns: 'appApi',
-                        count: selected.length,
-                      })
-                    : t(($) => $['apiKeyModal.selectedKnowledgeBases'], { ns: 'appApi' })}
+                  {t(($) => $['apiKeyModal.selectedKnowledgeBases'], { ns: 'appApi' })}
                 </div>
-                <div className="flex flex-col gap-y-2 rounded-lg border-[0.5px] border-divider-subtle bg-components-panel-bg p-2">
+                <div className="flex flex-col gap-y-2 rounded-lg border-[0.5px] border-divider-subtle bg-components-panel-bg p-3">
                   {selected.length === 0 ? (
-                    <div className="px-1 py-1 system-xs-regular text-text-tertiary">
+                    <div className="py-0.5 system-xs-regular text-text-tertiary">
                       {t(($) => $['apiKeyModal.noKnowledgeBasesSelected'], { ns: 'appApi' })}
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {selected.map((kb) => (
-                        <div
-                          key={kb.id}
-                          className="flex items-center gap-x-1 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-2 py-1"
-                        >
-                          <span className="max-w-40 truncate system-xs-medium text-text-secondary">
-                            {kb.name}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-                            className="i-ri-close-line size-3.5 shrink-0 border-none bg-transparent p-0 text-text-tertiary hover:text-text-secondary"
-                            onClick={() => removeKb(kb.id)}
-                          />
-                        </div>
-                      ))}
+                    <div className="flex flex-col gap-y-2">
+                      <div className="system-xs-regular text-text-tertiary">
+                        {t(($) => $['apiKeyModal.selectedKnowledgeBasesCount'], {
+                          ns: 'appApi',
+                          count: selected.length,
+                        })}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selected.map((kb) => (
+                          <div
+                            key={kb.id}
+                            className="flex items-center gap-x-1 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-2 py-1"
+                          >
+                            <span className="max-w-40 truncate system-xs-medium text-text-secondary">
+                              {kb.name}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                              className="i-ri-close-line size-3.5 shrink-0 border-none bg-transparent p-0 text-text-tertiary hover:text-text-secondary"
+                              onClick={() => removeKb(kb.id)}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
