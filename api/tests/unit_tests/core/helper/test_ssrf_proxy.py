@@ -395,9 +395,7 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
 
     msg = str(exc_info.value)
     assert "172.21.0.5" in msg, f"URL should appear in the error, got: {msg!r}"
-    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in msg, (
-        "Error must tell the user which env var to set; got: " + msg
-    )
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in msg, "Error must tell the user which env var to set; got: " + msg
     # The remediation hint must include a concrete example, otherwise users
     # still have to grep the squid config to figure out the syntax.
     assert "172.21.0.0/16" in msg
@@ -456,4 +454,3 @@ def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client) 
 
     assert "10.0.0.42" in str(exc_info.value)
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
-
