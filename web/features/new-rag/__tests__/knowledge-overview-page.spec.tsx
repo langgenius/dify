@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { KnowledgeOverviewPage } from '../overview/knowledge-overview-page'
 
@@ -11,6 +12,11 @@ const queryOptionsMocks = vi.hoisted(() => ({
   stats: vi.fn(),
 }))
 
+const infiniteOptionsMocks = vi.hoisted(() => ({
+  activity: vi.fn(),
+  tasks: vi.fn(),
+}))
+
 const chartOptions = vi.hoisted(() => ({ current: undefined as unknown }))
 
 const queryData = vi.hoisted(() => ({
@@ -19,7 +25,7 @@ const queryData = vi.hoisted(() => ({
       {
         action: 'source.synced',
         actor: { id: 'dify-account:member-1', type: 'member' },
-        details: { count: 1 },
+        details: { count: 1 } as Record<string, boolean | number | string>,
         id: 'activity-1',
         occurred_at: '2026-07-29T08:05:00Z',
         resource: { id: 'source-1', type: 'source' },
@@ -258,14 +264,20 @@ vi.mock('@/service/client', () => {
                 },
               },
               get: {
-                infiniteOptions: () => ({ queryKey: ['tasksInfinite'] }),
+                infiniteOptions: (options: unknown) => {
+                  infiniteOptionsMocks.tasks(options)
+                  return { ...(options as object), queryKey: ['tasksInfinite'] }
+                },
               },
             },
             overview: {
               activity: {
                 get: {
                   ...query('activity'),
-                  infiniteOptions: () => ({ queryKey: ['activityInfinite'] }),
+                  infiniteOptions: (options: unknown) => {
+                    infiniteOptionsMocks.activity(options)
+                    return { ...(options as object), queryKey: ['activityInfinite'] }
+                  },
                 },
               },
               attention: { get: query('attention') },
@@ -516,6 +528,9 @@ describe('KnowledgeOverviewPage', () => {
   it('opens the complete activity view from recent activity', async () => {
     const user = userEvent.setup()
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const whenHeader = screen.getByRole('columnheader', {
+      name: 'dataset.newKnowledge.overview.when',
+    })
 
     await user.click(
       screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
@@ -530,8 +545,92 @@ describe('KnowledgeOverviewPage', () => {
       screen.getByRole('combobox', { name: 'dataset.newKnowledge.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.overview.operator' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.overview.operator' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+    ).toBeInTheDocument()
+    expect(document.querySelector('.bg-transparent')).toBeInTheDocument()
+    expect(whenHeader).not.toHaveClass('opacity-0')
+  })
+
+  it('restarts activity pagination when the date or operator filter changes', async () => {
+    const user = userEvent.setup()
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
+    )
+
+    const operator = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.overview.operator',
+    })
+    await user.click(operator)
+    await user.click(await screen.findByRole('option', { name: 'Ada' }))
+
+    const memberOptions = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
+      input: (cursor: string | null) => {
+        query: Record<string, unknown>
+      }
+      queryKey: unknown[]
+    }
+    expect(memberOptions.queryKey).toEqual([
+      'knowledge-fs-overview-activity',
+      'space-1',
+      expect.any(String),
+      expect.any(String),
+      'member:member-1',
+    ])
+    expect(memberOptions.input(null).query).toMatchObject({
+      actor_id: 'dify-account:member-1',
+      actor_type: 'member',
+      limit: 20,
+    })
+    expect(memberOptions.input('older').query.cursor).toBe('older')
+
+    const timeRange = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.overview.timeRange',
+    })
+    await user.click(timeRange)
+    await user.click(
+      await screen.findByRole('option', { name: 'dataset.newKnowledge.overview.today' }),
+    )
+
+    const todayOptions = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
+      input: (cursor: string | null) => {
+        query: Record<string, unknown>
+      }
+      queryKey: unknown[]
+    }
+    expect(todayOptions.queryKey[4]).toBe('member:member-1')
+    expect(todayOptions.input(null).query).toMatchObject({
+      actor_id: 'dify-account:member-1',
+      actor_type: 'member',
+      from_at: expect.any(String),
+      to_at: expect.any(String),
+    })
+    expect(dayjs(todayOptions.input(null).query.from_at as string).isSame(dayjs(), 'day')).toBe(
+      true,
+    )
+  })
+
+  it('shows safe activity details and relative times for today in the drawer', async () => {
+    const user = userEvent.setup()
+    queryData.activity.data[0]!.action = 'source.failed'
+    queryData.activity.data[0]!.details = { reasonCode: 'CREDENTIALS_EXPIRED' }
+    queryData.activity.data[0]!.occurred_at = new Date(Date.now() - 2 * 60 * 60_000).toISOString()
+    queryData.activity.data[0]!.result = 'failure'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.overview.allActivity',
+    })
+    expect(dialog).toHaveTextContent('Credentials expired')
+    expect(dialog).toHaveTextContent('dataset.newKnowledge.overview.activityFailed')
+    expect(within(dialog).getByText(/2h ago|2 hr\. ago|2 hours ago/)).toBeInTheDocument()
   })
 
   it('refreshes overview snapshots until they catch up with a completed background task', () => {

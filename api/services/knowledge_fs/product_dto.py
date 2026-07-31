@@ -418,6 +418,8 @@ class KnowledgeFSOverviewActivityListQuery(BaseModel):
         ]
         | None
     ) = None
+    actor_id: str | None = Field(default=None, min_length=1, max_length=255)
+    actor_type: Literal["member", "system"] | None = None
     cursor: str | None = Field(default=None, min_length=1, max_length=512)
     from_at: datetime | None = Field(default=None, validation_alias=AliasChoices("from_at", "from"))
     limit: int = Field(default=50, ge=1, le=100)
@@ -441,6 +443,8 @@ class KnowledgeFSOverviewActivityListQuery(BaseModel):
 
     @model_validator(mode="after")
     def validate_time_range(self) -> KnowledgeFSOverviewActivityListQuery:
+        if self.actor_type == "system" and self.actor_id is not None:
+            raise ValueError("actor_id cannot be combined with the system actor type")
         if self.from_at is not None and self.to_at is not None and self.from_at > self.to_at:
             raise ValueError("from must not be after to")
         return self

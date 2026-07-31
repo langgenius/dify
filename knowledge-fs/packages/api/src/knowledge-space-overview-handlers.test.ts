@@ -25,7 +25,7 @@ describe("knowledge-space Overview HTTP API", () => {
     const fixture = await createFixture();
 
     const response = await fixture.app.request(
-      `/knowledge-spaces/${SPACE_ID}/overview/activity?limit=5`,
+      `/knowledge-spaces/${SPACE_ID}/overview/activity?limit=5&actorType=member&actorId=dify-account%3Aviewer-1`,
       { headers: { authorization: "Bearer viewer-token" } },
     );
 
@@ -40,6 +40,8 @@ describe("knowledge-space Overview HTTP API", () => {
     expect(fixture.listActivity).toHaveBeenCalledWith(
       expect.objectContaining({
         candidateGrants: expect.any(Array),
+        actorId: "dify-account:viewer-1",
+        actorType: "member",
         knowledgeSpaceId: SPACE_ID,
         tenantId: TENANT_ID,
       }),

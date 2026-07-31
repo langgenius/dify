@@ -1040,6 +1040,8 @@ class KnowledgeFSSpaceOverviewActivityApi(Resource):
             account_id=actor_id,
             control_space_id=control_space_id,
             action=query.action,
+            actor_id=query.actor_id,
+            actor_type=query.actor_type,
             cursor=query.cursor,
             from_at=query.from_at.astimezone(UTC).isoformat().replace("+00:00", "Z") if query.from_at else None,
             limit=query.limit,

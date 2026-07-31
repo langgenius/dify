@@ -2536,6 +2536,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityQuery = z.obje
       'worker.failed',
     ])
     .optional(),
+  actor_id: z.string().min(1).max(255).optional(),
+  actor_type: z.enum(['member', 'system']).optional(),
   cursor: z.string().min(1).max(512).optional(),
   from_at: z.iso.datetime().optional(),
   limit: z.int().gte(1).lte(100).optional().default(50),

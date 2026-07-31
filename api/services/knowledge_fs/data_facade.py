@@ -257,6 +257,8 @@ class KnowledgeFSDataFacade:
         account_id: str,
         control_space_id: str,
         action: str | None,
+        actor_id: str | None,
+        actor_type: str | None,
         cursor: str | None,
         from_at: str | None,
         limit: int,
@@ -268,6 +270,8 @@ class KnowledgeFSDataFacade:
             (key, value)
             for key, value in (
                 ("action", action),
+                ("actorId", actor_id),
+                ("actorType", actor_type),
                 ("cursor", cursor),
                 ("from", from_at),
                 ("limit", str(limit)),

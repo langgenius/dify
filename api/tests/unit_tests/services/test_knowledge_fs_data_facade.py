@@ -1117,6 +1117,8 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
             "listOverviewActivity",
             {
                 "action": None,
+                "actor_id": None,
+                "actor_type": None,
                 "cursor": "cursor-1",
                 "from_at": "2026-07-01T00:00:00Z",
                 "limit": 20,

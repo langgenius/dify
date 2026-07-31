@@ -639,6 +639,8 @@ describe.each(["postgres", "tidb"] as const)(
 
       const page = await repository.listActivity({
         action: "query.requested",
+        actorId: "editor-1",
+        actorType: "member",
         candidateGrants: ["team:camera"],
         cursor: { id: QUERY_ID, occurredAt: NOW },
         from: "2026-07-13T14:00:00.000Z",
@@ -657,6 +659,8 @@ describe.each(["postgres", "tidb"] as const)(
         SPACE_ID,
         JSON.stringify(["team:camera"]),
         "query.requested",
+        "member",
+        "editor-1",
         "query",
         "pending",
         "2026-07-13T14:00:00.000Z",

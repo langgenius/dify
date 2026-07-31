@@ -6,8 +6,10 @@ import type {
   KnowledgeFsOverviewAttentionResponse,
   KnowledgeFsOverviewQueryOutcomeBucketResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { Dayjs } from 'dayjs'
 import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
+import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -38,6 +40,7 @@ import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { Infotip } from '@/app/components/base/infotip'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -57,9 +60,12 @@ import {
 } from '../routes'
 
 type OverviewWindow = '24h' | '7d' | '30d'
-type ActivityRange = 'today' | '7d' | '30d' | '90d' | 'all'
+type ActivityRange = 'today' | '7d' | '30d' | '90d' | 'all' | 'custom'
+type ActivityOperator = 'all' | 'system' | `member:${string}`
+type ActivityDateRange = { end: Dayjs; start: Dayjs }
 
 const WINDOWS: OverviewWindow[] = ['24h', '7d', '30d']
+const ACTIVITY_RANGES: ActivityRange[] = ['today', '7d', '30d', '90d', 'all', 'custom']
 const QUERY_OUTCOMES_WINDOW: OverviewWindow = '7d'
 const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'queued',
@@ -71,6 +77,18 @@ const OVERVIEW_REFRESH_INTERVAL = 2000
 const overviewWindowParser = parseAsStringLiteral(WINDOWS)
   .withDefault('24h')
   .withOptions({ history: 'push' })
+
+function activityDatesForRange(range: Exclude<ActivityRange, 'custom'>): ActivityDateRange {
+  const end = dayjs().endOf('day')
+  if (range === 'all') return { end, start: dayjs(0) }
+  if (range === 'today') return { end, start: dayjs().startOf('day') }
+  return {
+    end,
+    start: dayjs()
+      .subtract(Number.parseInt(range) - 1, 'day')
+      .startOf('day'),
+  }
+}
 
 function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
   return (
@@ -629,15 +647,35 @@ function activityLabel(
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
 ) {
   const operation = activityOperationLabel(activity, t)
+  let label: string
   if (activity.result === 'success')
-    return t(($) => $['newKnowledge.overview.activityCompleted'], { operation })
-  if (activity.result === 'failure')
-    return t(($) => $['newKnowledge.overview.activityFailed'], { operation })
-  if (activity.result === 'canceled')
-    return t(($) => $['newKnowledge.overview.activityCanceled'], { operation })
-  return activity.action === 'query.requested'
-    ? t(($) => $['newKnowledge.overview.activityQueued'], { operation })
-    : t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+    label = t(($) => $['newKnowledge.overview.activityCompleted'], { operation })
+  else if (activity.result === 'failure')
+    label = t(($) => $['newKnowledge.overview.activityFailed'], { operation })
+  else if (activity.result === 'canceled')
+    label = t(($) => $['newKnowledge.overview.activityCanceled'], { operation })
+  else
+    label =
+      activity.action === 'query.requested'
+        ? t(($) => $['newKnowledge.overview.activityQueued'], { operation })
+        : t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+
+  const detail = [
+    activity.details.reasonCode,
+    activity.details.statusCode,
+    activity.details.documentType,
+    activity.details.providerId,
+    activity.details.mode,
+  ].find((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+  if (!detail) return label
+
+  const readableDetail = /^[A-Z0-9_]+$/.test(detail)
+    ? detail
+        .toLocaleLowerCase()
+        .replaceAll('_', ' ')
+        .replace(/^./, (character) => character.toLocaleUpperCase())
+    : detail
+  return `${label} — ${readableDetail}`
 }
 
 function compactIdentifier(value: string) {
@@ -809,9 +847,7 @@ function RecentActivity({
               role="row"
               className="grid grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
             >
-              <span role="columnheader" className="opacity-0">
-                {t(($) => $['newKnowledge.overview.when'])}
-              </span>
+              <span role="columnheader">{t(($) => $['newKnowledge.overview.when'])}</span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.activity'])}</span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.operator'])}</span>
             </div>
@@ -838,10 +874,6 @@ function RecentActivity({
                       {formatWhen(activity.occurred_at)}
                     </span>
                     <span role="cell" className="min-w-0 truncate text-text-secondary">
-                      <strong className="font-semibold text-text-primary">
-                        {activityOperationLabel(activity, t)}
-                      </strong>
-                      {' — '}
                       {activityLabel(activity, t)}
                     </span>
                     <span role="cell" className="flex min-w-0 items-center gap-2">
@@ -862,31 +894,109 @@ function RecentActivity({
   )
 }
 
+function ActivityDateRangePicker({
+  dates,
+  onChange,
+}: {
+  dates: ActivityDateRange
+  onChange: (dates: ActivityDateRange) => void
+}) {
+  const { t, i18n } = useTranslation('dataset')
+  const today = dayjs()
+  const formatter = useMemo(
+    () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
+    [i18n.language],
+  )
+  const renderTrigger =
+    (edge: 'start' | 'end') =>
+    ({ handleClickTrigger, isOpen, value }: TriggerProps) => (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${t(($) => $['newKnowledge.overview.timeRange'])} ${edge}`}
+        aria-expanded={isOpen}
+        className={cn(
+          'min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left system-xs-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
+          isOpen && 'bg-state-base-hover',
+        )}
+        onClick={handleClickTrigger}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          handleClickTrigger(event as unknown as React.MouseEvent)
+        }}
+      >
+        {value ? formatter.format(value.toDate()) : '—'}
+      </div>
+    )
+
+  return (
+    <div
+      role="group"
+      aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
+      className="flex h-6 w-35 shrink-0 items-center rounded-lg bg-background-section px-1"
+    >
+      <DatePicker
+        noConfirm
+        needTimePicker={false}
+        value={dates.start}
+        onChange={(start) => start && onChange({ end: dates.end, start: start.startOf('day') })}
+        onClear={() => undefined}
+        renderTrigger={renderTrigger('start')}
+        getIsDateDisabled={(date) => date.isAfter(today, 'day') || date.isAfter(dates.end, 'day')}
+      />
+      <span aria-hidden className="text-text-quaternary">
+        –
+      </span>
+      <DatePicker
+        noConfirm
+        needTimePicker={false}
+        value={dates.end}
+        onChange={(end) => end && onChange({ end: end.endOf('day'), start: dates.start })}
+        onClear={() => undefined}
+        renderTrigger={renderTrigger('end')}
+        getIsDateDisabled={(date) =>
+          date.isAfter(today, 'day') || date.isBefore(dates.start, 'day')
+        }
+      />
+    </div>
+  )
+}
+
 function ActivityDrawer({
   activities,
+  dates,
   hasNextPage,
   isFetchingNextPage,
   loading,
   members,
+  onDatesChange,
   onFetchNextPage,
   onOpenChange,
+  onOperatorChange,
   onRangeChange,
   open,
+  operator,
   range,
 }: {
   activities: KnowledgeFsOverviewActivityResponse[]
+  dates: ActivityDateRange
   hasNextPage: boolean
   isFetchingNextPage: boolean
   loading: boolean
   members: Member[]
+  onDatesChange: (dates: ActivityDateRange) => void
   onFetchNextPage: () => void
   onOpenChange: (open: boolean) => void
+  onOperatorChange: (operator: ActivityOperator) => void
   onRangeChange: (range: ActivityRange) => void
   open: boolean
+  operator: ActivityOperator
   range: ActivityRange
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tDeployments } = useTranslation('deployments')
+  const { t: tActivityLog } = useTranslation('appLog')
   const rangeTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreFilterFocusRef = useRef(false)
   const now = dayjs()
@@ -901,6 +1011,10 @@ function ActivityDrawer({
   )
   const timeFormatter = useMemo(
     () => new Intl.DateTimeFormat(i18n.language, { hour: 'numeric', minute: '2-digit' }),
+    [i18n.language],
+  )
+  const relativeTimeFormatter = useMemo(
+    () => new Intl.RelativeTimeFormat(i18n.language, { numeric: 'auto', style: 'narrow' }),
     [i18n.language],
   )
   const groups = activities.reduce<Record<string, KnowledgeFsOverviewActivityResponse[]>>(
@@ -919,16 +1033,37 @@ function ActivityDrawer({
       return t(($) => $['newKnowledge.overview.yesterday'])
     return dateFormatter.format(date.toDate())
   }
+  const activityTime = (occurredAt: string) => {
+    const occurred = dayjs(occurredAt)
+    if (!occurred.isSame(now, 'day')) return timeFormatter.format(occurred.toDate())
+    const elapsedMinutes = Math.max(0, now.diff(occurred, 'minute'))
+    if (elapsedMinutes < 60) return relativeTimeFormatter.format(-elapsedMinutes, 'minute')
+    return relativeTimeFormatter.format(-Math.floor(elapsedMinutes / 60), 'hour')
+  }
   const rangeLabel: Record<ActivityRange, string> = {
     '30d': t(($) => $['newKnowledge.overview.last30Days']),
     '7d': t(($) => $['newKnowledge.overview.last7Days']),
     '90d': t(($) => $['newKnowledge.overview.last90Days']),
     all: t(($) => $['newKnowledge.overview.allTime']),
+    custom: tActivityLog(($) => $['filter.period.custom']),
     today: t(($) => $['newKnowledge.overview.today']),
   }
+  const rangeTriggerLabel: Record<ActivityRange, string> = {
+    ...rangeLabel,
+    '30d': t(($) => $['newKnowledge.overview.thirtyDays']),
+    '7d': t(($) => $['newKnowledge.overview.sevenDays']),
+    '90d': '90d',
+  }
+  const operatorLabel =
+    operator === 'all'
+      ? tActivityLog(($) => $['filter.annotation.all'])
+      : operator === 'system'
+        ? t(($) => $['newKnowledge.overview.system'])
+        : members.find((member) => `member:${member.id}` === operator)?.name || operator.slice(7)
   const clearFilters = () => {
     restoreFilterFocusRef.current = true
     onRangeChange('7d')
+    onOperatorChange('all')
   }
 
   useEffect(() => {
@@ -940,7 +1075,7 @@ function ActivityDrawer({
   return (
     <Drawer open={open} swipeDirection="right" onOpenChange={onOpenChange}>
       <DrawerPortal>
-        <DrawerBackdrop />
+        <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
@@ -952,7 +1087,7 @@ function ActivityDrawer({
                   <DrawerCloseButton />
                 </div>
               </header>
-              <div className="flex h-9 shrink-0 border-b border-divider-subtle px-5">
+              <div className="flex h-9 shrink-0 items-start gap-1 border-b border-divider-subtle px-5">
                 <Select
                   value={range}
                   onValueChange={(value) => onRangeChange(value as ActivityRange)}
@@ -960,14 +1095,50 @@ function ActivityDrawer({
                   <SelectTrigger
                     ref={rangeTriggerRef}
                     aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
-                    className="h-6 min-w-0 flex-1 border-0 bg-background-section shadow-none"
+                    className="h-6 w-20 min-w-0 shrink-0 border-0 bg-background-section shadow-none"
                   >
-                    <span className="truncate">{rangeLabel[range]}</span>
+                    <span className="truncate">{rangeTriggerLabel[range]}</span>
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(rangeLabel) as ActivityRange[]).map((value) => (
+                    {ACTIVITY_RANGES.map((value) => (
                       <SelectItem key={value} value={value}>
                         <SelectItemText>{rangeLabel[value]}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {range === 'all' ? (
+                  <div className="flex h-6 w-35 shrink-0 items-center rounded-lg bg-background-section px-2 system-xs-regular text-text-tertiary">
+                    {rangeLabel.all}
+                  </div>
+                ) : (
+                  <ActivityDateRangePicker dates={dates} onChange={onDatesChange} />
+                )}
+                <Select
+                  value={operator}
+                  onValueChange={(value) => onOperatorChange(value as ActivityOperator)}
+                >
+                  <SelectTrigger
+                    aria-label={t(($) => $['newKnowledge.overview.operator'])}
+                    className="h-6 w-50 min-w-0 shrink-0 border-0 bg-background-section shadow-none"
+                  >
+                    <span className="truncate">{operatorLabel}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <SelectItemText>
+                        {tActivityLog(($) => $['filter.annotation.all'])}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value="system">
+                      <SelectItemText>{t(($) => $['newKnowledge.overview.system'])}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={`member:${member.id}`}>
+                        <SelectItemText>{member.name || member.email}</SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>
                     ))}
@@ -1030,7 +1201,7 @@ function ActivityDrawer({
                                 className="shrink-0 system-xs-regular text-text-tertiary"
                                 dateTime={activity.occurred_at}
                               >
-                                {timeFormatter.format(new Date(activity.occurred_at))}
+                                {activityTime(activity.occurred_at)}
                               </time>
                             </li>
                           ))}
@@ -1498,17 +1669,30 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   const [window, setWindow] = useQueryState('window', overviewWindowParser)
   const [activityOpen, setActivityOpen] = useState(false)
   const [activityRange, setActivityRange] = useState<ActivityRange>('7d')
-  const activityFrom = useMemo(() => {
-    if (activityRange === 'all') return undefined
-    if (activityRange === 'today') return dayjs().startOf('day').toISOString()
-    return dayjs().subtract(Number.parseInt(activityRange), 'day').toISOString()
-  }, [activityRange])
+  const [activityDates, setActivityDates] = useState<ActivityDateRange>(() =>
+    activityDatesForRange('7d'),
+  )
+  const [activityOperator, setActivityOperator] = useState<ActivityOperator>('all')
+  const activityFrom = activityRange === 'all' ? undefined : activityDates.start.toISOString()
+  const activityTo = activityRange === 'all' ? undefined : activityDates.end.toISOString()
+  const activityActorType =
+    activityOperator === 'all' ? undefined : activityOperator === 'system' ? 'system' : 'member'
+  const activityActorId = activityOperator.startsWith('member:')
+    ? `dify-account:${activityOperator.slice(7)}`
+    : undefined
+  const handleActivityRangeChange = (range: ActivityRange) => {
+    setActivityRange(range)
+    if (range !== 'custom') setActivityDates(activityDatesForRange(range))
+  }
+  const handleActivityDatesChange = (dates: ActivityDateRange) => {
+    setActivityDates(dates)
+    setActivityRange('custom')
+  }
   const membersQuery = useMembers()
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
       getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
-      queryKey: ['knowledge-fs-overview-activity', knowledgeSpaceId, activityRange],
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {
@@ -1592,12 +1776,22 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.infiniteOptions({
       getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
+      queryKey: [
+        'knowledge-fs-overview-activity',
+        knowledgeSpaceId,
+        activityFrom,
+        activityTo,
+        activityOperator,
+      ],
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {
+          ...(activityActorId ? { actor_id: activityActorId } : {}),
+          ...(activityActorType ? { actor_type: activityActorType } : {}),
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
           ...(activityFrom ? { from_at: activityFrom } : {}),
           limit: ACTIVITY_PAGE_SIZE,
+          ...(activityTo ? { to_at: activityTo } : {}),
         },
       }),
     }),
@@ -1818,15 +2012,19 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       </div>
       <ActivityDrawer
         activities={activities}
+        dates={activityDates}
         hasNextPage={Boolean(activityDrawerQuery.hasNextPage)}
         isFetchingNextPage={activityDrawerQuery.isFetchingNextPage}
         loading={activityDrawerQuery.isPending || activityDrawerQuery.isRefetching}
         members={members}
         open={activityOpen}
+        operator={activityOperator}
         range={activityRange}
+        onDatesChange={handleActivityDatesChange}
         onFetchNextPage={() => void activityDrawerQuery.fetchNextPage()}
         onOpenChange={setActivityOpen}
-        onRangeChange={setActivityRange}
+        onOperatorChange={setActivityOperator}
+        onRangeChange={handleActivityRangeChange}
       />
     </main>
   )

@@ -2237,6 +2237,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityData = {
       | 'source.failed'
       | 'source.synced'
       | 'worker.failed'
+    actor_id?: string
+    actor_type?: 'member' | 'system'
     cursor?: string
     from_at?: string
     limit?: number

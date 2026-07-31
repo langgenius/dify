@@ -198,6 +198,8 @@ _CONSOLE_DELEGATION_CASES = (
         {
             "control_space_id": "space-1",
             "action": None,
+            "actor_id": None,
+            "actor_type": None,
             "cursor": None,
             "from_at": None,
             "limit": 50,
