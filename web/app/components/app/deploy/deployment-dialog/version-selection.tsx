@@ -38,10 +38,12 @@ function VersionTag({ children }: { children: ReactNode }) {
 export function VersionChoice({
   version,
   current,
+  disabled = false,
   onSelect,
 }: {
   version: DeploymentVersion
   current: boolean
+  disabled?: boolean
   onSelect: (version: DeploymentVersion) => void
 }) {
   const { t } = useTranslation('deployments')
@@ -51,7 +53,7 @@ export function VersionChoice({
   return (
     <button
       type="button"
-      disabled={current}
+      disabled={current || disabled}
       onClick={() => onSelect(version)}
       className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg p-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-transparent"
     >

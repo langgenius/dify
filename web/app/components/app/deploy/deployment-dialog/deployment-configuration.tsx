@@ -1,28 +1,26 @@
 'use client'
 
-import type {
-  CredentialSlot,
-  EnvironmentVariableSlot,
-  GetWorkflowDeploymentOptionsResponse,
-  PrecheckWorkflowDeploymentResponse,
-  WorkflowDeploymentInput,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { PrecheckWorkflowDeploymentResponse } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DeploymentVersion } from '../version'
 import type { DeploymentDialogRequest } from './types'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
 import type { DeploymentConfigurationValues } from './use-deployment-configuration-values'
-import { EnvVarValueSource as EnvVarValueSourceEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { useDeployWorkflow } from '../use-deploy-workflow'
 import { CredentialField } from './credential-field'
 import { EnvironmentVariableField } from './environment-variable-field'
 import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
 import { useDeploymentConfigurationValues } from './use-deployment-configuration-values'
+import {
+  credentialSlotKey,
+  defaultCredentialId,
+  defaultEnvironmentVariableSelection,
+  workflowDeploymentInput,
+} from './workflow-deployment-input'
 
 function SectionHeading({ title, description }: { title: string; description: string }) {
   return (
@@ -31,78 +29,6 @@ function SectionHeading({ title, description }: { title: string; description: st
       <p className="system-xs-regular text-text-tertiary">{description}</p>
     </div>
   )
-}
-
-function credentialSlotKey(slot: CredentialSlot) {
-  return `${slot.provider_id}:${slot.category}`
-}
-
-function defaultCredentialId(slot: CredentialSlot) {
-  if (
-    slot.previous_credential_id &&
-    slot.candidates.some((candidate) => candidate.credential_id === slot.previous_credential_id)
-  ) {
-    return slot.previous_credential_id
-  }
-
-  return slot.candidates.length === 1 ? slot.candidates[0]?.credential_id : undefined
-}
-
-function defaultEnvironmentVariableSelection(
-  slot: EnvironmentVariableSlot,
-): DeploymentConfigurationValues['environmentVariables'][string] {
-  if (slot.has_dsl_value) {
-    return {
-      customValue: '',
-      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_DSL,
-    }
-  }
-
-  if (slot.has_previous_value) {
-    return {
-      customValue: '',
-      source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_PREVIOUS,
-    }
-  }
-
-  return {
-    customValue: '',
-    source: EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM,
-  }
-}
-
-function workflowDeploymentInput(
-  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
-  values: DeploymentConfigurationValues,
-): WorkflowDeploymentInput | undefined {
-  const credentials: NonNullable<WorkflowDeploymentInput['credentials']> = []
-
-  for (const slot of deploymentOptions.credential_slots) {
-    const credentialId = values.credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)
-    if (!credentialId) return
-
-    credentials.push({
-      category: slot.category,
-      credential_id: credentialId,
-      provider_id: slot.provider_id,
-    })
-  }
-
-  return {
-    credentials,
-    environment_variables: deploymentOptions.environment_variable_slots.map((slot) => {
-      const selection =
-        values.environmentVariables[slot.key] ?? defaultEnvironmentVariableSelection(slot)
-
-      return {
-        key: slot.key,
-        value_source: selection.source,
-        ...(selection.source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
-          ? { value: selection.customValue }
-          : {}),
-      }
-    }),
-  }
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -375,7 +301,6 @@ export function DeploymentConfiguration({
 }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
-  const queryClient = useQueryClient()
   const [configurationValues, setConfigurationValues] = useDeploymentConfigurationValues()
   const queryState = useDeploymentConfigurationQueries({
     appId,
@@ -385,37 +310,11 @@ export function DeploymentConfiguration({
   const deploymentInput = queryState.deploymentOptions
     ? workflowDeploymentInput(queryState.deploymentOptions, configurationValues)
     : undefined
-  const deployMutation = useMutation(
-    consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions({
-      context: { silent: true },
-      onSuccess: async () => {
-        const appEnvironmentsQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
-            input: {
-              params: {
-                app_id: appId,
-              },
-            },
-          })
-        const environmentDeploymentsQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
-            {
-              input: {
-                params: {
-                  app_id: appId,
-                },
-              },
-            },
-          )
-
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey }),
-          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQuery.queryKey }),
-        ])
-        onClose()
-      },
-    }),
-  )
+  const deployMutation = useDeployWorkflow({
+    appId,
+    environmentId: request.environmentId,
+    onSuccess: onClose,
+  })
   const canDeploy = queryState.canDeploy && Boolean(deploymentInput) && !deployMutation.isPending
 
   return (

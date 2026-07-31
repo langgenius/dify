@@ -182,15 +182,17 @@ export const undeployedAppEnvironmentsAtom = atom(
   (get) => get(appEnvironmentsAtom)?.filter((environment) => environment.in_use === false) ?? [],
 )
 
-export function hasInProgressEnvironmentDeployments(deployments: EnvironmentDeployment[]) {
-  return deployments.some((row) => {
-    const status = row.deployment?.status
+export function isEnvironmentDeploymentInProgress(deployment?: EnvironmentDeployment) {
+  const status = deployment?.deployment?.status
 
-    return (
-      status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-      status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
-    )
-  })
+  return (
+    status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
+    status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
+  )
+}
+
+export function hasInProgressEnvironmentDeployments(deployments: EnvironmentDeployment[]) {
+  return deployments.some(isEnvironmentDeploymentInProgress)
 }
 
 const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {

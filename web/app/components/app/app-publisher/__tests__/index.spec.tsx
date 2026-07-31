@@ -1,5 +1,8 @@
 /* oxlint-disable typescript/no-explicit-any */
-import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import {
+  DeploymentStatus,
+  EnvironmentStatus,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -452,6 +455,37 @@ describe('AppPublisher', () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     const publishedAt = Date.now()
+    const environmentDeploymentDetailRequests: Request[] = []
+    const environmentDeploymentListRequests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      const pathname = new URL(request.url).pathname
+      if (
+        pathname.endsWith('/enterprise/app-deploy/apps/app-1/workflows/environment-deployments')
+      ) {
+        environmentDeploymentListRequests.push(request.clone())
+        return new Response(
+          JSON.stringify({
+            environment_deployments: [],
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      if (
+        pathname.endsWith(
+          '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments/pre-release',
+        )
+      ) {
+        environmentDeploymentDetailRequests.push(request.clone())
+        throw new Error('The undeployed environment detail endpoint must not be queried.')
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
     mockPublishedWorkflowQueryState = {
       isError: false,
       isLoading: true,
@@ -510,6 +544,10 @@ describe('AppPublisher', () => {
     )
     await user.click(screen.getByRole('menuitem', { name: 'Pre-release' }))
 
+    await waitFor(() => {
+      expect(environmentDeploymentListRequests.length).toBeGreaterThan(0)
+    })
+    expect(environmentDeploymentDetailRequests).toHaveLength(0)
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText(/studio\.accessPoint\.noPublishedTitle/)).not.toBeInTheDocument()
     expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
@@ -521,7 +559,7 @@ describe('AppPublisher', () => {
     }
     rerender(<AppPublisher publishedAt={publishedAt} />)
 
-    expect(screen.getByText(/studio\.accessPoint\.noPublishedTitle/)).toBeInTheDocument()
+    expect(await screen.findByText(/studio\.accessPoint\.noPublishedTitle/)).toBeInTheDocument()
     expect(screen.getByText(/studio\.publisher\.noPublishedDescription/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /studio\.accessPoint\.goToPublish/ })).toBeEnabled()
     expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
@@ -535,7 +573,7 @@ describe('AppPublisher', () => {
     }
     rerender(<AppPublisher publishedAt={publishedAt} />)
 
-    expect(screen.getByText(/studio\.publisher\.notDeployedYet/)).toBeInTheDocument()
+    expect(await screen.findByText(/studio\.publisher\.notDeployedYet/)).toBeInTheDocument()
     expect(screen.queryByText(/studio\.publisher\.noPublishedDescription/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /studio\.deployLatest/ })).toBeEnabled()
     expect(screen.getByText(/overview\.chip\.latest/).parentElement).toHaveTextContent(
@@ -547,6 +585,100 @@ describe('AppPublisher', () => {
     await user.click(screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }))
 
     expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
+  })
+
+  it('stops the selected environment query when closed and checks it again when reopened', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const detailRequests: Request[] = []
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.Deploy],
+    }
+    const environmentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        enabled: true,
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+        },
+      })
+    queryClient.setQueryDefaults(environmentsQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(environmentsQuery.queryKey, {
+      data: [
+        {
+          description: '',
+          display_name: 'Staging',
+          id: 'staging',
+          in_use: true,
+          status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+        },
+      ],
+    })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (
+        new URL(request.url).pathname.endsWith(
+          '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments/staging',
+        )
+      ) {
+        detailRequests.push(request.clone())
+        return new Response(
+          JSON.stringify({
+            environment_deployment: {
+              access: {
+                enable_api: true,
+                enable_site: true,
+              },
+              deployment: {
+                current_version: {
+                  id: 'workflow-version-5',
+                  marked_comment: '',
+                  marked_name: 'Release 5',
+                  version: 'v5',
+                },
+                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+              },
+              environment: {
+                description: '',
+                display_name: 'Staging',
+                id: 'staging',
+                status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+              },
+            },
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
+
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    })
+
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      queryClient,
+      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
+    })
+
+    await user.click(screen.getByTestId('popover-trigger'))
+    await user.click(screen.getByRole('tab', { name: 'Staging' }))
+    await waitFor(() => {
+      expect(detailRequests.length).toBeGreaterThan(0)
+    })
+
+    await user.click(screen.getByTestId('popover-trigger'))
+
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    const requestsBeforeReopen = detailRequests.length
+
+    await user.click(screen.getByTestId('popover-trigger'))
+    await waitFor(() => {
+      expect(detailRequests.length).toBeGreaterThan(requestsBeforeReopen)
+    })
   })
 
   it('should collect hidden inputs before opening the web app from its config action', async () => {

@@ -1,18 +1,55 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { DeploymentOperationStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
+import { isEnvironmentDeploymentInProgress } from '@/app/components/app/deploy/state'
 import { consoleQuery } from '@/service/client'
 
 export const BUILT_IN_ENVIRONMENT_ID = 'built-in'
+const PUBLISHER_DEPLOYMENT_POLLING_INTERVAL = 3000
+
+export type PublisherEnvironmentDeploymentPolling = {
+  environmentId: string
+  operationId: string
+}
 
 const appPublisherAppIdAtom = atom<string | null>(null)
 const appPublisherEnvironmentQueryEnabledAtom = atom(false)
+const appPublisherOpenStateAtom = atom(false)
 const selectedEnvironmentByAppIdAtom = atom<Record<string, string>>({})
 const locallyJoinedEnvironmentIdsByAppIdAtom = atom<Record<string, string[]>>({})
+const environmentDeploymentPollingByAppIdAtom = atom<
+  Record<string, PublisherEnvironmentDeploymentPolling>
+>({})
+
+export const clearPublisherEnvironmentDeploymentPollingAtom = atom(null, (get, set) => {
+  const appId = get(appPublisherAppIdAtom)
+  if (!appId) return
+
+  set(environmentDeploymentPollingByAppIdAtom, (current) => {
+    if (!current[appId]) return current
+
+    const next = { ...current }
+    delete next[appId]
+    return next
+  })
+})
+
+export const appPublisherOpenAtom = atom(
+  (get) => get(appPublisherOpenStateAtom),
+  (_get, set, open: boolean) => {
+    set(appPublisherOpenStateAtom, open)
+    if (!open) set(clearPublisherEnvironmentDeploymentPollingAtom)
+  },
+)
+
+appPublisherOpenAtom.onMount = (setOpen) => () => {
+  setOpen(false)
+}
 
 export function AppPublisherStateBoundary({
   appId,
@@ -84,7 +121,9 @@ export const selectedPublisherEnvironmentIdAtom = atom(
   (get, set, environmentId: string) => {
     const appId = get(appPublisherAppIdAtom)
     if (!appId) return
+    if (get(selectedPublisherEnvironmentIdAtom) === environmentId) return
 
+    set(clearPublisherEnvironmentDeploymentPollingAtom)
     set(selectedEnvironmentByAppIdAtom, (current) => ({
       ...current,
       [appId]: environmentId,
@@ -128,16 +167,132 @@ export const addPublisherEnvironmentAtom = atom(null, (get, set, environmentId: 
   set(selectedPublisherEnvironmentIdAtom, environmentId)
 })
 
+export const publisherEnvironmentDeploymentPollingAtom = atom((get) => {
+  const appId = get(appPublisherAppIdAtom)
+  if (!appId) return
+
+  return get(environmentDeploymentPollingByAppIdAtom)[appId]
+})
+
+export const startPublisherEnvironmentDeploymentPollingAtom = atom(
+  null,
+  (get, set, polling: PublisherEnvironmentDeploymentPolling) => {
+    const appId = get(appPublisherAppIdAtom)
+    if (!appId) return
+
+    set(environmentDeploymentPollingByAppIdAtom, (current) => ({
+      ...current,
+      [appId]: polling,
+    }))
+  },
+)
+
+export const finishPublisherEnvironmentDeploymentPollingAtom = atom(
+  null,
+  (get, set, polling: PublisherEnvironmentDeploymentPolling) => {
+    const appId = get(appPublisherAppIdAtom)
+    if (!appId) return
+
+    set(environmentDeploymentPollingByAppIdAtom, (current) => {
+      const activePolling = current[appId]
+      if (
+        activePolling?.environmentId !== polling.environmentId ||
+        activePolling.operationId !== polling.operationId
+      )
+        return current
+
+      const next = { ...current }
+      delete next[appId]
+      return next
+    })
+  },
+)
+
+export function isDeploymentOperationTerminal(status?: DeploymentOperationStatus) {
+  return (
+    status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED ||
+    status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED
+  )
+}
+
+const selectedEnvironmentDeploymentDiscoveryEnabledAtom = atom((get) => {
+  const appId = get(appPublisherAppIdAtom)
+  const enabled = get(appPublisherEnvironmentQueryEnabledAtom)
+  const open = get(appPublisherOpenAtom)
+  const environmentId = get(selectedPublisherEnvironmentIdAtom)
+  const selectedEnvironment = get(selectedPublisherEnvironmentAtom)
+  const polling = get(publisherEnvironmentDeploymentPollingAtom)
+
+  return (
+    enabled &&
+    open &&
+    Boolean(appId) &&
+    environmentId !== BUILT_IN_ENVIRONMENT_ID &&
+    selectedEnvironment?.in_use === false &&
+    polling?.environmentId !== environmentId
+  )
+})
+
+const selectedEnvironmentDeploymentsDiscoveryQueryAtom = atomWithQuery((get) => {
+  const appId = get(appPublisherAppIdAtom)
+  const discoveryEnabled = get(selectedEnvironmentDeploymentDiscoveryEnabledAtom)
+
+  return consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
+    {
+      input:
+        discoveryEnabled && appId
+          ? {
+              params: {
+                app_id: appId,
+              },
+            }
+          : skipToken,
+      enabled: discoveryEnabled,
+      staleTime: 0,
+    },
+  )
+})
+
+const selectedEnvironmentDeploymentsDiscoveryDataAtom = selectAtom(
+  selectedEnvironmentDeploymentsDiscoveryQueryAtom,
+  (query) => query.data?.environment_deployments,
+)
+
+const selectedEnvironmentDeploymentsDiscoveryIsLoadingAtom = selectAtom(
+  selectedEnvironmentDeploymentsDiscoveryQueryAtom,
+  (query) => query.isLoading,
+)
+
+const selectedEnvironmentDeploymentsDiscoveryIsErrorAtom = selectAtom(
+  selectedEnvironmentDeploymentsDiscoveryQueryAtom,
+  (query) => query.isError,
+)
+
+const selectedEnvironmentHasDeploymentAtom = atom((get) => {
+  const environmentId = get(selectedPublisherEnvironmentIdAtom)
+
+  return Boolean(
+    get(selectedEnvironmentDeploymentsDiscoveryDataAtom)?.some(
+      (deployment) => deployment.environment.id === environmentId,
+    ),
+  )
+})
+
 const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
   const appId = get(appPublisherAppIdAtom)
   const enabled = get(appPublisherEnvironmentQueryEnabledAtom)
+  const open = get(appPublisherOpenAtom)
   const environmentId = get(selectedPublisherEnvironmentIdAtom)
   const selectedEnvironment = get(selectedPublisherEnvironmentAtom)
+  const polling = get(publisherEnvironmentDeploymentPollingAtom)
   const shouldFetch =
     enabled &&
+    open &&
     Boolean(appId) &&
     environmentId !== BUILT_IN_ENVIRONMENT_ID &&
-    selectedEnvironment?.in_use === true
+    (selectedEnvironment?.in_use === true ||
+      polling?.environmentId === environmentId ||
+      get(selectedEnvironmentHasDeploymentAtom))
 
   return consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
     input:
@@ -150,20 +305,50 @@ const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
           }
         : skipToken,
     enabled: shouldFetch,
+    refetchInterval: (query) => {
+      const deployment = query.state.data?.environment_deployment
+      if (polling?.environmentId !== environmentId)
+        return isEnvironmentDeploymentInProgress(deployment)
+          ? PUBLISHER_DEPLOYMENT_POLLING_INTERVAL
+          : false
+
+      const operation = deployment?.deployment?.latest_operation
+      const operationFinished =
+        operation?.id === polling.operationId && isDeploymentOperationTerminal(operation.status)
+
+      return operationFinished && !isEnvironmentDeploymentInProgress(deployment)
+        ? false
+        : PUBLISHER_DEPLOYMENT_POLLING_INTERVAL
+    },
+    staleTime: 0,
   })
 })
 
-export const selectedEnvironmentDeploymentAtom = selectAtom(
+const selectedEnvironmentDeploymentDataAtom = selectAtom(
   selectedEnvironmentDeploymentQueryAtom,
   (query) => query.data?.environment_deployment,
 )
 
-export const selectedEnvironmentDeploymentIsLoadingAtom = selectAtom(
+const selectedEnvironmentDeploymentQueryIsLoadingAtom = selectAtom(
   selectedEnvironmentDeploymentQueryAtom,
   (query) => query.isLoading,
 )
 
-export const selectedEnvironmentDeploymentIsErrorAtom = selectAtom(
+const selectedEnvironmentDeploymentQueryIsErrorAtom = selectAtom(
   selectedEnvironmentDeploymentQueryAtom,
   (query) => query.isError,
+)
+
+export const selectedEnvironmentDeploymentAtom = selectedEnvironmentDeploymentDataAtom
+export const selectedEnvironmentDeploymentIsLoadingAtom = atom(
+  (get) =>
+    get(selectedEnvironmentDeploymentQueryIsLoadingAtom) ||
+    (get(selectedEnvironmentDeploymentDiscoveryEnabledAtom) &&
+      get(selectedEnvironmentDeploymentsDiscoveryIsLoadingAtom)),
+)
+export const selectedEnvironmentDeploymentIsErrorAtom = atom(
+  (get) =>
+    get(selectedEnvironmentDeploymentQueryIsErrorAtom) ||
+    (get(selectedEnvironmentDeploymentDiscoveryEnabledAtom) &&
+      get(selectedEnvironmentDeploymentsDiscoveryIsErrorAtom)),
 )
