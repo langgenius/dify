@@ -1,5 +1,5 @@
 import type { Plugin } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { describe, expect, it, vi } from 'vitest'
@@ -45,7 +45,13 @@ describe('MarketplaceDetailDialog', () => {
 
     render(
       <ThemeProvider forcedTheme="dark">
-        <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={onOpenChange} />
+        <MarketplaceDetailDialog
+          open
+          isInstalled
+          plugin={plugin}
+          onInstall={vi.fn()}
+          onOpenChange={onOpenChange}
+        />
       </ThemeProvider>,
     )
 
@@ -57,5 +63,60 @@ describe('MarketplaceDetailDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('forwards a validated install request from the embedded detail frame', () => {
+    const onInstall = vi.fn()
+
+    render(
+      <ThemeProvider forcedTheme="dark">
+        <MarketplaceDetailDialog
+          open
+          isInstalled={false}
+          plugin={plugin}
+          onInstall={onInstall}
+          onOpenChange={vi.fn()}
+        />
+      </ThemeProvider>,
+    )
+
+    const frame = screen.getByTitle(
+      'Plugin A · plugin.detailPanel.operation.detail',
+    ) as HTMLIFrameElement
+    const installRequest = {
+      type: 'dify-marketplace:install-plugin',
+      pluginUniqueIdentifier: plugin.latest_package_identifier,
+    }
+    fireEvent(
+      window,
+      new MessageEvent('message', {
+        data: installRequest,
+        origin: 'https://attacker.example',
+        source: frame.contentWindow,
+      }),
+    )
+    fireEvent(
+      window,
+      new MessageEvent('message', {
+        data: {
+          ...installRequest,
+          pluginUniqueIdentifier: 'another/plugin:1.0.0',
+        },
+        origin: 'null',
+        source: frame.contentWindow,
+      }),
+    )
+    expect(onInstall).not.toHaveBeenCalled()
+
+    fireEvent(
+      window,
+      new MessageEvent('message', {
+        data: installRequest,
+        origin: 'null',
+        source: frame.contentWindow,
+      }),
+    )
+
+    expect(onInstall).toHaveBeenCalledOnce()
   })
 })
