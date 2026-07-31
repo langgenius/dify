@@ -38,3 +38,9 @@ class TriggerNodeLimitExceededError(ValueError):
             f"Trigger node count ({count}) exceeds the limit ({limit}) for your subscription plan. "
             f"Please upgrade your plan or reduce the number of trigger nodes."
         )
+
+
+class WorkflowReferencedError(ValueError):
+    """Raised when a workflow app is referenced by published workflows."""
+
+    pass

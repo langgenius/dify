@@ -16,6 +16,7 @@ from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
+from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
@@ -29,14 +30,18 @@ from models import Account, AppStar
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
+    AgentConfigSnapshot,
     AgentIconType,
     AgentScope,
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
-from models.tools import ApiToolProvider
+from models.tools import ApiToolProvider, WorkflowToolProvider
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
@@ -45,6 +50,7 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
+from services.errors.app import WorkflowReferencedError
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
@@ -954,11 +960,170 @@ class AppService:
 
         return app
 
+    @staticmethod
+    def _extract_workflow_tool_provider_ids(graph: dict[str, Any]) -> set[str]:
+        nodes = graph.get("nodes")
+        if not isinstance(nodes, list):
+            raise TypeError("workflow graph nodes must be a list")
+
+        provider_ids: set[str] = set()
+        for node in nodes:
+            if not isinstance(node, dict):
+                raise TypeError("workflow graph nodes must be objects")
+            data = node.get("data")
+            if not isinstance(data, dict):
+                raise TypeError("workflow graph node data must be an object")
+
+            tool_configs: list[dict[str, Any]] = []
+            if data.get("type") == "tool":
+                tool_configs.append(data)
+            elif data.get("type") == "agent":
+                legacy_tools = data.get("tools")
+                if isinstance(legacy_tools, list):
+                    tool_configs.extend(config for config in legacy_tools if isinstance(config, dict))
+
+                agent_parameters = data.get("agent_parameters")
+                if isinstance(agent_parameters, dict):
+                    tools_parameter = agent_parameters.get("tools")
+                    if isinstance(tools_parameter, dict):
+                        tools_value = tools_parameter.get("value")
+                        if isinstance(tools_value, list):
+                            tool_configs.extend(config for config in tools_value if isinstance(config, dict))
+
+            for config in tool_configs:
+                provider_type = str(config.get("provider_type") or config.get("type") or "").lower()
+                if provider_type not in {"workflow", "workflow_tool"}:
+                    continue
+                provider_id = config.get("provider_id") or config.get("provider_name") or config.get("provider")
+                if provider_id:
+                    provider_ids.add(str(provider_id))
+
+        return provider_ids
+
+    @staticmethod
+    def _get_referencing_published_workflow_ids(app: App, *, session: Session) -> list[str]:
+        if app.mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+            return []
+
+        provider_id = session.scalar(
+            select(WorkflowToolProvider.id)
+            .where(
+                WorkflowToolProvider.tenant_id == app.tenant_id,
+                WorkflowToolProvider.app_id == app.id,
+            )
+            .limit(1)
+        )
+        if provider_id is None:
+            return []
+
+        candidate_workflows = session.scalars(
+            select(Workflow).where(
+                Workflow.tenant_id == app.tenant_id,
+                Workflow.app_id != app.id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+                Workflow.graph.contains(provider_id),
+            )
+        ).all()
+
+        referencing_workflow_ids: set[str] = set()
+        for workflow in candidate_workflows:
+            try:
+                graph = workflow.graph_dict
+                if not isinstance(graph, dict):
+                    raise TypeError("workflow graph must be an object")
+                discovered_provider_ids = AppService._extract_workflow_tool_provider_ids(graph)
+            except (AttributeError, TypeError, ValueError):
+                logger.warning(
+                    "Blocking deletion of workflow app %s because published workflow %s has an invalid graph "
+                    "containing its workflow tool provider ID",
+                    app.id,
+                    workflow.id,
+                )
+                referencing_workflow_ids.add(workflow.id)
+                continue
+
+            if provider_id in discovered_provider_ids:
+                referencing_workflow_ids.add(workflow.id)
+
+        snapshot_text = sa.type_coerce(AgentConfigSnapshot.config_snapshot, sa.Text())
+        snapshot_candidates = session.execute(
+            select(
+                Workflow.id,
+                snapshot_text.label("config_snapshot"),
+            )
+            .select_from(Workflow)
+            .join(
+                WorkflowAgentNodeBinding,
+                sa.and_(
+                    WorkflowAgentNodeBinding.tenant_id == Workflow.tenant_id,
+                    WorkflowAgentNodeBinding.app_id == Workflow.app_id,
+                    WorkflowAgentNodeBinding.workflow_id == Workflow.id,
+                    WorkflowAgentNodeBinding.workflow_version == Workflow.version,
+                ),
+            )
+            .join(
+                Agent,
+                sa.and_(
+                    Agent.tenant_id == WorkflowAgentNodeBinding.tenant_id,
+                    Agent.id == WorkflowAgentNodeBinding.agent_id,
+                ),
+            )
+            .join(
+                AgentConfigSnapshot,
+                sa.and_(
+                    AgentConfigSnapshot.tenant_id == WorkflowAgentNodeBinding.tenant_id,
+                    AgentConfigSnapshot.agent_id == Agent.id,
+                    sa.or_(
+                        AgentConfigSnapshot.id == WorkflowAgentNodeBinding.current_snapshot_id,
+                        sa.and_(
+                            WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
+                            AgentConfigSnapshot.id == Agent.active_config_snapshot_id,
+                        ),
+                    ),
+                ),
+            )
+            .where(
+                Workflow.tenant_id == app.tenant_id,
+                Workflow.app_id != app.id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+                snapshot_text.contains(provider_id),
+            )
+        ).all()
+        for workflow_id, config_snapshot in snapshot_candidates:
+            try:
+                agent_soul = AgentSoulConfig.model_validate_json(config_snapshot)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Blocking deletion of workflow app %s because published workflow %s has an invalid Agent "
+                    "snapshot containing its workflow tool provider ID",
+                    app.id,
+                    workflow_id,
+                )
+                referencing_workflow_ids.add(workflow_id)
+                continue
+
+            if any(
+                tool.provider_type == ToolProviderType.WORKFLOW and tool.provider_id == provider_id
+                for tool in agent_soul.tools.dify_tools
+            ):
+                referencing_workflow_ids.add(workflow_id)
+
+        return sorted(referencing_workflow_ids)
+
     def delete_app(self, app: App, *, session: Session) -> None:
         """
         Delete app
         :param app: App instance
         """
+        referencing_workflow_ids = self._get_referencing_published_workflow_ids(app, session=session)
+        if referencing_workflow_ids:
+            reference_count = len(referencing_workflow_ids)
+            workflow_label = "workflow" if reference_count == 1 else "workflows"
+            raise WorkflowReferencedError(
+                f"Cannot delete workflow because it is referenced by {reference_count} published {workflow_label}. "
+                "Remove the references before deleting it."
+            )
+
         app_was_deleted.send(app)
 
         backing_agent = self._get_backing_agent_for_update(app, session=session)

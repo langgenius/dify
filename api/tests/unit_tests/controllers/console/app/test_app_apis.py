@@ -206,6 +206,29 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
+    def test_app_delete_maps_published_workflow_reference_to_bad_request(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        api = app_module.AppApi()
+        method = unwrap(api.delete)
+        app_service = MagicMock()
+        app_service.delete_app.side_effect = app_module.WorkflowReferencedError(
+            "Cannot delete workflow because it is referenced by 1 published workflow."
+        )
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        session = MagicMock(spec=Session)
+        app_model = _make_app()
+
+        with (
+            app.test_request_context(f"/console/api/apps/{APP_ID}", method="DELETE"),
+            pytest.raises(BadRequest, match="referenced by 1 published workflow"),
+        ):
+            method(api, session, app_model=app_model)
+
+        app_service.delete_app.assert_called_once_with(app_model, session=session)
+
     def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = app_module.AppApi()
         method = unwrap(api.put)

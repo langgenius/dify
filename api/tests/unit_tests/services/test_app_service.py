@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
@@ -12,12 +13,31 @@ from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from core.tools.entities.tool_entities import ToolProviderType
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import (
+    AgentSoulConfig,
+    AgentSoulDifyToolConfig,
+    AgentSoulToolsConfig,
+    WorkflowNodeJobConfig,
+)
 from models.model import App, AppMode, AppModelConfig, IconType
-from models.workflow import Workflow
+from models.tools import WorkflowToolProvider
+from models.workflow import Workflow, WorkflowType
 from services.agent.errors import AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
+from services.errors.app import WorkflowReferencedError
 
 
 class TestCreateAppTransactionBoundary:
@@ -700,6 +720,7 @@ class TestAgentAppType:
         with (
             patch("services.app_service.db") as mock_db,
             patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch.object(AppService, "_get_referencing_published_workflow_ids", return_value=[]),
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
@@ -715,3 +736,311 @@ class TestAgentAppType:
 
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(App, Workflow, WorkflowToolProvider, Agent, WorkflowAgentNodeBinding, AgentConfigSnapshot)],
+    indirect=True,
+)
+class TestDeleteWorkflowAppReferences:
+    @staticmethod
+    def _create_app(*, app_id: str, tenant_id: str = "tenant-1", name: str | None = None) -> App:
+        return App(
+            id=app_id,
+            tenant_id=tenant_id,
+            name=name or app_id,
+            description="",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=True,
+            max_active_requests=0,
+        )
+
+    @staticmethod
+    def _create_workflow(
+        *,
+        workflow_id: str,
+        app_id: str,
+        graph: dict[str, object],
+        tenant_id: str = "tenant-1",
+        version: str = "v1",
+    ) -> Workflow:
+        return Workflow(
+            id=workflow_id,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=WorkflowType.WORKFLOW,
+            version=version,
+            graph=json.dumps(graph),
+            features=json.dumps({}),
+            created_by="user-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+
+    @staticmethod
+    def _create_provider(*, app_id: str, tenant_id: str = "tenant-1") -> WorkflowToolProvider:
+        provider = WorkflowToolProvider(
+            name=f"tool-{app_id}",
+            label="Workflow Tool",
+            icon="icon.svg",
+            app_id=app_id,
+            version="v1",
+            user_id="user-1",
+            tenant_id=tenant_id,
+            description="Test provider",
+            parameter_configuration="[]",
+        )
+        provider.id = str(uuid4())
+        return provider
+
+    @pytest.mark.parametrize("reference_shape", ["tool", "agent-tools", "agent-parameters"])
+    def test_delete_app_is_blocked_before_side_effects_when_published_workflow_references_it(
+        self,
+        sqlite_session: Session,
+        reference_shape: str,
+    ):
+        target_app = self._create_app(app_id="target-app")
+        consumer_app = self._create_app(app_id="consumer-app")
+        provider = self._create_provider(app_id=target_app.id)
+
+        if reference_shape == "tool":
+            node_data: dict[str, object] = {
+                "type": "tool",
+                "provider_type": "workflow",
+                "provider_id": provider.id,
+            }
+        elif reference_shape == "agent-tools":
+            node_data = {
+                "type": "agent",
+                "tools": [
+                    {
+                        "provider_type": "workflow",
+                        "provider_id": provider.id,
+                    }
+                ],
+            }
+        else:
+            node_data = {
+                "type": "agent",
+                "tools": [],
+                "agent_parameters": {
+                    "tools": {
+                        "value": [
+                            {
+                                "type": "workflow",
+                                "provider_name": provider.id,
+                            }
+                        ]
+                    }
+                },
+            }
+
+        consumer_workflow = self._create_workflow(
+            workflow_id="consumer-workflow",
+            app_id=consumer_app.id,
+            graph={"nodes": [{"id": "node-1", "data": node_data}], "edges": []},
+        )
+        consumer_app.workflow_id = consumer_workflow.id
+        sqlite_session.add_all([target_app, consumer_app, provider, consumer_workflow])
+        sqlite_session.commit()
+
+        with (
+            patch("services.app_service.app_was_deleted.send") as app_deleted_signal,
+            pytest.raises(WorkflowReferencedError, match="referenced by 1 published workflow"),
+        ):
+            AppService().delete_app(target_app, session=sqlite_session)
+
+        app_deleted_signal.assert_not_called()
+        assert sqlite_session.get(App, target_app.id) is not None
+
+    def test_draft_workflow_reference_does_not_block_deletion(self, sqlite_session: Session):
+        target_app = self._create_app(app_id="target-app")
+        consumer_app = self._create_app(app_id="consumer-app")
+        provider = self._create_provider(app_id=target_app.id)
+        draft_workflow = self._create_workflow(
+            workflow_id="consumer-draft",
+            app_id=consumer_app.id,
+            version=Workflow.VERSION_DRAFT,
+            graph={
+                "nodes": [
+                    {
+                        "id": "tool-node",
+                        "data": {
+                            "type": "tool",
+                            "provider_type": "workflow",
+                            "provider_id": provider.id,
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+        )
+        sqlite_session.add_all([target_app, consumer_app, provider, draft_workflow])
+        sqlite_session.commit()
+
+        referencing_ids = AppService._get_referencing_published_workflow_ids(target_app, session=sqlite_session)
+
+        assert referencing_ids == []
+
+    def test_historical_published_workflow_reference_blocks_deletion(self, sqlite_session: Session):
+        target_app = self._create_app(app_id="target-app")
+        consumer_app = self._create_app(app_id="consumer-app")
+        provider = self._create_provider(app_id=target_app.id)
+        historical_workflow = self._create_workflow(
+            workflow_id="consumer-history",
+            app_id=consumer_app.id,
+            version="v1",
+            graph={
+                "nodes": [
+                    {
+                        "id": "tool-node",
+                        "data": {
+                            "type": "tool",
+                            "provider_type": "workflow",
+                            "provider_id": provider.id,
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+        )
+        current_workflow = self._create_workflow(
+            workflow_id="consumer-current",
+            app_id=consumer_app.id,
+            version="v2",
+            graph={"nodes": [], "edges": []},
+        )
+        consumer_app.workflow_id = current_workflow.id
+        sqlite_session.add_all([target_app, consumer_app, provider, historical_workflow, current_workflow])
+        sqlite_session.commit()
+
+        referencing_ids = AppService._get_referencing_published_workflow_ids(target_app, session=sqlite_session)
+
+        assert referencing_ids == [historical_workflow.id]
+
+    @pytest.mark.parametrize(
+        ("binding_type", "active_snapshot_references", "bound_snapshot_references"),
+        [
+            (WorkflowAgentBindingType.ROSTER_AGENT, True, False),
+            (WorkflowAgentBindingType.ROSTER_AGENT, False, True),
+            (WorkflowAgentBindingType.INLINE_AGENT, False, True),
+        ],
+    )
+    def test_agent_v2_snapshot_reference_counts_as_published_workflow_reference(
+        self,
+        sqlite_session: Session,
+        binding_type: WorkflowAgentBindingType,
+        active_snapshot_references: bool,
+        bound_snapshot_references: bool,
+    ):
+        target_app = self._create_app(app_id="target-app")
+        consumer_app = self._create_app(app_id="consumer-app")
+        provider = self._create_provider(app_id=target_app.id)
+        published_workflow = self._create_workflow(
+            workflow_id="consumer-workflow",
+            app_id=consumer_app.id,
+            graph={"nodes": [{"id": "agent-node", "data": {"type": "agent", "version": "2"}}], "edges": []},
+        )
+        consumer_app.workflow_id = published_workflow.id
+        referenced_snapshot = AgentConfigSnapshot(
+            tenant_id=consumer_app.tenant_id,
+            agent_id="agent-1",
+            version=2,
+            config_snapshot=AgentSoulConfig(
+                tools=AgentSoulToolsConfig(
+                    dify_tools=[
+                        AgentSoulDifyToolConfig(
+                            provider_type=ToolProviderType.WORKFLOW,
+                            provider_id=provider.id,
+                            credential_type="unauthorized",
+                        )
+                    ]
+                )
+            ),
+            created_by="user-1",
+        )
+        referenced_snapshot.id = str(uuid4())
+        stale_snapshot = AgentConfigSnapshot(
+            tenant_id=consumer_app.tenant_id,
+            agent_id="agent-1",
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+            created_by="user-1",
+        )
+        stale_snapshot.id = str(uuid4())
+        agent = Agent(
+            id="agent-1",
+            tenant_id=consumer_app.tenant_id,
+            name="Agent",
+            description="",
+            role="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=(
+                AgentScope.ROSTER if binding_type == WorkflowAgentBindingType.ROSTER_AGENT else AgentScope.WORKFLOW_ONLY
+            ),
+            source=AgentSource.ROSTER
+            if binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else AgentSource.WORKFLOW,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id=(referenced_snapshot.id if active_snapshot_references else stale_snapshot.id),
+        )
+        binding = WorkflowAgentNodeBinding(
+            tenant_id=consumer_app.tenant_id,
+            app_id=consumer_app.id,
+            workflow_id=published_workflow.id,
+            workflow_version=published_workflow.version,
+            node_id="agent-node",
+            binding_type=binding_type,
+            agent_id="agent-1",
+            current_snapshot_id=(referenced_snapshot.id if bound_snapshot_references else stale_snapshot.id),
+            node_job_config=WorkflowNodeJobConfig(),
+            created_by="user-1",
+            updated_by="user-1",
+        )
+        sqlite_session.add_all(
+            [
+                target_app,
+                consumer_app,
+                provider,
+                published_workflow,
+                agent,
+                referenced_snapshot,
+                stale_snapshot,
+                binding,
+            ]
+        )
+        sqlite_session.commit()
+
+        referencing_ids = AppService._get_referencing_published_workflow_ids(target_app, session=sqlite_session)
+
+        assert referencing_ids == [published_workflow.id]
+
+    def test_provider_id_in_unrelated_node_does_not_count_as_reference(self, sqlite_session: Session):
+        target_app = self._create_app(app_id="target-app")
+        consumer_app = self._create_app(app_id="consumer-app")
+        provider = self._create_provider(app_id=target_app.id)
+        published_workflow = self._create_workflow(
+            workflow_id="consumer-workflow",
+            app_id=consumer_app.id,
+            graph={
+                "nodes": [
+                    {
+                        "id": "llm-node",
+                        "data": {
+                            "type": "llm",
+                            "title": provider.id,
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+        )
+        sqlite_session.add_all([target_app, consumer_app, provider, published_workflow])
+        sqlite_session.commit()
+
+        referencing_ids = AppService._get_referencing_published_workflow_ids(target_app, session=sqlite_session)
+
+        assert referencing_ids == []
