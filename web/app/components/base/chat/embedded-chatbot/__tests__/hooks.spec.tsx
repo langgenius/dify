@@ -136,20 +136,19 @@ const renderWithClient = async <T,>(hook: () => T) => {
   }
 }
 
-const renderWithClientProps = async <T, P>(
-  hook: (props: P) => T,
-  initialProps: P,
-) => {
+const renderWithClientProps = async <T, P>(hook: (props: P) => T, initialProps: P) => {
   const queryClient = createQueryClient()
   const wrapper = createWrapper(queryClient)
   let result: ReturnType<typeof renderHook<T, P>> | undefined
   act(() => {
     result = renderHook(hook, { wrapper, initialProps })
   })
-  await waitFor(() => {
-    if (queryClient.isFetching() > 0)
-      throw new Error('Queries are still fetching')
-  }, { timeout: 2000 })
+  await waitFor(
+    () => {
+      if (queryClient.isFetching() > 0) throw new Error('Queries are still fetching')
+    },
+    { timeout: 2000 },
+  )
   return {
     queryClient,
     ...result!,
@@ -694,18 +693,24 @@ describe('useEmbeddedChatbot', () => {
       // actually breaks.
       mockStoreState.embeddedConversationId = null
       mockStoreState.embeddedUserId = null
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({
-        'app-1': { DEFAULT: 'stored-conv-id' },
-      }))
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': { DEFAULT: 'stored-conv-id' },
+        }),
+      )
 
       const { result, rerender } = await renderWithClientProps(
         () => useEmbeddedChatbot(AppSourceType.webApp),
         undefined,
       )
 
-      await waitFor(() => {
-        expect(result.current.currentConversationId).toBe('stored-conv-id')
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(result.current.currentConversationId).toBe('stored-conv-id')
+        },
+        { timeout: 3000 },
+      )
 
       const firstHandleNewConversation = result.current.handleNewConversation
       const firstHandleChangeConversation = result.current.handleChangeConversation
