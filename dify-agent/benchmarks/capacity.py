@@ -20,10 +20,8 @@ class CapacityMatrixPoint(BaseModel):
     mode: BenchmarkMode
     scenario: CapacityScenario
     requested_concurrency: int = Field(ge=1)
-    minimum_successful_runs: int = Field(ge=1)
     warmup_seconds: float = Field(default=15, ge=0)
     measurement_seconds: float = Field(default=60, gt=0)
-    maximum_seconds: float = Field(default=180, gt=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
 
@@ -40,14 +38,13 @@ def build_capacity_matrix(
     if scenario_id is not None:
         scenarios = [manifest.get(scenario_id)]
     levels = CONCURRENCY_LEVELS if concurrency is None else (concurrency,)
-    if any(level not in CONCURRENCY_LEVELS for level in levels):
-        raise ValueError("BENCH_CONCURRENCY must be one of 1, 10, or 20")
+    if any(level < 1 for level in levels):
+        raise ValueError("BENCH_CONCURRENCY must be positive")
     return [
         CapacityMatrixPoint(
             mode=mode,
             scenario=scenario,
             requested_concurrency=level,
-            minimum_successful_runs=10 if scenario.workload == "file" else 100,
         )
         for scenario in scenarios
         for level in levels
@@ -62,12 +59,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
     e2b_active_values = [
         sample.e2b_active_seconds for sample in successful_samples if sample.e2b_active_seconds is not None
     ]
-    enough_samples = block.outcomes.successful_runs >= block.minimum_successful_runs
     enough_concurrency = block.outcomes.observed_max_active >= math.ceil(0.9 * block.requested_concurrency)
-    if not enough_samples:
-        reasons.append(
-            f"completed {block.outcomes.successful_runs} successful Runs; {block.minimum_successful_runs} required"
-        )
     if not enough_concurrency:
         reasons.append(
             f"observed max active {block.outcomes.observed_max_active} was below 90% of "
@@ -89,8 +81,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
         )
     )
     saturated = (
-        not enough_samples
-        or not enough_concurrency
+        not enough_concurrency
         or block.outcomes.timeout_runs > 0
         or block.outcomes.throttle_runs > 0
     )

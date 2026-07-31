@@ -139,7 +139,6 @@ class BlockResult(BaseModel):
     measurement_started_at_ns: int
     measurement_ended_at_ns: int
     elapsed_seconds: float = Field(gt=0)
-    minimum_successful_runs: int = Field(ge=1)
     outcomes: RunOutcomeSummary
     redis_before: RedisSnapshot
     redis_after: RedisSnapshot

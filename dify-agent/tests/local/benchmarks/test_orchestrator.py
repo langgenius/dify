@@ -33,6 +33,21 @@ def test_local_e2b_requires_credentials_and_selected_concurrency_limit() -> None
     assert "secret" not in repr(options)
 
 
+def test_explicit_concurrency_accepts_positive_non_default_value() -> None:
+    options = CapacityOptions(
+        mode="local-e2b",
+        e2b_api_key="secret",
+        e2b_template="template",
+        e2b_max_concurrency=20,
+        concurrency=5,
+    )
+
+    assert options.concurrency == 5
+
+    with pytest.raises(ValueError, match="positive"):
+        CapacityOptions(mode="local-runtime", concurrency=0)
+
+
 def test_secret_redaction_covers_nested_text_artifacts(tmp_path: Path) -> None:
     nested = tmp_path / "logs"
     nested.mkdir()
@@ -50,7 +65,6 @@ def test_basic_e2b_point_does_not_start_public_callback_proxy() -> None:
         mode="local-e2b",
         scenario=manifest.get("basic"),
         requested_concurrency=1,
-        minimum_successful_runs=100,
     )
     shell = basic.model_copy(update={"scenario": manifest.get("shell")})
 
