@@ -32,11 +32,7 @@ const WorkflowToolAction = ({
 
   if (!published || isLoading)
     return (
-      <div
-        className={cn(
-          'w-full rounded-lg'
-        )}
-      >
+      <div className={cn('w-full rounded-lg')}>
         <SuggestedAction
           className="flex-1"
           disabled={disabled}
@@ -68,12 +64,7 @@ const WorkflowToolAction = ({
     : t(($) => $['common.workflowAsToolReady'], { ns: 'workflow' })
 
   return (
-    <div
-      className={cn(
-        'flex w-full flex-col rounded-lg',
-        disabled && 'opacity-30',
-      )}
-    >
+    <div className={cn('flex w-full flex-col rounded-lg', disabled && 'opacity-30')}>
       <div className="flex items-start gap-2 p-1">
         <span
           aria-hidden
