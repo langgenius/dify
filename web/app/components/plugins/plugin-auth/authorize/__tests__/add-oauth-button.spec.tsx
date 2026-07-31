@@ -17,6 +17,14 @@ vi.mock('@/hooks/use-i18n', () => ({
     typeof obj === 'string' ? obj : obj.en_US || '',
 }))
 
+// The pre-OAuth visibility picker renders PermissionSelector, which reads
+// userProfileAtom via jotai. Stub the account-state module so the atom
+// resolves synchronously in tests without triggering a profile fetch.
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({ userProfile: {} }))
+})
+
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (...args: unknown[]) => mockOpenOAuthPopup(...args),
 }))
@@ -127,6 +135,10 @@ describe('AddOAuthButton', () => {
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
 
+    // Confirm the visibility picker to actually kick off OAuth
+    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    fireEvent.click(confirmButton)
+
     await waitFor(() => {
       expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
         'https://auth.example.com',
@@ -147,6 +159,10 @@ describe('AddOAuthButton', () => {
 
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
+
+    // Confirm the visibility picker so the OAuth request fires
+    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    fireEvent.click(confirmButton)
 
     await waitFor(() => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
