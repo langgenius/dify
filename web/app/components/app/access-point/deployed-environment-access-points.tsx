@@ -33,6 +33,7 @@ type DeployedEnvironmentAccessPointsProps = {
   environmentId: string
   canEdit: boolean
   canManage: boolean
+  highlightedAccessPoint?: AccessPoint | null
 }
 
 export function DeployedEnvironmentAccessPoints({
@@ -40,6 +41,7 @@ export function DeployedEnvironmentAccessPoints({
   environmentId,
   canEdit,
   canManage,
+  highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
   const { t } = useTranslation()
 
@@ -67,11 +69,13 @@ export function DeployedEnvironmentAccessPoints({
         environmentId={environmentId}
         canEdit={canEdit}
         canManage={canManage}
+        highlighted={highlightedAccessPoint === 'webApp'}
       />
       <EnvironmentServiceApiCard
         appId={appId}
         environmentId={environmentId}
         canManage={canManage}
+        highlighted={highlightedAccessPoint === 'serviceApi'}
       />
       {UNAVAILABLE_ACCESS_POINTS.map((accessPoint) => {
         const statusLabel = t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
@@ -86,6 +90,7 @@ export function DeployedEnvironmentAccessPoints({
             icon={ACCESS_POINT_CONFIG[accessPoint].icon}
             status="unavailable"
             statusLabel={statusLabel}
+            highlighted={highlightedAccessPoint === accessPoint}
           >
             {accessPoint === 'trigger' ? (
               <AccessPointEmptyContent>

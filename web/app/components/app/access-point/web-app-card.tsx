@@ -48,6 +48,7 @@ type WebAppAccessPointCardProps = {
   canEdit: boolean
   canDeploy: boolean
   canManageAccess: boolean
+  highlighted?: boolean
   showAccessControl: boolean
   onChangeStatus: (enabled: boolean) => Promise<void>
   onRefreshApp: () => Promise<void>
@@ -61,6 +62,7 @@ export function WebAppAccessPointCard({
   canEdit,
   canDeploy,
   canManageAccess,
+  highlighted,
   onChangeStatus,
   onRefreshApp,
   onRegenerate,
@@ -122,6 +124,7 @@ export function WebAppAccessPointCard({
         }
         status={status}
         statusLabel={statusLabel}
+        highlighted={highlighted}
         switchDisabled={!canEdit}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={availability === 'available' ? onChangeStatus : undefined}

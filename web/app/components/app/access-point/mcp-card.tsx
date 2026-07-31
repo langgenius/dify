@@ -36,6 +36,7 @@ type BasicAppConfig = {
 type MCPAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   canEdit: boolean
+  highlighted?: boolean
   triggerModeDisabled: boolean
   workflow: PublishedWorkflow
   workflowLoading: boolean
@@ -44,6 +45,7 @@ type MCPAccessPointCardProps = {
 export function MCPAccessPointCard({
   appInfo,
   canEdit,
+  highlighted,
   triggerModeDisabled,
   workflow,
   workflowLoading,
@@ -155,6 +157,7 @@ export function MCPAccessPointCard({
         icon="i-custom-vender-integrations-mcp"
         status={status}
         statusLabel={statusLabel}
+        highlighted={highlighted}
         busy={statusUpdating}
         switchDisabled={!canEdit}
         switchLabel={t(($) => $['mcp.server.title'], { ns: 'tools' })}

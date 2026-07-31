@@ -7,7 +7,7 @@ import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { ACCESS_POINT_ORDER } from './access-point'
+import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
 import { DeploymentStatus } from './deployment-status'
 import { VersionLabel } from './version-label'
@@ -84,6 +84,7 @@ export function BuiltInEnvironmentCard() {
                   key={accessPoint}
                   accessPoint={accessPoint}
                   active={activeAccessPoints[accessPoint]}
+                  href={getAccessPointHref(appId, 'built-in', accessPoint)}
                 />
               ))}
             </div>

@@ -13,6 +13,7 @@ type ServiceApiAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: 'available' | 'loading' | 'unavailable'
   canEdit: boolean
+  highlighted?: boolean
   onChangeStatus: (enabled: boolean) => Promise<void>
 }
 
@@ -20,6 +21,7 @@ export function ServiceApiAccessPointCard({
   appInfo,
   availability,
   canEdit,
+  highlighted,
   onChangeStatus,
 }: ServiceApiAccessPointCardProps) {
   const { t } = useTranslation()
@@ -42,6 +44,7 @@ export function ServiceApiAccessPointCard({
       icon="i-custom-vender-knowledge-api-aggregate"
       status={status}
       statusLabel={statusLabel}
+      highlighted={highlighted}
       switchDisabled={!canEdit}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}
       onEnabledChange={availability === 'available' ? onChangeStatus : undefined}

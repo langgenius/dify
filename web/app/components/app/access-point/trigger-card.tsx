@@ -54,6 +54,7 @@ type TriggerAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: 'available' | 'loading' | 'unavailable'
   canEdit: boolean
+  highlighted?: boolean
   unavailableReason: 'serviceMode' | 'unpublished'
   onToggleResult: (error: Error | null) => void
 }
@@ -62,6 +63,7 @@ export function TriggerAccessPointCard({
   appInfo,
   availability,
   canEdit,
+  highlighted,
   onToggleResult,
   unavailableReason,
 }: TriggerAccessPointCardProps) {
@@ -117,6 +119,7 @@ export function TriggerAccessPointCard({
       })}
       icon="i-custom-vender-integrations-trigger"
       status={active ? 'inService' : 'unavailable'}
+      highlighted={highlighted}
       statusLabel={
         active
           ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
