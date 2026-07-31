@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview voert de voltooide agent uit zoals je gebruikers die zien, met duidelijke antwoorden en chatfuncties.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Voorbeeld van je agent",
   "agentDetail.configure.skills.add": "Skill toevoegen",
-  "agentDetail.configure.skills.detail.contentRegion": "Skill-detailinhoud",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} BESTANDEN",
   "agentDetail.configure.skills.detail.files": "Bestanden",
   "agentDetail.configure.skills.empty.description": "Skills geven de agent herbruikbare expertise die hij tijdens het werken kan inzetten",

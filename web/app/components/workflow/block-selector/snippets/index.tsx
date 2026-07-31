@@ -8,8 +8,8 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -154,7 +154,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (
-      <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
+      <ScrollArea className="relative max-h-120 max-w-125 overflow-hidden">
         <ScrollAreaViewport ref={viewportRef}>
           <ScrollAreaContent className="p-1">
             {snippets.map((item) => {
@@ -183,7 +183,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
         <ScrollAreaScrollbar orientation="vertical">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     )
 
   return (
