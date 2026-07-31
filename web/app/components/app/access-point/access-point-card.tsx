@@ -18,6 +18,7 @@ type AccessPointCardProps = {
   title: string
   busy?: boolean
   className?: string
+  highlighted?: boolean
   onEnabledChange?: (enabled: boolean) => void
   showStatus?: boolean
   switchDisabled?: boolean
@@ -30,6 +31,7 @@ export function AccessPointCard({
   children,
   className,
   description,
+  highlighted = false,
   icon,
   onEnabledChange,
   showStatus = true,
@@ -46,8 +48,10 @@ export function AccessPointCard({
   return (
     <article
       aria-labelledby={titleId}
+      data-highlighted={highlighted || undefined}
       className={cn(
         'flex min-h-68 min-w-0 flex-col gap-0.5 rounded-xl bg-background-section-burn p-1',
+        highlighted && 'ring-2 ring-state-accent-solid',
         className,
       )}
     >

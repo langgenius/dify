@@ -1,22 +1,37 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import {
+  DeploymentOperationStatus,
+  DeploymentOperationType,
   DeploymentStatus,
   EnvironmentStatus,
   OperatorType,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MOCK_PUBLISHED_VERSIONS } from '@/app/components/app/deploy/mock-data'
+import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { useEffect } from 'react'
 import { consoleQuery } from '@/service/client'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
 } from '@/test/console/query-data'
 import { PublisherEnvironmentFlow } from '../environment-deployment-flow'
+import {
+  appPublisherEnvironmentsAtom,
+  appPublisherOpenAtom,
+  AppPublisherStateBoundary,
+  publisherEnvironmentDeploymentPollingAtom,
+  selectedPublisherEnvironmentIdAtom,
+} from '../state'
+import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../use-refresh-app-environments-after-deployment-polling'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
+    'common.appMenus.accessPoint': 'Access Point',
     'common.appMenus.deploy': 'Deploy',
     'common.operation.back': 'Back',
     'common.operation.cancel': 'Cancel',
@@ -39,12 +54,77 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-const latestVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)!
+function publishedWorkflowVersion({
+  id,
+  name,
+  publishedBy = 'Alice',
+}: {
+  id: string
+  name: string
+  publishedBy?: string
+}): WorkflowResponse {
+  return {
+    conversation_variables: [],
+    created_at: 1_710_000_100,
+    created_by: {
+      email: `${publishedBy.toLowerCase()}@example.com`,
+      id: `user-${publishedBy.toLowerCase()}`,
+      name: publishedBy,
+    },
+    environment_variables: [],
+    features: {},
+    graph: {},
+    hash: `hash-${id}`,
+    id,
+    marked_comment: `${name} notes`,
+    marked_name: name,
+    rag_pipeline_variables: [],
+    tool_published: false,
+    updated_at: 1_710_000_100,
+    version: `2026-07-30.${id}`,
+  }
+}
+
+const PUBLISHED_WORKFLOW_VERSIONS = [
+  publishedWorkflowVersion({
+    id: 'workflow-version-7',
+    name: 'Release 7',
+  }),
+  publishedWorkflowVersion({
+    id: 'workflow-version-6',
+    name: 'Release 6',
+    publishedBy: 'Carol',
+  }),
+  publishedWorkflowVersion({
+    id: 'sprint-42',
+    name: 'Sprint-42',
+    publishedBy: 'Evan',
+  }),
+  publishedWorkflowVersion({
+    id: 'sprint-35',
+    name: 'Sprint-35',
+    publishedBy: 'Evan',
+  }),
+]
+
+const latestPublishedWorkflow = PUBLISHED_WORKFLOW_VERSIONS[0]!
+const latestVersion = {
+  description: latestPublishedWorkflow.marked_comment || undefined,
+  id: latestPublishedWorkflow.id,
+  latest: true,
+  name: latestPublishedWorkflow.marked_name || latestPublishedWorkflow.version,
+  publishedAt: latestPublishedWorkflow.created_at * 1000,
+  publishedBy: latestPublishedWorkflow.created_by?.name,
+}
 
 function createDeployment({
+  deployed = true,
   latest = false,
+  status = DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
 }: {
+  deployed?: boolean
   latest?: boolean
+  status?: NonNullable<EnvironmentDeployment['deployment']>['status']
 } = {}): EnvironmentDeployment {
   const currentVersion = latest
     ? {
@@ -66,14 +146,14 @@ function createDeployment({
       enable_site: true,
     },
     deployment: {
-      current_version: currentVersion,
+      current_version: deployed ? currentVersion : undefined,
       deployed_at: new Date().toISOString(),
       deployed_by: {
         display_name: 'Evan',
         id: 'user-1',
         type: OperatorType.OPERATOR_TYPE_ACCOUNT,
       },
-      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      status,
       versions_behind: latest ? 0 : 1,
     },
     environment: {
@@ -85,15 +165,15 @@ function createDeployment({
   }
 }
 
-function createFlowQueryClient(environmentId: string) {
+function createFlowQueryClient(environmentId: string, environmentInUse = false) {
   const queryClient = createConsoleQueryClient()
-  MOCK_PUBLISHED_VERSIONS.forEach((version) => {
+  PUBLISHED_WORKFLOW_VERSIONS.forEach((workflow) => {
     const precheckQuery =
       consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions({
         input: {
           params: {
             app_id: 'app-1',
-            workflow_id: version.id,
+            workflow_id: workflow.id,
           },
         },
         retry: false,
@@ -105,7 +185,7 @@ function createFlowQueryClient(environmentId: string) {
             params: {
               app_id: 'app-1',
               environment_id: environmentId,
-              workflow_id: version.id,
+              workflow_id: workflow.id,
             },
           },
           retry: false,
@@ -125,7 +205,67 @@ function createFlowQueryClient(environmentId: string) {
     })
   })
 
+  seedPublishedWorkflowQueries(queryClient)
+  const appEnvironmentsQuery =
+    consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+      enabled: true,
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+      },
+    })
+  queryClient.setQueryData(appEnvironmentsQuery.queryKey, {
+    data: [
+      {
+        description: '',
+        display_name: 'Staging',
+        id: 'staging',
+        in_use: environmentInUse,
+        status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+      },
+    ],
+  })
+
   return queryClient
+}
+
+function seedPublishedWorkflowQueries(queryClient: QueryClient) {
+  const latestPublishedWorkflowQuery = consoleQuery.apps.byAppId.workflows.publish.get.queryOptions(
+    {
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+      },
+    },
+  )
+  const workflowVersionsQuery = consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
+    input: (pageParam) => ({
+      params: {
+        app_id: 'app-1',
+      },
+      query: {
+        limit: 10,
+        page: Number(pageParam),
+      },
+    }),
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+    initialPageParam: 1,
+  })
+
+  queryClient.setQueryData(latestPublishedWorkflowQuery.queryKey, latestPublishedWorkflow)
+  queryClient.setQueryData(workflowVersionsQuery.queryKey, {
+    pageParams: [1],
+    pages: [
+      {
+        has_more: false,
+        items: PUBLISHED_WORKFLOW_VERSIONS,
+        limit: 10,
+        page: 1,
+      },
+    ],
+  })
 }
 
 function renderFlow(deployment = createDeployment()) {
@@ -146,6 +286,157 @@ function renderFlow(deployment = createDeployment()) {
     />,
     { queryClient },
   )
+}
+
+function PublisherPollingObserver() {
+  useRefreshAppEnvironmentsAfterPublisherDeploymentPolling('app-1')
+  useAtomValue(appPublisherEnvironmentsAtom)
+  const polling = useAtomValue(publisherEnvironmentDeploymentPollingAtom)
+  const selectEnvironment = useSetAtom(selectedPublisherEnvironmentIdAtom)
+
+  useEffect(() => {
+    selectEnvironment('staging')
+  }, [selectEnvironment])
+
+  return <div>{`Polling: ${polling?.operationId ?? 'none'}`}</div>
+}
+
+function renderFlowWithPolling(deployment = createDeployment()) {
+  const queryClient = createFlowQueryClient(deployment.environment.id, true)
+  const store = createStore()
+  store.set(queryClientAtom, queryClient)
+  store.set(appPublisherOpenAtom, true)
+
+  return render(
+    <Provider store={store}>
+      <AppPublisherStateBoundary appId="app-1" environmentQueryEnabled>
+        <PublisherPollingObserver />
+        <PublisherEnvironmentFlow
+          appId="app-1"
+          deployment={deployment}
+          environmentId={deployment.environment.id}
+          environmentName={deployment.environment.display_name}
+          environmentTabs={<div>Environment tabs</div>}
+          isEnvironmentInUse
+          isDeploymentError={false}
+          isDeploymentLoading={false}
+          latestVersion={latestVersion}
+          onGoToPublish={vi.fn()}
+        />
+      </AppPublisherStateBoundary>
+    </Provider>,
+    { queryClient },
+  )
+}
+
+function captureDeploymentRequests() {
+  const requests: Request[] = []
+  let deploymentSubmitted = false
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init)
+    requests.push(request.clone())
+
+    if (request.url.includes('/deployment:deploy')) {
+      deploymentSubmitted = true
+      return new Response(
+        JSON.stringify({
+          operation: {
+            id: 'operation-staging',
+            status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+            type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+          },
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
+    }
+
+    if (request.url.includes('/workflows/environment-deployments/staging')) {
+      const currentDeployment = createDeployment({ latest: deploymentSubmitted })
+      return new Response(
+        JSON.stringify({
+          environment_deployment: {
+            ...currentDeployment,
+            deployment: {
+              ...currentDeployment.deployment,
+              ...(deploymentSubmitted && {
+                latest_operation: {
+                  activity_at: '2026-07-31T00:00:00Z',
+                  id: 'operation-staging',
+                  operator: {
+                    display_name: 'Evan',
+                    id: 'user-1',
+                    type: OperatorType.OPERATOR_TYPE_ACCOUNT,
+                  },
+                  status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
+                  target_version: {
+                    id: latestVersion.id,
+                    marked_comment: latestVersion.description ?? '',
+                    marked_name: latestVersion.name,
+                    version: latestVersion.name,
+                  },
+                  type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+                },
+              }),
+            },
+          },
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
+    }
+
+    if (new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments')) {
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              description: '',
+              display_name: 'Staging',
+              id: 'staging',
+              in_use: true,
+              status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+            },
+          ],
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
+    }
+
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+  })
+
+  return requests
+}
+
+async function expectDeploymentRequest(
+  requests: Request[],
+  workflowId: string,
+  environmentId = 'staging',
+) {
+  await waitFor(() => {
+    expect(requests.some((request) => request.url.includes('/deployment:deploy'))).toBe(true)
+  })
+
+  const deployRequest = requests.find((request) => request.url.includes('/deployment:deploy'))
+  if (!deployRequest) throw new Error('Expected the workflow deployment request.')
+
+  expect(deployRequest.method).toBe('POST')
+  expect(new URL(deployRequest.url).pathname).toBe(
+    `/console/api/enterprise/app-deploy/apps/app-1/workflows/${workflowId}/environments/${environmentId}/deployment:deploy`,
+  )
+  expect(await deployRequest.json()).toEqual({
+    credentials: [],
+    environment_variables: [],
+  })
 }
 
 describe('PublisherEnvironmentFlow', () => {
@@ -209,6 +500,8 @@ describe('PublisherEnvironmentFlow', () => {
 
     await user.click(screen.getByRole('button', { name: 'All versions' }))
     expect(screen.getByRole('heading', { name: 'Deploy to Development' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Release 6/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /#5/ })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
@@ -230,6 +523,38 @@ describe('PublisherEnvironmentFlow', () => {
     expect(screen.getByRole('button', { name: 'All versions' })).toBeInTheDocument()
   })
 
+  it.each([
+    DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+  ])(
+    'disables deployment triggers but keeps environment navigation available while the status is %s',
+    (status) => {
+      renderFlow(createDeployment({ deployed: false, status }))
+
+      expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'All versions' })).toBeDisabled()
+      expect(screen.getByRole('link', { name: 'Access Point' })).toHaveAttribute(
+        'href',
+        '/app/app-1/access-point?environment=staging',
+      )
+      expect(screen.getByRole('link', { name: 'Deploy' })).toHaveAttribute(
+        'href',
+        '/app/app-1/deploy?environment=staging',
+      )
+    },
+  )
+
+  it.each([
+    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
+    DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+  ])('shows the undeployed state when terminal status %s has no current version', (status) => {
+    renderFlow(createDeployment({ deployed: false, status }))
+
+    expect(screen.getByText('Not deployed yet')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'All versions' })).toBeEnabled()
+  })
+
   it('deploys the latest version directly and goes back to version selection', async () => {
     const user = userEvent.setup()
     renderFlow()
@@ -244,8 +569,67 @@ describe('PublisherEnvironmentFlow', () => {
     expect(screen.getByRole('heading', { name: 'Deploy to Staging' })).toBeInTheDocument()
   })
 
-  it('disables deploy latest and deploys another selected version when already latest', async () => {
+  it('submits the latest version through the deployment API', async () => {
     const user = userEvent.setup()
+    const requests = captureDeploymentRequests()
+    renderFlow()
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+    await user.click(screen.getByRole('button', { name: 'Deploy' }))
+
+    await expectDeploymentRequest(requests, latestVersion.id)
+    expect(await screen.findByRole('button', { name: 'All versions' })).toBeInTheDocument()
+  })
+
+  it('polls the environment deployment after submit and refreshes environments on success', async () => {
+    const user = userEvent.setup()
+    const requests = captureDeploymentRequests()
+    renderFlowWithPolling()
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+    await user.click(screen.getByRole('button', { name: 'Deploy' }))
+
+    await waitFor(() => {
+      expect(
+        requests.some(
+          (request) =>
+            request.method === 'GET' &&
+            new URL(request.url).pathname.endsWith(
+              '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments/staging',
+            ),
+        ),
+      ).toBe(true)
+    })
+    await waitFor(() => {
+      expect(
+        requests.some(
+          (request) =>
+            request.method === 'GET' &&
+            new URL(request.url).pathname.endsWith(
+              '/enterprise/app-deploy/apps/app-1/environments',
+            ),
+        ),
+      ).toBe(true)
+    })
+    expect(screen.getByText('Polling: none')).toBeInTheDocument()
+  })
+
+  it('submits a version selected from all versions through the deployment API', async () => {
+    const user = userEvent.setup()
+    const requests = captureDeploymentRequests()
+    renderFlow()
+
+    await user.click(screen.getByRole('button', { name: 'All versions' }))
+    await user.click(screen.getByRole('button', { name: /Release 6/ }))
+    await user.click(screen.getByRole('button', { name: 'Deploy' }))
+
+    await expectDeploymentRequest(requests, 'workflow-version-6')
+    expect(await screen.findByRole('button', { name: 'All versions' })).toBeInTheDocument()
+  })
+
+  it('disables deploy latest and submits another selected version when already latest', async () => {
+    const user = userEvent.setup()
+    const requests = captureDeploymentRequests()
     renderFlow(createDeployment({ latest: true }))
 
     expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeDisabled()
@@ -257,5 +641,10 @@ describe('PublisherEnvironmentFlow', () => {
 
     expect(screen.getByRole('heading', { name: 'Deploy configuration' })).toBeInTheDocument()
     expect(screen.getByText('Sprint-35')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Deploy' }))
+
+    await expectDeploymentRequest(requests, 'sprint-35')
+    expect(await screen.findByRole('button', { name: 'Deploy other version' })).toBeInTheDocument()
   })
 })

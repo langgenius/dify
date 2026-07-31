@@ -1,5 +1,6 @@
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
+import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/access-point'
 import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -48,8 +49,19 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
-  BuiltInAccessPoints: ({ appId }: { appId: string }) => (
-    <div data-testid="built-in-access-points">{appId}</div>
+  BuiltInAccessPoints: ({
+    appId,
+    highlightedAccessPoint,
+  }: {
+    appId: string
+    highlightedAccessPoint?: AccessPointType
+  }) => (
+    <div
+      data-testid="built-in-access-points"
+      data-highlighted-access-point={highlightedAccessPoint}
+    >
+      {appId}
+    </div>
   ),
 }))
 
@@ -59,17 +71,20 @@ vi.mock('@/app/components/app/access-point/deployed-environment-access-points', 
     canEdit,
     canManage,
     environmentId,
+    highlightedAccessPoint,
   }: {
     appId: string
     canEdit: boolean
     canManage: boolean
     environmentId: string
+    highlightedAccessPoint?: AccessPointType
   }) => (
     <div
       data-testid="deployed-environment-access-points"
       data-app-id={appId}
       data-can-edit={String(canEdit)}
       data-can-manage={String(canManage)}
+      data-highlighted-access-point={highlightedAccessPoint}
     >
       {environmentId}
     </div>
@@ -166,6 +181,49 @@ describe('AccessPoint', () => {
     )
   })
 
+  it('selects the target environment and highlights its access point from the URL', () => {
+    renderAccessPoint({
+      searchParams: '?environment=canary&accessPoint=serviceApi',
+    })
+
+    expect(screen.getByRole('tab', { name: 'Canary' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('deployed-environment-access-points')).toHaveTextContent('canary')
+    expect(screen.getByTestId('deployed-environment-access-points')).toHaveAttribute(
+      'data-highlighted-access-point',
+      'serviceApi',
+    )
+  })
+
+  it('highlights a built-in access point from the URL', () => {
+    renderAccessPoint({
+      searchParams: '?environment=built-in&accessPoint=mcp',
+    })
+
+    expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('built-in-access-points')).toHaveAttribute(
+      'data-highlighted-access-point',
+      'mcp',
+    )
+  })
+
+  it('clears the access point highlight when switching environment tabs', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderAccessPoint({
+      searchParams: '?environment=canary&accessPoint=serviceApi',
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Staging' }))
+
+    expect(onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryString: '?environment=staging',
+      }),
+    )
+    expect(screen.getByTestId('deployed-environment-access-points')).not.toHaveAttribute(
+      'data-highlighted-access-point',
+    )
+  })
+
   it('shows the selected deployed environment with deploy permissions', () => {
     renderAccessPoint({
       searchParams: '?environment=canary',
@@ -189,12 +247,15 @@ describe('AccessPoint', () => {
 
   it('falls back to Built-in when the URL targets an unused environment', () => {
     renderAccessPoint({
-      searchParams: '?environment=qa',
+      searchParams: '?environment=qa&accessPoint=mcp',
     })
 
     expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByRole('tab', { name: 'Quality Assurance' })).not.toBeInTheDocument()
     expect(screen.getByTestId('built-in-access-points')).toBeInTheDocument()
+    expect(screen.getByTestId('built-in-access-points')).not.toHaveAttribute(
+      'data-highlighted-access-point',
+    )
     expect(screen.queryByTestId('deployed-environment-access-points')).not.toBeInTheDocument()
   })
 

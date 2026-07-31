@@ -1,6 +1,6 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -153,7 +153,7 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/(?:^|\.)common\.unpublishedChanges(?=$|:)/)).toBeInTheDocument()
   })
 
-  it('should expose naming for an unnamed published workflow with no draft changes', () => {
+  it('should expose naming and the publish shortcut for an unnamed published workflow with no draft changes', () => {
     const onEditVersion = vi.fn()
 
     render(
@@ -182,8 +182,9 @@ describe('app-publisher sections', () => {
     })
     fireEvent.click(nameButton)
     expect(onEditVersion).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
-    expect(screen.queryByText('P')).not.toBeInTheDocument()
+    const publishButton = screen.getByRole('button', { name: /common\.published\b/ })
+    expect(publishButton).toBeDisabled()
+    expect(within(publishButton).getByText('P')).toBeInTheDocument()
     expect(screen.getByText(/common\.noChanges\b/)).toBeInTheDocument()
   })
 

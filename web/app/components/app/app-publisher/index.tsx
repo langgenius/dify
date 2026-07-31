@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
@@ -58,6 +58,7 @@ import {
 import {
   addPublisherEnvironmentAtom,
   appPublisherEnvironmentsAtom,
+  appPublisherOpenAtom,
   AppPublisherStateBoundary,
   BUILT_IN_ENVIRONMENT_ID,
   joinedPublisherEnvironmentIdsAtom,
@@ -67,6 +68,7 @@ import {
   selectedPublisherEnvironmentAtom,
   selectedPublisherEnvironmentIdAtom,
 } from './state'
+import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
@@ -111,6 +113,7 @@ type AppPublisherPublishHandler =
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
 export function AppPublisher(props: AppPublisherProps) {
+  const [open, setOpen] = useAtom(appPublisherOpenAtom)
   const appDetail = useAppStore((state) => state.appDetail)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -126,7 +129,12 @@ export function AppPublisher(props: AppPublisherProps) {
       appId={appDetail?.id}
       environmentQueryEnabled={supportsMultiEnvironment}
     >
-      <AppPublisherContent {...props} supportsMultiEnvironment={supportsMultiEnvironment} />
+      <AppPublisherContent
+        {...props}
+        open={open}
+        supportsMultiEnvironment={supportsMultiEnvironment}
+        onOpenStateChange={setOpen}
+      />
     </AppPublisherStateBoundary>
   )
 }
@@ -153,11 +161,16 @@ function AppPublisherContent({
   hasTriggerNode = false,
   startNodeLimitExceeded = false,
   hasHumanInputNode = false,
+  open,
   supportsMultiEnvironment,
-}: AppPublisherProps & { supportsMultiEnvironment: boolean }) {
+  onOpenStateChange,
+}: AppPublisherProps & {
+  open: boolean
+  supportsMultiEnvironment: boolean
+  onOpenStateChange: (open: boolean) => void
+}) {
   const { t } = useTranslation()
 
-  const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const [workflowLaunchDialogOpen, setWorkflowLaunchDialogOpen] = useState(false)
@@ -170,6 +183,7 @@ function AppPublisherContent({
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore((state) => state.appDetail)
+  useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appDetail?.id)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const canManageTools = useCanManageTools()
   const environments = useAtomValue(appPublisherEnvironmentsAtom)
@@ -290,18 +304,18 @@ function AppPublisherContent({
   async function handleRestore() {
     try {
       await onRestore?.()
-      setOpen(false)
+      onOpenStateChange(false)
     } catch {}
   }
 
   function handleOpenChange(nextOpen: boolean) {
     if (disabled) {
-      setOpen(false)
+      onOpenStateChange(false)
       return
     }
 
     onToggle?.(nextOpen)
-    setOpen(nextOpen)
+    onOpenStateChange(nextOpen)
   }
 
   async function handleAccessControlUpdate() {

@@ -24,7 +24,7 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { ACCESS_POINT_ORDER } from './access-point'
+import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
 import { DeploymentStatus } from './deployment-status'
 import { EnvironmentDeployMenu } from './environment-deploy-menu'
@@ -245,12 +245,14 @@ function RowActions({
 }
 
 function EnvironmentRow({
+  appId,
   row,
   onChangeVersion,
   onDeployLatest,
   onRedeploy,
   onUndeploy,
 }: {
+  appId: string
   row: EnvironmentDeployment
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
@@ -294,6 +296,7 @@ function EnvironmentRow({
               key={accessPoint}
               accessPoint={accessPoint}
               active={isAccessPointActive(accessPoint)}
+              href={getAccessPointHref(appId, row.environment.id, accessPoint)}
             />
           ))}
         </div>
@@ -312,6 +315,7 @@ function EnvironmentRow({
 }
 
 type EnvironmentTableProps = {
+  appId: string
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
   onDeployToEnvironment?: (environment: AppEnvironment) => void
@@ -320,6 +324,7 @@ type EnvironmentTableProps = {
 }
 
 export function EnvironmentTable({
+  appId,
   onChangeVersion,
   onDeployLatest,
   onDeployToEnvironment,
@@ -406,6 +411,7 @@ export function EnvironmentTable({
               {deployments.map((row) => (
                 <EnvironmentRow
                   key={row.environment.id}
+                  appId={appId}
                   row={row}
                   onChangeVersion={onChangeVersion}
                   onDeployLatest={onDeployLatest}

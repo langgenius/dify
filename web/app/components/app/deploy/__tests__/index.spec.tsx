@@ -775,15 +775,15 @@ describe('AppDeploy', () => {
     expect(canaryRow.getByText('Running')).toBeInTheDocument()
     expect(canaryRow.getByText('Deploy Sprint-42 succeeded')).toBeInTheDocument()
     expect(
-      canaryRow.getByRole('button', {
+      canaryRow.getByRole('link', {
         name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
       }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('href', '/app/app-1/access-point?environment=canary&accessPoint=webApp')
     expect(
-      canaryRow.getByRole('button', {
+      canaryRow.getByRole('link', {
         name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.inService',
       }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('href', '/app/app-1/access-point?environment=canary&accessPoint=serviceApi')
   })
 
   it('renders the built-in version, access points, and publisher from live app data', () => {
@@ -796,25 +796,25 @@ describe('AppDeploy', () => {
     expect(builtInEnvironment.getByRole('button', { name: 'Release 7' })).toBeInTheDocument()
     expect(builtInEnvironment.queryByRole('button', { name: 'Sprint-42' })).not.toBeInTheDocument()
     expect(
-      builtInEnvironment.getByRole('button', {
+      builtInEnvironment.getByRole('link', {
         name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService',
       }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=webApp')
     expect(
       builtInEnvironment.getByRole('button', {
         name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.outOfService',
       }),
-    ).toBeInTheDocument()
+    ).toBeDisabled()
     expect(
-      builtInEnvironment.getByRole('button', {
+      builtInEnvironment.getByRole('link', {
         name: 'MCP · agentV2.agentDetail.access.status.inService',
       }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=mcp')
     expect(
       builtInEnvironment.getByRole('button', {
         name: 'common.settings.trigger · agentV2.agentDetail.access.status.outOfService',
       }),
-    ).toBeInTheDocument()
+    ).toBeDisabled()
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Bob')).toBeInTheDocument()
   })
 
@@ -834,22 +834,22 @@ describe('AppDeploy', () => {
       builtInEnvironment.getByRole('button', {
         name: 'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.outOfService',
       }),
-    ).toBeInTheDocument()
+    ).toBeDisabled()
     expect(
       builtInEnvironment.getByRole('button', {
         name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.outOfService',
       }),
-    ).toBeInTheDocument()
+    ).toBeDisabled()
     expect(
       builtInEnvironment.getByRole('button', {
         name: 'MCP · agentV2.agentDetail.access.status.outOfService',
       }),
-    ).toBeInTheDocument()
+    ).toBeDisabled()
     expect(
-      builtInEnvironment.getByRole('button', {
+      builtInEnvironment.getByRole('link', {
         name: 'common.settings.trigger · agentV2.agentDetail.access.status.inService',
       }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=trigger')
   })
 
   it('uses the publisher when the published workflow has no later updater', () => {
@@ -1434,7 +1434,7 @@ describe('AppDeploy', () => {
     const user = userEvent.setup()
     render(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable />
+        <EnvironmentTable appId={APP_ID} />
       </AppDeployStateBoundary>,
       {
         appEnvironments: APP_ENVIRONMENTS.map((environment) => ({
@@ -1547,7 +1547,7 @@ describe('AppDeploy', () => {
     const onUndeploy = vi.fn()
     render(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable onUndeploy={onUndeploy} />
+        <EnvironmentTable appId={APP_ID} onUndeploy={onUndeploy} />
       </AppDeployStateBoundary>,
     )
 
@@ -1587,7 +1587,7 @@ describe('AppDeploy', () => {
     const onUndeploy = vi.fn()
     render(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable onUndeploy={onUndeploy} />
+        <EnvironmentTable appId={APP_ID} onUndeploy={onUndeploy} />
       </AppDeployStateBoundary>,
     )
 

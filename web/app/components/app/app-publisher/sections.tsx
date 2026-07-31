@@ -263,14 +263,14 @@ export const PublisherSummarySection = ({
               onClick={() => handlePublish()}
               disabled={publishButtonDisabled}
             >
-              {publishButtonDisabled ? (
+              {publishDisabled ? (
                 publishButtonLabel
               ) : (
                 <span className="flex items-center gap-1">
                   <span>{publishButtonLabel}</span>
                   <KbdGroup aria-hidden>
                     {APP_PUBLISH_HOTKEY.split('+').map((key) => (
-                      <Kbd key={key} color="white">
+                      <Kbd key={key} color="white" disabled={publishButtonDisabled}>
                         {formatForDisplay(key)}
                       </Kbd>
                     ))}

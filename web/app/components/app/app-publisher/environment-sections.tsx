@@ -12,6 +12,7 @@ import { PublisherTimelineMarker } from './sections'
 
 type PublisherEnvironmentSummarySectionProps = {
   deployment?: EnvironmentDeployment
+  deploymentActionsDisabled: boolean
   environmentTabs: ReactNode
   isEnvironmentInUse: boolean
   latestVersion?: DeploymentVersion | null
@@ -32,9 +33,11 @@ function environmentHref(path: string, appId: string, environmentId: string) {
 }
 
 function PublisherLatestVersionRow({
+  disabled,
   latestVersion,
   onShowAllVersions,
 }: {
+  disabled: boolean
   latestVersion?: DeploymentVersion | null
   onShowAllVersions: () => void
 }) {
@@ -51,7 +54,8 @@ function PublisherLatestVersionRow({
       </p>
       <button
         type="button"
-        className="flex shrink-0 items-center gap-0.5 rounded system-xs-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        disabled={disabled}
+        className="flex shrink-0 items-center gap-0.5 rounded system-xs-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:text-text-disabled"
         onClick={onShowAllVersions}
       >
         {t(($) => $['studio.allVersions'], { ns: 'deployments' })}
@@ -63,6 +67,7 @@ function PublisherLatestVersionRow({
 
 export function PublisherEnvironmentSummarySection({
   deployment,
+  deploymentActionsDisabled,
   environmentTabs,
   isEnvironmentInUse,
   latestVersion,
@@ -137,12 +142,13 @@ export function PublisherEnvironmentSummarySection({
               type="button"
               variant="primary"
               className="w-full"
-              disabled={!latestVersion}
+              disabled={deploymentActionsDisabled || !latestVersion}
               onClick={onDeployLatest}
             >
               {t(($) => $['studio.deployLatest'], { ns: 'deployments' })}
             </Button>
             <PublisherLatestVersionRow
+              disabled={deploymentActionsDisabled}
               latestVersion={latestVersion}
               onShowAllVersions={onShowAllVersions}
             />
@@ -201,7 +207,7 @@ export function PublisherEnvironmentSummarySection({
           type="button"
           variant="primary"
           className="w-full"
-          disabled={isLatestVersion || !latestVersion}
+          disabled={deploymentActionsDisabled || isLatestVersion || !latestVersion}
           onClick={onDeployLatest}
         >
           {t(($) => $['studio.deployLatest'], { ns: 'deployments' })}
@@ -211,6 +217,7 @@ export function PublisherEnvironmentSummarySection({
             type="button"
             variant="tertiary"
             className="w-full gap-1"
+            disabled={deploymentActionsDisabled}
             onClick={onDeployOtherVersion}
           >
             {t(($) => $['studio.deployOtherVersion'], { ns: 'deployments' })}
@@ -220,6 +227,7 @@ export function PublisherEnvironmentSummarySection({
       </div>
       {!isLatestVersion && (
         <PublisherLatestVersionRow
+          disabled={deploymentActionsDisabled}
           latestVersion={latestVersion}
           onShowAllVersions={onShowAllVersions}
         />
@@ -234,7 +242,7 @@ export function PublisherEnvironmentActionsSection({
   environmentId,
 }: PublisherEnvironmentActionsSectionProps) {
   const { t } = useTranslation()
-  const actionsDisabled = !appId || !deployment?.deployment?.current_version
+  const actionsDisabled = !appId || !deployment
   const accessPointHref = appId ? environmentHref('access-point', appId, environmentId) : undefined
   const deployHref = appId ? environmentHref('deploy', appId, environmentId) : undefined
 

@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from './version'
+import type { VersionEnvironment } from '@/types/workflow'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
@@ -50,7 +51,7 @@ export function AppDeployStateBoundary({
 }
 
 function toDeploymentVersion(
-  workflow: WorkflowResponse,
+  workflow: WorkflowResponse & { environments?: VersionEnvironment[] },
   latestWorkflowId?: string,
 ): DeploymentVersion {
   return {
@@ -60,6 +61,7 @@ function toDeploymentVersion(
     name: workflow.marked_name || workflow.version,
     publishedAt: workflow.created_at * 1000,
     publishedBy: workflow.created_by?.name,
+    tags: workflow.environments?.map((environment) => environment.name) ?? [],
   }
 }
 
@@ -182,15 +184,17 @@ export const undeployedAppEnvironmentsAtom = atom(
   (get) => get(appEnvironmentsAtom)?.filter((environment) => environment.in_use === false) ?? [],
 )
 
-export function hasInProgressEnvironmentDeployments(deployments: EnvironmentDeployment[]) {
-  return deployments.some((row) => {
-    const status = row.deployment?.status
+export function isEnvironmentDeploymentInProgress(deployment?: EnvironmentDeployment) {
+  const status = deployment?.deployment?.status
 
-    return (
-      status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-      status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
-    )
-  })
+  return (
+    status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
+    status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
+  )
+}
+
+export function hasInProgressEnvironmentDeployments(deployments: EnvironmentDeployment[]) {
+  return deployments.some(isEnvironmentDeploymentInProgress)
 }
 
 const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {

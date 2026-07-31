@@ -1,5 +1,6 @@
 'use client'
 
+import type { AccessPoint } from '@/app/components/app/deploy/access-point'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -23,9 +24,10 @@ import { WebAppAccessPointCard } from './web-app-card'
 
 type BuiltInAccessPointsProps = {
   appId: string
+  highlightedAccessPoint?: AccessPoint | null
 }
 
-export function BuiltInAccessPoints({ appId }: BuiltInAccessPointsProps) {
+export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAccessPointsProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appInfo = useAppStore((state) => state.appDetail)
@@ -106,12 +108,14 @@ export function BuiltInAccessPoints({ appId }: BuiltInAccessPointsProps) {
           onRefreshApp={actions.refreshAppDetail}
           onRegenerate={actions.regenerateSiteCode}
           onSaveSiteConfig={actions.saveSiteConfig}
+          highlighted={highlightedAccessPoint === 'webApp'}
         />
         <ServiceApiAccessPointCard
           appInfo={appInfo}
           availability={appCardAvailability}
           canEdit={capabilities.canEdit}
           onChangeStatus={actions.changeApiStatus}
+          highlighted={highlightedAccessPoint === 'serviceApi'}
         />
         <MCPAccessPointCard
           appInfo={appInfo}
@@ -119,6 +123,7 @@ export function BuiltInAccessPoints({ appId }: BuiltInAccessPointsProps) {
           workflow={workflow}
           workflowLoading={workflowLoading}
           triggerModeDisabled={workflowState.hasTriggerNode}
+          highlighted={highlightedAccessPoint === 'mcp'}
         />
         {workflowState.isWorkflowApp && (
           <TriggerAccessPointCard
@@ -127,6 +132,7 @@ export function BuiltInAccessPoints({ appId }: BuiltInAccessPointsProps) {
             unavailableReason={workflowState.isUnpublished ? 'unpublished' : 'serviceMode'}
             canEdit={capabilities.canEdit}
             onToggleResult={actions.handleResult}
+            highlighted={highlightedAccessPoint === 'trigger'}
           />
         )}
       </div>

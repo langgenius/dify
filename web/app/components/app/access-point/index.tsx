@@ -2,8 +2,9 @@
 
 import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useAtomValue } from 'jotai'
-import { parseAsString, useQueryState } from 'nuqs'
+import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/access-point'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -20,6 +21,11 @@ import {
 const environmentQueryState = parseAsString
   .withDefault(BUILT_IN_ENVIRONMENT_ID)
   .withOptions({ clearOnDefault: true })
+const accessPointQueryState = parseAsStringLiteral(ACCESS_POINT_ORDER)
+const accessPointQueryStates = {
+  environment: environmentQueryState,
+  accessPoint: accessPointQueryState,
+}
 
 type AccessPointProps = {
   appId: string
@@ -39,13 +45,16 @@ function AccessPointContent({
 }: AccessPointContentProps) {
   const { t } = useTranslation()
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
-  const [environment, setEnvironment] = useQueryState('environment', environmentQueryState)
+  const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
+  const { accessPoint: highlightedAccessPoint, environment } = queryStates
   const selectedEnvironment =
     showEnvironmentTabs &&
     (environment === BUILT_IN_ENVIRONMENT_ID ||
       environments.some((candidate) => candidate.id === environment))
       ? environment
       : BUILT_IN_ENVIRONMENT_ID
+  const selectedHighlightedAccessPoint =
+    environment === selectedEnvironment ? highlightedAccessPoint : null
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-components-panel-bg">
@@ -61,7 +70,10 @@ function AccessPointContent({
           </p>
         </div>
         {showEnvironmentTabs && (
-          <Tabs value={selectedEnvironment} onValueChange={(value) => void setEnvironment(value)}>
+          <Tabs
+            value={selectedEnvironment}
+            onValueChange={(environment) => void setQueryStates({ accessPoint: null, environment })}
+          >
             <div className="overflow-x-auto">
               <TabsList
                 aria-label={t(($) => $['studio.environments'], { ns: 'deployments' })}
@@ -93,13 +105,17 @@ function AccessPointContent({
         data-environment={selectedEnvironment}
       >
         {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
-          <BuiltInAccessPoints appId={appId} />
+          <BuiltInAccessPoints
+            appId={appId}
+            highlightedAccessPoint={selectedHighlightedAccessPoint}
+          />
         ) : (
           <DeployedEnvironmentAccessPoints
             appId={appId}
             environmentId={selectedEnvironment}
             canEdit={canEdit}
             canManage={canManage}
+            highlightedAccessPoint={selectedHighlightedAccessPoint}
           />
         )}
       </div>

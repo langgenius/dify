@@ -133,6 +133,7 @@ function AppDeployContent({ appId }: { appId: string }) {
         <div className="flex min-h-0 grow flex-col gap-4 px-6 py-2">
           <BuiltInEnvironmentCard />
           <EnvironmentTable
+            appId={appId}
             onDeployToEnvironment={(environment) =>
               setDeploymentRequest({
                 environment: environment.display_name,

@@ -14,12 +14,14 @@ type EnvironmentServiceApiCardProps = {
   appId: string
   environmentId: string
   canManage: boolean
+  highlighted?: boolean
 }
 
 export function EnvironmentServiceApiCard({
   appId,
   environmentId,
   canManage,
+  highlighted,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -70,6 +72,7 @@ export function EnvironmentServiceApiCard({
       icon="i-custom-vender-knowledge-api-aggregate"
       status={status}
       statusLabel={statusLabel}
+      highlighted={highlighted}
       switchDisabled={!canManage}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}
       onEnabledChange={apiQuery.isSuccess ? handleEnabledChange : undefined}

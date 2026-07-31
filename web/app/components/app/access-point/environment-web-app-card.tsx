@@ -50,6 +50,7 @@ type EnvironmentWebAppCardProps = {
   environmentId: string
   canEdit: boolean
   canManage: boolean
+  highlighted?: boolean
 }
 
 export function EnvironmentWebAppCard({
@@ -57,6 +58,7 @@ export function EnvironmentWebAppCard({
   environmentId,
   canEdit,
   canManage,
+  highlighted,
 }: EnvironmentWebAppCardProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -220,6 +222,7 @@ export function EnvironmentWebAppCard({
         }
         status={status}
         statusLabel={statusLabel}
+        highlighted={highlighted}
         switchDisabled={!canManage}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
