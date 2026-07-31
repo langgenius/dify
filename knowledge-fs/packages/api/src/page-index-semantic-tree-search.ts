@@ -44,6 +44,7 @@ export interface GeneratePageIndexSemanticScoreInput {
   }[];
   readonly model: string;
   readonly signal?: AbortSignal | undefined;
+  readonly structuredOutputSchema?: Readonly<Record<string, unknown>> | undefined;
   readonly temperature?: number | undefined;
   readonly tenantId?: string | undefined;
 }
@@ -159,6 +160,7 @@ export function createPageIndexSemanticTreeSearch({
               }),
               model: input.reasoningModel.model,
               signal: controller.signal,
+              structuredOutputSchema: semanticScoreOutputSchema(candidates),
               temperature: 0,
               tenantId,
             }),
@@ -226,6 +228,36 @@ function semanticScoreMessages({
       role: "user",
     },
   ];
+}
+
+function semanticScoreOutputSchema(
+  candidates: readonly PageIndexSemanticCandidate[],
+): Readonly<Record<string, unknown>> {
+  return {
+    additionalProperties: false,
+    properties: {
+      scores: {
+        items: {
+          additionalProperties: false,
+          properties: {
+            candidateId: {
+              enum: candidates.map((candidate) => candidate.candidateId),
+              type: "string",
+            },
+            reason: { maxLength: 500, minLength: 1, type: "string" },
+            score: { maximum: 1, minimum: 0, type: "number" },
+          },
+          required: ["candidateId", "score", "reason"],
+          type: "object",
+        },
+        maxItems: candidates.length,
+        minItems: candidates.length,
+        type: "array",
+      },
+    },
+    required: ["scores"],
+    type: "object",
+  };
 }
 
 function parseSemanticScoreOutput(

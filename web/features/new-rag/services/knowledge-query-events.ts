@@ -34,7 +34,7 @@ function parseEventBlock(block: string): KnowledgeQueryEvent | undefined {
 
 function capabilityTraceId(token: string) {
   const payload = token.split('.')[1]
-  if (!payload) throw new Error('Knowledge query capability is malformed')
+  if (!payload) throw new Error('KnowledgeFS stream capability is malformed')
   try {
     const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
@@ -51,32 +51,39 @@ function capabilityTraceId(token: string) {
   } catch {
     // The signed token is verified by KnowledgeFS; the client only echoes its public trace claim.
   }
-  throw new Error('Knowledge query capability is missing its trace binding')
+  throw new Error('KnowledgeFS stream capability is missing its trace binding')
 }
 
-export async function streamKnowledgeQuery({
-  admission,
+export async function streamCapabilityEvents({
+  body,
+  method = 'GET',
   onEvent,
   signal,
+  token,
+  url,
 }: {
-  admission: KnowledgeFsQueryAdmissionResponse
+  body?: unknown
+  method?: 'GET' | 'POST'
   onEvent: (event: KnowledgeQueryEvent) => void
   signal?: AbortSignal
+  token: string
+  url: string
 }) {
-  const response = await fetch(admission.url, {
-    body: JSON.stringify(admission.request),
+  const headers: Record<string, string> = {
+    Accept: 'text/event-stream',
+    Authorization: `Bearer ${token}`,
+    'X-Trace-ID': capabilityTraceId(token),
+  }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const response = await fetch(url, {
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     credentials: 'omit',
-    headers: {
-      Accept: 'text/event-stream',
-      Authorization: `Bearer ${admission.token}`,
-      'Content-Type': 'application/json',
-      'X-Trace-ID': capabilityTraceId(admission.token),
-    },
-    method: 'POST',
+    headers,
+    method,
     signal,
   })
   if (!response.ok) throw response
-  if (!response.body) throw new Error('Knowledge query stream has no response body')
+  if (!response.body) throw new Error('KnowledgeFS event stream has no response body')
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -96,4 +103,23 @@ export async function streamKnowledgeQuery({
   }
   const trailingEvent = parseEventBlock(buffer)
   if (trailingEvent) onEvent(trailingEvent)
+}
+
+export async function streamKnowledgeQuery({
+  admission,
+  onEvent,
+  signal,
+}: {
+  admission: KnowledgeFsQueryAdmissionResponse
+  onEvent: (event: KnowledgeQueryEvent) => void
+  signal?: AbortSignal
+}) {
+  await streamCapabilityEvents({
+    body: admission.request,
+    method: 'POST',
+    onEvent,
+    signal,
+    token: admission.token,
+    url: admission.url,
+  })
 }

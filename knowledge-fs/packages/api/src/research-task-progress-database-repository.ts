@@ -9,7 +9,7 @@ import type {
 } from "@knowledge/core";
 import { UuidSchema } from "@knowledge/core";
 
-import { numberColumn, stringColumn } from "./database-row-utils";
+import { nonnegativeSafeIntegerColumn, numberColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { cloneJsonObject, jsonObjectColumn } from "./json-utils";
 import type { ResearchTaskJobStage } from "./research-task-job";
@@ -397,7 +397,7 @@ function progressFromRow(row: DatabaseRow): ResearchTaskProgressEvent {
   if (!eventTypes.has(type) || !jobStages.has(stage)) {
     throw new Error("Research task progress row has an invalid event type or stage");
   }
-  const createdAt = validTimestamp(numberColumn(row, "created_at"));
+  const createdAt = validTimestamp(nonnegativeSafeIntegerColumn(row, "created_at"));
   return {
     createdAt: new Date(createdAt).toISOString(),
     id: stringColumn(row, "id"),

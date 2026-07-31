@@ -4,15 +4,18 @@ import type {
   KnowledgeFsResearchTaskPlanResponse,
   KnowledgeFsResearchTaskResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type {
   RetrievalEvidence,
   RetrievalTestMode,
   RetrievalTestRecord,
 } from './retrieval-test-model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
+import type { ResearchTaskProgressEvent } from './services/research-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +33,7 @@ import {
 } from './retrieval-test-model'
 import { newKnowledgeDocumentDetailPath, newKnowledgeQualityPath } from './routes'
 import { streamKnowledgeQuery } from './services/knowledge-query-events'
+import { streamResearchTaskEvents } from './services/research-task-events'
 
 type LocalQueryRun = {
   endedAt?: number
@@ -51,9 +55,20 @@ type SelectedRun = {
 type QualityDecision = 'bad-case' | 'golden'
 
 const researchStageOrder = ['planning', 'retrieving', 'analyzing', 'generating'] as const
+type ResearchStage = (typeof researchStageOrder)[number]
+const runRetrievalHotkey = 'Mod+Enter' satisfies Hotkey
 
 function timeValue(value: number) {
   return value < 10_000_000_000 ? value * 1000 : value
+}
+
+function formatRecordTime(value: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+  }).format(value)
 }
 
 function useClock(enabled: boolean) {
@@ -64,6 +79,72 @@ function useClock(enabled: boolean) {
     return () => window.clearInterval(interval)
   }, [enabled])
   return now
+}
+
+function researchStageIndex(stage: KnowledgeFsResearchTaskResponse['stage']) {
+  if (stage === 'queued' || stage === 'paused') return 0
+  if (stage === 'completed') return researchStageOrder.length
+  return researchStageOrder.findIndex((item) => item === stage)
+}
+
+function estimatedStageDuration(
+  plan: KnowledgeFsResearchTaskPlanResponse | undefined,
+  stage: ResearchStage,
+) {
+  if (!plan) return undefined
+  const stepNames: Record<ResearchStage, Set<string>> = {
+    analyzing: new Set(['analyze']),
+    generating: new Set(['generate']),
+    planning: new Set(['plan']),
+    retrieving: new Set(['inspect', 'retrieve']),
+  }
+  const milliseconds = plan.steps.reduce((total, step) => {
+    if (!stepNames[stage].has(typeof step.name === 'string' ? step.name : '')) return total
+    return total + (typeof step.estimatedLatencyMs === 'number' ? step.estimatedLatencyMs : 0)
+  }, 0)
+  return milliseconds > 0 ? formatDuration(milliseconds) : undefined
+}
+
+function researchProgressTime(event: ResearchTaskProgressEvent) {
+  return Date.parse(event.createdAt)
+}
+
+function actualStageDuration(
+  events: ResearchTaskProgressEvent[],
+  stage: ResearchStage,
+  task: KnowledgeFsResearchTaskResponse,
+  now: number,
+) {
+  const start = events.find((event) => event.stage === stage)
+  if (!start) return
+  const startedAt = researchProgressTime(start)
+  const next = events.find((event) => {
+    if (event.sequence <= start.sequence) return false
+    return (
+      event.stage === 'canceled' ||
+      event.stage === 'completed' ||
+      event.stage === 'failed' ||
+      (researchStageOrder.includes(event.stage as ResearchStage) && event.stage !== stage)
+    )
+  })
+  const endedAt = next
+    ? researchProgressTime(next)
+    : task.stage === stage
+      ? now
+      : task.completed_at
+        ? timeValue(task.completed_at)
+        : undefined
+  if (endedAt === undefined || endedAt < startedAt) return
+  return formatDuration(endedAt - startedAt)
+}
+
+function mergeResearchProgressEvent(
+  events: ResearchTaskProgressEvent[],
+  event: ResearchTaskProgressEvent,
+) {
+  const next = events.filter((candidate) => candidate.sequence !== event.sequence)
+  next.push(event)
+  return next.sort((left, right) => left.sequence - right.sequence)
 }
 
 function ScorePill({ score }: { score: number }) {
@@ -132,7 +213,7 @@ function EvidenceCard({
         </h3>
         {evidence.score !== undefined && <ScorePill score={evidence.score} />}
       </div>
-      <p className="px-3 pt-1 pb-2 body-sm-regular text-text-secondary">
+      <p className="px-3 pt-1 pb-2 body-md-regular tracking-[-0.07px] text-text-secondary">
         <span className="line-clamp-2 whitespace-pre-wrap">{evidence.text}</span>
       </p>
       {evidence.images.length > 0 && (
@@ -155,7 +236,7 @@ function EvidenceCard({
           )}
         </div>
       )}
-      <footer className="flex min-h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
+      <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
         <span
           aria-hidden
           className="i-ri-file-pdf-2-fill size-4 shrink-0 text-util-colors-red-red-500"
@@ -294,7 +375,7 @@ function QualityActions({
       <Button
         disabled={pending}
         loading={pending}
-        variant={noResults ? 'primary' : 'ghost'}
+        variant={noResults ? 'primary' : 'secondary'}
         onClick={() => void onDecision('bad-case')}
       >
         <span aria-hidden className="mr-1 i-ri-thumb-down-line size-4" />
@@ -316,12 +397,16 @@ function QualityActions({
 }
 
 function ResearchProcess({
+  evidenceCount,
+  events,
   expanded,
   onCancel,
   onToggle,
   plan,
   task,
 }: {
+  evidenceCount: number
+  events: ResearchTaskProgressEvent[]
   expanded: boolean
   onCancel?: () => void
   onToggle: () => void
@@ -331,10 +416,25 @@ function ResearchProcess({
   const { t } = useTranslation('dataset')
   const active = researchTaskIsActive(task)
   const now = useClock(active)
-  const startedAt = timeValue(task.created_at)
-  const endedAt = task.completed_at ? timeValue(task.completed_at) : now
+  const firstProgressAt = events[0] ? researchProgressTime(events[0]) : undefined
+  const terminalProgress = [...events]
+    .reverse()
+    .find(
+      (event) =>
+        event.stage === 'canceled' || event.stage === 'completed' || event.stage === 'failed',
+    )
+  const startedAt = firstProgressAt ?? timeValue(task.created_at)
+  const endedAt = terminalProgress
+    ? researchProgressTime(terminalProgress)
+    : task.completed_at
+      ? timeValue(task.completed_at)
+      : now
   const duration = formatDuration(endedAt - startedAt)
-  const currentIndex = researchStageOrder.findIndex((stage) => stage === task.stage)
+  const currentIndex = researchStageIndex(task.stage)
+  const latestVisitedIndex = events.reduce((latest, event) => {
+    const index = researchStageOrder.indexOf(event.stage as ResearchStage)
+    return Math.max(latest, index)
+  }, -1)
   const summary =
     task.stage === 'completed'
       ? t(($) => $['newKnowledge.retrievalTest.completedIn'], { duration })
@@ -349,39 +449,47 @@ function ResearchProcess({
     planning: t(($) => $['newKnowledge.retrievalTest.planning']),
     retrieving: t(($) => $['newKnowledge.retrievalTest.retrieving']),
   }
+  const activeLabels: Record<(typeof researchStageOrder)[number], string> = {
+    analyzing: t(($) => $['newKnowledge.retrievalTest.analyzingActive']),
+    generating: t(($) => $['newKnowledge.retrievalTest.generatingActive']),
+    planning: t(($) => $['newKnowledge.retrievalTest.planningActive']),
+    retrieving: t(($) => $['newKnowledge.retrievalTest.retrievingActive']),
+  }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
+    <section
+      className={cn(
+        'max-w-full overflow-hidden rounded-[10px] bg-components-panel-bg',
+        expanded ? 'w-full' : 'w-fit',
+      )}
+    >
       <button
         type="button"
         aria-expanded={expanded}
-        className="flex min-h-14 w-full items-center gap-3 px-4 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+        className="flex min-h-10 max-w-full items-center gap-1.5 px-3 py-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
         onClick={onToggle}
       >
-        <span
-          aria-hidden
-          className={cn(
-            'size-5 text-text-accent',
-            active && 'i-ri-loader-4-line animate-spin motion-reduce:animate-none',
-            task.stage === 'completed' && 'i-ri-checkbox-circle-fill',
-            task.stage === 'canceled' && 'i-ri-stop-circle-fill text-text-tertiary',
-            task.stage === 'failed' && 'i-ri-error-warning-fill text-text-destructive',
-          )}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block system-sm-semibold text-text-primary">{summary}</span>
-          {active && (
-            <span className="mt-0.5 block system-xs-regular text-text-tertiary">
-              {duration}
-              {plan?.budget.budget_usd !== undefined && plan.budget.budget_usd !== null
-                ? ` · $${plan.budget.budget_usd.toFixed(2)}`
-                : ''}
-            </span>
-          )}
+        {task.stage === 'completed' ? (
+          <img src="/images/new-rag/vibe-coding-star.svg" alt="" className="size-3.5 shrink-0" />
+        ) : (
+          <span
+            aria-hidden
+            className={cn(
+              'size-3.5 shrink-0 text-text-accent',
+              active && 'i-ri-loader-4-line animate-spin motion-reduce:animate-none',
+              task.stage === 'canceled' && 'i-ri-stop-circle-fill text-text-tertiary',
+              task.stage === 'failed' && 'i-ri-error-warning-fill text-text-destructive',
+            )}
+          />
+        )}
+        <span className="truncate system-sm-regular whitespace-nowrap text-text-secondary">
+          {summary}
         </span>
+        {active && <span className="system-xs-regular text-text-tertiary">{duration}</span>}
         {active && onCancel && (
           <Button
-            variant="ghost"
+            size="small"
+            variant="secondary"
             onClick={(event) => {
               event.stopPropagation()
               onCancel()
@@ -393,52 +501,68 @@ function ResearchProcess({
         <span
           aria-hidden
           className={cn(
-            'i-ri-arrow-down-s-line size-5 text-text-tertiary transition-transform',
+            'i-ri-arrow-down-s-line size-4.5 shrink-0 text-text-tertiary transition-transform',
             expanded && 'rotate-180',
           )}
         />
       </button>
       {expanded && (
-        <div className="border-t border-divider-subtle px-4 py-4">
-          <div className="mb-4 flex items-center gap-4 system-xs-semibold text-text-tertiary">
-            <span className="text-text-primary">
-              {t(($) => $['newKnowledge.retrievalTest.processLog'])}
-            </span>
-            <span>{t(($) => $['newKnowledge.retrievalTest.quality'])}</span>
-          </div>
-          <ol className="space-y-0">
+        <div className="border-t border-divider-subtle px-3 pt-2.5 pb-3.5">
+          <ol>
             {researchStageOrder.map((stage, index) => {
-              const completed = task.stage === 'completed' || index < currentIndex
-              const current = stage === task.stage
+              const completed =
+                task.stage === 'completed' || index < currentIndex || index < latestVisitedIndex
+              const current = index === currentIndex && active
+              const stageDuration =
+                actualStageDuration(events, stage, task, now) ?? estimatedStageDuration(plan, stage)
               return (
-                <li key={stage} className="relative flex min-h-10 items-start gap-3">
-                  {index < researchStageOrder.length - 1 && (
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'absolute top-5 left-1.75 h-6 w-px',
-                        completed ? 'bg-util-colors-blue-blue-500' : 'bg-divider-regular',
-                      )}
-                    />
-                  )}
+                <li key={stage} className="flex items-stretch gap-2.5 overflow-hidden">
                   <span
                     aria-hidden
-                    className={cn(
-                      'relative mt-0.5 size-4 shrink-0 rounded-full border-2',
-                      completed && 'border-util-colors-blue-blue-500 bg-util-colors-blue-blue-500',
-                      current &&
-                        active &&
-                        'i-ri-loader-4-line animate-spin border-0 text-text-accent motion-reduce:animate-none',
-                      !completed && !current && 'border-divider-deep bg-components-panel-bg',
+                    className="flex w-3 shrink-0 flex-col items-center overflow-hidden"
+                  >
+                    <span className="flex h-5 w-3 shrink-0 items-center justify-center">
+                      <span
+                        className={cn(
+                          'block size-1.75 shrink-0 rounded-full',
+                          completed ? 'bg-gray-400' : 'bg-divider-deep',
+                          current &&
+                            'i-ri-loader-4-line size-2.5 animate-spin rounded-none text-text-accent motion-reduce:animate-none',
+                        )}
+                      />
+                    </span>
+                    {index < researchStageOrder.length - 1 && (
+                      <span className="min-h-0 w-px flex-1 bg-divider-regular" />
                     )}
-                  />
+                  </span>
                   <span
                     className={cn(
-                      'system-sm-medium',
-                      completed || current ? 'text-text-primary' : 'text-text-quaternary',
+                      'flex min-w-0 flex-1 flex-col overflow-hidden',
+                      index < researchStageOrder.length - 1 ? 'pb-4' : 'pb-0.5',
                     )}
                   >
-                    {labels[stage]}
+                    <span className="flex min-h-5 items-start justify-between gap-3">
+                      <span
+                        className={cn(
+                          'text-[13px] leading-5 font-medium text-text-tertiary',
+                          (completed || current) && 'text-text-primary',
+                        )}
+                      >
+                        {current ? activeLabels[stage] : labels[stage]}
+                      </span>
+                      {stageDuration && (completed || current) && (
+                        <span className="shrink-0 system-xs-regular text-text-tertiary">
+                          {stageDuration}
+                        </span>
+                      )}
+                    </span>
+                    {current && stage === 'retrieving' && evidenceCount > 0 && (
+                      <span className="mt-1.5 system-xs-regular text-text-tertiary">
+                        {t(($) => $['newKnowledge.retrievalTest.foundSoFar'], {
+                          count: evidenceCount,
+                        })}
+                      </span>
+                    )}
                   </span>
                 </li>
               )
@@ -462,6 +586,12 @@ function RecordButton({
   record: RetrievalTestRecord
 }) {
   const { t } = useTranslation('dataset')
+  const activeResearchStage =
+    record.kind === 'research' && record.status === 'running'
+      ? researchStageOrder[
+          Math.min(Math.max(researchStageIndex(record.stage), 0), researchStageOrder.length - 1)
+        ]
+      : undefined
   return (
     <button
       type="button"
@@ -478,15 +608,18 @@ function RecordButton({
         <span className="line-clamp-1 system-sm-semibold text-text-secondary">{record.query}</span>
         <span className="mt-1.5 flex items-center gap-1 system-xs-regular text-text-tertiary">
           <span className="min-w-0 flex-1 truncate">
-            {t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])}
+            {activeResearchStage ? (
+              <>
+                {t(($) => $[`newKnowledge.retrievalTest.${activeResearchStage}Active`])}
+                {' · '}
+                {researchStageOrder.indexOf(activeResearchStage) + 1}/{researchStageOrder.length}
+              </>
+            ) : (
+              t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])
+            )}
           </span>
           <span className="shrink-0 text-[11px] leading-4 text-text-primary opacity-30">
-            {new Intl.DateTimeFormat(undefined, {
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              month: 'short',
-            }).format(record.createdAt)}
+            {formatRecordTime(record.createdAt)}
           </span>
         </span>
       </span>
@@ -508,6 +641,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [researchPlans, setResearchPlans] = useState<
     Record<string, KnowledgeFsResearchTaskPlanResponse>
   >({})
+  const [researchEvents, setResearchEvents] = useState<Record<string, ResearchTaskProgressEvent[]>>(
+    {},
+  )
   const [researchExpanded, setResearchExpanded] = useState<Record<string, boolean>>({})
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
@@ -566,6 +702,14 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     selected?.kind === 'research'
       ? researchTasksQuery.data?.data.find((task) => task.id === selected.id)
       : undefined
+  const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
+  const selectedResearchActiveRef = useRef(selectedResearchActive)
+  useEffect(() => {
+    selectedResearchActiveRef.current = selectedResearchActive
+  }, [selectedResearchActive])
+  const selectedResearchExpanded = selectedResearchTask
+    ? (researchExpanded[selectedResearchTask.id] ?? true)
+    : false
   const selectedTraceId =
     selected?.kind === 'trace'
       ? selected.id
@@ -612,6 +756,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     refetchInterval: researchTaskIsActive(selectedResearchTask) ? 1000 : false,
   })
   const refetchResearchPartials = researchPartialsQuery.refetch
+  const refetchResearchTasks = researchTasksQuery.refetch
   const previousSelectedResearchTaskRef = useRef<KnowledgeFsResearchTaskResponse | undefined>(
     undefined,
   )
@@ -621,6 +766,50 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     if (!shouldRefreshResearchPartials(previousTask, selectedResearchTask)) return
     void refetchResearchPartials()
   }, [refetchResearchPartials, selectedResearchTask])
+
+  const selectedResearchTaskId = selectedResearchTask?.id
+  useEffect(() => {
+    if (!selectedResearchTaskId) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        let cursor: string | undefined
+        while (!controller.signal.aborted) {
+          const capability = await consoleClient.knowledgeFs.tasks.byTaskId.streamCapability.post({
+            body: { control_space_id: knowledgeSpaceId },
+            params: { task_id: selectedResearchTaskId },
+          })
+          const stream = await streamResearchTaskEvents({
+            capability,
+            ...(cursor ? { cursor } : {}),
+            onEvent: (event) => {
+              if (controller.signal.aborted) return
+              setResearchEvents((current) => ({
+                ...current,
+                [selectedResearchTaskId]: mergeResearchProgressEvent(
+                  current[selectedResearchTaskId] ?? [],
+                  event,
+                ),
+              }))
+              const terminal =
+                event.stage === 'canceled' ||
+                event.stage === 'completed' ||
+                event.stage === 'failed'
+              if (!terminal || !selectedResearchActiveRef.current) return
+              if (event.stage === 'completed') void refetchResearchTasks()
+              else void Promise.all([refetchResearchTasks(), refetchResearchPartials()])
+            },
+            signal: controller.signal,
+          })
+          if (stream.terminal || !stream.reconnect || !stream.cursor) return
+          cursor = stream.cursor
+        }
+      } catch {
+        // Task polling remains the fallback when capability streaming is unavailable.
+      }
+    })()
+    return () => controller.abort()
+  }, [knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, selectedResearchTaskId])
 
   const historicalEvidence = extractRetrievalEvidence(traceEvidenceQuery.data)
   const researchEvidence = extractRetrievalEvidence(researchPartialsQuery.data)
@@ -669,6 +858,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     selected?.kind === 'local'
       ? localRun?.mode
       : (selectedRecord?.mode ?? traceDetailQuery.data?.mode)
+  const selectedCreatedAt =
+    selected?.kind === 'local'
+      ? localRun?.startedAt
+      : (selectedRecord?.createdAt ??
+        (selectedResearchTask ? timeValue(selectedResearchTask.created_at) : undefined))
   const selectedIsLoading =
     (selected?.kind === 'local' && localRun?.status === 'running') ||
     (selected?.kind === 'trace' && selectedRecord?.status === 'running') ||
@@ -676,18 +870,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     (selected?.kind === 'trace' && traceEvidenceQuery.isPending)
   const selectedFailed = selected?.kind === 'local' && localRun?.status === 'failed'
   const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
-  const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, 3)
+  const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, 5)
 
   const selectRecord = (record: RetrievalTestRecord) => {
     setSelected({ id: record.id, kind: record.kind })
     setQuery(record.query)
     setMode(record.mode)
     setShowAll(false)
-    if (record.kind === 'research' && researchExpanded[record.id] === undefined)
-      setResearchExpanded((current) => ({
-        ...current,
-        [record.id]: record.status === 'running',
-      }))
   }
 
   const saveQualityDecision = async (decision: QualityDecision) => {
@@ -852,12 +1041,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   }
 
   const run = () => {
+    if (selectedResearchActive) return
     if (mode === 'research') void startResearch()
     else void runFastQuery()
   }
 
   return (
-    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg p-5">
+    <main className="mx-1 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg p-5">
       <header className="shrink-0">
         <h1 className="title-xl-semi-bold leading-6 text-text-primary">
           {t(($) => $['newKnowledge.retrievalTest.title'])}
@@ -882,7 +1072,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 className="block h-36 w-full resize-none bg-transparent p-3.5 body-md-regular text-text-primary outline-hidden placeholder:text-text-quaternary"
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
-                  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                  if (matchesKeyboardEvent(event.nativeEvent, runRetrievalHotkey)) {
                     event.preventDefault()
                     run()
                   }
@@ -898,10 +1088,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     <button
                       key={item}
                       type="button"
+                      disabled={selectedResearchActive}
                       aria-pressed={mode === item}
                       className={cn(
-                        'rounded-md px-2.5 py-1 system-xs-semibold text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                        mode === item && 'bg-components-panel-bg text-text-primary shadow-xs',
+                        'rounded-md px-2.5 py-1 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
+                        mode === item &&
+                          'bg-components-panel-bg font-medium text-text-primary shadow-xs',
                       )}
                       onClick={() => setMode(item)}
                     >
@@ -909,7 +1101,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     </button>
                   ))}
                 </div>
-                <Button variant="primary" disabled={!query.trim()} onClick={run}>
+                <Button
+                  variant="primary"
+                  disabled={!query.trim() || selectedResearchActive}
+                  onClick={run}
+                >
                   <span aria-hidden className="mr-1 i-ri-play-circle-line size-4" />
                   {t(($) =>
                     mode === 'research'
@@ -927,7 +1123,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 {t(($) => $['newKnowledge.retrievalTest.records'])}
               </h2>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto">
               {displayRecords.length > 0 ? (
                 <div>
                   {displayRecords.map((record, index) => (
@@ -958,46 +1154,64 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           )}
           {selected && (
             <div className="flex h-full min-h-0 flex-col gap-3">
-              <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden pl-3">
+              <div className="flex h-6 shrink-0 items-center gap-2 overflow-hidden pl-3">
                 <h2 className="shrink-0 system-sm-semibold text-text-primary">
                   {selected?.kind === 'research'
                     ? t(($) => $['newKnowledge.retrievalTest.researchResult'])
-                    : t(($) => $['newKnowledge.retrievalTest.result'], {
-                        mode: selectedMode
-                          ? t(($) => $[`newKnowledge.settings.retrievalMode.${selectedMode}`])
-                          : '',
-                      })}
+                    : t(($) => $['newKnowledge.retrievalTest.result'])}
                 </h2>
                 <span className="shrink-0 rounded-md bg-divider-regular px-1.5 py-0.5 text-[11px] leading-4 font-medium text-text-tertiary capitalize">
                   {selectedMode
                     ? t(($) => $[`newKnowledge.settings.retrievalMode.${selectedMode}`])
                     : ''}
                 </span>
-                <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
-                  {t(($) => $['newKnowledge.retrievalTest.justNow'])}
-                </span>
+                {selectedCreatedAt && (
+                  <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
+                    {formatRecordTime(selectedCreatedAt)}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1" />
+                {selectedResearchTask && (
+                  <button
+                    type="button"
+                    aria-pressed={selectedResearchExpanded}
+                    className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    onClick={() =>
+                      setResearchExpanded((current) => ({
+                        ...current,
+                        [selectedResearchTask.id]: !(current[selectedResearchTask.id] ?? true),
+                      }))
+                    }
+                  >
+                    <span aria-hidden className="i-ri-search-eye-line size-3.5" />
+                    {t(($) => $['newKnowledge.retrievalTest.processLog'])}
+                  </button>
+                )}
+                <Link
+                  href={newKnowledgeQualityPath(knowledgeSpaceId)}
+                  className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
+                  {t(($) => $['newKnowledge.retrievalTest.quality'])}
+                </Link>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto">
                 {selectedResearchTask && (
                   <ResearchProcess
                     task={selectedResearchTask}
                     plan={researchPlans[selectedResearchTask.id]}
-                    expanded={
-                      researchExpanded[selectedResearchTask.id] ??
-                      researchTaskIsActive(selectedResearchTask)
-                    }
+                    events={researchEvents[selectedResearchTask.id] ?? []}
+                    evidenceCount={currentEvidence.length}
+                    expanded={selectedResearchExpanded}
                     onToggle={() =>
                       setResearchExpanded((current) => ({
                         ...current,
-                        [selectedResearchTask.id]: !(
-                          current[selectedResearchTask.id] ??
-                          researchTaskIsActive(selectedResearchTask)
-                        ),
+                        [selectedResearchTask.id]: !(current[selectedResearchTask.id] ?? true),
                       }))
                     }
                     onCancel={
-                      researchTaskIsActive(selectedResearchTask)
+                      selectedResearchActive
                         ? () => void cancelResearch(selectedResearchTask.id)
                         : undefined
                     }
@@ -1027,14 +1241,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   )}
 
                 {currentEvidence.length > 0 && (
-                  <div className={cn(selectedResearchTask && 'mt-5')}>
-                    {selectedResearchTask && (
-                      <h3 className="mb-3 system-sm-semibold text-text-secondary">
-                        {researchTaskIsActive(selectedResearchTask)
-                          ? t(($) => $['newKnowledge.retrievalTest.foundSoFar'], {
-                              count: currentEvidence.length,
-                            })
-                          : `${currentEvidence.length} chunks`}
+                  <div className={cn(selectedResearchTask && 'mt-3')}>
+                    {selectedResearchActive && (
+                      <h3 className="flex h-6 items-start pb-2 pl-3 system-xs-medium text-text-tertiary">
+                        {t(($) => $['newKnowledge.retrievalTest.foundSoFar'], {
+                          count: currentEvidence.length,
+                        })}
                       </h3>
                     )}
                     <div className="space-y-3">
@@ -1052,9 +1264,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                         />
                       ))}
                       {selectedResearchTask && researchTaskIsActive(selectedResearchTask) && (
-                        <div className="h-24 animate-pulse rounded-xl border border-components-panel-border bg-components-panel-bg p-4 motion-reduce:animate-none">
-                          <div className="h-3 w-1/3 rounded bg-background-section-burn" />
-                          <div className="mt-4 h-3 w-4/5 rounded bg-background-section-burn" />
+                        <div className="h-16.5 animate-pulse rounded-xl bg-components-panel-bg px-3 py-3.5 opacity-60 motion-reduce:animate-none">
+                          <div className="flex items-start justify-between">
+                            <div className="h-3 w-30 rounded-xs bg-divider-regular" />
+                            <div className="h-4 w-14 rounded-md bg-divider-subtle" />
+                          </div>
+                          <div className="mt-2.5 h-3 w-full rounded-xs bg-divider-subtle" />
                         </div>
                       )}
                     </div>
@@ -1062,7 +1277,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 )}
               </div>
 
-              {!showAll && currentEvidence.length > 3 && (
+              {!showAll && currentEvidence.length > 5 && (
                 <div className="shrink-0 pl-1">
                   <button
                     type="button"

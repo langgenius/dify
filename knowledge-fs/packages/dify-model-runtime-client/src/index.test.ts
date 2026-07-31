@@ -140,6 +140,63 @@ describe("createDifyModelRuntimeClient", () => {
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
+  it("routes structured LLM requests through Dify's structured-output endpoint", async () => {
+    let body: Record<string, unknown> | undefined;
+    let url: string | undefined;
+    const responseBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          frame({
+            data: {
+              delta: { finish_reason: "stop" },
+              structured_output: { scores: [{ candidateId: "c1", score: 1 }] },
+            },
+            error: "",
+          }),
+        );
+        controller.close();
+      },
+    });
+    const client = createDifyModelRuntimeClient({
+      apiKey: "inner-secret",
+      baseUrl: "http://api:5001",
+      fetch: vi.fn(async (input, init) => {
+        body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        url = String(input);
+        return new Response(responseBody, {
+          headers: { "content-type": "text/event-stream" },
+          status: 200,
+        });
+      }),
+    });
+    const structuredOutputSchema = {
+      properties: { scores: { type: "array" } },
+      required: ["scores"],
+      type: "object",
+    };
+
+    const chunks: unknown[] = [];
+    for await (const chunk of client.invokeLlm({
+      model: "openrouter/auto",
+      pluginId: "langgenius/openrouter",
+      promptMessages: [{ content: "score", role: "user" }],
+      provider: "openrouter",
+      structuredOutputSchema,
+      tenantId: "tenant-1",
+    })) {
+      chunks.push(chunk);
+    }
+
+    expect(url).toBe("http://api:5001/inner/api/invoke/llm/structured-output");
+    expect(body).toMatchObject({ structured_output_schema: structuredOutputSchema });
+    expect(chunks).toEqual([
+      {
+        delta: { finish_reason: "stop" },
+        structured_output: { scores: [{ candidateId: "c1", score: 1 }] },
+      },
+    ]);
+  });
+
   it("lists tenant-active models through the Dify catalog endpoint", async () => {
     let body: unknown;
     const item = {

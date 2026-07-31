@@ -119,6 +119,42 @@ describe("Dify model runtime LLM provider", () => {
     });
   });
 
+  it("prefers Dify's validated structured output over free-form response text", async () => {
+    let captured: DifyLlmInput | undefined;
+    const provider = createDifyModelRuntimeLlmProvider({
+      ...BASE,
+      client: fakeClient(
+        () => [
+          deltaChunk("I will explain before returning JSON."),
+          {
+            delta: { finish_reason: "stop" },
+            structured_output: {
+              scores: [{ candidateId: "c1", reason: "direct", score: 1 }],
+            },
+          },
+        ],
+        (input) => {
+          captured = input;
+        },
+      ),
+    });
+    const structuredOutputSchema = {
+      properties: { scores: { type: "array" } },
+      required: ["scores"],
+      type: "object",
+    };
+
+    const result = await provider.generate({
+      messages: [{ content: "Score every candidate.", role: "user" }],
+      model: BASE.model,
+      structuredOutputSchema,
+      tenantId: "tenant-abc",
+    });
+
+    expect(captured?.structuredOutputSchema).toEqual(structuredOutputSchema);
+    expect(result.text).toBe('{"scores":[{"candidateId":"c1","reason":"direct","score":1}]}');
+  });
+
   it("keeps content from Dify stream frames with null usage", async () => {
     const provider = createDifyModelRuntimeLlmProvider({
       ...BASE,

@@ -15,7 +15,10 @@ const apiMock = vi.hoisted(() => ({
   refetchPartials: vi.fn(),
   refetchTasks: vi.fn(),
   refetchTraces: vi.fn(),
+  researchTasks: [] as Array<Record<string, unknown>>,
+  streamCapability: vi.fn(),
   streamQuery: vi.fn(),
+  streamResearchEvents: vi.fn(),
   documentReferences: {} as Record<string, { id: string; title: string }>,
   evidence: undefined as Record<string, unknown> | undefined,
   traceDetail: undefined as Record<string, unknown> | undefined,
@@ -34,6 +37,10 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('../services/knowledge-query-events', () => ({
   streamKnowledgeQuery: apiMock.streamQuery,
+}))
+
+vi.mock('../services/research-task-events', () => ({
+  streamResearchTaskEvents: apiMock.streamResearchEvents,
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -65,7 +72,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         }
       if (resource === 'tasks')
         return {
-          data: { data: [] },
+          data: { data: apiMock.researchTasks },
           refetch: apiMock.refetchTasks,
         }
       if (resource === 'partials')
@@ -81,6 +88,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
+      tasks: {
+        byTaskId: {
+          streamCapability: { post: apiMock.streamCapability },
+        },
+      },
       spaces: {
         byControlSpaceId: {
           queries: { admission: { post: apiMock.queryAdmission } },
@@ -178,7 +190,18 @@ describe('RetrievalTestPage', () => {
     })
     apiMock.refetchTasks.mockResolvedValue(undefined)
     apiMock.refetchTraces.mockResolvedValue(undefined)
+    apiMock.researchTasks = []
+    apiMock.streamCapability.mockResolvedValue({
+      expires_at: '2026-07-31T10:30:00.000Z',
+      operation_id: 'streamResearchTask',
+      token: 'capability-token',
+      url: 'https://knowledge.example.test/research/events',
+    })
     apiMock.streamQuery.mockResolvedValue(undefined)
+    apiMock.streamResearchEvents.mockResolvedValue({
+      reconnect: false,
+      terminal: false,
+    })
     apiMock.queryAdmission.mockResolvedValue({})
     apiMock.createBadCase.mockResolvedValue({ id: 'bad-case-1' })
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
@@ -226,6 +249,205 @@ describe('RetrievalTestPage', () => {
       },
       params: { control_space_id: 'space-1' },
     })
+  })
+
+  it('replays research progress events and shows actual stage durations', async () => {
+    apiMock.researchTasks = [
+      {
+        completed_at: 1_800_000_025,
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-completed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'Compare the refund policies',
+        stage: 'completed',
+        updated_at: 1_800_000_025,
+      },
+    ]
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({
+        onEvent,
+      }: {
+        onEvent: (event: {
+          createdAt: string
+          id: string
+          payload: Record<string, unknown>
+          researchTaskJobId: string
+          sequence: number
+          stage: string
+          type: string
+        }) => void
+      }) => {
+        const stages = [
+          ['planning', 0],
+          ['retrieving', 2],
+          ['analyzing', 7],
+          ['generating', 14],
+          ['completed', 25],
+        ] as const
+        stages.forEach(([stage, seconds], index) =>
+          onEvent({
+            createdAt: new Date(1_800_000_000_000 + seconds * 1000).toISOString(),
+            id: `event-${index + 1}`,
+            payload: {},
+            researchTaskJobId: 'research-completed',
+            sequence: index + 1,
+            stage,
+            type: index ? 'research_task.stage_changed' : 'research_task.started',
+          }),
+        )
+        return { cursor: '5', reconnect: false, terminal: true }
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByText('Compare the refund policies'))
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.processLog',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    await waitFor(() =>
+      expect(apiMock.streamCapability).toHaveBeenCalledWith({
+        body: { control_space_id: 'space-1' },
+        params: { task_id: 'research-completed' },
+      }),
+    )
+    expect(apiMock.streamResearchEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capability: expect.objectContaining({ operation_id: 'streamResearchTask' }),
+      }),
+    )
+    expect(await screen.findByText('2s')).toBeInTheDocument()
+    expect(screen.getByText('5s')).toBeInTheDocument()
+    expect(screen.getByText('7s')).toBeInTheDocument()
+    expect(screen.getByText('11s')).toBeInTheDocument()
+    expect(apiMock.refetchTasks).not.toHaveBeenCalled()
+    expect(apiMock.refetchPartials).not.toHaveBeenCalled()
+  })
+
+  it('reconnects an active research event stream from its latest cursor', async () => {
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-active',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'Compare the refund policies',
+        stage: 'retrieving',
+        updated_at: 1_800_000_005,
+      },
+    ]
+    apiMock.streamResearchEvents
+      .mockResolvedValueOnce({ cursor: '3', reconnect: true, terminal: false })
+      .mockResolvedValueOnce({ cursor: '4', reconnect: false, terminal: true })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByText('Compare the refund policies'))
+
+    await waitFor(() => expect(apiMock.streamCapability).toHaveBeenCalledTimes(2))
+    expect(apiMock.streamResearchEvents).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ cursor: '3' }),
+    )
+  })
+
+  it('refreshes final partials only once when a streamed task completes', async () => {
+    const activeTask = {
+      cost: {},
+      created_at: 1_800_000_000,
+      id: 'research-active',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      mode: 'research',
+      query: 'Compare the refund policies',
+      stage: 'retrieving',
+      updated_at: 1_800_000_005,
+    }
+    apiMock.researchTasks = [activeTask]
+    apiMock.refetchTasks.mockImplementation(async () => {
+      apiMock.researchTasks = [
+        {
+          ...activeTask,
+          completed_at: 1_800_000_025,
+          stage: 'completed',
+          updated_at: 1_800_000_025,
+        },
+      ]
+    })
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({
+        onEvent,
+      }: {
+        onEvent: (event: {
+          createdAt: string
+          id: string
+          payload: Record<string, unknown>
+          researchTaskJobId: string
+          sequence: number
+          stage: string
+          type: string
+        }) => void
+      }) => {
+        onEvent({
+          createdAt: '2027-01-15T08:00:25.000Z',
+          id: 'event-completed',
+          payload: {},
+          researchTaskJobId: 'research-active',
+          sequence: 5,
+          stage: 'completed',
+          type: 'research_task.stage_changed',
+        })
+        return { cursor: '5', reconnect: false, terminal: true }
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByText('Compare the refund policies'))
+
+    await waitFor(() => expect(apiMock.refetchTasks).toHaveBeenCalledOnce())
+    await waitFor(() => expect(apiMock.refetchPartials).toHaveBeenCalledOnce())
+  })
+
+  it('does not let the composer shortcut bypass an active research task', async () => {
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-active',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'Compare the refund policies',
+        stage: 'retrieving',
+        updated_at: 1_800_000_005,
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(
+      screen.getByText('dataset.newKnowledge.retrievalTest.retrievingActive · 2/4'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByText('Compare the refund policies'))
+    const queryInput = screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder')
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
+    ).toBeDisabled()
+
+    await user.click(queryInput)
+    await user.keyboard('{Control>}{Enter}{/Control}')
+
+    expect(apiMock.planResearch).not.toHaveBeenCalled()
+    expect(apiMock.queryAdmission).not.toHaveBeenCalled()
   })
 
   it('persists a selected trace as a production bad case', async () => {
@@ -333,7 +555,7 @@ describe('RetrievalTestPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'dataset.newKnowledge.retrievalTest.result:{"mode":"dataset.newKnowledge.settings.retrievalMode.deep"}',
+        name: 'dataset.newKnowledge.retrievalTest.result',
       }),
     ).toBeInTheDocument()
     await user.click(

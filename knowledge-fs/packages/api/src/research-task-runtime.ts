@@ -266,10 +266,10 @@ export function createResearchTaskRuntime({
         authorizationContext,
         abortSignal: abortController.signal,
         capabilityGrants,
-        current,
         deletionFence,
         deletionToken,
         generator,
+        getCurrent: () => current,
         manifests,
         now,
         partials,
@@ -277,6 +277,9 @@ export function createResearchTaskRuntime({
         publishProgress,
         repository,
         serialize,
+        updateCurrent: (updated) => {
+          current = updated;
+        },
       });
       await assertWritable();
       const completed = await serialize(() => repository.completeExecution(fence(current, now())));
@@ -481,10 +484,10 @@ async function runResearchTask({
   authorizationContext: initialAuthorizationContext,
   abortSignal,
   capabilityGrants,
-  current: initial,
   deletionFence,
   deletionToken,
   generator,
+  getCurrent,
   manifests,
   now,
   partials,
@@ -492,6 +495,7 @@ async function runResearchTask({
   publishProgress,
   repository,
   serialize,
+  updateCurrent,
 }: {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   readonly allowLegacyProfileFallback: boolean;
@@ -500,10 +504,10 @@ async function runResearchTask({
   readonly capabilityGrants?:
     | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
     | undefined;
-  readonly current: ResearchTaskJob;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly deletionToken?: DeletionLifecycleFenceToken | undefined;
   readonly generator: QueryGenerator;
+  readonly getCurrent: () => ResearchTaskJob;
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly now: () => number;
   readonly partials: ResearchTaskPartialResultRepository;
@@ -515,8 +519,9 @@ async function runResearchTask({
   ) => Promise<void>;
   readonly repository: ResearchTaskDurableRepository;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+  readonly updateCurrent: (current: ResearchTaskJob) => void;
 }): Promise<ResearchTaskJob> {
-  let current = initial;
+  let current = getCurrent();
   let authorizationContext = initialAuthorizationContext;
   const assertWritable = async (): Promise<void> => {
     if (deletionToken) {
@@ -524,6 +529,7 @@ async function runResearchTask({
     }
   };
   const revalidate = async () => {
+    current = getCurrent();
     if (abortSignal.aborted) {
       throw abortSignal.reason ?? new Error("Research task execution lease was lost");
     }
@@ -534,15 +540,19 @@ async function runResearchTask({
     );
   };
   const advance = async (nextStage: ResearchTaskJobStage) => {
-    const previousStage = current.stage;
     await assertWritable();
-    const updated = await serialize(() =>
-      repository.advanceExecution({ ...fence(current, now()), nextStage }),
-    );
+    const transition = await serialize(async () => {
+      current = getCurrent();
+      const previousStage = current.stage;
+      const updated = await repository.advanceExecution({ ...fence(current, now()), nextStage });
+      return { previousStage, updated };
+    });
+    const { previousStage, updated } = transition;
     if (!updated) {
       throw new Error("Research task stage transition lost its lease fence");
     }
     current = updated;
+    updateCurrent(updated);
     await assertWritable();
     await publishProgress(updated, "research_task.stage_changed", { previousStage });
   };
@@ -684,7 +694,7 @@ async function runResearchTask({
       tenantId: current.tenantId,
     });
   }
-  return current;
+  return getCurrent();
 }
 
 function durableRequestedMode(

@@ -65,6 +65,27 @@ describe("PageIndex semantic tree search", () => {
       }),
     );
     const firstPrompt = generate.mock.calls[0]?.[0].messages;
+    expect(generate.mock.calls[0]?.[0].structuredOutputSchema).toMatchObject({
+      additionalProperties: false,
+      properties: {
+        scores: {
+          items: {
+            additionalProperties: false,
+            properties: {
+              candidateId: { enum: ["c1", "c2"], type: "string" },
+              score: { maximum: 1, minimum: 0, type: "number" },
+            },
+            required: ["candidateId", "score", "reason"],
+            type: "object",
+          },
+          maxItems: 2,
+          minItems: 2,
+          type: "array",
+        },
+      },
+      required: ["scores"],
+      type: "object",
+    });
     expect(firstPrompt?.[0]?.content).toContain("do not score by keyword overlap alone");
     expect(firstPrompt?.[1]?.content).toContain("How long must invoices be retained?");
     expect(firstPrompt?.[1]?.content).toContain("Finance");

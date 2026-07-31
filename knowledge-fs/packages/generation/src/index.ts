@@ -27,6 +27,7 @@ export interface GenerateTextInput {
   readonly messages: readonly LlmMessage[];
   readonly model: string;
   readonly signal?: AbortSignal;
+  readonly structuredOutputSchema?: Readonly<Record<string, unknown>>;
   readonly temperature?: number;
   /** Tenant scope for Dify-managed model routing. */
   readonly tenantId?: string;
@@ -750,6 +751,7 @@ const DifyModelRuntimeLlmChunkSchema = z.object({
     .partial()
     .optional(),
   model: z.string().optional(),
+  structured_output: z.unknown().optional(),
 });
 
 /**
@@ -792,6 +794,8 @@ export function createDifyModelRuntimeLlmProvider(
 
     const maxTokens = input.maxOutputTokens ?? options.maxOutputTokens;
     let finishReason = "stop";
+    let structuredOutput: unknown;
+    let structuredOutputFallbackText = "";
     let usage: LlmUsage | undefined;
 
     for await (const chunk of options.client.invokeLlm({
@@ -806,6 +810,9 @@ export function createDifyModelRuntimeLlmProvider(
         role: message.role,
       })),
       provider: options.provider,
+      ...(input.structuredOutputSchema === undefined
+        ? {}
+        : { structuredOutputSchema: input.structuredOutputSchema }),
       tenantId,
       ...(input.signal ? { signal: input.signal } : {}),
     })) {
@@ -818,7 +825,15 @@ export function createDifyModelRuntimeLlmProvider(
       const content = parsed.data.delta?.message?.content;
 
       if (content) {
-        yield { delta: content, type: "delta" };
+        if (input.structuredOutputSchema === undefined) {
+          yield { delta: content, type: "delta" };
+        } else {
+          structuredOutputFallbackText += content;
+        }
+      }
+
+      if (parsed.data.structured_output !== undefined) {
+        structuredOutput = parsed.data.structured_output;
       }
 
       const chunkUsage = parsed.data.delta?.usage;
@@ -839,6 +854,16 @@ export function createDifyModelRuntimeLlmProvider(
 
       if (parsed.data.delta?.finish_reason) {
         finishReason = parsed.data.delta.finish_reason;
+      }
+    }
+
+    if (input.structuredOutputSchema !== undefined) {
+      const text =
+        structuredOutput === undefined
+          ? structuredOutputFallbackText
+          : JSON.stringify(structuredOutput);
+      if (text) {
+        yield { delta: text, type: "delta" };
       }
     }
 

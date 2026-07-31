@@ -131,6 +131,23 @@ it("pages by tenant/task cursor and rejects unbounded reads", async () => {
   ).rejects.toThrow(/between 1 and 1/u);
 });
 
+it("reads PostgreSQL bigint timestamps returned as decimal strings", async () => {
+  const database = recordingDatabase("postgres", async () => ({
+    rows: [progressRow({ created_at: String(Date.parse("2026-07-14T00:00:00.000Z")) })],
+    rowsAffected: 0,
+  }));
+
+  await expect(
+    createRepository(database.adapter).list({
+      limit: 1,
+      researchTaskJobId: JOB_ID,
+      tenantId: TENANT_ID,
+    }),
+  ).resolves.toMatchObject({
+    items: [{ createdAt: "2026-07-14T00:00:00.000Z" }],
+  });
+});
+
 it("polls the durable ledger independently across replicas and releases subscriber bounds", async () => {
   const rows: DatabaseRow[] = [];
   const database = recordingDatabase("postgres", async (input) => {

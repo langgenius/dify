@@ -50,6 +50,7 @@ export interface DifyLlmInput extends DifyModelRequestContext {
   readonly completionParams?: Readonly<Record<string, unknown>> | undefined;
   readonly promptMessages: readonly unknown[];
   readonly stop?: readonly string[] | undefined;
+  readonly structuredOutputSchema?: Readonly<Record<string, unknown>> | undefined;
   readonly tools?: readonly unknown[] | undefined;
 }
 
@@ -209,9 +210,12 @@ export function createDifyModelRuntimeClient(
     async *invokeLlm(input) {
       const deadline = createDeadline(input.signal, requestTimeoutMs);
       try {
+        const structuredOutputSchema = input.structuredOutputSchema;
         const response = await request(
           fetchImpl,
-          `${baseUrl}/inner/api/invoke/llm`,
+          `${baseUrl}/inner/api/invoke/llm${
+            structuredOutputSchema === undefined ? "" : "/structured-output"
+          }`,
           apiKey,
           {
             ...commonPayload(input),
@@ -221,6 +225,9 @@ export function createDifyModelRuntimeClient(
             prompt_messages: [...input.promptMessages],
             stop: [...(input.stop ?? [])],
             stream: true,
+            ...(structuredOutputSchema === undefined
+              ? {}
+              : { structured_output_schema: { ...structuredOutputSchema } }),
             tools: [...(input.tools ?? [])],
           },
           deadline.signal,

@@ -344,6 +344,99 @@ describe("research task production runtime", () => {
     });
   });
 
+  it("advances with the latest row version after a heartbeat during generation", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    let heartbeatObserved: (() => void) | undefined;
+    const heartbeat = new Promise<void>((resolve) => {
+      heartbeatObserved = resolve;
+    });
+    const originalHeartbeat = repository.heartbeatExecution.bind(repository);
+    const heartbeatExecution = vi
+      .spyOn(repository, "heartbeatExecution")
+      .mockImplementation(async (input) => {
+        const updated = await originalHeartbeat(input);
+        heartbeatObserved?.();
+        return updated;
+      });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* () {
+          await heartbeat;
+          yield traceStep("query.retrieve");
+          yield traceStep("query.answer");
+        },
+      },
+      heartbeatIntervalMs: 1,
+      leaseMs: 1_000,
+      now: () => 1_000,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      leased: 1,
+      succeeded: 1,
+    });
+    expect(heartbeatExecution).toHaveBeenCalled();
+    expect(repository.job.stage).toBe("completed");
+  });
+
+  it("refreshes the stage-transition fence inside the serialized heartbeat lane", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    let releaseStageGuard: (() => void) | undefined;
+    const stageGuardRelease = new Promise<void>((resolve) => {
+      releaseStageGuard = resolve;
+    });
+    let stageGuardObserved: (() => void) | undefined;
+    const stageGuard = new Promise<void>((resolve) => {
+      stageGuardObserved = resolve;
+    });
+    let heartbeatObserved: (() => void) | undefined;
+    const heartbeat = new Promise<void>((resolve) => {
+      heartbeatObserved = resolve;
+    });
+    let assertionCount = 0;
+    const originalHeartbeat = repository.heartbeatExecution.bind(repository);
+    vi.spyOn(repository, "heartbeatExecution").mockImplementation(async (input) => {
+      const updated = await originalHeartbeat(input);
+      heartbeatObserved?.();
+      return updated;
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      deletionFence: {
+        assertDeletionFenceUnchanged: async () => {
+          assertionCount += 1;
+          if (assertionCount === 2) {
+            stageGuardObserved?.();
+            await stageGuardRelease;
+          }
+        },
+        captureDeletionFence: async (scope) => ({ scope }) as never,
+      },
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          yield traceStep("query.answer");
+        },
+      },
+      heartbeatIntervalMs: 1,
+      leaseMs: 1_000,
+      now: () => 1_000,
+    });
+
+    const tick = runtime.tick();
+    await stageGuard;
+    await heartbeat;
+    releaseStageGuard?.();
+
+    await expect(tick).resolves.toMatchObject({
+      leased: 1,
+      retryScheduled: 0,
+      succeeded: 1,
+    });
+    expect(repository.job.stage).toBe("completed");
+  });
+
   it.each([
     {
       error: `Research task partial result answer exceeds maxChars=${RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS}`,
@@ -1210,8 +1303,23 @@ class MemoryDurableRepository implements ResearchTaskDurableRepository {
     return [structuredClone(this.job)];
   }
 
-  async heartbeatExecution(): Promise<ResearchTaskJob | null> {
-    throw new Error("Unexpected heartbeat in a sub-interval test");
+  async heartbeatExecution(
+    input: ResearchTaskExecutionFence & {
+      readonly leaseExpiresAt: number;
+      readonly workerId: string;
+    },
+  ): Promise<ResearchTaskJob | null> {
+    if (!this.matchesFence(input) || input.workerId !== this.job.workerId) {
+      return null;
+    }
+    this.job = {
+      ...this.job,
+      heartbeatAt: input.now,
+      leaseExpiresAt: input.leaseExpiresAt,
+      rowVersion: this.job.rowVersion + 1,
+      updatedAt: input.now,
+    };
+    return structuredClone(this.job);
   }
 
   async advanceExecution(

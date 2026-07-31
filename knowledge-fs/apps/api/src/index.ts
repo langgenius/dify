@@ -149,7 +149,7 @@ const rerankerOptions = createApiRerankerOptions();
 const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions();
 const profileReasoningCapability = createApiProfileReasoningCapability();
 const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
-  batchSize: 10,
+  batchSize: 5,
   maxConcurrentBatches: 4,
   maxOutputTokens: profileReasoningCapability.maxOutputTokens,
   maxTextCharsPerCandidate: 1_500,
