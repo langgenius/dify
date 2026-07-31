@@ -577,15 +577,49 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
+    await openUploadSkillDialog(user)
 
     expect(
       await screen.findByText(
         'agentV2.agentDetail.configure.skills.upload.sizeLimit:{"sizeLimit":"64.00 MB"}',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('should reject skill packages over the configured size limit', async () => {
+    const user = userEvent.setup()
+    mocks.fileUploadConfig.skill_file_size_limit = 1
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await openUploadSkillDialog(user)
+
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const oversizedFile = new File([new Uint8Array(1024 * 1024 + 1)], 'oversized-skill.skill', {
+      type: 'application/zip',
+    })
+    await user.upload(input, oversizedFile)
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.skills.upload.sizeLimit:{"sizeLimit":"1.00 MB"}',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: /agentDetail\.configure\.skills\.upload\.action/i,
+      }),
+    ).toBeDisabled()
+
+    vi.mocked(toast.error).mockClear()
+    const allowedFile = new File([new Uint8Array(1024 * 1024)], 'allowed-skill.skill', {
+      type: 'application/zip',
+    })
+    await user.upload(input, allowedFile)
+
+    expect(screen.getByText('allowed-skill.skill')).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should bind workspace skills without adding them to inline config skills', async () => {
@@ -732,44 +766,6 @@ describe('AgentSkills', () => {
         },
       })
     })
-  })
-
-  it('should reject skill packages over the configured size limit', async () => {
-    const user = userEvent.setup()
-    mocks.fileUploadConfig.skill_file_size_limit = 1
-    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
-
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-
-    const input = await waitFor(() => {
-      const element = document.querySelector('input[type="file"]')
-      expect(element).not.toBeNull()
-      return element as HTMLInputElement
-    })
-    const oversizedFile = new File([new Uint8Array(1024 * 1024 + 1)], 'oversized-skill.skill', {
-      type: 'application/zip',
-    })
-    await user.upload(input, oversizedFile)
-
-    expect(toast.error).toHaveBeenCalledWith(
-      'agentV2.agentDetail.configure.skills.upload.sizeLimit:{"sizeLimit":"1.00 MB"}',
-    )
-    expect(
-      screen.getByRole('button', {
-        name: /agentDetail\.configure\.skills\.upload\.action/i,
-      }),
-    ).toBeDisabled()
-
-    vi.mocked(toast.error).mockClear()
-    const allowedFile = new File([new Uint8Array(1024 * 1024)], 'allowed-skill.skill', {
-      type: 'application/zip',
-    })
-    await user.upload(input, allowedFile)
-
-    expect(screen.getByText('allowed-skill.skill')).toBeInTheDocument()
-    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should mark already bound workspace skills as added and prevent duplicate binding', async () => {
