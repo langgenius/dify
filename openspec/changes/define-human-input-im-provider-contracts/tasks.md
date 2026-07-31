@@ -2,17 +2,17 @@
 
 - [ ] 1.1 确认由部署控制的 SaaS、CE、EE 到 `WEBHOOK` 或 `STREAM` 的映射，并在接入部署配置前回写 `design.md` 与 `im-provider-integration`；无证据时不得推断映射
 - [ ] 1.2 在实现 DingTalk、WeCom、Microsoft Teams adapter 时确认并记录各自的权威目录 endpoint、configured visibility scope、分页/组织遍历和完整性边界；这些实现细节不得改变五个 Provider 都必须支持 Directory sync 的范围
-- [ ] 1.3 确认 Microsoft Teams 主动投递 target 的获取、安装、持久化与刷新方式，并在实现 Teams 投递前回写 `design.md` 与 `im-provider-messaging`
+- [ ] 1.3 确认 Microsoft Teams 主动投递所需 Provider message destination 的获取、安装、持久化与刷新方式，并在实现 Teams 投递前回写 `design.md` 与 `im-provider-messaging`
 - [ ] 1.4 从现有 Form Content controls 推导字段完整的 normalized interactive-card intent 和 card representability 规则，验证 Slack、Feishu/Lark、Microsoft Teams 的等价语义，并在定义或实现 card renderer 前回写 `design.md` 与 `im-provider-messaging`
 - [ ] 1.5 确认本地删除 Integration 后，各 Provider 对迟到 Webhook 或 STREAM delivery 的 terminal ACK，并在实现该响应前回写 `design.md` 与 `im-provider-events`
 - [ ] 1.6 在未决问题回写后审计所有共享语义值与操作，只保留能对应具体操作且具有至少两个 Provider 证据的部分
 
 ## 2. 添加窄 Provider contracts 与显式组合
 
-- [ ] 2.1 为 Integration diagnostics、完整目录快照、card representability result、已解析 delivery target、Provider-discriminated message reference、`AuthenticatedEvent` 和 `CardSubmissionRequest` 添加 typed Provider-facing values，且不接收 Contact、binding、grant、task、workflow 或 ORM objects
-- [ ] 2.2 分别添加 Integration diagnostics、Directory reading、card representability assessment、`send_link_message`、`send_card`、card update 与 Event decoding 的 typed contracts，确保每个方法都对应本 change 规定的具体操作
-- [ ] 2.3 仅用具体 Provider 支持的 contracts 进行显式组合，同时允许 credentials、SDK clients、tenant configuration 和 token caches 作为共享实现细节
-- [ ] 2.4 添加边界测试，证明不存在 umbrella `IMProvider`、generic operation dispatcher、runtime capability registry 或 Messaging 对 Directory 的隐式依赖
+- [ ] 2.1 为 Integration diagnostics、完整目录快照、card representability result、各 Provider 的 message destination、Provider-discriminated message reference、`AuthenticatedEvent` 和 `CardSubmissionRequest` 添加 typed Provider-facing values；message destination 只承载发起新消息所需的 Provider-specific addressing facts，且不接收 Contact、binding、grant、task、workflow 或 ORM objects
+- [ ] 2.2 添加 Integration diagnostics、Directory reading、Basic Messaging、Dynamic Card Messaging 与 Event decoding 的 typed contracts；Basic Messaging 组合 destination reachability 与 `send_link_message`，Dynamic Card Messaging 组合 card representability assessment、`send_card` 与 card update
+- [ ] 2.3 让 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 显式实现 Basic Messaging，仅让 Slack、Feishu/Lark 与 Microsoft Teams 额外实现 Dynamic Card Messaging，同时允许 credentials、SDK clients、tenant configuration 和 token caches 作为共享实现细节
+- [ ] 2.4 添加边界测试，证明不存在 umbrella `IMProvider`、one-capability-per-method、generic operation dispatcher、runtime capability registry、DingTalk/WeCom dummy card methods 或 Messaging 对 Directory 的隐式依赖
 
 ## 3. 实现 Integration diagnostics 与本地生命周期
 
@@ -31,17 +31,18 @@
 - [ ] 4.5 只有收到成功的完整 snapshot 后，才允许 Contact matching、absence detection、binding removal 与 reconciliation
 - [ ] 4.6 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 添加针对完整多页/层级读取、缺失 Email、late-page failure、不完整读取时零 reconciliation，以及目录同步不调用 Messaging 的测试
 
-## 5. 实现彼此独立的 Messaging operations
+## 5. 实现必备基础 Messaging 与可选动态卡片 Messaging
 
-- [ ] 5.1 将 target-specific reachability test 与 Integration diagnostics 分开实现，并且只消费已解析的 Provider delivery target
-- [ ] 5.2 完成任务 1.4 后，为 Slack、Feishu/Lark 与 Microsoft Teams 实现无副作用的 card representability assessment，只接收 normalized interactive-card intent，返回 boolean 与可选的人类可读 reason，且不读取 Directory、发送消息或创建 Delivery
-- [ ] 5.3 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 实现 `send_link_message`，使用已解析 delivery target、已渲染 notification content 和 Request URL，且不读取或搜索 Directory
-- [ ] 5.4 完成任务 1.4 后，为 Slack 与 Feishu/Lark 实现 `send_card`，保留 opaque interaction context；renderer 无法处理 intent 时必须在任何 Provider send call 前抛出明确的 card-rendering exception，且不改调 `send_link_message`
-- [ ] 5.5 完成任务 1.3 与 1.4 后，使用已确认的 proactive target lifecycle 为 Microsoft Teams 实现 `send_card`
+- [ ] 5.1 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 实现必备 Basic Messaging：destination-specific reachability test 与 `send_link_message`；两者接收各 Provider 尝试新消息所需的 message destination，不读取 Directory、不把 destination 当作业务 recipient state，且 reachability result 不改变 Integration diagnostics
+- [ ] 5.2 完成任务 1.4 后，为 Slack 与 Feishu/Lark 实现可选 Dynamic Card Messaging：无副作用的 card representability assessment、`send_card` 与基于精确 reference 的 card update；renderer mismatch 必须在任何 Provider send call 前抛出明确 exception，且不改调 `send_link_message`
+- [ ] 5.3 完成任务 1.3 与 1.4 后，使用已确认的 Provider message destination lifecycle 为 Microsoft Teams 实现同一组 Dynamic Card Messaging operations
+- [ ] 5.4 验证 DingTalk 与 WeCom 只实现 Basic Messaging，不包含 dummy card assessment、send 或 update methods
+- [ ] 5.5 验证 Slack、Feishu/Lark 与 Microsoft Teams 的 Request URL Delivery Endpoint 始终可以使用 Basic Messaging 的 `send_link_message` 作为基础 fallback
 - [ ] 5.6 将 Provider acceptance 与 end-user delivery 分开持久化，并为每次 accepted send 保留精确的 Provider-discriminated message reference
-- [ ] 5.7 实现 capability-gated card update，只定位对应 delivery attempt 保存的 reference，并独立于 task submission 报告 update outcome
-- [ ] 5.8 强制每个 binding-test、`send_link_message` 或 `send_card` attempt 最多调用一次 side-effecting Provider operation；保留 timeout、rate-limit、connection-reset 和其他 ambiguous outcomes，不自动 retry；人工 Resend 建模为新 attempt
-- [ ] 5.9 添加针对 assessment 无副作用、boolean-only branching、free-form reason 仅记日志、Delivery Endpoint 固定发送操作、五个 Provider 的 `send_link_message`、Slack/Feishu/Teams 的 `send_card`、无 Directory send、card-rendering exception 发生在 Provider call 前且不降级、精确 message locators、stale-reference update、Provider acceptance semantics、ambiguous outcomes 和 one-call-per-attempt invariant 的测试
+- [ ] 5.7 在 Dynamic Card Messaging 内使用 Slack `channel + ts`、Feishu/Lark `message_id`、Microsoft Teams `activity_id + conversation context` 更新一个精确 prior card instance，并独立于 earlier send outcome 报告 typed update outcome
+- [ ] 5.8 在 Human Input application service 中按 Contact 创建独立 card instance 与 opaque Contact handle；即使多个 Contacts 映射到同一个 Provider identity/destination 也保持独立 reference，并由 Dify 选择实例、逐个 fan out update 和记录 per-Delivery outcome
+- [ ] 5.9 强制每个 binding-test、`send_link_message` 或 `send_card` attempt 最多调用一次 side-effecting Provider operation；保留 timeout、rate-limit、connection-reset 和其他 ambiguous outcomes，不自动 retry；人工 Resend 建模为新 attempt
+- [ ] 5.10 添加针对五个 Provider 的 Basic Messaging、三种 card-capable Provider 的完整 Dynamic Card Messaging、card-capable Provider 的 link fallback、DingTalk/WeCom 无 dummy card methods、assessment 无副作用、boolean-only branching、free-form reason 仅记日志、无 Directory send、card-rendering exception 发生在 Provider call 前且不降级、同一 Provider identity/destination 下的多 Contact card isolation、Dify-owned update fan-out、精确 message locators、stale-reference update、Provider acceptance semantics、ambiguous outcomes 和 one-call-per-attempt invariant 的测试
 
 ## 6. 实现 authenticated event 接入与 inbox ACK
 

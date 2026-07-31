@@ -6,7 +6,7 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 
 - 定义只承载已确认操作的 Provider Integration contract：校验凭据、识别 provider tenant、检查基础权限与部署级 event transport 兼容性；transport mode 继续由部署配置决定，不由 tenant 管理员选择。
 - 定义独立的 Provider Directory contract：一次读取必须先在内存中构建完整快照，只有完整成功后才允许 Dify reconciliation；目录读取不负责 Contact 匹配、binding 或消息发送。
-- 定义独立的 Provider Messaging contract：测试已绑定 identity 的可达性；在 Delivery Endpoint 创建前评估 normalized interactive-card intent 是否可由目标 Provider 表示；五个初始 Provider 都通过独立的 link-message operation 发送 Request URL，Slack、Feishu/Lark 与 Microsoft Teams 额外通过独立的 card operation 发送交互卡片并按 capability 更新；所有发送返回精确 message/card reference，失败或 ambiguous outcome 本期不自动重试。
+- 将 Provider Messaging 分为两组窄 contract：五个初始 Provider 都必须实现基础 Messaging，包括测试已绑定 identity 的可达性和发送 Request URL link message；Slack、Feishu/Lark 与 Microsoft Teams 额外实现可选的 Dynamic Card Messaging，包括无副作用的 card representability assessment、发送交互卡片和按精确 message reference 更新原卡片。基础消息是所有 Provider 的 fallback，不支持动态卡片的 Provider 不需要 dummy card methods；发送失败或 ambiguous outcome 本期不自动重试。
 - 定义两层入站事件边界：transport-specific 接入在认证、验签或连接鉴权后产出 `AuthenticatedEvent`；provider-specific 卡片协议解码再产出 `CardSubmissionRequest`。
 - 使用简单的 Dify-owned Inbox Repository 将 `AuthenticatedEvent` 直接写入 application database 的一张专用 inbox 表；transaction commit 后尽快完成 Provider ACK，再由 worker 从该表 claim 并处理记录。只在 Provider 提供 event ID 时去重；没有 event ID 时不合成去重键。
 - 固化 Provider transport 支持矩阵：Feishu/Lark、DingTalk 与 Slack 支持 `WEBHOOK` 和 `STREAM`，WeCom 与 Microsoft Teams 仅支持 `WEBHOOK`。连接配额与滚动部署策略不进入本 change。
@@ -19,7 +19,7 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 
 - `im-provider-integration`: Provider credentials、tenant identity、permission 与部署级 event transport compatibility 的最小校验和本地删除语义。
 - `im-provider-directory`: 从 Provider 读取完整 directory snapshot 的独立操作及完整性失败规则。
-- `im-provider-messaging`: identity reachability、card representability assessment、彼此独立的链接消息与交互卡片发送、provider message reference、卡片更新及 no-automatic-retry 语义。
+- `im-provider-messaging`: 所有 Provider 必备的 identity reachability 与 Request URL link-message contract，以及 card-capable Provider 可选实现的 representability assessment、card send/update contract、provider message reference 和 no-automatic-retry 语义。
 - `im-provider-events`: `WEBHOOK / STREAM` 的 transport-specific 接入、`AuthenticatedEvent`、inbox ACK、event-ID 去重与 `CardSubmissionRequest` 解码边界。
 
 ### Modified Capabilities

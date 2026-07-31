@@ -30,7 +30,7 @@ Deployment event transport mode 由部署配置注入，Integration 管理 API �
 **Goals:**
 
 - 给 Dify application services 提供稳定、业务无关且按真实操作拆分的 Provider contract。
-- 让 Directory、Messaging、Integration diagnostics 与 Event ingestion 可以独立实现、测试和替换。
+- 让 Directory、基础 Messaging、Dynamic Card Messaging、Integration diagnostics 与 Event ingestion 可以独立实现、测试和替换。
 - 明确 Provider-specific 数据停留在哪一层，以及何时可以转为 Provider-neutral facts。
 - 保持 Human Input 的 Contact、binding、grant、authorization 和 workflow 语义在现有 Dify boundary 内。
 - 为每个共享 contract 提供至少两个 Provider 的共同语义证据。
@@ -45,20 +45,22 @@ Deployment event transport mode 由部署配置注入，Integration 管理 API �
 
 ## Decisions
 
-### 1. Use four narrow Provider contracts instead of one umbrella interface
+### 1. Use narrow Provider contracts instead of one umbrella interface
 
-Dify 只定义四个独立 contract；concrete Provider composition 可以共享同一 credentials object、SDK client 或 token cache，但不得因此合并这些 contract。
+Dify 按已确认的操作定义独立 contract；concrete Provider composition 可以共享同一 credentials object、SDK client 或 token cache，但不得因此合并这些 contract。Messaging 按必备能力和可选动态卡片能力分组，而不是为每个 method 单独建立 capability。
 
 | Contract | 承载的具体操作 | 至少两个 Provider 的共同语义 |
 | --- | --- | --- |
 | Integration diagnostics | 校验 credentials；识别 provider tenant；检查基础权限；检查 effective deployment transport compatibility | Slack、Feishu/Lark、DingTalk 都需要凭据、tenant 与接入方式校验 |
 | Directory reader | 读取当前 provider tenant 的完整用户身份快照 | Slack 分页读取 workspace users；Feishu/Lark 分页/按部门读取 tenant users；DingTalk、WeCom 与 Microsoft Teams 读取各自组织内的 tenant users；五个 Provider 都在完成各自分页或组织层级遍历后产出完整快照 |
-| Messaging | 测试一个 delivery target；评估 normalized interactive-card intent 是否可表示；分别发送链接消息与交互卡片；返回精确 message reference；按 capability 更新原消息 | 五个 Provider 都共享 Request URL 链接消息；Slack、Feishu/Lark、Teams 共享无副作用的 card representability assessment、交互卡片发送及按原消息 reference 更新 |
+| Basic Messaging | 测试一个 Provider message destination；向该 destination 发送 Request URL link message；返回 Provider acceptance 与精确 message reference | Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 都必须支持，且 link message 是动态卡片不可用时的基础 fallback |
+| Dynamic Card Messaging | 无副作用地评估 normalized interactive-card intent；发送交互卡片；返回精确 card/message reference；更新同一张已发送卡片 | Slack、Feishu/Lark 与 Microsoft Teams 都共享 assessment、card send 和基于原消息 reference 的 card update 生命周期 |
 | Event adapter | 认证一次 Provider delivery 并产出 `AuthenticatedEvent`；把卡片事件解码为 `CardSubmissionRequest` | Slack、Feishu/Lark 与 DingTalk 都同时支持 Webhook/stream 事件并在认证后产出相同 `AuthenticatedEvent` 语义；Slack、Feishu/Lark、Teams 都产生卡片 action submission |
 
 Alternatives considered:
 
-- One `IMProvider` interface containing every method. Rejected because it would make directory, transport and messaging lifecycle appear semantically coupled and force unsupported methods onto providers.
+- One `IMProvider` interface containing every method. Rejected because it would make directory, transport and messaging lifecycle appear semantically coupled and force unsupported dynamic-card methods onto DingTalk and WeCom.
+- One capability per Messaging method. Rejected because destination reachability and link fallback are jointly required for every Provider, while card assessment, send and update form one optional lifecycle shared by the three card-capable Providers.
 - One generic `execute(operation, payload)` entry point. Rejected because it discards type safety and hides the exact operations this change is meant to stabilize.
 
 ### 2. Keep provider inputs business-independent
@@ -67,7 +69,7 @@ Provider contracts MUST NOT accept Contact, IM binding, ApproverGrant, Human Inp
 
 - Integration diagnostics receives provider-specific candidate credentials and the deployment-owned effective transport mode.
 - Directory reader receives current provider tenant/credentials and returns provider identities; it never receives Contacts.
-- Messaging card assessment receives only a normalized interactive-card intent. Messaging send operations receive a provider delivery target plus either link-message content or an interactive-card intent. An interaction context may be embedded as opaque application data, but the Provider adapter MUST NOT interpret task authorization semantics.
+- Basic Messaging receives Provider-specific message destination facts for reachability testing or link-message sending. Dynamic Card Messaging assessment receives only a normalized interactive-card intent; card send receives a Provider message destination plus the card intent, while card update receives the stored Provider message reference. An interaction context may be embedded as opaque application data, but the Provider adapter MUST NOT interpret task authorization semantics.
 - Event decoding returns provider identity, action, submitted values, message reference and opaque interaction context; the Human Input adapter maps that context to task/delivery/recipient facts afterwards.
 
 This boundary permits the same Provider implementation to serve future Dify callers without introducing a generic plugin framework.
@@ -87,16 +89,24 @@ Alternatives considered:
 - Stream pages directly into reconciliation. Rejected because a late page failure could make an incomplete directory appear authoritative and incorrectly remove bindings.
 - Return `entries + is_complete=false`. Rejected because it permits callers to accidentally consume partial entries. Success itself proves completeness.
 
-### 4. Messaging never performs a live directory read
+### 4. Messaging has one required base and one optional dynamic-card capability
 
-Target-specific Messaging tests and send operations consume a delivery target already resolved from current Dify IM identity and binding state. Card representability assessment does not consume a target. None of these operations calls the Directory reader.
+`Provider message destination` 只表示向 selected bound identity 发起一条新 Provider message 所需的 Provider-specific 寻址事实。它不是 Dify Contact、Human Input business recipient、IM binding、Delivery Endpoint、Webhook endpoint 或 prior message reference，也不保证等同于 provider user ID。各 Provider destination 的字段形状与获取过程保持 Provider-specific；在调用 send operation 时，调用方必须提供该 Provider 尝试新消息所需的事实，但本设计不预设它们已经能从 binding 同步解析完成。Card representability assessment 不接收 message destination，card update 则接收 prior message reference。以上操作都不调用 Directory reader。
 
-Card representability assessment、link-message send 与 interactive-card send 是三个独立操作，因为它们的输入、时机和副作用不同：
+操作不同不意味着每个操作都需要独立 capability。Messaging 按支持义务和共同生命周期分成两组：
 
-- Card representability assessment 在 Delivery Endpoint 创建前接收 normalized interactive-card intent，不接收 delivery target 或 Delivery Endpoint，也不发送消息、读取 Directory 或创建 Delivery。它只返回是否可表示以及可选的人类可读 reason；Dify 只根据 boolean 选择 endpoint，reason 仅用于日志，不是稳定错误码，也不得参与业务判断。
-- `send_link_message` is required for Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams. It receives a resolved delivery target, rendered notification text and Request URL, and returns Provider acceptance plus an exact message reference when available.
-- `send_card` receives a resolved delivery target, normalized interactive-card intent, actions and opaque interaction context, and returns Provider acceptance plus an exact card/message reference.
+- Basic Messaging 是 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 的必备 contract，承载 destination-specific reachability test 与 `send_link_message`。没有这两个操作，Provider 不能完成基础接入和 Request URL fallback。
+- Dynamic Card Messaging 是 Slack、Feishu/Lark 与 Microsoft Teams 额外实现的可选 contract，承载 card representability assessment、`send_card` 与 card update。DingTalk、WeCom 不实现该 contract，也不提供返回 unsupported 的 dummy methods。
+
+各操作的具体输入与副作用仍保持清晰：
+
+- Card representability assessment 在 Delivery Endpoint 创建前接收 normalized interactive-card intent，不接收 Provider message destination 或 Delivery Endpoint，也不发送消息、读取 Directory 或创建 Delivery。它只返回是否可表示以及可选的人类可读 reason；Dify 只根据 boolean 选择 endpoint，reason 仅用于日志，不是稳定错误码，也不得参与业务判断。
+- `send_link_message` receives a Provider message destination separately from rendered notification text and Request URL, and returns Provider acceptance plus an exact message reference when available. 它属于所有 Provider 的基础能力，不只是 DingTalk、WeCom 的首选通知形式。
+- `send_card` receives a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context, and returns Provider acceptance plus an exact card/message reference.
+- Card update receives the exact reference returned by the corresponding `send_card` attempt and replaces that same Provider message/card; stale reference、authorship 或 permission failure 作为 typed update failure 返回。
 - Provider-specific representability and rendering rules stay inside the concrete adapter; the shared contract does not define a universal Provider card JSON or control matrix.
+
+`send_card` 与 card update 不拆成两个 capability。三个初始 card-capable Provider 都支持基于发送结果更新原卡片：Slack 使用 `channel + ts` 调用 `chat.update`，Feishu/Lark 使用 `message_id` 更新已发送的消息卡片，Microsoft Teams 使用 `activity_id + conversation context` 更新 Adaptive Card activity。这一共同生命周期足以让两项操作属于同一个可选 Dynamic Card Messaging contract；它不保证每次 update 都成功，因此精确 reference 与独立 update outcome 仍然保留。
 
 Slack、Feishu/Lark 与 Microsoft Teams 支持交互卡片并不意味着所有 Human Input Form Content 都必须渲染成卡片。Human Input notification application service 先从 Form Content 生成 normalized interactive-card intent，再调用目标 Provider 的 card representability assessment：结果为 true 时创建 card Delivery Endpoint，结果为 false 时创建 Request URL link Delivery Endpoint。发送阶段根据已创建 endpoint 直接调用对应的 `send_card` 或 `send_link_message`，不再次选择渠道。
 
@@ -104,7 +114,11 @@ Slack、Feishu/Lark 与 Microsoft Teams 支持交互卡片并不意味着所有 
 
 A Provider message reference is a discriminated Provider-owned locator, not one assumed global `card_id`. Dify persists it without reinterpreting Slack channel/timestamp, Feishu message ID or Teams conversation/activity identity as interchangeable scalars.
 
-Microsoft Teams may require a conversation reference or app installation state in addition to a directory user ID. The acquisition and persistence of that target is not established by current materials and remains an open question; the common Messaging contract MUST NOT assume that every provider user ID is directly sendable.
+Human Input 在 Dify application layer 额外施加 recipient isolation，但该规则不是 Provider contract 的通用语义。一个 Provider user identity 可以同时绑定多个 Dify Contacts，因此 Provider 的 user-specific view 仍不足以区分提交者对应的 Contact。Dify MUST 为每个 Contact 创建或寻址一个独立可更新的 card instance，并在 opaque interaction context 中绑定且只绑定该 Contact 的 handle；即使多个 Contacts 映射到同一个 Provider user identity 和同一个 Provider message destination，也不得通过一个 Provider card publication 共享 interaction context。回调中的 Provider user identity 与 Contact handle 仍需通过当前 binding 重新校验，handle 本身不构成授权。
+
+当一个 Human Input task 被处理后，选择哪些 Contact/card instances 需要更新以及如何 fan out 属于 Dify application service。Application service 从各 Delivery 读取精确 Provider message reference，逐个调用单实例 card update，并按 Delivery 记录结果；Provider contract 不接收 task、Contact collection 或 batch-level business context，也不提供为了该业务 fan-out 而设计的 shared batch abstraction。受控并发由 Dify worker 编排，Provider adapter 继续在单实例调用内隐藏 credentials、SDK client、rendering 与 Provider-specific error translation。
+
+Microsoft Teams may require a conversation reference or app installation state in addition to a directory user ID. The acquisition and persistence of that Provider message destination is not established by current materials and remains an open question; the common Messaging contract MUST NOT assume that every provider user ID is directly sendable.
 
 ### 5. One outbound attempt makes at most one side-effecting send call
 
@@ -112,7 +126,7 @@ For binding test, `send_link_message` and `send_card`, one Dify delivery attempt
 
 The attempt records the returned safe Provider diagnostic and whether the result is known or ambiguous. A user-triggered Resend creates a new delivery attempt using then-current credentials and binding; it is not an automatic retry of the original attempt.
 
-This decision does not add or change a card-status-update retry policy. Card update remains a capability-gated follow-up operation owned by its existing task-handling contract.
+This decision does not add or change a card-status-update retry policy. Card update remains a follow-up operation of the optional Dynamic Card Messaging contract and is owned by its existing task-handling flow.
 
 Alternatives considered:
 
@@ -186,7 +200,19 @@ The effective mode is supplied by deployment configuration. Integration upsert/t
 
 The implementation uses the explicit matrix in Context rather than a runtime extension registry. Adding or changing a Provider/mode combination requires a future spec change with Provider evidence.
 
-Connection quotas, replica coordination and rolling deployment are intentionally not modeled. A STREAM implementation only needs the minimum lifecycle required to start and stop the configured connection in the current deployment.
+STREAM connections are replica-local, while accepted events converge through the shared inbox. The initial Providers expose the following multi-connection semantics:
+
+| Provider | Confirmed multi-connection semantics | ACK and redelivery-relevant facts | Dify consequence |
+| --- | --- | --- | --- |
+| Slack Socket Mode | One app may maintain up to 10 active WebSocket connections; Slack may deliver each payload through any active connection and explicitly supports multiple connections for load distribution and graceful restart | The receiving connection ACKs the delivery by `envelope_id`; connection refresh and disconnect are normal lifecycle events | Multiple Dify replicas are a supported topology; Dify MUST NOT assume connection affinity or distribution order |
+| Feishu/Lark long connection | Provider documentation defines cluster mode rather than broadcast: when the same app has multiple clients, one client is selected for a delivery; one app may maintain up to 50 connections | The selected SDK handler must complete successfully within the Provider deadline; handler failure or timeout triggers Provider retry | Multiple Dify replicas are a supported topology; every replica for the same Integration MUST register the same handlers |
+| DingTalk Stream | Each ticket establishes one connection, while the official SDK exposes a configurable multi-session connection pool for one app | The receiving connection echoes `messageId` in its protocol response; event ACK data distinguishes `SUCCESS` from `LATER`; `ping` and `disconnect` remain connection-local | Multiple Dify replicas are not prohibited, but cross-connection distribution, ordering, fairness and connection quota are not sufficiently documented and MUST NOT be assumed |
+
+For the same active Integration, every STREAM replica registers the same subscriptions and supported handlers. The replica that receives a business delivery authenticates it, commits `AuthenticatedEvent` through the shared Inbox Repository, and only then sends the Provider-specific ACK through that same connection. ACK ownership is never transferred to an inbox worker or another replica. A later worker may claim the committed record from any replica.
+
+Provider transport identifiers used only to ACK one delivery, including Slack `envelope_id` and DingTalk `messageId`, MUST NOT be promoted to `provider event ID` unless Provider evidence confirms that the identifier names the business event and remains stable across redelivery. Duplicate deliveries that reach different replicas therefore follow the same inbox rules as single-replica delivery: deduplicate only a real Provider event ID, otherwise retain independent inbox records and rely on downstream first-success semantics.
+
+Dify does not elect a singleton STREAM owner, constrain replica count, coordinate rolling deployment or implement a cross-replica connection pool. Integration deletion marks the shared Integration state inactive to prevent new business-processable inbox records; each replica remains responsible for closing its own local connection. Provider connection quotas and temporary overlap during deployment remain operational constraints rather than behavior normalized by a Provider contract.
 
 ### 10. Integration deletion is local-only
 
@@ -204,13 +230,13 @@ An inbox event committed before deletion but processed afterwards will encounter
 - [No automatic send retry] → Transient failures reduce delivery success; preserve the ambiguous outcome and allow explicit Resend as a new attempt.
 - [Full in-memory directory snapshot can consume significant memory] → Keep this accepted for the current manual-sync scope; introduce external staging only through a future measured change.
 - [Webhook ACK after database commit depends on inbox latency] → Keep the single-table Inbox Repository transaction limited to insert-or-resolve-duplicate and move claim, decoding and all business work to the worker.
-- [STREAM lifecycle is under-specified for multi-replica deployment] → Limit the first implementation to current deployment composition; connection quota and rolling deployment remain explicit non-goals.
+- [Provider-managed distribution across replica-local STREAM connections] → Do not elect a singleton owner or constrain replica count. Require identical subscriptions/handlers, shared-inbox commit before receiver-local ACK, and no assumptions about affinity, ordering or fairness. DingTalk cross-connection distribution remains explicitly undocumented; connection quota and rolling-deployment coordination remain non-goals.
 - [Provider-neutral card intent may expose unsupported controls] → Human Input application service uses the Provider's side-effect-free representability result before creating the Delivery Endpoint; a false result selects Request URL, while an unexpected renderer mismatch raises before any Provider send call and never silently changes operations.
 - [Local-only deletion leaves remote configuration active] → Mark the Integration deleted locally, drop new business ingestion, and document that remote cleanup is an administrator responsibility for this phase.
 
 ## Migration Plan
 
-1. Add the four Provider contracts and shared semantic values without switching existing runtime call sites.
+1. Add the narrow Provider contracts and shared semantic values, including required Basic Messaging and optional Dynamic Card Messaging, without switching existing runtime call sites.
 2. Implement explicit adapters for the Provider/operation combinations required by the transport and notification matrices; keep unsupported combinations rejected.
 3. Move manual sync to complete-snapshot reads before reconciliation.
 4. Route Delivery Endpoint selection through card representability assessment, then route outbound binding tests and notifications through the endpoint-selected Messaging operation with one-call-per-attempt behavior.
@@ -223,6 +249,6 @@ An inbox event committed before deletion but processed afterwards will encounter
 
 - What exact deployment configuration maps SaaS, CE and EE instances to `WEBHOOK` or `STREAM`? This change only requires that the result is deployment-owned and read-only to Integration management.
 - DingTalk、WeCom 与 Microsoft Teams 的具体权威目录 endpoint、分页/组织遍历方式和 configured visibility scope 需要在各 adapter 实现时确认并记录；这不是 Directory sync 是否支持的未决问题，五个初始 Provider 都必须实现完整快照读取。
-- How is a Microsoft Teams proactive delivery target acquired, installed and refreshed when a directory user ID alone is insufficient?
+- How is a Microsoft Teams Provider message destination acquired, installed, persisted and refreshed when a directory user ID alone is insufficient for proactive delivery?
 - What is the exact normalized interactive-card intent consumed by Slack, Feishu/Lark and Teams renderers? The common operation is confirmed, but a field-complete cross-provider card document requires a separate review of existing Form Content controls.
 - What terminal Webhook/stream ACK should be returned for an event received after local Integration deletion? The only confirmed business rule is that it must not enter new business processing.

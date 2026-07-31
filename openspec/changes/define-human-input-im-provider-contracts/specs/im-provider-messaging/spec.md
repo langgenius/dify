@@ -1,21 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: Provider Messaging MUST consume a resolved delivery target without reading the directory
-Messaging operations MUST accept Provider integration context and a provider-resolved delivery target. They MUST NOT invoke the Directory reader or perform Contact, binding, recipient or authorization resolution.
+### Requirement: New-message operations MUST receive an explicit Provider message destination
+A Provider message destination MUST mean only the Provider-specific addressing facts required to attempt a new message to the selected bound identity. It MUST NOT be interpreted as a Dify Contact, Human Input business recipient, IM binding, Delivery Endpoint, Webhook endpoint or prior message reference, and the shared contract MUST NOT assume it is identical to provider user ID. Basic Messaging reachability/link operations and Dynamic Card Messaging `send_card` MUST receive Provider integration context and the applicable Provider message destination. Card representability assessment MUST remain destination-free, while card update MUST receive the exact stored prior message reference instead. None of these operations may invoke the Directory reader or perform Contact, binding, recipient or authorization resolution.
 
 #### Scenario: Bound identity receives a notification
-- **WHEN** Dify has resolved a current Provider delivery target from an effective IM binding
-- **THEN** Messaging MUST use that target directly and MUST NOT refresh or search the Provider directory before sending
+- **WHEN** Dify supplies the Provider-specific destination facts required to attempt a new message to the selected bound identity
+- **THEN** Messaging MUST use that destination without refreshing or searching the Provider directory and MUST NOT treat it as business recipient state
 
-### Requirement: Integration diagnostics and identity reachability tests MUST remain separate
-An identity reachability test MUST test one concrete Provider delivery target. It MUST NOT be implemented as an alias of Integration credential, tenant, permission or event transport diagnostics.
+### Requirement: Basic Messaging MUST be implemented by every initial Provider
+Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing destination-specific reachability testing and `send_link_message`. An identity reachability test MUST test one concrete Provider message destination and MUST NOT be implemented as an alias of Integration credential, tenant, permission or event transport diagnostics. `send_link_message` MUST remain available as the Request URL fallback even when the Provider also implements Dynamic Card Messaging.
 
-#### Scenario: Credentials are valid but one target is unreachable
+#### Scenario: Credentials are valid but one message destination is unreachable
 - **WHEN** Integration diagnostics succeed but the selected Provider identity cannot receive a message
-- **THEN** the reachability test MUST return a target-specific failure without changing Integration health facts
+- **THEN** the reachability test MUST return a destination-specific failure without changing Integration health facts
 
-### Requirement: Provider Messaging MUST assess card representability before Delivery Endpoint creation
-Slack, Feishu/Lark and Microsoft Teams Provider Messaging MUST expose a side-effect-free operation that assesses whether one normalized interactive-card intent can be represented without changing its form semantics. The result MUST contain a boolean representability decision and an optional human-readable reason. Dify MUST branch only on the boolean; the reason MUST be used only for logging and MUST NOT be parsed as a stable error code or business decision input. The assessment MUST NOT accept a Delivery Endpoint or delivery target, send a Provider message, read the Directory or create a Delivery.
+#### Scenario: Card-capable Provider uses the link fallback
+- **WHEN** Slack, Feishu/Lark or Microsoft Teams receives a Request URL Delivery Endpoint
+- **THEN** its Basic Messaging implementation MUST invoke `send_link_message` without requiring Dynamic Card Messaging
+
+### Requirement: Dynamic Card Messaging MUST group assessment, send and update
+Slack, Feishu/Lark and Microsoft Teams MUST additionally implement Dynamic Card Messaging containing side-effect-free card representability assessment, `send_card` and card update. DingTalk and WeCom MUST NOT be required to implement dummy dynamic-card methods. The assessment MUST determine whether one normalized interactive-card intent can be represented without changing its form semantics. Its result MUST contain a boolean representability decision and an optional human-readable reason. Dify MUST branch only on the boolean; the reason MUST be used only for logging and MUST NOT be parsed as a stable error code or business decision input. The assessment MUST NOT accept a Delivery Endpoint or Provider message destination, send a Provider message, read the Directory or create a Delivery.
 
 #### Scenario: Provider can represent the normalized card intent
 - **WHEN** Dify assesses a normalized interactive-card intent whose controls and semantics the target Provider can represent
@@ -25,8 +29,8 @@ Slack, Feishu/Lark and Microsoft Teams Provider Messaging MUST expose a side-eff
 - **WHEN** Dify assesses a normalized interactive-card intent containing a control such as file upload that the target Provider cannot represent
 - **THEN** Messaging MUST return false with a human-readable reason without sending a message, and Dify MUST create a Request URL link Delivery Endpoint based only on the false result
 
-### Requirement: Link-message and interactive-card sends MUST be distinct operations
-Provider Messaging MUST expose distinct `send_link_message` and `send_card` operations rather than one send operation that selects a channel. Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST support `send_link_message`. Slack, Feishu/Lark and Microsoft Teams MUST additionally support `send_card`. Link-message input MUST contain a resolved delivery target, rendered notification content and Request URL. Interactive-card input MUST contain a resolved delivery target, normalized interactive-card intent, actions and opaque interaction context. Neither operation may accept Human Input task, grant or ORM objects.
+### Requirement: Basic and Dynamic Card Messaging MUST expose distinct send operations
+Basic Messaging MUST expose `send_link_message`; Dynamic Card Messaging MUST expose `send_card`. They MUST remain distinct operations rather than one send operation that selects a channel. `send_link_message` MUST receive a Provider message destination separately from link-message content; that content MUST contain rendered notification content and Request URL. `send_card` MUST receive a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context. The message content models MUST NOT contain the destination, and neither operation may accept Human Input task, grant or ORM objects.
 
 #### Scenario: DingTalk or WeCom notification is sent
 - **WHEN** Human Input targets DingTalk or WeCom in the initial scope
@@ -64,14 +68,18 @@ Binding test, `send_link_message` and `send_card` MUST NOT automatically replay 
 
 #### Scenario: User requests Resend
 - **WHEN** an authorized user explicitly requests Resend after a failed or ambiguous attempt
-- **THEN** Dify MUST create a new delivery attempt using current credentials and target state rather than replaying the original attempt implicitly
+- **THEN** Dify MUST create a new delivery attempt using current credentials and the current Provider message destination rather than replaying the original attempt implicitly
 
-### Requirement: Card update MUST target the exact prior Provider message reference
-When a Provider supports card/message update, Messaging MUST update only the instance identified by the stored Provider message reference and MUST return a follow-up success or failure independent from the original task submission outcome.
+### Requirement: Dynamic Card Messaging MUST update the exact prior Provider message reference
+Slack, Feishu/Lark and Microsoft Teams Dynamic Card Messaging MUST update only the instance identified by the Provider message reference returned by the corresponding `send_card` attempt. The shared contract MUST preserve Slack `channel + ts`, Feishu/Lark `message_id`, and Microsoft Teams `activity_id + conversation context` as Provider-discriminated locators. Update MUST return its own success or typed failure without changing the recorded outcome of the earlier send. Card send and update MUST remain operations of the same optional Dynamic Card Messaging capability rather than separate capabilities.
 
-#### Scenario: One task produced multiple cards
-- **WHEN** a task has multiple IM delivery attempts and one card is handled
-- **THEN** the update operation MUST receive and target only the reference from the corresponding delivery attempt
+#### Scenario: One exact prior card reference is updated
+- **WHEN** the update operation receives a Provider message reference returned by an earlier `send_card` attempt
+- **THEN** it MUST target that reference without inferring or selecting any additional message references
+
+#### Scenario: Each card-capable Provider updates its own message locator
+- **WHEN** Slack, Feishu/Lark or Microsoft Teams updates a card previously sent by the same Provider adapter
+- **THEN** Dynamic Card Messaging MUST use that Provider's exact stored locator and MUST NOT coerce it into one global card ID
 
 #### Scenario: Provider message reference is stale
 - **WHEN** the Provider no longer accepts the stored reference
