@@ -80,11 +80,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
             if sample.terminal_status == "succeeded"
         )
     )
-    saturated = (
-        not enough_concurrency
-        or block.outcomes.timeout_runs > 0
-        or block.outcomes.throttle_runs > 0
-    )
+    saturated = not enough_concurrency or block.outcomes.timeout_runs > 0 or block.outcomes.throttle_runs > 0
     if correctness_invalid or (block.requested_concurrency == 1 and saturated):
         status = "invalid"
     elif saturated:
