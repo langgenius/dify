@@ -4,10 +4,19 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 import pytest
 from pytest_mock import MockerFixture
 
-from core.entities.provider_entities import ModelSettings
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    CustomProviderConfiguration,
+    ModelSettings,
+    ProviderQuotaType,
+)
+from core.hosting_configuration import HostingProvider, TrialHostingQuota
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -28,6 +37,39 @@ def _build_session_context(session: Mock) -> MagicMock:
     session_cm.__enter__.return_value = session
     session_cm.__exit__.return_value = False
     return session_cm
+
+
+def _build_plugin_provider_declaration(
+    installation_source: PluginInstallationSource | None,
+) -> PluginModelProviderDeclaration:
+    return PluginModelProviderDeclaration(
+        provider="langgenius/openai/openai",
+        plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        installation_source=installation_source,
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    )
+
+
+def _build_hosting_provider() -> HostingProvider:
+    return HostingProvider(
+        enabled=True,
+        credentials={"api_key": "system-secret"},
+        quotas=[TrialHostingQuota(quota_limit=100)],
+    )
+
+
+def _build_trial_provider_record() -> Provider:
+    return Provider(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        provider_type=ProviderType.SYSTEM,
+        quota_type=ProviderQuotaType.TRIAL,
+        quota_limit=100,
+        quota_used=0,
+        is_valid=True,
+    )
 
 
 class _FakeRedis:
@@ -145,6 +187,145 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
     assert len(result[0].load_balancing_configs) == 2
     assert result[0].load_balancing_configs[0].name == "__inherit__"
     assert result[0].load_balancing_configs[1].name == "first"
+
+
+def test_to_system_configuration_rejects_unverified_plugin(mocker: MockerFixture) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager(mocker)
+
+    with (
+        patch.object(manager, "_choice_current_using_quota_type") as choose_quota,
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch(
+            "core.plugin.plugin_service.PluginService.is_plugin_verified",
+            return_value=False,
+        ) as is_plugin_verified,
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+
+    assert configuration.enabled is False
+    assert configuration.credentials is None
+    is_plugin_verified.assert_called_once_with("tenant-id", provider_entity.plugin_unique_identifier)
+    choose_quota.assert_not_called()
+
+
+def test_to_system_configuration_rejects_package_for_official_provider(mocker: MockerFixture) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
+    manager = _build_provider_manager(mocker)
+
+    with (
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified") as is_plugin_verified,
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+
+    assert configuration.enabled is False
+    is_plugin_verified.assert_not_called()
+
+
+def test_to_system_configuration_never_returns_hosting_credentials_for_package_with_valid_quota(
+    mocker: MockerFixture,
+) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
+    manager = _build_provider_manager(mocker)
+
+    with patch(
+        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+        {provider_entity.provider: _build_hosting_provider()},
+    ):
+        configuration = manager._to_system_configuration(
+            "tenant-id",
+            provider_entity,
+            [_build_trial_provider_record()],
+        )
+
+    assert configuration.enabled is False
+    assert configuration.credentials is None
+
+
+def test_to_system_configuration_rejects_missing_installation_source(mocker: MockerFixture) -> None:
+    provider_entity = _build_plugin_provider_declaration(None)
+    manager = _build_provider_manager(mocker)
+
+    with (
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified") as is_plugin_verified,
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+
+    assert configuration.enabled is False
+    is_plugin_verified.assert_not_called()
+
+
+def test_to_system_configuration_preserves_marketplace_behavior(mocker: MockerFixture) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager(mocker)
+
+    with (
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch(
+            "core.plugin.plugin_service.PluginService.is_plugin_verified",
+            return_value=True,
+        ) as is_plugin_verified,
+    ):
+        configuration = manager._to_system_configuration(
+            "tenant-id",
+            provider_entity,
+            [_build_trial_provider_record()],
+        )
+
+    assert configuration.enabled is True
+    assert configuration.credentials == {"api_key": "system-secret"}
+    assert configuration.current_quota_type == ProviderQuotaType.TRIAL
+    is_plugin_verified.assert_called_once_with("tenant-id", provider_entity.plugin_unique_identifier)
+
+
+def test_package_provider_keeps_custom_configuration(mocker: MockerFixture) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
+    manager = _build_provider_manager(mocker)
+    manager._model_runtime.fetch_model_providers.return_value = [provider_entity]
+    custom_configuration = CustomConfiguration(
+        provider=CustomProviderConfiguration(credentials={"api_key": "user-secret"})
+    )
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={provider_entity.provider: []}),
+        patch.object(
+            manager,
+            "_init_trial_provider_records",
+            return_value={provider_entity.provider: []},
+        ),
+        patch.object(manager, "_get_all_provider_models", return_value={}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+    ):
+        configuration = manager.get_configurations("tenant-id").get(provider_entity.provider)
+
+    assert configuration is not None
+    assert configuration.system_configuration.enabled is False
+    assert configuration.custom_configuration.provider is not None
+    assert configuration.custom_configuration.provider.credentials == {"api_key": "user-secret"}
 
 
 def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_entity):
@@ -341,6 +522,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
 
 def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mocker: MockerFixture):
     manager = _build_provider_manager(mocker)
+    manager._model_runtime.fetch_model_providers.return_value = []
     provider_records = {"openai": [SimpleNamespace(provider_name="openai")]}
     provider_model_records = {"openai": [SimpleNamespace(provider_name="openai")]}
     preferred_provider_records = {"openai": SimpleNamespace(preferred_provider_type="system")}
@@ -354,14 +536,11 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mock
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
         patch.object(manager, "_get_all_provider_credentials", return_value={}),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
     ):
-        mock_factory_cls.return_value.get_providers.return_value = []
-
         result = manager.get_configurations("tenant-id")
 
     expected_alias = str(ModelProviderID("openai"))
-    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
+    manager._model_runtime.fetch_model_providers.assert_called_once_with()
     assert result.tenant_id == "tenant-id"
     assert expected_alias in provider_records
     assert expected_alias in provider_model_records
@@ -392,9 +571,8 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
     mocker: MockerFixture, mock_provider_entity
 ):
     manager = _build_provider_manager(mocker)
+    manager._model_runtime.fetch_model_providers.return_value = [mock_provider_entity]
     provider_configuration = Mock()
-    provider_factory = Mock()
-    provider_factory.get_providers.return_value = [mock_provider_entity]
     custom_configuration = SimpleNamespace(provider=None, models=[])
     system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
 
@@ -410,7 +588,6 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
         patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
-        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
         patch("core.provider_manager.ProviderConfiguration", return_value=provider_configuration),
     ):
         manager.get_configurations("tenant-id")
@@ -420,9 +597,8 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
 
 def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerFixture, mock_provider_entity):
     manager = _build_provider_manager(mocker)
+    manager._model_runtime.fetch_model_providers.return_value = [mock_provider_entity]
     provider_configuration = Mock()
-    provider_factory = Mock()
-    provider_factory.get_providers.return_value = [mock_provider_entity]
     custom_configuration = SimpleNamespace(provider=None, models=[])
     system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
 
@@ -438,7 +614,6 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerF
         patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
-        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory) as mock_factory_cls,
         patch(
             "core.provider_manager.ProviderConfiguration",
             return_value=provider_configuration,
@@ -449,15 +624,14 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerF
 
     assert first is second
     mock_get_all_providers.assert_called_once_with("tenant-id")
-    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
+    manager._model_runtime.fetch_model_providers.assert_called_once_with()
     mock_provider_configuration.assert_called_once()
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
 def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixture, mock_provider_entity):
     manager = _build_provider_manager(mocker)
-    provider_factory = Mock()
-    provider_factory.get_providers.return_value = [mock_provider_entity]
+    manager._model_runtime.fetch_model_providers.return_value = [mock_provider_entity]
     custom_configuration = SimpleNamespace(provider=None, models=[])
     system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
     provider_configuration_first = Mock()
@@ -475,7 +649,6 @@ def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixt
         patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
-        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
         patch(
             "core.provider_manager.ProviderConfiguration",
             side_effect=[provider_configuration_first, provider_configuration_second],
