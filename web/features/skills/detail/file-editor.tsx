@@ -1098,17 +1098,21 @@ export function FileEditor({
                       </div>
                     )}
                     {!readonly && !metadataAdding && (
-                      <button
-                        type="button"
-                        className="flex h-7 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-divider-regular bg-components-button-secondary-bg px-2 system-xs-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                        onClick={() => {
-                          setMetadataAdding(true)
-                          window.requestAnimationFrame(() => metadataKeyInputRef.current?.focus())
-                        }}
-                      >
-                        <span aria-hidden className="i-ri-add-line size-4" />
-                        {t(($) => $['skillManagement.detail.addMetadata'])}
-                      </button>
+                      <div className="flex flex-col items-start px-1">
+                        <button
+                          type="button"
+                          className="flex h-6 shrink-0 cursor-pointer items-center justify-center gap-px overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 system-xs-medium text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                          onClick={() => {
+                            setMetadataAdding(true)
+                            window.requestAnimationFrame(() => metadataKeyInputRef.current?.focus())
+                          }}
+                        >
+                          <span aria-hidden className="i-ri-add-line size-3.5" />
+                          <span className="px-[3px]">
+                            {t(($) => $['skillManagement.detail.addMetadata'])}
+                          </span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
