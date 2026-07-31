@@ -115,7 +115,7 @@ function Skeleton({ className, style }: { className?: string; style?: CSSPropert
     <span
       aria-hidden
       className={cn(
-        'block animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none',
+        'block animate-pulse rounded bg-util-colors-gray-gray-200 [animation-duration:1.2s] motion-reduce:animate-none',
         className,
       )}
       style={style}
@@ -333,7 +333,7 @@ function QueryOutcomesChart({
     )
 
   return (
-    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-91 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['newKnowledge.overview.queryOutcomes'])}
@@ -346,7 +346,7 @@ function QueryOutcomesChart({
           </Infotip>
         </h2>
       </div>
-      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="flex h-77 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <div className="space-y-6 pt-2">
             {[
@@ -367,7 +367,7 @@ function QueryOutcomesChart({
             <ReactECharts
               option={chartOptions}
               opts={{ renderer: 'svg' }}
-              style={{ height: 285, width: '100%' }}
+              style={{ height: 276, width: '100%' }}
             />
           </>
         ) : (
@@ -524,15 +524,15 @@ function HealthPanel({
     )
 
   return (
-    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-91 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.needsAttention'])}
         </h2>
       </div>
-      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle px-4 py-3 shadow-none">
+      <Panel className="flex h-77 flex-col overflow-hidden border border-divider-subtle px-4 pt-3 pb-1 shadow-none">
         {loading ? (
-          <div className="space-y-6.75 pt-4">
+          <div>
             {[
               ['attention-1', 100],
               ['attention-2', 100],
@@ -540,7 +540,9 @@ function HealthPanel({
               ['attention-4', 100],
               ['attention-5', 86],
             ].map(([key, width]) => (
-              <Skeleton key={key} className="h-3.5" style={{ width: `${width}%` }} />
+              <div key={key} className="flex h-12 items-center">
+                <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
+              </div>
             ))}
           </div>
         ) : issues.length ? (
@@ -583,7 +585,7 @@ function HealthPanel({
                 </li>
               ))}
             </ul>
-            <div className="flex h-13.25 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
+            <div className="flex h-13 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
               <div className="flex h-8 items-center rounded-lg border border-divider-subtle p-0.5">
                 <button
                   type="button"
@@ -740,7 +742,7 @@ function RecentActivity({
   return (
     <section className="flex min-w-0 flex-col gap-2 pt-6">
       <header className="flex h-6 items-center justify-between">
-        <h2 className="text-[16px] leading-6 font-medium text-text-secondary">
+        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
         <Button disabled={loading} size="small" variant="secondary" onClick={onOpenAll}>
@@ -1121,14 +1123,16 @@ function InventoryPanel({
 
   return (
     <section className="flex min-w-0 flex-col gap-2 pt-6">
-      <h2 className="flex h-6 items-center text-[16px] leading-6 font-medium text-text-secondary">
+      <h2 className="flex h-6 items-center text-[15px] leading-6 font-medium text-text-secondary">
         {t(($) => $['newKnowledge.overview.inventory'])}
       </h2>
-      <Panel className="h-45 overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="h-44.25 overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <>
             <Skeleton className="h-6 w-full" />
-            <Skeleton className="mt-2.5 h-3.5 w-80" />
+            <div className="mt-2.5 h-3.75">
+              <Skeleton className="h-3.5 w-80" />
+            </div>
             <div className="mt-4 grid grid-cols-3 gap-3">
               {[0, 1, 2].map((index) => (
                 <div key={index} className="h-20 rounded-lg bg-background-section p-3">
@@ -1154,11 +1158,11 @@ function InventoryPanel({
                 />
               ))}
             </div>
-            <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+            <ul className="mt-2.5 flex min-h-3.75 flex-wrap gap-x-4 gap-y-1">
               {categories.map((category) => (
                 <li
                   key={category.label}
-                  className="flex items-center gap-1.5 system-xs-regular text-text-tertiary"
+                  className="flex items-center gap-1.5 text-[12px] leading-[15px] font-normal text-text-tertiary"
                 >
                   <span aria-hidden className={cn('size-2 rounded-full', category.color)} />
                   {category.label}
@@ -1550,7 +1554,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="mx-auto w-full max-w-332 px-5 py-6 sm:px-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="title-2xl-semi-bold text-text-primary">
+          <h1 className="title-3xl-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}
           </h1>
           {!empty && !showIndexing && (
@@ -1565,7 +1569,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
               {WINDOWS.map((value) => (
                 <SegmentedControlItem<OverviewWindow>
                   key={value}
-                  className="h-6.5 px-3 system-xs-medium"
+                  className="h-6.5 px-2.5"
                   value={value}
                 >
                   {value === '24h'
@@ -1675,7 +1679,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         <div
           className={cn(
             'grid lg:grid-cols-2',
-            showIndexing ? 'mt-4.5 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-2 gap-3',
+            showIndexing ? 'mt-4.5 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-3 gap-2.5',
           )}
         >
           <HealthPanel
