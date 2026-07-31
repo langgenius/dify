@@ -1,4 +1,5 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent } from 'react'
 import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
@@ -8,13 +9,15 @@ import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from '@/context/app-context-defaults'
+import { initialLangGeniusVersionInfo } from '@/context/app-context-defaults'
 import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { updateCurrentWorkspace } from '@/service/common'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
 
 let currentBrandingOverrides: Partial<GetSystemFeaturesResponse['branding']> = {}
+let currentCustomConfig: PostWorkspacesCurrentResponse['custom_config'] | undefined
 const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
   renderHookWithConsoleQuery(callback, {
     systemFeatures: {
@@ -24,6 +27,7 @@ const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
         ...currentBrandingOverrides,
       },
     },
+    currentWorkspace: { custom_config: currentCustomConfig },
   })
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
@@ -53,13 +57,6 @@ vi.mock('@/service/common', () => ({
 vi.mock('@/context/account-state', async () => {
   const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
   return createAccountStateModuleMock(() => ({
-    ...consoleStateRef.value,
-    refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
-  }))
-})
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
     ...consoleStateRef.value,
     refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
   }))
@@ -118,19 +115,6 @@ const createProviderContext = ({
 }
 
 const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): ConsoleStateFixture => {
-  const { currentWorkspace: currentWorkspaceOverride, ...restOverrides } = overrides
-  const workspaceOverrides: Partial<ConsoleStateFixture['currentWorkspace']> =
-    currentWorkspaceOverride ?? {}
-  const currentWorkspace = {
-    ...initialWorkspaceInfo,
-    ...workspaceOverrides,
-    custom_config: {
-      replace_webapp_logo: 'https://example.com/replace.png',
-      remove_webapp_brand: false,
-      ...workspaceOverrides.custom_config,
-    },
-  }
-
   return {
     userProfile: testUserProfile,
     refreshUserProfile: vi.fn(),
@@ -142,8 +126,15 @@ const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): Conso
     refreshCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo: initialLangGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
-    ...restOverrides,
-    currentWorkspace,
+    ...overrides,
+    currentWorkspace: {
+      id: 'workspace-id',
+      name: 'Workspace',
+      plan: 'professional',
+      credits: 200,
+      role: 'owner',
+      ...overrides.currentWorkspace,
+    },
   }
 }
 
@@ -159,6 +150,10 @@ describe('useWebAppBrand', () => {
 
     setConsoleState(createConsoleState())
     currentBrandingOverrides = {}
+    currentCustomConfig = {
+      replace_webapp_logo: 'https://example.com/replace.png',
+      remove_webapp_brand: false,
+    }
 
     mockUpdateCurrentWorkspace.mockResolvedValue(consoleState.currentWorkspace as ICurrentWorkspace)
     mockConsoleStateReader.mockImplementation(() => consoleState)
@@ -213,17 +208,10 @@ describe('useWebAppBrand', () => {
           planType: Plan.sandbox,
         }),
       )
-      setConsoleState(
-        createConsoleState({
-          currentWorkspace: {
-            ...initialWorkspaceInfo,
-            custom_config: {
-              replace_webapp_logo: 'https://example.com/replace.png',
-              remove_webapp_brand: true,
-            },
-          },
-        }),
-      )
+      currentCustomConfig = {
+        replace_webapp_logo: 'https://example.com/replace.png',
+        remove_webapp_brand: true,
+      }
 
       const { result } = renderHook(() => useWebAppBrand())
 
@@ -241,16 +229,23 @@ describe('useWebAppBrand', () => {
     })
 
     it('should fall back to an empty custom logo when custom config is missing', () => {
-      setConsoleState({
-        ...createConsoleState(),
-        currentWorkspace: {
-          ...initialWorkspaceInfo,
-        },
-      })
+      currentCustomConfig = undefined
 
       const { result } = renderHook(() => useWebAppBrand())
 
       expect(result.current.webappLogo).toBe('')
+    })
+
+    it('should treat a null brand-removal flag as unset', () => {
+      currentCustomConfig = {
+        replace_webapp_logo: 'https://example.com/replace.png',
+        remove_webapp_brand: null,
+      }
+
+      const { result } = renderHook(() => useWebAppBrand())
+
+      expect(result.current.webappBrandRemoved).toBeUndefined()
+      expect(result.current.uploadDisabled).toBe(false)
     })
   })
 
@@ -348,17 +343,12 @@ describe('useWebAppBrand', () => {
     })
 
     it('should persist the selected logo and reset transient state on apply', async () => {
-      const mutateCurrentWorkspace = vi.fn()
-      setConsoleState(
-        createConsoleState({
-          refreshCurrentWorkspace: mutateCurrentWorkspace,
-        }),
-      )
       mockImageUpload.mockImplementation(({ onSuccessCallback }) => {
         onSuccessCallback({ id: 'new-logo' })
       })
 
-      const { result } = renderHook(() => useWebAppBrand())
+      const { queryClient, result } = renderHook(() => useWebAppBrand())
+      const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       act(() => {
         result.current.handleChange({
@@ -380,21 +370,17 @@ describe('useWebAppBrand', () => {
           replace_webapp_logo: 'new-logo',
         },
       })
-      expect(mutateCurrentWorkspace).toHaveBeenCalledTimes(1)
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+        queryKey: consoleQuery.workspaces.current.post.key(),
+      })
       expect(result.current.fileId).toBe('')
       expect(result.current.imgKey).toBe(previousImgKey + 1)
       dateNowSpy.mockRestore()
     })
 
     it('should restore the default branding configuration', async () => {
-      const mutateCurrentWorkspace = vi.fn()
-      setConsoleState(
-        createConsoleState({
-          refreshCurrentWorkspace: mutateCurrentWorkspace,
-        }),
-      )
-
-      const { result } = renderHook(() => useWebAppBrand())
+      const { queryClient, result } = renderHook(() => useWebAppBrand())
+      const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       await act(async () => {
         await result.current.handleRestore()
@@ -407,18 +393,14 @@ describe('useWebAppBrand', () => {
           replace_webapp_logo: '',
         },
       })
-      expect(mutateCurrentWorkspace).toHaveBeenCalledTimes(1)
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+        queryKey: consoleQuery.workspaces.current.post.key(),
+      })
     })
 
     it('should persist brand removal changes', async () => {
-      const mutateCurrentWorkspace = vi.fn()
-      setConsoleState(
-        createConsoleState({
-          refreshCurrentWorkspace: mutateCurrentWorkspace,
-        }),
-      )
-
-      const { result } = renderHook(() => useWebAppBrand())
+      const { queryClient, result } = renderHook(() => useWebAppBrand())
+      const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       await act(async () => {
         await result.current.handleSwitch(true)
@@ -430,7 +412,9 @@ describe('useWebAppBrand', () => {
           remove_webapp_brand: true,
         },
       })
-      expect(mutateCurrentWorkspace).toHaveBeenCalledTimes(1)
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+        queryKey: consoleQuery.workspaces.current.post.key(),
+      })
     })
 
     it('should clear temporary upload state on cancel', () => {

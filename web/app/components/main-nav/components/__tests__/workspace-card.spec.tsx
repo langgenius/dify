@@ -1,4 +1,4 @@
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
@@ -25,7 +25,7 @@ const {
 } = vi.hoisted(() => ({
   mockFetchWorkspaces: vi.fn(),
   mockSwitchWorkspace: vi.fn(),
-  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
+  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'summary', 'get'] as const,
   mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
 }))
 const mockConsoleState = vi.hoisted(() => ({
@@ -58,14 +58,16 @@ vi.mock('@/service/client', async (importOriginal) => {
       if (prop === 'workspaces') {
         return {
           current: {
-            post: {
-              key: () => mockCurrentWorkspaceQueryKey,
-              queryKey: () => mockCurrentWorkspaceQueryKey,
-              queryOptions: (options?: object) => ({
-                queryKey: mockCurrentWorkspaceQueryKey,
-                queryFn: () => new Promise(() => {}),
-                ...options,
-              }),
+            summary: {
+              get: {
+                key: () => mockCurrentWorkspaceQueryKey,
+                queryKey: () => mockCurrentWorkspaceQueryKey,
+                queryOptions: (options?: object) => ({
+                  queryKey: mockCurrentWorkspaceQueryKey,
+                  queryFn: () => new Promise(() => {}),
+                  ...options,
+                }),
+              },
             },
           },
           get: {
@@ -96,17 +98,12 @@ vi.mock('@/service/client', async (importOriginal) => {
   }
 })
 
-const currentWorkspaceValue: PostWorkspacesCurrentResponse = {
+const currentWorkspaceValue: GetWorkspacesCurrentSummaryResponse = {
   id: 'workspace-1',
   name: 'Solar Studio',
   plan: Plan.sandbox,
-  status: 'normal',
-  created_at: 0,
   role: 'owner',
-  trial_credits: 10000,
-  trial_credits_used: 2500,
-  trial_credits_exhausted_at: 0,
-  next_credit_reset_date: 0,
+  credits: 7500,
 }
 
 const mockSetShowPricingModal = vi.fn()
@@ -115,11 +112,11 @@ vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
-let mockCurrentWorkspace: PostWorkspacesCurrentResponse | undefined = currentWorkspaceValue
+let mockCurrentWorkspace: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue
 let mockWorkspaces: IWorkspace[] = []
 
 const mockCurrentWorkspaceQuery = (
-  data: PostWorkspacesCurrentResponse | undefined = currentWorkspaceValue,
+  data: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue,
   isPending = false,
 ) => {
   mockCurrentWorkspace = isPending ? undefined : data
@@ -134,7 +131,10 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   const { seedWorkspaces = true, systemFeaturesLicense, ...renderOptions } = options ?? {}
   const queryClient = createConsoleQueryClient()
   if (mockCurrentWorkspace)
-    queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), mockCurrentWorkspace)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.summary.get.queryKey(),
+      mockCurrentWorkspace,
+    )
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   if (systemFeaturesLicense) seedSystemFeaturesLicense(queryClient, systemFeaturesLicense)
@@ -207,6 +207,24 @@ describe('WorkspaceCard', () => {
     expect(
       screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
     ).toHaveAttribute('href', '/integrations/model-provider')
+  })
+
+  it('renders unlimited credits from the summary contract', () => {
+    mockCurrentWorkspaceQuery({ ...currentWorkspaceValue, credits: -1 })
+
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
+
+    expect(screen.getByText('common.license.unlimited')).toBeInTheDocument()
+  })
+
+  it('hides the credits link when the summary has no effective credits', () => {
+    mockCurrentWorkspaceQuery({ ...currentWorkspaceValue, credits: null })
+
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
+
+    expect(
+      screen.queryByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders a stable skeleton while the current workspace is loading', () => {

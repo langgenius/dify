@@ -1,15 +1,15 @@
 import type { ChangeEvent } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { Plan } from '@/app/components/billing/type'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 import { updateCurrentWorkspace } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
 
@@ -19,17 +19,21 @@ const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
-  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const mutateCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
+  const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: customConfig } = useQuery(
+    consoleQuery.workspaces.current.post.queryOptions({
+      select: (workspace) => workspace.custom_config,
+    }),
+  )
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
-  const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''
-  const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
+  const webappLogo = customConfig?.replace_webapp_logo || ''
+  const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
   const uploadDisabled = isSandbox || webappBrandRemoved || !canManageCustomBrand
   const workspaceLogo = systemFeatures.branding.enabled
@@ -40,7 +44,7 @@ const useWebAppBrand = () => {
       url: CUSTOM_CONFIG_URL,
       body,
     })
-    mutateCurrentWorkspace()
+    queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() })
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

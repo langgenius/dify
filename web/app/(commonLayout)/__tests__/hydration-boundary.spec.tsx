@@ -57,8 +57,10 @@ vi.mock('@/service/server', () => ({
   serverConsoleQuery: {
     workspaces: {
       current: {
-        post: {
-          queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+        summary: {
+          get: {
+            queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+          },
         },
         rbac: {
           myPermissions: {
@@ -100,7 +102,13 @@ describe('CommonLayoutHydrationBoundary', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
+    mocks.workspaceQueryFn.mockResolvedValue({
+      id: 'workspace-id',
+      name: 'Workspace',
+      role: 'owner',
+      plan: 'sandbox',
+      credits: 200,
+    })
     mocks.permissionQueryFn.mockResolvedValue({
       workspace: { permission_keys: ['agent.manage'] },
       app: { default_permission_keys: [], overrides: [] },
@@ -111,7 +119,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       csrfToken: 'csrf-token',
     })
     mocks.workspaceQueryOptions.mockReturnValue({
-      queryKey: ['console', 'workspaces', 'current', 'post'],
+      queryKey: ['console', 'workspaces', 'current', 'summary', 'get'],
       queryFn: mocks.workspaceQueryFn,
       retry: false,
     })
@@ -125,7 +133,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     })
   })
 
-  it('should prefetch common layout queries', async () => {
+  it('should fetch the summary and prefetch the other common layout queries', async () => {
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     const element = await CommonLayoutHydrationBoundary({
@@ -172,7 +180,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
-        ['console', 'workspaces', 'current', 'post'],
+        ['console', 'workspaces', 'current', 'summary', 'get'],
         [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
       ]),
     )
@@ -216,6 +224,24 @@ describe('CommonLayoutHydrationBoundary', () => {
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mocks.redirect).toHaveBeenCalledWith(destination)
+  })
+
+  it('should render children when the workspace summary prefetch fails', async () => {
+    mocks.workspaceQueryFn.mockRejectedValue(new Response(null, { status: 503 }))
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+    const element = await CommonLayoutHydrationBoundary({
+      children: <div>Common shell</div>,
+    })
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        {element as ReactElement}
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText('Common shell')).toBeInTheDocument()
+    expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
   })
 
   it('should render children without server prefetch when the server API URL is not resolvable', async () => {

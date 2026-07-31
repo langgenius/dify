@@ -1,6 +1,6 @@
 import type { createStore } from 'jotai'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
-import type { ICurrentWorkspace } from '@/models/common'
+import type { ICurrentWorkspaceSummary } from '@/models/common'
 import { atom } from 'jotai'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
@@ -17,7 +17,7 @@ export type ConsoleStateFixture = {
     | ({
         id?: string
         name?: string
-      } & Partial<ICurrentWorkspace>)
+      } & Partial<ICurrentWorkspaceSummary>)
     | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
@@ -51,16 +51,10 @@ const defaultUserProfile = {
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
   name: 'Workspace',
-  plan: '',
-  status: '',
-  created_at: 0,
+  plan: null,
+  credits: null,
   role: 'owner',
-  providers: [],
-  trial_credits: 0,
-  trial_credits_used: 0,
-  trial_credits_exhausted_at: 0,
-  next_credit_reset_date: 0,
-} satisfies ICurrentWorkspace
+} satisfies ICurrentWorkspaceSummary
 
 const defaultLangGeniusVersionInfo = {
   current_env: 'CLOUD',
@@ -83,7 +77,7 @@ const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
 const refreshUserProfileCallbackAtom = atom({ callback: () => {} })
 const refreshUserProfileAtom = atom(null, (get) => get(refreshUserProfileCallbackAtom).callback())
 
-const currentWorkspaceAtom = atom<ICurrentWorkspace>(defaultCurrentWorkspace)
+const currentWorkspaceAtom = atom<ICurrentWorkspaceSummary>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
 const isCurrentWorkspaceOwnerAtom = atom(false)

@@ -1,6 +1,6 @@
 'use client'
 
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -25,7 +25,7 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
-import { formatCredits, getRemainingCredits } from '../utils'
+import { formatCredits } from '../utils'
 import { WorkspaceMenuItemContent } from './workspace-menu-content'
 import WorkspacePlanBadge from './workspace-plan-badge'
 import { WorkspaceSwitcher } from './workspace-switcher'
@@ -99,7 +99,7 @@ function WorkspaceCardTrigger({
   open: boolean
   name: string
   status: ReactNode
-  credits: number
+  credits: number | null
   showCloudBilling: boolean
   showPlanAction: boolean
   planActionLabel: string
@@ -109,7 +109,12 @@ function WorkspaceCardTrigger({
 }) {
   const { t } = useTranslation()
   const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
-  const formattedCredits = formatCredits(credits)
+  const formattedCredits =
+    credits === -1
+      ? t(($) => $['license.unlimited'], { ns: 'common' })
+      : credits === null
+        ? ''
+        : formatCredits(credits)
   const showStatus = status !== undefined && status !== null
 
   return (
@@ -144,14 +149,19 @@ function WorkspaceCardTrigger({
       </PopoverTrigger>
       {showCloudBilling && (
         <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
-          <Link
-            href={creditsHref}
-            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-            aria-label={t(($) => $['mainNav.workspace.credits'], { ns: 'common', count: credits })}
-          >
-            <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <WorkspaceCreditsLabel credits={formattedCredits} unit={creditsUnit} />
-          </Link>
+          {credits !== null && (
+            <Link
+              href={creditsHref}
+              className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+              aria-label={t(($) => $['mainNav.workspace.credits'], {
+                ns: 'common',
+                count: credits,
+              })}
+            >
+              <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
+              <WorkspaceCreditsLabel credits={formattedCredits} unit={creditsUnit} />
+            </Link>
+          )}
           {showPlanAction && (
             <button
               type="button"
@@ -230,15 +240,15 @@ function WorkspaceMenuHeader({
 }
 
 type CurrentWorkspaceCardSource = Pick<
-  PostWorkspacesCurrentResponse,
-  'id' | 'name' | 'plan' | 'trial_credits' | 'trial_credits_used'
+  GetWorkspacesCurrentSummaryResponse,
+  'id' | 'name' | 'plan' | 'credits'
 >
 
 const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) => ({
   id: workspace.id,
   name: workspace.name,
   plan: workspace.plan,
-  credits: getRemainingCredits(workspace.trial_credits ?? 0, workspace.trial_credits_used ?? 0),
+  credits: workspace.credits,
 })
 
 export function WorkspaceCard() {
@@ -249,7 +259,7 @@ export function WorkspaceCard() {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const currentWorkspaceQuery = useQuery(
-    consoleQuery.workspaces.current.post.queryOptions({
+    consoleQuery.workspaces.current.summary.get.queryOptions({
       select: selectCurrentWorkspaceCardData,
     }),
   )
