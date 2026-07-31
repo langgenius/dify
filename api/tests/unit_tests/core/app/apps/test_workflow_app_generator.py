@@ -24,7 +24,6 @@ from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 
 
-
 def _workflow(
     *,
     workflow_id: str = "workflow",
