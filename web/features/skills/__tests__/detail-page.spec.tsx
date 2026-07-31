@@ -603,17 +603,16 @@ describe('SkillDetailPage', () => {
     const sidebar = await screen.findByTestId('skill-detail-sidebar')
     const header = screen.getByTestId('skill-detail-sidebar-header')
 
-    expect(sidebar).toHaveClass('w-[248px]', 'bg-background-body', 'p-1')
-    expect(sidebar.firstElementChild).toHaveClass('rounded-lg', 'bg-background-default')
-    expect(header).toHaveClass('h-12', 'py-2', 'pr-2', 'pl-1')
-    expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
-    expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
-    expect(header).toHaveTextContent('/SKILLS')
+    expect(sidebar).toHaveClass('m-1', 'w-60', 'rounded-lg', 'bg-background-default')
+    expect(header).toHaveClass('h-12', 'gap-2', 'px-3')
+    expect(header.querySelector('.i-ri-arrow-left-line')).toBeInTheDocument()
+    expect(header.querySelector('.i-ri-box-3-line')).toBeInTheDocument()
+    expect(header).toHaveTextContent('SKILLS')
     expect(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.searchFiles',
       }),
-    ).toHaveClass('size-8', 'rounded-[10px]')
+    ).toHaveClass('size-6', 'rounded-md')
   })
 
   it('opens the inline tag selector with workspace tag options', async () => {
@@ -909,21 +908,7 @@ describe('SkillDetailPage', () => {
   })
 
   it('shows Skill manifest placeholders for an empty draft', async () => {
-    mocks.skillDetail = createDefaultSkillDraftDetail({
-      files: [
-        {
-          id: 'file-1',
-          path: 'SKILL.md',
-          kind: 'file',
-          storage: 'text',
-          mime_type: 'text/markdown',
-          content: '---\nname: \ndescription: \nmetadata:\n  display-name: Untitled skill\n---\n\n',
-          tool_file_id: null,
-          size: 72,
-          hash: 'hash-1',
-        },
-      ],
-    })
+    mocks.skillDetail = createDefaultSkillDraftDetail()
 
     renderSkillDetailPage()
 
@@ -934,8 +919,38 @@ describe('SkillDetailPage', () => {
       screen.getByPlaceholderText('skill.skillManagement.detail.skillDescriptionPlaceholder'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('skill.skillManagement.detail.referenceFiles.livePlaceholder'),
+      screen.queryByText(
+        'Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.',
+      ),
+    ).not.toBeInTheDocument()
+  })
+
+  it('treats a newly created empty Skill draft as Builder creation mode', async () => {
+    mocks.skillDetail = createDefaultSkillDraftDetail({
+      description: '',
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '<!-- dify-skill-empty-draft -->\n',
+          tool_file_id: null,
+          size: 32,
+          hash: 'hash-1',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByText('skill.skillManagement.detail.builder.promptTitle'),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByText('skill.skillManagement.detail.builder.editIntro'),
+    ).not.toBeInTheDocument()
   })
 
   it('does not render the code editor when external file content fails to load', async () => {
@@ -1677,8 +1692,18 @@ describe('SkillDetailPage', () => {
     )
 
     const referenceList = await screen.findByTestId('skill-publish-reference-list')
+    expect(referenceList).not.toHaveAttribute('data-scrollable')
+    expect(within(referenceList).getAllByRole('link')).toHaveLength(5)
+    expect(within(referenceList).queryByText('Reference 6')).not.toBeInTheDocument()
+
+    await user.click(
+      within(referenceList).getByRole('button', {
+        name: 'skill.skillManagement.detail.showMoreReferences:{"count":6}',
+      }),
+    )
+
     expect(referenceList).toHaveAttribute('data-scrollable', 'true')
-    expect(referenceList).toHaveClass('max-h-[314px]', 'overflow-y-auto')
+    expect(referenceList).toHaveClass('max-h-[240px]', 'overflow-y-auto')
     expect(within(referenceList).getAllByRole('link')).toHaveLength(11)
   })
 

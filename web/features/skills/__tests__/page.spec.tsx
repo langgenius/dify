@@ -1,4 +1,5 @@
 import type {
+  SkillReferenceResponse,
   SkillResponse,
   SkillTagResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -34,6 +35,8 @@ const mocks = vi.hoisted(() => ({
   skillPages: [] as SkillResponse[][],
   skillsKey: vi.fn((_options: unknown): unknown[] => ['skills']),
   skillsQueryOptions: vi.fn((_options: SkillsInfiniteOptions) => ({})),
+  skillReferences: [] as SkillReferenceResponse[],
+  skillReferencesQueryOptions: vi.fn((_options: unknown) => ({})),
   tags: [] as SkillTagResponse[],
   tagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
   tagsQueryOptions: vi.fn((_options: unknown) => ({})),
@@ -99,6 +102,10 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
+vi.mock('@/app/components/base/app-icon', () => ({
+  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
+}))
+
 vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
     <a href={href} {...props}>
@@ -149,6 +156,11 @@ vi.mock('@/service/client', () => ({
             delete: {
               mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
             },
+            references: {
+              get: {
+                queryOptions: mocks.skillReferencesQueryOptions,
+              },
+            },
             duplicate: {
               post: {
                 mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
@@ -178,6 +190,22 @@ function createSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
   }
 }
 
+function createAgentReference(
+  overrides: Partial<SkillReferenceResponse> = {},
+): SkillReferenceResponse {
+  return {
+    agent_id: 'agent-1',
+    agent_icon: '🤖',
+    agent_icon_background: '#EFF6FF',
+    agent_icon_type: 'emoji',
+    app_id: 'app-1',
+    display_name: 'Support Agent',
+    name: 'support-agent',
+    type: 'agent',
+    ...overrides,
+  }
+}
+
 function renderSkillsPage() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -200,6 +228,7 @@ describe('SkillsPage', () => {
     mocks.queryState.tag = []
     mocks.skills = [createSkill()]
     mocks.skillPages = [mocks.skills]
+    mocks.skillReferences = [createAgentReference()]
     mocks.tags = [
       { count: 2, tag: 'support' },
       { count: 1, tag: 'sales' },
@@ -224,6 +253,12 @@ describe('SkillsPage', () => {
       queryKey: ['skill-tags', options],
       queryFn: async () => ({
         data: mocks.tags,
+      }),
+    }))
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({
+        data: mocks.skillReferences,
       }),
     }))
     mocks.createSkillMutationFn.mockResolvedValue(createSkill({ id: 'created-skill' }))
@@ -463,6 +498,8 @@ describe('SkillsPage', () => {
         'skill.skillManagement.deleteDialog.referencedDescription:{"count":2}',
       ),
     ).toBeInTheDocument()
+    expect(await within(dialog).findByText('Support Agent')).toBeInTheDocument()
+    expect(within(dialog).getByTestId('skill-delete-reference-list')).toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
@@ -480,6 +517,38 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
+  })
+
+  it('collapses long reference lists in the delete confirmation', async () => {
+    const user = userEvent.setup()
+    mocks.skillReferences = Array.from({ length: 7 }, (_, index) =>
+      createAgentReference({
+        agent_id: `agent-${index}`,
+        display_name: `Support Agent ${index + 1}`,
+        name: `support-agent-${index + 1}`,
+      }),
+    )
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.delete'))
+    const dialog = await screen.findByRole('alertdialog')
+
+    expect(await within(dialog).findByText('Support Agent 5')).toBeInTheDocument()
+    expect(within(dialog).queryByText('Support Agent 6')).not.toBeInTheDocument()
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'skill.skillManagement.detail.showMoreReferences:{"count":2}',
+      }),
+    )
+
+    expect(within(dialog).getByText('Support Agent 6')).toBeInTheDocument()
+    expect(within(dialog).getByText('Support Agent 7')).toBeInTheDocument()
   })
 
   it('shows the empty-search state without create or import actions', async () => {

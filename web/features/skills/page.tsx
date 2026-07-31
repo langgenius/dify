@@ -43,6 +43,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from './client'
+import { SkillReferencesPanel } from './detail/skill-metadata'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 
 const placeholderCardIds = Array.from(
@@ -269,6 +270,17 @@ function DeleteSkillDialog({
         <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
           {description}
         </AlertDialogDescription>
+        {referenceCount > 0 && (
+          <div className="mt-4">
+            <SkillReferencesPanel
+              compact
+              maxHeight="max-h-[240px]"
+              skillId={skill.id}
+              testId="skill-delete-reference-list"
+              visibleLimit={5}
+            />
+          </div>
+        )}
         <AlertDialogActions className="p-0 pt-6">
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}

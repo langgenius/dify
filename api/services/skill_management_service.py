@@ -92,6 +92,7 @@ _MAX_SKILL_DESCRIPTION_LENGTH = 1024
 _UNTITLED_DISPLAY_NAME = "Untitled skill"
 _UNTITLED_SKILL_NAME_PREFIX = "untitled-skill"
 _UNTITLED_SKILL_DESCRIPTION = "Describe what this Skill does and when an Agent should use it."
+_EMPTY_SKILL_DRAFT_CONTENT = "<!-- dify-skill-empty-draft -->\n"
 _UNTITLED_SKILL_MD_BODY = """# Untitled skill
 
 Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.
@@ -422,7 +423,7 @@ class SkillManagementService:
     Creating a Skill is intentionally a database write even before publication:
     the editor needs a stable ``skill_id`` for the side panel and draft file
     edits. A no-name create request produces a unique internal name, an
-    ``Untitled skill`` display name, and a placeholder ``SKILL.md`` draft; it
+    ``Untitled skill`` display name, and an empty ``SKILL.md`` draft; it
     does not create a published version.
     """
 
@@ -434,7 +435,7 @@ class SkillManagementService:
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
             skill_name = payload.name or self._generate_untitled_skill_name(session, tenant_id=tenant_id)
             display_name = payload.display_name or (_UNTITLED_DISPLAY_NAME if payload.name is None else skill_name)
-            description = payload.description or _UNTITLED_SKILL_DESCRIPTION
+            description = payload.description or ("" if payload.name is None else _UNTITLED_SKILL_DESCRIPTION)
             skill = Skill(
                 tenant_id=tenant_id,
                 name=skill_name,
@@ -2937,12 +2938,15 @@ class SkillManagementService:
         file.hash = hashlib.sha256(file.content_text.encode("utf-8")).hexdigest()
 
     def _build_initial_skill_md(self, *, skill: Skill) -> str:
-        body = _UNTITLED_SKILL_MD_BODY if skill.display_name == _UNTITLED_DISPLAY_NAME else ""
+        is_untitled_draft = not skill.name_manually_edited and skill.display_name == _UNTITLED_DISPLAY_NAME
+        if is_untitled_draft:
+            return _EMPTY_SKILL_DRAFT_CONTENT
+
         return self._build_skill_md(
             name=skill.name,
             description=skill.description,
             display_name=skill.display_name,
-            body=body,
+            body="",
         )
 
     @staticmethod

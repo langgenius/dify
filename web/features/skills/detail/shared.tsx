@@ -180,6 +180,33 @@ const defaultSkillDescription = 'Describe what this Skill does and when an Agent
 const defaultSkillBody =
   '# Untitled skill\n\nDescribe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.'
 
+export const emptySkillDraftContentPlaceholder = '<!-- dify-skill-empty-draft -->'
+
+function isLegacyUntitledSkillDraftContent(content: string) {
+  const normalizedContent = content.replace(/\r\n?/g, '\n').trim()
+
+  return (
+    normalizedContent.startsWith('---\n') &&
+    /\n---\n/.test(normalizedContent) &&
+    /^name:\s*untitled-skill-[a-z0-9-]+\s*$/m.test(normalizedContent) &&
+    new RegExp(
+      `^description:\\s*${defaultSkillDescription.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`,
+      'm',
+    ).test(normalizedContent) &&
+    /^# Untitled skill\s*$/m.test(normalizedContent) &&
+    normalizedContent.includes(
+      'Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.',
+    )
+  )
+}
+
+export function normalizeSkillDraftContentForEditing(content: string) {
+  if (content.trim() === emptySkillDraftContentPlaceholder) return ''
+  if (isLegacyUntitledSkillDraftContent(content)) return ''
+
+  return content
+}
+
 type SkillUploadStatus = 'failed' | 'saving' | 'uploaded' | 'uploading'
 
 export type SkillUploadQueueItem = {
@@ -373,9 +400,11 @@ export function isEditableMetadataKey(key: string) {
 }
 
 export function parseMarkdownContent(content: string): ParsedMarkdownContent {
-  if (!content.startsWith('---')) {
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
+
+  if (!normalizedContent.startsWith('---')) {
     return {
-      body: content,
+      body: normalizedContent,
       description: '',
       displayName: '',
       metadata: [],
@@ -383,7 +412,7 @@ export function parseMarkdownContent(content: string): ParsedMarkdownContent {
     }
   }
 
-  const lines = content.split(/\r?\n/)
+  const lines = normalizedContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
   if (closingIndex === -1) {
     return {
@@ -466,11 +495,12 @@ export function parseMarkdownContent(content: string): ParsedMarkdownContent {
 }
 
 export function stripSkillFrontmatterForDisplay(content: string) {
-  if (!content.startsWith('---')) return content
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
+  if (!normalizedContent.startsWith('---')) return normalizedContent
 
-  const lines = content.split(/\r?\n/)
+  const lines = normalizedContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
-  if (closingIndex === -1) return content
+  if (closingIndex === -1) return normalizedContent
 
   const frontmatterLines = lines.slice(1, closingIndex)
   const hasSkillFrontmatter = frontmatterLines.some((line) => {
@@ -481,7 +511,7 @@ export function stripSkillFrontmatterForDisplay(content: string) {
       trimmedLine === 'metadata:'
     )
   })
-  if (!hasSkillFrontmatter) return content
+  if (!hasSkillFrontmatter) return normalizedContent
 
   return lines
     .slice(closingIndex + 1)
@@ -549,7 +579,8 @@ function stringifyYamlKey(key: string) {
 }
 
 export function addMarkdownMetadata(content: string, key: string, value: string) {
-  const nextContent = removeMarkdownMetadata(content, key)
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
+  const nextContent = removeMarkdownMetadata(normalizedContent, key)
   const metadataLine = `  ${stringifyYamlKey(key)}: ${stringifyYamlValue(value)}`
 
   if (!nextContent.startsWith('---')) {
@@ -559,7 +590,7 @@ export function addMarkdownMetadata(content: string, key: string, value: string)
   const lines = nextContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
   if (closingIndex === -1) {
-    return `---\nmetadata:\n${metadataLine}\n---\n\n${content}`
+    return `---\nmetadata:\n${metadataLine}\n---\n\n${normalizedContent}`
   }
 
   const metadataIndex = lines.findIndex(
@@ -617,16 +648,17 @@ export function setMarkdownFrontmatterField(
   key: 'description' | 'name',
   value: string,
 ) {
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
   const fieldLine = `${key}: ${stringifyYamlValue(value)}`
 
-  if (!content.startsWith('---')) {
-    return `---\n${fieldLine}\n---\n\n${content}`
+  if (!normalizedContent.startsWith('---')) {
+    return `---\n${fieldLine}\n---\n\n${normalizedContent}`
   }
 
-  const lines = content.split(/\r?\n/)
+  const lines = normalizedContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
   if (closingIndex === -1) {
-    return `---\n${fieldLine}\n---\n\n${content}`
+    return `---\n${fieldLine}\n---\n\n${normalizedContent}`
   }
 
   for (let index = 1; index < closingIndex; index += 1) {
@@ -645,14 +677,15 @@ export function setMarkdownFrontmatterField(
 }
 
 export function removeMarkdownMetadata(content: string, key: string) {
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
   const trimmedKey = key.trim()
   if (!isEditableMetadataKey(trimmedKey) || isProtectedMarkdownMetadataKey(trimmedKey))
-    return content
-  if (!content.startsWith('---')) return content
+    return normalizedContent
+  if (!normalizedContent.startsWith('---')) return normalizedContent
 
-  const lines = content.split(/\r?\n/)
+  const lines = normalizedContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
-  if (closingIndex === -1) return content
+  if (closingIndex === -1) return normalizedContent
 
   const removeLineIndexes = new Set<number>()
   let insideMetadata = false
@@ -706,11 +739,12 @@ export function removeMarkdownMetadata(content: string, key: string) {
 }
 
 function removeMarkdownDisplayName(content: string) {
-  if (!content.startsWith('---')) return content
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
+  if (!normalizedContent.startsWith('---')) return normalizedContent
 
-  const lines = content.split(/\r?\n/)
+  const lines = normalizedContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
-  if (closingIndex === -1) return content
+  if (closingIndex === -1) return normalizedContent
 
   const removeLineIndexes = new Set<number>()
   let insideMetadata = false
@@ -892,9 +926,10 @@ export function getReferenceText(file: SkillFileResponse) {
 }
 
 export function getMarkdownBodyPrefix(content: string) {
-  if (!content.startsWith('---')) return ''
+  const normalizedContent = normalizeSkillDraftContentForEditing(content)
+  if (!normalizedContent.startsWith('---')) return ''
 
-  const lines = content.split(/\r?\n/)
+  const lines = normalizedContent.split(/\r?\n/)
   const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
   if (closingIndex === -1) return ''
 
@@ -1271,13 +1306,15 @@ export function isDefaultSkillBuilderDraft(detail: SkillDetailResponse) {
   const skillMd = findFileByPath(detail.files ?? [], 'SKILL.md')
   const skillMdContent =
     skillMd && isTextFile(skillMd) && skillMd.content ? parseMarkdownContent(skillMd.content) : null
+  const description = detail.description.trim()
+  const skillMdBody = skillMdContent?.body.trim() ?? ''
 
   return (
     detail.latest_published_version_id == null &&
     detail.name.startsWith('untitled-skill') &&
     detail.display_name === 'Untitled skill' &&
-    detail.description === defaultSkillDescription &&
-    skillMdContent?.body.trim() === defaultSkillBody
+    (description === '' || description === defaultSkillDescription) &&
+    (skillMdBody === '' || skillMdBody === defaultSkillBody)
   )
 }
 

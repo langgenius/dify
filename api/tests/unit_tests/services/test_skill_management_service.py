@@ -283,7 +283,7 @@ def test_create_skill_without_name_initializes_untitled_draft() -> None:
 
     assert created["name"].startswith("untitled-skill-")
     assert created["display_name"] == "Untitled skill"
-    assert created["description"] == "Describe what this Skill does and when an Agent should use it."
+    assert created["description"] == ""
     assert created["created_by_name"] == "Li Wei"
     assert created["updated_by_name"] == "Li Wei"
     assert created["latest_published_version_id"] is None
@@ -292,9 +292,7 @@ def test_create_skill_without_name_initializes_untitled_draft() -> None:
     assert skill_md["path"] == "SKILL.md"
     assert skill_md["kind"] == "file"
     assert skill_md["storage"] == "text"
-    assert f"name: {created['name']}" in skill_md["content"]
-    assert "description: Describe what this Skill does and when an Agent should use it." in skill_md["content"]
-    assert "# Untitled skill" in skill_md["content"]
+    assert skill_md["content"] == "<!-- dify-skill-empty-draft -->\n"
     assert service.list_versions(tenant_id=TENANT, skill_id=created["id"]) == {"data": []}
 
 

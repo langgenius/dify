@@ -325,24 +325,52 @@ export function SkillTagsEditor({
   )
 }
 
-export function SkillReferencesPanel({ skillId }: { referenceCount: number; skillId: string }) {
+export function SkillReferencesPanel({
+  compact = false,
+  enabled = true,
+  maxHeight,
+  skillId,
+  testId,
+  visibleLimit,
+}: {
+  compact?: boolean
+  enabled?: boolean
+  maxHeight?: string
+  skillId: string
+  testId?: string
+  visibleLimit?: number
+}) {
   const { t } = useTranslation('skill')
-  const referencesQuery = useQuery(
-    consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+  const [expanded, setExpanded] = useState(false)
+  const referencesQuery = useQuery({
+    ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
       input: {
         params: {
           skill_id: skillId,
         },
       },
+      enabled,
     }),
-  )
+    refetchOnMount: 'always',
+  })
   const references = referencesQuery.data?.data ?? []
+  const hasMoreReferences = visibleLimit != null && references.length > visibleLimit
+  const visibleReferences =
+    hasMoreReferences && !expanded ? references.slice(0, visibleLimit) : references
+  const isScrollable = Boolean(maxHeight && (expanded || visibleLimit == null))
 
   if (referencesQuery.isPending) {
     return (
-      <div className="w-52 space-y-1 py-1">
-        <SkeletonRectangle className="h-8 rounded-lg" />
-        <SkeletonRectangle className="h-8 rounded-lg" />
+      <div
+        className={cn(
+          compact
+            ? 'space-y-px rounded-xl border border-divider-subtle p-1'
+            : 'w-52 space-y-1 py-1',
+        )}
+      >
+        <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
+        <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
+        {compact && <SkeletonRectangle className="h-7 rounded-md" />}
       </div>
     )
   }
@@ -356,13 +384,37 @@ export function SkillReferencesPanel({ skillId }: { referenceCount: number; skil
   }
 
   return (
-    <div className="w-max max-w-[480px] space-y-0.5 py-1">
-      {references.map((reference) => (
+    <div
+      data-testid={testId}
+      data-scrollable={isScrollable ? true : undefined}
+      className={cn(
+        compact
+          ? 'flex flex-col gap-px rounded-xl border border-divider-subtle p-1'
+          : 'w-max max-w-[480px] space-y-0.5 py-1',
+        isScrollable && `${maxHeight} overflow-y-auto`,
+      )}
+    >
+      {visibleReferences.map((reference) => (
         <SkillReferenceItem
           key={`${reference.type}:${reference.agent_id}:${reference.workflow_id ?? ''}:${reference.node_id ?? ''}`}
+          compact={compact}
           reference={reference}
         />
       ))}
+      {hasMoreReferences && !expanded && (
+        <button
+          type="button"
+          className={cn(
+            'flex h-7 cursor-pointer items-center justify-center rounded-md px-2 system-xs-medium text-text-accent outline-hidden hover:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+            !compact && 'w-full',
+          )}
+          onClick={() => setExpanded(true)}
+        >
+          {t(($) => $['skillManagement.detail.showMoreReferences'], {
+            count: references.length - visibleReferences.length,
+          })}
+        </button>
+      )}
     </div>
   )
 }
@@ -384,25 +436,13 @@ export function SkillPublishConfirmPanel({
 }) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
-  const referencesQuery = useQuery(
-    consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
-      input: {
-        params: {
-          skill_id: skillId,
-        },
-      },
-      enabled: open,
-    }),
-  )
-  const references = referencesQuery.data?.data ?? []
-
   if (!open) return null
 
   return (
     <div
       role="dialog"
       aria-labelledby="skill-publish-confirm-title"
-      className="absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+      className="pointer-events-auto absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5"
     >
       <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
         <h2
@@ -418,30 +458,14 @@ export function SkillPublishConfirmPanel({
         </p>
       </div>
       <div className="px-4 py-2">
-        {referencesQuery.isPending ? (
-          <div className="space-y-px rounded-xl border border-divider-subtle p-1">
-            <SkeletonRectangle className="h-7 rounded-md" />
-            <SkeletonRectangle className="h-7 rounded-md" />
-            <SkeletonRectangle className="h-7 rounded-md" />
-          </div>
-        ) : (
-          <div
-            data-testid="skill-publish-reference-list"
-            data-scrollable={references.length > 10 || undefined}
-            className={cn(
-              'flex flex-col gap-px rounded-xl border border-divider-subtle p-1',
-              references.length > 10 && 'max-h-[314px] overflow-y-auto',
-            )}
-          >
-            {references.map((reference) => (
-              <SkillReferenceItem
-                key={`${reference.type}:${reference.agent_id}:${reference.workflow_id ?? ''}:${reference.node_id ?? ''}`}
-                compact
-                reference={reference}
-              />
-            ))}
-          </div>
-        )}
+        <SkillReferencesPanel
+          compact
+          enabled={open}
+          maxHeight="max-h-[240px]"
+          skillId={skillId}
+          testId="skill-publish-reference-list"
+          visibleLimit={5}
+        />
       </div>
       <div className="flex items-center justify-end gap-2 px-4 pt-2 pb-4">
         <Button className="h-8 min-w-[72px] rounded-lg px-3" disabled={loading} onClick={onCancel}>
