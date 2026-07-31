@@ -229,7 +229,9 @@ class ShellctlClientProtocol(Protocol):
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
     ) -> ShellctlJobResult: ...
 
-    async def prepare(self, sandbox_id: str, credentials: list[Credential]) -> object: ...
+    async def prepare(self, sandbox_id: str, credentials: list[Credential]) -> object:
+        """prepare the sandbox post creation. called once after the sandbox is created."""
+        ...
 
     async def wait(
         self,
@@ -304,7 +306,6 @@ class ShellctlCommands(ShellCommandProtocol):
         )
 
     async def prepare(self, credentials: Sequence[Credential]) -> None:
-        """Register credentials with the sandbox credential proxy, scoped to `sandbox_id`."""
         if self.sandbox_id is None:
             raise ValueError("ShellctlCommands.sandbox_id must be set to prepare credentials")
         await _run_client_call(self.client.prepare(self.sandbox_id, list(credentials)))
