@@ -5,10 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@/test/console/render'
 import { useRefreshMCPServerCode } from '../use-tools'
 
-const { mockGet, mockPost, mockMutationKey } = vi.hoisted(() => ({
+const { mockGet, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
-  mockMutationKey: vi.fn(() => ['apps', 'server', 'refresh']),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -25,19 +24,6 @@ vi.mock('@/service/client', () => ({
         server: {
           refresh: {
             post: mockPost,
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        server: {
-          refresh: {
-            post: {
-              mutationKey: mockMutationKey,
-            },
           },
         },
       },
