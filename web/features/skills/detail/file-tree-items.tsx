@@ -394,7 +394,7 @@ export function FileTreeItem({
   onItemSelect: (node: FileTreeNode, event: MouseEvent<HTMLElement>) => void
   onMove: (sourcePaths: string[], targetDirectory: string | undefined) => void
   onRename: (node: FileTreeNode) => void
-  onSelect: (path: string) => void
+  onSelect: (path: string, mode: 'pinned' | 'preview') => void
   onExpandFolder: (path: string) => void
   onSetDraggingPaths: (paths: string[]) => void
   onSetDropTarget: (target: SkillDropTarget | undefined) => void
@@ -694,8 +694,10 @@ export function FileTreeItem({
             title={node.path}
             onClick={(event) => {
               onItemSelect(node, event)
-              if (!event.shiftKey && !event.metaKey && !event.ctrlKey) onSelect(node.path)
+              if (!event.shiftKey && !event.metaKey && !event.ctrlKey)
+                onSelect(node.path, 'preview')
             }}
+            onDoubleClick={() => onSelect(node.path, 'pinned')}
           >
             <span
               aria-hidden

@@ -59,6 +59,7 @@ import {
   getAsyncSkillErrorMessage,
   getAsyncSkillErrorPayload,
   getCopyTargetPath,
+  getCreatedSkillFileMimeType,
   getDraggedSkillPaths,
   getErrorCode,
   getPathBaseName,
@@ -79,6 +80,7 @@ import {
   skillFileMenuPopupClassName,
   toFileTree,
 } from './shared'
+import { SkillDisplayNameEditor } from './skill-display-name-editor'
 import { SkillReferencesPanel, SkillTagsEditor } from './skill-metadata'
 
 function FileSearchDialog({
@@ -191,7 +193,7 @@ export function FileTree({
   fileMutationCoordinator: SkillFileMutationCoordinator
   files: SkillFileResponse[]
   onCollapsedChange: (collapsed: boolean) => void
-  onSelect: (path: string, files?: SkillFileResponse[]) => void
+  onSelect: (path: string, files?: SkillFileResponse[], mode?: 'pinned' | 'preview') => void
   readonly: boolean
   selectedPath: string | undefined
   skillId: string
@@ -337,7 +339,7 @@ export function FileTree({
     mutateFile(
       {
         content: '',
-        mime_type: 'text/markdown',
+        mime_type: getCreatedSkillFileMimeType(path),
         operation: 'upsert_text',
         path,
         size: 0,
@@ -902,7 +904,7 @@ export function FileTree({
 
   if (collapsed) {
     return (
-      <aside className="flex w-10 shrink-0 flex-col items-center overflow-hidden border-r border-divider-subtle bg-background-default py-3">
+      <aside className="m-1 flex w-10 shrink-0 flex-col items-center overflow-hidden rounded-lg bg-background-default py-3 inset-ring-[0.5px] inset-ring-divider-subtle">
         <button
           type="button"
           aria-label={t(($) => $['skillManagement.detail.expandSidebar'])}
@@ -918,7 +920,7 @@ export function FileTree({
 
   return (
     <>
-      <aside className="flex w-60 shrink-0 flex-col overflow-visible border-r border-divider-subtle bg-background-default">
+      <aside className="m-1 flex w-60 shrink-0 flex-col overflow-visible rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
         <div className="flex h-12 shrink-0 items-center gap-2 px-3">
           <Link
             href="/skills"
@@ -957,11 +959,20 @@ export function FileTree({
                 <span aria-hidden className="i-ri-box-3-line size-5 text-text-secondary" />
               )}
             </div>
-            <div className="min-w-0 flex-1 px-1">
-              <h2 className="truncate system-sm-semibold text-text-primary">
-                {detail?.display_name ?? skillId}
-              </h2>
-              <p className="truncate system-xs-regular text-text-tertiary">
+            <div className="min-w-0 flex-1">
+              {detail ? (
+                <SkillDisplayNameEditor
+                  detail={detail}
+                  fileMutationCoordinator={fileMutationCoordinator}
+                  readonly={readonly}
+                  skillId={skillId}
+                />
+              ) : (
+                <div className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary">
+                  {skillId}
+                </div>
+              )}
+              <p className="truncate px-1 system-xs-regular text-text-tertiary">
                 {detail?.name ?? skillId}
               </p>
             </div>
@@ -1104,7 +1115,7 @@ export function FileTree({
                               path: nodeToRename.path,
                             })
                           }
-                          onSelect={onSelect}
+                          onSelect={(path, mode) => onSelect(path, undefined, mode)}
                           onExpandFolder={(path) =>
                             setCollapsedFolderPaths((paths) =>
                               paths.filter((folderPath) => folderPath !== path),

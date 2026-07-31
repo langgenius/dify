@@ -393,7 +393,7 @@ export function SkillBuilderPanel({
   }
 
   return (
-    <aside className="relative flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-divider-subtle bg-background-section">
+    <aside className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg bg-background-section inset-ring-[0.5px] inset-ring-divider-subtle">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.32]"

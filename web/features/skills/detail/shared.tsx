@@ -118,7 +118,7 @@ const codeEditorExtensions = new Map<string, CodeLanguage>([
 ])
 
 export const metadataInputClassName =
-  'h-8 w-full rounded-lg border border-divider-regular bg-background-default px-2.5 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'h-6 w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[14px]/5 text-text-primary outline-hidden placeholder:text-text-quaternary hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
 
 type MarkdownMetadataEntry = {
   key: string
@@ -267,6 +267,15 @@ export function isCsvFile(file: SkillFileResponse | undefined) {
   if (mimeType === 'text/csv' || mimeType === 'application/csv') return true
 
   return file.path.toLowerCase().endsWith('.csv')
+}
+
+export function getCreatedSkillFileMimeType(path: string) {
+  const lowerPath = path.toLowerCase()
+  if (lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown')) return 'text/markdown'
+  if (lowerPath.endsWith('.csv')) return 'text/csv'
+  if (lowerPath.endsWith('.json')) return 'application/json'
+
+  return 'text/plain'
 }
 
 export function parseCsvRows(content: string) {
@@ -568,6 +577,29 @@ export function addMarkdownMetadata(content: string, key: string, value: string)
   }
 
   return [...lines.slice(0, insertIndex), metadataLine, ...lines.slice(insertIndex)].join('\n')
+}
+
+export function updateMarkdownMetadata(
+  content: string,
+  previousKey: string,
+  nextKey: string,
+  value: string,
+) {
+  const trimmedPreviousKey = previousKey.trim()
+  const trimmedNextKey = nextKey.trim()
+  if (
+    !isEditableMetadataKey(trimmedPreviousKey) ||
+    !isEditableMetadataKey(trimmedNextKey) ||
+    isProtectedMarkdownMetadataKey(trimmedPreviousKey) ||
+    isProtectedMarkdownMetadataKey(trimmedNextKey)
+  )
+    return content
+
+  return addMarkdownMetadata(
+    removeMarkdownMetadata(content, trimmedPreviousKey),
+    trimmedNextKey,
+    value,
+  )
 }
 
 export function setMarkdownDisplayName(content: string, value: string) {
@@ -953,9 +985,8 @@ export function getReferenceIconClass(path: string) {
   })
 }
 
-export function getReferencePathSegments(path: string, fallbackLabel: string) {
-  const segments = path.split('/').filter(Boolean)
-  return segments.length > 0 ? segments : [fallbackLabel]
+export function getReferenceDisplayLabel(path: string, label: string) {
+  return label.trim() || getPathBaseName(path)
 }
 
 const markdownLiveBlockTags = new Set(['DIV', 'P'])
@@ -990,38 +1021,39 @@ export function renderMarkdownLiveEditorContent(root: HTMLDivElement, body: stri
       continue
     }
 
-    const pathSegments = getReferencePathSegments(segment.path, segment.label)
     const markdown = `[${segment.label || getPathBaseName(segment.path)}](<${segment.path}>)`
     const referenceElement = root.ownerDocument.createElement('span')
     referenceElement.contentEditable = 'false'
     referenceElement.dataset.referenceMarkdown = markdown
-    referenceElement.className = 'mx-0.5 inline-flex translate-y-1 items-center gap-0.5'
-    referenceElement.title = segment.path
+    referenceElement.dataset.referencePath = segment.path
+    referenceElement.className =
+      'relative inline-flex cursor-pointer flex-col items-start px-0.5 py-px align-baseline outline-none focus-visible:rounded-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+    referenceElement.tabIndex = 0
+    referenceElement.setAttribute('role', 'button')
 
-    pathSegments.forEach((pathSegment, segmentIndex) => {
-      const partialPath = pathSegments.slice(0, segmentIndex + 1).join('/')
-      const isLastSegment = segmentIndex === pathSegments.length - 1
-      const chipElement = root.ownerDocument.createElement('span')
-      chipElement.className =
-        'inline-flex h-6 items-center gap-1 rounded-md border border-util-colors-blue-blue-300 bg-util-colors-blue-blue-100 px-1.5 text-util-colors-blue-blue-700'
+    const chipElement = root.ownerDocument.createElement('span')
+    chipElement.className =
+      'inline-flex min-w-[18px] items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pr-1 pl-px text-text-accent shadow-xs'
 
-      const iconElement = root.ownerDocument.createElement('span')
-      iconElement.setAttribute('aria-hidden', 'true')
-      iconElement.className = cn(
-        'size-4 shrink-0',
-        isLastSegment
-          ? getReferenceIconClass(segment.path)
-          : 'i-ri-folder-5-line text-util-colors-blue-blue-600',
-      )
-      chipElement.appendChild(iconElement)
+    const labelElement = root.ownerDocument.createElement('span')
+    labelElement.className = 'inline-flex min-w-0 items-center gap-0.5'
 
-      const labelElement = root.ownerDocument.createElement('span')
-      labelElement.className = 'max-w-48 truncate'
-      labelElement.textContent = pathSegment || partialPath
-      chipElement.appendChild(labelElement)
+    const iconWrapElement = root.ownerDocument.createElement('span')
+    iconWrapElement.className = 'inline-flex shrink-0 items-center justify-center p-px'
 
-      referenceElement.appendChild(chipElement)
-    })
+    const iconElement = root.ownerDocument.createElement('span')
+    iconElement.setAttribute('aria-hidden', 'true')
+    iconElement.className = cn('size-3.5 shrink-0', getReferenceIconClass(segment.path))
+    iconWrapElement.appendChild(iconElement)
+    labelElement.appendChild(iconWrapElement)
+
+    const textElement = root.ownerDocument.createElement('span')
+    textElement.className = 'max-w-48 truncate system-xs-medium'
+    textElement.textContent = getReferenceDisplayLabel(segment.path, segment.label)
+    labelElement.appendChild(textElement)
+
+    chipElement.appendChild(labelElement)
+    referenceElement.appendChild(chipElement)
 
     root.appendChild(referenceElement)
   }
