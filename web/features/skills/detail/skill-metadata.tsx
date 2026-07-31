@@ -29,6 +29,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { SkillPublishShortcut } from './publish-bar'
 import {
   invalidateSkillDetail,
   runSkillFileMutation,
@@ -398,48 +399,75 @@ export function SkillPublishConfirmPanel({
   if (!open) return null
 
   return (
-    <div className="absolute right-0 bottom-[calc(100%+10px)] z-50 w-[420px] overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xl">
-      <div className="px-6 pt-5 pb-4">
-        <h2 className="title-xl-semi-bold text-text-primary">
+    <div
+      role="dialog"
+      aria-labelledby="skill-publish-confirm-title"
+      className="absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+    >
+      <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
+        <h2
+          id="skill-publish-confirm-title"
+          className="pr-8 pl-1 system-xl-semibold text-text-primary"
+        >
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
-        <p className="mt-2 system-sm-regular text-util-colors-warning-warning-600">
+        <p className="px-1 system-xs-regular text-util-colors-warning-warning-600">
           {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
             count: referenceCount,
           })}
         </p>
       </div>
-      <div className="px-5 pb-5">
+      <div className="px-4 py-2">
         {referencesQuery.isPending ? (
-          <div className="space-y-1">
-            <SkeletonRectangle className="h-8 rounded-lg" />
-            <SkeletonRectangle className="h-8 rounded-lg" />
-            <SkeletonRectangle className="h-8 rounded-lg" />
+          <div className="space-y-px rounded-xl border border-divider-subtle p-1">
+            <SkeletonRectangle className="h-7 rounded-md" />
+            <SkeletonRectangle className="h-7 rounded-md" />
+            <SkeletonRectangle className="h-7 rounded-md" />
           </div>
         ) : (
-          <div className="max-h-36 overflow-y-auto rounded-xl border border-divider-subtle py-1">
+          <div
+            data-testid="skill-publish-reference-list"
+            data-scrollable={references.length > 10 || undefined}
+            className={cn(
+              'flex flex-col gap-px rounded-xl border border-divider-subtle p-1',
+              references.length > 10 && 'max-h-[314px] overflow-y-auto',
+            )}
+          >
             {references.map((reference) => (
               <SkillReferenceItem
                 key={`${reference.type}:${reference.agent_id}:${reference.workflow_id ?? ''}:${reference.node_id ?? ''}`}
+                compact
                 reference={reference}
               />
             ))}
           </div>
         )}
       </div>
-      <div className="flex items-center justify-end gap-3 border-t border-divider-subtle px-6 py-5">
-        <Button className="h-10 px-5" disabled={loading} onClick={onCancel}>
+      <div className="flex items-center justify-end gap-2 px-4 pt-2 pb-4">
+        <Button className="h-8 min-w-[72px] rounded-lg px-3" disabled={loading} onClick={onCancel}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
-        <Button className="h-10 px-5" variant="primary" loading={loading} onClick={onConfirm}>
-          {t(($) => $['skillManagement.detail.publishUpdate'])}
+        <Button
+          className="h-8 gap-1 rounded-lg px-3"
+          variant="primary"
+          loading={loading}
+          onClick={onConfirm}
+        >
+          <span>{t(($) => $['skillManagement.detail.publishUpdate'])}</span>
+          <SkillPublishShortcut />
         </Button>
       </div>
     </div>
   )
 }
 
-function SkillReferenceItem({ reference }: { reference: SkillReferenceResponse }) {
+function SkillReferenceItem({
+  compact = false,
+  reference,
+}: {
+  compact?: boolean
+  reference: SkillReferenceResponse
+}) {
   const isWorkflowAgent = reference.type === 'workflow_agent_node'
   const agentIconType = reference.agent_icon_type as AppIconType | null | undefined
   const agentImageUrl =
@@ -452,7 +480,12 @@ function SkillReferenceItem({ reference }: { reference: SkillReferenceResponse }
     return (
       <Link
         href={`/agents/${reference.agent_id}/configure`}
-        className="flex h-8 w-fit max-w-[480px] min-w-0 items-center gap-2 rounded-lg px-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className={cn(
+          'flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          compact
+            ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
+            : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
+        )}
       >
         <span aria-hidden className="shrink-0">
           <AppIcon
@@ -468,12 +501,20 @@ function SkillReferenceItem({ reference }: { reference: SkillReferenceResponse }
             }
           />
         </span>
-        <span className="max-w-[252px] min-w-0 truncate system-sm-regular text-text-secondary">
+        <span
+          className={cn(
+            'min-w-0 truncate system-sm-regular text-text-secondary',
+            compact ? 'flex-1' : 'max-w-[252px]',
+          )}
+        >
           {title}
         </span>
         <span
           aria-hidden
-          className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-quaternary"
+          className={cn(
+            'i-ri-arrow-right-up-line shrink-0 text-text-quaternary',
+            compact ? 'size-3' : 'size-4',
+          )}
         />
       </Link>
     )
@@ -504,7 +545,13 @@ function SkillReferenceItem({ reference }: { reference: SkillReferenceResponse }
       <span className="max-w-[252px] min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
         {workflowName}
       </span>
-      <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-quaternary" />
+      <span
+        aria-hidden
+        className={cn(
+          'i-ri-arrow-right-up-line shrink-0 text-text-quaternary',
+          compact ? 'size-3' : 'size-4',
+        )}
+      />
     </>
   )
 
@@ -514,7 +561,12 @@ function SkillReferenceItem({ reference }: { reference: SkillReferenceResponse }
         href={`/app/${reference.app_id}/workflow`}
         target="_blank"
         rel="noreferrer"
-        className="flex h-8 w-fit max-w-[480px] min-w-0 items-center gap-2 rounded-lg px-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className={cn(
+          'flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          compact
+            ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
+            : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
+        )}
       >
         {workflowContent}
       </Link>
@@ -522,7 +574,14 @@ function SkillReferenceItem({ reference }: { reference: SkillReferenceResponse }
   }
 
   return (
-    <div className="flex h-8 w-fit max-w-[480px] min-w-0 items-center gap-2 rounded-lg px-2 hover:bg-state-base-hover">
+    <div
+      className={cn(
+        'flex min-w-0 items-center gap-2 hover:bg-state-base-hover',
+        compact
+          ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
+          : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
+      )}
+    >
       {workflowContent}
     </div>
   )

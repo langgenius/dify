@@ -1054,7 +1054,9 @@ describe('SkillDetailPage', () => {
     const displayNameInput = await screen.findByDisplayValue('Untitled skill')
     await user.clear(displayNameInput)
     await user.type(displayNameInput, '333333333')
-    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publish' }))
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
@@ -1163,12 +1165,12 @@ describe('SkillDetailPage', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
-  it('marks the draft as published and disables publish until new edits are made', async () => {
+  it('marks changes as published and enables publish update after new edits', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
     const publishButton = await screen.findByRole('button', {
-      name: 'skill.skillManagement.detail.publish',
+      name: 'skill.skillManagement.detail.publishUpdate',
     })
     expect(publishButton).toBeEnabled()
 
@@ -1178,17 +1180,18 @@ describe('SkillDetailPage', () => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
     await waitFor(() => {
-      expect(document.body).toHaveTextContent(
-        'skill.skillManagement.detail.publishedVersion:{"number":2}',
-      )
+      expect(document.body).toHaveTextContent('skill.skillManagement.detail.upToDate')
     })
     expect(publishButton).toBeDisabled()
+    expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.published')
 
     const displayNameInput = screen.getByDisplayValue('Untitled skill')
     await user.clear(displayNameInput)
     await user.type(displayNameInput, 'Updated skill')
 
     expect(publishButton).toBeEnabled()
+    expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.publishUpdate')
+    expect(document.body).toHaveTextContent('skill.skillManagement.detail.unpublishedChanges')
   })
 
   it('adds custom metadata from the value field Enter key and saves it on publish', async () => {
@@ -1211,7 +1214,9 @@ describe('SkillDetailPage', () => {
     expect(await screen.findByText('owner')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publish' }))
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -1302,7 +1307,9 @@ describe('SkillDetailPage', () => {
 
     await user.click(liveEditor)
     await user.type(liveEditor, 'First line{Enter}Second line')
-    await user.click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publish' }))
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -1538,7 +1545,9 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', { name: 'skill.skillManagement.detail.publish' }),
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
     )
 
     expect(
@@ -1547,13 +1556,50 @@ describe('SkillDetailPage', () => {
     expect(await screen.findByText('Support Agent')).toBeInTheDocument()
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
+    const publishDialog = screen.getByRole('dialog', {
+      name: 'skill.skillManagement.detail.publishReferencesTitle',
+    })
+    expect(screen.getByTestId('skill-publish-reference-list')).not.toHaveAttribute(
+      'data-scrollable',
+    )
     await user.click(
-      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+      within(publishDialog).getByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
     )
 
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
+  })
+
+  it('scrolls the publish reference list after ten items', async () => {
+    const user = userEvent.setup()
+    const references = Array.from({ length: 11 }, (_, index) =>
+      createAgentReference({
+        agent_id: `agent-${index + 1}`,
+        app_id: `app-${index + 1}`,
+        display_name: `Reference ${index + 1}`,
+        name: `reference-${index + 1}`,
+      }),
+    )
+    mocks.skillDetail = createSkillDetail({ reference_count: references.length })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({ data: references }),
+    }))
+
+    renderSkillDetailPage()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+
+    const referenceList = await screen.findByTestId('skill-publish-reference-list')
+    expect(referenceList).toHaveAttribute('data-scrollable', 'true')
+    expect(referenceList).toHaveClass('max-h-[314px]', 'overflow-y-auto')
+    expect(within(referenceList).getAllByRole('link')).toHaveLength(11)
   })
 
   it('renders selected version files in read-only mode and restores that version', async () => {

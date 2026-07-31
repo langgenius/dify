@@ -29,6 +29,7 @@ import {
   ReferenceFilesPicker,
   VersionActionBar,
 } from './markdown-editor'
+import { SkillPublishBar } from './publish-bar'
 import {
   addMarkdownMetadata,
   findBrokenMarkdownReferenceRangeAtCaret,
@@ -173,13 +174,6 @@ export function FileEditor({
   )
   const csvRows = useMemo(() => parseCsvRows(draftContent), [draftContent])
   const hasPublishedVersion = !!detail?.latest_published_version_id
-  const latestPublishedVersionNumber = detail?.latest_published_version_number
-  const latestPublishedVersionText =
-    typeof latestPublishedVersionNumber === 'number'
-      ? t(($) => $['skillManagement.detail.publishedVersion'], {
-          number: latestPublishedVersionNumber,
-        })
-      : null
   const latestPublishedAt = detail?.latest_published_at
   const hasUnpublishedChanges =
     displayNameDraft !== markdownContent.displayName ||
@@ -192,10 +186,14 @@ export function FileEditor({
     (typeof detail?.updated_at === 'number' &&
       typeof latestPublishedAt === 'number' &&
       detail.updated_at > latestPublishedAt)
-  const publishStatusText = hasUnpublishedChanges
-    ? t(($) => $['skillManagement.detail.draft'])
-    : (latestPublishedVersionText ?? t(($) => $['skillManagement.detail.published']))
-  const publishDisabled = publishing || !hasUnpublishedChanges
+  const publishState = publishing
+    ? 'publishing'
+    : !hasPublishedVersion
+      ? 'draft'
+      : hasUnpublishedChanges
+        ? 'unpublished'
+        : 'published'
+  const publishDisabled = publishState === 'publishing' || publishState === 'published'
   const fileHash = file?.hash
   const editorInstanceKey = `${selectedVersionId ?? 'draft'}:${filePath ?? 'empty'}:${readonly ? 'readonly' : 'draft'}`
   const editorRenderKey = `${editorInstanceKey}:${externalContentRevision}`
@@ -900,6 +898,14 @@ export function FileEditor({
             : savedAt
               ? t(($) => $['skillManagement.detail.savedAt'], { time: formatTimeFromNow(savedAt) })
               : t(($) => $['skillManagement.detail.saved'])
+  const publishMetaText =
+    publishState === 'published'
+      ? latestPublishedAt
+        ? t(($) => $['skillManagement.detail.publishedAt'], {
+            time: formatTimeFromNow(latestPublishedAt * 1000),
+          })
+        : t(($) => $['skillManagement.detail.published'])
+      : saveStateText
 
   if (!selectedPath) {
     return (
@@ -1345,7 +1351,12 @@ export function FileEditor({
       </div>
       {!readonly && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-          <div className="pointer-events-auto relative flex h-12 max-w-[calc(100%-2rem)] min-w-[412px] items-center gap-3 rounded-xl border border-divider-subtle bg-background-default px-4 shadow-xl">
+          <SkillPublishBar
+            metaLabel={publishMetaText}
+            onOpenVersions={onOpenVersions}
+            onPublish={handlePublish}
+            state={publishState}
+          >
             <SkillPublishConfirmPanel
               loading={publishing}
               onCancel={() => setPublishConfirmOpen(false)}
@@ -1357,36 +1368,7 @@ export function FileEditor({
               referenceCount={detail?.reference_count ?? 0}
               skillId={skillId}
             />
-            <span aria-hidden className="size-1.5 rounded-[2px] bg-text-tertiary" />
-            <span className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
-              {publishStatusText}
-              {hasUnpublishedChanges && latestPublishedVersionText && (
-                <>
-                  <span className="px-1">·</span>
-                  {latestPublishedVersionText}
-                </>
-              )}
-              <span className="px-1">·</span>
-              {saveStateText}
-            </span>
-            <button
-              type="button"
-              aria-label={t(($) => $['skillManagement.detail.versionHistory'])}
-              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={onOpenVersions}
-            >
-              <span aria-hidden className="i-ri-history-line size-4" />
-            </button>
-            <Button
-              variant="primary"
-              className="h-8 px-4"
-              loading={publishing}
-              disabled={publishDisabled}
-              onClick={handlePublish}
-            >
-              {t(($) => $['skillManagement.detail.publish'])}
-            </Button>
-          </div>
+          </SkillPublishBar>
         </div>
       )}
       {readonly && selectedVersion && (
