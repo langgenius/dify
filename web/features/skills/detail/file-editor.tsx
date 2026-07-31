@@ -159,6 +159,7 @@ export function FileEditor({
   const pendingPublishAfterSaveRef = useRef(false)
   const metadataKeyInputRef = useRef<HTMLInputElement>(null)
   const pendingDisplayNameRenameRef = useRef(false)
+  const displayNameDraftRef = useRef(displayNameDraft)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -241,6 +242,7 @@ export function FileEditor({
   }, [referencePicker?.currentDirectory, referenceQuery, referenceTargets])
 
   useEffect(() => {
+    displayNameDraftRef.current = markdownContent.displayName
     setDisplayNameDraft(markdownContent.displayName)
   }, [markdownContent.displayName])
 
@@ -845,17 +847,17 @@ export function FileEditor({
     })
   }
 
-  const trimmedMetadataKey = metadataKey.trim()
-  const canAddMetadata =
-    isSkillManifestFile &&
-    isEditableMetadataKey(trimmedMetadataKey) &&
-    !isProtectedMarkdownMetadataKey(trimmedMetadataKey)
-
-  const handleAddMetadata = () => {
-    if (!isSkillManifestFile || !canAddMetadata) return
+  const handleAddMetadata = (keyOverride?: string, valueOverride?: string) => {
+    const nextKey = (keyOverride ?? metadataKey).trim()
+    if (
+      !isSkillManifestFile ||
+      !isEditableMetadataKey(nextKey) ||
+      isProtectedMarkdownMetadataKey(nextKey)
+    )
+      return
 
     updateDraftContent(
-      addMarkdownMetadata(draftContentRef.current, trimmedMetadataKey, metadataValue),
+      addMarkdownMetadata(draftContentRef.current, nextKey, valueOverride ?? metadataValue),
     )
     setMetadataKey('')
     setMetadataValue('')
@@ -863,10 +865,11 @@ export function FileEditor({
   }
 
   const handleDisplayNameCommit = () => {
-    if (!isSkillManifestFile || readonly || displayNameDraft === markdownContent.displayName) return
+    const nextDisplayName = displayNameDraftRef.current
+    if (!isSkillManifestFile || readonly || nextDisplayName === markdownContent.displayName) return
 
     pendingDisplayNameRenameRef.current = true
-    updateDraftContent(setMarkdownDisplayName(draftContentRef.current, displayNameDraft))
+    updateDraftContent(setMarkdownDisplayName(draftContentRef.current, nextDisplayName))
   }
 
   const handleRemoveMetadata = (key: string) => {
@@ -1043,7 +1046,14 @@ export function FileEditor({
                         valuePlaceholder={detail?.display_name ?? ''}
                         readOnly={readonly}
                         onBlurCapture={handleDisplayNameCommit}
-                        onValueChange={readonly ? undefined : setDisplayNameDraft}
+                        onValueChange={
+                          readonly
+                            ? undefined
+                            : (nextDisplayName) => {
+                                displayNameDraftRef.current = nextDisplayName
+                                setDisplayNameDraft(nextDisplayName)
+                              }
+                        }
                       />
                     )}
                     {markdownContent.metadata.map((entry) => {
@@ -1111,6 +1121,10 @@ export function FileEditor({
                             if (event.key === 'Enter') {
                               event.preventDefault()
                               event.stopPropagation()
+                              handleAddMetadata(
+                                metadataKeyInputRef.current?.value,
+                                event.currentTarget.value,
+                              )
                             }
                           }}
                           onKeyUp={(event) => {
@@ -1118,7 +1132,10 @@ export function FileEditor({
 
                             event.preventDefault()
                             event.stopPropagation()
-                            handleAddMetadata()
+                            handleAddMetadata(
+                              metadataKeyInputRef.current?.value,
+                              event.currentTarget.value,
+                            )
                           }}
                         />
                       </div>

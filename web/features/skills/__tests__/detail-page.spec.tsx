@@ -603,17 +603,16 @@ describe('SkillDetailPage', () => {
     const sidebar = await screen.findByTestId('skill-detail-sidebar')
     const header = screen.getByTestId('skill-detail-sidebar-header')
 
-    expect(sidebar).toHaveClass('w-[248px]', 'bg-background-body', 'p-1')
-    expect(sidebar.firstElementChild).toHaveClass('rounded-lg', 'bg-background-default')
-    expect(header).toHaveClass('h-12', 'py-2', 'pr-2', 'pl-1')
-    expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
-    expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
-    expect(header).toHaveTextContent('/SKILLS')
+    expect(sidebar).toHaveClass('m-1', 'w-60', 'rounded-lg', 'bg-background-default')
+    expect(header).toHaveClass('h-12', 'gap-2', 'px-3')
+    expect(header.querySelector('.i-ri-arrow-left-line')).toBeInTheDocument()
+    expect(header.querySelector('.i-ri-box-3-line')).toBeInTheDocument()
+    expect(header).toHaveTextContent('SKILLS')
     expect(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.searchFiles',
       }),
-    ).toHaveClass('size-8', 'rounded-[10px]')
+    ).toHaveClass('size-6', 'rounded-md')
   })
 
   it('opens the inline tag selector with workspace tag options', async () => {
