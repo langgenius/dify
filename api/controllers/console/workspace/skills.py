@@ -87,6 +87,8 @@ class SkillResponse(ResponseModel):
     name_manually_edited: bool = False
     visibility: str
     latest_published_version_id: str | None = None
+    latest_published_version_number: int | None = None
+    latest_published_at: int | None = None
     reference_count: int = 0
     created_by: str | None = None
     created_by_name: str | None = None

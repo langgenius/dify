@@ -671,7 +671,9 @@ export type SkillDetailResponse = {
   files?: Array<SkillFileResponse>
   icon: string
   id: string
+  latest_published_at?: number | null
   latest_published_version_id?: string | null
+  latest_published_version_number?: number | null
   name: string
   name_manually_edited?: boolean
   reference_count?: number
@@ -718,7 +720,9 @@ export type SkillResponse = {
   display_name: string
   icon: string
   id: string
+  latest_published_at?: number | null
   latest_published_version_id?: string | null
+  latest_published_version_number?: number | null
   name: string
   name_manually_edited?: boolean
   reference_count?: number

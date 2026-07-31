@@ -6,7 +6,7 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
-import { Fragment, memo, useCallback, useId, useMemo } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
@@ -36,7 +36,7 @@ const Blocks = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
   const previewDescriptionBaseId = useId()
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
@@ -194,7 +194,7 @@ const Blocks = ({
       )}
       {!isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => <BlockPreviewCard payload={payload as BlockPreviewPayload | undefined} />}
+        {({ payload }) => <BlockPreviewCard payload={payload} />}
       </PreviewCard>
     </div>
   )

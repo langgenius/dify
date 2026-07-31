@@ -25,11 +25,11 @@ const kbdVariants = cva(
   },
 )
 
-export type KbdColor = NonNullable<VariantProps<typeof kbdVariants>['color']>
+type KbdColor = NonNullable<VariantProps<typeof kbdVariants>['color']>
 
-export type KbdProps = Omit<React.ComponentProps<'kbd'>, 'color'> & VariantProps<typeof kbdVariants>
+type KbdProps = Omit<React.ComponentProps<'kbd'>, 'color'> & VariantProps<typeof kbdVariants>
 
-export function Kbd({ className, color, disabled, ...props }: KbdProps) {
+function Kbd({ className, color, disabled, ...props }: KbdProps) {
   return (
     <kbd
       data-disabled={disabled ? '' : undefined}
@@ -39,10 +39,13 @@ export function Kbd({ className, color, disabled, ...props }: KbdProps) {
   )
 }
 
-export type KbdGroupProps = React.ComponentProps<'span'>
+type KbdGroupProps = React.ComponentProps<'span'>
 
-export function KbdGroup({ className, ...props }: KbdGroupProps) {
+function KbdGroup({ className, ...props }: KbdGroupProps) {
   return (
     <span className={cn('inline-flex items-center gap-0.5 align-middle', className)} {...props} />
   )
 }
+
+export { Kbd, KbdGroup }
+export type { KbdColor, KbdGroupProps, KbdProps }

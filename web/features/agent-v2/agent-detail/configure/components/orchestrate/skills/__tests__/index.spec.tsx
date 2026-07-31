@@ -74,6 +74,9 @@ const mocks = vi.hoisted(() => ({
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
   fetch: vi.fn(),
+  fileUploadConfig: {
+    skill_file_size_limit: 64,
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -86,6 +89,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
   downloadUrl: mocks.downloadUrl,
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({ data: mocks.fileUploadConfig }),
 }))
 
 vi.mock('@/config', async (importOriginal) => ({
@@ -285,6 +292,7 @@ function renderAgentSkills({
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.fileUploadConfig.skill_file_size_limit = 64
     vi.stubGlobal('fetch', mocks.fetch)
     document.cookie = 'csrf_token=csrf-token; path=/'
     mocks.fetch.mockResolvedValue(
@@ -565,6 +573,21 @@ describe('AgentSkills', () => {
     expect(toast.success).toHaveBeenCalled()
   })
 
+  it('should show the configured skill package size limit', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+
+    expect(
+      await screen.findByText(
+        'agentV2.agentDetail.configure.skills.upload.sizeLimit:{"sizeLimit":"64.00 MB"}',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('should bind workspace skills without adding them to inline config skills', async () => {
     const user = userEvent.setup()
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
@@ -709,6 +732,44 @@ describe('AgentSkills', () => {
         },
       })
     })
+  })
+
+  it('should reject skill packages over the configured size limit', async () => {
+    const user = userEvent.setup()
+    mocks.fileUploadConfig.skill_file_size_limit = 1
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const oversizedFile = new File([new Uint8Array(1024 * 1024 + 1)], 'oversized-skill.skill', {
+      type: 'application/zip',
+    })
+    await user.upload(input, oversizedFile)
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.skills.upload.sizeLimit:{"sizeLimit":"1.00 MB"}',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: /agentDetail\.configure\.skills\.upload\.action/i,
+      }),
+    ).toBeDisabled()
+
+    vi.mocked(toast.error).mockClear()
+    const allowedFile = new File([new Uint8Array(1024 * 1024)], 'allowed-skill.skill', {
+      type: 'application/zip',
+    })
+    await user.upload(input, allowedFile)
+
+    expect(screen.getByText('allowed-skill.skill')).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should mark already bound workspace skills as added and prevent duplicate binding', async () => {
