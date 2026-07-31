@@ -151,14 +151,21 @@ function isDatasetDetailPathname(pathname: string) {
   return true
 }
 
+function isSkillDetailPathname(pathname: string) {
+  const [section, skillId] = pathname.split('/').filter(Boolean)
+
+  return section === 'skills' && !!skillId
+}
+
 export function shouldHideMainNavigation(pathname: string) {
   const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
 
   return (
-    section === 'datasets' &&
-    namespace === 'new' &&
-    !!knowledgeSpaceId &&
-    knowledgeSpaceId !== 'create'
+    (section === 'datasets' &&
+      namespace === 'new' &&
+      !!knowledgeSpaceId &&
+      knowledgeSpaceId !== 'create') ||
+    isSkillDetailPathname(pathname)
   )
 }
 
