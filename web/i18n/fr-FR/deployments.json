@@ -357,6 +357,7 @@
   "studio.liveVersion": "Version active",
   "studio.moreEnvironments": "Plus d’environnements",
   "studio.publisher.noPublishedDescription": "Publiez votre brouillon pour le déployer ici.",
+  "studio.publisher.notDeployedYet": "Pas encore déployé",
   "studio.retryVersion": "Réessayer {{version}}",
   "studio.updatedAtBy": "Mis à jour le {{time}} par {{name}}",
   "studio.versionsBehind_one": "{{count}} version de retard",

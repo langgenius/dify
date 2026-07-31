@@ -357,6 +357,7 @@
   "studio.liveVersion": "線上版本",
   "studio.moreEnvironments": "更多環境",
   "studio.publisher.noPublishedDescription": "發佈草稿後即可在此部署。",
+  "studio.publisher.notDeployedYet": "尚未部署",
   "studio.retryVersion": "重試 {{version}}",
   "studio.updatedAtBy": "{{name}} 於 {{time}} 更新",
   "studio.versionsBehind_one": "落後 {{count}} 個版本",

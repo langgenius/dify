@@ -1,7 +1,7 @@
 'use client'
 
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { MockEnvironmentDeployment } from '@/app/components/app/deploy/mock-data'
 import type { DeploymentVersion } from '@/app/components/app/deploy/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
@@ -20,10 +20,14 @@ type PublisherEnvironmentView = 'configuration' | 'publisher' | 'versions'
 
 type PublisherEnvironmentFlowProps = {
   appId?: string
-  deployment?: MockEnvironmentDeployment
+  deployment?: EnvironmentDeployment
   environmentId: string
+  environmentName: string
   environmentTabs: ReactNode
-  latestVersion?: DeploymentVersion
+  isEnvironmentInUse: boolean
+  isDeploymentError: boolean
+  isDeploymentLoading: boolean
+  latestVersion?: DeploymentVersion | null
   onGoToPublish: () => void
 }
 
@@ -163,14 +167,18 @@ export function PublisherEnvironmentFlow({
   appId,
   deployment,
   environmentId,
+  environmentName,
   environmentTabs,
+  isEnvironmentInUse,
+  isDeploymentError,
+  isDeploymentLoading,
   latestVersion,
   onGoToPublish,
 }: PublisherEnvironmentFlowProps) {
+  const { t } = useTranslation()
   const [view, setView] = useState<PublisherEnvironmentView>('publisher')
   const [selectedVersion, setSelectedVersion] = useState<DeploymentVersion>()
-  const environmentName = deployment?.name ?? environmentId
-  const currentVersionId = deployment?.version?.id
+  const currentVersionId = deployment?.deployment?.current_version?.id
 
   function openVersionSelection() {
     setView('versions')
@@ -179,6 +187,27 @@ export function PublisherEnvironmentFlow({
   function openConfiguration(version: DeploymentVersion) {
     setSelectedVersion(version)
     setView('configuration')
+  }
+
+  if (isDeploymentLoading || isDeploymentError) {
+    return (
+      <div aria-busy={isDeploymentLoading} className="flex min-h-40 flex-col gap-3 p-4">
+        {environmentTabs}
+        <div
+          role={isDeploymentError ? 'alert' : 'status'}
+          className="flex flex-1 items-center justify-center gap-2 system-sm-regular text-text-tertiary"
+        >
+          {isDeploymentLoading ? (
+            <>
+              <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
+              {t(($) => $.loading, { ns: 'common' })}
+            </>
+          ) : (
+            t(($) => $['common.loadFailed'], { ns: 'deployments' })
+          )}
+        </div>
+      </div>
+    )
   }
 
   if (view === 'configuration' && selectedVersion) {
@@ -212,6 +241,7 @@ export function PublisherEnvironmentFlow({
       <PublisherEnvironmentSummarySection
         deployment={deployment}
         environmentTabs={environmentTabs}
+        isEnvironmentInUse={isEnvironmentInUse}
         latestVersion={latestVersion}
         onDeployLatest={() => {
           if (latestVersion) openConfiguration(latestVersion)

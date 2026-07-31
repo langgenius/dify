@@ -1,10 +1,12 @@
 /* oxlint-disable typescript/no-explicit-any */
+import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
@@ -29,6 +31,11 @@ const mockInvalidateAppWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 let mockPublishedWorkflow: Record<string, any> | null = null
+let mockPublishedWorkflowQueryState = {
+  isError: false,
+  isLoading: false,
+  isSuccess: true,
+}
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -106,7 +113,10 @@ vi.mock('@/service/use-workflow', () => ({
     queryKey: ['workflow', 'publish', appId],
     queryFn: () => mockFetchPublishedWorkflow(appId),
   }),
-  useAppWorkflow: () => ({ data: mockPublishedWorkflow, isSuccess: true }),
+  useAppWorkflow: () => ({
+    data: mockPublishedWorkflow,
+    ...mockPublishedWorkflowQueryState,
+  }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useUpdateWorkflow: () => ({ mutate: mockUpdateWorkflow }),
 }))
@@ -257,6 +267,11 @@ describe('AppPublisher', () => {
     sectionProps.access = null
     sectionProps.actions = null
     mockPublishedWorkflow = null
+    mockPublishedWorkflowQueryState = {
+      isError: false,
+      isLoading: false,
+      isSuccess: true,
+    }
     mockFetchPublishedWorkflow.mockResolvedValue(null)
     mockWorkspacePermissionKeys = ['tool.manage']
     mockAppDetail = {
@@ -372,13 +387,26 @@ describe('AppPublisher', () => {
   })
 
   it('should expose app deployment with deploy ACL regardless of the legacy workspace role', () => {
+    const queryClient = createConsoleQueryClient()
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [AppACLPermission.Deploy],
     }
+    const environmentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        enabled: true,
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+        },
+      })
+    queryClient.setQueryDefaults(environmentsQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(environmentsQuery.queryKey, { data: [] })
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      queryClient,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: false },
     })
 
@@ -420,14 +448,57 @@ describe('AppPublisher', () => {
     expect(sectionProps.summary?.environmentTabs).toBeUndefined()
   })
 
-  it('should switch between the built-in publisher and an overflow environment', async () => {
+  it('should show the matching publisher state for an undeployed environment', async () => {
     const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const publishedAt = Date.now()
+    mockPublishedWorkflowQueryState = {
+      isError: false,
+      isLoading: true,
+      isSuccess: false,
+    }
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [AppACLPermission.Deploy],
     }
-    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+    const environmentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        enabled: true,
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+        },
+      })
+    queryClient.setQueryDefaults(environmentsQuery.queryKey, { staleTime: Infinity })
+    queryClient.setQueryData(environmentsQuery.queryKey, {
+      data: [
+        {
+          description: '',
+          display_name: 'Staging',
+          id: 'staging',
+          in_use: true,
+          status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+        },
+        {
+          description: '',
+          display_name: 'Canary',
+          id: 'canary',
+          in_use: true,
+          status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+        },
+        {
+          description: '',
+          display_name: 'Pre-release',
+          id: 'pre-release',
+          in_use: false,
+          status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+        },
+      ],
+    })
+    const { rerender } = renderWithConsoleQuery(<AppPublisher publishedAt={publishedAt} />, {
+      queryClient,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
     })
 
@@ -439,7 +510,38 @@ describe('AppPublisher', () => {
     )
     await user.click(screen.getByRole('menuitem', { name: 'Pre-release' }))
 
-    expect(screen.getByRole('button', { name: /studio\.deployLatest/ })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText(/studio\.accessPoint\.noPublishedTitle/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
+
+    mockPublishedWorkflowQueryState = {
+      isError: false,
+      isLoading: false,
+      isSuccess: true,
+    }
+    rerender(<AppPublisher publishedAt={publishedAt} />)
+
+    expect(screen.getByText(/studio\.accessPoint\.noPublishedTitle/)).toBeInTheDocument()
+    expect(screen.getByText(/studio\.publisher\.noPublishedDescription/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /studio\.accessPoint\.goToPublish/ })).toBeEnabled()
+    expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
+
+    mockPublishedWorkflow = {
+      created_at: 1_710_000_100,
+      id: 'workflow-version-5',
+      marked_comment: '',
+      marked_name: 'Release 5',
+      version: 'v5',
+    }
+    rerender(<AppPublisher publishedAt={publishedAt} />)
+
+    expect(screen.getByText(/studio\.publisher\.notDeployedYet/)).toBeInTheDocument()
+    expect(screen.queryByText(/studio\.publisher\.noPublishedDescription/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /studio\.deployLatest/ })).toBeEnabled()
+    expect(screen.getByText(/overview\.chip\.latest/).parentElement).toHaveTextContent(
+      'overview.chip.latest: Release 5',
+    )
+    expect(screen.getByRole('button', { name: /studio\.allVersions/ })).toBeInTheDocument()
     expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }))

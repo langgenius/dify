@@ -12,14 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MOCK_ENVIRONMENT_DEPLOYMENTS,
-  MOCK_PUBLISHED_VERSIONS,
-  MOCK_UNDEPLOYED_ENVIRONMENTS,
-} from '@/app/components/app/deploy/mock-data'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
 import {
   buildWorkflowLaunchUrl,
@@ -53,7 +48,7 @@ import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import AccessControl from '../app-access-control'
 import { PublisherEnvironmentFlow } from './environment-deployment-flow'
-import { BUILT_IN_ENVIRONMENT_ID, PublisherEnvironmentTabs } from './environment-tabs'
+import { PublisherEnvironmentTabs } from './environment-tabs'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import {
   PublisherAccessSection,
@@ -61,24 +56,23 @@ import {
   PublisherSummarySection,
 } from './sections'
 import {
+  addPublisherEnvironmentAtom,
+  appPublisherEnvironmentsAtom,
+  AppPublisherStateBoundary,
+  BUILT_IN_ENVIRONMENT_ID,
+  joinedPublisherEnvironmentIdsAtom,
+  selectedEnvironmentDeploymentAtom,
+  selectedEnvironmentDeploymentIsErrorAtom,
+  selectedEnvironmentDeploymentIsLoadingAtom,
+  selectedPublisherEnvironmentAtom,
+  selectedPublisherEnvironmentIdAtom,
+} from './state'
+import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
   isPublisherAccessConfigured,
 } from './utils'
 import VersionInfoModal from './version-info-modal'
-
-// TODO: Replace the studio deployment fixtures after the app-scoped environment API is connected.
-const PUBLISHER_ENVIRONMENTS = [
-  ...MOCK_ENVIRONMENT_DEPLOYMENTS.map(({ id, name }) => ({ id, name })),
-  ...MOCK_UNDEPLOYED_ENVIRONMENTS.map((name, index) => ({
-    id: `available-${index}`,
-    name,
-  })),
-]
-
-const INITIAL_JOINED_ENVIRONMENT_IDS = MOCK_ENVIRONMENT_DEPLOYMENTS.map(
-  (environment) => environment.id,
-)
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -116,7 +110,28 @@ type AppPublisherPublishHandler =
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
-export function AppPublisher({
+export function AppPublisher(props: AppPublisherProps) {
+  const appDetail = useAppStore((state) => state.appDetail)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canDeploy
+  const supportsMultiEnvironment = appDetail?.mode === AppModeEnum.WORKFLOW && canDeploy
+
+  return (
+    <AppPublisherStateBoundary
+      appId={appDetail?.id}
+      environmentQueryEnabled={supportsMultiEnvironment}
+    >
+      <AppPublisherContent {...props} supportsMultiEnvironment={supportsMultiEnvironment} />
+    </AppPublisherStateBoundary>
+  )
+}
+
+function AppPublisherContent({
   disabled = false,
   publishDisabled = false,
   publishedAt,
@@ -138,7 +153,8 @@ export function AppPublisher({
   hasTriggerNode = false,
   startNodeLimitExceeded = false,
   hasHumanInputNode = false,
-}: AppPublisherProps) {
+  supportsMultiEnvironment,
+}: AppPublisherProps & { supportsMultiEnvironment: boolean }) {
   const { t } = useTranslation()
 
   const [open, setOpen] = useState(false)
@@ -151,17 +167,24 @@ export function AppPublisher({
   >({})
   const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
   const [editVersionInfoOpen, setEditVersionInfoOpen] = useState(false)
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(BUILT_IN_ENVIRONMENT_ID)
-  const [joinedEnvironmentIds, setJoinedEnvironmentIds] = useState<string[]>(() => [
-    ...INITIAL_JOINED_ENVIRONMENT_IDS,
-  ])
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const canManageTools = useCanManageTools()
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const environments = useAtomValue(appPublisherEnvironmentsAtom)
+  const joinedEnvironmentIds = useAtomValue(joinedPublisherEnvironmentIdsAtom)
+  const selectedEnvironmentId = useAtomValue(selectedPublisherEnvironmentIdAtom)
+  const selectedEnvironment = useAtomValue(selectedPublisherEnvironmentAtom)
+  const selectedEnvironmentDeployment = useAtomValue(selectedEnvironmentDeploymentAtom)
+  const isSelectedEnvironmentDeploymentLoading = useAtomValue(
+    selectedEnvironmentDeploymentIsLoadingAtom,
+  )
+  const isSelectedEnvironmentDeploymentError = useAtomValue(
+    selectedEnvironmentDeploymentIsErrorAtom,
+  )
+  const addEnvironment = useSetAtom(addPublisherEnvironmentAtom)
+  const selectEnvironment = useSetAtom(selectedPublisherEnvironmentIdAtom)
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -170,19 +193,16 @@ export function AppPublisher({
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const appMode = appDetail?.mode
   const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
-    workspacePermissionKeys,
-  }).canDeploy
-  const supportsMultiEnvironment = appMode === AppModeEnum.WORKFLOW && canDeploy
   const isChatApp =
     appMode === AppModeEnum.CHAT ||
     appMode === AppModeEnum.AGENT_CHAT ||
     appMode === AppModeEnum.COMPLETION
-  const { data: publishedWorkflow, isSuccess: isPublishedWorkflowSuccess } = useAppWorkflow(
-    isWorkflowApp ? (appDetail?.id ?? '') : '',
-  )
+  const {
+    data: publishedWorkflow,
+    isError: isPublishedWorkflowError,
+    isLoading: isPublishedWorkflowLoading,
+    isSuccess: isPublishedWorkflowSuccess,
+  } = useAppWorkflow(isWorkflowApp ? (appDetail?.id ?? '') : '')
   const currentPublishedAt =
     isWorkflowApp && isPublishedWorkflowSuccess
       ? publishedWorkflow?.created_at
@@ -350,14 +370,6 @@ export function AppPublisher({
     setEditVersionInfoOpen(true)
   }
 
-  function handleAddEnvironment(environmentId: string) {
-    setJoinedEnvironmentIds((currentEnvironmentIds) => {
-      if (currentEnvironmentIds.includes(environmentId)) return currentEnvironmentIds
-      return [...currentEnvironmentIds, environmentId]
-    })
-    setSelectedEnvironmentId(environmentId)
-  }
-
   function handleUpdateVersionInfo(params: { id?: string; title: string; releaseNotes: string }) {
     if (!appDetail?.id || !params.id) return
 
@@ -454,17 +466,28 @@ export function AppPublisher({
     backgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   }
-  const selectedEnvironmentDeployment = MOCK_ENVIRONMENT_DEPLOYMENTS.find(
-    (deployment) => deployment.id === selectedEnvironmentId,
-  )
-  const latestPublishedVersion = MOCK_PUBLISHED_VERSIONS.find((version) => version.latest)
+  const latestPublishedVersion = isPublishedWorkflowSuccess
+    ? publishedWorkflow
+      ? {
+          description: publishedWorkflow.marked_comment || undefined,
+          id: publishedWorkflow.id,
+          latest: true,
+          name: publishedWorkflow.marked_name || publishedWorkflow.version,
+          publishedAt: publishedWorkflow.created_at * 1000,
+          publishedBy: publishedWorkflow.created_by?.name,
+        }
+      : null
+    : undefined
   const environmentTabs = supportsMultiEnvironment ? (
     <PublisherEnvironmentTabs
-      environments={PUBLISHER_ENVIRONMENTS}
+      environments={environments.map((environment) => ({
+        id: environment.id,
+        name: environment.display_name,
+      }))}
       joinedEnvironmentIds={joinedEnvironmentIds}
       selectedEnvironmentId={selectedEnvironmentId}
-      onAddEnvironment={handleAddEnvironment}
-      onSelectEnvironment={setSelectedEnvironmentId}
+      onAddEnvironment={addEnvironment}
+      onSelectEnvironment={selectEnvironment}
     />
   ) : undefined
   const showBuiltInPublisher =
@@ -550,9 +573,23 @@ export function AppPublisher({
                 appId={appDetail?.id}
                 deployment={selectedEnvironmentDeployment}
                 environmentId={selectedEnvironmentId}
+                environmentName={
+                  selectedEnvironment?.display_name ??
+                  selectedEnvironmentDeployment?.environment.display_name ??
+                  selectedEnvironmentId
+                }
                 environmentTabs={environmentTabs}
+                isEnvironmentInUse={selectedEnvironment?.in_use === true}
+                isDeploymentError={
+                  isSelectedEnvironmentDeploymentError ||
+                  (selectedEnvironment?.in_use === false && isPublishedWorkflowError)
+                }
+                isDeploymentLoading={
+                  isSelectedEnvironmentDeploymentLoading ||
+                  (selectedEnvironment?.in_use === false && isPublishedWorkflowLoading)
+                }
                 latestVersion={latestPublishedVersion}
-                onGoToPublish={() => setSelectedEnvironmentId(BUILT_IN_ENVIRONMENT_ID)}
+                onGoToPublish={() => selectEnvironment(BUILT_IN_ENVIRONMENT_ID)}
               />
             )}
           </div>

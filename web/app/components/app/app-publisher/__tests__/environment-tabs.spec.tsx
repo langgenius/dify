@@ -2,7 +2,8 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { BUILT_IN_ENVIRONMENT_ID, PublisherEnvironmentTabs } from '../environment-tabs'
+import { PublisherEnvironmentTabs } from '../environment-tabs'
+import { BUILT_IN_ENVIRONMENT_ID } from '../state'
 
 const environments = [
   { id: 'staging', name: 'Staging' },

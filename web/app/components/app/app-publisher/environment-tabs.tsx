@@ -13,8 +13,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-export const BUILT_IN_ENVIRONMENT_ID = 'built-in'
+import { BUILT_IN_ENVIRONMENT_ID } from './state'
 
 const DEFAULT_TABS_WIDTH = 320
 const ENVIRONMENT_TAB_MAX_WIDTH = 88

@@ -357,6 +357,7 @@
   "studio.liveVersion": "الإصدار النشط",
   "studio.moreEnvironments": "المزيد من البيئات",
   "studio.publisher.noPublishedDescription": "انشر مسودتك لتتمكن من نشرها هنا.",
+  "studio.publisher.notDeployedYet": "لم يتم النشر بعد",
   "studio.retryVersion": "إعادة محاولة {{version}}",
   "studio.updatedAtBy": "تم التحديث في {{time}} بواسطة {{name}}",
   "studio.versionsBehind_one": "متأخر بـ {{count}} إصدار",

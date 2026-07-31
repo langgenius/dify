@@ -357,6 +357,7 @@
   "studio.liveVersion": "稼働中のバージョン",
   "studio.moreEnvironments": "その他の環境",
   "studio.publisher.noPublishedDescription": "下書きを公開して、ここにデプロイしてください。",
+  "studio.publisher.notDeployedYet": "まだデプロイされていません",
   "studio.retryVersion": "{{version}} を再試行",
   "studio.updatedAtBy": "{{name}} が {{time}} に更新",
   "studio.versionsBehind_one": "{{count}} バージョン遅れ",

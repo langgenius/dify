@@ -357,6 +357,7 @@
   "studio.liveVersion": "Canlı sürüm",
   "studio.moreEnvironments": "Daha fazla ortam",
   "studio.publisher.noPublishedDescription": "Buraya dağıtmak için taslağınızı yayınlayın.",
+  "studio.publisher.notDeployedYet": "Henüz dağıtılmadı",
   "studio.retryVersion": "{{version}} sürümünü yeniden dene",
   "studio.updatedAtBy": "{{time}} tarihinde {{name}} tarafından güncellendi",
   "studio.versionsBehind_one": "{{count}} sürüm geride",

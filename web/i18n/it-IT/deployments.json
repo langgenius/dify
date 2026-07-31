@@ -357,6 +357,7 @@
   "studio.liveVersion": "Versione attiva",
   "studio.moreEnvironments": "Altri ambienti",
   "studio.publisher.noPublishedDescription": "Pubblica la bozza per distribuirla qui.",
+  "studio.publisher.notDeployedYet": "Non ancora distribuito",
   "studio.retryVersion": "Riprova {{version}}",
   "studio.updatedAtBy": "Aggiornato il {{time}} da {{name}}",
   "studio.versionsBehind_one": "{{count}} versione indietro",
