@@ -21,11 +21,15 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob } from '../client'
+import { FileTabs } from './file-tabs'
 import {
   CsvTablePreview,
+  EditableMetadataEntry,
+  EditableMetadataField,
   MarkdownBodyReferencePreview,
   MarkdownLiveBodyEditor,
   MarkdownModeSwitch,
+  MarkdownSourceEditor,
   ReferenceFilesPicker,
   VersionActionBar,
 } from './markdown-editor'
@@ -72,6 +76,7 @@ import {
   setMarkdownLiveEditorSelectionOffset,
   setSkillDetailCache,
   stripSkillFrontmatterForDisplay,
+  updateMarkdownMetadata,
 } from './shared'
 import { SkillPublishConfirmPanel } from './skill-metadata'
 
@@ -81,6 +86,7 @@ export function FileEditor({
   fileMutationCoordinator,
   hasLocalUnpublishedChanges,
   onLocalUnpublishedChangesChange,
+  onPromoteFile,
   onOpenVersions,
   onPublish,
   onRestoreVersion,
@@ -89,6 +95,7 @@ export function FileEditor({
   onDraftDetailChange,
   onSelectFile,
   openFiles,
+  previewFilePath,
   publishing,
   readonly,
   selectedPath,
@@ -101,6 +108,7 @@ export function FileEditor({
   fileMutationCoordinator: SkillFileMutationCoordinator
   hasLocalUnpublishedChanges: boolean
   onLocalUnpublishedChangesChange: (hasChanges: boolean) => void
+  onPromoteFile: (path: string) => void
   onOpenVersions: () => void
   onPublish: () => void
   onRestoreVersion: () => void
@@ -109,6 +117,7 @@ export function FileEditor({
   onDraftDetailChange: (detail: SkillDetailResponse) => void
   onSelectFile: (path: string) => void
   openFiles: SkillFileResponse[]
+  previewFilePath: string | undefined
   publishing: boolean
   readonly: boolean
   selectedPath: string | undefined
@@ -145,6 +154,7 @@ export function FileEditor({
   const detailRef = useRef(detail)
   const fileRef = useRef(file)
   const pendingPublishAfterSaveRef = useRef(false)
+  const metadataKeyInputRef = useRef<HTMLInputElement>(null)
   const pendingDisplayNameRenameRef = useRef(false)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
@@ -521,9 +531,12 @@ export function FileEditor({
       }
       setDraftContent(nextContent)
       setSaveStatus(nextContent === lastSavedContentRef.current ? 'saved' : 'dirty')
-      if (nextContent !== lastSavedContentRef.current) onLocalUnpublishedChangesChange(true)
+      if (nextContent !== lastSavedContentRef.current) {
+        onLocalUnpublishedChangesChange(true)
+        if (filePath) onPromoteFile(filePath)
+      }
     },
-    [onLocalUnpublishedChangesChange],
+    [filePath, onLocalUnpublishedChangesChange, onPromoteFile],
   )
 
   const handleContentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -928,54 +941,15 @@ export function FileEditor({
   }
 
   return (
-    <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden border-r border-divider-subtle bg-background-default">
-      <div className="flex h-12 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-divider-subtle px-2">
-        <div className="flex w-max min-w-full items-stretch">
-          {openFiles.map((openFile) => {
-            const selected = openFile.path === selectedPath
-
-            return (
-              <div
-                key={openFile.path}
-                className={cn(
-                  'group/tab flex h-12 w-44 shrink-0 items-center gap-2 border-r border-divider-subtle px-3',
-                  selected ? 'bg-background-default' : 'bg-background-section',
-                )}
-              >
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  onClick={() => onSelectFile(openFile.path)}
-                >
-                  <span
-                    aria-hidden
-                    className={cn('size-4 shrink-0', getSkillFileIconClass(openFile))}
-                  />
-                  <span
-                    className={cn(
-                      'truncate system-sm-medium',
-                      selected ? 'text-text-primary' : 'text-text-tertiary',
-                    )}
-                  >
-                    {getPathBaseName(openFile.path)}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  aria-label={t(($) => $['skillManagement.detail.closeFileTab'], {
-                    name: openFile.path,
-                  })}
-                  className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-quaternary opacity-0 outline-hidden group-hover/tab:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  onClick={() => onCloseFile(openFile.path)}
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 p-3 pb-20">
+    <main className="relative my-1 mr-1 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
+      <FileTabs
+        files={openFiles}
+        onClose={onCloseFile}
+        onSelect={onSelectFile}
+        previewPath={previewFilePath}
+        selectedPath={selectedPath}
+      />
+      <div className="mt-px min-h-0 flex-1">
         {isTextContentPending ? (
           <div aria-busy="true" className="h-full cursor-not-allowed" />
         ) : isTextContentError ? (
@@ -985,125 +959,98 @@ export function FileEditor({
             </p>
           </div>
         ) : isMarkdown && markdownMode === 'live' ? (
-          <div className="relative h-full overflow-hidden rounded-xl border border-divider-regular bg-background-default">
+          <div className="relative h-full overflow-hidden bg-background-default">
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
-            <div className="h-full scrollbar-none overflow-y-auto px-8 py-10">
-              <div className="mx-auto max-w-[820px]">
+            <div className="h-full scrollbar-none overflow-y-auto px-12 py-8">
+              <div className="mx-auto max-w-[768px]">
                 {showMarkdownMetadataPanel && (
-                  <div className="mb-8 space-y-5">
+                  <div className="mb-3 flex flex-col gap-3 p-2">
                     {(markdownContent.name || !readonly) && (
-                      <div className="max-w-full space-y-1">
-                        <div className="system-sm-regular text-text-tertiary">name</div>
-                        {readonly ? (
-                          <div className="max-w-[320px] truncate system-sm-regular text-text-secondary">
-                            {markdownContent.name || '-'}
-                          </div>
-                        ) : (
-                          <input
-                            value={markdownContent.name}
-                            className="h-8 w-[280px] max-w-full rounded-lg border border-transparent bg-transparent px-0 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary hover:border-divider-regular hover:bg-background-default hover:px-2.5 focus-visible:border-divider-regular focus-visible:bg-background-default focus-visible:px-2.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                            onChange={(event) => {
-                              updateDraftContent(
-                                setMarkdownFrontmatterField(
-                                  draftContentRef.current,
-                                  'name',
-                                  event.target.value,
-                                ),
-                              )
-                            }}
-                          />
-                        )}
-                      </div>
+                      <EditableMetadataField
+                        label="name"
+                        value={markdownContent.name}
+                        valuePlaceholder="Name this skill. Lowercase letters, numbers, hyphens. Becomes the folder name on export"
+                        readOnly={readonly}
+                        onValueChange={
+                          readonly
+                            ? undefined
+                            : (value) =>
+                                updateDraftContent(
+                                  setMarkdownFrontmatterField(
+                                    draftContentRef.current,
+                                    'name',
+                                    value,
+                                  ),
+                                )
+                        }
+                      />
                     )}
                     {(markdownContent.description || !readonly) && (
-                      <div className="max-w-full space-y-1">
-                        <div className="system-sm-regular text-text-tertiary">description</div>
-                        {readonly ? (
-                          <div className="max-w-[520px] system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
-                            {markdownContent.description || '-'}
-                          </div>
-                        ) : (
-                          <textarea
-                            value={markdownContent.description}
-                            rows={2}
-                            className="min-h-8 w-[520px] max-w-full resize-none rounded-lg border border-transparent bg-transparent px-0 py-1 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary hover:border-divider-regular hover:bg-background-default hover:px-2.5 focus-visible:border-divider-regular focus-visible:bg-background-default focus-visible:px-2.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                            onChange={(event) => {
-                              updateDraftContent(
-                                setMarkdownFrontmatterField(
-                                  draftContentRef.current,
-                                  'description',
-                                  event.target.value,
-                                ),
-                              )
-                            }}
-                          />
-                        )}
-                      </div>
+                      <EditableMetadataField
+                        label="description"
+                        value={markdownContent.description}
+                        valuePlaceholder="Describe what this Skill does and when agents should use it."
+                        multiline
+                        readOnly={readonly}
+                        onValueChange={
+                          readonly
+                            ? undefined
+                            : (value) =>
+                                updateDraftContent(
+                                  setMarkdownFrontmatterField(
+                                    draftContentRef.current,
+                                    'description',
+                                    value,
+                                  ),
+                                )
+                        }
+                      />
                     )}
                     {(markdownContent.displayName || !readonly) && (
-                      <div className="max-w-full space-y-1">
-                        <div className="system-sm-regular text-text-tertiary">display-name</div>
-                        {readonly ? (
-                          <div className="max-w-[320px] truncate system-sm-regular text-text-secondary">
-                            {markdownContent.displayName || '-'}
-                          </div>
-                        ) : (
-                          <input
-                            value={displayNameDraft}
-                            placeholder={detail?.display_name ?? ''}
-                            className="h-8 w-[280px] max-w-full rounded-lg border border-transparent bg-transparent px-0 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary hover:border-divider-regular hover:bg-background-default hover:px-2.5 focus-visible:border-divider-regular focus-visible:bg-background-default focus-visible:px-2.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                            onBlur={handleDisplayNameCommit}
-                            onChange={(event) => {
-                              setDisplayNameDraft(event.target.value)
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Escape') {
-                                setDisplayNameDraft(markdownContent.displayName)
-                                event.currentTarget.blur()
-                                return
-                              }
-                              if (event.key !== 'Enter') return
-
-                              event.preventDefault()
-                              handleDisplayNameCommit()
-                              event.currentTarget.blur()
-                            }}
-                          />
-                        )}
-                      </div>
+                      <EditableMetadataField
+                        label="display-name"
+                        value={displayNameDraft}
+                        valuePlaceholder={detail?.display_name ?? ''}
+                        readOnly={readonly}
+                        onBlurCapture={handleDisplayNameCommit}
+                        onValueChange={readonly ? undefined : setDisplayNameDraft}
+                      />
                     )}
                     {markdownContent.metadata.map((entry) => {
                       const removable = !readonly && !isProtectedMarkdownMetadataKey(entry.key)
 
-                      return (
-                        <div key={entry.key} className="max-w-full space-y-1">
-                          <div className="flex w-fit max-w-full items-center gap-1">
-                            <div className="min-w-0 truncate system-sm-regular text-text-tertiary">
-                              {entry.key}
-                            </div>
-                            {removable && (
-                              <button
-                                type="button"
-                                aria-label={t(($) => $['skillManagement.detail.removeMetadata'], {
-                                  name: entry.key,
-                                })}
-                                className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                                onClick={() => handleRemoveMetadata(entry.key)}
-                              >
-                                <span aria-hidden className="i-ri-delete-bin-line size-3.5" />
-                              </button>
-                            )}
-                          </div>
-                          <div className="max-w-[320px] truncate system-sm-regular text-text-secondary">
-                            {entry.value || '-'}
-                          </div>
-                        </div>
+                      return readonly || !removable ? (
+                        <EditableMetadataField
+                          key={entry.key}
+                          label={entry.key}
+                          value={entry.value}
+                          multiline
+                          readOnly
+                        />
+                      ) : (
+                        <EditableMetadataEntry
+                          key={entry.key}
+                          entryKey={entry.key}
+                          value={entry.value}
+                          onCommit={(previousKey, nextKey, nextValue) => {
+                            updateDraftContent(
+                              updateMarkdownMetadata(
+                                draftContentRef.current,
+                                previousKey,
+                                nextKey,
+                                nextValue,
+                              ),
+                            )
+                          }}
+                          onRemove={() => handleRemoveMetadata(entry.key)}
+                        />
                       )
                     })}
                     {!readonly && metadataAdding && (
-                      <div className="w-[280px] max-w-full space-y-3">
-                        <div className="flex items-center gap-1">
+                      <div className="w-full space-y-0.5">
+                        <div className="flex h-6 items-center gap-1">
                           <input
+                            ref={metadataKeyInputRef}
                             value={metadataKey}
                             placeholder={t(($) => $['skillManagement.detail.metadataKey'])}
                             className={metadataInputClassName}
@@ -1115,7 +1062,7 @@ export function FileEditor({
                           <button
                             type="button"
                             aria-label={t(($) => $['skillManagement.detail.cancelAddMetadata'])}
-                            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                            className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                             onClick={handleCancelAddMetadata}
                           >
                             <span aria-hidden className="i-ri-delete-bin-line size-4" />
@@ -1126,18 +1073,19 @@ export function FileEditor({
                           placeholder={t(($) => $['skillManagement.detail.metadataValue'])}
                           className={metadataInputClassName}
                           onChange={(event) => setMetadataValue(event.target.value)}
-                          onKeyDownCapture={(event) => {
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') {
+                              handleCancelAddMetadata()
+                              return
+                            }
                             if (event.key === 'Enter') {
                               event.preventDefault()
                               event.stopPropagation()
-                              handleAddMetadata()
                             }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Escape') handleCancelAddMetadata()
                           }}
                           onKeyUp={(event) => {
                             if (event.key !== 'Enter') return
+
                             event.preventDefault()
                             event.stopPropagation()
                             handleAddMetadata()
@@ -1148,8 +1096,11 @@ export function FileEditor({
                     {!readonly && !metadataAdding && (
                       <button
                         type="button"
-                        className="flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 system-sm-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                        onClick={() => setMetadataAdding(true)}
+                        className="flex h-7 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-divider-regular bg-components-button-secondary-bg px-2 system-xs-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        onClick={() => {
+                          setMetadataAdding(true)
+                          window.requestAnimationFrame(() => metadataKeyInputRef.current?.focus())
+                        }}
                       >
                         <span aria-hidden className="i-ri-add-line size-4" />
                         {t(($) => $['skillManagement.detail.addMetadata'])}
@@ -1158,12 +1109,16 @@ export function FileEditor({
                   </div>
                 )}
                 <div
-                  className={cn(showMarkdownMetadataPanel && 'border-t border-divider-subtle pt-8')}
+                  className={cn(
+                    'px-3 py-2',
+                    showMarkdownMetadataPanel && 'border-t border-divider-subtle pt-5',
+                  )}
                 >
                   {readonly ? (
                     <MarkdownBodyReferencePreview
                       body={markdownContent.body}
                       className="min-h-[360px]"
+                      onOpenReference={onSelectFile}
                       placeholder={t(
                         ($) => $['skillManagement.detail.referenceFiles.livePlaceholder'],
                       )}
@@ -1174,6 +1129,7 @@ export function FileEditor({
                         body={markdownContent.body}
                         contentRevision={externalContentRevision}
                         editorRef={liveBodyEditorRef}
+                        onOpenReference={onSelectFile}
                         placeholder={t(
                           ($) => $['skillManagement.detail.referenceFiles.livePlaceholder'],
                         )}
@@ -1210,15 +1166,14 @@ export function FileEditor({
             )}
           </div>
         ) : isMarkdown ? (
-          <div className="relative h-full">
+          <div className="relative h-full overflow-hidden bg-background-default">
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
-            <textarea
-              ref={sourceTextareaRef}
+            <MarkdownSourceEditor
               key={editorRenderKey}
+              editorRef={sourceTextareaRef}
               readOnly={readonly}
               value={draftContent}
-              spellCheck={false}
-              className="h-full w-full resize-none rounded-xl border border-divider-regular bg-background-default p-4 pr-24 font-mono text-[13px]/[20px] text-text-secondary outline-hidden read-only:bg-background-section focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              placeholder={t(($) => $['skillManagement.detail.referenceFiles.livePlaceholder'])}
               onChange={handleContentChange}
               onKeyDown={(event) => handleTextEditorKeyDown(event)}
             />
@@ -1270,7 +1225,7 @@ export function FileEditor({
               value={draftContent}
               spellCheck={false}
               className={cn(
-                'h-full w-full resize-none rounded-xl border border-divider-regular bg-background-default p-4 font-mono text-[13px]/[20px] text-text-secondary outline-hidden read-only:bg-background-section focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'h-full w-full resize-none rounded-xl border border-divider-regular bg-background-default p-4 font-mono text-[13px]/[20px] text-text-secondary outline-hidden read-only:bg-background-section',
               )}
               onChange={handleContentChange}
               onKeyDown={(event) => handleTextEditorKeyDown(event)}

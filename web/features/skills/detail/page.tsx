@@ -29,6 +29,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const queryClient = useQueryClient()
   const [selectedPath, setSelectedPath] = useState<string>()
   const [openFilePaths, setOpenFilePaths] = useState<string[]>([])
+  const [previewFilePath, setPreviewFilePath] = useState<string>()
   const [rightPanelMode, setRightPanelMode] = useState<'builder' | 'hidden' | 'versions'>('builder')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
@@ -123,15 +124,19 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const readonlyFiles = versionDetailQuery.data?.files ?? []
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles
   const fallbackFile = getFirstTextFile(activeFiles)
+  const manifestFile = findFileByPath(activeFiles, 'SKILL.md') ?? fallbackFile
   const activeSelectedPath =
     selectedPath && findFileByPath(activeFiles, selectedPath) ? selectedPath : fallbackFile?.path
   const selectedFile = findFileByPath(activeFiles, activeSelectedPath)
-  const openFiles = activeFiles.filter(
-    (file) =>
-      !isDirectory(file) &&
-      (openFilePaths.includes(file.path) ||
-        (!!activeSelectedPath && file.path === activeSelectedPath)),
-  )
+  const orderedOpenPaths = [
+    manifestFile?.path,
+    ...openFilePaths,
+    previewFilePath,
+    activeSelectedPath,
+  ].filter((path, index, paths): path is string => !!path && paths.indexOf(path) === index)
+  const openFiles = orderedOpenPaths
+    .map((path) => findFileByPath(activeFiles, path))
+    .filter((file): file is NonNullable<typeof file> => !!file && !isDirectory(file))
   const selectedVersion = versions.find((version) => version.id === activeVersionId)
 
   useDocumentTitle(detail?.display_name ?? t(($) => $['skillManagement.title']))
@@ -152,24 +157,49 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     setDraftDetailOverride(deriveSkillDetailFromDraftFiles(nextDetail))
   }, [])
 
-  const handleOpenFile = (path: string, availableFiles = activeFiles) => {
+  const handleOpenFile = (
+    path: string,
+    availableFiles = activeFiles,
+    mode: 'pinned' | 'preview' = 'pinned',
+  ) => {
     const targetFile = findFileByPath(availableFiles, path)
     if (!targetFile || isDirectory(targetFile)) return
 
     setSelectedPath(path)
+    if (mode === 'preview' && path !== manifestFile?.path && !openFilePaths.includes(path)) {
+      setPreviewFilePath(path)
+      return
+    }
+
+    if (path === previewFilePath) setPreviewFilePath(undefined)
     setOpenFilePaths((currentPaths) =>
       currentPaths.includes(path) ? currentPaths : [...currentPaths, path],
     )
   }
 
   const handleCloseFile = (path: string) => {
+    if (path === manifestFile?.path) return
+
     const nextPaths = openFilePaths.filter((currentPath) => currentPath !== path)
     setOpenFilePaths(nextPaths)
+    if (path === previewFilePath) setPreviewFilePath(undefined)
 
     if (path === activeSelectedPath) {
-      const nextSelectedPath = nextPaths.at(-1) ?? getFirstTextFile(activeFiles)?.path
+      const nextSelectedPath =
+        nextPaths.at(-1) ??
+        (previewFilePath !== path ? previewFilePath : undefined) ??
+        manifestFile?.path
       setSelectedPath(nextSelectedPath)
     }
+  }
+
+  const handlePromoteFile = (path: string) => {
+    if (path !== previewFilePath) return
+
+    setPreviewFilePath(undefined)
+    setOpenFilePaths((currentPaths) =>
+      currentPaths.includes(path) ? currentPaths : [...currentPaths, path],
+    )
   }
 
   const handlePublish = () => {
@@ -263,6 +293,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
       setRightPanelMode('builder')
       setSelectedPath(undefined)
       setOpenFilePaths([])
+      setPreviewFilePath(undefined)
     } catch {
       toast.error(t(($) => $['skillManagement.detail.restoreVersionFailed']))
     }
@@ -273,12 +304,14 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     setRightPanelMode('builder')
     setSelectedPath(undefined)
     setOpenFilePaths([])
+    setPreviewFilePath(undefined)
   }
 
   const handleOpenVersions = () => {
     setRightPanelMode('versions')
     setSelectedPath(undefined)
     setOpenFilePaths([])
+    setPreviewFilePath(undefined)
   }
 
   if (detailQuery.isPending) return <DetailSkeleton />
@@ -303,7 +336,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   }
 
   return (
-    <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-default">
+    <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
       <div className="flex min-h-0 min-w-0 flex-1">
         <FileTree
           collapsed={sidebarCollapsed}
@@ -325,12 +358,14 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
+          onPromoteFile={handlePromoteFile}
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
           onRestoreVersion={handleRestoreSelectedVersion}
           onExitVersion={handleExitVersion}
           onSelectFile={handleOpenFile}
           openFiles={openFiles}
+          previewFilePath={previewFilePath}
           publishing={activeVersionId ? restoreMutation.isPending : publishMutation.isPending}
           readonly={!!activeVersionId}
           selectedPath={activeSelectedPath}

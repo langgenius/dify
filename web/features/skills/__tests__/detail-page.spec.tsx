@@ -269,6 +269,47 @@ function createDefaultSkillDraftDetail(overrides: Partial<SkillDetailResponse> =
   })
 }
 
+function createFileTabSkillDetail() {
+  return createSkillDetail({
+    files: [
+      ...createSkillDetail().files!,
+      {
+        id: 'file-readme',
+        path: 'README.md',
+        kind: 'file',
+        storage: 'text',
+        mime_type: 'text/markdown',
+        content: '# README',
+        tool_file_id: null,
+        size: 8,
+        hash: 'hash-readme',
+      },
+      {
+        id: 'file-prompt',
+        path: 'prompt.md',
+        kind: 'file',
+        storage: 'text',
+        mime_type: 'text/markdown',
+        content: '# Prompt',
+        tool_file_id: null,
+        size: 8,
+        hash: 'hash-prompt',
+      },
+      {
+        id: 'file-notes',
+        path: 'notes.txt',
+        kind: 'file',
+        storage: 'text',
+        mime_type: 'text/plain',
+        content: 'Notes',
+        tool_file_id: null,
+        size: 5,
+        hash: 'hash-notes',
+      },
+    ],
+  })
+}
+
 function createSkillVersion(overrides: Partial<SkillVersionResponse> = {}): SkillVersionResponse {
   return {
     id: 'version-1',
@@ -348,6 +389,15 @@ function getFileTreeButton(path: string) {
   if (!(fileButton instanceof HTMLButtonElement)) throw new Error(`file button not found: ${path}`)
 
   return fileButton
+}
+
+function getFileTabButton(path: string) {
+  const button = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(`button[title="${path}"]`),
+  ).find((candidate) => !candidate.closest('[data-skill-file-tree-item]'))
+  if (!button) throw new Error(`file tab not found: ${path}`)
+
+  return button
 }
 
 function createDataTransfer(files: File[] = []) {
@@ -1211,8 +1261,8 @@ describe('SkillDetailPage', () => {
       screen.getByPlaceholderText('skill.skillManagement.detail.metadataValue'),
       'support{Enter}',
     )
-    expect(await screen.findByText('owner')).toBeInTheDocument()
-    expect(screen.getByText('support')).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('owner')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('support')).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
@@ -1763,6 +1813,142 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('shows the full reference path on hover and opens the referenced file in an editor tab', async () => {
+    const manifestContent =
+      '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n# Guide\n\nRead [guide.md](<docs/guide.md>) before continuing.\n'
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        {
+          ...createSkillDetail().files![0]!,
+          content: manifestContent,
+          size: manifestContent.length,
+        },
+        {
+          id: 'file-2',
+          path: 'docs/guide.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Guide',
+          tool_file_id: null,
+          size: 7,
+          hash: 'hash-2',
+        },
+      ],
+    })
+
+    const { container } = renderSkillDetailPage()
+    const reference = await waitFor(() => {
+      const element = container.querySelector<HTMLElement>('[data-reference-path="docs/guide.md"]')
+      expect(element).toBeInTheDocument()
+      return element!
+    })
+
+    fireEvent.mouseOver(reference)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('docs/guide.md')
+
+    fireEvent.click(reference)
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps SKILL.md open and replaces the previous temporary tab on sidebar single click', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createFileTabSkillDetail()
+    renderSkillDetailPage()
+
+    await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.markdownLiveMode',
+    })
+    expect(getFileTabButton('SKILL.md')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'skill.skillManagement.detail.closeFileTab:{"name":"SKILL.md"}',
+      }),
+    ).not.toBeInTheDocument()
+
+    await user.click(getFileTreeButton('README.md'))
+    expect(getFileTabButton('README.md').querySelector('.italic')).toBeInTheDocument()
+
+    await user.click(getFileTreeButton('prompt.md'))
+    expect(
+      screen.queryByRole('button', {
+        name: 'skill.skillManagement.detail.closeFileTab:{"name":"README.md"}',
+      }),
+    ).not.toBeInTheDocument()
+    expect(getFileTabButton('prompt.md').querySelector('.italic')).toBeInTheDocument()
+    expect(getFileTabButton('SKILL.md')).toBeInTheDocument()
+  })
+
+  it('pins a file tab on sidebar double click', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createFileTabSkillDetail()
+    renderSkillDetailPage()
+
+    await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.markdownLiveMode',
+    })
+    await user.dblClick(getFileTreeButton('README.md'))
+    expect(getFileTabButton('README.md').querySelector('.italic')).not.toBeInTheDocument()
+
+    await user.click(getFileTreeButton('prompt.md'))
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.closeFileTab:{"name":"README.md"}',
+      }),
+    ).toBeInTheDocument()
+    expect(getFileTabButton('prompt.md').querySelector('.italic')).toBeInTheDocument()
+  })
+
+  it('promotes a temporary tab to a pinned tab when its file is edited', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createFileTabSkillDetail()
+    renderSkillDetailPage()
+
+    await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.markdownLiveMode',
+    })
+    await user.click(getFileTreeButton('notes.txt'))
+    expect(getFileTabButton('notes.txt').querySelector('.italic')).toBeInTheDocument()
+
+    const notesEditor = screen
+      .getAllByRole('textbox')
+      .find(
+        (textbox): textbox is HTMLTextAreaElement =>
+          textbox instanceof HTMLTextAreaElement && textbox.value === 'Notes',
+      )
+    expect(notesEditor).toBeDefined()
+    await user.clear(notesEditor!)
+    await user.type(notesEditor!, 'Updated notes')
+    expect(getFileTabButton('notes.txt').querySelector('.italic')).not.toBeInTheDocument()
+  })
+
+  it('does not draw an accent focus ring around the plain text editor', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createFileTabSkillDetail()
+    renderSkillDetailPage()
+
+    await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.markdownLiveMode',
+    })
+    await user.click(getFileTreeButton('notes.txt'))
+
+    const notesEditor = screen
+      .getAllByRole('textbox')
+      .find(
+        (textbox): textbox is HTMLTextAreaElement =>
+          textbox instanceof HTMLTextAreaElement && textbox.value === 'Notes',
+      )
+    expect(notesEditor).toBeDefined()
+    notesEditor!.focus()
+
+    expect(notesEditor).not.toHaveClass('focus-visible:ring-2')
+    expect(notesEditor).not.toHaveClass('focus-visible:ring-state-accent-solid')
+  })
+
   it('sends suggestion chips as Builder messages and blocks concurrent sends', async () => {
     const user = userEvent.setup()
     mocks.sendSkillAssistMessage.mockImplementation(() => new Promise<void>(() => undefined))
@@ -2049,6 +2235,35 @@ describe('SkillDetailPage', () => {
           body: expect.objectContaining({
             operation: 'upsert_text',
             path: 'notes.md',
+            mime_type: 'text/markdown',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('creates a JSON file with a code-editor-compatible MIME type', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    await openRootCreateMenu(user)
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
+    const fileNameInput = await screen.findByPlaceholderText('File name')
+
+    await user.type(fileNameInput, 'tool.schema.json')
+    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            mime_type: 'application/json',
+            operation: 'upsert_text',
+            path: 'tool.schema.json',
           }),
         }),
         expect.anything(),

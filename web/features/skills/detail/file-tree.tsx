@@ -61,6 +61,7 @@ import {
   getAsyncSkillErrorMessage,
   getAsyncSkillErrorPayload,
   getCopyTargetPath,
+  getCreatedSkillFileMimeType,
   getDraggedSkillPaths,
   getErrorCode,
   getPathBaseName,
@@ -194,7 +195,7 @@ export function FileTree({
   fileMutationCoordinator: SkillFileMutationCoordinator
   files: SkillFileResponse[]
   onCollapsedChange: (collapsed: boolean) => void
-  onSelect: (path: string, files?: SkillFileResponse[]) => void
+  onSelect: (path: string, files?: SkillFileResponse[], mode?: 'pinned' | 'preview') => void
   readonly: boolean
   selectedPath: string | undefined
   skillId: string
@@ -340,7 +341,7 @@ export function FileTree({
     mutateFile(
       {
         content: '',
-        mime_type: 'text/markdown',
+        mime_type: getCreatedSkillFileMimeType(path),
         operation: 'upsert_text',
         path,
         size: 0,
@@ -1129,7 +1130,7 @@ export function FileTree({
                                 path: nodeToRename.path,
                               })
                             }
-                            onSelect={onSelect}
+                            onSelect={(path, mode) => onSelect(path, undefined, mode)}
                             onExpandFolder={(path) =>
                               setCollapsedFolderPaths((paths) =>
                                 paths.filter((folderPath) => folderPath !== path),
