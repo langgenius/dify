@@ -134,8 +134,6 @@ def test_e2b_key_is_hidden_from_settings_repr() -> None:
         concurrency=1,
         warmup_seconds=15,
         measurement_seconds=60,
-        minimum_successful_runs=100,
-        maximum_duration_seconds=180,
         e2b_api_key="top-secret",
     )
 
