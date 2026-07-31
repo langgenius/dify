@@ -22146,7 +22146,9 @@ One user message and optional uploaded context for the Skill Authoring assistant
 | files | [ [SkillFileResponse](#skillfileresponse) ] |  | No |
 | icon | string |  | Yes |
 | id | string |  | Yes |
+| latest_published_at | integer |  | No |
 | latest_published_version_id | string |  | No |
+| latest_published_version_number | integer |  | No |
 | name | string |  | Yes |
 | name_manually_edited | boolean |  | No |
 | reference_count | integer |  | No |
@@ -22330,7 +22332,9 @@ Validated metadata extracted from a Skill package.
 | display_name | string |  | Yes |
 | icon | string |  | Yes |
 | id | string |  | Yes |
+| latest_published_at | integer |  | No |
 | latest_published_version_id | string |  | No |
+| latest_published_version_number | integer |  | No |
 | name | string |  | Yes |
 | name_manually_edited | boolean |  | No |
 | reference_count | integer |  | No |

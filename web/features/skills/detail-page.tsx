@@ -202,6 +202,7 @@ const codeEditorExtensions = new Map<string, CodeLanguage>([
 ])
 const metadataInputClassName =
   'h-8 w-full rounded-lg border border-divider-regular bg-background-default px-2.5 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const emptySkillTags: string[] = []
 
 type MarkdownMetadataEntry = {
   key: string
@@ -2252,10 +2253,37 @@ function SkillTagsEditor({
   const queryClient = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
   const [tagName, setTagName] = useState('')
-  const tags = detail?.tags ?? []
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
+  const tags = detail?.tags ?? emptySkillTags
+  const skillTagsQueryOptions = consoleQuery.workspaces.current.skills.tags.get.queryOptions()
+  const {
+    data: skillTagsData,
+    isFetching: isFetchingSkillTags,
+    refetch: refetchSkillTags,
+  } = useQuery({
+    ...skillTagsQueryOptions,
+    enabled: false,
+  })
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
   )
+  const normalizedExistingTags = useMemo(
+    () => new Set(tags.map((tag) => tag.toLowerCase())),
+    [tags],
+  )
+  const selectableTags = useMemo(() => {
+    const keyword = tagName.trim().toLowerCase()
+    const seenTags = new Set<string>()
+
+    return (skillTagsData?.data ?? []).flatMap(({ tag }) => {
+      const normalizedTag = tag.toLowerCase()
+      if (normalizedExistingTags.has(normalizedTag) || seenTags.has(normalizedTag)) return []
+      if (keyword && !normalizedTag.includes(keyword)) return []
+
+      seenTags.add(normalizedTag)
+      return [tag]
+    })
+  }, [normalizedExistingTags, skillTagsData?.data, tagName])
 
   const saveTags = (
     nextTags: string[],
@@ -2295,9 +2323,9 @@ function SkillTagsEditor({
     )
   }
 
-  const handleAddTag = () => {
-    const trimmedTag = tagName.trim()
-    if (!trimmedTag || tags.some((tag) => tag.toLowerCase() === trimmedTag.toLowerCase())) return
+  const handleAddTag = (nextTagName = tagName) => {
+    const trimmedTag = nextTagName.trim()
+    if (!trimmedTag || normalizedExistingTags.has(trimmedTag.toLowerCase())) return
 
     saveTags([...tags, trimmedTag], {
       successMessage: t(($) => $['skillManagement.detail.addTagSuccess']),
@@ -2317,6 +2345,12 @@ function SkillTagsEditor({
     )
   }
 
+  useEffect(() => {
+    if (!addOpen) return
+
+    void refetchSkillTags()
+  }, [addOpen, refetchSkillTags])
+
   if (readonly && tags.length === 0) return null
 
   return (
@@ -2325,7 +2359,7 @@ function SkillTagsEditor({
         {tags.map((tag) => (
           <span
             key={tag}
-            className="group/tag flex max-w-full items-center gap-1 rounded-md border border-divider-regular bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary"
+            className="group/tag flex max-w-full items-center gap-1 rounded-md border border-divider-regular bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-tertiary"
           >
             <span className="min-w-0 truncate">{tag}</span>
             {!readonly && (
@@ -2351,38 +2385,91 @@ function SkillTagsEditor({
           </button>
         )}
       </div>
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(nextOpen) => {
+          setAddOpen(nextOpen)
+          setTagDropdownOpen(false)
+        }}
+      >
         <DialogContent className="w-[420px] p-0!">
-          <DialogCloseButton />
-          <div className="px-6 pt-6 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['skillManagement.detail.addTag'])}
-            </DialogTitle>
-            <DialogDescription className="mt-2 system-sm-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.addTagDescription'])}
-            </DialogDescription>
-          </div>
-          <div className="px-6 py-3">
-            <Input
-              value={tagName}
-              onChange={(event) => setTagName(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') handleAddTag()
-              }}
-            />
-          </div>
-          <div className="flex justify-end gap-2 px-6 pt-3 pb-6">
-            <Button disabled={metadataMutation.isPending} onClick={() => setAddOpen(false)}>
-              {tCommon(($) => $['operation.cancel'])}
-            </Button>
-            <Button
-              variant="primary"
-              loading={metadataMutation.isPending}
-              disabled={!tagName.trim()}
-              onClick={handleAddTag}
-            >
-              {tCommon(($) => $['operation.add'])}
-            </Button>
+          <div>
+            <DialogCloseButton />
+            <div className="px-6 pt-6 pb-3">
+              <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $['skillManagement.detail.addTag'])}
+              </DialogTitle>
+              <DialogDescription className="mt-2 system-sm-regular text-text-tertiary">
+                {t(($) => $['skillManagement.detail.addTagDescription'])}
+              </DialogDescription>
+            </div>
+            <div className="px-6 py-3">
+              <div className="relative">
+                <Input
+                  value={tagName}
+                  aria-label={t(($) => $['skillManagement.detail.addTag'])}
+                  aria-controls="skill-tag-options"
+                  aria-expanded={tagDropdownOpen}
+                  aria-haspopup="listbox"
+                  role="combobox"
+                  tabIndex={0}
+                  onFocus={() => setTagDropdownOpen(true)}
+                  onChange={(event) => {
+                    setTagName(event.target.value)
+                    setTagDropdownOpen(true)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') handleAddTag()
+                    if (event.key === 'Escape') setTagDropdownOpen(false)
+                  }}
+                />
+                {tagDropdownOpen && (
+                  <div className="mt-1 max-h-30 overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+                    {isFetchingSkillTags ? (
+                      <div className="px-3 py-2 system-sm-regular text-text-tertiary">
+                        {t(($) => $['skillManagement.detail.loadingTags'])}
+                      </div>
+                    ) : selectableTags.length > 0 ? (
+                      <div id="skill-tag-options" role="listbox">
+                        {selectableTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            role="option"
+                            aria-selected={tagName === tag}
+                            className="flex min-h-8 w-full items-center rounded-lg px-2 py-1.5 text-left system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:text-text-primary"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setTagName(tag)
+                              setTagDropdownOpen(false)
+                            }}
+                          >
+                            <span className="min-w-0 truncate">{tag}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2 system-sm-regular text-text-tertiary">
+                        {t(($) => $['skillManagement.detail.noSelectableTags'])}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-6 pt-3 pb-6">
+              <Button disabled={metadataMutation.isPending} onClick={() => setAddOpen(false)}>
+                {tCommon(($) => $['operation.cancel'])}
+              </Button>
+              <Button
+                variant="primary"
+                loading={metadataMutation.isPending}
+                disabled={!tagName.trim()}
+                onClick={() => handleAddTag()}
+              >
+                {tCommon(($) => $['operation.add'])}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

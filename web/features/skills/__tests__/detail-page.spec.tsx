@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   skillMetadataMutationFn: vi.fn(),
   skillReferencesQueryOptions: vi.fn((_options: unknown) => ({})),
   skillTagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
+  skillTagsQueryOptions: vi.fn((_options: unknown) => ({})),
   skillVersionsKey: vi.fn((_options: unknown): unknown[] => ['skill-versions']),
   skillVersionsQueryOptions: vi.fn((_options: unknown) => ({})),
   skillVersionDetailQueryOptions: vi.fn((_options: unknown) => ({})),
@@ -139,6 +140,7 @@ vi.mock('@/service/client', () => ({
           tags: {
             get: {
               key: mocks.skillTagsKey,
+              queryOptions: mocks.skillTagsQueryOptions,
             },
           },
           bySkillId: {
@@ -398,6 +400,12 @@ describe('SkillDetailPage', () => {
     mocks.skillVersionsKey.mockImplementation((options) => ['skill-versions', options])
     mocks.skillListKey.mockImplementation((options) => ['skills', options])
     mocks.skillTagsKey.mockImplementation((options) => ['skill-tags', options])
+    mocks.skillTagsQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-tags'],
+      queryFn: async () => ({
+        data: [],
+      }),
+    }))
     mocks.skillDetailQueryOptions.mockImplementation((options) => ({
       queryKey: ['skill-detail', options],
       queryFn: async () => mocks.skillDetail,
@@ -451,9 +459,10 @@ describe('SkillDetailPage', () => {
       },
     )
     mocks.skillMetadataMutationFn.mockImplementation(
-      async (input: { body: { display_name?: string } }) => {
+      async (input: { body: { display_name?: string; tags?: string[] } }) => {
         const nextDetail = createSkillDetail({
           display_name: input.body.display_name ?? 'Untitled skill',
+          tags: input.body.tags ?? [],
           updated_at: 1784638491,
         })
         mocks.skillDetail = {
@@ -555,6 +564,43 @@ describe('SkillDetailPage', () => {
     expect(await screen.findByText('agentV2.skillManagement.detail.loadFailed')).toBeInTheDocument()
     expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('lists existing skill tags when adding a tag', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      tags: ['existing'],
+    })
+    mocks.skillTagsQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-tags'],
+      queryFn: async () => ({
+        data: [
+          { tag: 'existing', count: 1 },
+          { tag: 'operations', count: 2 },
+        ],
+      }),
+    }))
+    renderSkillDetailPage()
+
+    await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.detail.addTag' }))
+    await user.click(
+      screen.getByRole('combobox', { name: 'agentV2.skillManagement.detail.addTag' }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'operations' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            tags: ['existing', 'operations'],
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+    expect(screen.queryByRole('option', { name: 'existing' })).not.toBeInTheDocument()
   })
 
   it('sends only one autosave request while the first save is pending', async () => {
