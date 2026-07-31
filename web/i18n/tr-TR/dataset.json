@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Belgeler işlendikçe genel bakışınız doldurulacaktır.",
   "newKnowledge.overview.indexingInProgress": "Dizin oluşturma devam ediyor",
   "newKnowledge.overview.indexingInProgressDescription": "Dizin oluşturma tamamlandıkça belgeler ve parçalar burada görünecektir.",
+  "newKnowledge.overview.indexingSource": "{{source}} dizine ekleniyor",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Son 30 gün",
   "newKnowledge.overview.last7Days": "Son 7 gün",

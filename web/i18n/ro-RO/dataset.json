@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Prezentarea generală se va completa pe măsură ce documentele sunt procesate.",
   "newKnowledge.overview.indexingInProgress": "Indexare în curs",
   "newKnowledge.overview.indexingInProgressDescription": "Documentele și segmentele vor apărea aici pe măsură ce indexarea se finalizează.",
+  "newKnowledge.overview.indexingSource": "Se indexează {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Ultimele 30 de zile",
   "newKnowledge.overview.last7Days": "Ultimele 7 zile",

@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "ภาพรวมจะเติมข้อมูลเมื่อเอกสารได้รับการประมวลผล",
   "newKnowledge.overview.indexingInProgress": "กำลังจัดทำดัชนี",
   "newKnowledge.overview.indexingInProgressDescription": "เอกสารและส่วนย่อยจะปรากฏที่นี่เมื่อการจัดทำดัชนีเสร็จสิ้น",
+  "newKnowledge.overview.indexingSource": "กำลังจัดทำดัชนี {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "30 วันที่ผ่านมา",
   "newKnowledge.overview.last7Days": "7 วันที่ผ่านมา",

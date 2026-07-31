@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "La tua panoramica verrà compilata man mano che i documenti vengono elaborati.",
   "newKnowledge.overview.indexingInProgress": "Indicizzazione in corso",
   "newKnowledge.overview.indexingInProgressDescription": "I documenti e le sezioni verranno visualizzati qui al termine dell'indicizzazione.",
+  "newKnowledge.overview.indexingSource": "Indicizzazione di {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Ultimi 30 giorni",
   "newKnowledge.overview.last7Days": "Ultimi 7 giorni",

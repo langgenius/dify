@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Your overview will fill in as documents are processed.",
   "newKnowledge.overview.indexingInProgress": "Indexing in progress",
   "newKnowledge.overview.indexingInProgressDescription": "Documents and slices will appear here as indexing completes.",
+  "newKnowledge.overview.indexingSource": "Indexing {{source}}",
   "newKnowledge.overview.inventory": "Knowledge Inventory",
   "newKnowledge.overview.last30Days": "Last 30 days",
   "newKnowledge.overview.last7Days": "Last 7 days",

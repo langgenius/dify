@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "문서가 처리되면서 개요가 채워집니다.",
   "newKnowledge.overview.indexingInProgress": "인덱싱 진행 중",
   "newKnowledge.overview.indexingInProgressDescription": "인덱싱이 완료되면 문서와 조각이 여기에 표시됩니다.",
+  "newKnowledge.overview.indexingSource": "{{source}} 색인 생성",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "지난 30일",
   "newKnowledge.overview.last7Days": "지난 7일",

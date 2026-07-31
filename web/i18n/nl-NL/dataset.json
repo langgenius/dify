@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Uw overzicht wordt ingevuld naarmate de documenten worden verwerkt.",
   "newKnowledge.overview.indexingInProgress": "Indexatie wordt uitgevoerd",
   "newKnowledge.overview.indexingInProgressDescription": "Documenten en segmenten verschijnen hier zodra het indexeren is voltooid.",
+  "newKnowledge.overview.indexingSource": "{{source}} indexeren",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Laatste 30 dagen",
   "newKnowledge.overview.last7Days": "Laatste 7 dagen",

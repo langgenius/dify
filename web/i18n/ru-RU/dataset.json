@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Обзор будет заполняться по мере обработки документов.",
   "newKnowledge.overview.indexingInProgress": "Индексирование выполняется",
   "newKnowledge.overview.indexingInProgressDescription": "Документы и фрагменты будут появляться здесь по мере завершения индексирования.",
+  "newKnowledge.overview.indexingSource": "Индексирование {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Последние 30 дней",
   "newKnowledge.overview.last7Days": "Последние 7 дней",

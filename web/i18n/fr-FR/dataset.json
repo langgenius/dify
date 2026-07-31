@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Votre aperçu se remplira au fur et à mesure du traitement des documents.",
   "newKnowledge.overview.indexingInProgress": "Indexation en cours",
   "newKnowledge.overview.indexingInProgressDescription": "Les documents et les tranches apparaîtront ici une fois l'indexation terminée.",
+  "newKnowledge.overview.indexingSource": "Indexation de {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "30 derniers jours",
   "newKnowledge.overview.last7Days": "7 derniers jours",

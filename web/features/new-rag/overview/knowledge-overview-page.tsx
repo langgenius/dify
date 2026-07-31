@@ -33,7 +33,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react'
 import { useAtomValue } from 'jotai'
@@ -799,8 +799,8 @@ function RecentActivity({
 
   if (empty)
     return (
-      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-66.75' : 'h-63')}>
-        <h2 className="system-md-medium text-text-secondary">
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-67.75' : 'h-63')}>
+        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
         <Panel
@@ -1322,14 +1322,14 @@ function InventoryPanel({
 
   if (empty)
     return (
-      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65.25' : 'h-68.75')}>
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65' : 'h-68.75')}>
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.inventory'])}
         </h2>
         <Panel
           className={cn(
             'flex border border-components-panel-border p-4 shadow-none',
-            indexing ? 'h-51.25' : 'h-54.75',
+            indexing ? 'h-51' : 'h-54.75',
           )}
         >
           <EmptyInline
@@ -1443,6 +1443,7 @@ function Onboarding({
   canUpload,
   failedTask,
   indexingTask,
+  indexingSourceName,
   knowledgeSpaceId,
   onRetryTask,
 }: {
@@ -1450,6 +1451,7 @@ function Onboarding({
   canUpload: boolean
   failedTask?: KnowledgeFsBackgroundTaskResponse
   indexingTask?: KnowledgeFsBackgroundTaskResponse
+  indexingSourceName?: string
   knowledgeSpaceId: string
   onRetryTask: () => Promise<unknown>
 }) {
@@ -1490,10 +1492,14 @@ function Onboarding({
   if (indexingTask)
     return (
       <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
-        <h2 className="text-[18px] leading-6 font-semibold text-text-primary">
-          {t(($) => $['newKnowledge.overview.indexing'])}
+        <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
+          {indexingSourceName
+            ? t(($) => $['newKnowledge.overview.indexingSource'], {
+                source: indexingSourceName,
+              })
+            : t(($) => $['newKnowledge.overview.indexing'])}
         </h2>
-        <p className="mt-0.5 body-xs-regular text-text-secondary">
+        <p className="mt-1 text-[13px] leading-4 font-normal text-text-primary">
           {t(($) => $['newKnowledge.overview.indexingConnectedDescription'])}
         </p>
         <div className="mt-3">
@@ -1503,7 +1509,7 @@ function Onboarding({
               style={{ width: `${indexingTask.progress_percent}%` }}
             />
           </div>
-          <p className="mt-2 system-xs-regular text-text-tertiary">
+          <p className="mt-2.5 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.overview.indexedDocuments'], {
               indexed: indexingTask.progress_completed,
               total: indexingTask.progress_total,
@@ -1801,6 +1807,18 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   const indexingTask = tasks.find(
     (task) => ACTIVE_TASK_STATES.has(task.state) && isFirstSourceTask(task),
   )
+  const indexingSourceQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get.queryOptions({
+      input: indexingTask?.source_id
+        ? {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              source_id: indexingTask.source_id,
+            },
+          }
+        : skipToken,
+    }),
+  )
   const latestFirstSourceTask = tasks
     .filter(isFirstSourceTask)
     .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0]
@@ -1811,7 +1829,8 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     outcomesQuery.isPending ||
     inventoryQuery.isPending ||
     attentionQuery.isPending ||
-    activityPreviewQuery.isPending
+    activityPreviewQuery.isPending ||
+    (indexingTask?.source_id != null && indexingSourceQuery.isPending)
   const firstLoadFailed =
     !pageLoading &&
     (statsQuery.isError ||
@@ -1842,7 +1861,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="mx-auto w-full max-w-332 px-5 py-6 sm:px-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="title-3xl-bold text-text-primary">
+          <h1 className="text-[18px] leading-[1.2] font-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}
           </h1>
           {!empty && !showIndexing && (
@@ -1893,6 +1912,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
               failedTask={failedTask}
               knowledgeSpaceId={knowledgeSpaceId}
               indexingTask={indexingTask}
+              indexingSourceName={indexingSourceQuery.data?.name}
               onRetryTask={tasksQuery.refetch}
             />
           </div>
@@ -1967,7 +1987,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         <div
           className={cn(
             'grid lg:grid-cols-2',
-            showIndexing ? 'mt-4.5 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-3 gap-2.5',
+            showIndexing ? 'mt-3 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-3 gap-2.5',
           )}
         >
           <AttentionPanel

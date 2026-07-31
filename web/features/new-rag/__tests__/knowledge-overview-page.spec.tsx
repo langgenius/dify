@@ -9,6 +9,7 @@ const queryOptionsMocks = vi.hoisted(() => ({
   attention: vi.fn(),
   inventory: vi.fn(),
   outcomes: vi.fn(),
+  source: vi.fn(),
   stats: vi.fn(),
 }))
 
@@ -96,6 +97,9 @@ const queryData = vi.hoisted(() => ({
     since: '2026-07-28T09:00:00Z',
     window: '24h',
   },
+  source: {
+    name: 'Notion — Support SOP',
+  },
   stats: {
     answer_rate: { change_percentage_points: 4, previous_value: 0.8, value: 0.84 },
     documents: 5,
@@ -122,6 +126,7 @@ const queryData = vi.hoisted(() => ({
       progress_failed: 0,
       progress_percent: 100,
       progress_total: 1,
+      source_id: undefined as null | string | undefined,
       state: 'completed',
       task_kind: 'source',
       updated_at: '2026-07-29T08:05:00Z',
@@ -147,6 +152,7 @@ const overviewQueryState = vi.hoisted(() => ({
   attention: { isError: false, isFetching: false, isPending: false },
   inventory: { isError: false, isFetching: false, isPending: false },
   outcomes: { isError: false, isFetching: false, isPending: false },
+  source: { isError: false, isFetching: false, isPending: false },
   stats: { isError: false, isFetching: false, isPending: false },
 }))
 
@@ -227,11 +233,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       isRefetching: tasksQueryState.isRefetching,
       refetch: options.queryKey[0] === 'activityInfinite' ? vi.fn() : tasksQueryState.refetch,
     }),
-    useQuery: (options: { queryKey: string[] }) => {
+    useQuery: (options: { input?: unknown; queryKey: string[] }) => {
       const name = options.queryKey[0] as keyof typeof overviewQueryState
       const state = overviewQueryState[name]
       return {
-        data: state.isError ? undefined : queryData[name],
+        data: state.isError || options.input === original.skipToken ? undefined : queryData[name],
         ...state,
         refetch: vi.fn(),
       }
@@ -244,7 +250,7 @@ vi.mock('@/service/client', () => {
   const query = (name: keyof typeof queryOptionsMocks) => ({
     queryOptions: (options: unknown) => {
       queryOptionsMocks[name](options)
-      return { queryKey: [name] }
+      return { input: (options as { input?: unknown }).input, queryKey: [name] }
     },
   })
 
@@ -285,6 +291,11 @@ vi.mock('@/service/client', () => {
               queryOutcomes: { get: query('outcomes') },
               stats: { get: query('stats') },
             },
+            sources: {
+              bySourceId: {
+                get: query('source'),
+              },
+            },
           },
         },
       },
@@ -323,6 +334,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.progress_completed = 1
     queryData.tasks[0]!.progress_percent = 100
     queryData.tasks[0]!.progress_total = 1
+    queryData.tasks[0]!.source_id = undefined
     queryData.tasks[0]!.state = 'completed'
     queryData.tasks[0]!.updated_at = '2026-07-29T08:05:00Z'
     queryData.stats.generated_at = '2026-07-29T09:00:00Z'
@@ -840,15 +852,33 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.progress_completed = 1
     queryData.tasks[0]!.progress_percent = 50
     queryData.tasks[0]!.progress_total = 2
+    queryData.tasks[0]!.source_id = 'source-1'
+    queryData.tasks[0]!.state = 'running'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'dataset.newKnowledge.overview.indexingSource:{"source":"Notion — Support SOP"}',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":1,"total":2}'),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the generic first-indexing title when the task has no source', () => {
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 1
+    queryData.inventory.index_coverage.indexed = 0
+    queryData.tasks[0]!.operation = 'document_processing'
+    queryData.tasks[0]!.source_id = null
     queryData.tasks[0]!.state = 'running'
 
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.indexing' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":1,"total":2}'),
     ).toBeInTheDocument()
   })
 
