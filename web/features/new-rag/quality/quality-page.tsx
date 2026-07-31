@@ -456,7 +456,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       {activeTab === 'golden' &&
         (goldenQuestions.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-298 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-167 grid-cols-[16px_minmax(180px,2fr)_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <Checkbox
                 aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
                 checked={allSelected}
@@ -472,7 +472,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {goldenQuestions.map((item) => (
               <div
                 key={item.id}
-                className="grid h-12 min-w-298 grid-cols-[16px_466px_180px_280px_110px_80px] items-center gap-3 border-t border-divider-subtle"
+                className="grid h-12 min-w-167 grid-cols-[16px_minmax(180px,2fr)_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
               >
                 <Checkbox
                   aria-label={t(($) => $['newKnowledge.qualityPage.selectQuestion'], {
@@ -546,7 +546,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </div>
             ))}
             {goldenQuery.hasNextPage && (
-              <div className="flex min-w-298 justify-center border-t border-divider-subtle py-4">
+              <div className="flex min-w-167 justify-center border-t border-divider-subtle py-4">
                 <Button
                   loading={goldenQuery.isFetchingNextPage}
                   disabled={goldenQuery.isFetchingNextPage}
