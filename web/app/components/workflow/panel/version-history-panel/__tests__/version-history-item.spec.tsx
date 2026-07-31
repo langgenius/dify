@@ -83,10 +83,15 @@ describe('VersionHistoryItem', () => {
 
   // Published items should expose metadata and the hover context menu.
   describe('Published Items', () => {
-    it('should show the mocked deployed environments', () => {
+    it('should show the environments deployed from the published version', () => {
       render(
         <VersionHistoryItem
-          item={createVersionHistory()}
+          item={createVersionHistory({
+            environments: [
+              { id: 'environment-staging', name: 'Staging' },
+              { id: 'environment-production', name: 'Production' },
+            ],
+          })}
           currentVersion={null}
           latestVersionId="version-1"
           onClick={vi.fn()}
@@ -96,8 +101,8 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      expect(screen.getByText('Pre-release')).toBeInTheDocument()
-      expect(screen.getByText('QA')).toBeInTheDocument()
+      expect(screen.getByText('Staging')).toBeInTheDocument()
+      expect(screen.getByText('Production')).toBeInTheDocument()
     })
 
     it('should open the context menu for a latest named version and forward restore', async () => {

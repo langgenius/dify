@@ -20,22 +20,6 @@ type VersionHistoryItemProps = {
   hideActionMenu?: boolean
 }
 
-type VersionEnvironment = {
-  id: string
-  name: string
-}
-
-const MOCK_ENVIRONMENTS: VersionEnvironment[] = [
-  {
-    id: 'mock-pre-release',
-    name: 'Pre-release',
-  },
-  {
-    id: 'mock-qa',
-    name: 'QA',
-  },
-]
-
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
   const { version, id } = versionHistory
   if (version === WorkflowVersion.Draft) return WorkflowVersion.Draft
@@ -70,8 +54,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const isSelected = item.version === currentVersion?.version
   const isDraft = formattedVersion === WorkflowVersion.Draft
   const isLatest = formattedVersion === WorkflowVersion.Latest
-  // TODO: Replace with item.environments when the version history API exposes deployment data.
-  const deployedEnvironments = MOCK_ENVIRONMENTS
+  const deployedEnvironments = item.environments || []
 
   useEffect(() => {
     if (isDraft) onClick(item)

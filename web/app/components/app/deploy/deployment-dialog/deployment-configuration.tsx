@@ -58,10 +58,7 @@ function ConfigurationError({ messages }: { messages: string[] }) {
   const { t } = useTranslation('common')
 
   return (
-    <div
-      role="alert"
-      className="flex gap-2 rounded-xl border border-components-panel-border-subtle bg-components-badge-status-light-error-bg p-3 text-text-destructive"
-    >
+    <div role="alert" className="flex gap-2 text-text-destructive">
       <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0" />
       <div className="min-w-0">
         <p className="system-sm-semibold">{t(($) => $.error)}</p>
