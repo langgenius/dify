@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '@/app/components/app/deploy/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeploymentConfigurationContent } from '@/app/components/app/deploy/deployment-dialog/deployment-configuration'
 import { useDeploymentConfigurationQueries } from '@/app/components/app/deploy/deployment-dialog/use-deployment-configuration-queries'
@@ -70,14 +70,12 @@ function PublisherVersionSelection({
   currentVersionId,
   disabled,
   environmentName,
-  height,
   onBack,
   onSelect,
 }: {
   currentVersionId?: string
   disabled: boolean
   environmentName: string
-  height?: number
   onBack: () => void
   onSelect: (version: DeploymentVersion) => void
 }) {
@@ -100,10 +98,7 @@ function PublisherVersionSelection({
   })
 
   return (
-    <div
-      className="flex h-76 max-h-[calc(100dvh-32px)] min-h-0 flex-none flex-col"
-      style={{ height }}
-    >
+    <div className="flex h-133 max-h-[calc(100dvh-32px)] min-h-0 flex-none flex-col">
       <header className="shrink-0 px-3 pt-3.5 pb-1">
         <PublisherBackButton onClick={onBack} />
         <h2 className="mt-0.5 px-1 system-xl-semibold text-text-primary">
@@ -286,8 +281,6 @@ function PublisherEnvironmentFlowContent({
   const { t } = useTranslation()
   const [view, setView] = useState<PublisherEnvironmentView>('publisher')
   const [selectedVersion, setSelectedVersion] = useState<DeploymentVersion>()
-  const [publisherViewHeight, setPublisherViewHeight] = useState<number>()
-  const publisherViewRef = useRef<HTMLDivElement>(null)
   const deploymentPolling = useAtomValue(publisherEnvironmentDeploymentPollingAtom)
   const startDeploymentPolling = useSetAtom(startPublisherEnvironmentDeploymentPollingAtom)
   const currentVersionId = deployment?.deployment?.current_version?.id
@@ -295,22 +288,13 @@ function PublisherEnvironmentFlowContent({
     deploymentPolling?.environmentId === environmentId ||
     isEnvironmentDeploymentInProgress(deployment)
 
-  function preservePublisherViewHeight() {
-    if (view !== 'publisher') return
-
-    const height = publisherViewRef.current?.getBoundingClientRect().height
-    if (height) setPublisherViewHeight(height)
-  }
-
   function openVersionSelection() {
     if (deploymentActionsDisabled) return
-    preservePublisherViewHeight()
     setView('versions')
   }
 
   function openConfiguration(version: DeploymentVersion) {
     if (deploymentActionsDisabled) return
-    preservePublisherViewHeight()
     setSelectedVersion(version)
     setView('configuration')
   }
@@ -361,7 +345,6 @@ function PublisherEnvironmentFlowContent({
         currentVersionId={currentVersionId}
         disabled={deploymentActionsDisabled}
         environmentName={environmentName}
-        height={publisherViewHeight}
         onBack={() => setView('publisher')}
         onSelect={openConfiguration}
       />
@@ -369,7 +352,7 @@ function PublisherEnvironmentFlowContent({
   }
 
   return (
-    <div ref={publisherViewRef}>
+    <div>
       <PublisherEnvironmentSummarySection
         deployment={deployment}
         deploymentActionsDisabled={deploymentActionsDisabled}
