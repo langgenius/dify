@@ -356,9 +356,9 @@ async def _managed_binding_pool(
         allocations.extend(result for result in results if isinstance(result, tuple))
         errors = [result for result in results if isinstance(result, BaseException)]
         if errors:
-            raise RuntimeError(
-                f"failed to create {len(errors)} of {binding_pool_size} benchmark bindings"
-            ) from errors[0]
+            raise RuntimeError(f"failed to create {len(errors)} of {binding_pool_size} benchmark bindings") from errors[
+                0
+            ]
         yield allocations
     finally:
         cleanup_results = await asyncio.gather(
@@ -375,9 +375,9 @@ async def _managed_binding_pool(
         )
         errors = [result for result in cleanup_results if isinstance(result, BaseException)]
         if errors:
-            raise RuntimeError(
-                f"failed to destroy {len(errors)} of {len(allocations)} benchmark bindings"
-            ) from errors[0]
+            raise RuntimeError(f"failed to destroy {len(errors)} of {len(allocations)} benchmark bindings") from errors[
+                0
+            ]
 
 
 async def _destroy_binding_with_fallback(
@@ -437,10 +437,7 @@ async def _attach_e2b_active_windows(
                     )
                     active_windows = _active_windows_from_events(
                         events,
-                        windows=[
-                            (observation.started_at_ns, observation.ended_at_ns)
-                            for observation in items
-                        ],
+                        windows=[(observation.started_at_ns, observation.ended_at_ns) for observation in items],
                     )
                     for observation, active_seconds in zip(items, active_windows, strict=True):
                         observation.sample.e2b_active_seconds = active_seconds
@@ -517,9 +514,7 @@ def _active_windows_from_events(
         lower_bound = started_at_ns / 1_000_000_000 - 1
         upper_bound = ended_at_ns / 1_000_000_000 + 10
         candidates = [
-            event_index
-            for event_index in available
-            if lower_bound <= pause_events[event_index][0] <= upper_bound
+            event_index for event_index in available if lower_bound <= pause_events[event_index][0] <= upper_bound
         ]
         if not candidates:
             continue
@@ -630,9 +625,7 @@ async def _run_timed(
         while True:
             now = time.perf_counter()
             async with lock:
-                successful = sum(
-                    observation.sample.terminal_status == "succeeded" for observation in observations
-                )
+                successful = sum(observation.sample.terminal_status == "succeeded" for observation in observations)
             minimum_met = minimum_successful_runs is None or successful >= minimum_successful_runs
             if (now >= minimum_deadline and minimum_met) or now >= maximum_deadline:
                 return
@@ -739,11 +732,7 @@ async def _run_once(
                     data = event.get("data")
                     if isinstance(data, dict) and isinstance(data.get("session_snapshot"), dict):
                         terminal_snapshot = cast(dict[str, object], data["session_snapshot"])
-                    if (
-                        terminal_type == "run_failed"
-                        and isinstance(data, dict)
-                        and isinstance(data.get("error"), str)
-                    ):
+                    if terminal_type == "run_failed" and isinstance(data, dict) and isinstance(data.get("error"), str):
                         sample.error = cast(str, data["error"])
                     break
         if first_event_ns is None or terminal_type is None:
@@ -990,8 +979,7 @@ def summarize_outcomes(
     successful = sum(sample.terminal_status == "succeeded" for sample in samples)
     timeout_runs = sum(sample.error is not None and "timeout" in sample.error.lower() for sample in samples)
     throttle_runs = sum(
-        sample.error is not None
-        and any(token in sample.error.lower() for token in ("429", "throttle", "quota"))
+        sample.error is not None and any(token in sample.error.lower() for token in ("429", "throttle", "quota"))
         for sample in samples
     )
     return RunOutcomeSummary(
@@ -1028,9 +1016,7 @@ def _invalid_reasons(
                 break
         elif sample.failure_kind == "terminal_failed":
             terminal_errors = [
-                _compact_error(item.error)
-                for item in samples
-                if item.failure_kind == "terminal_failed" and item.error
+                _compact_error(item.error) for item in samples if item.failure_kind == "terminal_failed" and item.error
             ]
             detail = f": {terminal_errors[0]}" if terminal_errors else ""
             reasons.append(f"one or more Runs reached an unexpected terminal status{detail}")

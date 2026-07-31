@@ -105,9 +105,7 @@ def parse_docker_stats(
     memory_stats = _mapping(raw.get("memory_stats"))
     memory_detail = _mapping(memory_stats.get("stats"))
     usage = _integer(memory_stats.get("usage"))
-    inactive_file = _integer(
-        memory_detail.get("total_inactive_file", memory_detail.get("inactive_file"))
-    )
+    inactive_file = _integer(memory_detail.get("total_inactive_file", memory_detail.get("inactive_file")))
     network_rx = 0
     network_tx = 0
     for network in _mapping(raw.get("networks")).values():
@@ -150,9 +148,7 @@ def summarize_resource_window(
         components[service] = ComponentResourceSummary(
             cpu_ms_per_run=_cpu_ms_per_run(start_sample, end_sample, denominator),
             memory_peak_mib=(
-                max((sample.memory_working_set_bytes for sample in bounded), default=0) / 1024**2
-                if bounded
-                else None
+                max((sample.memory_working_set_bytes for sample in bounded), default=0) / 1024**2 if bounded else None
             ),
             network_bytes_per_run=_network_bytes_per_run(start_sample, end_sample, denominator),
             peak_pids=max((sample.pids for sample in bounded), default=None),
