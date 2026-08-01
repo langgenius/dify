@@ -6,7 +6,7 @@ Explore 阶段确认了以下约束：
 
 - 通讯录读取和消息发送是独立操作；共享凭据、SDK client、tenant 配置或 provider user ID 不构成合并接口的理由。
 - Webhook 和长连接在认证、ACK、重试与部署生命周期上保持独立，最早通过 `AuthenticatedEvent` 汇合；卡片协议再通过 `CardSubmissionRequest` 汇合。
-- 入站事件采用 inbox pattern，通过简单的 Dify-owned Inbox Repository 把 `AuthenticatedEvent` 写入 application database 的一张专用 inbox 表；先提交记录并尽快 ACK，再由 worker 从表中 claim 和处理。
+- 入站事件采用 inbox pattern；IM Event processing boundary 拥有 Inbox Repository port、commit-before-ACK 和 worker claim contract，Dify persistence/application infrastructure 提供 repository、专用 inbox 表和 worker implementation。
 - 只有 Provider 给出 event ID 时才去重；没有 event ID 时不生成 payload hash 或其他替代去重键。
 - Directory reader 只有在读完所有 Provider pages/nodes 并构建完整内存快照后才能返回成功；失败时不进入 reconciliation。
 - Delivery Endpoint 创建前由 Provider Messaging 对 normalized interactive-card intent 做无副作用的 representability assessment；endpoint 一旦选定，发送阶段不再重新选择链接或卡片渠道。
@@ -43,7 +43,7 @@ Deployment event transport mode 由部署配置注入，Integration 管理 API �
 - 不实现群聊通知、自动 directory sync、delivery receipt、自动发送重试或远端 Integration revoke/unsubscribe。
 - 不设计连接配额、leader election、滚动部署、connection drain 或多连接负载策略。
 - 不改变 Contact admission、recipient resolution、submission authorization、first-success 或 workflow resume 规则。
-- 不实现 caller switch、Delivery Endpoint selection、Integration local deletion 或 Human Input business handoff；但 Dify-owned inbox table/repository、ACK-before-business-processing 与 inbox worker claim 保留在本 change 范围内。
+- 不实现 caller switch、Delivery Endpoint selection、Integration local deletion 或 Human Input business handoff；但 IM Event processing-owned inbox/ACK/claim contract 及其 Dify-owned table、repository 和 worker implementation 保留在本 change 范围内。
 
 ## Decisions
 
@@ -158,7 +158,7 @@ Alternatives considered:
 
 ### 7. Inbox commit precedes ACK and business processing
 
-Webhook and stream receivers use a simple Dify-owned Inbox Repository to persist `AuthenticatedEvent` directly into one dedicated `im_provider_event_inbox` table in the application database before sending a successful ACK. The table is the durable source of truth for accepted inbound events; a broker enqueue, if used to reduce worker latency, does not replace the table commit. After commit:
+The IM Event processing boundary owns the Inbox Repository port, accepted-event semantics, commit-before-ACK ordering and worker claim contract. Dify persistence and application infrastructure own the repository, dedicated `im_provider_event_inbox` table and worker implementation. Webhook and stream receivers use that port to persist `AuthenticatedEvent` before sending a successful ACK. The table is the durable source of truth for accepted inbound events; a broker enqueue, if used to reduce worker latency, does not replace the table commit. After commit:
 
 - Webhook returns the Provider-specific success response promptly.
 - Stream returns the Provider-specific envelope ACK or allows the SDK handler to complete successfully.
@@ -168,7 +168,7 @@ If inbox persistence fails, the receiver MUST NOT acknowledge successful durable
 
 The table stores an internal record ID, local Integration ID, provider, provider tenant ID, nullable provider event ID, provider event time, Dify receive time, immutable serialized Provider-native payload, and minimal processing status/outcome metadata. The local Integration ID is persistence routing metadata supplied by the receiver; it is not added to `AuthenticatedEvent` and does not change the Provider-neutral convergence boundary.
 
-The serialized Provider-native payload is retained as `raw_payload` on the Dify-owned event record for debugging and incident investigation. It is written atomically with the rest of the event record rather than through a side table, blob, or follow-up write. `raw_payload` does not participate in deduplication, routing, authorization, or business decisions, so there is no separate state in which the event write succeeds but its raw payload write fails. This avoids replacing actionable diagnostic evidence with a payload hash while keeping the payload outside business semantics.
+The IM Event processing contract requires the serialized Provider-native payload to be retained as `raw_payload`; the Dify-owned persistence implementation stores it on the event record for debugging and incident investigation. It is written atomically with the rest of the event record rather than through a side table, blob, or follow-up write. `raw_payload` does not participate in deduplication, routing, authorization, or business decisions, so there is no separate state in which the event write succeeds but its raw payload write fails. This avoids replacing actionable diagnostic evidence with a payload hash while keeping the payload outside business semantics.
 
 The Inbox Repository carries only three concrete responsibilities:
 

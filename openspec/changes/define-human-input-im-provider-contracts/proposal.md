@@ -7,7 +7,7 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 - 定义只承载已确认操作的 Provider Integration contract：校验凭据、识别 provider tenant、检查基础权限与部署级 event transport 兼容性；transport mode 继续由部署配置决定，不由 tenant 管理员选择。
 - 定义独立的 Provider Directory contract：一次读取必须先在内存中构建完整快照，只有完整成功后才允许 Dify reconciliation；目录读取不负责 Contact 匹配、binding 或消息发送。
 - 将 Provider Messaging 分为两组窄 contract：五个初始 Provider 都必须实现基础 Messaging，包括测试已绑定 identity 的可达性和发送文本消息；业务层总是先产出 CommonMark 正文（不支持 custom tags），完成正文渲染与 URL interpolation 后再通过 `send_text` 发送。Provider 侧负责在可表达时按本平台能力渲染该 CommonMark，若不可表达则直接降级为纯文本发送。Slack、Feishu/Lark 与 Microsoft Teams 额外实现可选的 Dynamic Card Messaging，包括无副作用的 card representability assessment、发送交互卡片和按精确 message reference 更新原卡片。基础文本消息是所有 Provider 的 fallback，不支持动态卡片的 Provider 不需要 dummy card methods；发送失败或 ambiguous outcome 本期不自动重试。
-- 定义两层入站事件边界：transport-specific 接入在认证、验签或连接鉴权后产出 `AuthenticatedEvent`；provider-specific 卡片协议解码再产出 `CardSubmissionRequest`。本 change 保留 Dify-owned inbox persistence、ACK-before-business-processing 与 inbox worker claim 这条接入链路，但不扩展到更上层的 Human Input business processing 接线。
+- 定义两层入站事件边界：transport-specific 接入在认证、验签或连接鉴权后产出 `AuthenticatedEvent`；provider-specific 卡片协议解码再产出 `CardSubmissionRequest`。IM Event processing 拥有 inbox port、ACK-before-business-processing 与 worker claim contract，Dify 拥有对应 persistence 和 worker implementation；本 change 保留这条接入链路，但不扩展到更上层的 Human Input business processing 接线。
 - 固化 Provider transport 支持矩阵：Feishu/Lark、DingTalk 与 Slack 支持 `WEBHOOK` 和 `STREAM`，WeCom 与 Microsoft Teams 仅支持 `WEBHOOK`。连接配额与滚动部署策略不进入本 change。
 - 删除 Integration、停止事件进入业务处理、清理 bindings/overrides 仍属于 Dify-owned lifecycle，本 change 不覆盖这些本地状态变更。
 - 保持现有 effective IM binding 边界：只解析 `workspace override > organization binding`；新的 Provider contract 不接管上层 Email endpoint selection。
@@ -20,7 +20,7 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 - `im-provider-integration`: Provider credentials、tenant identity、permission 与部署级 event transport compatibility 的最小校验语义。
 - `im-provider-directory`: 从 Provider 读取完整 directory snapshot 的独立操作及完整性失败规则。
 - `im-provider-messaging`: 所有 Provider 必备的 identity reachability 与 `send_text` contract，以及 card-capable Provider 可选实现的 representability assessment、card send/update contract、provider message reference 和 no-automatic-retry 语义。
-- `im-provider-events`: `WEBHOOK / STREAM` 的 transport-specific 接入、`AuthenticatedEvent`、Dify-owned inbox/ACK convergence 与 `CardSubmissionRequest` 解码边界。
+- `im-provider-events`: `WEBHOOK / STREAM` 的 transport-specific 接入、`AuthenticatedEvent`、IM Event processing-owned inbox/ACK convergence contract、Dify-owned implementation 与 `CardSubmissionRequest` 解码边界。
 
 ### Modified Capabilities
 
@@ -28,9 +28,9 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 
 ## Impact
 
-- 影响 IM provider adapters、credential/client lifecycle、directory readers、basic/card messaging adapters、Webhook handlers、stream connection adapters、Dify-owned inbox persistence/worker path 和 card decoders。
+- 影响 IM provider adapters、credential/client lifecycle、directory readers、basic/card messaging adapters、Webhook handlers、stream connection adapters、IM Event processing inbox contract、Dify-owned persistence/worker implementation 和 card decoders。
 - Provider SDK、凭据字段、directory pagination/topology、message/card payload 和 ACK 协议继续保持 Provider-specific；本 change 不要求统一这些外部协议。
-- Contact matching、sync reconciliation、binding persistence、recipient resolution、submission authorization、workflow resume 和 caller wiring 继续由现有 Dify domain/application service 拥有；但 inbox persistence、ACK-before-business-processing 与 inbox worker claim 保留在本 change 范围内。
+- Contact matching、sync reconciliation、binding persistence、recipient resolution、submission authorization、workflow resume 和 caller wiring 继续由现有 Dify domain/application service 拥有；IM Event processing-owned inbox contract、ACK-before-business-processing、worker claim contract 及其 Dify-owned implementation 保留在本 change 范围内。
 - 本 change 不引入通用插件框架，不处理连接配额、滚动部署、自动发送重试、远端 revoke/unsubscribe、群聊通知或 Provider delivery receipt。
 - Provider adapter、Webhook/STREAM receiver 与事件 decoder 的实现验收需要维护逐项覆盖矩阵，并准备可用的非生产 Provider 环境、真实调用证据和完整脱敏 fixture；代表性 Provider 测试或手工构造 payload 不能替代逐项证据。
 - 签名或密文不能在生成后直接脱敏并继续作为有效 cryptographic fixture；测试必须基于先脱敏的真实 payload 结构，使用测试专用 verification/encryption material 重新生成可验证的签名或密文，且不得提交真实 Provider secret 或 decryption key。

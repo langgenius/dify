@@ -18,13 +18,6 @@ The Directory reader MUST own all Provider-specific pagination and hierarchy tra
 - **WHEN** one page or department node fails after earlier entries were accumulated
 - **THEN** the reader MUST return a typed failure and MUST NOT return a partial snapshot or entries that reconciliation can consume
 
-### Requirement: Reconciliation MUST start only from a successful complete snapshot
-The sync worker MUST NOT perform identity matching, absence detection, binding removal or reconciliation until the Directory reader returns a complete snapshot.
-
-#### Scenario: Directory read is incomplete
-- **WHEN** directory pagination, hierarchy traversal, authentication or rate limiting prevents a complete snapshot
-- **THEN** the sync run MUST fail before reconciliation and MUST NOT mark any existing identity absent or removed
-
 ### Requirement: Initial directory coverage MUST include all five IM Providers
 Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST each provide a Directory reader that returns the same complete-snapshot semantic result. Provider-specific directory endpoints, visibility scopes, pagination and organization traversal MUST remain inside the concrete adapter and MUST NOT make directory synchronization optional for any of the five Providers.
 

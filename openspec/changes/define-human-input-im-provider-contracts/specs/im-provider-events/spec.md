@@ -31,7 +31,7 @@ URL challenge, HTTP response encoding, signature headers, decryption keys, strea
 - **THEN** the Webhook adapter MUST complete the Provider-specific challenge without treating it as an authenticated card submission
 
 ### Requirement: Inbox persistence MUST precede successful Provider ACK
-The receiver MUST persist `AuthenticatedEvent` in a minimal inbox transaction before sending a successful Webhook response or STREAM ACK. Business decoding, Contact/binding lookup, submission authorization and workflow resume MUST occur after ACK in a worker.
+IM Event processing MUST own the Inbox persistence port and commit-before-ACK contract. Dify MUST own the persistence and worker implementation behind that port. The receiver MUST persist `AuthenticatedEvent` through the port in a minimal inbox transaction before sending a successful Webhook response or STREAM ACK. Business decoding, Contact/binding lookup, submission authorization and workflow resume MUST occur after ACK in a worker.
 
 #### Scenario: Inbox commit succeeds
 - **WHEN** an authenticated event is committed to the inbox
@@ -42,11 +42,11 @@ The receiver MUST persist `AuthenticatedEvent` in a minimal inbox transaction be
 - **THEN** the receiver MUST NOT acknowledge successful durable receipt to the Provider
 
 ### Requirement: Inbox event record MUST retain `raw_payload` in the same atomic write
-When Dify ingests one authenticated Provider event through the Inbox pattern, the Dify-owned event record MUST retain `raw_payload` for debugging. `raw_payload` MUST be persisted on the event record itself as part of the same atomic write as the rest of the event fields. `raw_payload` MUST NOT participate in dedupe, routing, authorization, or business decisions.
+The IM Event processing contract MUST require one authenticated Provider event to retain `raw_payload`; the Dify-owned Inbox implementation MUST store it on the event record for debugging. `raw_payload` MUST be persisted on the event record itself as part of the same atomic write as the rest of the event fields. `raw_payload` MUST NOT participate in dedupe, routing, authorization, or business decisions.
 
 #### Scenario: Authenticated Provider event is written to Inbox
-- **WHEN** one authenticated Provider event is accepted into the Dify-owned Inbox
-- **THEN** Dify MUST persist `raw_payload` together with the event record in the same atomic write
+- **WHEN** IM Event processing accepts one authenticated Provider event through the Inbox port
+- **THEN** the Dify-owned implementation MUST persist `raw_payload` together with the event record in the same atomic write
 
 #### Scenario: Event processing reads business fields
 - **WHEN** downstream processing performs dedupe, routing, authorization, or business handling for one Inbox event
@@ -84,14 +84,3 @@ A concrete Provider card decoder MUST transform an `AuthenticatedEvent` into a `
 #### Scenario: Decoded request enters Human Input processing
 - **WHEN** the Human Input interaction service consumes `CardSubmissionRequest`
 - **THEN** it MUST still resolve the opaque context, current provider identity, binding, allowed approver and task state before accepting submission
-
-### Requirement: Deleted Integration MUST not admit new inbound business events
-After local Integration deletion, Webhook and STREAM receivers MUST NOT create new business-processable `AuthenticatedEvent` inbox records for that Integration. Any locally maintained stream connection MUST stop. The Provider-specific terminal response for a late Webhook or frame MAY remain adapter-specific, but it MUST NOT re-enable or recreate the Integration.
-
-#### Scenario: Webhook arrives after local deletion
-- **WHEN** a Provider sends a new Webhook delivery for an Integration whose local credentials and active state were deleted
-- **THEN** Dify MUST keep the event out of business processing and MUST NOT recreate credentials, identities or bindings
-
-#### Scenario: Inbox event was committed before deletion
-- **WHEN** an earlier inbox record is processed after its Integration bindings were removed
-- **THEN** downstream current-binding revalidation MUST prevent that event from bypassing the deleted Integration state
