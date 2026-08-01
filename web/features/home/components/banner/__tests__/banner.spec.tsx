@@ -1,4 +1,4 @@
-import type { Banner as BannerType } from '@/models/app'
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { act } from 'react'
@@ -132,7 +132,7 @@ vi.mock('../banner-item', () => ({
     accountId,
     titleId,
   }: {
-    banner: BannerType
+    banner: BannerResponse
     sort: number
     language: string
     accountId?: string
@@ -145,7 +145,7 @@ vi.mock('../banner-item', () => ({
       data-language={language}
       data-account-id={accountId}
     >
-      <p id={titleId}>{banner.content.title}</p>
+      <p id={titleId}>{(banner.content as { title: string }).title}</p>
     </article>
   ),
 }))
@@ -154,18 +154,18 @@ const createMockBanner = (
   id: string,
   status: string = 'enabled',
   title: string = 'Test Banner',
-): BannerType =>
-  ({
-    id,
-    status,
-    link: 'https://example.com',
-    content: {
-      category: 'Featured',
-      title,
-      description: 'Test description',
-      'img-src': `https://example.com/image-${id}.png`,
-    },
-  }) as BannerType
+): BannerResponse => ({
+  id,
+  status,
+  link: 'https://example.com',
+  content: {
+    category: 'Featured',
+    title,
+    description: 'Test description',
+    'img-src': `https://example.com/image-${id}.png`,
+  },
+  sort: 1,
+})
 
 describe('Banner', () => {
   beforeEach(() => {

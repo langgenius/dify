@@ -1,5 +1,5 @@
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps } from 'react'
-import type { Banner } from '@/models/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BannerItem } from '../banner-item'
@@ -10,22 +10,22 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-const createMockBanner = (overrides: Partial<Banner> = {}): Banner =>
-  ({
-    id: 'banner-1',
-    status: 'enabled',
-    link: 'https://example.com',
-    content: {
-      category: 'Featured',
-      title: 'Test Banner Title',
-      description: 'Test banner description text',
-      'img-src': 'https://example.com/image.png',
-    },
-    ...overrides,
-  }) as Banner
+const createMockBanner = (overrides: Partial<BannerResponse> = {}): BannerResponse => ({
+  id: 'banner-1',
+  status: 'enabled',
+  link: 'https://example.com',
+  content: {
+    category: 'Featured',
+    title: 'Test Banner Title',
+    description: 'Test banner description text',
+    'img-src': 'https://example.com/image.png',
+  },
+  sort: 1,
+  ...overrides,
+})
 
 const renderBannerItem = (
-  banner: Banner = createMockBanner(),
+  banner: BannerResponse = createMockBanner(),
   props: Partial<ComponentProps<typeof BannerItem>> = {},
 ) =>
   render(<BannerItem banner={banner} sort={1} language="en-US" titleId="banner-title" {...props} />)

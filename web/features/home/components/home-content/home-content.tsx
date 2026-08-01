@@ -1,20 +1,17 @@
 'use client'
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
+import type { HomeTemplateSelection } from '../../types'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
-import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppCard from '@/app/components/explore/app-card'
-import { Banner } from '@/app/components/explore/banner/banner'
 import {
   getStepByStepTourPermissionVariant,
   trackStepByStepTourEvent,
@@ -39,13 +36,17 @@ import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
-import { ExploreAppListHeader } from './explore-app-list-header'
-import { ExploreRecommendations } from './explore-recommendations'
-import { ExploreHomeSkeleton } from './loading-skeletons'
+import { Banner } from '../banner/banner'
+import { HomeSkeleton } from '../home-skeleton'
+import { TemplateCard } from '../template-card/template-card'
+import { HomeRecommendations } from './recommendations'
 import s from './style.module.css'
+import { HomeTemplatesHeader } from './templates-header'
 
-const TryApp = dynamic(() => import('../try-app'), { ssr: false })
-const CreateAppModal = dynamic(() => import('../create-app-modal'), { ssr: false })
+const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
+const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
+  ssr: false,
+})
 const DSLConfirmModal = dynamic(
   () => import('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'),
   { ssr: false },
@@ -53,7 +54,7 @@ const DSLConfirmModal = dynamic(
 
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
-const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
+export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -181,7 +182,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
-  const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
+  const [currentTryApp, setCurrentTryApp] = useState<HomeTemplateSelection | undefined>(undefined)
   const currentCreateAppModeRef = useRef<string | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
@@ -281,12 +282,12 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       hideTryAppPanel()
     }
   }, [currentTryApp, hideTryAppPanel, homeTryAppCreateGuideActive, isShowCreateModal])
-  const handleTryApp = useCallback((params: TryAppSelection) => {
+  const handleTryApp = useCallback((params: HomeTemplateSelection) => {
     isCurrentTryAppFromLearnDifyRef.current = false
     setCurrentTryApp(params)
   }, [])
   const handleTryAppFromLearnDify = useCallback(
-    (params: TryAppSelection) => {
+    (params: HomeTemplateSelection) => {
       isCurrentTryAppFromLearnDifyRef.current = true
       setCurrentTryApp(params)
 
@@ -440,11 +441,11 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
         {homeQueries.isPending ? (
-          <ExploreHomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
+          <HomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
         ) : (
           <>
             {systemFeatures.enable_explore_banner && <Banner banners={homeQueries.banners} />}
-            <ExploreRecommendations
+            <HomeRecommendations
               canCreate={canCreateApp}
               continueWorkApps={homeQueries.continueWorkApps}
               forceShowLearnDify={shouldForceShowLearnDifyForTour}
@@ -452,7 +453,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
               onTry={handleTryAppFromLearnDify}
             />
 
-            <ExploreAppListHeader
+            <HomeTemplatesHeader
               allCategoriesEn={allCategoriesEn}
               categories={visibleCategories}
               currCategory={activeCategory}
@@ -464,7 +465,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
             <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
               <nav className={cn(s.appList, 'grid shrink-0 content-start gap-3 px-8')}>
                 {searchFilteredList.map((app) => (
-                  <AppCard
+                  <TemplateCard
                     key={app.app_id}
                     app={app}
                     canCreate={canCreateApp}
@@ -524,5 +525,3 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     </div>
   )
 }
-
-export default React.memo(Apps)

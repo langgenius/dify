@@ -18,6 +18,7 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/utils'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import {
   resetStepByStepTourSessionAtom,
   stepByStepTourSessionAtom,
@@ -29,8 +30,7 @@ import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
-import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
-import AppList from '../index'
+import { HomeContent } from '../home-content'
 
 type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
@@ -429,7 +429,7 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
   },
 }))
 
-vi.mock('../../try-app', () => ({
+vi.mock('@/app/components/explore/try-app', () => ({
   default: ({
     canCreate = true,
     createButtonStepByStepTourTarget,
@@ -545,10 +545,10 @@ type RenderOptions = {
 }
 
 const localeInput = { query: { language: 'en-US' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
+const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
 
-const renderAppList = (
+const renderHomeContent = (
   hasEditPermission = false,
   onSuccess?: () => void,
   searchParams?: Record<string, string>,
@@ -563,7 +563,7 @@ const renderAppList = (
     },
   })
   if (mockExploreData && !mockTemplatesPending) {
-    queryClient.setQueryData(exploreAppListQueryKey, {
+    queryClient.setQueryData(homeTemplatesQueryKey, {
       categories: mockExploreData.categories,
       recommended_apps: mockExploreData.allList,
     })
@@ -587,7 +587,7 @@ const renderAppList = (
   )
   const rendered = renderWithNuqs(
     <Wrapped>
-      <AppList onSuccess={onSuccess} />
+      <HomeContent onSuccess={onSuccess} />
     </Wrapped>,
     { searchParams },
   )
@@ -604,7 +604,7 @@ function SkipHomeGuideProbe() {
   )
 }
 
-describe('AppList', () => {
+describe('HomeContent', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
@@ -639,7 +639,7 @@ describe('AppList', () => {
     it('should keep the Home shell stable while templates are pending', () => {
       mockTemplatesPending = true
 
-      renderAppList()
+      renderHomeContent()
 
       expect(screen.queryByText('explore.apps.description')).not.toBeInTheDocument()
       expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
@@ -653,7 +653,7 @@ describe('AppList', () => {
       mockLearnDifyApps = []
       mockLearnDifyLoading = true
 
-      renderAppList()
+      renderHomeContent()
 
       expect(
         screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
@@ -670,7 +670,7 @@ describe('AppList', () => {
       mockLearnDifyLoading = true
       localStorage.setItem(LEARN_DIFY_HIDDEN_STORAGE_KEY, 'true')
 
-      renderAppList()
+      renderHomeContent()
 
       expect(
         screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
@@ -691,7 +691,7 @@ describe('AppList', () => {
         ],
       }
 
-      renderAppList()
+      renderHomeContent()
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
@@ -720,7 +720,7 @@ describe('AppList', () => {
         createWorkspaceApp({ id: 'app-9', name: 'Hidden Ninth App', author_name: 'Riley' }),
       ]
 
-      renderAppList()
+      renderHomeContent()
 
       expect(
         screen.getByRole('heading', { name: 'explore.continueWork.title' }),
@@ -754,7 +754,7 @@ describe('AppList', () => {
       }
       mockWorkspaceApps = [createWorkspaceApp()]
 
-      renderAppList()
+      renderHomeContent()
 
       expect(mockAppQueries.recentQueryOptions).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -782,7 +782,7 @@ describe('AppList', () => {
         }),
       ]
 
-      renderAppList()
+      renderHomeContent()
 
       const card = screen.getByRole('button', { name: 'Preview Only App' })
       expect(card).toHaveClass('opacity-60')
@@ -805,7 +805,7 @@ describe('AppList', () => {
       }
       mockWorkspaceApps = []
 
-      renderAppList()
+      renderHomeContent()
 
       expect(
         screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
@@ -818,7 +818,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList()
+      renderHomeContent()
 
       const learnDifyHeading = screen.getByRole('heading', { name: 'explore.learnDify.title' })
       expect(learnDifyHeading).toBeInTheDocument()
@@ -843,7 +843,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(false, undefined, undefined, { enableLearnApp: false })
+      renderHomeContent(false, undefined, undefined, { enableLearnApp: false })
 
       expect(
         screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
@@ -857,7 +857,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList()
+      renderHomeContent()
 
       fireEvent.click(screen.getByRole('button', { name: 'explore.learnDify.hide' }))
 
@@ -892,7 +892,7 @@ describe('AppList', () => {
         ],
       }
 
-      renderAppList(false, undefined, { category: 'Writing' })
+      renderHomeContent(false, undefined, { category: 'Writing' })
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -904,7 +904,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(false, undefined, { category: 'c' })
+      renderHomeContent(false, undefined, { category: 'c' })
 
       expect(screen.queryByRole('radio', { name: 'c' })).not.toBeInTheDocument()
       expect(screen.getByText('Alpha')).toBeInTheDocument()
@@ -923,7 +923,7 @@ describe('AppList', () => {
         ],
       }
 
-      renderAppList(false, undefined, { category: 'Writing' })
+      renderHomeContent(false, undefined, { category: 'Writing' })
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'alp' } })
@@ -949,7 +949,7 @@ describe('AppList', () => {
           createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
         ],
       }
-      renderAppList()
+      renderHomeContent()
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'gam' } })
@@ -984,7 +984,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, onSuccess)
+      renderHomeContent(true, onSuccess)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -1026,7 +1026,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true)
+      renderHomeContent(true)
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('confirm-create'))
 
@@ -1055,7 +1055,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1080,7 +1080,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, {
+      renderHomeContent(true, undefined, undefined, {
         extra: <SkipHomeGuideProbe />,
         deploymentEdition: 'CLOUD',
       })
@@ -1113,7 +1113,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(false, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(false, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1163,7 +1163,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1220,7 +1220,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1287,7 +1287,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1317,7 +1317,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       const createFromDetailsButton = await screen.findByTestId('try-app-create')
@@ -1347,7 +1347,7 @@ describe('AppList', () => {
           createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
         ],
       }
-      renderAppList()
+      renderHomeContent()
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'gam' } })
@@ -1376,7 +1376,7 @@ describe('AppList', () => {
         mode: AppModeEnum.CHAT,
       })
 
-      renderAppList(true)
+      renderHomeContent(true)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
 
@@ -1406,7 +1406,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true)
+      renderHomeContent(true)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -1431,7 +1431,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true)
+      renderHomeContent(true)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -1454,7 +1454,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
@@ -1485,7 +1485,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
@@ -1508,7 +1508,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
@@ -1526,7 +1526,7 @@ describe('AppList', () => {
       }
       mockBanners = [createBanner()]
 
-      renderAppList(false, undefined, undefined, { enableExploreBanner: true })
+      renderHomeContent(false, undefined, undefined, { enableExploreBanner: true })
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')

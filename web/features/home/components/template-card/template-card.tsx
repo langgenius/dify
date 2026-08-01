@@ -1,25 +1,31 @@
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { TryAppSelection } from '@/types/try-app'
+import type { HomeTemplateSelection } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AppTypeIcon } from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppModeEnum } from '@/types/app'
-import { AppTypeIcon } from '../../app/type-selector'
 
-export type AppCardProps = {
+export type TemplateCardProps = {
   app: RecommendedAppResponse
   canCreate: boolean
   onCreate: () => void
-  onTry: (params: TryAppSelection) => void
+  onTry: (params: HomeTemplateSelection) => void
   isExplore?: boolean
 }
 
-const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardProps) => {
+export function TemplateCard({
+  app,
+  canCreate,
+  onCreate,
+  onTry,
+  isExplore = true,
+}: TemplateCardProps) {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -134,5 +140,3 @@ const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardP
     </div>
   )
 }
-
-export default AppCard

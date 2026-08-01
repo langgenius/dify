@@ -1,15 +1,18 @@
+import type {
+  RecommendedAppInfoResponse,
+  RecommendedAppResponse,
+} from '@dify/contracts/api/console/explore/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { AppCardProps } from '../index'
-import type { App } from '@/models/explore'
+import type { TemplateCardProps } from '../template-card'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
-import AppCard from '../index'
+import { TemplateCard } from '../template-card'
 
-vi.mock('../../../app/type-selector', () => ({
+vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: ({ type }: { type: string }) => <div data-testid="app-type-icon">{type}</div>,
 }))
 
@@ -17,7 +20,12 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const createApp = (overrides?: Partial<App>): App => ({
+type TemplateFixture = RecommendedAppResponse & { app: RecommendedAppInfoResponse }
+type TemplateFixtureOverrides = Omit<Partial<RecommendedAppResponse>, 'app'> & {
+  app?: Partial<RecommendedAppInfoResponse>
+}
+
+const createApp = (overrides: TemplateFixtureOverrides = {}): TemplateFixture => ({
   can_trial: true,
   app_id: 'app-id',
   description: 'App description',
@@ -27,10 +35,6 @@ const createApp = (overrides?: Partial<App>): App => ({
   categories: ['Assistant'],
   position: 1,
   is_listed: true,
-  install_count: 0,
-  installed: false,
-  editable: true,
-  is_agent: false,
   ...overrides,
   app: {
     id: 'id-1',
@@ -40,20 +44,18 @@ const createApp = (overrides?: Partial<App>): App => ({
     icon_background: '#fff',
     icon_url: '',
     name: 'Sample App',
-    description: 'App description',
-    use_icon_as_answer_icon: false,
     ...overrides?.app,
   },
 })
 
-describe('AppCard', () => {
+describe('TemplateCard', () => {
   const onCreate = vi.fn()
   const onTry = vi.fn()
   const mockTrackEvent = vi.mocked(trackEvent)
   let deploymentEdition: DeploymentEdition = 'CLOUD'
 
-  const renderComponent = (props?: Partial<AppCardProps>) => {
-    const mergedProps: AppCardProps = {
+  const renderComponent = (props?: Partial<TemplateCardProps>) => {
+    const mergedProps: TemplateCardProps = {
       app: createApp(),
       canCreate: false,
       onCreate,
@@ -61,7 +63,7 @@ describe('AppCard', () => {
       isExplore: false,
       ...props,
     }
-    return renderWithConsoleQuery(<AppCard {...mergedProps} />, {
+    return renderWithConsoleQuery(<TemplateCard {...mergedProps} />, {
       systemFeatures: { deployment_edition: deploymentEdition },
     })
   }

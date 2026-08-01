@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 
-function ExploreAppCardSkeleton() {
+function HomeTemplateCardSkeleton() {
   return (
     <div className="col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
@@ -93,7 +93,7 @@ function RecommendationSectionSkeletonBody({
   )
 }
 
-function ExploreHeaderSkeletonBody() {
+function HomeTemplatesHeaderSkeletonBody() {
   return (
     <div className="sticky top-0 z-10 bg-background-body">
       <div className="flex items-center gap-2 px-8 pt-6">
@@ -114,11 +114,11 @@ function ExploreHeaderSkeletonBody() {
   )
 }
 
-function ExploreAppListSkeletonBody() {
+function HomeTemplatesSkeletonBody() {
   return (
     <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8">
       {Array.from({ length: 8 }, (_, index) => (
-        <ExploreAppCardSkeleton key={index} />
+        <HomeTemplateCardSkeleton key={index} />
       ))}
     </div>
   )
@@ -136,7 +136,7 @@ function BannerSkeletonBody() {
   )
 }
 
-export function ExploreHomeSkeleton({ showBanner }: { showBanner: boolean }) {
+export function HomeSkeleton({ showBanner }: { showBanner: boolean }) {
   const { t } = useTranslation()
 
   return (
@@ -145,9 +145,9 @@ export function ExploreHomeSkeleton({ showBanner }: { showBanner: boolean }) {
       <section className="px-8 pb-5">
         <RecommendationSectionSkeletonBody />
       </section>
-      <ExploreHeaderSkeletonBody />
+      <HomeTemplatesHeaderSkeletonBody />
       <div className="relative flex flex-1 shrink-0 grow flex-col pb-6">
-        <ExploreAppListSkeletonBody />
+        <HomeTemplatesSkeletonBody />
       </div>
     </div>
   )

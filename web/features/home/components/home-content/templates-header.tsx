@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import Category from '@/app/components/explore/category'
 
-export function ExploreAppListHeader({
+export function HomeTemplatesHeader({
   allCategoriesEn,
   categories,
   currCategory,

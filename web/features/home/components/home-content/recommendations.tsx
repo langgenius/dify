@@ -1,15 +1,15 @@
 'use client'
 
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { App } from '@/models/explore'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { TryAppSelection } from '@/types/try-app'
-import ContinueWork from '@/app/components/explore/continue-work'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import dynamic from '@/next/dynamic'
+import { ContinueWork } from '../continue-work/continue-work'
 
 const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), { ssr: false })
 
-export function ExploreRecommendations({
+export function HomeRecommendations({
   canCreate,
   continueWorkApps,
   forceShowLearnDify,
@@ -19,7 +19,7 @@ export function ExploreRecommendations({
   canCreate: boolean
   continueWorkApps: RecentAppResponse[]
   forceShowLearnDify?: boolean
-  onCreate: (app: App) => void
+  onCreate: (app: RecommendedAppResponse) => void
   onTry: (params: TryAppSelection) => void
 }) {
   return (
