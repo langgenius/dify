@@ -400,8 +400,16 @@ describe('DatePicker', () => {
   describe('Clear Behavior', () => {
     it('should call onClear when clear is clicked while picker is closed', () => {
       const onClear = vi.fn()
-      const renderTrigger = vi.fn(({ handleClear }) => (
-        <button data-testid="clear-trigger" onClick={handleClear}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClear }) => (
+        <button
+          {...triggerProps}
+          data-testid="clear-trigger"
+          onClick={(event) => {
+            event.preventDefault()
+            handleClear(event)
+            triggerProps.onClick?.(event)
+          }}
+        >
           Clear
         </button>
       ))
@@ -420,8 +428,8 @@ describe('DatePicker', () => {
     it('should clear selected date without calling onClear when picker is open', () => {
       const onClear = vi.fn()
       const onChange = vi.fn()
-      const renderTrigger = vi.fn(({ handleClickTrigger, handleClear }) => (
-        <div>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClickTrigger, handleClear }) => (
+        <div {...triggerProps}>
           <button data-testid="open-trigger" onClick={handleClickTrigger}>
             Open
           </button>
@@ -576,8 +584,8 @@ describe('DatePicker', () => {
   // Custom trigger
   describe('Custom Trigger', () => {
     it('should use renderTrigger when provided', () => {
-      const renderTrigger = vi.fn(({ handleClickTrigger }) => (
-        <button data-testid="custom-trigger" onClick={handleClickTrigger}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClickTrigger }) => (
+        <button {...triggerProps} data-testid="custom-trigger" onClick={handleClickTrigger}>
           Custom
         </button>
       ))
@@ -589,8 +597,8 @@ describe('DatePicker', () => {
     })
 
     it('should open picker when custom trigger is clicked', () => {
-      const renderTrigger = vi.fn(({ handleClickTrigger }) => (
-        <button data-testid="custom-trigger" onClick={handleClickTrigger}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClickTrigger }) => (
+        <button {...triggerProps} data-testid="custom-trigger" onClick={handleClickTrigger}>
           Custom
         </button>
       ))
@@ -601,6 +609,24 @@ describe('DatePicker', () => {
       fireEvent.click(screen.getByTestId('custom-trigger'))
 
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
+    })
+
+    it('should expose Base UI trigger state and props to a custom trigger', () => {
+      const renderTrigger = vi.fn((triggerProps, state) => (
+        <button {...triggerProps} data-testid="state-trigger">
+          {state.open ? 'Open' : 'Closed'}
+        </button>
+      ))
+
+      render(<DatePicker {...createDatePickerProps({ renderTrigger })} />)
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Closed')
+      expect(screen.getByTestId('state-trigger')).not.toHaveAttribute('data-popup-open')
+
+      fireEvent.click(screen.getByTestId('state-trigger'))
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Open')
+      expect(screen.getByTestId('state-trigger')).toHaveAttribute('data-popup-open')
     })
   })
 

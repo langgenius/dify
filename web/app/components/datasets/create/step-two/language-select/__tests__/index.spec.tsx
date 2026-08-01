@@ -155,7 +155,7 @@ describe('LanguageSelect', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'language' })
       expect(trigger).toBeDisabled()
-      expect(trigger).toHaveClass('cursor-not-allowed')
+      expect(trigger).toHaveAttribute('data-disabled')
     })
 
     it('should not open the listbox when disabled', () => {

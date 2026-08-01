@@ -12,15 +12,9 @@ vi.mock('../hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    onSelect,
-    trigger,
-  }: {
-    onSelect: OnSelectBlock
-    trigger: ((open?: boolean) => ReactNode) | ReactNode
-  }) => (
+  default: ({ onSelect, trigger }: { onSelect: OnSelectBlock; trigger: ReactNode }) => (
     <div>
-      {typeof trigger === 'function' ? trigger(false) : trigger}
+      {trigger}
       <button
         type="button"
         onClick={() =>

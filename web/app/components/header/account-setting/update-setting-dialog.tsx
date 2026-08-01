@@ -1,6 +1,9 @@
 'use client'
 
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  TimePickerProps,
+  TriggerParams,
+} from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -203,19 +206,26 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     setDraftAutoUpgrade(undefined)
     setIsOpen(false)
   }, [autoUpgrade, saveAutoUpgrade])
-  const renderTimePickerTrigger = useCallback(
-    ({ inputElem, onClick, isOpen }: TriggerParams) => {
+  const renderTimePickerTrigger = useCallback<NonNullable<TimePickerProps['renderTrigger']>>(
+    (props, state, { inputElem, onClick }: TriggerParams) => {
       return (
         <button
+          {...props}
           type="button"
-          className="group flex h-8 w-full cursor-pointer items-center gap-1 rounded-lg border-none bg-components-input-bg-normal px-2 py-1 text-left shadow-none hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onClick}
+          className={cn(
+            'group flex h-8 w-full cursor-pointer items-center gap-1 rounded-lg border-none bg-components-input-bg-normal px-2 py-1 text-left shadow-none hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            props.className,
+          )}
+          onClick={(event) => {
+            onClick(event)
+            props.onClick?.(event)
+          }}
         >
           <span
             aria-hidden
             className={cn(
               'i-ri-time-line size-4 shrink-0 text-text-tertiary',
-              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+              state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
             )}
           />
           <span className="min-w-0 flex-1 p-1 system-sm-regular text-components-input-text-filled">
