@@ -1,6 +1,7 @@
 from typing import override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -33,19 +34,15 @@ class WorkflowAppQueueManager(AppQueueManager):
 
         self._q.put(message)
 
-        # A pause ends only the current listener segment; the workflow stays PAUSED and
-        # resumes with the same task ID. Without this marker, listen() cleanup calls
-        # _abort_execution(), whose stop flag and abort command can stop the resumed run.
-        # This is a compatibility workaround: cancellation policy belongs to the execution
-        # owner, not the response-stream listener.
-        if isinstance(
+        if isinstance(event, QueueWorkflowPausedEvent):
+            self.stop_listen(execution_state=AppExecutionState.PAUSED)
+        elif isinstance(
             event,
             QueueStopEvent
             | QueueErrorEvent
             | QueueMessageEndEvent
             | QueueWorkflowSucceededEvent
             | QueueWorkflowFailedEvent
-            | QueueWorkflowPausedEvent
             | QueueWorkflowPartialSuccessEvent,
         ):
-            self.stop_listen(execution_terminal=True)
+            self.stop_listen(execution_state=AppExecutionState.TERMINAL)
