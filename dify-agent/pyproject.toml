@@ -48,6 +48,7 @@ extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+consider_namespace_packages = true
 markers = ["integration: requires a real external service or exercises multiple concrete adapters"]
 
 [tool.ruff]

@@ -219,15 +219,15 @@ func handlePrepare(svc *Service) http.HandlerFunc {
 			writeError(w, 400, "invalid_request", "Invalid JSON body")
 			return
 		}
-		if req.SandboxID == "" {
-			writeError(w, 422, "validation_error", "sandbox_id is required")
+		if req.SessionID == "" {
+			writeError(w, 422, "validation_error", "session_id is required")
 			return
 		}
 		if len(req.Credentials) == 0 {
 			writeError(w, 400, "invalid_request", "credentials must not be empty")
 			return
 		}
-		if err := svc.PrepareCredentials(req.SandboxID, req.Credentials); err != nil {
+		if err := svc.PrepareCredentials(req.SessionID, req.Credentials); err != nil {
 			writeServerError(w, err)
 			return
 		}

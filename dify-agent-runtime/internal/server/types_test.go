@@ -241,7 +241,7 @@ func newTestService(t *testing.T) *Service {
 // system-level credentials are seeded (e.g. loaded at startup from
 // LoadCredentialManifest), a sandbox session's own credentials (registered
 // via PrepareCredentials) take priority for resolution scoped to that
-// sandbox_id, without ever mutating the system tier or leaking to other
+// session_id, without ever mutating the system tier or leaking to other
 // sandbox sessions.
 func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 	s := newTestService(t)
@@ -258,7 +258,7 @@ func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 		},
 	}))
 
-	// No sandbox_id yet: only the system default is visible.
+	// No session_id yet: only the system default is visible.
 	if cred := s.egressResolver.ResolveFor("sandbox-a", "custom_saas/api_key"); cred == nil || rawStr(cred.Value) != "sk-system-default" {
 		t.Fatalf("expected system credential, got %v", cred)
 	}
@@ -286,11 +286,11 @@ func TestSessionCredentialsShadowSystemWithoutMutation(t *testing.T) {
 	}
 }
 
-func TestPrepareCredentialsRejectsInvalidSandboxID(t *testing.T) {
+func TestPrepareCredentialsRejectsInvalidSessionID(t *testing.T) {
 	s := newTestService(t)
 	err := s.PrepareCredentials("../escape", []Credential{{Provider: "p", Name: "n", Value: jsonStr("v")}})
 	if err == nil {
-		t.Fatal("expected error for invalid sandbox_id")
+		t.Fatal("expected error for invalid session_id")
 	}
 }
 
@@ -341,7 +341,7 @@ func TestSystemCredentialPlaceholderEnvInjectedIntoJob(t *testing.T) {
 
 // TestSessionCredentialPlaceholderEnvScopedToSandbox verifies that a
 // sandbox's own registered credentials (via PrepareCredentials) are exposed
-// as placeholder env vars only for that sandbox_id, never for others.
+// as placeholder env vars only for that session_id, never for others.
 func TestSessionCredentialPlaceholderEnvScopedToSandbox(t *testing.T) {
 	s := newTestService(t)
 	if err := s.PrepareCredentials("sandbox-a", []Credential{
@@ -359,6 +359,6 @@ func TestSessionCredentialPlaceholderEnvScopedToSandbox(t *testing.T) {
 		t.Errorf("expected no placeholder env for a different sandbox, got %v", env)
 	}
 	if env := s.sessionCredentialPlaceholderEnv(""); env != nil {
-		t.Errorf("expected no placeholder env for an empty sandbox_id, got %v", env)
+		t.Errorf("expected no placeholder env for an empty session_id, got %v", env)
 	}
 }

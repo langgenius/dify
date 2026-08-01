@@ -163,7 +163,7 @@ class RunJobRequest(ShellctlModel):
     `env` augments the runner's inherited process environment instead of
     replacing it, so callers can preset script-local variables without losing
     ambient values such as `PATH`. Credentials are never passed here; callers
-    must first register them for a `sandbox_id` via `PUT /v1/prepare`; the
+    must first register them for a `session_id` via `PUT /v1/prepare`; the
     egress proxy then proactively injects them into outbound HTTP requests
     based on each credential's inject policy.
     """
@@ -171,7 +171,7 @@ class RunJobRequest(ShellctlModel):
     script: str
     cwd: str | None = None
     env: dict[str, str] | None = None
-    sandbox_id: str | None = None
+    session_id: str | None = None
     terminal: TerminalSize | None = None
     timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
@@ -230,13 +230,13 @@ class TerminateJobRequest(ShellctlModel):
 class PrepareRequest(ShellctlModel):
     """HTTP request body for `PUT /v1/prepare`.
 
-    `sandbox_id` scopes these credentials to one sandbox session: they are
+    `session_id` scopes these credentials to one sandbox session: they are
     persisted server-side to a session-specific file and made visible only to
-    egress traffic from jobs run with the same `sandbox_id` (see
+    egress traffic from jobs run with the same `session_id` (see
     `RunJobRequest`). They never affect the system tier or any other session.
     """
 
-    sandbox_id: str
+    session_id: str
     credentials: list[Credential]
 
 

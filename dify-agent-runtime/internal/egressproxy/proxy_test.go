@@ -303,7 +303,7 @@ func TestProxyUpstreamChainingPreservesHostname(t *testing.T) {
 	}
 }
 
-func TestSandboxIDFromProxyAuthValidation(t *testing.T) {
+func TestSessionIDFromProxyAuthValidation(t *testing.T) {
 	cases := []struct {
 		name    string
 		setup   func() http.Header
@@ -331,7 +331,7 @@ func TestSandboxIDFromProxyAuthValidation(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "missing header (no sandbox scoping)",
+			name:    "missing header (no session scoping)",
 			setup:   func() http.Header { return http.Header{} },
 			wantID:  "",
 			wantErr: false,
@@ -405,15 +405,15 @@ func TestSandboxIDFromProxyAuthValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := sandboxIDFromProxyAuth(tc.setup())
+			got, err := sessionIDFromProxyAuth(tc.setup())
 			if got != tc.wantID {
-				t.Errorf("sandboxIDFromProxyAuth(%q) id = %q, want %q", tc.name, got, tc.wantID)
+				t.Errorf("sessionIDFromProxyAuth(%q) id = %q, want %q", tc.name, got, tc.wantID)
 			}
 			if tc.wantErr && err == nil {
-				t.Errorf("sandboxIDFromProxyAuth(%q) expected error, got nil", tc.name)
+				t.Errorf("sessionIDFromProxyAuth(%q) expected error, got nil", tc.name)
 			}
 			if !tc.wantErr && err != nil {
-				t.Errorf("sandboxIDFromProxyAuth(%q) expected no error, got %v", tc.name, err)
+				t.Errorf("sessionIDFromProxyAuth(%q) expected no error, got %v", tc.name, err)
 			}
 		})
 	}

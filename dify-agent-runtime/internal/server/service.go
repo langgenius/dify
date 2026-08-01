@@ -44,7 +44,7 @@ type Service struct {
 	// derive placeholder env var names for them; see
 	// systemCredentialPlaceholderEnv. Never holds session credentials.
 	systemCredentials []Credential
-	// sessionCredentials mirrors, per sandbox_id, the refs registered into
+	// sessionCredentials mirrors, per session_id, the refs registered into
 	// egressResolver's session tier via PrepareCredentials, kept here solely
 	// so RunJob can derive placeholder env var names for them; see
 	// sessionCredentialPlaceholderEnv. Guarded by credMu, independently of mu
@@ -143,20 +143,20 @@ func (s *Service) initEgressProxy() error {
 }
 
 // PrepareCredentials registers creds as the complete credential set for one
-// sandbox session (sandboxID) and persists them to disk.
-func (s *Service) PrepareCredentials(sandboxID string, creds []Credential) error {
+// sandbox session (sessionID) and persists them to disk.
+func (s *Service) PrepareCredentials(sessionID string, creds []Credential) error {
 	if s.egressResolver == nil {
 		return NewServerError(409, "egressproxy_disabled", "Egress proxy is not enabled")
 	}
-	if !isValidSandboxID(sandboxID) {
-		return NewServerError(422, "validation_error", "sandbox_id must be a non-empty string of letters, digits, '-', or '_' (max 128 chars)")
+	if !isValidSessionID(sessionID) {
+		return NewServerError(422, "validation_error", "session_id must be a non-empty string of letters, digits, '-', or '_' (max 128 chars)")
 	}
 
-	path := s.sessionCredentialsPath(sandboxID)
+	path := s.sessionCredentialsPath(sessionID)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return fmt.Errorf("create session credentials dir: %w", err)
 	}
-	data, err := json.Marshal(PrepareRequest{SandboxID: sandboxID, Credentials: creds})
+	data, err := json.Marshal(PrepareRequest{SessionID: sessionID, Credentials: creds})
 	if err != nil {
 		return fmt.Errorf("marshal session credentials: %w", err)
 	}
@@ -164,31 +164,31 @@ func (s *Service) PrepareCredentials(sandboxID string, creds []Credential) error
 		return fmt.Errorf("write session credentials: %w", err)
 	}
 
-	s.egressResolver.SetSessionCredentials(sandboxID, credentialsToStoredMap(creds))
+	s.egressResolver.SetSessionCredentials(sessionID, credentialsToStoredMap(creds))
 
 	s.credMu.Lock()
 	if s.sessionCredentials == nil {
 		s.sessionCredentials = make(map[string][]Credential)
 	}
-	s.sessionCredentials[sandboxID] = creds
+	s.sessionCredentials[sessionID] = creds
 	s.credMu.Unlock()
 	return nil
 }
 
-// sessionCredentialsPath returns the path to sandboxID's persisted
+// sessionCredentialsPath returns the path to sessionID's persisted
 // credential manifest under the runtime's credentials directory.
-func (s *Service) sessionCredentialsPath(sandboxID string) string {
-	return filepath.Join(s.config.RuntimeDir, "credentials", "sessions", sandboxID+".json")
+func (s *Service) sessionCredentialsPath(sessionID string) string {
+	return filepath.Join(s.config.RuntimeDir, "credentials", "sessions", sessionID+".json")
 }
 
-// validSandboxIDPattern restricts sandbox_id to characters safe for use both
+// validSessionIDPattern restricts session_id to characters safe for use both
 // as a filename component and as Basic-Auth userinfo.
-var validSandboxIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
+var validSessionIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
 
-// isValidSandboxID reports whether sandboxID is safe to use as a session key,
+// isValidSessionID reports whether sessionID is safe to use as a session key,
 // filename component, and Proxy-Authorization userinfo value.
-func isValidSandboxID(sandboxID string) bool {
-	return validSandboxIDPattern.MatchString(sandboxID)
+func isValidSessionID(sessionID string) bool {
+	return validSessionIDPattern.MatchString(sessionID)
 }
 
 // writeFileAtomic writes data to path via a uniquely-named temp file in the
@@ -259,11 +259,11 @@ func buildInjectionPolicy(inject *InjectPolicy) providers.Policy {
 
 // EgressProxyEnv returns the env vars for routing jobs through the egress
 // proxy. Returns nil if the egress proxy is disabled.
-func (s *Service) EgressProxyEnv(sandboxID string) map[string]string {
+func (s *Service) EgressProxyEnv(sessionID string) map[string]string {
 	if s.egressProxy == nil || s.egressCAFiles == nil {
 		return nil
 	}
-	proxyURL := s.egressProxy.ProxyURLForSandbox(sandboxID)
+	proxyURL := s.egressProxy.ProxyURLForSession(sessionID)
 	return map[string]string{
 		envvar.EnvHTTPProxy:        proxyURL,
 		envvar.EnvHTTPSProxy:       proxyURL,
@@ -300,13 +300,13 @@ func (s *Service) systemCredentialPlaceholderEnv() map[string]string {
 
 // sessionCredentialPlaceholderEnv returns env var names mapped to
 // __secret:provider/name__ placeholders for every credential registered to
-// sandboxID's session. Returns nil for an unknown or empty sandboxID.
-func (s *Service) sessionCredentialPlaceholderEnv(sandboxID string) map[string]string {
-	if sandboxID == "" {
+// sessionID's session. Returns nil for an unknown or empty sessionID.
+func (s *Service) sessionCredentialPlaceholderEnv(sessionID string) map[string]string {
+	if sessionID == "" {
 		return nil
 	}
 	s.credMu.RLock()
-	creds := s.sessionCredentials[sandboxID]
+	creds := s.sessionCredentials[sessionID]
 	s.credMu.RUnlock()
 	if len(creds) == 0 {
 		return nil
@@ -494,7 +494,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 
 	// Merge egress proxy env vars into the job environment.
 	env := req.Env
-	if proxyEnv := s.EgressProxyEnv(req.SandboxID); proxyEnv != nil {
+	if proxyEnv := s.EgressProxyEnv(req.SessionID); proxyEnv != nil {
 		if env == nil {
 			env = make(map[string]string)
 		}
@@ -506,7 +506,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	}
 
 	// Session credentials take priority over same-named system placeholders.
-	if placeholderEnv := s.sessionCredentialPlaceholderEnv(req.SandboxID); placeholderEnv != nil {
+	if placeholderEnv := s.sessionCredentialPlaceholderEnv(req.SessionID); placeholderEnv != nil {
 		if env == nil {
 			env = make(map[string]string)
 		}

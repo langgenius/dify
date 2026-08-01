@@ -143,14 +143,14 @@ class ShellctlClient:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-        sandbox_id: str | None = None,
+        session_id: str | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         terminal: TerminalSize | None = None,
     ) -> JobResult:
         """Create a new job and wait for initial output or completion.
 
         `cwd` and `env` preset the script's working directory and environment
-        overlay on the server side. `sandbox_id` identifies which sandbox
+        overlay on the server side. `session_id` identifies which sandbox
         session's credentials (registered via `prepare()`) apply to this job's
         egress traffic; it is required when the egress proxy is enabled.
         """
@@ -159,7 +159,7 @@ class ShellctlClient:
             script=script,
             cwd=cwd,
             env=env,
-            sandbox_id=sandbox_id,
+            session_id=session_id,
             terminal=terminal,
             timeout=timeout,
             output_limit=self.output_limit,
@@ -272,16 +272,16 @@ class ShellctlClient:
         )
         return JobStatusView.model_validate(self._decode_response(response))
 
-    async def prepare(self, sandbox_id: str, credentials: list[Credential]) -> dict[str, Any]:
+    async def prepare(self, session_id: str, credentials: list[Credential]) -> dict[str, Any]:
         """Register structured credentials with the sandbox credential proxy.
 
-        Credentials are scoped strictly to `sandbox_id`: they are persisted to
+        Credentials are scoped strictly to `session_id`: they are persisted to
         a session-specific manifest and never affect the system tier or any
-        other sandbox session's credentials. Pass the same `sandbox_id` to
+        other sandbox session's credentials. Pass the same `session_id` to
         `run()` so the egress proxy can resolve them for that job's traffic.
         """
 
-        payload = PrepareRequest(sandbox_id=sandbox_id, credentials=credentials)
+        payload = PrepareRequest(session_id=session_id, credentials=credentials)
         response = await self._client.put(
             "/v1/prepare",
             json=payload.model_dump(mode="json", exclude_none=True),

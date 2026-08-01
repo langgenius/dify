@@ -13,16 +13,16 @@ import (
 // RunJobRequest is the HTTP request body for POST /v1/jobs/run.
 //
 // Credentials are never passed here. Callers must first register them for a
-// sandbox_id via PUT /v1/prepare; the egress proxy then proactively injects
+// session_id via PUT /v1/prepare; the egress proxy then proactively injects
 // them into outbound HTTP requests based on each credential's inject policy.
 type RunJobRequest struct {
 	Script string            `json:"script"`
 	Cwd    *string           `json:"cwd,omitempty"`
 	Env    map[string]string `json:"env,omitempty"`
-	// SandboxID identifies which sandbox session's credentials (registered
+	// SessionID identifies which sandbox session's credentials (registered
 	// via PUT /v1/prepare) apply to this job's egress traffic. Required when
 	// the egress proxy is enabled; ignored otherwise.
-	SandboxID        string        `json:"sandbox_id,omitempty"`
+	SessionID        string        `json:"session_id,omitempty"`
 	Terminal         *TerminalSize `json:"terminal,omitempty"`
 	Timeout          float64       `json:"timeout,omitempty"`
 	OutputLimit      int           `json:"output_limit,omitempty"`
@@ -222,9 +222,9 @@ func (c *Credential) Ref() string {
 }
 
 // PrepareRequest is the HTTP request body for PUT /v1/prepare.
-// SandboxID scopes these credentials to one sandbox session.
+// SessionID scopes these credentials to one sandbox session.
 type PrepareRequest struct {
-	SandboxID   string       `json:"sandbox_id" yaml:"sandbox_id"`
+	SessionID   string       `json:"session_id" yaml:"session_id"`
 	Credentials []Credential `json:"credentials" yaml:"credentials"`
 }
 

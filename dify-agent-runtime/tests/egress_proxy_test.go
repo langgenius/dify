@@ -71,9 +71,9 @@ func TestEgressProxyCredentialInjection(t *testing.T) {
 		t.Skip("SHELLCTL_EGRESS_GO_URL not set; egress proxy container not available")
 	}
 
-	const sandboxID = "sandbox-credential-injection"
+	const sessionID = "sandbox-credential-injection"
 	prepareResp := doPutWithToken(t, tgt, egressAuthToken, "/v1/prepare", map[string]any{
-		"sandbox_id": sandboxID,
+		"session_id": sessionID,
 		"credentials": []map[string]any{
 			{
 				"provider": "testprovider",
@@ -96,7 +96,7 @@ func TestEgressProxyCredentialInjection(t *testing.T) {
 	result := runJobWithToken(t, tgt, egressAuthToken, map[string]any{
 		"script":     "curl -s http://echo-backend:8080/",
 		"timeout":    15,
-		"sandbox_id": sandboxID,
+		"session_id": sessionID,
 	})
 	assertJobDone(t, result)
 	assertExitCode(t, result, 0)
@@ -134,9 +134,9 @@ func TestEgressProxyCredentialNotInjectedForNonMatchingDomain(t *testing.T) {
 		t.Skip("SHELLCTL_EGRESS_GO_URL not set; egress proxy container not available")
 	}
 
-	const sandboxID = "sandbox-non-matching-domain"
+	const sessionID = "sandbox-non-matching-domain"
 	prepareResp := doPutWithToken(t, tgt, egressAuthToken, "/v1/prepare", map[string]any{
-		"sandbox_id": sandboxID,
+		"session_id": sessionID,
 		"credentials": []map[string]any{
 			{
 				"provider": "testprovider",
@@ -159,7 +159,7 @@ func TestEgressProxyCredentialNotInjectedForNonMatchingDomain(t *testing.T) {
 	result := runJobWithToken(t, tgt, egressAuthToken, map[string]any{
 		"script":     "curl -s http://echo-backend:8080/",
 		"timeout":    15,
-		"sandbox_id": sandboxID,
+		"session_id": sessionID,
 	})
 	assertJobDone(t, result)
 	assertExitCode(t, result, 0)
@@ -196,9 +196,9 @@ func TestEgressProxyUpstreamChaining(t *testing.T) {
 		t.Skip("SHELLCTL_EGRESS_UPSTREAM_GO_URL not set; upstream-chained egress proxy container not available")
 	}
 
-	const sandboxID = "sandbox-upstream-chaining"
+	const sessionID = "sandbox-upstream-chaining"
 	prepareResp := doPutWithToken(t, tgt, egressUpstreamAuthToken, "/v1/prepare", map[string]any{
-		"sandbox_id": sandboxID,
+		"session_id": sessionID,
 		"credentials": []map[string]any{
 			{
 				"provider": "testprovider",
@@ -223,7 +223,7 @@ func TestEgressProxyUpstreamChaining(t *testing.T) {
 	result := runJobWithToken(t, tgt, egressUpstreamAuthToken, map[string]any{
 		"script":     "curl -sf http://echo-backend:8080/",
 		"timeout":    15,
-		"sandbox_id": sandboxID,
+		"session_id": sessionID,
 	})
 	assertJobDone(t, result)
 	assertExitCode(t, result, 0)

@@ -226,11 +226,11 @@ class ShellctlClientProtocol(Protocol):
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-        sandbox_id: str | None = None,
+        session_id: str | None = None,
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
     ) -> ShellctlJobResult: ...
 
-    async def prepare(self, sandbox_id: str, credentials: list[Credential]) -> object:
+    async def prepare(self, session_id: str, credentials: list[Credential]) -> object:
         """prepare the sandbox post creation. called once after the sandbox is created."""
         ...
 
@@ -314,17 +314,14 @@ class ShellctlCommands(ShellCommandProtocol):
                     script,
                     cwd=resolved_cwd,
                     env=resolved_env,
-                    sandbox_id=self.session_id,
+                    session_id=self.session_id,
                     timeout=timeout,
                 )
             )
         )
 
     async def prepare(self, credentials: Sequence[Credential]) -> None:
-        session_id = self.session_id
-        if session_id is None:
-            raise ValueError("ShellctlCommands.session_id must be set to prepare credentials")
-        await _run_client_call(self.client.prepare(session_id, list(credentials)))
+        await _run_client_call(self.client.prepare(self.session_id, list(credentials)))
 
     async def wait(
         self,

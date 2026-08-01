@@ -29,18 +29,18 @@ type StoredCredential struct {
 //   - system holds credentials seeded once at startup (see
 //     LoadCredentialManifest). It is set via SetSystemCredentials and is
 //     never touched by session operations.
-//   - sessions holds one independent credential set per sandbox_id, set via
+//   - sessions holds one independent credential set per session_id, set via
 //     SetSessionCredentials (from PUT /v1/prepare). Writing session N's
 //     credentials never touches session M's map or the system tier — there
 //     is no shared mutable state across sandbox sessions.
 //
-// Every lookup is scoped to a sandboxID: it checks that session's map first
-// and falls back to the system tier. An empty sandboxID (no session
+// Every lookup is scoped to a sessionID: it checks that session's map first
+// and falls back to the system tier. An empty sessionID (no session
 // identified) only ever sees the system tier.
 type Resolver struct {
 	mu       sync.RWMutex
 	system   map[string]*StoredCredential            // key: "provider/name"
-	sessions map[string]map[string]*StoredCredential // key: sandboxID -> "provider/name"
+	sessions map[string]map[string]*StoredCredential // key: sessionID -> "provider/name"
 }
 
 // NewResolver creates an empty credential resolver.
@@ -62,31 +62,31 @@ func (r *Resolver) SetSystemCredentials(creds map[string]*StoredCredential) {
 }
 
 // SetSessionCredentials replaces the credential set for one sandbox session,
-// identified by sandboxID.
-func (r *Resolver) SetSessionCredentials(sandboxID string, creds map[string]*StoredCredential) {
+// identified by sessionID.
+func (r *Resolver) SetSessionCredentials(sessionID string, creds map[string]*StoredCredential) {
 	if creds == nil {
 		creds = make(map[string]*StoredCredential)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.sessions[sandboxID] = creds
+	r.sessions[sessionID] = creds
 }
 
 // ClearSession removes a sandbox session's credentials.
-func (r *Resolver) ClearSession(sandboxID string) {
+func (r *Resolver) ClearSession(sessionID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.sessions, sandboxID)
+	delete(r.sessions, sessionID)
 }
 
-// ResolveFor returns the effective credential for ref within sandboxID's
+// ResolveFor returns the effective credential for ref within sessionID's
 // session, falling back to the system tier, or nil if neither has it. An
-// empty sandboxID only ever resolves against the system tier.
-func (r *Resolver) ResolveFor(sandboxID, ref string) *StoredCredential {
+// empty sessionID only ever resolves against the system tier.
+func (r *Resolver) ResolveFor(sessionID, ref string) *StoredCredential {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if sandboxID != "" {
-		if session, ok := r.sessions[sandboxID]; ok {
+	if sessionID != "" {
+		if session, ok := r.sessions[sessionID]; ok {
 			if cred, ok := session[ref]; ok {
 				return cred
 			}
@@ -97,8 +97,8 @@ func (r *Resolver) ResolveFor(sandboxID, ref string) *StoredCredential {
 
 // InjectHeadersFor proactively injects credential-derived headers into the
 // request based on domain-matching injection policies, using the effective
-// credential set for sandboxID (session merged over system).
-func (r *Resolver) InjectHeadersFor(sandboxID string, req *http.Request) {
+// credential set for sessionID (session merged over system).
+func (r *Resolver) InjectHeadersFor(sessionID string, req *http.Request) {
 	host := req.URL.Hostname()
 	if host == "" {
 		host = req.Host
@@ -109,7 +109,7 @@ func (r *Resolver) InjectHeadersFor(sandboxID string, req *http.Request) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for ref, cred := range r.effectiveCredsLocked(sandboxID) {
+	for ref, cred := range r.effectiveCredsLocked(sessionID) {
 		if cred.Inject == nil {
 			continue
 		}
@@ -117,16 +117,16 @@ func (r *Resolver) InjectHeadersFor(sandboxID string, req *http.Request) {
 			continue
 		}
 		if err := cred.Inject.Apply(req, cred.Value); err != nil {
-			log.Printf("egressproxy: inject credential %q (sandbox=%q): %v", ref, sandboxID, err)
+			log.Printf("egressproxy: inject credential %q (session=%q): %v", ref, sessionID, err)
 		}
 	}
 }
 
 // effectiveCredsLocked returns the merged view of the system tier and
-// sandboxID's session tier, with the session shadowing the system tier
+// sessionID's session tier, with the session shadowing the system tier
 // under the same ref. Callers must hold r.mu (read or write lock).
-func (r *Resolver) effectiveCredsLocked(sandboxID string) map[string]*StoredCredential {
-	session := r.sessions[sandboxID]
+func (r *Resolver) effectiveCredsLocked(sessionID string) map[string]*StoredCredential {
+	session := r.sessions[sessionID]
 	merged := make(map[string]*StoredCredential, len(r.system)+len(session))
 	for ref, cred := range r.system {
 		merged[ref] = cred
@@ -138,11 +138,11 @@ func (r *Resolver) effectiveCredsLocked(sandboxID string) map[string]*StoredCred
 }
 
 // LenFor returns the number of distinct effective credential refs visible to
-// sandboxID (system tier merged with that session's tier).
-func (r *Resolver) LenFor(sandboxID string) int {
+// sessionID (system tier merged with that session's tier).
+func (r *Resolver) LenFor(sessionID string) int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return len(r.effectiveCredsLocked(sandboxID))
+	return len(r.effectiveCredsLocked(sessionID))
 }
 
 // matchesDomain checks if host matches any of the domain patterns.

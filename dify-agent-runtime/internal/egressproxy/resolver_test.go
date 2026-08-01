@@ -22,7 +22,7 @@ func TestResolverResolveForSystemTier(t *testing.T) {
 	if r.ResolveFor("", "nonexistent/key") != nil {
 		t.Fatal("expected nil for unknown ref")
 	}
-	// Any sandboxID with no session set still sees the system tier.
+	// Any sessionID with no session set still sees the system tier.
 	if cred := r.ResolveFor("some-sandbox", "openai/api_key"); cred == nil || cred.Value != "sk-12345" {
 		t.Fatalf("expected system fallback for unknown sandbox, got %v", cred)
 	}

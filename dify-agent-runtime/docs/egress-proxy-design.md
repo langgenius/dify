@@ -34,10 +34,10 @@ This guide demonstrates the multi-tenant egress credential proxy system for Dify
 
 - **System credential manifest** (`system-credentials.yaml`): Mounted into the container via Docker volume. Parsed at startup (YAML or JSON). Credentials enter the Resolver's **system tier** — shared across all sandbox sessions, never mutated at runtime.
 
-- **Session credentials**: Registered per sandbox session via `PUT /v1/prepare` API (with `sandbox_id`). Stored in the Resolver's **session tier** — isolated per sandbox, no cross-session leakage. Session credentials shadow system credentials on key conflict.
+- **Session credentials**: Registered per sandbox session via `PUT /v1/prepare` API (with `session_id`). Stored in the Resolver's **session tier** — isolated per sandbox, no cross-session leakage. Session credentials shadow system credentials on key conflict.
 
 - **Egress MITM Proxy** (`127.0.0.1:18080`): Intercepts all outbound HTTP/HTTPS traffic from agent jobs. For HTTPS, it performs TLS interception using a per-container CA (generated fresh at startup, installed into the system trust store). The proxy:
-  1. Extracts `sandbox_id` from the `Proxy-Authorization` header (embedded as Basic-Auth userinfo in the proxy URL).
+  1. Extracts `session_id` from the `Proxy-Authorization` header (embedded as Basic-Auth userinfo in the proxy URL).
   2. **Proactively injects** credential headers based on domain-matching policies (e.g. `Authorization: Bearer <token>` for `api.tavily.com`).
   3. Strips the `Proxy-Authorization` header before forwarding.
 

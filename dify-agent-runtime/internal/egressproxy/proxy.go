@@ -15,44 +15,44 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
-// proxyAuthorizationHeader carries the sandbox_id as Basic-Auth userinfo.
+// proxyAuthorizationHeader carries the session_id as Basic-Auth userinfo.
 const proxyAuthorizationHeader = "Proxy-Authorization"
 
-// validSandboxIDPattern restricts sandbox_id to the same charset/length
+// validSessionIDPattern restricts session_id to the same charset/length
 // enforced by the server's PrepareCredentials path, so a job cannot supply
-// an out-of-contract sandbox_id (e.g. extremely long, path-traversal-shaped)
-// to the resolver. Matches server.validSandboxIDPattern.
-var validSandboxIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
+// an out-of-contract session_id (e.g. extremely long, path-traversal-shaped)
+// to the resolver. Matches server.validSessionIDPattern.
+var validSessionIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
 
-// errInvalidSandboxID is returned when the Proxy-Authorization userinfo is
-// present but does not parse into a valid sandbox_id. Callers should reject
+// errInvalidSessionID is returned when the Proxy-Authorization userinfo is
+// present but does not parse into a valid session_id. Callers should reject
 // the request with this error rather than silently proceeding.
-var errInvalidSandboxID = fmt.Errorf("invalid sandbox_id in Proxy-Authorization")
+var errInvalidSessionID = fmt.Errorf("invalid session_id in Proxy-Authorization")
 
-// sandboxIDFromProxyAuth extracts the sandbox_id embedded as the username of
+// sessionIDFromProxyAuth extracts the session_id embedded as the username of
 // a "Proxy-Authorization: Basic ..." header. Returns ("", nil) if the header
-// is absent (no sandbox scoping requested). Returns ("", errInvalidSandboxID)
+// is absent (no session scoping requested). Returns ("", errInvalidSessionID)
 // if the header is present but malformed or fails validation. Validation
-// prevents cross-session confusion / DoS via out-of-contract sandbox IDs in
+// prevents cross-session confusion / DoS via out-of-contract session IDs in
 // the resolver maps.
-func sandboxIDFromProxyAuth(h http.Header) (string, error) {
+func sessionIDFromProxyAuth(h http.Header) (string, error) {
 	value := h.Get(proxyAuthorizationHeader)
 	const prefix = "Basic "
 	if value == "" {
 		return "", nil
 	}
 	if !strings.HasPrefix(value, prefix) {
-		return "", errInvalidSandboxID
+		return "", errInvalidSessionID
 	}
 	decoded, err := base64.StdEncoding.DecodeString(value[len(prefix):])
 	if err != nil {
-		return "", errInvalidSandboxID
+		return "", errInvalidSessionID
 	}
-	sandboxID, _, _ := strings.Cut(string(decoded), ":")
-	if !validSandboxIDPattern.MatchString(sandboxID) {
-		return "", errInvalidSandboxID
+	sessionID, _, _ := strings.Cut(string(decoded), ":")
+	if !validSessionIDPattern.MatchString(sessionID) {
+		return "", errInvalidSessionID
 	}
-	return sandboxID, nil
+	return sessionID, nil
 }
 
 const (
@@ -140,12 +140,12 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 	}
 	rejectAction := &goproxy.ConnectAction{Action: goproxy.ConnectReject}
 	px.OnRequest().HandleConnectFunc(func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		sandboxID, err := sandboxIDFromProxyAuth(ctx.Req.Header)
+		sessionID, err := sessionIDFromProxyAuth(ctx.Req.Header)
 		if err != nil {
 			log.Printf("egressproxy: rejecting CONNECT %s: %v", host, err)
 			return rejectAction, host
 		}
-		ctx.UserData = sandboxID
+		ctx.UserData = sessionID
 		return mitmAction, host
 	})
 
@@ -160,32 +160,32 @@ func NewProxy(cfg *Config) (*Proxy, error) {
 }
 
 // makeInterceptor returns a request handler that injects credential headers
-// scoped to the sandbox_id identified for the request. The
+// scoped to the session_id identified for the request. The
 // Proxy-Authorization header is stripped before forwarding. Requests
-// carrying an invalid sandbox_id are rejected with 400.
+// carrying an invalid session_id are rejected with 400.
 func makeInterceptor(resolver *Resolver) func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	return func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-		sandboxID, _ := ctx.UserData.(string)
-		if sandboxID == "" {
+		sessionID, _ := ctx.UserData.(string)
+		if sessionID == "" {
 			// HTTP (non-CONNECT) requests don't go through HandleConnectFunc;
 			// re-extract and validate here.
-			sid, err := sandboxIDFromProxyAuth(req.Header)
+			sid, err := sessionIDFromProxyAuth(req.Header)
 			if err != nil {
 				log.Printf("egressproxy: rejecting %s %s: %v", req.Method, req.URL.String(), err)
-				return req, goproxy.NewResponse(req, goproxy.ContentTypeText, http.StatusBadRequest, "invalid sandbox_id\n")
+				return req, goproxy.NewResponse(req, goproxy.ContentTypeText, http.StatusBadRequest, "invalid session_id\n")
 			}
-			sandboxID = sid
+			sessionID = sid
 		}
 		req.Header.Del(proxyAuthorizationHeader)
 
-		log.Printf("egressproxy: interceptor: %s %s (host=%s, sandbox=%q, effective_creds=%d)",
-			req.Method, req.URL.String(), req.Host, sandboxID, resolver.LenFor(sandboxID))
+		log.Printf("egressproxy: interceptor: %s %s (host=%s, session=%q, effective_creds=%d)",
+			req.Method, req.URL.String(), req.Host, sessionID, resolver.LenFor(sessionID))
 
-		if resolver.LenFor(sandboxID) == 0 {
+		if resolver.LenFor(sessionID) == 0 {
 			return req, nil
 		}
 
-		resolver.InjectHeadersFor(sandboxID, req)
+		resolver.InjectHeadersFor(sessionID, req)
 
 		return req, nil
 	}
@@ -237,20 +237,20 @@ func (p *Proxy) Addr() string {
 	return p.addr
 }
 
-// ProxyURL returns the proxy URL without sandbox_id.
+// ProxyURL returns the proxy URL without session_id.
 func (p *Proxy) ProxyURL() string {
 	return "http://" + p.addr
 }
 
-// ProxyURLForSandbox returns the proxy URL with sandboxID embedded as
-// Basic-Auth userinfo. If sandboxID is empty, equivalent to ProxyURL.
-func (p *Proxy) ProxyURLForSandbox(sandboxID string) string {
-	if sandboxID == "" {
+// ProxyURLForSession returns the proxy URL with sessionID embedded as
+// Basic-Auth userinfo. If sessionID is empty, equivalent to ProxyURL.
+func (p *Proxy) ProxyURLForSession(sessionID string) string {
+	if sessionID == "" {
 		return p.ProxyURL()
 	}
 	u := url.URL{
 		Scheme: "http",
-		User:   url.UserPassword(sandboxID, ""),
+		User:   url.UserPassword(sessionID, ""),
 		Host:   p.addr,
 	}
 	return u.String()

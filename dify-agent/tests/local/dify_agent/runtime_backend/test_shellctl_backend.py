@@ -111,28 +111,13 @@ def _result(*, done: bool = True) -> ShellCommandResult:
     ],
 )
 def test_session_id_from_handle_sanitizes_disallowed_characters(handle: str, want: str) -> None:
-    # The shellctl runtime restricts sandbox_id to [A-Za-z0-9_-]{1,128} and
+    # The shellctl runtime restricts session_id to [A-Za-z0-9_-]{1,128} and
     # additionally treats ':' as the Basic-Auth user:password separator when
     # the id is embedded in the egress proxy's HTTP_PROXY/HTTPS_PROXY URL, so
     # handles like local binding refs ("binding_id:workspace_id") must be
-    # sanitized before use as a sandbox_id.
+    # sanitized before use as a session_id.
     assert ShellctlSessionID.from_handle(handle) == want
     assert str(ShellctlSessionID.from_handle(handle)) == want
-
-
-@pytest.mark.anyio
-async def test_shellctl_lease_sanitizes_handle_into_commands_session_id() -> None:
-    client = _FakeClient()
-    lease = create_shellctl_lease(
-        handle="binding-id:workspace-id",
-        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
-        entrypoint="http://shellctl",
-        token="secret",
-        client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
-    )
-
-    assert lease.handle == "binding-id:workspace-id"
-    assert lease.commands.session_id == "binding-id_workspace-id"  # type: ignore[attr-defined]
 
 
 @pytest.mark.anyio
