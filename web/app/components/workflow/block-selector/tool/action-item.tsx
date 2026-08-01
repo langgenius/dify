@@ -1,5 +1,6 @@
 'use client'
-import type { ComponentProps, FC } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
+import type { FC } from 'react'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Tool } from '@/app/components/tools/types'
@@ -30,23 +31,22 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = Readonly<{
-  provider: ToolWithProvider
-  payload: Tool
-  previewCardHandle: PreviewCardHandle
-  disabled?: boolean
-  isAdded?: boolean
-  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
-}>
-
 export type ToolActionPreviewPayload = {
   providerIcon: ToolWithProvider['icon']
   payload: Tool
   language: ReturnType<typeof useGetLanguage>
 }
 
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
-export type ToolActionPreviewCardHandle = PreviewCardHandle
+export type ToolActionPreviewCardHandle = PreviewCardHandle<ToolActionPreviewPayload>
+
+type Props = Readonly<{
+  provider: ToolWithProvider
+  payload: Tool
+  previewCardHandle: ToolActionPreviewCardHandle
+  disabled?: boolean
+  isAdded?: boolean
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
+}>
 
 const ToolItem: FC<Props> = ({
   provider,

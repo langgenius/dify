@@ -101,8 +101,11 @@ describe('CredentialSelector', () => {
 
       // Act - Click trigger to open dropdown
       const trigger = screen.getByTestId('popover-trigger')
+      expect(trigger).not.toHaveAttribute('data-popup-open')
       fireEvent.click(trigger)
 
+      expect(trigger).toHaveAttribute('data-popup-open', '')
+      expect(trigger.firstElementChild).toHaveClass('bg-state-base-hover')
       // Assert - All credentials should be visible (current credential appears in both trigger and list)
       // Assert - All credentials should be visible (current credential appears in both trigger and list)
       expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()

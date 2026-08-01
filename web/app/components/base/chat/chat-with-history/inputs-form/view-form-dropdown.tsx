@@ -1,6 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiChatSettingsLine } from '@remixicon/react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
@@ -8,16 +7,18 @@ import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 
 const ViewFormDropdown = () => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
-        render={
-          <ActionButton size="l" state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
+        render={(props, state) => (
+          <ActionButton
+            {...props}
+            size="l"
+            state={state.open ? ActionButtonState.Hover : ActionButtonState.Default}
+          >
             <RiChatSettingsLine className="h-4.5 w-4.5" />
           </ActionButton>
-        }
+        )}
       />
       <PopoverContent
         placement="bottom-end"

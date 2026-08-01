@@ -77,6 +77,7 @@ function SourceMethodSection() {
       hideHeader
     >
       <RadioGroup<GuideMethod>
+        aria-label={t(($) => $['createGuide.steps.method'])}
         value={method}
         onValueChange={selectMethod}
         className="flex flex-col items-stretch gap-2 sm:flex-row"

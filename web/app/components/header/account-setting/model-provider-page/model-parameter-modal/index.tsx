@@ -126,20 +126,24 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       {renderTrigger ? (
         <PopoverTrigger
-          render={
+          render={(props, state) => (
             <button
+              {...props}
               type="button"
-              className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]"
+              className={cn(
+                'block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]',
+                props.className,
+              )}
             >
               {renderTrigger({
-                open,
+                open: state.open,
                 currentProvider,
                 currentModel,
                 providerName: provider,
                 modelId,
               })}
             </button>
-          }
+          )}
         />
       ) : (
         <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">

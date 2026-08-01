@@ -207,16 +207,16 @@ const Authorized = ({
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          render={
-            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
+          render={(props, state) => (
+            <div
+              {...props}
+              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
+            >
               {renderTrigger ? (
-                renderTrigger(mergedIsOpen)
+                renderTrigger(state.open)
               ) : (
                 <Button
-                  className={cn(
-                    'w-full',
-                    mergedIsOpen && 'bg-components-button-secondary-bg-hover',
-                  )}
+                  className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
                 >
                   <StatusDot
                     className="mr-2"
@@ -233,7 +233,7 @@ const Authorized = ({
                 </Button>
               )}
             </div>
-          }
+          )}
         />
         <PopoverContent
           placement={placement}

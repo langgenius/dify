@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview menjalankan agent yang sudah selesai seperti yang akan dilihat pengguna, dengan balasan rapi dan fitur chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Pratinjau agen Anda",
   "agentDetail.configure.skills.add": "Tambahkan keterampilan",
-  "agentDetail.configure.skills.detail.contentRegion": "Konten detail keterampilan",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} FILE",
   "agentDetail.configure.skills.detail.files": "File",
   "agentDetail.configure.skills.empty.description": "Keterampilan memberi agen keahlian yang dapat digunakan kembali yang bisa dipanggil saat bekerja",
