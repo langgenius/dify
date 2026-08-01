@@ -1,8 +1,9 @@
-import type { Banner } from '@/models/app'
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { getBannerContent } from './content'
 
 type BannerItemProps = {
-  banner: Banner
+  banner: BannerResponse
   sort: number
   language: string
   accountId?: string
@@ -10,7 +11,7 @@ type BannerItemProps = {
 }
 
 export function BannerItem({ banner, sort, language, accountId, titleId }: BannerItemProps) {
-  const { category, title, description, 'img-src': imgSrc } = banner.content
+  const { category, title, description, 'img-src': imgSrc } = getBannerContent(banner.content)
 
   const handleBannerClick = () => {
     trackEvent('explore_banner_click', {

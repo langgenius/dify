@@ -1,5 +1,10 @@
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
+  BannerResponse,
+  RecommendedAppInfoResponse,
+  RecommendedAppResponse,
+} from '@dify/contracts/api/console/explore/types.gen'
+import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
@@ -8,8 +13,6 @@ import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { Banner as BannerType } from '@/models/app'
-import type { App } from '@/models/explore'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
@@ -20,7 +23,7 @@ import {
   stepByStepTourSessionAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { fetchAppDetail } from '@/service/explore'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -51,18 +54,15 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-let mockExploreData: { categories: string[]; allList: App[] } | undefined = {
+let mockExploreData: { categories: string[]; allList: RecommendedAppResponse[] } | undefined = {
   categories: [],
   allList: [],
 }
-let mockLearnDifyApps: App[] = []
+let mockLearnDifyApps: RecommendedAppResponse[] = []
 let mockLearnDifyLoading = false
 let mockWorkspaceApps: RecentAppResponse[] = []
-let mockWorkspaceAppsLoading = false
-let mockBanners: BannerType[] = []
-let mockBannersLoading = false
-let mockIsLoading = false
-let mockIsError = false
+let mockBanners: BannerResponse[] = []
+let mockTemplatesPending = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
@@ -219,8 +219,6 @@ vi.mock('@/service/use-explore', () => ({
 
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
-  fetchAppList: vi.fn(),
-  fetchBanners: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -255,13 +253,6 @@ vi.mock('@/service/client', () => ({
         }) => {
           mockAppQueries.listQueryOptions(options)
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
-          if (mockWorkspaceAppsLoading) {
-            return {
-              queryKey: ['console', 'apps', 'get', options],
-              queryFn: () => new Promise(() => {}),
-              select: options.select,
-            }
-          }
           const response = {
             data: mockWorkspaceApps.slice(0, limit),
             has_more: false,
@@ -285,13 +276,6 @@ vi.mock('@/service/client', () => ({
           }) => {
             mockAppQueries.recentQueryOptions(options)
             const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
-            if (mockWorkspaceAppsLoading) {
-              return {
-                queryKey: ['console', 'apps', 'recent', 'get', options],
-                queryFn: () => new Promise(() => {}),
-                select: options.select,
-              }
-            }
             const response = {
               data: mockWorkspaceApps.slice(0, limit),
             }
@@ -334,6 +318,32 @@ vi.mock('@/service/client', () => ({
             'get',
             input,
           ],
+          queryOptions: (options: {
+            input?: { query?: { language?: string } }
+            select?: (response: {
+              categories: string[]
+              recommended_apps: RecommendedAppResponse[]
+            }) => unknown
+          }) => {
+            if (mockTemplatesPending) {
+              return {
+                queryKey: ['console', 'explore', 'apps', 'get', options.input],
+                queryFn: () => new Promise(() => {}),
+                select: options.select,
+              }
+            }
+
+            const response = {
+              categories: mockExploreData?.categories ?? [],
+              recommended_apps: mockExploreData?.allList ?? [],
+            }
+            return {
+              queryKey: ['console', 'explore', 'apps', 'get', options.input],
+              queryFn: () => Promise.resolve(response),
+              initialData: response,
+              select: options.select,
+            }
+          },
         },
       },
       banners: {
@@ -345,6 +355,15 @@ vi.mock('@/service/client', () => ({
             'get',
             input,
           ],
+          queryOptions: (options: {
+            input?: { query?: { language?: string } }
+            select?: (response: BannerResponse[]) => unknown
+          }) => ({
+            queryKey: ['console', 'explore', 'banners', 'get', options.input],
+            queryFn: () => Promise.resolve(mockBanners),
+            initialData: mockBanners,
+            select: options.select,
+          }),
         },
       },
     },
@@ -440,7 +459,7 @@ vi.mock('../../try-app', () => ({
 }))
 
 vi.mock('../../banner/banner', () => ({
-  Banner: ({ banners }: { banners: BannerType[] }) => (
+  Banner: ({ banners }: { banners: BannerResponse[] }) => (
     <div data-testid="explore-banner" data-banner-count={banners.length}>
       banner
     </div>
@@ -460,7 +479,12 @@ vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
   ),
 }))
 
-const createApp = (overrides: Partial<App> = {}): App => ({
+type AppFixture = RecommendedAppResponse & { app: RecommendedAppInfoResponse }
+type AppFixtureOverrides = Omit<Partial<RecommendedAppResponse>, 'app'> & {
+  app?: Partial<RecommendedAppInfoResponse>
+}
+
+const createApp = (overrides: AppFixtureOverrides = {}): AppFixture => ({
   app: {
     id: overrides.app?.id ?? 'app-basic-id',
     mode: overrides.app?.mode ?? AppModeEnum.CHAT,
@@ -469,8 +493,6 @@ const createApp = (overrides: Partial<App> = {}): App => ({
     icon_background: overrides.app?.icon_background ?? '#fff',
     icon_url: overrides.app?.icon_url ?? '',
     name: overrides.app?.name ?? 'Alpha',
-    description: overrides.app?.description ?? 'Alpha description',
-    use_icon_as_answer_icon: overrides.app?.use_icon_as_answer_icon ?? false,
   },
   can_trial: true,
   app_id: overrides.app_id ?? 'app-1',
@@ -481,10 +503,6 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   categories: overrides.categories ?? ['Writing'],
   position: overrides.position ?? 1,
   is_listed: overrides.is_listed ?? true,
-  install_count: overrides.install_count ?? 0,
-  installed: overrides.installed ?? false,
-  editable: overrides.editable ?? false,
-  is_agent: overrides.is_agent ?? false,
 })
 
 const createWorkspaceApp = (overrides: Partial<RecentAppResponse> = {}): RecentAppResponse => ({
@@ -501,7 +519,7 @@ const createWorkspaceApp = (overrides: Partial<RecentAppResponse> = {}): RecentA
   permission_keys: overrides.permission_keys,
 })
 
-const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
+const createBanner = (overrides: Partial<BannerResponse> = {}): BannerResponse => ({
   id: overrides.id ?? 'banner-1',
   status: overrides.status ?? 'enabled',
   link: overrides.link ?? 'https://example.com',
@@ -527,8 +545,8 @@ type RenderOptions = {
 }
 
 const localeInput = { query: { language: 'en-US' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en-US']
-const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en-US']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
+const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
 
 const renderAppList = (
   hasEditPermission = false,
@@ -544,34 +562,18 @@ const renderAppList = (
       enable_learn_app: options.enableLearnApp ?? true,
     },
   })
-  if (!mockIsLoading && !mockIsError && mockExploreData)
-    queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
-  if (options.enableExploreBanner && !mockBannersLoading)
-    queryClient.setQueryData(exploreBannersQueryKey, mockBanners)
+  if (mockExploreData && !mockTemplatesPending) {
+    queryClient.setQueryData(exploreAppListQueryKey, {
+      categories: mockExploreData.categories,
+      recommended_apps: mockExploreData.allList,
+    })
+  }
+  if (options.enableExploreBanner) queryClient.setQueryData(exploreBannersQueryKey, mockBanners)
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
 
-  const mockFetchAppList = fetchAppList as unknown as Mock
-  const mockFetchBanners = fetchBanners as unknown as Mock
   const jotaiStore = createStore()
   seedRegisteredConsoleStateFixture(jotaiStore)
   jotaiStore.set(queryClientAtom, queryClient)
-
-  if (mockIsLoading) {
-    mockFetchAppList.mockImplementation(() => new Promise(() => {}))
-  } else if (mockIsError) {
-    mockFetchAppList.mockRejectedValue(new Error('Failed to load explore apps'))
-  } else {
-    mockFetchAppList.mockResolvedValue({
-      categories: mockExploreData?.categories ?? [],
-      recommended_apps: mockExploreData?.allList ?? [],
-    })
-  }
-
-  if (mockBannersLoading) {
-    mockFetchBanners.mockImplementation(() => new Promise(() => {}))
-  } else {
-    mockFetchBanners.mockResolvedValue(mockBanners)
-  }
 
   const Wrapped = ({ children }: { children: ReactNode }) => (
     <JotaiProvider store={jotaiStore}>
@@ -624,11 +626,8 @@ describe('AppList', () => {
     ]
     mockLearnDifyLoading = false
     mockWorkspaceApps = []
-    mockWorkspaceAppsLoading = false
     mockBanners = []
-    mockBannersLoading = false
-    mockIsLoading = false
-    mockIsError = false
+    mockTemplatesPending = false
     mockStepByStepTour.reset()
   })
 
@@ -637,30 +636,12 @@ describe('AppList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render the home shell skeleton when the explore query is loading', () => {
-      mockExploreData = undefined
-      mockIsLoading = true
-      mockWorkspaceAppsLoading = true
-      mockLearnDifyLoading = true
+    it('should keep the Home shell stable while templates are pending', () => {
+      mockTemplatesPending = true
 
       renderAppList()
 
       expect(screen.queryByText('explore.apps.description')).not.toBeInTheDocument()
-      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
-    })
-
-    it('should keep the whole home page in the initial skeleton while continue work apps are loading', () => {
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      }
-      mockWorkspaceAppsLoading = true
-
-      renderAppList()
-
-      expect(
-        screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
-      ).not.toBeInTheDocument()
       expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
     })
 
@@ -1384,27 +1365,6 @@ describe('AppList', () => {
       expect(screen.getByText('Gamma')).toBeInTheDocument()
     })
 
-    it('should render nothing when isError is true', async () => {
-      vi.useRealTimers()
-      mockIsError = true
-      mockExploreData = undefined
-
-      const { container } = renderAppList()
-
-      await waitFor(() => {
-        expect(container.innerHTML).toBe('')
-      })
-    })
-
-    it('should render the initial skeleton while app list data is pending', () => {
-      mockExploreData = undefined
-      mockIsLoading = true
-
-      renderAppList()
-
-      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
-    })
-
     it('should close create modal via hide button', async () => {
       vi.useRealTimers()
       mockExploreData = {
@@ -1570,19 +1530,6 @@ describe('AppList', () => {
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
-    })
-
-    it('should keep the whole home page in the initial skeleton while banners are loading', () => {
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      }
-      mockBannersLoading = true
-
-      renderAppList(false, undefined, undefined, { enableExploreBanner: true })
-
-      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
-      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
     })
   })
 })

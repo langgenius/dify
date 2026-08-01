@@ -1,5 +1,5 @@
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps, FocusEvent } from 'react'
-import type { Banner as BannerType } from '@/models/app'
 import { useAtomValue } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +8,7 @@ import { Carousel, useCarousel } from '@/app/components/base/carousel'
 import { userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { BannerItem } from './banner-item'
+import { getBannerContent } from './content'
 import { IndicatorButton } from './indicator-button'
 
 const AUTOPLAY_DELAY = 5000
@@ -18,13 +19,13 @@ const CAROUSEL_OPTIONS = {
 } satisfies NonNullable<ComponentProps<typeof Carousel>['opts']>
 
 type BannerCarouselContentProps = {
-  banners: BannerType[]
+  banners: BannerResponse[]
   accountId?: string
   language: string
 }
 
 type BannerSlideProps = {
-  banner: BannerType
+  banner: BannerResponse
   index: number
   isActive: boolean
   accountId?: string
@@ -89,7 +90,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
     trackEvent('explore_banner_impression', {
       banner_id: activeBanner.id,
-      title: activeBanner.content.title,
+      title: getBannerContent(activeBanner.content).title,
       sort: selectedIndex + 1,
       link: activeBanner.link,
       page: 'explore',
@@ -132,7 +133,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
             <IndicatorButton
               key={banner.id}
               index={index}
-              label={`${String(index + 1).padStart(2, '0')} ${banner.content.title}`}
+              label={`${String(index + 1).padStart(2, '0')} ${getBannerContent(banner.content).title}`}
               isCurrent={index === selectedIndex}
               isNextSlide={index === nextIndex}
               autoplayDelay={AUTOPLAY_DELAY}
@@ -184,7 +185,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 }
 
 type BannerProps = {
-  banners: BannerType[]
+  banners: BannerResponse[]
 }
 
 export function Banner({ banners }: BannerProps) {
@@ -192,7 +193,8 @@ export function Banner({ banners }: BannerProps) {
   const locale = useLocale()
   const userProfile = useAtomValue(userProfileAtom)
   const enabledBanners = banners.filter((banner) => banner.status === 'enabled')
-  const carouselLabel = enabledBanners[0]?.content.category || enabledBanners[0]?.content.title
+  const firstBannerContent = getBannerContent(enabledBanners[0]?.content)
+  const carouselLabel = firstBannerContent.category || firstBannerContent.title
   const [carouselPlugins] = useState(() => [
     Carousel.Plugin.Fade(),
     Carousel.Plugin.Autoplay({

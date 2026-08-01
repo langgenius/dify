@@ -1,14 +1,12 @@
 'use client'
 
-import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
-import type { Banner as BannerType } from '@/models/app'
-import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -38,7 +36,7 @@ import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
-import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
@@ -53,65 +51,7 @@ const DSLConfirmModal = dynamic(
   { ssr: false },
 )
 
-type ExploreAppListData = {
-  categories: string[]
-  allList: App[]
-}
-
-const homeContinueWorkAppsInput = {
-  query: {
-    limit: 8,
-  },
-}
-
-const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as const
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
-
-function getLocaleQueryInput(locale?: string) {
-  return locale ? { query: { language: locale } } : {}
-}
-
-function getExploreAppListQueryOptions(locale?: string) {
-  const input = getLocaleQueryInput(locale)
-  const language = input.query?.language
-
-  return queryOptions<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.get.queryKey({ input }), language],
-    queryFn: async () => {
-      const { categories, recommended_apps } = await fetchAppList(language)
-      return {
-        categories,
-        allList: [...recommended_apps].sort((a, b) => a.position - b.position),
-      }
-    },
-  })
-}
-
-function getContinueWorkAppsQueryOptions() {
-  return consoleQuery.apps.recent.get.queryOptions({
-    input: homeContinueWorkAppsInput,
-    select: (response): RecentAppResponse[] => response.data,
-  })
-}
-
-function getBannersQueryOptions(locale?: string) {
-  const input = getLocaleQueryInput(locale)
-  const language = input.query?.language
-
-  return queryOptions<BannerType[]>({
-    queryKey: [...consoleQuery.explore.banners.get.queryKey({ input }), language],
-    queryFn: () => fetchBanners(language),
-  })
-}
-
-function getDisabledBannersQueryOptions() {
-  return queryOptions<BannerType[]>({
-    queryKey: disabledBannersQueryKey,
-    queryFn: async () => [],
-    initialData: [],
-    staleTime: 'static',
-  })
-}
 
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
@@ -120,21 +60,29 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const homeQueries = useQueries({
     queries: [
-      getExploreAppListQueryOptions(locale),
-      getContinueWorkAppsQueryOptions(),
-      systemFeatures.enable_explore_banner
-        ? getBannersQueryOptions(locale)
-        : getDisabledBannersQueryOptions(),
+      consoleQuery.explore.apps.get.queryOptions({
+        input: { query: { language: locale } },
+      }),
+      consoleQuery.apps.recent.get.queryOptions({
+        input: { query: { limit: 8 } },
+      }),
+      {
+        ...consoleQuery.explore.banners.get.queryOptions({
+          input: { query: { language: locale } },
+        }),
+        enabled: systemFeatures.enable_explore_banner,
+      },
     ],
-    combine: ([exploreAppListQuery, continueWorkAppsQuery, bannersQuery]) => ({
-      appListData: exploreAppListQuery.data,
-      continueWorkApps: continueWorkAppsQuery.data ?? [],
+    combine: ([templatesQuery, continueWorkQuery, bannersQuery]) => ({
+      appListData: templatesQuery.data,
+      continueWorkApps: continueWorkQuery.data?.data ?? [],
       banners: bannersQuery.data ?? [],
       isPending:
-        exploreAppListQuery.isPending || continueWorkAppsQuery.isPending || bannersQuery.isPending,
-      isAppListError:
-        exploreAppListQuery.isError ||
-        (!exploreAppListQuery.isPending && !exploreAppListQuery.data),
+        templatesQuery.isPending ||
+        continueWorkQuery.isPending ||
+        (systemFeatures.enable_explore_banner && bannersQuery.isPending),
+      isTemplatesError:
+        templatesQuery.isError || (!templatesQuery.isPending && !templatesQuery.data),
     }),
   })
   const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
@@ -198,8 +146,8 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     if (!homeQueries.appListData) return []
 
     const categoriesWithApps = new Set<string>()
-    homeQueries.appListData.allList.forEach((app) => {
-      app.categories.forEach((category) => categoriesWithApps.add(category))
+    homeQueries.appListData.recommended_apps.forEach((app) => {
+      app.categories?.forEach((category) => categoriesWithApps.add(category))
     })
 
     return homeQueries.appListData.categories.filter((category) => categoriesWithApps.has(category))
@@ -209,9 +157,11 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const filteredList = useMemo(() => {
     if (!homeQueries.appListData) return []
-    return homeQueries.appListData.allList.filter(
-      (item) => activeCategory === allCategoriesEn || item.categories?.includes(activeCategory),
-    )
+    return [...homeQueries.appListData.recommended_apps]
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .filter(
+        (item) => activeCategory === allCategoriesEn || item.categories?.includes(activeCategory),
+      )
   }, [homeQueries.appListData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
@@ -225,14 +175,14 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     )
   }, [searchKeywords, filteredList])
 
-  const [currApp, setCurrApp] = useState<App | null>(null)
+  const [currApp, setCurrApp] = useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
   const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
-  const currentCreateAppModeRef = useRef<App['app']['mode'] | null>(null)
+  const currentCreateAppModeRef = useRef<string | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
     'source' | 'templateId'
@@ -384,11 +334,11 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     currentTryApp?.app,
     currentTryApp?.appId,
   ])
-  const handleCreateFromLearnDify = useCallback((app: App) => {
+  const handleCreateFromLearnDify = useCallback((app: RecommendedAppResponse) => {
     setCurrApp(app)
     setIsShowCreateModal(true)
   }, [])
-  const handleCreateFromAppList = useCallback((app: App) => {
+  const handleCreateFromAppList = useCallback((app: RecommendedAppResponse) => {
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_list',
       templateId: app.app_id,
@@ -396,7 +346,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     setCurrApp(app)
     setIsShowCreateModal(true)
   }, [])
-  const trackCurrentCreateApp = useCallback((appMode?: App['app']['mode'] | null) => {
+  const trackCurrentCreateApp = useCallback((appMode?: string | null) => {
     const currentCreateAppTracking = currentCreateAppTrackingRef.current
     const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
     if (!resolvedAppMode || !currentCreateAppTracking) return
@@ -419,7 +369,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       isSubmittingHomeTourCreateRef.current = shouldCompleteHomeTourOnCreateRef.current
       hideTryAppPanel()
 
-      const appId = currApp?.app.id
+      const appId = currApp?.app?.id ?? currApp?.app_id
       if (!appId) return
 
       const { export_data, mode } = await fetchAppDetail(appId)
@@ -455,7 +405,8 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     [
       abandonHomeTourCreate,
       completeHomeTourAfterCreate,
-      currApp?.app.id,
+      currApp?.app?.id,
+      currApp?.app_id,
       handleImportDSL,
       hideTryAppPanel,
       trackCurrentCreateApp,
@@ -479,7 +430,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     abandonHomeTourCreate()
   }, [abandonHomeTourCreate])
 
-  if (homeQueries.isAppListError) return null
+  if (homeQueries.isTemplatesError) return null
 
   return (
     <div
@@ -528,12 +479,18 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       </div>
       {isShowCreateModal && (
         <CreateAppModal
-          appIconType={currApp?.app.icon_type || 'emoji'}
-          appIcon={currApp?.app.icon || ''}
-          appIconBackground={currApp?.app.icon_background || ''}
-          appIconUrl={currApp?.app.icon_url}
-          appName={currApp?.app.name || ''}
-          appDescription={currApp?.app.description || ''}
+          appIconType={
+            currApp?.app?.icon_type === 'image' ||
+            currApp?.app?.icon_type === 'emoji' ||
+            currApp?.app?.icon_type === 'link'
+              ? currApp.app.icon_type
+              : 'emoji'
+          }
+          appIcon={currApp?.app?.icon || ''}
+          appIconBackground={currApp?.app?.icon_background || ''}
+          appIconUrl={currApp?.app?.icon_url}
+          appName={currApp?.app?.name || ''}
+          appDescription={currApp?.description || ''}
           show={isShowCreateModal}
           onConfirm={onCreate}
           confirmDisabled={isFetching}
@@ -554,7 +511,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
           appId={currentTryApp.appId}
           app={currentTryApp.app}
           canCreate={canCreateApp}
-          categories={currentTryApp.app.categories}
+          categories={currentTryApp.app.categories ?? []}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate
