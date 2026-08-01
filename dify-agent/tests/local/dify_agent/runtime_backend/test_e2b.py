@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import cast
 
+import httpx2 as httpx
 import pytest
 
 from dify_agent.runtime_backend import (
@@ -254,3 +255,32 @@ async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
 
     assert snapshot_ref == "snapshot-source-1"
     assert source_sandbox.snapshots == 1
+
+
+@pytest.mark.anyio
+async def test_e2b_acquire_delegates_connect_retries_to_http_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configured_retries: list[int] = []
+    transport = httpx.MockTransport(lambda _request: httpx.Response(500))
+
+    def create_transport(*, retries: int = 0) -> httpx.AsyncBaseTransport:
+        configured_retries.append(retries)
+        return transport
+
+    monkeypatch.setattr(httpx, "AsyncHTTPTransport", create_transport)
+    control = _ControlPlane()
+    sandbox = _Sandbox(sandbox_id="sandbox-1")
+    sandbox.files.paths.add("/home/dify/workspace")
+    control.sandboxes[sandbox.sandbox_id] = sandbox
+    backend = E2BExecutionBindingBackend(
+        control_plane=control,  # pyright: ignore[reportArgumentType]
+        template="prepared-template",
+        active_timeout_seconds=3600,
+    )
+
+    lease = await backend.acquire(sandbox.sandbox_id)
+
+    assert configured_retries == [2]
+    await backend.release(lease)
+    assert sandbox.pauses == [True]

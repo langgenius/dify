@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
 
 E2B_MAX_ACTIVE_TIMEOUT_SECONDS = 60 * 60
+_SHELLCTL_CONNECT_RETRIES = 2
 
 
 class _E2BControlPlaneNotFoundError(RuntimeError):
@@ -306,6 +307,7 @@ class E2BExecutionBindingBackend:
             headers=headers,
             follow_redirects=True,
             timeout=httpx.Timeout(60.0),
+            transport=httpx.AsyncHTTPTransport(retries=_SHELLCTL_CONNECT_RETRIES),
         )
 
         def client_factory() -> ShellctlClientProtocol:
