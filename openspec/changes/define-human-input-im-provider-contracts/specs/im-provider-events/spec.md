@@ -41,6 +41,21 @@ The receiver MUST persist `AuthenticatedEvent` in a minimal inbox transaction be
 - **WHEN** an authenticated event cannot be durably committed
 - **THEN** the receiver MUST NOT acknowledge successful durable receipt to the Provider
 
+### Requirement: Inbox event record MUST retain `raw_payload` in the same atomic write
+When Dify ingests one authenticated Provider event through the Inbox pattern, the Dify-owned event record MUST retain `raw_payload` for debugging. `raw_payload` MUST be persisted on the event record itself as part of the same atomic write as the rest of the event fields. `raw_payload` MUST NOT participate in dedupe, routing, authorization, or business decisions.
+
+#### Scenario: Authenticated Provider event is written to Inbox
+- **WHEN** one authenticated Provider event is accepted into the Dify-owned Inbox
+- **THEN** Dify MUST persist `raw_payload` together with the event record in the same atomic write
+
+#### Scenario: Event processing reads business fields
+- **WHEN** downstream processing performs dedupe, routing, authorization, or business handling for one Inbox event
+- **THEN** it MUST rely on the existing event and business fields and MUST NOT treat `raw_payload` as decision input
+
+#### Scenario: No separate raw-payload failure mode exists
+- **WHEN** one Inbox event record is persisted successfully
+- **THEN** `raw_payload` MUST already be present on that event record, and Dify MUST NOT model a separate "event succeeded but raw payload write failed" state
+
 ### Requirement: Inbox deduplication MUST use only a real Provider event ID
 When provider event ID is present, the inbox MUST deduplicate by provider, provider tenant ID and provider event ID. When provider event ID is absent, every authenticated delivery MUST create an independent inbox record. Dify MUST NOT synthesize an event ID from payload hash, timestamp, message reference or transport envelope data.
 

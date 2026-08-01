@@ -42,7 +42,7 @@
 - [ ] 6.1 实现 Provider-specific Webhook receivers，由其负责 URL challenge、HTTP validation、signature/timestamp/replay checks、decryption 和 response encoding，仅在认证成功后产出 `AuthenticatedEvent`
 - [ ] 6.2 为 Slack、Feishu/Lark、DingTalk 实现最小本地 STREAM lifecycle，将 connection authentication、control frames、reconnect protocol、envelope validation 和 protocol ACK data 保留在 `AuthenticatedEvent` 之外
 - [ ] 6.3 用 Provider、tenant ID、optional real Provider event ID、Provider event time、Dify receive time 和 decrypted Provider-native payload 构建 immutable `AuthenticatedEvent`
-- [ ] 6.4 添加一张专用 `im_provider_event_inbox` 表，保存 internal record ID、local Integration ID、Provider/tenant/event metadata、immutable Provider-native payload 和最小 processing outcome metadata
+- [ ] 6.4 添加一张专用 `im_provider_event_inbox` 表，保存 internal record ID、local Integration ID、Provider/tenant/event metadata、作为 `raw_payload` 原子写入 event record 的 immutable Provider-native payload，以及最小 processing outcome metadata；`raw_payload` 只用于 debug，不参与 dedupe、routing、authorization 或业务判定
 - [ ] 6.5 实现简单 Inbox Repository，仅支持原子 insert-or-resolve-identified-duplicate、claim pending records 和记录 terminal processing outcome，不承担 card decoding 或更上层 Human Input business lookup
 - [ ] 6.6 将 Webhook/STREAM receiver persistence path 接入 Inbox Repository，在任何成功 ACK 以及 business decoding 前提交 inbox transaction；broker enqueue 不得替代该 commit
 - [ ] 6.7 只对非空 Provider event ID 使用 `(provider, provider tenant ID, provider event ID)` 去重；没有 Provider event ID 时存储 `NULL`，并为每次 delivery 创建独立 inbox record

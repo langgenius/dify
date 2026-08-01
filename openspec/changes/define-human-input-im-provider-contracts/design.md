@@ -168,6 +168,8 @@ If inbox persistence fails, the receiver MUST NOT acknowledge successful durable
 
 The table stores an internal record ID, local Integration ID, provider, provider tenant ID, nullable provider event ID, provider event time, Dify receive time, immutable serialized Provider-native payload, and minimal processing status/outcome metadata. The local Integration ID is persistence routing metadata supplied by the receiver; it is not added to `AuthenticatedEvent` and does not change the Provider-neutral convergence boundary.
 
+The serialized Provider-native payload is retained as `raw_payload` on the Dify-owned event record for debugging and incident investigation. It is written atomically with the rest of the event record rather than through a side table, blob, or follow-up write. `raw_payload` does not participate in deduplication, routing, authorization, or business decisions, so there is no separate state in which the event write succeeds but its raw payload write fails. This avoids replacing actionable diagnostic evidence with a payload hash while keeping the payload outside business semantics.
+
 The Inbox Repository carries only three concrete responsibilities:
 
 - atomically insert one authenticated delivery or resolve the existing record for an identified duplicate;
@@ -260,6 +262,7 @@ Alternatives considered:
 - [No automatic send retry] → Transient failures reduce delivery success; preserve the ambiguous outcome and allow explicit Resend as a new attempt.
 - [Full in-memory directory snapshot can consume significant memory] → Keep this accepted for the current manual-sync scope; introduce external staging only through a future measured change.
 - [Webhook ACK after database commit depends on inbox latency] → Keep the single-table Inbox Repository transaction limited to insert-or-resolve-duplicate and move claim, decoding and all business work to the worker.
+- [Retaining raw Provider payload increases inbox storage] → Keep `raw_payload` on the event record as the only required debug field and do not add derived debug fields or a separate storage path in this change.
 - [Provider-managed distribution across replica-local STREAM connections] → Do not elect a singleton owner or constrain replica count. Require identical subscriptions/handlers, shared-inbox commit before receiver-local ACK, and no assumptions about affinity, ordering or fairness. DingTalk cross-connection distribution remains explicitly undocumented; connection quota and rolling-deployment coordination remain non-goals.
 - [Provider-neutral card intent may expose unsupported controls] → Human Input application service uses the Provider's side-effect-free representability result before creating the Delivery Endpoint; a false result selects Request URL, while an unexpected renderer mismatch raises before any Provider send call and never silently changes operations.
 - [Local-only deletion leaves remote configuration active] → Mark the Integration deleted locally, drop new business ingestion, and document that remote cleanup is an administrator responsibility for this phase.
