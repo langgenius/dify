@@ -5,7 +5,7 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueries, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -35,8 +35,8 @@ import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
-import { Banner } from '../banner/banner'
-import { HomeSkeleton } from '../home-skeleton'
+import { HomeBanner } from '../banner/home-banner'
+import { HomeShell } from '../home-shell'
 import { TemplateCard } from '../template-card/template-card'
 import { HomeRecommendations } from './recommendations'
 import s from './style.module.css'
@@ -60,7 +60,7 @@ export function HomeContent() {
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const homeQueries = useQueries({
+  const [templatesQuery, recentAppsQuery] = useSuspenseQueries({
     queries: [
       consoleQuery.explore.apps.get.queryOptions({
         input: { query: { language: locale } },
@@ -68,25 +68,10 @@ export function HomeContent() {
       consoleQuery.apps.recent.get.queryOptions({
         input: { query: { limit: 8 } },
       }),
-      {
-        ...consoleQuery.explore.banners.get.queryOptions({
-          input: { query: { language: locale } },
-        }),
-        enabled: systemFeatures.enable_explore_banner,
-      },
     ],
-    combine: ([templatesQuery, continueWorkQuery, bannersQuery]) => ({
-      templatesData: templatesQuery.data,
-      continueWorkApps: continueWorkQuery.data?.data ?? [],
-      banners: bannersQuery.data ?? [],
-      isPending:
-        templatesQuery.isPending ||
-        continueWorkQuery.isPending ||
-        (systemFeatures.enable_explore_banner && bannersQuery.isPending),
-      isTemplatesError:
-        templatesQuery.isError || (!templatesQuery.isPending && !templatesQuery.data),
-    }),
   })
+  const templatesData = templatesQuery.data
+  const continueWorkApps = recentAppsQuery.data.data
   const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
@@ -145,28 +130,23 @@ export function HomeContent() {
   })
 
   const visibleCategories = useMemo(() => {
-    if (!homeQueries.templatesData) return []
-
     const categoriesWithApps = new Set<string>()
-    homeQueries.templatesData.recommended_apps.forEach((app) => {
+    templatesData.recommended_apps.forEach((app) => {
       app.categories?.forEach((category) => categoriesWithApps.add(category))
     })
 
-    return homeQueries.templatesData.categories.filter((category) =>
-      categoriesWithApps.has(category),
-    )
-  }, [homeQueries.templatesData])
+    return templatesData.categories.filter((category) => categoriesWithApps.has(category))
+  }, [templatesData])
 
   const activeCategory = visibleCategories.includes(currCategory) ? currCategory : allCategoriesEn
 
   const filteredList = useMemo(() => {
-    if (!homeQueries.templatesData) return []
-    return [...homeQueries.templatesData.recommended_apps]
+    return [...templatesData.recommended_apps]
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
       .filter(
         (item) => activeCategory === allCategoriesEn || item.categories?.includes(activeCategory),
       )
-  }, [homeQueries.templatesData, activeCategory, allCategoriesEn])
+  }, [templatesData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
@@ -439,55 +419,43 @@ export function HomeContent() {
     abandonHomeTourCreate()
   }, [abandonHomeTourCreate])
 
-  if (homeQueries.isTemplatesError) return null
-
   return (
-    <div
-      className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden border-l-[0.5px] border-divider-regular',
-      )}
-    >
+    <HomeShell>
       <div className="flex flex-1 flex-col overflow-y-auto">
-        {homeQueries.isPending ? (
-          <HomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
-        ) : (
-          <>
-            {systemFeatures.enable_explore_banner && <Banner banners={homeQueries.banners} />}
-            <HomeRecommendations
-              canCreate={canCreateApp}
-              continueWorkApps={homeQueries.continueWorkApps}
-              forceShowLearnDify={shouldForceShowLearnDifyForTour}
-              onCreate={handleCreateFromLearnDify}
-              onTry={handleTryAppFromLearnDify}
-            />
+        {systemFeatures.enable_explore_banner && <HomeBanner />}
+        <HomeRecommendations
+          canCreate={canCreateApp}
+          continueWorkApps={continueWorkApps}
+          forceShowLearnDify={shouldForceShowLearnDifyForTour}
+          onCreate={handleCreateFromLearnDify}
+          onTry={handleTryAppFromLearnDify}
+        />
 
-            <HomeTemplatesHeader
-              allCategoriesEn={allCategoriesEn}
-              categories={visibleCategories}
-              currCategory={activeCategory}
-              keywords={keywords}
-              onCategoryChange={setCurrCategory}
-              onKeywordsChange={handleKeywordsChange}
-            />
+        <HomeTemplatesHeader
+          allCategoriesEn={allCategoriesEn}
+          categories={visibleCategories}
+          currCategory={activeCategory}
+          keywords={keywords}
+          onCategoryChange={setCurrCategory}
+          onKeywordsChange={handleKeywordsChange}
+        />
 
-            <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-              <nav
-                aria-labelledby="home-templates-title"
-                className={cn(s.templateGrid, 'grid shrink-0 content-start gap-3 px-8')}
-              >
-                {searchFilteredList.map((app) => (
-                  <TemplateCard
-                    key={app.app_id}
-                    app={app}
-                    canCreate={canCreateApp}
-                    onCreate={() => handleCreateFromTemplate(app)}
-                    onTry={handleTryApp}
-                  />
-                ))}
-              </nav>
-            </div>
-          </>
-        )}
+        <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
+          <nav
+            aria-labelledby="home-templates-title"
+            className={cn(s.templateGrid, 'grid shrink-0 content-start gap-3 px-8')}
+          >
+            {searchFilteredList.map((app) => (
+              <TemplateCard
+                key={app.app_id}
+                app={app}
+                canCreate={canCreateApp}
+                onCreate={() => handleCreateFromTemplate(app)}
+                onTry={handleTryApp}
+              />
+            ))}
+          </nav>
+        </div>
       </div>
       {isShowCreateModal && (
         <CreateAppModal
@@ -533,6 +501,6 @@ export function HomeContent() {
           onCreate={handleShowFromTryApp}
         />
       )}
-    </div>
+    </HomeShell>
   )
 }

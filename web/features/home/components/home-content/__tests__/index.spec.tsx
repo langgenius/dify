@@ -60,7 +60,6 @@ let mockLearnDifyApps: RecommendedAppResponse[] = []
 let mockLearnDifyLoading = false
 let mockWorkspaceApps: RecentAppResponse[] = []
 let mockBanners: BannerResponse[] = []
-let mockTemplatesPending = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
@@ -328,14 +327,6 @@ vi.mock('@/service/client', () => ({
               recommended_apps: RecommendedAppResponse[]
             }) => unknown
           }) => {
-            if (mockTemplatesPending) {
-              return {
-                queryKey: ['console', 'explore', 'apps', 'get', options.input],
-                queryFn: () => new Promise(() => {}),
-                select: options.select,
-              }
-            }
-
             const response = {
               categories: mockExploreData?.categories ?? [],
               recommended_apps: mockExploreData?.allList ?? [],
@@ -461,9 +452,9 @@ vi.mock('@/app/components/explore/try-app', () => ({
   ),
 }))
 
-vi.mock('../../banner/banner', () => ({
-  Banner: ({ banners }: { banners: BannerResponse[] }) => (
-    <div data-testid="explore-banner" data-banner-count={banners.length}>
+vi.mock('../../banner/home-banner', () => ({
+  HomeBanner: () => (
+    <div data-testid="explore-banner" data-banner-count={mockBanners.length}>
       banner
     </div>
   ),
@@ -566,7 +557,7 @@ const renderHomeContent = ({
       enable_learn_app: options.enableLearnApp ?? true,
     },
   })
-  if (mockExploreData && !mockTemplatesPending) {
+  if (mockExploreData) {
     queryClient.setQueryData(homeTemplatesQueryKey, {
       categories: mockExploreData.categories,
       recommended_apps: mockExploreData.allList,
@@ -631,7 +622,6 @@ describe('HomeContent', () => {
     mockLearnDifyLoading = false
     mockWorkspaceApps = []
     mockBanners = []
-    mockTemplatesPending = false
     mockStepByStepTour.reset()
   })
 
@@ -640,15 +630,6 @@ describe('HomeContent', () => {
   })
 
   describe('Rendering', () => {
-    it('should keep the Home shell stable while templates are pending', () => {
-      mockTemplatesPending = true
-
-      renderHomeContent()
-
-      expect(screen.queryByText('explore.apps.description')).not.toBeInTheDocument()
-      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
-    })
-
     it('should not render learn dify content while learn dify items are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
