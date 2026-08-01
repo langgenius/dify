@@ -194,7 +194,7 @@ The inbox worker passes an `AuthenticatedEvent` to the concrete Provider card de
 
 It excludes raw signatures, verification tokens, encrypted bodies, HTTP headers, stream envelope IDs used only for ACK, SDK client objects and connection state.
 
-The Provider decoder does not resolve Contact, binding, grant or task authorization. The Human Input interaction application service consumes `CardSubmissionRequest`, resolves the opaque context, loads current identity/binding state and applies the existing first-success submission contract.
+The Provider decoder does not resolve Contact, binding, grant or task authorization. The Human Input interaction application service consumes `CardSubmissionRequest`, resolves the opaque association metadata, loads current identity/binding state and applies the existing first-success submission contract.
 
 ### 9. Transport support is deployment-owned and statically validated
 
