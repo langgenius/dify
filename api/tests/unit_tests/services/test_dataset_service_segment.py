@@ -858,7 +858,7 @@ class TestSegmentServiceMutations:
             # scalars() for child_node_ids
             session.scalars.return_value.all.return_value = ["child-1"]
 
-            SegmentService.delete_segments(["segment-1", "segment-2"], document, dataset, session)
+            SegmentService.delete_segments(["segment-1", "segment-2", "foreign-segment"], document, dataset, session)
 
         assert document.word_count == 0
         session.add.assert_called_once_with(document)
@@ -869,6 +869,13 @@ class TestSegmentServiceMutations:
             ["segment-1", "segment-2"],
             ["child-1"],
         )
+        delete_stmt = session.execute.call_args_list[1].args[0]
+        delete_sql = str(delete_stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "document_segments.id IN ('segment-1', 'segment-2')" in delete_sql
+        assert "document_segments.dataset_id = 'dataset-1'" in delete_sql
+        assert "document_segments.document_id = 'doc-1'" in delete_sql
+        assert "document_segments.tenant_id = 'tenant-1'" in delete_sql
+        assert "foreign-segment" not in delete_sql
         session.commit.assert_called()
 
     def test_update_segments_status_enables_only_segments_without_indexing_cache(self):
