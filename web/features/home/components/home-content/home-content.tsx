@@ -1,7 +1,6 @@
 'use client'
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { HomeTemplateSelection } from '../../types'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
@@ -29,6 +28,7 @@ import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/task
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
@@ -53,8 +53,9 @@ const DSLConfirmModal = dynamic(
 
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
-export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
+export function HomeContent() {
   const { t } = useTranslation()
+  useDocumentTitle(t(($) => $['mainNav.home'], { ns: 'common' }))
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -75,7 +76,7 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
       },
     ],
     combine: ([templatesQuery, continueWorkQuery, bannersQuery]) => ({
-      appListData: templatesQuery.data,
+      templatesData: templatesQuery.data,
       continueWorkApps: continueWorkQuery.data?.data ?? [],
       banners: bannersQuery.data ?? [],
       isPending:
@@ -144,26 +145,28 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
   })
 
   const visibleCategories = useMemo(() => {
-    if (!homeQueries.appListData) return []
+    if (!homeQueries.templatesData) return []
 
     const categoriesWithApps = new Set<string>()
-    homeQueries.appListData.recommended_apps.forEach((app) => {
+    homeQueries.templatesData.recommended_apps.forEach((app) => {
       app.categories?.forEach((category) => categoriesWithApps.add(category))
     })
 
-    return homeQueries.appListData.categories.filter((category) => categoriesWithApps.has(category))
-  }, [homeQueries.appListData])
+    return homeQueries.templatesData.categories.filter((category) =>
+      categoriesWithApps.has(category),
+    )
+  }, [homeQueries.templatesData])
 
   const activeCategory = visibleCategories.includes(currCategory) ? currCategory : allCategoriesEn
 
   const filteredList = useMemo(() => {
-    if (!homeQueries.appListData) return []
-    return [...homeQueries.appListData.recommended_apps]
+    if (!homeQueries.templatesData) return []
+    return [...homeQueries.templatesData.recommended_apps]
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
       .filter(
         (item) => activeCategory === allCategoriesEn || item.categories?.includes(activeCategory),
       )
-  }, [homeQueries.appListData, activeCategory, allCategoriesEn])
+  }, [homeQueries.templatesData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
@@ -182,7 +185,7 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
   const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
-  const [currentTryApp, setCurrentTryApp] = useState<HomeTemplateSelection | undefined>(undefined)
+  const [currentTryApp, setCurrentTryApp] = useState<RecommendedAppResponse | undefined>(undefined)
   const currentCreateAppModeRef = useRef<string | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
@@ -282,14 +285,14 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
       hideTryAppPanel()
     }
   }, [currentTryApp, hideTryAppPanel, homeTryAppCreateGuideActive, isShowCreateModal])
-  const handleTryApp = useCallback((params: HomeTemplateSelection) => {
+  const handleTryApp = useCallback((app: RecommendedAppResponse) => {
     isCurrentTryAppFromLearnDifyRef.current = false
-    setCurrentTryApp(params)
+    setCurrentTryApp(app)
   }, [])
   const handleTryAppFromLearnDify = useCallback(
-    (params: HomeTemplateSelection) => {
+    (app: RecommendedAppResponse) => {
       isCurrentTryAppFromLearnDifyRef.current = true
-      setCurrentTryApp(params)
+      setCurrentTryApp(app)
 
       if (
         activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
@@ -317,10 +320,10 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
     ],
   )
   const handleShowFromTryApp = useCallback(() => {
-    setCurrApp(currentTryApp?.app || null)
+    setCurrApp(currentTryApp || null)
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_preview',
-      templateId: currentTryApp?.appId || currentTryApp?.app.app_id,
+      templateId: currentTryApp?.app_id,
     }
     shouldCompleteHomeTourOnCreateRef.current =
       isCurrentTryAppFromLearnDifyRef.current &&
@@ -332,14 +335,13 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
     activeStepByStepTourGuideIndex,
     activeStepByStepTourTaskId,
     completedStepByStepTourTaskIds,
-    currentTryApp?.app,
-    currentTryApp?.appId,
+    currentTryApp,
   ])
   const handleCreateFromLearnDify = useCallback((app: RecommendedAppResponse) => {
     setCurrApp(app)
     setIsShowCreateModal(true)
   }, [])
-  const handleCreateFromAppList = useCallback((app: RecommendedAppResponse) => {
+  const handleCreateFromTemplate = useCallback((app: RecommendedAppResponse) => {
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_list',
       templateId: app.app_id,
@@ -426,11 +428,10 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
       onSuccess: (response) => {
         trackCurrentCreateApp(response.app_mode)
         completeHomeTourAfterCreate()
-        onSuccess?.()
       },
       skipRedirectOnSuccess: shouldCompleteHomeTourOnCreateRef.current,
     })
-  }, [completeHomeTourAfterCreate, handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+  }, [completeHomeTourAfterCreate, handleImportDSLConfirm, trackCurrentCreateApp])
 
   const handleCancelDSLConfirm = useCallback(() => {
     setShowDSLConfirmModal(false)
@@ -470,13 +471,16 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
             />
 
             <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-              <nav className={cn(s.appList, 'grid shrink-0 content-start gap-3 px-8')}>
+              <nav
+                aria-labelledby="home-templates-title"
+                className={cn(s.templateGrid, 'grid shrink-0 content-start gap-3 px-8')}
+              >
                 {searchFilteredList.map((app) => (
                   <TemplateCard
                     key={app.app_id}
                     app={app}
                     canCreate={canCreateApp}
-                    onCreate={() => handleCreateFromAppList(app)}
+                    onCreate={() => handleCreateFromTemplate(app)}
                     onTry={handleTryApp}
                   />
                 ))}
@@ -516,10 +520,10 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
 
       {currentTryApp && (
         <TryApp
-          appId={currentTryApp.appId}
-          app={currentTryApp.app}
+          appId={currentTryApp.app_id}
+          app={currentTryApp}
           canCreate={canCreateApp}
-          categories={currentTryApp.app.categories ?? []}
+          categories={currentTryApp.categories ?? []}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate

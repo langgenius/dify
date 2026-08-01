@@ -3,7 +3,6 @@ import type {
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { TemplateCardProps } from '../template-card'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -54,13 +53,12 @@ describe('TemplateCard', () => {
   const mockTrackEvent = vi.mocked(trackEvent)
   let deploymentEdition: DeploymentEdition = 'CLOUD'
 
-  const renderComponent = (props?: Partial<TemplateCardProps>) => {
-    const mergedProps: TemplateCardProps = {
+  const renderComponent = (props?: Partial<React.ComponentProps<typeof TemplateCard>>) => {
+    const mergedProps: React.ComponentProps<typeof TemplateCard> = {
       app: createApp(),
       canCreate: false,
       onCreate,
       onTry,
-      isExplore: false,
       ...props,
     }
     return renderWithConsoleQuery(<TemplateCard {...mergedProps} />, {
@@ -110,11 +108,10 @@ describe('TemplateCard', () => {
   })
 
   describe('User Interactions', () => {
-    it('should make the app card clickable in explore mode on cloud edition', () => {
+    it('should make the app card clickable on cloud edition', () => {
       renderComponent({
         app: createApp({ app: { ...createApp().app, mode: AppModeEnum.WORKFLOW } }),
         canCreate: true,
-        isExplore: true,
       })
 
       const cardButton = screen.getByRole('button', { name: 'Sample App' })
@@ -122,8 +119,8 @@ describe('TemplateCard', () => {
       expect(cardButton).toHaveAttribute('type', 'button')
     })
 
-    it('should not render hover action buttons in explore mode', () => {
-      renderComponent({ canCreate: true, isExplore: true })
+    it('should not render hover action buttons', () => {
+      renderComponent({ canCreate: true })
 
       expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
       expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
@@ -131,29 +128,22 @@ describe('TemplateCard', () => {
 
     it('should make the app card clickable outside cloud edition when create is allowed', () => {
       deploymentEdition = 'COMMUNITY'
-      renderComponent({ canCreate: true, isExplore: true })
+      renderComponent({ canCreate: true })
 
       expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
     })
 
     it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
       deploymentEdition = 'COMMUNITY'
-      renderComponent({ canCreate: false, isExplore: true })
+      renderComponent({ canCreate: false })
 
       expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
-    it('should hide action buttons when not in explore mode', () => {
-      renderComponent({ canCreate: true, isExplore: false })
-
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
-    })
-
     it('should hide create button when canCreate is false', () => {
-      renderComponent({ canCreate: false, isExplore: true })
+      renderComponent({ canCreate: false })
 
       expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
     })
@@ -178,18 +168,18 @@ describe('TemplateCard', () => {
     it('should call onTry when app card is clicked on cloud edition', () => {
       const app = createApp()
 
-      renderComponent({ app, canCreate: true, isExplore: true })
+      renderComponent({ app, canCreate: true })
 
       fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
 
-      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
+      expect(onTry).toHaveBeenCalledWith(app)
       expect(onCreate).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when app card is clicked outside cloud edition', () => {
       deploymentEdition = 'COMMUNITY'
 
-      renderComponent({ canCreate: true, isExplore: true })
+      renderComponent({ canCreate: true })
 
       fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
 
@@ -202,18 +192,18 @@ describe('TemplateCard', () => {
       const user = userEvent.setup()
       const app = createApp()
 
-      renderComponent({ app, canCreate: true, isExplore: true })
+      renderComponent({ app, canCreate: true })
 
       screen.getByRole('button', { name: 'Sample App' }).focus()
       await user.keyboard('{Enter}')
 
-      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
+      expect(onTry).toHaveBeenCalledWith(app)
     })
 
     it('should track preview event when app card is clicked', () => {
       const app = createApp()
 
-      renderComponent({ app, canCreate: true, isExplore: true })
+      renderComponent({ app, canCreate: true })
 
       fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
 

@@ -541,22 +541,23 @@ const mockAppCreatePermission = (hasEditPermission: boolean) => {
 }
 
 type RenderOptions = {
+  hasEditPermission?: boolean
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
   extra?: ReactNode
   deploymentEdition?: DeploymentEdition
+  searchParams?: Record<string, string>
 }
 
 const localeInput = { query: { language: 'en-US' } }
 const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
 
-const renderHomeContent = (
+const renderHomeContent = ({
   hasEditPermission = false,
-  onSuccess?: () => void,
-  searchParams?: Record<string, string>,
-  options: RenderOptions = {},
-) => {
+  searchParams,
+  ...options
+}: RenderOptions = {}) => {
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
@@ -590,7 +591,7 @@ const renderHomeContent = (
   )
   const rendered = renderWithNuqs(
     <Wrapped>
-      <HomeContent onSuccess={onSuccess} />
+      <HomeContent />
     </Wrapped>,
     { searchParams },
   )
@@ -846,7 +847,7 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
 
-      renderHomeContent(false, undefined, undefined, { enableLearnApp: false })
+      renderHomeContent({ enableLearnApp: false })
 
       expect(
         screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
@@ -895,7 +896,7 @@ describe('HomeContent', () => {
         ],
       }
 
-      renderHomeContent(false, undefined, { category: 'Writing' })
+      renderHomeContent({ searchParams: { category: 'Writing' } })
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -907,7 +908,7 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
 
-      renderHomeContent(false, undefined, { category: 'c' })
+      renderHomeContent({ searchParams: { category: 'c' } })
 
       expect(screen.queryByRole('radio', { name: 'c' })).not.toBeInTheDocument()
       expect(screen.getByText('Alpha')).toBeInTheDocument()
@@ -926,7 +927,7 @@ describe('HomeContent', () => {
         ],
       }
 
-      renderHomeContent(false, undefined, { category: 'Writing' })
+      renderHomeContent({ searchParams: { category: 'Writing' } })
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'alp' } })
@@ -967,7 +968,6 @@ describe('HomeContent', () => {
 
     it('should handle create flow from app card when outside cloud edition and confirm DSL when pending', async () => {
       vi.useRealTimers()
-      const onSuccess = vi.fn()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -987,7 +987,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true, onSuccess)
+      renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -1005,7 +1005,6 @@ describe('HomeContent', () => {
           appMode: AppModeEnum.CHAT,
           templateId: 'app-1',
         })
-        expect(onSuccess).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -1029,7 +1028,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true)
+      renderHomeContent({ hasEditPermission: true })
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('confirm-create'))
 
@@ -1058,7 +1057,7 @@ describe('HomeContent', () => {
         minimized: true,
       })
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1083,7 +1082,8 @@ describe('HomeContent', () => {
         minimized: true,
       })
 
-      renderHomeContent(true, undefined, undefined, {
+      renderHomeContent({
+        hasEditPermission: true,
         extra: <SkipHomeGuideProbe />,
         deploymentEdition: 'CLOUD',
       })
@@ -1116,7 +1116,7 @@ describe('HomeContent', () => {
         minimized: true,
       })
 
-      renderHomeContent(false, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1166,7 +1166,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1223,7 +1223,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1290,7 +1290,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1320,7 +1320,7 @@ describe('HomeContent', () => {
         minimized: true,
       })
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       const createFromDetailsButton = await screen.findByTestId('try-app-create')
@@ -1379,7 +1379,7 @@ describe('HomeContent', () => {
         mode: AppModeEnum.CHAT,
       })
 
-      renderHomeContent(true)
+      renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
 
@@ -1409,7 +1409,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true)
+      renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -1434,7 +1434,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true)
+      renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -1457,7 +1457,7 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
@@ -1488,7 +1488,7 @@ describe('HomeContent', () => {
         },
       )
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
@@ -1511,7 +1511,7 @@ describe('HomeContent', () => {
         allList: [createApp()],
       }
 
-      renderHomeContent(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
@@ -1529,7 +1529,7 @@ describe('HomeContent', () => {
       }
       mockBanners = [createBanner()]
 
-      renderHomeContent(false, undefined, undefined, { enableExploreBanner: true })
+      renderHomeContent({ enableExploreBanner: true })
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')

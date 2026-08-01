@@ -1,6 +1,5 @@
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { HomeTemplateSelection } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
@@ -11,21 +10,14 @@ import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppModeEnum } from '@/types/app'
 
-export type TemplateCardProps = {
+type TemplateCardProps = {
   app: RecommendedAppResponse
   canCreate: boolean
   onCreate: () => void
-  onTry: (params: HomeTemplateSelection) => void
-  isExplore?: boolean
+  onTry: (app: RecommendedAppResponse) => void
 }
 
-export function TemplateCard({
-  app,
-  canCreate,
-  onCreate,
-  onTry,
-  isExplore = true,
-}: TemplateCardProps) {
+export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardProps) {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -43,7 +35,7 @@ export function TemplateCard({
       ? appBasicInfo.icon_type
       : null
   const canViewApp = deploymentEdition === 'CLOUD'
-  const isClickable = isExplore && (canViewApp || canCreate)
+  const isClickable = canViewApp || canCreate
   const handleTryApp = () => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -52,7 +44,7 @@ export function TemplateCard({
       template_categories: app.categories ?? [],
       page: 'explore',
     })
-    onTry({ appId: app.app_id, app })
+    onTry(app)
   }
   const handleCardClick = () => {
     if (canViewApp) {

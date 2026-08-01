@@ -24,9 +24,12 @@ export function HomeTemplatesHeader({
   return (
     <div className="sticky top-0 z-10 bg-background-body">
       <div className="flex items-center gap-2 px-8 pt-6">
-        <div className="min-w-0 flex-1 truncate system-xl-medium text-text-primary">
+        <h2
+          id="home-templates-title"
+          className="min-w-0 flex-1 truncate system-xl-medium text-text-primary"
+        >
           {t(($) => $['apps.title'], { ns: 'explore' })}
-        </div>
+        </h2>
         <a
           href="https://marketplace.dify.ai/templates"
           target="_blank"

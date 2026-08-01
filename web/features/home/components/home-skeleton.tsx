@@ -30,42 +30,7 @@ function HomeTemplateCardSkeleton() {
   )
 }
 
-function RecommendationSectionSkeletonBody({
-  hasDescription = false,
-}: {
-  hasDescription?: boolean
-}) {
-  if (hasDescription) {
-    return (
-      <SkeletonContainer className="-mx-4 rounded-2xl bg-background-section p-4">
-        <div className="flex items-start justify-between gap-4 pb-2.5">
-          <div className="min-w-0">
-            <SkeletonRectangle className="h-5 w-48 animate-pulse" />
-            <SkeletonRectangle className="mt-2 h-3 w-80 animate-pulse" />
-          </div>
-          <SkeletonRectangle className="size-8 shrink-0 animate-pulse rounded-lg" />
-        </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
-          {Array.from({ length: 4 }, (_, index) => (
-            <div
-              key={index}
-              className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs"
-            >
-              <div className="flex flex-col items-start gap-2 pb-1">
-                <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-[10px]" />
-                <SkeletonRectangle className="h-4 w-3/4 animate-pulse" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <SkeletonRectangle className="h-3 w-full animate-pulse" />
-                <SkeletonRectangle className="h-3 w-4/5 animate-pulse" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </SkeletonContainer>
-    )
-  }
-
+function HomeRecommendationsSkeleton() {
   return (
     <SkeletonContainer>
       <div className="flex min-h-12 items-end justify-between gap-4 pb-2">
@@ -124,7 +89,7 @@ function HomeTemplatesSkeletonBody() {
   )
 }
 
-function BannerSkeletonBody() {
+function HomeBannerSkeleton() {
   return (
     <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
       <div className="flex w-full flex-col gap-1">
@@ -141,9 +106,9 @@ export function HomeSkeleton({ showBanner }: { showBanner: boolean }) {
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="contents">
-      {showBanner && <BannerSkeletonBody />}
+      {showBanner && <HomeBannerSkeleton />}
       <section className="px-8 pb-5">
-        <RecommendationSectionSkeletonBody />
+        <HomeRecommendationsSkeleton />
       </section>
       <HomeTemplatesHeaderSkeletonBody />
       <div className="relative flex flex-1 shrink-0 grow flex-col pb-6">

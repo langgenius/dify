@@ -2,7 +2,6 @@
 
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { TryAppSelection } from '@/types/try-app'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import dynamic from '@/next/dynamic'
 import { ContinueWork } from '../continue-work/continue-work'
@@ -20,7 +19,7 @@ export function HomeRecommendations({
   continueWorkApps: RecentAppResponse[]
   forceShowLearnDify?: boolean
   onCreate: (app: RecommendedAppResponse) => void
-  onTry: (params: TryAppSelection) => void
+  onTry: (app: RecommendedAppResponse) => void
 }) {
   return (
     <>
@@ -30,7 +29,7 @@ export function HomeRecommendations({
         className="pb-0"
         forceVisible={forceShowLearnDify}
         onCreate={onCreate}
-        onTry={onTry}
+        onTry={({ app }) => onTry(app)}
         stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}
       />
     </>
