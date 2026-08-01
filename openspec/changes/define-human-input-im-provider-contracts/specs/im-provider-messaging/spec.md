@@ -30,7 +30,7 @@ Slack, Feishu/Lark and Microsoft Teams MUST additionally implement Dynamic Card 
 - **THEN** Messaging MUST return false with a human-readable reason without sending a message, and Dify MUST create a text fallback Delivery Endpoint based only on the false result
 
 ### Requirement: Basic and Dynamic Card Messaging MUST expose distinct send operations
-Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. They MUST remain distinct operations rather than one send operation that selects a channel. `send_text` MUST receive a Provider message destination separately from one fully rendered CommonMark message body. The upstream renderer or notification application service MUST complete URL interpolation before `send_text` is called, MUST use CommonMark as the markdown definition, and MUST NOT emit custom tags. The Provider adapter MUST decide how to render that CommonMark on the target platform and, if the markdown formatting is not expressible there, MUST fall back to sending the same content as plain text instead of rejecting the send. `send_card` MUST receive a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context. The message content models MUST NOT contain the destination, and neither operation may accept Human Input task, grant or ORM objects.
+Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. They MUST remain distinct operations rather than one send operation that selects a channel. `send_text` MUST receive a Provider message destination separately from one fully rendered CommonMark message body. The upstream renderer or notification application service MUST complete URL interpolation before `send_text` is called, MUST use CommonMark as the markdown definition, and MUST NOT emit custom tags. The Provider adapter MUST decide how to render that CommonMark on the target platform and, if the markdown formatting is not expressible there, MUST fall back to sending the same content as plain text instead of rejecting the send. `send_card` MUST receive a Provider message destination separately from normalized interactive-card intent, actions and opaque association metadata. The message content models MUST NOT contain the destination, and neither operation may accept Human Input task, grant or ORM objects.
 
 #### Scenario: DingTalk or WeCom notification is sent
 - **WHEN** Human Input targets DingTalk or WeCom in the initial scope
@@ -38,7 +38,7 @@ Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `sen
 
 #### Scenario: Card-compatible form targets Slack, Feishu/Lark or Teams
 - **WHEN** card representability assessment returns true and Dify creates a card Delivery Endpoint for Slack, Feishu/Lark or Microsoft Teams
-- **THEN** that endpoint MUST invoke `send_card` and MUST preserve the opaque interaction context required for a later card submission
+- **THEN** that endpoint MUST invoke `send_card` and MUST preserve the opaque association metadata required for a later card submission
 
 #### Scenario: Form requires file upload
 - **WHEN** card representability assessment returns false and Dify creates a text fallback Delivery Endpoint

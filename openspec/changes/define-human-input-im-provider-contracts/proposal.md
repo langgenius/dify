@@ -11,6 +11,7 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 - 固化 Provider transport 支持矩阵：Feishu/Lark、DingTalk 与 Slack 支持 `WEBHOOK` 和 `STREAM`，WeCom 与 Microsoft Teams 仅支持 `WEBHOOK`。连接配额与滚动部署策略不进入本 change。
 - 删除 Integration、停止事件进入业务处理、清理 bindings/overrides 仍属于 Dify-owned lifecycle，本 change 不覆盖这些本地状态变更。
 - 保持现有 effective IM binding 边界：只解析 `workspace override > organization binding`；新的 Provider contract 不接管上层 Email endpoint selection。
+- 增加 Provider 实现验收门槛：每个 Provider 的每个外部 API 调用和事件处理入口都必须分别具备单元测试与集成测试；实现期间还必须完成对应的真实调用或真实事件处理，并将完整脱敏后的真实 payload 保留为单元测试 fixture。对于具有签名验证、加密 envelope 或 payload 解密的 Provider/transport，还必须为每条适用路径增加独立的验签与解密测试。
 
 ## Capabilities
 
@@ -31,3 +32,5 @@ Human Input 当前已有 IM Integration、通讯录同步、binding、卡片投�
 - Provider SDK、凭据字段、directory pagination/topology、message/card payload 和 ACK 协议继续保持 Provider-specific；本 change 不要求统一这些外部协议。
 - Contact matching、sync reconciliation、binding persistence、recipient resolution、submission authorization、workflow resume 和 caller wiring 继续由现有 Dify domain/application service 拥有；但 inbox persistence、ACK-before-business-processing 与 inbox worker claim 保留在本 change 范围内。
 - 本 change 不引入通用插件框架，不处理连接配额、滚动部署、自动发送重试、远端 revoke/unsubscribe、群聊通知或 Provider delivery receipt。
+- Provider adapter、Webhook/STREAM receiver 与事件 decoder 的实现验收需要维护逐项覆盖矩阵，并准备可用的非生产 Provider 环境、真实调用证据和完整脱敏 fixture；代表性 Provider 测试或手工构造 payload 不能替代逐项证据。
+- 签名或密文不能在生成后直接脱敏并继续作为有效 cryptographic fixture；测试必须基于先脱敏的真实 payload 结构，使用测试专用 verification/encryption material 重新生成可验证的签名或密文，且不得提交真实 Provider secret 或 decryption key。

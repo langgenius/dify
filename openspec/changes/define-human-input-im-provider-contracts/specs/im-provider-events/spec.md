@@ -53,7 +53,7 @@ When provider event ID is present, the inbox MUST deduplicate by provider, provi
 - **THEN** the inbox MUST retain two records and MUST rely on downstream task first-success semantics rather than transport-level deduplication
 
 ### Requirement: Provider card decoding MUST converge at CardSubmissionRequest
-A concrete Provider card decoder MUST transform an `AuthenticatedEvent` into a `CardSubmissionRequest` containing provider, provider tenant ID, provider user ID, optional source event ID/time, exact message/card reference, action identifier, submitted values and opaque interaction context. The decoder MUST NOT resolve Contact, binding, approver grant, task authorization or workflow state.
+A concrete Provider card decoder MUST transform an `AuthenticatedEvent` into a `CardSubmissionRequest` containing provider, provider tenant ID, provider user ID, optional source event ID/time, exact message/card reference, action identifier, submitted values and opaque association metadata. The decoder MUST NOT resolve Contact, binding, approver grant, task authorization or workflow state.
 
 #### Scenario: Slack and Feishu card payloads differ
 - **WHEN** Slack and Feishu/Lark deliver different card-action payload shapes for equivalent submitted values

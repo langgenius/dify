@@ -11,6 +11,7 @@ Explore 阶段确认了以下约束：
 - Directory reader 只有在读完所有 Provider pages/nodes 并构建完整内存快照后才能返回成功；失败时不进入 reconciliation。
 - Delivery Endpoint 创建前由 Provider Messaging 对 normalized interactive-card intent 做无副作用的 representability assessment；endpoint 一旦选定，发送阶段不再重新选择链接或卡片渠道。
 - Side-effecting send 本期不自动重试；ambiguous outcome 保留为一次 attempt 的失败事实，人工 Resend 仍是新的显式 attempt。
+- 每个 concrete Provider 的每个 API 调用和事件处理入口都必须独立具备单元测试、集成测试、真实执行证据和脱敏后的真实 payload fixture。
 
 `STREAM` 在本设计中指 Provider 通过长生命周期 WebSocket/stream connection 投递事件，不是另一个与长连接并列的模式。Provider transport 支持矩阵为：
 
@@ -33,6 +34,7 @@ Deployment event transport mode 由部署配置注入，Integration 管理 API �
 - 明确 Provider-specific 数据停留在哪一层，以及何时可以转为 Provider-neutral facts。
 - 保持 Human Input 的 Contact、binding、grant、authorization 和 workflow 语义在现有 Dify boundary 内。
 - 为每个共享 contract 提供至少两个 Provider 的共同语义证据。
+- 为所有适用的 `Provider × API operation / event handler` 组合建立可审计且不可由代表性测试替代的实现验证证据。
 
 **Non-Goals:**
 
@@ -69,8 +71,8 @@ Provider contracts MUST NOT accept Contact, IM binding, ApproverGrant, Human Inp
 
 - Integration diagnostics receives provider-specific candidate credentials and the deployment-owned effective transport mode.
 - Directory reader receives current provider tenant/credentials and returns provider identities; it never receives Contacts.
-- Basic Messaging receives Provider-specific message destination facts for reachability testing or link-message sending. Dynamic Card Messaging assessment receives only a normalized interactive-card intent; card send receives a Provider message destination plus the card intent, while card update receives the stored Provider message reference. An interaction context may be embedded as opaque application data, but the Provider adapter MUST NOT interpret task authorization semantics.
-- Event decoding returns provider identity, action, submitted values, message reference and opaque interaction context; the Human Input adapter maps that context to task/delivery/recipient facts afterwards.
+- Basic Messaging receives Provider-specific message destination facts for reachability testing or link-message sending. Dynamic Card Messaging assessment receives only a normalized interactive-card intent; card send receives a Provider message destination plus the card intent, while card update receives the stored Provider message reference. Opaque association metadata may be embedded as opaque application data, but the Provider adapter MUST NOT interpret task authorization semantics.
+- Event decoding returns provider identity, action, submitted values, message reference and opaque association metadata; the Human Input adapter maps that metadata to task/delivery/recipient facts afterwards.
 
 This boundary permits the same Provider implementation to serve future Dify callers without introducing a generic plugin framework.
 
@@ -102,7 +104,7 @@ Alternatives considered:
 
 - Card representability assessment 在 Delivery Endpoint 创建前接收 normalized interactive-card intent，不接收 Provider message destination 或 Delivery Endpoint，也不发送消息、读取 Directory 或创建 Delivery。它只返回是否可表示以及可选的人类可读 reason；Dify 只根据 boolean 选择 endpoint，reason 仅用于日志，不是稳定错误码，也不得参与业务判断。
 - `send_text` receives a Provider message destination separately from one fully rendered CommonMark message body and returns Provider acceptance plus an exact message reference when available. The upstream renderer or notification application service owns URL interpolation and produces CommonMark without custom tags. The Provider adapter owns Provider-specific markdown rendering and, when that rendering is not expressible on the target platform, MUST fall back to sending the same content as plain text rather than rejecting the operation.
-- `send_card` receives a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context, and returns Provider acceptance plus an exact card/message reference.
+- `send_card` receives a Provider message destination separately from normalized interactive-card intent, actions and opaque association metadata, and returns Provider acceptance plus an exact card/message reference.
 - Card update receives the exact reference returned by the corresponding `send_card` attempt and replaces that same Provider message/card; stale reference、authorship 或 permission failure 作为 typed update failure 返回。
 - Provider-specific representability and rendering rules stay inside the concrete adapter; the shared contract does not define a universal Provider card JSON or control matrix.
 
@@ -114,7 +116,7 @@ Slack、Feishu/Lark 与 Microsoft Teams 支持交互卡片并不意味着所有 
 
 A Provider message reference is a discriminated Provider-owned locator, not one assumed global `card_id`. Dify persists it without reinterpreting Slack channel/timestamp, Feishu message ID or Teams conversation/activity identity as interchangeable scalars.
 
-Human Input 在 Dify application layer 额外施加 recipient isolation，但该规则不是 Provider contract 的通用语义。一个 Provider user identity 可以同时绑定多个 Dify Contacts，因此 Provider 的 user-specific view 仍不足以区分提交者对应的 Contact。Dify MUST 为每个 card Delivery Endpoint 创建或寻址一个独立可更新的 card instance，并在 opaque interaction context 中绑定且只绑定该 endpoint 的 handle / access token；即使多个 Contacts 映射到同一个 Provider user identity 和同一个 Provider message destination，也不得通过一个 Provider card publication 共享 interaction context。回调中的 Provider user identity 与 endpoint-scoped handle 仍需通过当前 binding、Delivery Endpoint 与授权上下文重新校验，handle 本身不构成授权。
+Human Input 在 Dify application layer 额外施加 recipient isolation，但该规则不是 Provider contract 的通用语义。一个 Provider user identity 可以同时绑定多个 Dify Contacts，因此 Provider 的 user-specific view 仍不足以区分提交者对应的 Contact。Dify MUST 为每个 card Delivery Endpoint 创建或寻址一个独立可更新的 card instance，并在 opaque association metadata 中绑定且只绑定该 endpoint 的 handle / access token；即使多个 Contacts 映射到同一个 Provider user identity 和同一个 Provider message destination，也不得通过一个 Provider card publication 共享 association metadata。回调中的 Provider user identity 与 endpoint-scoped handle 仍需通过当前 binding、Delivery Endpoint 与授权上下文重新校验，handle 本身不构成授权。
 
 当一个 Human Input task 被处理后，选择哪些 card Delivery Endpoints / card instances 需要更新以及如何 fan out 属于 Dify application service。Application service 从各 Delivery 读取精确 Provider message reference，逐个调用单实例 card update，并按 Delivery 记录结果；Provider contract 不接收 task、Contact collection 或 batch-level business context，也不提供为了该业务 fan-out 而设计的 shared batch abstraction。受控并发由 Dify worker 编排，Provider adapter 继续在单实例调用内隐藏 credentials、SDK client、rendering 与 Provider-specific error translation。
 
@@ -188,7 +190,7 @@ The inbox worker passes an `AuthenticatedEvent` to the concrete Provider card de
 - exact provider message/card reference;
 - action identifier;
 - submitted form values;
-- opaque interaction context embedded at send time.
+- opaque association metadata embedded at send time.
 
 It excludes raw signatures, verification tokens, encrypted bodies, HTTP headers, stream envelope IDs used only for ACK, SDK client objects and connection state.
 
@@ -224,6 +226,34 @@ Deletion performs no Provider API call to revoke OAuth grants, uninstall applica
 
 An inbox event committed before deletion but processed afterwards will encounter removed current binding state and therefore cannot bypass the existing submission-time revalidation.
 
+### 11. Provider verification is exhaustive and evidence-backed
+
+共享 contract 的测试只能证明公共抽象成立，不能证明每个 concrete Provider 的 wire contract 正确。实现阶段必须维护一张可审计的 `Provider × API operation / event handler` 覆盖矩阵，并对矩阵中的每个适用项同时满足以下验收条件：
+
+- 为具体 Provider 的具体 API 调用或事件处理入口添加单元测试
+- 为同一个具体调用或事件处理入口添加集成测试
+- 在实现过程中对授权的非生产 Provider 环境完成至少一次真实 API 调用，或让 Provider 实际产生的事件通过对应 Webhook/STREAM 入口完成至少一次真实处理
+- 保存该次真实 API 调用的 request/response payload，或真实事件处理所接收的 Provider payload，作为对应单元测试的 fixture
+
+真实执行证据与自动化测试是相互独立的验收项。重放 fixture 不能替代真实 Provider 调用或真实事件处理；一次真实调用也不能替代单元测试或集成测试。无法取得某个适用矩阵项的真实证据时，该实现必须保持 blocked 或 incomplete，不能通过手工构造 payload、另一个 Provider 的证据或仅测试共享 contract 来关闭任务。
+
+所有提交到仓库的真实 payload fixture 都必须先完成脱敏。脱敏范围包括 credential、secret、token、signature、authorization material，以及 payload 中可识别个人、租户、会话、消息、事件或业务内容的敏感值。脱敏必须使用稳定占位值保持跨字段引用关系，并保留字段名、嵌套结构、数据类型、可选字段、discriminator 和测试所依赖的协议语义。fixture 还必须记录不含敏感信息的 provenance，至少标明 Provider、operation/event type、Provider API 或事件版本以及采集日期，以便后续判断 contract drift。
+
+验签或解密测试不能直接使用被改写过的原始签名、密文或 authenticated bytes，因为任何脱敏修改都可能破坏 Provider 要求的 byte canonicalization、signature input 或 encryption envelope。对于每个 Provider 的每条适用 Webhook/STREAM 认证路径，必须额外建立 cryptographically valid wire fixture：先脱敏真实明文和相关 metadata，再使用仓库内测试专用的 signing/verification 或 encryption/decryption material 重新生成签名、MAC、密文、nonce/IV 和关联 header。测试密钥不得复用真实 Provider credential；fixture 生成必须使用 Provider 官方 SDK、独立 reference implementation 或测试辅助工具，不能调用被测 verifier/decrypter 自己生成期望值。
+
+每条适用路径必须独立覆盖合法签名或密文成功、payload/header/ciphertext 篡改失败、错误 secret/key 失败，以及 Provider 支持时的 timestamp window、replay protection、nonce/IV 和 sign/decrypt ordering。任何验签或解密失败都不得产生 `AuthenticatedEvent` 或 business-processable inbox record。Provider 不具备签名或加密能力的路径必须在覆盖矩阵中显式标记为不适用，不能静默缺少测试。
+
+Alternatives considered:
+
+- 只对共享 contract 和代表性 Provider 添加完整测试。
+  Rejected because Provider SDK、payload、认证、分页、ACK 和错误语义均可能独立漂移。
+- 只保留手工构造或根据文档生成的 fixture。
+  Rejected because 这不能证明实现与 Provider 的真实 wire contract 一致。
+- 只执行真实环境验证而不保留确定性测试 fixture。
+  Rejected because 这无法提供可重复的回归测试，也会让日常测试依赖外部 Provider 可用性。
+- 直接脱敏已签名或已加密的 wire payload，并继续把原签名或密文作为有效测试向量。
+  Rejected because 脱敏会改变 authenticated bytes，使 fixture 无法验证真实的 signature/decryption path。
+
 ## Risks / Trade-offs
 
 - [No deduplication without provider event ID] → Duplicate inbox processing is possible; retain task-level first-success and binding revalidation, and expose duplicate operational evidence instead of inventing an unsafe hash key.
@@ -233,6 +263,10 @@ An inbox event committed before deletion but processed afterwards will encounter
 - [Provider-managed distribution across replica-local STREAM connections] → Do not elect a singleton owner or constrain replica count. Require identical subscriptions/handlers, shared-inbox commit before receiver-local ACK, and no assumptions about affinity, ordering or fairness. DingTalk cross-connection distribution remains explicitly undocumented; connection quota and rolling-deployment coordination remain non-goals.
 - [Provider-neutral card intent may expose unsupported controls] → Human Input application service uses the Provider's side-effect-free representability result before creating the Delivery Endpoint; a false result selects Request URL, while an unexpected renderer mismatch raises before any Provider send call and never silently changes operations.
 - [Local-only deletion leaves remote configuration active] → Mark the Integration deleted locally, drop new business ingestion, and document that remote cleanup is an administrator responsibility for this phase.
+- [Shared-contract tests can hide concrete Provider wire-contract gaps] → Track unit tests, integration tests, real execution evidence and fixture paths independently for every applicable matrix cell; no cell is complete while any evidence column is missing.
+- [Real Provider payloads can leak secrets, personal data or business content] → Fully sanitize fixtures before commit, preserve protocol structure with stable placeholders, and require sensitive-data scanning plus human review.
+- [Recorded fixtures can drift from later Provider API or event versions] → Record minimal fixture provenance and recapture the real call or event whenever the relevant Provider contract or version changes.
+- [Sanitization invalidates captured signatures or encrypted envelopes] → Sanitize plaintext first, regenerate cryptographic wire fixtures with test-only material and an independent generator, and test verification/decryption separately from business-payload decoding.
 
 ## Migration Plan
 
@@ -243,7 +277,8 @@ An inbox event committed before deletion but processed afterwards will encounter
 5. Add the dedicated `im_provider_event_inbox` table and simple Inbox Repository, then switch Webhook and STREAM receivers to persist `AuthenticatedEvent` through it and ACK after commit.
 6. Move card decoding to inbox workers and pass `CardSubmissionRequest` into the existing Human Input interaction service.
 7. Switch Integration deletion to local deactivation, stream stop, credential removal and binding/override cleanup.
-8. Roll back by disabling the new composition and receivers while preserving inbox, delivery and historical audit records; do not attempt remote rollback.
+8. Before completing any Provider implementation, close every applicable coverage-matrix cell with its unit test, integration test, real API call or real event-processing evidence, sanitized real-payload fixture, and all applicable signature-verification/decryption tests.
+9. Roll back by disabling the new composition and receivers while preserving inbox, delivery and historical audit records; do not attempt remote rollback.
 
 ## Open Questions
 

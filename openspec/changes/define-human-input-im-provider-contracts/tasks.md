@@ -53,12 +53,27 @@
 
 - [ ] 7.1 实现 Slack 与 Feishu/Lark card decoders，将 Provider-native `AuthenticatedEvent` payload 转为 `CardSubmissionRequest`
 - [ ] 7.2 完成任务 1.4 后，按照已确认的 normalized card intent 和 interaction-context encoding 实现 Microsoft Teams card decoder
-- [ ] 7.3 只填充 Provider/tenant/user identity、optional source event metadata、exact message reference、action identifier、submitted values 与 opaque interaction context；排除 transport secrets、ACK state、SDK clients 和 connection state
+- [ ] 7.3 只填充 Provider/tenant/user identity、optional source event metadata、exact message reference、action identifier、submitted values 与 opaque association metadata；排除 transport secrets、ACK state、SDK clients 和 connection state
 - [ ] 7.4 对不是 supported card action 的 authenticated event 返回 typed unsupported-event result，不伪造 submission facts
 - [ ] 7.5 添加针对 Slack/Feishu 等价 submission semantics、任务 1.4 完成后的 Teams decoding、unsupported events 和排除 transport state 的测试
 
-## 8. 验证变更
+## 8. 建立逐 Provider 测试与真实 Payload 证据
 
-- [ ] 8.1 为所有改动的 provider contracts、adapters、receivers 与 decoders 运行聚焦的 backend test suites
-- [ ] 8.2 为所有改动模块运行仓库要求的 backend formatting、linting 与 type checks
-- [ ] 8.3 校验最终 OpenSpec change，并确认实现证据满足四份 capability specs 中属于 Provider 适配范围的每个 scenario
+- [ ] 8.1 建立完整的 `Provider × API operation / event handler` 覆盖矩阵，覆盖每个支持的 Provider、外部 API operation、入站 transport、event type 与 provider-specific handler；逐格记录 unit-test path、integration-test path、real-execution evidence、sanitized fixture path，并为每个不适用项记录明确理由
+- [ ] 8.2 对矩阵中每个适用的 outbound Provider API operation，使用 concrete adapter 对授权的非生产 Provider 环境完成至少一次真实调用，并在将该 operation 标记为完成前捕获真实 request/response payload
+- [ ] 8.3 对矩阵中每个适用的 inbound Provider event handler，获取 Provider 实际产生的事件，通过 concrete Webhook 或 STREAM 入口完成至少一次真实处理，并在将该 handler 标记为完成前捕获真实 Provider payload
+- [ ] 8.4 将所有捕获的真实 payload 完整脱敏后再提交为 unit-test fixture；替换 credential、secret、token、signature、authorization material、个人与租户数据、会话/消息/事件标识和敏感业务内容，同时保留字段名、嵌套结构、数据类型、可选字段、discriminator 与稳定的跨字段引用关系
+- [ ] 8.5 为每个 Provider 的每条适用签名验证或 payload 解密路径建立独立测试项；先脱敏真实明文与 metadata，再用测试专用 signing/verification 或 encryption/decryption material 重新生成 cryptographically valid wire fixture，不得提交或复用真实 Provider secret/key
+- [ ] 8.6 使用 Provider 官方 SDK、独立 reference implementation 或与被测 verifier/decrypter 分离的测试辅助工具生成签名和密文；保留 Provider 要求的 byte canonicalization、headers、timestamp、nonce/IV 与 sign/decrypt ordering，禁止由被测实现自行生成期望值
+- [ ] 8.7 为每个 Provider 的每条适用路径添加额外单元测试和 receiver-level 集成测试，覆盖合法签名/密文成功、payload/header/ciphertext 篡改失败、错误 secret/key 失败，以及适用时的 timestamp window、replay protection、nonce/IV 与处理顺序；断言所有认证或解密失败均不产生 `AuthenticatedEvent` 或 business-processable inbox record
+- [ ] 8.8 为 fixture 记录不含敏感信息的 Provider、operation/event type、Provider API/event version 与采集日期；添加敏感数据扫描和 schema/shape 校验，防止 fixture 泄漏数据或因脱敏破坏真实 wire contract
+- [ ] 8.9 为矩阵中的每个适用项添加基于真实脱敏 fixture 的单元测试，覆盖 concrete Provider serializer/parser、response mapping、event decoding 与 handler outcome，不能只测试共享 contract
+- [ ] 8.10 为矩阵中的每个适用项添加通过 concrete Provider adapter 或 event receiver boundary 的集成测试；至少一次集成执行必须使用真实 Provider 调用或真实 Provider 事件，fixture replay 或 mock server 不能作为唯一的集成证据
+- [ ] 8.11 任一适用矩阵项缺少单元测试、集成测试、真实调用/事件处理证据、脱敏后的真实 payload fixture 或适用的验签/解密测试时，保持该实现项未完成；代表性 Provider 覆盖和手工构造 payload 不得关闭另一个 Provider 的矩阵项
+
+## 9. 验证变更
+
+- [ ] 9.1 为所有改动的 provider contracts、adapters、receivers 与 decoders 运行聚焦的 backend test suites
+- [ ] 9.2 为所有改动模块运行仓库要求的 backend formatting、linting 与 type checks
+- [ ] 9.3 校验最终 OpenSpec change，并确认实现证据满足四份 capability specs 中属于 Provider 适配范围的每个 scenario
+- [ ] 9.4 审计最终覆盖矩阵，确认所有适用项都有四类独立证据、所有适用认证路径都有额外的验签/解密测试、所有 fixture 已完成敏感数据扫描，且没有用 fixture replay 替代真实 Provider 执行
