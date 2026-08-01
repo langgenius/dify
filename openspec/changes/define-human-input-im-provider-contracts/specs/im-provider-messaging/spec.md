@@ -8,15 +8,15 @@ A Provider message destination MUST mean only the Provider-specific addressing f
 - **THEN** Messaging MUST use that destination without refreshing or searching the Provider directory and MUST NOT treat it as business recipient state
 
 ### Requirement: Basic Messaging MUST be implemented by every initial Provider
-Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing destination-specific reachability testing and `send_link_message`. An identity reachability test MUST test one concrete Provider message destination and MUST NOT be implemented as an alias of Integration credential, tenant, permission or event transport diagnostics. `send_link_message` MUST remain available as the Request URL fallback even when the Provider also implements Dynamic Card Messaging.
+Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST implement Basic Messaging containing destination-specific reachability testing and `send_text`. An identity reachability test MUST test one concrete Provider message destination and MUST NOT be implemented as an alias of Integration credential, tenant, permission or event transport diagnostics. `send_text` MUST remain available as the non-card fallback even when the Provider also implements Dynamic Card Messaging.
 
 #### Scenario: Credentials are valid but one message destination is unreachable
 - **WHEN** Integration diagnostics succeed but the selected Provider identity cannot receive a message
 - **THEN** the reachability test MUST return a destination-specific failure without changing Integration health facts
 
-#### Scenario: Card-capable Provider uses the link fallback
-- **WHEN** Slack, Feishu/Lark or Microsoft Teams receives a Request URL Delivery Endpoint
-- **THEN** its Basic Messaging implementation MUST invoke `send_link_message` without requiring Dynamic Card Messaging
+#### Scenario: Card-capable Provider uses the text fallback
+- **WHEN** Slack, Feishu/Lark or Microsoft Teams receives a non-card fallback Delivery Endpoint
+- **THEN** its Basic Messaging implementation MUST invoke `send_text` without requiring Dynamic Card Messaging
 
 ### Requirement: Dynamic Card Messaging MUST group assessment, send and update
 Slack, Feishu/Lark and Microsoft Teams MUST additionally implement Dynamic Card Messaging containing side-effect-free card representability assessment, `send_card` and card update. DingTalk and WeCom MUST NOT be required to implement dummy dynamic-card methods. The assessment MUST determine whether one normalized interactive-card intent can be represented without changing its form semantics. Its result MUST contain a boolean representability decision and an optional human-readable reason. Dify MUST branch only on the boolean; the reason MUST be used only for logging and MUST NOT be parsed as a stable error code or business decision input. The assessment MUST NOT accept a Delivery Endpoint or Provider message destination, send a Provider message, read the Directory or create a Delivery.
@@ -27,29 +27,33 @@ Slack, Feishu/Lark and Microsoft Teams MUST additionally implement Dynamic Card 
 
 #### Scenario: Provider cannot represent one form control
 - **WHEN** Dify assesses a normalized interactive-card intent containing a control such as file upload that the target Provider cannot represent
-- **THEN** Messaging MUST return false with a human-readable reason without sending a message, and Dify MUST create a Request URL link Delivery Endpoint based only on the false result
+- **THEN** Messaging MUST return false with a human-readable reason without sending a message, and Dify MUST create a text fallback Delivery Endpoint based only on the false result
 
 ### Requirement: Basic and Dynamic Card Messaging MUST expose distinct send operations
-Basic Messaging MUST expose `send_link_message`; Dynamic Card Messaging MUST expose `send_card`. They MUST remain distinct operations rather than one send operation that selects a channel. `send_link_message` MUST receive a Provider message destination separately from link-message content; that content MUST contain rendered notification content and Request URL. `send_card` MUST receive a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context. The message content models MUST NOT contain the destination, and neither operation may accept Human Input task, grant or ORM objects.
+Basic Messaging MUST expose `send_text`; Dynamic Card Messaging MUST expose `send_card`. They MUST remain distinct operations rather than one send operation that selects a channel. `send_text` MUST receive a Provider message destination separately from one fully rendered CommonMark message body. The upstream renderer or notification application service MUST complete URL interpolation before `send_text` is called, MUST use CommonMark as the markdown definition, and MUST NOT emit custom tags. The Provider adapter MUST decide how to render that CommonMark on the target platform and, if the markdown formatting is not expressible there, MUST fall back to sending the same content as plain text instead of rejecting the send. `send_card` MUST receive a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context. The message content models MUST NOT contain the destination, and neither operation may accept Human Input task, grant or ORM objects.
 
 #### Scenario: DingTalk or WeCom notification is sent
 - **WHEN** Human Input targets DingTalk or WeCom in the initial scope
-- **THEN** the Request URL Delivery Endpoint MUST invoke `send_link_message` and MUST NOT require dynamic interactive-card rendering
+- **THEN** the text fallback Delivery Endpoint MUST invoke `send_text` and MUST NOT require dynamic interactive-card rendering
 
 #### Scenario: Card-compatible form targets Slack, Feishu/Lark or Teams
 - **WHEN** card representability assessment returns true and Dify creates a card Delivery Endpoint for Slack, Feishu/Lark or Microsoft Teams
 - **THEN** that endpoint MUST invoke `send_card` and MUST preserve the opaque interaction context required for a later card submission
 
 #### Scenario: Form requires file upload
-- **WHEN** card representability assessment returns false and Dify creates a Request URL link Delivery Endpoint
-- **THEN** that endpoint MUST invoke `send_link_message` so the user can complete the form on the Dify web page
+- **WHEN** card representability assessment returns false and Dify creates a text fallback Delivery Endpoint
+- **THEN** that endpoint MUST invoke `send_text` with one fully rendered CommonMark body that already embeds the Request URL needed to complete the form on the Dify web page
+
+#### Scenario: Provider cannot express markdown formatting
+- **WHEN** `send_text` receives valid CommonMark content whose markdown formatting cannot be represented on the target Provider surface
+- **THEN** the Provider adapter MUST still send the message by degrading that content to plain text instead of rejecting the operation
 
 #### Scenario: Card renderer rejects the endpoint input
 - **WHEN** `send_card` receives an intent that its concrete renderer cannot render despite the earlier endpoint selection
-- **THEN** it MUST raise an explicit card-rendering exception before issuing any Provider send call and MUST NOT invoke `send_link_message` or silently change the Delivery Endpoint channel
+- **THEN** it MUST raise an explicit card-rendering exception before issuing any Provider send call and MUST NOT invoke `send_text` or silently change the Delivery Endpoint channel
 
 ### Requirement: Successful send MUST return Provider acceptance and an exact message reference
-Messaging MUST distinguish Provider acceptance from end-user delivery. A successful `send_link_message` or `send_card` MUST return the available Provider acceptance facts and a Provider-discriminated message reference sufficient to target that exact message later. The shared contract MUST NOT assume one scalar `card_id` format.
+Messaging MUST distinguish Provider acceptance from end-user delivery. A successful `send_text` or `send_card` MUST return the available Provider acceptance facts and a Provider-discriminated message reference sufficient to target that exact message later. The shared contract MUST NOT assume one scalar `card_id` format.
 
 #### Scenario: Slack and Feishu return different message locators
 - **WHEN** Slack identifies a message by channel/timestamp and Feishu/Lark identifies it by message ID
@@ -60,7 +64,7 @@ Messaging MUST distinguish Provider acceptance from end-user delivery. A success
 - **THEN** the delivery attempt MUST record Provider acceptance and MUST NOT be marked delivered
 
 ### Requirement: One delivery attempt MUST make at most one side-effecting send call
-Binding test, `send_link_message` and `send_card` MUST NOT automatically replay a side-effecting Provider call after timeout, connection reset, rate limit or ambiguous failure. One attempt MUST issue at most one such call.
+Binding test, `send_text` and `send_card` MUST NOT automatically replay a side-effecting Provider call after timeout, connection reset, rate limit or ambiguous failure. One attempt MUST issue at most one such call.
 
 #### Scenario: Send result is ambiguous
 - **WHEN** Dify cannot determine whether a timed-out Provider request created the message

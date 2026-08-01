@@ -1,6 +1,6 @@
 ## Context
 
-Human Input 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 完成 Integration 校验、通讯录身份读取、链接或卡片投递、卡片交互接入和卡片状态更新。现有 Dify specs 已经拥有 Contact matching、IM identity/binding、recipient resolution、submission authorization 与 workflow resume 语义；本设计只补齐这些业务能力依赖的 Provider-facing contract，不重新定义业务模型。
+Human Input 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 完成 Integration 校验、通讯录身份读取、文本或卡片投递、卡片交互接入和卡片状态更新。现有 Dify specs 已经拥有 Contact matching、IM identity/binding、recipient resolution、submission authorization 与 workflow resume 语义；本设计只补齐这些业务能力依赖的 Provider-facing contract，不重新定义业务模型。
 
 Explore 阶段确认了以下约束：
 
@@ -16,11 +16,11 @@ Explore 阶段确认了以下约束：
 
 | Provider | `WEBHOOK` | `STREAM` | Supported Human Input notification forms |
 | --- | --- | --- | --- |
-| Slack | Supported | Supported | Request URL link message; interactive card |
-| Feishu/Lark | Supported | Supported | Request URL link message; interactive card |
-| DingTalk | Supported | Supported | Request URL link message |
-| WeCom | Supported | Not supported | Request URL link message |
-| Microsoft Teams | Supported | Not supported | Request URL link message; interactive card |
+| Slack | Supported | Supported | Text fallback; interactive card |
+| Feishu/Lark | Supported | Supported | Text fallback; interactive card |
+| DingTalk | Supported | Supported | Text fallback |
+| WeCom | Supported | Not supported | Text fallback |
+| Microsoft Teams | Supported | Not supported | Text fallback; interactive card |
 
 Deployment event transport mode 由部署配置注入，Integration 管理 API 只读展示 effective mode。具体 SaaS、CE、EE 到 mode 的映射不在当前材料中，本设计不自行补充。
 
@@ -53,14 +53,14 @@ Dify 按已确认的操作定义独立 contract；concrete Provider composition 
 | --- | --- | --- |
 | Integration diagnostics | 校验 credentials；识别 provider tenant；检查基础权限；检查 effective deployment transport compatibility | Slack、Feishu/Lark、DingTalk 都需要凭据、tenant 与接入方式校验 |
 | Directory reader | 读取当前 provider tenant 的完整用户身份快照 | Slack 分页读取 workspace users；Feishu/Lark 分页/按部门读取 tenant users；DingTalk、WeCom 与 Microsoft Teams 读取各自组织内的 tenant users；五个 Provider 都在完成各自分页或组织层级遍历后产出完整快照 |
-| Basic Messaging | 测试一个 Provider message destination；向该 destination 发送 Request URL link message；返回 Provider acceptance 与精确 message reference | Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 都必须支持，且 link message 是动态卡片不可用时的基础 fallback |
+| Basic Messaging | 测试一个 Provider message destination；向该 destination 发送文本消息；返回 Provider acceptance 与精确 message reference | Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 都必须支持，且文本消息是动态卡片不可用时的基础 fallback |
 | Dynamic Card Messaging | 无副作用地评估 normalized interactive-card intent；发送交互卡片；返回精确 card/message reference；更新同一张已发送卡片 | Slack、Feishu/Lark 与 Microsoft Teams 都共享 assessment、card send 和基于原消息 reference 的 card update 生命周期 |
 | Event adapter | 认证一次 Provider delivery 并产出 `AuthenticatedEvent`；把卡片事件解码为 `CardSubmissionRequest` | Slack、Feishu/Lark 与 DingTalk 都同时支持 Webhook/stream 事件并在认证后产出相同 `AuthenticatedEvent` 语义；Slack、Feishu/Lark、Teams 都产生卡片 action submission |
 
 Alternatives considered:
 
 - One `IMProvider` interface containing every method. Rejected because it would make directory, transport and messaging lifecycle appear semantically coupled and force unsupported dynamic-card methods onto DingTalk and WeCom.
-- One capability per Messaging method. Rejected because destination reachability and link fallback are jointly required for every Provider, while card assessment, send and update form one optional lifecycle shared by the three card-capable Providers.
+- One capability per Messaging method. Rejected because destination reachability and text fallback are jointly required for every Provider, while card assessment, send and update form one optional lifecycle shared by the three card-capable Providers.
 - One generic `execute(operation, payload)` entry point. Rejected because it discards type safety and hides the exact operations this change is meant to stabilize.
 
 ### 2. Keep provider inputs business-independent
@@ -95,22 +95,22 @@ Alternatives considered:
 
 操作不同不意味着每个操作都需要独立 capability。Messaging 按支持义务和共同生命周期分成两组：
 
-- Basic Messaging 是 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 的必备 contract，承载 destination-specific reachability test 与 `send_link_message`。没有这两个操作，Provider 不能完成基础接入和 Request URL fallback。
+- Basic Messaging 是 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 的必备 contract，承载 destination-specific reachability test 与 `send_text`。没有这两个操作，Provider 不能完成基础接入和文本 fallback。
 - Dynamic Card Messaging 是 Slack、Feishu/Lark 与 Microsoft Teams 额外实现的可选 contract，承载 card representability assessment、`send_card` 与 card update。DingTalk、WeCom 不实现该 contract，也不提供返回 unsupported 的 dummy methods。
 
 各操作的具体输入与副作用仍保持清晰：
 
 - Card representability assessment 在 Delivery Endpoint 创建前接收 normalized interactive-card intent，不接收 Provider message destination 或 Delivery Endpoint，也不发送消息、读取 Directory 或创建 Delivery。它只返回是否可表示以及可选的人类可读 reason；Dify 只根据 boolean 选择 endpoint，reason 仅用于日志，不是稳定错误码，也不得参与业务判断。
-- `send_link_message` receives a Provider message destination separately from rendered notification text and Request URL, and returns Provider acceptance plus an exact message reference when available. 它属于所有 Provider 的基础能力，不只是 DingTalk、WeCom 的首选通知形式。
+- `send_text` receives a Provider message destination separately from one fully rendered CommonMark message body and returns Provider acceptance plus an exact message reference when available. The upstream renderer or notification application service owns URL interpolation and produces CommonMark without custom tags. The Provider adapter owns Provider-specific markdown rendering and, when that rendering is not expressible on the target platform, MUST fall back to sending the same content as plain text rather than rejecting the operation.
 - `send_card` receives a Provider message destination separately from normalized interactive-card intent, actions and opaque interaction context, and returns Provider acceptance plus an exact card/message reference.
 - Card update receives the exact reference returned by the corresponding `send_card` attempt and replaces that same Provider message/card; stale reference、authorship 或 permission failure 作为 typed update failure 返回。
 - Provider-specific representability and rendering rules stay inside the concrete adapter; the shared contract does not define a universal Provider card JSON or control matrix.
 
 `send_card` 与 card update 不拆成两个 capability。三个初始 card-capable Provider 都支持基于发送结果更新原卡片：Slack 使用 `channel + ts` 调用 `chat.update`，Feishu/Lark 使用 `message_id` 更新已发送的消息卡片，Microsoft Teams 使用 `activity_id + conversation context` 更新 Adaptive Card activity。这一共同生命周期足以让两项操作属于同一个可选 Dynamic Card Messaging contract；它不保证每次 update 都成功，因此精确 reference 与独立 update outcome 仍然保留。
 
-Slack、Feishu/Lark 与 Microsoft Teams 支持交互卡片并不意味着所有 Human Input Form Content 都必须渲染成卡片。Human Input notification application service 先从 Form Content 生成 normalized interactive-card intent，再调用目标 Provider 的 card representability assessment：结果为 true 时创建 card Delivery Endpoint，结果为 false 时创建 Request URL link Delivery Endpoint。发送阶段根据已创建 endpoint 直接调用对应的 `send_card` 或 `send_link_message`，不再次选择渠道。
+Slack、Feishu/Lark 与 Microsoft Teams 支持交互卡片并不意味着所有 Human Input Form Content 都必须渲染成卡片。Human Input notification application service 先从 Form Content 生成 normalized interactive-card intent，再调用目标 Provider 的 card representability assessment：结果为 true 时创建 card Delivery Endpoint，结果为 false 时创建文本 fallback Delivery Endpoint。发送阶段根据已创建 endpoint 直接调用对应的 `send_card` 或 `send_text`，不再次选择渠道。
 
-`send_card` 不要求调用方在发送时重复执行 assessment。Concrete renderer 收到无法渲染或与 card Delivery Endpoint 不一致的 intent 时，必须在任何 Provider send call 之前抛出明确的 card-rendering exception，且不得自行改调 `send_link_message`；是否改用链接必须通过创建新的相应 Delivery Endpoint 表达。该 exception 表示调用契约被破坏，不是 assessment 的正常 false 结果，也不是 ambiguous send outcome。Provider adapter 不负责读取 Human Input task 或决定 endpoint 类型。
+`send_card` 不要求调用方在发送时重复执行 assessment。Concrete renderer 收到无法渲染或与 card Delivery Endpoint 不一致的 intent 时，必须在任何 Provider send call 之前抛出明确的 card-rendering exception，且不得自行改调 `send_text`；是否改用文本 fallback 必须通过创建新的相应 Delivery Endpoint 表达。该 exception 表示调用契约被破坏，不是 assessment 的正常 false 结果，也不是 ambiguous send outcome。Provider adapter 不负责读取 Human Input task 或决定 endpoint 类型。
 
 A Provider message reference is a discriminated Provider-owned locator, not one assumed global `card_id`. Dify persists it without reinterpreting Slack channel/timestamp, Feishu message ID or Teams conversation/activity identity as interchangeable scalars.
 
@@ -122,7 +122,7 @@ Microsoft Teams may require a conversation reference or app installation state i
 
 ### 5. One outbound attempt makes at most one side-effecting send call
 
-For binding test, `send_link_message` and `send_card`, one Dify delivery attempt invokes the side-effecting Provider operation at most once. Timeout, connection reset, 429 or other ambiguous failure MUST NOT trigger automatic replay.
+For binding test, `send_text` and `send_card`, one Dify delivery attempt invokes the side-effecting Provider operation at most once. Timeout, connection reset, 429 or other ambiguous failure MUST NOT trigger automatic replay.
 
 The attempt records the returned safe Provider diagnostic and whether the result is known or ambiguous. A user-triggered Resend creates a new delivery attempt using then-current credentials and binding; it is not an automatic retry of the original attempt.
 

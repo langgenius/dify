@@ -8,7 +8,7 @@
 ## 2. 添加窄 Provider contracts 与显式组合
 
 - [ ] 2.1 为 Integration diagnostics、完整目录快照、card representability result、各 Provider 的 message destination、Provider-discriminated message reference、`AuthenticatedEvent` 和 `CardSubmissionRequest` 添加 typed Provider-facing values；message destination 只承载发起新消息所需的 Provider-specific addressing facts，且不接收 Contact、binding、grant、task、workflow 或 ORM objects
-- [ ] 2.2 添加 Integration diagnostics、Directory reading、Basic Messaging、Dynamic Card Messaging 与 Event decoding 的 typed contracts；Basic Messaging 组合 destination reachability 与 `send_link_message`，Dynamic Card Messaging 组合 card representability assessment、`send_card` 与 card update
+- [ ] 2.2 添加 Integration diagnostics、Directory reading、Basic Messaging、Dynamic Card Messaging 与 Event decoding 的 typed contracts；Basic Messaging 组合 destination reachability 与 `send_text`，Dynamic Card Messaging 组合 card representability assessment、`send_card` 与 card update
 - [ ] 2.3 让 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 显式实现 Basic Messaging，仅让 Slack、Feishu/Lark 与 Microsoft Teams 额外实现 Dynamic Card Messaging，同时允许 credentials、SDK clients、tenant configuration 和 token caches 作为共享实现细节
 - [ ] 2.4 添加边界测试，证明不存在 umbrella `IMProvider`、one-capability-per-method、generic operation dispatcher、runtime capability registry、DingTalk/WeCom dummy card methods 或 Messaging 对 Directory 的隐式依赖
 
@@ -28,14 +28,14 @@
 
 ## 5. 实现必备基础 Messaging 与可选动态卡片 Messaging
 
-- [ ] 5.1 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 实现必备 Basic Messaging：destination-specific reachability test 与 `send_link_message`；两者接收各 Provider 尝试新消息所需的 message destination，不读取 Directory、不把 destination 当作业务 recipient state，且 reachability result 不改变 Integration diagnostics
-- [ ] 5.2 完成任务 1.4 后，为 Slack 与 Feishu/Lark 实现可选 Dynamic Card Messaging：无副作用的 card representability assessment、`send_card` 与基于精确 reference 的 card update；renderer mismatch 必须在任何 Provider send call 前抛出明确 exception，且不改调 `send_link_message`
+- [ ] 5.1 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 实现必备 Basic Messaging：destination-specific reachability test 与 `send_text`；`send_text` 接收业务层产出的 CommonMark 正文（不支持 custom tags），Provider adapter 负责本平台渲染或在不可表达时降级为纯文本发送；两者都不读取 Directory、不把 destination 当作业务 recipient state，且 reachability result 不改变 Integration diagnostics
+- [ ] 5.2 完成任务 1.4 后，为 Slack 与 Feishu/Lark 实现可选 Dynamic Card Messaging：无副作用的 card representability assessment、`send_card` 与基于精确 reference 的 card update；renderer mismatch 必须在任何 Provider send call 前抛出明确 exception，且不改调 `send_text`
 - [ ] 5.3 完成任务 1.3 与 1.4 后，使用已确认的 Provider message destination lifecycle 为 Microsoft Teams 实现同一组 Dynamic Card Messaging operations
 - [ ] 5.4 验证 DingTalk 与 WeCom 只实现 Basic Messaging，不包含 dummy card assessment、send 或 update methods
-- [ ] 5.5 验证 Slack、Feishu/Lark 与 Microsoft Teams 的 Request URL Delivery Endpoint 始终可以使用 Basic Messaging 的 `send_link_message` 作为基础 fallback
+- [ ] 5.5 验证 Slack、Feishu/Lark 与 Microsoft Teams 的文本 fallback Delivery Endpoint 始终可以使用 Basic Messaging 的 `send_text` 作为基础 fallback
 - [ ] 5.6 在 Dynamic Card Messaging 内使用 Slack `channel + ts`、Feishu/Lark `message_id`、Microsoft Teams `activity_id + conversation context` 更新一个精确 prior card instance，并独立于 earlier send outcome 报告 typed update outcome
-- [ ] 5.7 强制每个 binding-test、`send_link_message` 或 `send_card` attempt 最多调用一次 side-effecting Provider operation；保留 timeout、rate-limit、connection-reset 和其他 ambiguous outcomes，不自动 retry
-- [ ] 5.8 添加针对五个 Provider 的 Basic Messaging、三种 card-capable Provider 的完整 Dynamic Card Messaging、card-capable Provider 的 link fallback、DingTalk/WeCom 无 dummy card methods、assessment 无副作用、boolean-only branching、free-form reason 仅记日志、无 Directory send、card-rendering exception 发生在 Provider call 前且不降级、精确 message locators、stale-reference update、Provider acceptance semantics、ambiguous outcomes 和 one-call-per-attempt invariant 的测试
+- [ ] 5.7 强制每个 binding-test、`send_text` 或 `send_card` attempt 最多调用一次 side-effecting Provider operation；保留 timeout、rate-limit、connection-reset 和其他 ambiguous outcomes，不自动 retry
+- [ ] 5.8 添加针对五个 Provider 的 Basic Messaging、三种 card-capable Provider 的完整 Dynamic Card Messaging、card-capable Provider 的文本 fallback、DingTalk/WeCom 无 dummy card methods、assessment 无副作用、boolean-only branching、free-form reason 仅记日志、无 Directory send、CommonMark/no-custom-tag 输入、不可表达 markdown 时降级纯文本、card-rendering exception 发生在 Provider call 前且不降级、精确 message locators、stale-reference update、Provider acceptance semantics、ambiguous outcomes 和 one-call-per-attempt invariant 的测试
 
 ## 6. 实现 authenticated event 接入、inbox ACK 与 card decoding
 
