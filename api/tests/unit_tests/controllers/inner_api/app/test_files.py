@@ -19,6 +19,7 @@ def _identity() -> dict[str, str]:
         "app_id": "app-1",
         "environment_id": "environment-1",
         "subject_id": "subject-1",
+        "subject_type": "anonymous",
     }
 
 
@@ -28,7 +29,8 @@ def _identity_headers() -> dict[str, str]:
         "X-AppDeploy-Tenant-ID": identity["tenant_id"],
         "X-AppDeploy-App-ID": identity["app_id"],
         "X-AppDeploy-Environment-ID": identity["environment_id"],
-        "X-AppDeploy-End-User-ID": identity["subject_id"],
+        "X-AppDeploy-Subject-ID": identity["subject_id"],
+        "X-AppDeploy-Subject-Type": identity["subject_type"],
     }
 
 
@@ -65,10 +67,15 @@ def test_app_deploy_identity_uses_environment_scoped_end_user_session(app: Flask
     app_query = session.scalar.call_args_list[0].args[0]
     assert app_query._for_update_arg is not None
     assert "end_users.type" in str(end_user_query)
+    assert "end_users.tenant_id" in str(end_user_query)
+    assert "end_users.app_id" in str(end_user_query)
     session.add.assert_not_called()
 
 
-def test_app_deploy_identity_does_not_reuse_another_end_user_type(app: Flask) -> None:
+@pytest.mark.parametrize(("subject_type", "is_anonymous"), [("anonymous", True), ("account", False)])
+def test_app_deploy_identity_does_not_reuse_another_end_user_type(
+    app: Flask, subject_type: str, is_anonymous: bool
+) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     session = MagicMock()
     session.__enter__.return_value = session
@@ -82,10 +89,12 @@ def test_app_deploy_identity_does_not_reuse_another_end_user_type(app: Flask) ->
         patch.object(module, "Session", return_value=session),
     ):
         with app.test_request_context():
-            end_user = module._get_end_user(module.AppDeployFileIdentity.model_validate(_identity()))
+            identity = module.AppDeployFileIdentity.model_validate({**_identity(), "subject_type": subject_type})
+            end_user = module._get_end_user(identity)
 
     assert end_user.type == EndUserType.APP_DEPLOY
-    assert end_user.session_id == "appdeploy:environment-1:subject-1"
+    assert end_user.session_id == f"appdeploy:environment-1:{subject_type}:subject-1"
+    assert end_user._is_anonymous is is_anonymous
     session.add.assert_called_once_with(end_user)
 
 
@@ -96,10 +105,25 @@ def test_app_deploy_identity_ignores_request_body_identity_fields(app: Flask) ->
             "app_id": "browser-app",
             "environment_id": "browser-environment",
             "subject_id": "browser-subject",
+            "subject_type": "account",
         },
         headers=_identity_headers(),
     ):
         assert module._identity_from_request() == module.AppDeployFileIdentity.model_validate(_identity())
+
+
+def test_app_deploy_session_identity_separates_subject_types() -> None:
+    assert module._session_identity(
+        environment_id="environment-1", subject_type="anonymous", subject_id="subject-1"
+    ) != module._session_identity(environment_id="environment-1", subject_type="account", subject_id="subject-1")
+
+
+def test_app_deploy_session_identity_separates_environments() -> None:
+    assert module._session_identity(
+        environment_id="environment-1", subject_type="anonymous", subject_id="subject-1"
+    ) != module._session_identity(
+        environment_id="environment-2", subject_type="anonymous", subject_id="subject-1"
+    )
 
 
 def test_resolve_preserves_order_and_reuses_signed_urls(app: Flask) -> None:
@@ -194,6 +218,26 @@ def test_upload_reuses_file_service_with_end_user_owner(app: Flask) -> None:
 
     assert status_code == 201
     assert file_service.upload_file.call_args.kwargs["user"] is end_user
+
+
+def test_upload_rejects_content_larger_than_the_global_maximum(app: Flask) -> None:
+    api = module.EnterpriseAppDeployFileUpload()
+    handler = inspect.unwrap(api.post)
+
+    with (
+        patch.object(module, "_get_end_user", return_value=SimpleNamespace(id="end-user-1")),
+        patch.object(module, "_max_upload_bytes", return_value=3),
+        patch.object(module, "FileService") as file_service,
+    ):
+        with app.test_request_context(
+            method="POST",
+            data={"file": (BytesIO(b"1234"), "upload.txt", "text/plain")},
+            headers=_identity_headers(),
+        ):
+            with pytest.raises(module.FileTooLargeError):
+                handler(api)
+
+    file_service.assert_not_called()
 
 
 @pytest.mark.parametrize("headers", [{}, {"Content-Length": "1"}])

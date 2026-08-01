@@ -7,6 +7,8 @@ session, so Dify remains the sole owner of upload records and stored objects.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import httpx
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl
@@ -48,6 +50,7 @@ class AppDeployFileIdentity(BaseModel):
     app_id: str
     environment_id: str
     subject_id: str
+    subject_type: Literal["anonymous", "account"]
 
 
 class AppDeployRemoteFileUploadPayload(BaseModel):
@@ -68,8 +71,8 @@ register_schema_models(
 )
 
 
-def _session_identity(*, environment_id: str, subject_id: str) -> str:
-    return f"appdeploy:{environment_id}:{subject_id}"
+def _session_identity(*, environment_id: str, subject_type: str, subject_id: str) -> str:
+    return f"appdeploy:{environment_id}:{subject_type}:{subject_id}"
 
 
 def _identity_from_request() -> AppDeployFileIdentity:
@@ -80,13 +83,18 @@ def _identity_from_request() -> AppDeployFileIdentity:
             "tenant_id": request.headers.get("X-AppDeploy-Tenant-ID"),
             "app_id": request.headers.get("X-AppDeploy-App-ID"),
             "environment_id": request.headers.get("X-AppDeploy-Environment-ID"),
-            "subject_id": request.headers.get("X-AppDeploy-End-User-ID"),
+            "subject_id": request.headers.get("X-AppDeploy-Subject-ID"),
+            "subject_type": request.headers.get("X-AppDeploy-Subject-Type"),
         }
     )
 
 
 def _get_end_user(identity: AppDeployFileIdentity) -> EndUser:
-    session_id = _session_identity(environment_id=identity.environment_id, subject_id=identity.subject_id)
+    session_id = _session_identity(
+        environment_id=identity.environment_id,
+        subject_type=identity.subject_type,
+        subject_id=identity.subject_id,
+    )
     with Session(db.engine, expire_on_commit=False) as session, session.begin():
         app_model = session.scalar(
             select(App).where(App.id == identity.app_id, App.tenant_id == identity.tenant_id).with_for_update().limit(1)
@@ -109,7 +117,7 @@ def _get_end_user(identity: AppDeployFileIdentity) -> EndUser:
                 tenant_id=identity.tenant_id,
                 app_id=identity.app_id,
                 type=EndUserType.APP_DEPLOY,
-                is_anonymous=False,
+                is_anonymous=identity.subject_type == "anonymous",
                 session_id=session_id,
                 external_user_id=session_id,
             )
@@ -195,10 +203,15 @@ class EnterpriseAppDeployFileUpload(Resource):
         if not file.filename:
             raise FilenameNotExistsError()
 
+        max_upload_bytes = _max_upload_bytes()
+        content = file.stream.read(max_upload_bytes + 1)
+        if len(content) > max_upload_bytes:
+            raise FileTooLargeError()
+
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.stream.read(),
+                content=content,
                 mimetype=file.mimetype,
                 user=end_user,
             )
