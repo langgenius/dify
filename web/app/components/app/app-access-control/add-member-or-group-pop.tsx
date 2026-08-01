@@ -297,19 +297,23 @@ function GroupItem({ group, subject }: GroupItemProps) {
   return (
     <div className="flex items-center gap-2 rounded-lg hover:bg-state-base-hover">
       <BaseItem subject={subject}>
-        <SelectionBox checked={isChecked} />
-        <ComboboxItemText className="flex grow items-center px-0">
-          <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-            <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-              <RiOrganizationChart
-                className="h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
-                aria-hidden="true"
-              />
-            </div>
-          </div>
-          <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
-          <span className="system-xs-regular text-text-tertiary">{group.groupSize}</span>
-        </ComboboxItemText>
+        {(selected) => (
+          <>
+            <SelectionBox checked={selected} />
+            <ComboboxItemText className="flex grow items-center px-0">
+              <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+                <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
+                  <RiOrganizationChart
+                    className="h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
+              <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
+              <span className="system-xs-regular text-text-tertiary">{group.groupSize}</span>
+            </ComboboxItemText>
+          </>
+        )}
       </BaseItem>
       <Button
         size="small"
@@ -335,25 +339,27 @@ type MemberItemProps = {
 function MemberItem({ member, subject }: MemberItemProps) {
   const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
-  const specificMembers = useAccessControlStore((s) => s.specificMembers)
-  const isChecked = specificMembers.some((m) => m.id === member.id)
   return (
     <BaseItem subject={subject} className="pr-3">
-      <SelectionBox checked={isChecked} />
-      <ComboboxItemText className="flex grow items-center px-0">
-        <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-          <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-            <Avatar size="xxs" avatar={null} name={member.name} />
-          </div>
-        </div>
-        <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
-        {currentUser.email === member.email && (
-          <span className="system-xs-regular text-text-tertiary">
-            ({t(($) => $.you, { ns: 'common' })})
-          </span>
-        )}
-      </ComboboxItemText>
-      <span className="system-xs-regular text-text-quaternary">{member.email}</span>
+      {(selected) => (
+        <>
+          <SelectionBox checked={selected} />
+          <ComboboxItemText className="flex grow items-center px-0">
+            <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+              <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
+                <Avatar size="xxs" avatar={null} name={member.name} />
+              </div>
+            </div>
+            <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
+            {currentUser.email === member.email && (
+              <span className="system-xs-regular text-text-tertiary">
+                ({t(($) => $.you, { ns: 'common' })})
+              </span>
+            )}
+          </ComboboxItemText>
+          <span className="system-xs-regular text-text-quaternary">{member.email}</span>
+        </>
+      )}
     </BaseItem>
   )
 }
@@ -361,7 +367,7 @@ function MemberItem({ member, subject }: MemberItemProps) {
 type BaseItemProps = {
   className?: string
   subject: Subject
-  children: React.ReactNode
+  children: (selected: boolean) => React.ReactNode
 }
 function BaseItem({ children, className, subject }: BaseItemProps) {
   return (
@@ -371,9 +377,12 @@ function BaseItem({ children, className, subject }: BaseItemProps) {
         'mx-0 flex min-h-8 grow grid-cols-none items-center gap-2 rounded-lg p-1 pl-2',
         className,
       )}
-    >
-      {children}
-    </ComboboxItem>
+      render={(props, state) => (
+        <div {...props} className={props.className}>
+          {children(state.selected)}
+        </div>
+      )}
+    />
   )
 }
 

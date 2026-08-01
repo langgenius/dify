@@ -109,15 +109,33 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       onClick,
       render,
     }: {
-      children: React.ReactNode
+      children?: React.ReactNode
       onClick?: React.MouseEventHandler<HTMLElement>
-      render?: React.ReactElement
+      render?:
+        | React.ReactElement
+        | ((
+            props: React.HTMLAttributes<HTMLElement> & {
+              'data-testid'?: string
+              'data-popup-open'?: string
+            },
+            state: { open: boolean },
+          ) => React.ReactElement)
     }) => {
       const { isOpen, setOpen } = useDropdownMenuContext()
       const handleClick = (e: React.MouseEvent<HTMLElement>) => {
         onClick?.(e)
         setOpen(!isOpen)
       }
+
+      if (typeof render === 'function')
+        return render(
+          {
+            'data-testid': 'dropdown-trigger',
+            'data-popup-open': isOpen ? '' : undefined,
+            onClick: handleClick,
+          },
+          { open: isOpen },
+        )
 
       if (render)
         return React.cloneElement(
@@ -243,10 +261,12 @@ describe('InstallPluginDropdown', () => {
     expect(screen.getByTestId('arrow-down-icon')).toHaveClass('ml-1', 'size-4')
     expect(trigger).toHaveClass('custom-trigger')
     expect(trigger).toHaveAttribute('data-variant', 'primary')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     fireEvent.click(trigger)
 
     expect(trigger).toHaveClass('custom-open')
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByTestId('dropdown-content')).toHaveClass('custom-popup')
   })
 

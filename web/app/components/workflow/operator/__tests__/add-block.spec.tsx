@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
+import type { BlockSelectorProps } from '../../block-selector'
 import { act, screen, waitFor } from '@testing-library/react'
 import { FlowType } from '@/types/common'
 import { createNode } from '../../__tests__/fixtures'
@@ -14,13 +15,14 @@ type BlockSelectorMockProps = {
   placement: string
   sideOffset: number
   alignOffset: number
-  trigger: (open: boolean) => ReactNode
+  trigger: NonNullable<BlockSelectorProps['trigger']>
   popupClassName: string
   availableBlocksTypes: BlockEnum[]
   showStartTab: boolean
   isolateKeyboardEvents?: boolean
   defaultActiveTab?: unknown
 }
+type BlockSelectorTriggerRender = Exclude<NonNullable<BlockSelectorProps['trigger']>, ReactElement>
 
 const {
   mockHandlePaneContextmenuCancel,
@@ -67,6 +69,7 @@ const {
 let latestBlockSelectorProps: BlockSelectorMockProps | null = null
 let mockNodesReadOnly = false
 let mockIsChatMode = false
+let mockTooltipOpen = false
 let mockFlowType: FlowType = FlowType.appFlow
 
 const mockAvailableNextBlocks = [BlockEnum.Answer, BlockEnum.Code]
@@ -84,7 +87,14 @@ const mockNodesMetaDataMap: Partial<Record<BlockEnum, { defaultValue: Record<str
 vi.mock('@/app/components/workflow/block-selector', () => ({
   default: (props: BlockSelectorMockProps) => {
     latestBlockSelectorProps = props
-    return <div data-testid="block-selector">{props.trigger(props.open)}</div>
+    const renderProps = {
+      'data-popup-open': mockTooltipOpen ? '' : undefined,
+    } as unknown as Parameters<BlockSelectorTriggerRender>[0]
+    const trigger =
+      typeof props.trigger === 'function'
+        ? props.trigger(renderProps, { open: props.open, disabled: props.disabled })
+        : props.trigger
+    return <div data-testid="block-selector">{trigger}</div>
   },
 }))
 
@@ -143,6 +153,7 @@ describe('AddBlock', () => {
     latestBlockSelectorProps = null
     mockNodesReadOnly = false
     mockIsChatMode = false
+    mockTooltipOpen = false
     mockFlowType = FlowType.appFlow
   })
 
@@ -215,6 +226,22 @@ describe('AddBlock', () => {
 
       trigger.focus()
       expect(trigger).toHaveFocus()
+    })
+
+    it('should derive the active trigger style from Popover state instead of a composed Tooltip attribute', () => {
+      mockTooltipOpen = true
+
+      renderWithReactFlow([])
+
+      const trigger = screen.getByRole('button')
+      expect(trigger).toHaveAttribute('data-popup-open')
+      expect(trigger).not.toHaveClass('bg-state-accent-active')
+
+      act(() => {
+        latestBlockSelectorProps?.onOpenChange(true)
+      })
+
+      expect(trigger).toHaveClass('bg-state-accent-active')
     })
   })
 

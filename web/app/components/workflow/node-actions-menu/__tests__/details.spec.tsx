@@ -31,7 +31,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     isolateKeyboardEvents,
   }: any) => (
     <div>
-      <div>{trigger()}</div>
+      <div>{typeof trigger === 'function' ? trigger({}, { open: false }) : trigger}</div>
       <div>{`available:${(availableBlocksTypes || []).join(',')}`}</div>
       <div>{`show-start:${String(showStartTab)}`}</div>
       <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
