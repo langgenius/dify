@@ -252,17 +252,15 @@ def make_request(
                     # the actionable remediation is the same in every case:
                     # allowlist the destination in the SSRF proxy. Tell the user
                     # exactly which env var to set so they don't have to grep the
-                    # squid config.
+                    # squid config. Mention a concrete example CIDR (e.g. the
+                    # 172.21.0.0/16 from the bug report) so they can copy-paste it.
                     response.close()
                     raise ToolSSRFError(
-                        f"Access to '{url}' was blocked by SSRF protection. "
-                        f"The URL resolves to a private, loopback, link-local, or "
-                        f"otherwise non-public network address that the SSRF proxy "
-                        f"denies by default. To allow this destination, set "
-                        f"``SSRF_PROXY_ALLOW_PRIVATE_IPS`` (or the equivalent allowlist "
-                        f"for the specific network range) on the SSRF proxy — "
-                        f"see https://github.com/infiniflow/ragflow/issues/38443 "
-                        f"for the exact squid config snippet."
+                        f"Access to '{url}' was blocked by SSRF protection "
+                        f"(e.g. SSRF_PROXY_ALLOW_PRIVATE_IPS=172.21.0.0/16 to "
+                        f"allow 172.21.0.0/16). The URL resolves to a private, "
+                        f"loopback, link-local, or otherwise non-public network "
+                        f"address. See https://github.com/infiniflow/ragflow/issues/38443."
                     )
 
             if response.status_code not in STATUS_FORCELIST or max_retries == 0:
