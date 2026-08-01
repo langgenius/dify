@@ -44,44 +44,6 @@
       "count": 3
     }
   },
-  "web/__mocks__/base-ui-dropdown-menu.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx_a11y/interactive-supports-focus": {
-      "count": 2
-    },
-    "jsx_a11y/role-has-required-aria-props": {
-      "count": 1
-    }
-  },
-  "web/__mocks__/base-ui-popover.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/__mocks__/base-ui-select.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/interactive-supports-focus": {
-      "count": 1
-    },
-    "jsx_a11y/role-has-required-aria-props": {
-      "count": 2
-    }
-  },
-  "web/__mocks__/base-ui-tooltip.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/__mocks__/zustand.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -565,11 +527,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/debug/__tests__/chat-user-input.spec.tsx": {
-    "jsx_a11y/role-has-required-aria-props": {
       "count": 1
     }
   },
@@ -3420,14 +3377,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/reference-setting-modal/auto-update-setting/__tests__/tool-picker.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/tool-picker.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -3762,14 +3711,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/labels/__tests__/selector.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/labels/filter.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4021,14 +3962,6 @@
   },
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/__tests__/agent-strategy-selector.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -5241,11 +5174,6 @@
       "count": 2
     },
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/note-node/note-editor/toolbar/__tests__/operator.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
       "count": 1
     }
   },
