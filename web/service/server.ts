@@ -2,7 +2,7 @@ import type { consoleRouterContract } from '@dify/contracts/api/console/router.g
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import { createORPCClient, onError } from '@orpc/client'
+import { createORPCClient, onError, ORPCError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { cache } from 'react'
@@ -78,6 +78,10 @@ function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerCons
     },
     interceptors: [
       onError((error) => {
+        // Anonymous SSR requests (e.g. public pages, health probes) are expected to hit
+        // this 401 — it's handled by callers, so logging it just spams the container output.
+        if (error instanceof ORPCError && error.status === 401) return
+
         console.error(error)
       }),
     ],

@@ -102,4 +102,50 @@ describe('server console oRPC client', () => {
     expect(request.headers.get('cookie')).toBe('access_token=abc; csrf_token=csrf-token')
     expect(request.headers.get('X-CSRF-Token')).toBe('csrf-token')
   })
+
+  it('should not log expected 401 Unauthorized responses from anonymous SSR requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 'unauthorized', message: 'Unauthorized' }), {
+        status: 401,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { getServerConsoleClientContext, serverConsoleClient } = await import('../server')
+
+    await expect(
+      serverConsoleClient.systemFeatures.get(undefined, {
+        context: await getServerConsoleClientContext(),
+      }),
+    ).rejects.toThrow()
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('should still log unexpected non-401 errors from SSR requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 'internal_server_error', message: 'boom' }), {
+        status: 500,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { getServerConsoleClientContext, serverConsoleClient } = await import('../server')
+
+    await expect(
+      serverConsoleClient.systemFeatures.get(undefined, {
+        context: await getServerConsoleClientContext(),
+      }),
+    ).rejects.toThrow()
+
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+    consoleErrorSpy.mockRestore()
+  })
 })
