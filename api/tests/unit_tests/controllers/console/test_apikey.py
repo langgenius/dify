@@ -65,13 +65,14 @@ def test_list_api_keys_uses_injected_session_and_tenant_id() -> None:
 
     session.execute.assert_called_once()
     session.scalars.assert_called_once()
-    # reveal-once: the list returns a masked token, never the full secret
+    # App/agent key lists keep their existing behavior (full token); reveal-once masking
+    # is scoped to dataset keys only.
     assert result == {
         "data": [
             {
                 "id": "key-1",
                 "type": "app",
-                "token": "app-1...cdef",
+                "token": "app-1234567890abcdef",
                 "dataset_ids": [],
                 "last_used_at": None,
                 "created_at": None,

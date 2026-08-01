@@ -126,7 +126,9 @@ class BaseApiKeyListResource(Resource):
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
             )
         ).all()
-        return build_masked_api_key_list(keys)
+        # App and agent keys keep their existing (unmasked) list behavior; reveal-once
+        # masking is scoped to dataset keys, which build their list in datasets.py.
+        return ApiKeyList(data=[ApiKeyItem.model_validate(key, from_attributes=True) for key in keys])
 
     @edit_permission_required
     @with_session
