@@ -40,7 +40,7 @@
 - [ ] 5.5 验证 Slack、Feishu/Lark 与 Microsoft Teams 的 Request URL Delivery Endpoint 始终可以使用 Basic Messaging 的 `send_link_message` 作为基础 fallback
 - [ ] 5.6 将 Provider acceptance 与 end-user delivery 分开持久化，并为每次 accepted send 保留精确的 Provider-discriminated message reference
 - [ ] 5.7 在 Dynamic Card Messaging 内使用 Slack `channel + ts`、Feishu/Lark `message_id`、Microsoft Teams `activity_id + conversation context` 更新一个精确 prior card instance，并独立于 earlier send outcome 报告 typed update outcome
-- [ ] 5.8 在 Human Input application service 中按 Contact 创建独立 card instance 与 opaque Contact handle；即使多个 Contacts 映射到同一个 Provider identity/destination 也保持独立 reference，并由 Dify 选择实例、逐个 fan out update 和记录 per-Delivery outcome
+- [ ] 5.8 在 Human Input application service 中按 card Delivery Endpoint 创建或寻址独立 card instance 与 opaque endpoint-scoped handle / access token；即使多个 Contacts 映射到同一个 Provider identity/destination 也保持独立 reference，并由 Dify 选择实例、逐个 fan out update 和记录 per-Delivery outcome
 - [ ] 5.9 强制每个 binding-test、`send_link_message` 或 `send_card` attempt 最多调用一次 side-effecting Provider operation；保留 timeout、rate-limit、connection-reset 和其他 ambiguous outcomes，不自动 retry；人工 Resend 建模为新 attempt
 - [ ] 5.10 添加针对五个 Provider 的 Basic Messaging、三种 card-capable Provider 的完整 Dynamic Card Messaging、card-capable Provider 的 link fallback、DingTalk/WeCom 无 dummy card methods、assessment 无副作用、boolean-only branching、free-form reason 仅记日志、无 Directory send、card-rendering exception 发生在 Provider call 前且不降级、同一 Provider identity/destination 下的多 Contact card isolation、Dify-owned update fan-out、精确 message locators、stale-reference update、Provider acceptance semantics、ambiguous outcomes 和 one-call-per-attempt invariant 的测试
 
