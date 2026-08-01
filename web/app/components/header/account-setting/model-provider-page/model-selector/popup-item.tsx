@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { DefaultModel, Model, ModelItem } from '../declarations'
 import type { ModelSelectorModelPredicate } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -26,14 +26,12 @@ export type ModelSelectorPreviewPayload = {
   modelItem: ModelItem
 }
 
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
-
 type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
-  previewCardHandle: PreviewCardHandle
+  previewCardHandle: PreviewCardHandle<ModelSelectorPreviewPayload>
   onPreviewCardClose: () => void
   onHide: () => void
 }

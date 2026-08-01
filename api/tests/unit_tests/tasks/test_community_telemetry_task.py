@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
@@ -25,16 +26,16 @@ def test_send_community_telemetry_heartbeat_reports_with_a_database_session(monk
     report_heartbeat.assert_called_once_with(session=session)
 
 
-def test_send_community_telemetry_heartbeat_swallows_report_errors(monkeypatch: pytest.MonkeyPatch):
+def test_send_community_telemetry_heartbeat_swallows_report_errors(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     _configure_task_session(monkeypatch)
     monkeypatch.setattr(
         community_telemetry_task.CommunityTelemetryService,
         "report_heartbeat",
         Mock(side_effect=RuntimeError("telemetry unavailable")),
     )
-    log_debug = Mock()
-    monkeypatch.setattr(community_telemetry_task.logger, "debug", log_debug)
-
+    caplog.set_level(logging.DEBUG, logger=community_telemetry_task.logger.name)
     community_telemetry_task.send_community_telemetry_heartbeat.run()
 
-    log_debug.assert_called_once_with("Failed to process community telemetry heartbeat", exc_info=True)
+    assert "Failed to process community telemetry heartbeat" in caplog.text

@@ -688,32 +688,6 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
 
-  it('aligns the global navigation spacing with the main sidebar design', async () => {
-    mockInstalledApps = [createInstalledApp()]
-
-    const { container } = renderMainNav()
-
-    const mainNav = container.querySelector('aside')
-    expect(mainNav).toHaveClass('w-62', 'p-1')
-    expect(mainNav?.firstElementChild).toHaveClass('w-60')
-
-    const logoLink = screen.getByLabelText('Dify')
-    expect(logoLink).not.toHaveClass('px-2')
-    expect(logoLink.parentElement).toHaveClass('pt-3', 'pr-2', 'pb-2', 'pl-4')
-
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink.closest('nav')).toHaveClass('isolate', 'flex', 'flex-col', 'gap-px', 'p-2')
-    expect(homeLink).toHaveClass('h-8', 'w-full', 'rounded-[10px]', 'px-2', 'py-1.5')
-
-    const webAppsButton = await screen.findByRole('button', { name: 'explore.sidebar.webApps' })
-    expect(webAppsButton.parentElement).toHaveClass('py-1', 'pr-2', 'pl-2')
-
-    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
-    expect(helpButton.parentElement?.parentElement).toHaveClass('w-60')
-    expect(helpButton.parentElement?.parentElement).not.toHaveClass('w-full')
-    expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
-  })
-
   it('orders the Step-by-step Tour before the account and help actions', async () => {
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
 

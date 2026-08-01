@@ -3,41 +3,41 @@ from typing import cast
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.orm import Session
+import yaml
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission
 from models import App, AppMode
-from models.model import AppModelConfig, IconType
+from models.model import AppModelConfig, AppModelConfigDict, IconType
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_import_app_rejects_oversized_yaml_content_before_parsing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 3)
-    service = AppDslService(session=sqlite_session)
+    service = AppDslService(session=unbound_session)
     account = Mock(current_tenant_id="tenant-1")
 
     result = service.import_app(account=account, import_mode="yaml-content", yaml_content="你你")
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "File size exceeds the limit of 10MB"
-    assert not sqlite_session.in_transaction()
+    assert not unbound_session.in_transaction()
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 1)
     response = Mock()
     response.raise_for_status.return_value = None
     response.content = b"\xff\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
-    service = AppDslService(session=sqlite_session)
+    service = AppDslService(session=unbound_session)
 
     result = service.import_app(
         account=Mock(current_tenant_id="tenant-1"),
@@ -47,18 +47,17 @@ def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "File size exceeds the limit of 10MB"
-    assert not sqlite_session.in_transaction()
+    assert not unbound_session.in_transaction()
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     response = Mock()
     response.raise_for_status.return_value = None
     response.content = b"\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
-    service = AppDslService(session=sqlite_session)
+    service = AppDslService(session=unbound_session)
 
     result = service.import_app(
         account=Mock(current_tenant_id="tenant-1"),
@@ -68,19 +67,27 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
 
     assert result.status == ImportStatus.FAILED
     assert "utf-8" in result.error
-    assert not sqlite_session.in_transaction()
+    assert not unbound_session.in_transaction()
 
 
-def test_create_or_update_app_loads_existing_model_config_with_service_session() -> None:
-    session = Mock()
-    session.get.return_value = Mock()
-    service = AppDslService(session=session)
+def test_create_or_update_app_loads_existing_model_config_with_service_session(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as arrange_session:
+        app_model_config = AppModelConfig(
+            app_id="11111111-1111-1111-1111-111111111111",
+            created_by="22222222-2222-2222-2222-222222222222",
+            updated_by="22222222-2222-2222-2222-222222222222",
+        )
+        arrange_session.add(app_model_config)
+        arrange_session.commit()
+        app_model_config_id = app_model_config.id
     app = cast(
         App,
         SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            app_model_config_id="config-1",
+            id="11111111-1111-1111-1111-111111111111",
+            tenant_id="33333333-3333-3333-3333-333333333333",
+            app_model_config_id=app_model_config_id,
             name="Existing app",
             description="",
             icon_type=IconType.EMOJI,
@@ -89,29 +96,39 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session()
         ),
     )
 
-    result = service._create_or_update_app(
-        app=app,
-        data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
-        account=Mock(id="account-1"),
-    )
+    with sqlite_session_factory() as service_session:
+        result = AppDslService(session=service_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
+            account=Mock(id="account-1"),
+        )
 
-    assert result is app
-    session.get.assert_called_once_with(AppModelConfig, "config-1")
+        assert result is app
+        assert app.app_model_config_id == app_model_config_id
+        configs = list(service_session.scalars(select(AppModelConfig)))
+        assert [config.id for config in configs] == [app_model_config_id]
 
 
-def test_create_or_update_app_flushes_new_model_config_before_signal(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_or_update_app_flushes_new_model_config_before_signal(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     events: list[str] = []
-    session = Mock()
-    session.add.side_effect = lambda _config: events.append("add")
-    session.flush.side_effect = lambda: events.append("flush")
+
+    def record_flush(_session: Session, _flush_context: object) -> None:
+        events.append("flush")
+
+    def record_signal(*_args: object, **_kwargs: object) -> None:
+        events.append("signal")
+
+    event.listen(sqlite_session, "after_flush", record_flush)
     signal = Mock()
-    signal.send.side_effect = lambda *_args, **_kwargs: events.append("signal")
+    signal.send.side_effect = record_signal
     monkeypatch.setattr("services.app_dsl_service.app_model_config_was_updated", signal)
     app = cast(
         App,
         SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
+            id="11111111-1111-1111-1111-111111111111",
+            tenant_id="33333333-3333-3333-3333-333333333333",
             app_model_config_id=None,
             name="Existing app",
             description="",
@@ -121,25 +138,37 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(monkeypatch
         ),
     )
 
-    AppDslService(session=session)._create_or_update_app(
-        app=app,
-        data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
-        account=Mock(id="account-1"),
-    )
+    try:
+        AppDslService(session=sqlite_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
+            account=Mock(id="22222222-2222-2222-2222-222222222222"),
+        )
+    finally:
+        event.remove(sqlite_session, "after_flush", record_flush)
 
-    assert events == ["add", "flush", "signal"]
-    assert signal.send.call_args.kwargs["session"] is session
-    session.commit.assert_not_called()
+    assert events == ["flush", "signal"]
+    assert signal.send.call_args.kwargs["session"] is sqlite_session
+    assert app.app_model_config_id is not None
+    assert sqlite_session.get(AppModelConfig, app.app_model_config_id) is not None
+    assert sqlite_session.in_transaction()
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    model_config = {"model": {}, "agent_mode": {"tools": []}}
-    app_model_config = Mock(app_id="app-1")
-    app_model_config.to_dict.return_value = model_config
-    session = Mock()
-    session.get.return_value = app_model_config
+    model_config = cast(AppModelConfigDict, {"model": {}, "agent_mode": {"tools": []}})
+    with sqlite_session_factory() as arrange_session:
+        app_model_config = AppModelConfig(
+            app_id="11111111-1111-1111-1111-111111111111",
+            created_by="22222222-2222-2222-2222-222222222222",
+            updated_by="22222222-2222-2222-2222-222222222222",
+        ).from_model_config_dict(model_config)
+        arrange_session.add(app_model_config)
+        arrange_session.commit()
+        app_model_config_id = app_model_config.id
+        app_id = app_model_config.app_id
     annotation_reply = {"enabled": False}
     load_annotation_reply_config = Mock(return_value=annotation_reply)
     monkeypatch.setattr("services.app_dsl_service.load_annotation_reply_config", load_annotation_reply_config)
@@ -150,9 +179,9 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
     app = cast(
         App,
         SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            app_model_config_id="config-1",
+            id="11111111-1111-1111-1111-111111111111",
+            tenant_id="33333333-3333-3333-3333-333333333333",
+            app_model_config_id=app_model_config_id,
             mode=AppMode.CHAT,
             name="Chat app",
             icon_type=IconType.EMOJI,
@@ -163,11 +192,13 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
         ),
     )
 
-    AppDslService.export_dsl(app, session=session)
+    with sqlite_session_factory() as service_session:
+        exported = AppDslService.export_dsl(app, session=service_session)
 
-    session.get.assert_called_once_with(AppModelConfig, "config-1")
-    load_annotation_reply_config.assert_called_once_with(session, "app-1")
-    app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        export_data = yaml.safe_load(exported)
+        assert export_data["model_config"]["model"] == {}
+        assert export_data["model_config"]["annotation_reply"] == annotation_reply
+        load_annotation_reply_config.assert_called_once_with(service_session, app_id)
 
 
 def test_ensure_agent_manage_permission_noops_when_rbac_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -198,11 +229,12 @@ def test_ensure_agent_manage_permission_rejects_without_agent_manage(monkeypatch
         AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
 
 
-def test_create_or_update_app_gates_agent_mode_before_creation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_or_update_app_gates_agent_mode_before_creation(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
-    session = Mock()
-    service = AppDslService(session=session)
+    service = AppDslService(session=unbound_session)
 
     with pytest.raises(NoPermissionError):
         service._create_or_update_app(
@@ -211,14 +243,15 @@ def test_create_or_update_app_gates_agent_mode_before_creation(monkeypatch: pyte
             account=Mock(id="account-1", current_tenant_id="tenant-1"),
         )
 
-    session.add.assert_not_called()
-    session.flush.assert_not_called()
+    assert not unbound_session.in_transaction()
 
 
-def test_import_app_reraises_permission_denial_instead_of_failed_result(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_import_app_reraises_permission_denial_instead_of_failed_result(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
-    service = AppDslService(session=Mock())
+    service = AppDslService(session=unbound_session)
 
     with pytest.raises(NoPermissionError):
         service.import_app(
@@ -226,3 +259,5 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(monkeypa
             import_mode="yaml-content",
             yaml_content="app:\n  mode: agent\n  name: Denied agent\n",
         )
+
+    assert not unbound_session.in_transaction()

@@ -39,7 +39,7 @@ const Operator = ({
         onMouseDown={(event) => {
           event.preventDefault()
           event.stopPropagation()
-          ;(event as typeof event & { preventBaseUIHandler?: () => void }).preventBaseUIHandler?.()
+          event.preventBaseUIHandler()
           setOpen((prev) => !prev)
         }}
         onClick={(event) => event.stopPropagation()}

@@ -19,12 +19,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('../../../../base/chat/embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: () => ({
-    primaryColor: '#1890ff',
-  }),
-}))
-
 vi.mock('@/app/components/base/chat/embedded-chatbot/chat-wrapper', () => ({
   default: () => <div data-testid="chat-wrapper">ChatWrapper</div>,
 }))

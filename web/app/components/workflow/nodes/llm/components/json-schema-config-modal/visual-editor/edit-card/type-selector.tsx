@@ -8,6 +8,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { RiCheckLine } from '@remixicon/react'
 import { useState } from 'react'
@@ -43,7 +44,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect, po
           open && 'bg-state-base-hover',
         )}
       >
-        <span className="system-xs-medium text-text-tertiary">{currentValue}</span>
+        <SelectValue className="system-xs-medium text-text-tertiary" />
       </SelectTrigger>
       <SelectContent
         sideOffset={4}
@@ -54,7 +55,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect, po
         {items.map((item) => {
           const isSelected = item.value === currentValue
           return (
-            <SelectItem
+            <SelectItem<Type | ArrayType>
               key={item.value}
               value={item.value}
               className="gap-x-1 rounded-lg px-2 py-1"

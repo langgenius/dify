@@ -3,7 +3,13 @@
 import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -129,46 +135,48 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
         </div>
       </header>
 
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        slotClassNames={{
-          content: 'px-6 pt-2 pb-3',
-        }}
-      >
-        {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
-        {shouldShowError && (
-          <AgentMonitoringState>
-            <div className="flex items-center justify-center gap-2">
-              <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => {
-                  void statisticsQuery.refetch()
-                }}
-              >
-                {tCommon(($) => $['operation.retry'])}
-              </Button>
-            </div>
-          </AgentMonitoringState>
-        )}
-        {!shouldShowInitialSkeleton && !shouldShowError && (
-          <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-            {metrics.map((metric) => (
-              <AgentMonitoringChart
-                key={metric.id}
-                titleKey={metric.titleKey}
-                explanationKey={metric.explanationKey}
-                summaryValue={metric.summaryValue}
-                rows={metric.rows}
-                chartType={metric.chartType}
-                valueKey={metric.valueKey}
-                unitKey={metric.unitKey}
-                yMaxWhenEmpty={metric.yMaxWhenEmpty}
-              />
-            ))}
-          </div>
-        )}
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaViewport>
+          <ScrollAreaContent className="px-6 pt-2 pb-3">
+            {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
+            {shouldShowError && (
+              <AgentMonitoringState>
+                <div className="flex items-center justify-center gap-2">
+                  <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => {
+                      void statisticsQuery.refetch()
+                    }}
+                  >
+                    {tCommon(($) => $['operation.retry'])}
+                  </Button>
+                </div>
+              </AgentMonitoringState>
+            )}
+            {!shouldShowInitialSkeleton && !shouldShowError && (
+              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                {metrics.map((metric) => (
+                  <AgentMonitoringChart
+                    key={metric.id}
+                    titleKey={metric.titleKey}
+                    explanationKey={metric.explanationKey}
+                    summaryValue={metric.summaryValue}
+                    rows={metric.rows}
+                    chartType={metric.chartType}
+                    valueKey={metric.valueKey}
+                    unitKey={metric.unitKey}
+                    yMaxWhenEmpty={metric.yMaxWhenEmpty}
+                  />
+                ))}
+              </div>
+            )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </AgentDetailSectionSurface>
   )
@@ -211,7 +219,7 @@ function AgentMonitoringSourceFilter({
       <div className="relative w-fit max-w-full">
         <SelectTrigger
           aria-label={triggerLabel}
-          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
+          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
         >
           <span className="flex min-w-0 grow items-center gap-1 text-left">
             <span className="flex min-w-0 grow items-center gap-1 px-1">
