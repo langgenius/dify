@@ -101,10 +101,7 @@ class EnterpriseExecutionBindingBackend:
 
             data_plane = await self._create_data_plane(sandbox_id)
             result = await run_shellctl_control_command(
-                ShellctlCommands(
-                    client=data_plane.client,
-                    session_id=ShellctlSessionID.from_handle(sandbox_id)
-                ),
+                ShellctlCommands(client=data_plane.client, session_id=ShellctlSessionID.from_handle(sandbox_id)),
                 "\n".join(
                     [
                         "set -eu",
@@ -136,8 +133,7 @@ class EnterpriseExecutionBindingBackend:
         try:
             data_plane = await self._create_data_plane(binding_ref)
             validation_commands = ShellctlCommands(
-                client=data_plane.client,
-                session_id=ShellctlSessionID.from_handle(binding_ref)
+                client=data_plane.client, session_id=ShellctlSessionID.from_handle(binding_ref)
             )
             result = await run_shellctl_control_command(
                 validation_commands,

@@ -277,7 +277,7 @@ class ShellctlSessionID(str):
     """Shellctl session id identifies a logical session within the sandbox. This
     is useful when multiple sessions share one shellctl container in local mode.
 
-    When shellctl runs in isolated sandboxes, each sandbox serves only one session 
+    When shellctl runs in isolated sandboxes, each sandbox serves only one session
     so this becomes trivial.
     """
 

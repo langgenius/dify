@@ -1290,4 +1290,3 @@ def test_redact_output_applies_per_agent_config_patterns() -> None:
             assert "token: ***" in output
 
     asyncio.run(scenario())
-

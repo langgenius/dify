@@ -417,7 +417,9 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
 
     asyncio.run(scenario())
 
-    assert client.run_calls == [_RunCall(script="pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5, session_id="test-session")]
+    assert client.run_calls == [
+        _RunCall(script="pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5, session_id="test-session")
+    ]
     assert client.wait_calls == [
         ("run-job", 3, 4.0),
         ("run-job", 6, 0.0),
