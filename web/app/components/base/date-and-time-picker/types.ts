@@ -13,8 +13,8 @@ export enum Period {
 }
 
 type PopoverTriggerRender = Exclude<NonNullable<PopoverTriggerProps['render']>, React.ReactElement>
-export type TriggerRenderProps = Parameters<PopoverTriggerRender>[0]
-export type TriggerState = Parameters<PopoverTriggerRender>[1]
+type TriggerRenderProps = Parameters<PopoverTriggerRender>[0]
+type TriggerState = Parameters<PopoverTriggerRender>[1]
 
 export type TriggerProps = {
   value: Dayjs | undefined
