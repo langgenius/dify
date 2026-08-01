@@ -2888,37 +2888,46 @@ class TestTokenGeneratorsDoNotShareState:
     """
 
     GENERATORS = [
-        ("generate_reset_password_token", {"email": "a@example.com"}),
-        ("generate_email_register_token", {"email": "a@example.com"}),
-        ("generate_owner_transfer_token", {"email": "a@example.com"}),
+        pytest.param(
+            AccountService.generate_reset_password_token,
+            id="generate_reset_password_token",
+        ),
+        pytest.param(
+            AccountService.generate_email_register_token,
+            id="generate_email_register_token",
+        ),
+        pytest.param(
+            AccountService.generate_owner_transfer_token,
+            id="generate_owner_transfer_token",
+        ),
     ]
+    EMAIL = "a@example.com"
 
-    @pytest.mark.parametrize(("method_name", "kwargs"), GENERATORS, ids=[g[0] for g in GENERATORS])
-    def test_default_argument_is_not_mutated(self, method_name: str, kwargs: dict[str, str]) -> None:
-        method = getattr(AccountService, method_name)
-        defaults = method.__func__.__defaults__ if hasattr(method, "__func__") else method.__defaults__
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_default_argument_is_not_mutated(self, generator) -> None:
+        defaults = generator.__func__.__defaults__
 
         with patch("services.account_service.TokenManager.generate_token", return_value="tok"):
-            getattr(AccountService, method_name)(code="111111", **kwargs)
+            generator(email=self.EMAIL, code="111111")
 
         for default in defaults or ():
             assert default != {"code": "111111"}, (
-                f"{method_name} mutated its default argument; the dict is shared across calls"
+                f"{generator.__name__} mutated its default argument; the dict is shared across calls"
             )
 
-    @pytest.mark.parametrize(("method_name", "kwargs"), GENERATORS, ids=[g[0] for g in GENERATORS])
-    def test_caller_dict_is_not_mutated(self, method_name: str, kwargs: dict[str, str]) -> None:
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_caller_dict_is_not_mutated(self, generator) -> None:
         caller_data = {"origin": "web"}
 
         with patch("services.account_service.TokenManager.generate_token", return_value="tok"):
-            getattr(AccountService, method_name)(code="222222", additional_data=caller_data, **kwargs)
+            generator(email=self.EMAIL, code="222222", additional_data=caller_data)
 
-        assert caller_data == {"origin": "web"}, f"{method_name} wrote into the caller's dict"
+        assert caller_data == {"origin": "web"}, f"{generator.__name__} wrote into the caller's dict"
 
-    @pytest.mark.parametrize(("method_name", "kwargs"), GENERATORS, ids=[g[0] for g in GENERATORS])
-    def test_code_still_reaches_the_token(self, method_name: str, kwargs: dict[str, str]) -> None:
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_code_still_reaches_the_token(self, generator) -> None:
         with patch("services.account_service.TokenManager.generate_token", return_value="tok") as generate:
-            code, token = getattr(AccountService, method_name)(code="333333", **kwargs)
+            code, token = generator(email=self.EMAIL, code="333333")
 
         assert code == "333333"
         assert token == "tok"
