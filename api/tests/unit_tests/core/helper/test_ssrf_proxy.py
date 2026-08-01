@@ -387,7 +387,7 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
     exactly which env var to set. Pre-#38443 the message had no remediation
     hint, so users hit dead ends when their internal API was blocked."""
     mock_client = MagicMock()
-    mock_client.request.return_value = _build_squid_blocked_response(status_code=403)
+    mock_client.send.return_value = _build_squid_blocked_response(status_code=403)
     mock_get_client.return_value = mock_client
 
     with pytest.raises(ToolSSRFError) as exc_info:
@@ -412,7 +412,7 @@ def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) ->
     response.status_code = 401
     # Server header absent — only Via identifies Squid.
     response.headers = {"server": "", "via": "1.1 squid (squid/4.10)"}
-    mock_client.request.return_value = response
+    mock_client.send.return_value = response
     mock_get_client.return_value = mock_client
 
     with pytest.raises(ToolSSRFError) as exc_info:
@@ -432,7 +432,7 @@ def test_non_squid_403_is_not_treated_as_ssrf_block(mock_get_client) -> None:
     response = MagicMock()
     response.status_code = 403
     response.headers = {"server": "nginx/1.21", "via": "1.1 varnish"}
-    mock_client.request.return_value = response
+    mock_client.send.return_value = response
     mock_get_client.return_value = mock_client
 
     # Should return the response, not raise.
@@ -446,7 +446,7 @@ def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client) 
     message must still point at SSRF_PROXY_ALLOW_PRIVATE_IPS, not just say
     "private address" without telling the user what to do."""
     mock_client = MagicMock()
-    mock_client.request.return_value = _build_squid_blocked_response(status_code=403)
+    mock_client.send.return_value = _build_squid_blocked_response(status_code=403)
     mock_get_client.return_value = mock_client
 
     with pytest.raises(ToolSSRFError) as exc_info:
