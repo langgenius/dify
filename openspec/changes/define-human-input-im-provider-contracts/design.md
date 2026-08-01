@@ -11,7 +11,6 @@ Explore 阶段确认了以下约束：
 - Directory reader 只有在读完所有 Provider pages/nodes 并构建完整内存快照后才能返回成功；失败时不进入 reconciliation。
 - Delivery Endpoint 创建前由 Provider Messaging 对 normalized interactive-card intent 做无副作用的 representability assessment；endpoint 一旦选定，发送阶段不再重新选择链接或卡片渠道。
 - Side-effecting send 本期不自动重试；ambiguous outcome 保留为一次 attempt 的失败事实，人工 Resend 仍是新的显式 attempt。
-- 删除 Integration 只清理本地凭据和 active bindings/overrides、停止本地 stream connection，并阻止新的 inbound event 进入业务处理；不撤销远端授权或修改 Provider 配置。
 
 `STREAM` 在本设计中指 Provider 通过长生命周期 WebSocket/stream connection 投递事件，不是另一个与长连接并列的模式。Provider transport 支持矩阵为：
 
@@ -30,7 +29,7 @@ Deployment event transport mode 由部署配置注入，Integration 管理 API �
 **Goals:**
 
 - 给 Dify application services 提供稳定、业务无关且按真实操作拆分的 Provider contract。
-- 让 Directory、基础 Messaging、Dynamic Card Messaging、Integration diagnostics 与 Event ingestion 可以独立实现、测试和替换。
+- 让 Directory、基础 Messaging、Dynamic Card Messaging、Integration diagnostics 与 Event ingestion adapters 可以独立实现、测试和替换。
 - 明确 Provider-specific 数据停留在哪一层，以及何时可以转为 Provider-neutral facts。
 - 保持 Human Input 的 Contact、binding、grant、authorization 和 workflow 语义在现有 Dify boundary 内。
 - 为每个共享 contract 提供至少两个 Provider 的共同语义证据。
@@ -42,6 +41,7 @@ Deployment event transport mode 由部署配置注入，Integration 管理 API �
 - 不实现群聊通知、自动 directory sync、delivery receipt、自动发送重试或远端 Integration revoke/unsubscribe。
 - 不设计连接配额、leader election、滚动部署、connection drain 或多连接负载策略。
 - 不改变 Contact admission、recipient resolution、submission authorization、first-success 或 workflow resume 规则。
+- 不实现 caller switch、Delivery Endpoint selection、Integration local deletion 或 Human Input business handoff；但 Dify-owned inbox table/repository、ACK-before-business-processing 与 inbox worker claim 保留在本 change 范围内。
 
 ## Decisions
 
