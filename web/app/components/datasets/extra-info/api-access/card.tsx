@@ -54,7 +54,7 @@ const Card = ({ apiEnabled }: CardProps) => {
   )
 
   return (
-    <div className="w-[208px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
+    <div className="w-52 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
       <div className="p-1">
         <div className="p-2">
           <div className="mb-1.5 flex justify-between">
@@ -88,7 +88,7 @@ const Card = ({ apiEnabled }: CardProps) => {
           href={apiReferenceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
+          className="flex h-8 items-center space-x-1.75 rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
         >
           <span className="i-ri-book-open-line size-3.5 shrink-0" />
           <div className="grow truncate system-sm-regular">

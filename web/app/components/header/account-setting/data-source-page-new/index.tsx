@@ -109,7 +109,7 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
       }
     >
       <SearchInput
-        className="w-[200px]"
+        className="w-50"
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}

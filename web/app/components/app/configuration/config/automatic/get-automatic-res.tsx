@@ -297,11 +297,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-285 max-w-none! min-w-285 overflow-hidden! border-none p-0! text-left align-middle">
         <div className="flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
-              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>
+              <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
                 {t(($) => $['generate.title'], { ns: 'appDebug' })}
               </div>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
@@ -323,7 +323,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {isBasicMode && (
               <div className="mt-4">
                 <div className="flex items-center">
-                  <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">
+                  <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
                     {t(($) => $['generate.tryIt'], { ns: 'appDebug' })}
                   </div>
                   <div

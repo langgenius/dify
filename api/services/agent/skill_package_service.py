@@ -26,8 +26,9 @@ import zlib
 import yaml
 from pydantic import BaseModel
 
+from configs import dify_config
+
 # Bounds — generous but finite so a hostile upload can't exhaust memory/disk.
-_MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 _MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
 _MAX_SKILL_MD_BYTES = 1 * 1024 * 1024
 _MAX_ENTRIES = 5000
@@ -127,7 +128,8 @@ class SkillPackageService:
         self._check_extension(filename)
         if not content:
             raise SkillPackageError("empty_archive", "skill archive is empty", status_code=400)
-        if len(content) > _MAX_ARCHIVE_BYTES:
+        max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+        if len(content) > max_archive_bytes:
             raise SkillPackageError("archive_too_large", "skill archive exceeds size limit", status_code=400)
 
         try:

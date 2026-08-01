@@ -32,42 +32,52 @@ vi.mock('@langgenius/dify-ui/textarea', () => ({
   Textarea: MockTextarea,
 }))
 
-vi.mock('@langgenius/dify-ui/select', () => ({
-  Select: ({
-    children,
-    onValueChange,
-  }: {
-    children: React.ReactNode
-    onValueChange: (value: string | null) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        data-testid="content-item-select-root"
-        onClick={() => onValueChange('alice')}
-      >
-        select alice
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+  const SelectValueContext = React.createContext<string | null>(null)
+
+  return {
+    Select: ({
+      children,
+      onValueChange,
+      value,
+    }: {
+      children: React.ReactNode
+      onValueChange: (value: string | null) => void
+      value: string | null
+    }) => (
+      <SelectValueContext value={value}>
+        <div>
+          <button
+            type="button"
+            data-testid="content-item-select-root"
+            onClick={() => onValueChange('alice')}
+          >
+            select alice
+          </button>
+          <button
+            type="button"
+            data-testid="content-item-select-null"
+            onClick={() => onValueChange(null)}
+          >
+            select null
+          </button>
+          {children}
+        </div>
+      </SelectValueContext>
+    ),
+    SelectValue: () => <>{React.use(SelectValueContext)}</>,
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+      <button type="button" data-testid="content-item-select">
+        {children}
       </button>
-      <button
-        type="button"
-        data-testid="content-item-select-null"
-        onClick={() => onValueChange(null)}
-      >
-        select null
-      </button>
-      {children}
-    </div>
-  ),
-  SelectTrigger: ({ children }: { children: React.ReactNode }) => (
-    <button type="button" data-testid="content-item-select">
-      {children}
-    </button>
-  ),
-  SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  SelectItemIndicator: () => <span>selected</span>,
-}))
+    ),
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+    SelectItemIndicator: () => <span>selected</span>,
+  }
+})
 
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({

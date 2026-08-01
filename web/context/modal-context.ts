@@ -1,7 +1,6 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type {
@@ -12,10 +11,8 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { noop } from 'es-toolkit/function'
@@ -52,7 +49,6 @@ export type ModalContextState = {
   setShowExternalKnowledgeAPIModal: Dispatch<
     SetStateAction<ModalState<CreateExternalAPIReq> | null>
   >
-  setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowOpeningModal: Dispatch<
     SetStateAction<ModalState<
       OpeningStatement & {
@@ -63,12 +59,6 @@ export type ModalContextState = {
     > | null>
   >
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
-  setShowEducationExpireNoticeModal: Dispatch<
-    SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>
-  >
-  setShowTriggerEventsLimitModal: Dispatch<
-    SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>
-  >
 }
 
 export const ModalContext = createContext<ModalContextState>({
@@ -79,11 +69,8 @@ export const ModalContext = createContext<ModalContextState>({
   setShowAnnotationFullModal: noop,
   setShowModelModal: noop,
   setShowExternalKnowledgeAPIModal: noop,
-  setShowModelLoadBalancingModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
-  setShowEducationExpireNoticeModal: noop,
-  setShowTriggerEventsLimitModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)

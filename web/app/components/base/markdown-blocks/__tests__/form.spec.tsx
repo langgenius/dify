@@ -704,6 +704,18 @@ describe('MarkdownForm', () => {
       expect(button)!.toBeInTheDocument()
     })
 
+    it('should map the legacy warning variant to a destructive primary button', () => {
+      const node = createRootNode([
+        createElementNode('button', { dataVariant: 'warning' }, [createTextNode('Delete')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass(
+        'bg-components-button-destructive-primary-bg',
+      )
+    })
+
     it('should ignore invalid variant and size values', () => {
       const node = createRootNode([
         createElementNode('button', { dataVariant: 'danger', dataSize: 'xl' }, [

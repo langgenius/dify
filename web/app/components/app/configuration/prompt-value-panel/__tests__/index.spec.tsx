@@ -69,20 +69,27 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   const React = await import('react')
   const SelectContext = React.createContext<{
     onValueChange?: (value: string) => void
+    value?: string | null
   }>({})
 
   return {
     Select: ({
       children,
       onValueChange,
+      value,
     }: {
       children: React.ReactNode
       onValueChange?: (value: string) => void
+      value?: string | null
     }) => (
-      <SelectContext.Provider value={{ onValueChange }}>
+      <SelectContext.Provider value={{ onValueChange, value }}>
         <div>{children}</div>
       </SelectContext.Provider>
     ),
+    SelectValue: ({ placeholder }: { placeholder?: React.ReactNode }) => {
+      const context = React.use(SelectContext)
+      return <>{context.value || placeholder}</>
+    },
     SelectTrigger: ({ children }: { children: React.ReactNode }) => {
       const context = React.useContext(SelectContext)
       return (

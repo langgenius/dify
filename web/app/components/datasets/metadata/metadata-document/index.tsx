@@ -48,7 +48,7 @@ const MetadataDocument: FC<Props> = ({
   } = useMetadataDocument({ datasetId, documentId, docDetail })
 
   return (
-    <div className={cn('w-[388px] space-y-4', className)}>
+    <div className={cn('w-97 space-y-4', className)}>
       {hasData || isEdit ? (
         <div className="pl-2">
           <InfoGroup

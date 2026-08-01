@@ -226,7 +226,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         <div className={cn('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
           {isParagraphMode && (
             <div className="self-stretch">
-              <Divider type="vertical" className="mx-[7px] w-[2px] bg-text-accent-secondary" />
+              <Divider type="vertical" className="mx-1.75 w-0.5 bg-text-accent-secondary" />
             </div>
           )}
           {renderContent()}

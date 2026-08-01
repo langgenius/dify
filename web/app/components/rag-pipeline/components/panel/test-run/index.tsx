@@ -8,7 +8,7 @@ const TestRunPanel = () => {
   const isPreparingDataSource = useStore((state) => state.isPreparingDataSource)
 
   return (
-    <div className="relative flex h-full w-[480px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-1">
+    <div className="relative flex h-full w-120 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-1">
       <Header />
       {isPreparingDataSource ? (
         <DataSourceProvider>

@@ -28,7 +28,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         height: data.height,
       }}
     >
-      <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
+      <div className="absolute -inset-0.5 -top-5.5 z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
         <div className="flex h-5 items-center px-2.5 system-2xs-semibold-uppercase text-text-tertiary">
           {t(($) => $['blocks.datasource'], { ns: 'workflow' })}
         </div>
@@ -37,7 +37,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         className={cn(
           'group relative shadow-xs',
           'rounded-[15px] border border-transparent',
-          'w-[240px] bg-workflow-block-bg',
+          'w-60 bg-workflow-block-bg',
         )}
       >
         <div className={cn('flex items-center rounded-t-2xl p-3')}>

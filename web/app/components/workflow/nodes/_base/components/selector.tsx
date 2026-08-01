@@ -57,7 +57,7 @@ const TypeSelector: FC<Props> = ({
   }, ref)
   return (
     <div
-      className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)}
+      className={cn(!trigger && !noLeft && '-left-2', 'relative select-none', className)}
       ref={ref}
     >
       {trigger ? (
@@ -92,7 +92,7 @@ const TypeSelector: FC<Props> = ({
       {showOption && !readonly && (
         <div
           className={cn(
-            'absolute top-[24px] z-10 w-[120px] rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none',
+            'absolute top-6 z-10 w-30 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none',
             popupClassName,
           )}
         >
@@ -106,7 +106,7 @@ const TypeSelector: FC<Props> = ({
               className={cn(
                 itemClassName,
                 uppercase && 'uppercase',
-                'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover',
+                'flex h-7.5 min-w-11 cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover',
               )}
             >
               <div>{item.label}</div>

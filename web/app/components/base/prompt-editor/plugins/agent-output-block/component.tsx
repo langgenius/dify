@@ -172,7 +172,7 @@ const AgentOutputBlockComponent = ({
         tabIndex={0}
         aria-label={t(($) => $['nodes.agent.outputVars.edit'], { ns: 'workflow', name })}
         contentEditable={false}
-        className="group/agent-output inline-flex min-w-[18px] cursor-pointer items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
+        className="group/agent-output inline-flex min-w-4.5 cursor-pointer items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
         onClick={handleEditRequest}
         onKeyDown={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return
@@ -202,7 +202,7 @@ const AgentOutputBlockComponent = ({
   return (
     <span
       contentEditable={false}
-      className="inline-flex items-center gap-[3px] rounded-[5px] border border-util-colors-violet-violet-700 bg-util-colors-violet-violet-50 p-px align-middle shadow-xs"
+      className="inline-flex items-center gap-0.75 rounded-[5px] border border-util-colors-violet-violet-700 bg-util-colors-violet-violet-50 p-px align-middle shadow-xs"
     >
       <span className="flex min-w-0 items-center gap-0.5 pl-0.5">
         <span
