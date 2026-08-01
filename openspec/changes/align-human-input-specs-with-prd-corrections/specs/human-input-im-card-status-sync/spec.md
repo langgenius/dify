@@ -44,3 +44,18 @@ If one provider-side card-status update fails after task handling has been accep
 #### Scenario: Audit needs to distinguish handling and card-update outcomes
 - **WHEN** one card-status update succeeds or fails after handling
 - **THEN** the system MUST preserve enough operational state to distinguish the accepted handling outcome from the later card-update outcome
+
+### Requirement: Inbox event record MUST retain `raw_payload` in the same atomic write
+When the system ingests one IM card event through the Inbox pattern, the event record MUST retain `raw_payload` for debugging. `raw_payload` MUST be persisted on the event record itself as part of the same atomic write as the rest of the event fields. `raw_payload` MUST NOT participate in dedupe, routing, authorization, or business decisions.
+
+#### Scenario: IM card event is written to Inbox
+- **WHEN** one inbound IM card event is accepted into the Inbox
+- **THEN** the system MUST persist `raw_payload` together with the event record in the same atomic write
+
+#### Scenario: Event processing reads business fields
+- **WHEN** downstream processing performs dedupe, routing, authorization, or business handling for one Inbox event
+- **THEN** it MUST rely on the existing event/business fields and MUST NOT treat `raw_payload` as decision input
+
+#### Scenario: No separate raw-payload failure mode exists
+- **WHEN** one IM card event record is persisted successfully
+- **THEN** `raw_payload` MUST already be present on that event record, and the system MUST NOT model a separate “event succeeded but raw payload write failed” state

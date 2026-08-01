@@ -120,6 +120,23 @@ Alternatives considered:
 - 把卡片状态更新完全视为实现细节，不进入 spec。
   Rejected because这是明确的产品规则，会影响交互完成态与 provider contract。
 
+### 9. Inbox event record retains `raw_payload` as part of the same atomic event write
+
+这里既然已经采用 Inbox pattern，就需要把收到时的原始 payload 保留下来用于 debug 和排障。但这个需求只收敛成一个最小字段：`raw_payload`。它直接存放在 event record 上，并和 event 的其他字段一起原子写入；不引入额外的 hash、旁路 blob、或单独写入路径。
+
+同时需要明确边界：
+
+- `raw_payload` 只用于 debug / 排障
+- `raw_payload` 不参与 dedupe、routing、authorization 或业务判定
+- 不存在“event 已写入但 `raw_payload` 单独写入失败”的独立状态
+
+Alternatives considered:
+
+- 只存 `payload_hash` 或其他摘要字段。
+  Rejected because摘要不足以支撑真实集成排障。
+- 把 `raw_payload` 放到独立写入路径。
+  Rejected because当前要求就是它作为 event record 的一部分原子持久化。
+
 ## Risks / Trade-offs
 
 - [Risk] 只更新部分冲突 spec 会留下隐性矛盾。 → Mitigation: tasks 会按规则簇分组修改，并在同一轮覆盖 core specs 和 active change-local specs。
@@ -128,6 +145,7 @@ Alternatives considered:
 - [Risk] contact uniqueness 语义会分别影响 admission、migration 和 runtime interpretation。 → Mitigation: 设计明确区分 directory admission 规则、node authoring 规则和 runtime authorization 规则，而不是强行用一个过度简化的唯一性模型覆盖全部场景。
 - [Risk] IM identity reuse 规则在部分 adapter 文档中可能仍然不够具体。 → Mitigation: 本 change 会把 EE/admin-facing contract 对齐到同一套 workspace-scoped resolution 语义，并把剩余未知项显式记录为 open questions。
 - [Risk] IM card 状态回写可能和提交事务边界耦合不清。 → Mitigation: 设计把它定义为处理决议成立后的 capability-gated side effect，而不是授权成功的组成部分。
+- [Risk] 保留原始 payload 会扩大 event record 的存储体积。 → Mitigation: 当前先把 `raw_payload` 限定为最小 debug 字段，不额外扩展更多派生 debug 字段。
 
 ## Migration Plan
 
