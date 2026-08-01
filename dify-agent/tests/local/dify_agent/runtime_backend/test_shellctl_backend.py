@@ -6,10 +6,9 @@ from typing import cast
 import pytest
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus
-from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlSessionID
 from dify_agent.runtime_backend.protocols import RuntimeLayout
 from dify_agent.runtime_backend.shellctl import (
-    _sandbox_id_for_handle,
     create_owned_shellctl_lease,
     create_shellctl_lease,
     run_shellctl_control_command,
@@ -111,17 +110,18 @@ def _result(*, done: bool = True) -> ShellCommandResult:
         ("", "_"),
     ],
 )
-def test_sandbox_id_for_handle_sanitizes_disallowed_characters(handle: str, want: str) -> None:
+def test_session_id_from_handle_sanitizes_disallowed_characters(handle: str, want: str) -> None:
     # The shellctl runtime restricts sandbox_id to [A-Za-z0-9_-]{1,128} and
     # additionally treats ':' as the Basic-Auth user:password separator when
     # the id is embedded in the egress proxy's HTTP_PROXY/HTTPS_PROXY URL, so
     # handles like local binding refs ("binding_id:workspace_id") must be
     # sanitized before use as a sandbox_id.
-    assert _sandbox_id_for_handle(handle) == want
+    assert ShellctlSessionID.from_handle(handle) == want
+    assert str(ShellctlSessionID.from_handle(handle)) == want
 
 
 @pytest.mark.anyio
-async def test_shellctl_lease_sanitizes_handle_into_commands_sandbox_id() -> None:
+async def test_shellctl_lease_sanitizes_handle_into_commands_session_id() -> None:
     client = _FakeClient()
     lease = create_shellctl_lease(
         handle="binding-id:workspace-id",
@@ -132,7 +132,7 @@ async def test_shellctl_lease_sanitizes_handle_into_commands_sandbox_id() -> Non
     )
 
     assert lease.handle == "binding-id:workspace-id"
-    assert lease.commands.sandbox_id == "binding-id_workspace-id"  # type: ignore[attr-defined]
+    assert lease.commands.session_id == "binding-id_workspace-id"  # type: ignore[attr-defined]
 
 
 @pytest.mark.anyio

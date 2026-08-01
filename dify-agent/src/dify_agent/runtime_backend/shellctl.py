@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import logging
-import re
 from typing import Protocol
 
 from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellCommandProtocol
@@ -13,36 +12,13 @@ from dify_agent.adapters.shell.shellctl import (
     ShellctlClientProtocol,
     ShellctlCommands,
     ShellctlFileTransfer,
+    ShellctlSessionID,
     create_default_shellctl_client_factory,
 )
 from dify_agent.runtime_backend.protocols import FileSystem, RuntimeLayout
 
 _CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
 logger = logging.getLogger(__name__)
-
-_SANDBOX_ID_SANITIZER = re.compile(r"[^A-Za-z0-9_-]+")
-_MAX_SANDBOX_ID_LENGTH = 128
-
-
-def _sandbox_id_for_handle(handle: str) -> str:
-    """Derive a shellctl sandbox_id from a lease handle.
-
-    The shellctl runtime restricts sandbox_id to ``[A-Za-z0-9_-]{1,128}``
-    because, besides keying its in-memory/on-disk credential stores, it is
-    also transmitted as HTTP Basic-Auth userinfo on the egress proxy's
-    ``HTTP_PROXY``/``HTTPS_PROXY`` env vars (see shellctl's
-    ``ProxyURLForSandbox``/``sandboxIDFromProxyAuth``), where a literal ``:``
-    would be misread as the ``user:password`` separator and silently truncate
-    the sandbox_id on the way back in.
-
-    Handles are not guaranteed to be shellctl-safe verbatim -- e.g. local
-    binding refs are ``f"{binding_id}:{workspace_id}"`` -- so any disallowed
-    character is replaced with ``_`` before use. This only affects the
-    identifier used for credential/egress scoping; the original handle is
-    still used unmodified everywhere else (lease identity, reacquire, etc.).
-    """
-    sanitized = _SANDBOX_ID_SANITIZER.sub("_", handle)[:_MAX_SANDBOX_ID_LENGTH]
-    return sanitized or "_"
 
 
 class AsyncCloseable(Protocol):
@@ -99,7 +75,7 @@ def create_shellctl_lease(
         client=client,
         commands=ShellctlCommands(
             client=client,
-            sandbox_id=_sandbox_id_for_handle(handle),
+            session_id=ShellctlSessionID.from_handle(handle),
             home_dir=layout.home_dir,
             workspace_dir=layout.workspace_dir,
         ),

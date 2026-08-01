@@ -63,6 +63,7 @@ _TRANSFER_END = "<<<DIFY_SHELL_FILE_END>>>"
 _DOWNLOAD_MISSING_EXIT_CODE = 66
 _WORKSPACE_PAYLOAD_BEGIN = "<<<DIFY_WORKSPACE_BEGIN>>>"
 _WORKSPACE_PAYLOAD_END = "<<<DIFY_WORKSPACE_END>>>"
+_SESSION_ID_SANITIZER = re.compile(r"[^A-Za-z0-9_-]+")
 
 _LIST_WORKSPACE_SCRIPT = r"""
 import base64
@@ -272,10 +273,24 @@ class ShellctlClientProtocol(Protocol):
 type ShellctlClientFactory = Callable[[], ShellctlClientProtocol]
 
 
+class ShellctlSessionID(str):
+    """Shellctl session id identifies a logical session within the sandbox. This
+    is useful when multiple sessions share one shellctl container in local mode.
+
+    When shellctl runs in isolated sandboxes, each sandbox serves only one session 
+    so this becomes trivial.
+    """
+
+    @classmethod
+    def from_handle(cls, handle: str) -> ShellctlSessionID:
+        sanitized = _SESSION_ID_SANITIZER.sub("_", handle)
+        return cls(sanitized or "_")
+
+
 @dataclass(slots=True)
 class ShellctlCommands(ShellCommandProtocol):
     client: ShellctlClientProtocol
-    sandbox_id: str | None = None
+    session_id: ShellctlSessionID
     home_dir: str | None = None
     workspace_dir: str | None = None
 
@@ -299,16 +314,17 @@ class ShellctlCommands(ShellCommandProtocol):
                     script,
                     cwd=resolved_cwd,
                     env=resolved_env,
-                    sandbox_id=self.sandbox_id,
+                    sandbox_id=self.session_id,
                     timeout=timeout,
                 )
             )
         )
 
     async def prepare(self, credentials: Sequence[Credential]) -> None:
-        if self.sandbox_id is None:
-            raise ValueError("ShellctlCommands.sandbox_id must be set to prepare credentials")
-        await _run_client_call(self.client.prepare(self.sandbox_id, list(credentials)))
+        session_id = self.session_id
+        if session_id is None:
+            raise ValueError("ShellctlCommands.session_id must be set to prepare credentials")
+        await _run_client_call(self.client.prepare(session_id, list(credentials)))
 
     async def wait(
         self,
@@ -730,5 +746,6 @@ __all__ = [
     "ShellctlClientProtocol",
     "ShellctlCommands",
     "ShellctlFileTransfer",
+    "ShellctlSessionID",
     "create_default_shellctl_client_factory",
 ]
