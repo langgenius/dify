@@ -52,19 +52,18 @@ def _persist_model_configuration(
 @pytest.fixture
 def provider_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
     """Bind request-owned and provider-owned sessions to one isolated SQLite database."""
-    TypeBase.metadata.create_all(
-        sqlite_engine,
-        tables=[
-            Provider.__table__,
-            ProviderCredential.__table__,
-            ProviderModel.__table__,
-            ProviderModelCredential.__table__,
-            ProviderModelSetting.__table__,
-            LoadBalancingModelConfig.__table__,
-            TenantDefaultModel.__table__,
-            TenantPreferredModelProvider.__table__,
-        ],
+    models = (
+        Provider,
+        ProviderCredential,
+        ProviderModel,
+        ProviderModelCredential,
+        ProviderModelSetting,
+        LoadBalancingModelConfig,
+        TenantDefaultModel,
+        TenantPreferredModelProvider,
     )
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     owned_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with owned_session_factory() as request_session:
         monkeypatch.setattr(provider_manager_module.db, "session", request_session)
@@ -662,7 +661,9 @@ def test_update_default_model_record_updates_existing_record(provider_db: Sessio
     assert existing_default_model.provider_name == "openai"
     assert existing_default_model.model_name == "gpt-3.5-turbo"
     provider_db.expire_all()
-    assert provider_db.get(TenantDefaultModel, existing_default_model.id).provider_name == "openai"
+    persisted_default = provider_db.get(TenantDefaultModel, existing_default_model.id)
+    assert persisted_default is not None
+    assert persisted_default.provider_name == "openai"
     persisted_other_default = provider_db.get(TenantDefaultModel, other_tenant_default.id)
     assert persisted_other_default is not None
     assert persisted_other_default.provider_name == "cohere"
@@ -965,8 +966,9 @@ def test_get_all_preferred_model_providers_returns_mapping_by_provider_name(prov
     assert "other-provider" not in result
 
 
+@pytest.mark.usefixtures("provider_db")
 def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_is_disabled(
-    provider_db: Session, sqlite_engine: Engine
+    sqlite_engine: Engine,
 ) -> None:
     statements: list[str] = []
 
