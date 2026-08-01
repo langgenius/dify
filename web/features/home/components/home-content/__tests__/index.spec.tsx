@@ -10,7 +10,6 @@ import type {
 } from '@dify/contracts/api/console/onboarding/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -24,7 +23,6 @@ import {
   stepByStepTourSessionAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { fetchAppDetail } from '@/service/explore'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -67,6 +65,7 @@ const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
+const mockGetRecommendedApp = vi.hoisted(() => vi.fn())
 const mockAppQueries = vi.hoisted(() => ({
   listQueryOptions: vi.fn(),
   recentQueryOptions: vi.fn(),
@@ -217,10 +216,6 @@ vi.mock('@/service/use-explore', () => ({
   }),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchAppDetail: vi.fn(),
-}))
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
@@ -310,6 +305,14 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
+        byAppId: {
+          get: {
+            queryOptions: (options: { input: { params: { app_id: string } } }) => ({
+              queryKey: ['console', 'explore', 'apps', 'byAppId', 'get', options.input],
+              queryFn: () => mockGetRecommendedApp(options.input),
+            }),
+          },
+        },
         get: {
           queryKey: ({ input }: { input?: unknown } = {}) => [
             'console',
@@ -969,7 +972,7 @@ describe('HomeContent', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -989,7 +992,7 @@ describe('HomeContent', () => {
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
-        expect(fetchAppDetail).toHaveBeenCalledWith('app-basic-id')
+        expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
       })
       expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
       expect(await screen.findByTestId('dsl-confirm-modal')).toBeInTheDocument()
@@ -1013,7 +1016,7 @@ describe('HomeContent', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1031,7 +1034,7 @@ describe('HomeContent', () => {
       await user.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
-        expect(fetchAppDetail).toHaveBeenCalledWith('learn-basic-1')
+        expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'learn-1' } })
       })
       expect(mockHandleImportDSL).toHaveBeenCalledWith(
         expect.any(Object),
@@ -1150,7 +1153,7 @@ describe('HomeContent', () => {
         activeGuideIndexes: [0, 1],
         minimized: true,
       })
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1207,7 +1210,7 @@ describe('HomeContent', () => {
         minimized: true,
       })
       mockStepByStepTour.patchState.mockRejectedValueOnce(new Error('patch failed'))
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1272,7 +1275,7 @@ describe('HomeContent', () => {
         activeGuideIndex: 0,
         minimized: true,
       })
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
@@ -1371,7 +1374,7 @@ describe('HomeContent', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1393,7 +1396,7 @@ describe('HomeContent', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1421,7 +1424,7 @@ describe('HomeContent', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
@@ -1472,7 +1475,7 @@ describe('HomeContent', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+      mockGetRecommendedApp.mockResolvedValue({
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })

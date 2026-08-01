@@ -6,7 +6,7 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueries, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -33,7 +33,6 @@ import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
-import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { Banner } from '../banner/banner'
@@ -57,6 +56,7 @@ const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const homeQueries = useQueries({
@@ -370,10 +370,17 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
       isSubmittingHomeTourCreateRef.current = shouldCompleteHomeTourOnCreateRef.current
       hideTryAppPanel()
 
-      const appId = currApp?.app?.id ?? currApp?.app_id
+      const appId = currApp?.app_id
       if (!appId) return
 
-      const { export_data, mode } = await fetchAppDetail(appId)
+      const appDetail = await queryClient.ensureQueryData(
+        consoleQuery.explore.apps.byAppId.get.queryOptions({
+          input: { params: { app_id: appId } },
+        }),
+      )
+      if (!appDetail) throw new Error('Recommended app not found')
+
+      const { export_data, mode } = appDetail
       currentCreateAppModeRef.current = mode
       const payload = {
         mode: DSLImportMode.YAML_CONTENT,
@@ -406,10 +413,10 @@ export function HomeContent({ onSuccess }: { onSuccess?: () => void }) {
     [
       abandonHomeTourCreate,
       completeHomeTourAfterCreate,
-      currApp?.app?.id,
       currApp?.app_id,
       handleImportDSL,
       hideTryAppPanel,
+      queryClient,
       trackCurrentCreateApp,
     ],
   )
