@@ -41,6 +41,7 @@ from core.helper.trace_id_helper import (
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.filters import ResponseStreamFilter
@@ -363,7 +364,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 app_mode=app_model.mode,
             )
 
-            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            resolved_response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(

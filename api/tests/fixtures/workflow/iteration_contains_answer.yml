@@ -1,0 +1,210 @@
+app:
+  description: 'Chatflow with an answer node inside an iteration node.
+
+
+    The iteration processes the conversation variable ["apple", "banana"]; the
+
+    inner answer node streams the current item, and a final answer node streams
+
+    "done" after the iteration completes.'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: iteration_contains_answer
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables:
+  - description: ''
+    id: e208ec58-4503-48a9-baf8-17aae67e5fa1
+    name: fruits
+    selector:
+    - conversation
+    - fruits
+    value:
+    - apple
+    - banana
+    value_type: array[string]
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: iteration
+      id: start-source-iteration-target
+      source: start_node
+      sourceHandle: source
+      target: iteration_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: iteration_node
+        sourceType: iteration-start
+        targetType: answer
+      id: iteration-start-source-answer-inner-target
+      source: iteration_nodestart
+      sourceHandle: source
+      target: answer_in_iteration
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: answer
+      id: iteration-source-answer-final-target
+      source: iteration_node
+      sourceHandle: source
+      target: answer_final
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 54
+      id: start_node
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        error_handle_mode: terminated
+        flatten_output: false
+        height: 178
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - conversation
+        - fruits
+        output_selector:
+        - answer_in_iteration
+        - answer
+        output_type: array[string]
+        parallel_nums: 10
+        selected: false
+        start_node_id: iteration_nodestart
+        title: Iteration
+        type: iteration
+        width: 388
+      height: 178
+      id: iteration_node
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 388
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: iteration_nodestart
+      parentId: iteration_node
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 708
+        y: 350
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        answer: '{{#iteration_node.item#}}
+
+          '
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: iteration_node
+        selected: false
+        title: Answer In Iteration
+        type: answer
+        variables: []
+      height: 105
+      id: answer_in_iteration
+      parentId: iteration_node
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 812
+        y: 350
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        answer: done
+        desc: ''
+        selected: false
+        title: Final Answer
+        type: answer
+        variables: []
+      height: 105
+      id: answer_final
+      position:
+        x: 1132
+        y: 282
+      positionAbsolute:
+        x: 1132
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -476
+      y: 3
+      zoom: 1

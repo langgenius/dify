@@ -139,6 +139,11 @@ class TestWorkflowChildEngineBuilder:
             patch.object(workflow_entry, "DifyNodeFactory", return_value=sentinel.factory) as dify_node_factory,
             patch.object(workflow_entry.Graph, "init", return_value=child_graph) as graph_init,
             patch.object(workflow_entry, "GraphEngine", return_value=child_engine) as graph_engine_cls,
+            patch.object(
+                workflow_entry,
+                "ResponseFilteredChildEngine",
+                return_value=sentinel.filtered_child_engine,
+            ) as filtered_child_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
             patch.object(workflow_entry, "LLMQuotaLayer", return_value=sentinel.llm_quota_layer) as llm_quota_layer_cls,
@@ -151,7 +156,8 @@ class TestWorkflowChildEngineBuilder:
                 variable_pool=sentinel.child_variable_pool,
             )
 
-        assert result is child_engine
+        assert result is sentinel.filtered_child_engine
+        filtered_child_engine_cls.assert_called_once_with(child_engine)
         graph_runtime_state_cls.assert_called_once_with(
             variable_pool=sentinel.child_variable_pool,
             start_at=123.0,
@@ -394,7 +400,7 @@ class TestWorkflowEntryRun:
             ) as from_engine,
             patch.object(
                 workflow_entry,
-                "ResponseStreamFilter",
+                "DifyResponseStreamFilter",
                 return_value=sentinel.response_stream_filter,
             ) as response_stream_filter_cls,
             patch.object(

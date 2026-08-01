@@ -24,7 +24,7 @@ from core.tools.utils.yaml_utils import _load_yaml_file
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
+from core.workflow.workflow_entry import ResponseFilteredChildEngine, iter_dify_graph_engine_events
 from graphon.entities import GraphInitParams
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
@@ -95,7 +95,9 @@ class _TableTestChildEngineBuilder:
             config=GraphEngineConfig(),
             child_engine_builder=self,
         )
-        return child_engine
+        # Mirror production (_WorkflowChildEngineBuilder): child engines apply
+        # Dify's response stream filter to their own events.
+        return ResponseFilteredChildEngine(child_engine)
 
 
 @dataclass

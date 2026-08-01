@@ -46,6 +46,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.filters import ResponseStreamFilter
@@ -575,7 +576,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
             graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
-            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            resolved_response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
