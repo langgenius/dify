@@ -24,11 +24,11 @@ class TestWorkflowAppQueueManager:
 
         with (
             patch.object(manager, "_is_stopped", return_value=True) as is_stopped,
-            patch.object(manager, "stop_listen") as stop_listen,
+            patch.object(manager, "complete_listener_segment") as complete_listener_segment,
         ):
             manager._publish(QueueMessageEndEvent(llm_result=None), PublishFrom.APPLICATION_MANAGER)
 
-        stop_listen.assert_called_once()
+        complete_listener_segment.assert_called_once()
         is_stopped.assert_not_called()
 
     def test_publish_non_stop_event_does_not_raise(self):

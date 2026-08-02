@@ -52,7 +52,10 @@ class AppQueueManager(ABC):
         self._graph_runtime_state: GraphRuntimeState | None = None
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
-        self._execution_terminal = threading.Event()
+        # Listener-segment completion is independent of execution completion. A producer marks
+        # the segment complete after publishing its terminal event; the cleanup path in listen()
+        # only aborts the underlying execution when the segment was NOT completed.
+        self._listener_segment_completed = threading.Event()
         self._abort_sent = threading.Event()
         self._lifecycle_lock = threading.Lock()
 
@@ -79,7 +82,7 @@ class AppQueueManager(ABC):
                     elapsed_time = time.monotonic() - start_time
                     timed_out = elapsed_time >= listen_timeout
                     manually_stopped = self._is_stopped()
-                    if not self._execution_terminal.is_set() and (timed_out or manually_stopped):
+                    if not self._listener_segment_completed.is_set() and (timed_out or manually_stopped):
                         reason = (
                             f"App execution exceeded {listen_timeout} seconds" if timed_out else "App task was stopped"
                         )
@@ -94,24 +97,41 @@ class AppQueueManager(ABC):
                         self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
                         last_ping_time = elapsed_time // 10
         finally:
-            if not self._execution_terminal.is_set():
+            if not self._listener_segment_completed.is_set():
                 self._abort_execution("Client response stream closed before app execution completed")
             self._graph_runtime_state = None  # Release reference once consumers finish or close the generator.
 
-    def stop_listen(self, *, execution_terminal: bool = False):
+    def complete_listener_segment(self) -> None:
         """
-        Stop listen to queue
-        :return:
+        Mark the current response-listener segment as completed by the producer.
+
+        Producers call this after publishing a terminal event (succeeded, failed, paused, etc.).
+        Closing the listener under this state means the underlying execution may still be live
+        (a paused workflow can resume), so the cleanup path in listen() does NOT abort it.
+
+        Contrast with stop_listen(), which signals that the consumer detached unexpectedly
+        and lets the cleanup path cancel the underlying execution.
         """
-        if execution_terminal:
-            self._execution_terminal.set()
+        self._listener_segment_completed.set()
+        self._clear_task_belong_cache()
+        self._q.put(None)
+
+    def stop_listen(self) -> None:
+        """
+        Stop listen to queue.
+
+        Use this when the consumer (response generator) has closed without the producer
+        completing the listener segment. The cleanup path in listen() will then abort the
+        underlying execution exactly once. For the producer-completed path, call
+        complete_listener_segment() instead.
+        """
         self._clear_task_belong_cache()
         self._q.put(None)
 
     def _abort_execution(self, reason: str) -> None:
         """Propagate response timeout/disconnect to legacy and GraphEngine runners."""
         with self._lifecycle_lock:
-            if self._execution_terminal.is_set() or self._abort_sent.is_set():
+            if self._listener_segment_completed.is_set() or self._abort_sent.is_set():
                 return
             self._abort_sent.set()
 
