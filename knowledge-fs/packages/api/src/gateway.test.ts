@@ -3419,7 +3419,7 @@ describe("createKnowledgeGateway", () => {
       expectedEvidenceIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f2d10"],
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f3a01",
       knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      metadata: { owner: "eval" },
+      metadata: { lifecycleStatus: "active", matchPolicy: "all", owner: "eval" },
       question: "What changed in the roadmap?",
       tags: ["phase-1"],
       updatedAt: "2026-05-11T10:00:00.000Z",

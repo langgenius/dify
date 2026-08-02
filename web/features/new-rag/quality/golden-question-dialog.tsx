@@ -3,6 +3,7 @@
 import type { FormEvent } from 'react'
 import type { GoldenQuestionDraft } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Dialog,
   DialogBackdrop,
@@ -14,14 +15,17 @@ import {
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 
 type DialogMode = 'create' | 'edit' | 'promote'
 
 export function GoldenQuestionDialog({
   error,
   initialValue,
+  knowledgeSpaceId,
   mode,
   onOpenChange,
   onSubmit,
@@ -30,6 +34,7 @@ export function GoldenQuestionDialog({
 }: {
   error?: string
   initialValue: GoldenQuestionDraft
+  knowledgeSpaceId: string
   mode: DialogMode
   onOpenChange: (open: boolean) => void
   onSubmit: (draft: GoldenQuestionDraft) => Promise<void>
@@ -39,8 +44,15 @@ export function GoldenQuestionDialog({
   const { t } = useTranslation('dataset')
   const [question, setQuestion] = useState(initialValue.question)
   const [annotation, setAnnotation] = useState(initialValue.annotation)
+  const [evidenceText, setEvidenceText] = useState(initialValue.evidenceText)
+  const [expectedEvidenceIds, setExpectedEvidenceIds] = useState(initialValue.expectedEvidenceIds)
+  const [matchPolicy, setMatchPolicy] = useState(initialValue.matchPolicy)
   const [tags, setTags] = useState(initialValue.tags.join(', '))
   const [submitted, setSubmitted] = useState(false)
+  const [matchError, setMatchError] = useState(false)
+  const matchMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(),
+  )
   const questionInvalid = submitted && !question.trim()
   const annotationInvalid = submitted && !annotation.trim()
   const title =
@@ -60,6 +72,9 @@ export function GoldenQuestionDialog({
     if (!question.trim() || !annotation.trim()) return
     await onSubmit({
       annotation: annotation.trim(),
+      evidenceText: evidenceText.trim(),
+      expectedEvidenceIds,
+      matchPolicy,
       question: question.trim(),
       tags: tags
         .split(',')
@@ -68,11 +83,30 @@ export function GoldenQuestionDialog({
     })
   }
 
+  const findEvidence = async () => {
+    if (!evidenceText.trim()) return
+    setMatchError(false)
+    try {
+      await matchMutation.mutateAsync({
+        body: { evidence: evidenceText.trim() },
+        params: { control_space_id: knowledgeSpaceId },
+      })
+    } catch {
+      setMatchError(true)
+    }
+  }
+
+  const candidates = matchMutation.data?.candidates ?? []
+  const toggleEvidence = (nodeId: string) =>
+    setExpectedEvidenceIds((current) =>
+      current.includes(nodeId) ? current.filter((id) => id !== nodeId) : [...current, nodeId],
+    )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
-        <DialogPopup className="fixed top-1/2 left-1/2 w-140 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border-0 p-6 shadow-xl">
+        <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 p-6 shadow-xl">
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between">
               <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
@@ -118,6 +152,96 @@ export function GoldenQuestionDialog({
               )}
               {!annotationInvalid && error && <FieldError match>{error}</FieldError>}
             </Field>
+            <Field name="evidence">
+              <FieldLabel>{t(($) => $['newKnowledge.qualityPage.evidence'])}</FieldLabel>
+              <Textarea
+                className="h-20 resize-y"
+                placeholder={t(($) => $['newKnowledge.qualityPage.evidencePlaceholder'])}
+                value={evidenceText}
+                onValueChange={setEvidenceText}
+              />
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="system-xs-regular text-text-tertiary">
+                  {expectedEvidenceIds.length > 0
+                    ? t(($) => $['newKnowledge.qualityPage.evidenceSelected'], {
+                        count: expectedEvidenceIds.length,
+                      })
+                    : t(($) => $['newKnowledge.qualityPage.noEvidenceSelected'])}
+                </span>
+                <div className="flex gap-2">
+                  {expectedEvidenceIds.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={pending || matchMutation.isPending}
+                      onClick={() => setExpectedEvidenceIds([])}
+                    >
+                      {t(($) => $['newKnowledge.qualityPage.clearEvidence'])}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    loading={matchMutation.isPending}
+                    disabled={!evidenceText.trim() || pending || matchMutation.isPending}
+                    onClick={() => void findEvidence()}
+                  >
+                    {t(($) => $['newKnowledge.qualityPage.findEvidence'])}
+                  </Button>
+                </div>
+              </div>
+              {matchError && <FieldError match>{t(($) => $.unknownError)}</FieldError>}
+              {matchMutation.isSuccess && candidates.length === 0 && (
+                <p className="mt-2 body-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])}
+                </p>
+              )}
+              {candidates.length > 0 && (
+                <div className="mt-2 flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2">
+                  {candidates.map((candidate) => (
+                    <label
+                      key={candidate.node_id}
+                      htmlFor={`golden-question-evidence-${candidate.node_id}`}
+                      className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-state-base-hover"
+                    >
+                      <Checkbox
+                        id={`golden-question-evidence-${candidate.node_id}`}
+                        className="mt-0.5"
+                        checked={expectedEvidenceIds.includes(candidate.node_id)}
+                        onCheckedChange={() => toggleEvidence(candidate.node_id)}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-2 body-xs-regular text-text-secondary">
+                          {candidate.text || candidate.section_path.join(' / ')}
+                        </span>
+                        <span className="mt-1 block system-2xs-medium-uppercase text-text-tertiary">
+                          {candidate.section_path.join(' / ') ||
+                            t(($) => $['newKnowledge.qualityPage.evidence'])}
+                          {' · '}
+                          {Math.round(candidate.score * 100)}%
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </Field>
+            {expectedEvidenceIds.length > 1 && (
+              <Field name="matchPolicy">
+                <FieldLabel>{t(($) => $['newKnowledge.qualityPage.matchPolicyLabel'])}</FieldLabel>
+                <div className="flex gap-2">
+                  {(['all', 'any'] as const).map((policy) => (
+                    <Button
+                      key={policy}
+                      type="button"
+                      variant={matchPolicy === policy ? 'secondary' : 'ghost'}
+                      onClick={() => setMatchPolicy(policy)}
+                    >
+                      {t(($) => $[`newKnowledge.qualityPage.matchPolicy.${policy}`])}
+                    </Button>
+                  ))}
+                </div>
+              </Field>
+            )}
             <Field name="tags">
               <FieldLabel>{t(($) => $['newKnowledge.qualityPage.tags'])}</FieldLabel>
               <Input

@@ -312,6 +312,47 @@ describe("golden question repositories", () => {
   });
 
   it.each(["postgres", "tidb"] as const)(
+    "persists a golden-question batch with one insert on %s",
+    async (dialect) => {
+      const fake = createFakeGoldenQuestionExecutor();
+      const repository = createDatabaseGoldenQuestionRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: fake.executor,
+          kind: dialect,
+          transaction: async (callback) => callback({ execute: fake.executor }),
+        }),
+        generateId: nextId([
+          "018f0d60-7a49-7cc2-9c1b-5b36f18f7101",
+          "018f0d60-7a49-7cc2-9c1b-5b36f18f7102",
+        ]),
+        maxListLimit: 10,
+        now: () => "2026-05-12T16:18:00.000Z",
+      });
+      const common = {
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f72aa",
+        permission: guardedPermission(),
+        requiredPermissionScope: [],
+      } as const;
+
+      const created = await repository.createMany([
+        { ...common, question: "First imported question" },
+        { ...common, question: "Second imported question" },
+      ]);
+
+      expect(created.map((question) => question.question)).toEqual([
+        "First imported question",
+        "Second imported question",
+      ]);
+      const inserts = fake.calls.filter((call) => call.operation === "insert");
+      expect(inserts).toHaveLength(1);
+      expect(inserts[0]).toMatchObject({ maxRows: 2, tableName: "golden_questions" });
+      expect(inserts[0]?.params).toHaveLength(20);
+      expect(inserts[0]?.sql).toContain(") VALUES (");
+      expect(inserts[0]?.sql).toContain("), (");
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
     "deduplicates database promotion retries under the space lock on %s",
     async (dialect) => {
       const fake = createFakeGoldenQuestionExecutor();
@@ -651,39 +692,43 @@ function createFakeGoldenQuestionExecutor() {
     }
 
     if (input.operation === "insert") {
-      const [
-        id,
-        tenantId,
-        knowledgeSpaceId,
-        question,
-        expectedEvidenceIds,
-        tags,
-        metadata,
-        requiredPermissionScope,
-        createdAt,
-      ] = input.params;
-      const row = {
-        created_at: String(createdAt),
-        expected_evidence_ids:
-          typeof expectedEvidenceIds === "string"
-            ? JSON.parse(expectedEvidenceIds)
-            : expectedEvidenceIds,
-        id: String(id),
-        knowledge_space_id: String(knowledgeSpaceId),
-        metadata: typeof metadata === "string" ? JSON.parse(metadata) : metadata,
-        question: String(question),
-        required_permission_scope:
-          typeof requiredPermissionScope === "string"
-            ? JSON.parse(requiredPermissionScope)
-            : requiredPermissionScope,
-        tags: typeof tags === "string" ? JSON.parse(tags) : tags,
-        tenant_id: String(tenantId),
-        updated_at: String(createdAt),
-      } satisfies DatabaseRow;
+      const insertedRows: DatabaseRow[] = [];
+      for (let offset = 0; offset < input.params.length; offset += 10) {
+        const [
+          id,
+          tenantId,
+          knowledgeSpaceId,
+          question,
+          expectedEvidenceIds,
+          tags,
+          metadata,
+          requiredPermissionScope,
+          createdAt,
+        ] = input.params.slice(offset, offset + 10);
+        const row = {
+          created_at: String(createdAt),
+          expected_evidence_ids:
+            typeof expectedEvidenceIds === "string"
+              ? JSON.parse(expectedEvidenceIds)
+              : expectedEvidenceIds,
+          id: String(id),
+          knowledge_space_id: String(knowledgeSpaceId),
+          metadata: typeof metadata === "string" ? JSON.parse(metadata) : metadata,
+          question: String(question),
+          required_permission_scope:
+            typeof requiredPermissionScope === "string"
+              ? JSON.parse(requiredPermissionScope)
+              : requiredPermissionScope,
+          tags: typeof tags === "string" ? JSON.parse(tags) : tags,
+          tenant_id: String(tenantId),
+          updated_at: String(createdAt),
+        } satisfies DatabaseRow;
 
-      rows.set(`${row.knowledge_space_id}:${row.id}`, row);
+        rows.set(`${row.knowledge_space_id}:${row.id}`, row);
+        insertedRows.push(row);
+      }
 
-      return { rows: [{ ...row }], rowsAffected: 1 };
+      return { rows: insertedRows.map((row) => ({ ...row })), rowsAffected: insertedRows.length };
     }
 
     if (input.operation === "select") {

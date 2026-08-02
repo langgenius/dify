@@ -41,6 +41,7 @@ import type { EntityExtractionProvider } from "./entity-extraction-flow";
 import type { FailedQueryRepository } from "./failed-query-repository";
 import type { GatewayComponentHealthOptions } from "./gateway-health";
 import type { QueryGenerator } from "./gateway-sse-responses";
+import type { GoldenQuestionEvidenceMatcher } from "./golden-question-evidence-matcher";
 import type { GoldenQuestionRepository } from "./golden-question-repository";
 import type { GraphIndexRepository } from "./graph-index-repository";
 import type { VisualEmbeddingProvider } from "./index-projection-builders";
@@ -226,6 +227,7 @@ export interface KnowledgeGatewayOptions {
   failedQueries?: FailedQueryRepository;
   failedQueryLowConfidenceScoreFloor?: number;
   goldenQuestions?: GoldenQuestionRepository;
+  goldenQuestionEvidenceMatcher?: GoldenQuestionEvidenceMatcher;
   graphIndex?: GraphIndexRepository;
   knowledgeNodes?: KnowledgeNodeRepository;
   knowledgePaths?: KnowledgePathRepository;

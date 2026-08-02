@@ -28,6 +28,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
     assert ready_ids == {
         "abortUploadSession",
         "batchSpaceSummaries",
+        "bulkImportGoldenQuestions",
         "bulkDeleteDocuments",
         "cancelBackgroundTask",
         "cancelCompilationJob",
@@ -90,6 +91,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "listTraceEvidence",
         "listTraceMissing",
         "listTraces",
+        "matchGoldenQuestionEvidence",
         "planResearchTask",
         "presignUploadSessionPart",
         "previewSourceCrawl",

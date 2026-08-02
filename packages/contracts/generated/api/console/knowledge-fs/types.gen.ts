@@ -301,6 +301,9 @@ export type KnowledgeFsGoldenQuestionListResponse = {
 
 export type KnowledgeFsGoldenQuestionPayload = {
   annotation: string
+  evidence_text?: string
+  expected_evidence_ids?: Array<string>
+  match_policy?: 'all' | 'any'
   question: string
   source_bad_case_id?: string | null
   tags?: Array<string>
@@ -309,10 +312,38 @@ export type KnowledgeFsGoldenQuestionPayload = {
 export type KnowledgeFsGoldenQuestionResponse = {
   annotation: string
   created_at: string
+  evidence_text?: string
+  expected_evidence_ids?: Array<string>
   id: string
+  match_policy?: 'all' | 'any'
   question: string
+  status: 'active' | 'draft' | 'stale'
   tags: Array<string>
   updated_at: string
+}
+
+export type KnowledgeFsGoldenQuestionBulkImportPayload = {
+  match_policy?: 'all' | 'any'
+  minimum_similarity?: number
+  rows: Array<KnowledgeFsGoldenQuestionBulkImportRowPayload>
+}
+
+export type KnowledgeFsGoldenQuestionBulkImportResponse = {
+  active_count: number
+  draft_count: number
+  items: Array<KnowledgeFsGoldenQuestionBulkImportItemResponse>
+}
+
+export type KnowledgeFsGoldenQuestionEvidenceMatchPayload = {
+  evidence: string
+  minimum_similarity?: number
+  top_k?: number
+}
+
+export type KnowledgeFsGoldenQuestionEvidenceMatchResponse = {
+  candidates: Array<KnowledgeFsGoldenQuestionEvidenceCandidateResponse>
+  evidence: string
+  matched: boolean
 }
 
 export type KnowledgeFsDocumentCompilationJobResponse = {
@@ -1028,6 +1059,30 @@ export type KnowledgeFsDocumentOutlineNodeResponse = {
     [key: string]: unknown
   } | null
   toc_source: string
+}
+
+export type KnowledgeFsGoldenQuestionBulkImportRowPayload = {
+  evidence: string
+  question: string
+  tags?: Array<string>
+}
+
+export type KnowledgeFsGoldenQuestionBulkImportItemResponse = {
+  expected_evidence_id?: string | null
+  question_id: string
+  row_index: number
+  similarity?: number | null
+  status: 'active' | 'draft'
+}
+
+export type KnowledgeFsGoldenQuestionEvidenceCandidateResponse = {
+  document_asset_id: string
+  node_id: string
+  page_number?: number | null
+  projection_id: string
+  score: number
+  section_path: Array<string>
+  text: string
 }
 
 export type KnowledgeFsMemberBindingPayload = {
@@ -1975,6 +2030,38 @@ export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses = {
 
 export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
   PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportData = {
+  body: KnowledgeFsGoldenQuestionBulkImportPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/bulk-import'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponses = {
+  201: KnowledgeFsGoldenQuestionBulkImportResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesData = {
+  body: KnowledgeFsGoldenQuestionEvidenceMatchPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/evidence-matches'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponses = {
+  200: KnowledgeFsGoldenQuestionEvidenceMatchResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponses]
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdData = {
   body?: never

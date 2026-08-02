@@ -193,6 +193,7 @@ export * from "./gateway-error-handlers";
 export * from "./gateway-health";
 export * from "./gateway-openapi-contracts";
 export * from "./gateway-openapi-document";
+export * from "./golden-question-evidence-matcher";
 export * from "./gateway-options";
 export * from "./gateway-route-schemas";
 export * from "./gateway-sse-responses";
@@ -711,6 +712,7 @@ export function createKnowledgeGateway({
   generateResearchTaskJobId = randomUUID,
   embeddingProvider,
   embeddingResolver,
+  goldenQuestionEvidenceMatcher,
   goldenQuestions,
   graphIndex,
   knowledgeFsLeases,
@@ -1641,6 +1643,7 @@ export function createKnowledgeGateway({
     app,
     assets,
     authorization: spaceAuthorization,
+    ...(goldenQuestionEvidenceMatcher ? { evidenceMatcher: goldenQuestionEvidenceMatcher } : {}),
     nodes,
     now,
     questions,

@@ -11,6 +11,7 @@ import {
   createDatabaseRetrievalExecutionLeaseRepository,
   createDeletionLifecycleFenceGuard,
   createDocumentMultimodalCandidateResolver,
+  createGoldenQuestionEvidenceMatcher,
   createHybridQueryGenerator,
   createInMemoryKnowledgeSpaceManifestRepository,
   createJointCasSourceLogicalRevisionPublisher,
@@ -672,6 +673,14 @@ const runtimeSnapshotResolver =
           : {}),
       })
     : undefined;
+const goldenQuestionEvidenceMatcher =
+  embeddingResolver && retrievalRepository && runtimeSnapshotResolver
+    ? createGoldenQuestionEvidenceMatcher({
+        embeddings: embeddingResolver,
+        repository: retrievalRepository,
+        runtimeSnapshots: runtimeSnapshotResolver,
+      })
+    : undefined;
 const researchTaskRuntime =
   databaseRepositories.researchTaskDurableRepository &&
   databaseRepositories.researchTaskPartialResults &&
@@ -759,6 +768,7 @@ const app = createKnowledgeGateway({
   ...(capabilityV2.authenticator ? { difyCapabilityV2Auth: capabilityV2.authenticator } : {}),
   compute,
   ...(embeddingResolver ? { embeddingResolver } : {}),
+  ...(goldenQuestionEvidenceMatcher ? { goldenQuestionEvidenceMatcher } : {}),
   // Deployment embedding configuration supplies Dify model runtime capability only. Creation
   // never copies it into a space; every space persists only its user-submitted selection.
   // Without a dedicated visual model, the regular dense builder already embeds OCR/caption/image

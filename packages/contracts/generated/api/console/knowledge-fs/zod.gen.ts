@@ -197,6 +197,9 @@ export const zKnowledgeFsExternalAccessPayload = z.object({
  */
 export const zKnowledgeFsGoldenQuestionPayload = z.object({
   annotation: z.string().min(1).max(2000),
+  evidence_text: z.string().max(8000).optional().default(''),
+  expected_evidence_ids: z.array(z.string()).max(50).optional(),
+  match_policy: z.enum(['all', 'any']).optional().default('all'),
   question: z.string().min(1).max(4000),
   source_bad_case_id: z.string().max(255).nullish(),
   tags: z.array(z.string()).max(50).optional(),
@@ -208,8 +211,12 @@ export const zKnowledgeFsGoldenQuestionPayload = z.object({
 export const zKnowledgeFsGoldenQuestionResponse = z.object({
   annotation: z.string(),
   created_at: z.iso.datetime(),
+  evidence_text: z.string().optional().default(''),
+  expected_evidence_ids: z.array(z.string()).optional(),
   id: z.string(),
+  match_policy: z.enum(['all', 'any']).optional().default('all'),
   question: z.string(),
+  status: z.enum(['active', 'draft', 'stale']),
   tags: z.array(z.string()),
   updated_at: z.iso.datetime(),
 })
@@ -220,6 +227,15 @@ export const zKnowledgeFsGoldenQuestionResponse = z.object({
 export const zKnowledgeFsGoldenQuestionListResponse = z.object({
   data: z.array(zKnowledgeFsGoldenQuestionResponse),
   next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionEvidenceMatchPayload
+ */
+export const zKnowledgeFsGoldenQuestionEvidenceMatchPayload = z.object({
+  evidence: z.string().min(1).max(8000),
+  minimum_similarity: z.number().gte(0).lte(1).optional().default(0.7),
+  top_k: z.int().gte(1).lte(10).optional().default(5),
 })
 
 /**
@@ -666,7 +682,11 @@ export const zKnowledgeFsControlSpaceVisibility = z.enum([
  */
 export const zKnowledgeFsSpaceUpdatePayload = z.object({
   description: z.string().max(2000).nullish(),
-  icon: z.string().max(255).nullish(),
+  icon: z
+    .string()
+    .max(72)
+    .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
+    .nullish(),
   name: z.string().min(1).max(40).nullish(),
   visibility: zKnowledgeFsControlSpaceVisibility.nullish(),
 })
@@ -977,6 +997,66 @@ export const zKnowledgeFsDocumentOutlineResponse = z.object({
   parse_artifact_id: z.string(),
   updated_at: z.iso.datetime().nullish(),
   version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionBulkImportRowPayload
+ */
+export const zKnowledgeFsGoldenQuestionBulkImportRowPayload = z.object({
+  evidence: z.string().min(1).max(8000),
+  question: z.string().min(1).max(4000),
+  tags: z.array(z.string()).max(50).optional(),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionBulkImportPayload
+ */
+export const zKnowledgeFsGoldenQuestionBulkImportPayload = z.object({
+  match_policy: z.enum(['all', 'any']).optional().default('all'),
+  minimum_similarity: z.number().gte(0).lte(1).optional().default(0.7),
+  rows: z.array(zKnowledgeFsGoldenQuestionBulkImportRowPayload).min(1).max(500),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionBulkImportItemResponse
+ */
+export const zKnowledgeFsGoldenQuestionBulkImportItemResponse = z.object({
+  expected_evidence_id: z.string().nullish(),
+  question_id: z.string(),
+  row_index: z.int().gte(0),
+  similarity: z.number().gte(0).lte(1).nullish(),
+  status: z.enum(['active', 'draft']),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionBulkImportResponse
+ */
+export const zKnowledgeFsGoldenQuestionBulkImportResponse = z.object({
+  active_count: z.int().gte(0),
+  draft_count: z.int().gte(0),
+  items: z.array(zKnowledgeFsGoldenQuestionBulkImportItemResponse),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionEvidenceCandidateResponse
+ */
+export const zKnowledgeFsGoldenQuestionEvidenceCandidateResponse = z.object({
+  document_asset_id: z.string(),
+  node_id: z.string(),
+  page_number: z.int().nullish(),
+  projection_id: z.string(),
+  score: z.number().gte(0).lte(1),
+  section_path: z.array(z.string()),
+  text: z.string(),
+})
+
+/**
+ * KnowledgeFSGoldenQuestionEvidenceMatchResponse
+ */
+export const zKnowledgeFsGoldenQuestionEvidenceMatchResponse = z.object({
+  candidates: z.array(zKnowledgeFsGoldenQuestionEvidenceCandidateResponse),
+  evidence: z.string(),
+  matched: z.boolean(),
 })
 
 /**
@@ -1453,7 +1533,11 @@ export const zKnowledgeFsRetrievalProfileIntent = z.object({
 export const zKnowledgeFsSpaceCreatePayload = z.object({
   description: z.string().max(2000).nullish(),
   embedding: zKnowledgeFsModelIntent.nullish(),
-  icon: z.string().max(255).nullish(),
+  icon: z
+    .string()
+    .max(72)
+    .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
+    .nullish(),
   idempotency_key: z.string().min(1).max(255).nullish(),
   name: z.string().min(1).max(40),
   retrieval: zKnowledgeFsRetrievalProfileIntent.nullish(),
@@ -2278,6 +2362,32 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath = z.objec
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
   zKnowledgeFsGoldenQuestionResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportBody =
+  zKnowledgeFsGoldenQuestionBulkImportPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS golden questions imported
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponse =
+  zKnowledgeFsGoldenQuestionBulkImportResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesBody =
+  zKnowledgeFsGoldenQuestionEvidenceMatchPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS golden question evidence matches
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponse =
+  zKnowledgeFsGoldenQuestionEvidenceMatchResponse
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdPath = z.object({
   control_space_id: z.string(),

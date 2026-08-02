@@ -148,6 +148,8 @@ describe("golden-question handler branch coverage", () => {
       expect.objectContaining({
         metadata: {
           annotation: "Updated annotation",
+          lifecycleStatus: "draft",
+          matchPolicy: "all",
           sourceBadCaseId: "bad-case-1",
         },
       }),

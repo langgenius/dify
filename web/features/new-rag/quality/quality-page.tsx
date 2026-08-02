@@ -31,8 +31,16 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeQualityPath, newKnowledgeRetrievalTestPath } from '../routes'
 import { GoldenQuestionDialog } from './golden-question-dialog'
+import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
 
-const emptyDraft: GoldenQuestionDraft = { annotation: '', question: '', tags: [] }
+const emptyDraft: GoldenQuestionDraft = {
+  annotation: '',
+  evidenceText: '',
+  expectedEvidenceIds: [],
+  matchPolicy: 'all',
+  question: '',
+  tags: [],
+}
 const goldenLinkPrefix = 'golden-question:'
 const pageSize = 50
 
@@ -96,6 +104,33 @@ function Status({ status }: { status: KnowledgeFsBadCaseResponse['status'] }) {
   )
 }
 
+function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
+  const { t } = useTranslation('dataset')
+  return (
+    <span
+      className={cn(
+        'inline-flex w-fit items-center rounded-md px-1.5 py-0.5 system-2xs-medium-uppercase',
+        status === 'active' && 'bg-state-success-hover text-text-success',
+        status === 'draft' && 'bg-state-warning-hover text-text-warning',
+        status === 'stale' && 'bg-state-destructive-hover text-text-destructive',
+      )}
+    >
+      {t(($) => $[`newKnowledge.qualityPage.goldenStatus.${status}`])}
+    </span>
+  )
+}
+
+function goldenQuestionPayload(draft: GoldenQuestionDraft) {
+  return {
+    annotation: draft.annotation,
+    evidence_text: draft.evidenceText,
+    expected_evidence_ids: draft.expectedEvidenceIds,
+    match_policy: draft.matchPolicy,
+    question: draft.question,
+    tags: draft.tags,
+  }
+}
+
 export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -108,6 +143,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [dialogError, setDialogError] = useState<string>()
   const [dialogSubmitting, setDialogSubmitting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [pendingBadCaseId, setPendingBadCaseId] = useState<string>()
   const replayIdempotencyKeysRef = useRef(new Map<string, string>())
   const pendingGoldenQuestionIdsRef = useRef(new Map<string, string>())
@@ -200,7 +236,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     if (!goldenQuestionId) {
       const created = await createGoldenMutation.mutateAsync({
         body: {
-          ...draft,
+          ...goldenQuestionPayload(draft),
           source_bad_case_id: item.id,
         },
         params: { control_space_id: knowledgeSpaceId },
@@ -242,15 +278,13 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     try {
       if (dialog.mode === 'edit') {
         await updateGoldenMutation.mutateAsync({
-          body: draft,
+          body: goldenQuestionPayload(draft),
           params: { control_space_id: knowledgeSpaceId, question_id: dialog.id },
         })
         toast.success(t(($) => $['newKnowledge.qualityPage.updatedToast']))
       } else if (dialog.mode === 'create') {
         await createGoldenMutation.mutateAsync({
-          body: {
-            ...draft,
-          },
+          body: goldenQuestionPayload(draft),
           params: { control_space_id: knowledgeSpaceId },
         })
         toast.success(t(($) => $['newKnowledge.qualityPage.createdToast']))
@@ -307,6 +341,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     try {
       const { badCase, goldenQuestionId } = await ensureLinkedGoldenQuestion(item, {
         annotation: item.reason,
+        evidenceText: '',
+        expectedEvidenceIds: [],
+        matchPolicy: 'all',
         question: item.question ?? '',
         tags: visibleTags(item.tags),
       })
@@ -441,22 +478,28 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           </button>
         </div>
         {activeTab === 'golden' && goldenQuestions.length > 0 && (
-          <Button
-            variant="primary"
-            onClick={() =>
-              setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
-            }
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-            {t(($) => $['newKnowledge.qualityPage.addGolden'])}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setImportOpen(true)}>
+              <span aria-hidden className="i-ri-upload-2-line size-4" />
+              {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() =>
+                setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
+              }
+            >
+              <span aria-hidden className="i-ri-add-line size-4" />
+              {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+            </Button>
+          </div>
         )}
       </div>
 
       {activeTab === 'golden' &&
         (goldenQuestions.length ? (
           <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-167 grid-cols-[16px_minmax(180px,2fr)_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 system-2xs-medium-uppercase text-text-tertiary">
               <Checkbox
                 aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
                 checked={allSelected}
@@ -464,6 +507,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 onCheckedChange={toggleAll}
               />
               <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
+              <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.tags'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.annotation'])}</span>
               <span>{t(($) => $['newKnowledge.qualityPage.updated'])}</span>
@@ -472,7 +516,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {goldenQuestions.map((item) => (
               <div
                 key={item.id}
-                className="grid h-12 min-w-167 grid-cols-[16px_minmax(180px,2fr)_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
+                className="grid h-12 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
               >
                 <Checkbox
                   aria-label={t(($) => $['newKnowledge.qualityPage.selectQuestion'], {
@@ -484,6 +528,12 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 <span className="truncate system-sm-medium text-text-primary">
                   {item.question ?? ''}
                 </span>
+                <GoldenStatus
+                  status={
+                    item.status ??
+                    ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')
+                  }
+                />
                 <div className="flex min-w-0 gap-1 overflow-hidden">
                   {visibleTags(item.tags).map((tag) => (
                     <span
@@ -523,6 +573,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                           mode: 'edit',
                           value: {
                             annotation: item.annotation,
+                            evidenceText: item.evidence_text ?? '',
+                            expectedEvidenceIds: item.expected_evidence_ids ?? [],
+                            matchPolicy: item.match_policy ?? 'all',
                             question: item.question,
                             tags: item.tags,
                           },
@@ -546,7 +599,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </div>
             ))}
             {goldenQuery.hasNextPage && (
-              <div className="flex min-w-167 justify-center border-t border-divider-subtle py-4">
+              <div className="flex min-w-195 justify-center border-t border-divider-subtle py-4">
                 <Button
                   loading={goldenQuery.isFetchingNextPage}
                   disabled={goldenQuery.isFetchingNextPage}
@@ -566,16 +619,21 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             <p className="mt-1 max-w-105 system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
             </p>
-            <Button
-              variant="primary"
-              className="mt-4"
-              onClick={() =>
-                setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
-              }
-            >
-              <span aria-hidden className="i-ri-add-line size-4" />
-              {t(($) => $['newKnowledge.qualityPage.addGolden'])}
-            </Button>
+            <div className="mt-4 flex gap-2">
+              <Button onClick={() => setImportOpen(true)}>
+                <span aria-hidden className="i-ri-upload-2-line size-4" />
+                {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() =>
+                  setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
+                }
+              >
+                <span aria-hidden className="i-ri-add-line size-4" />
+                {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+              </Button>
+            </div>
           </div>
         ))}
 
@@ -624,6 +682,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                             mode: 'promote',
                             value: {
                               annotation: '',
+                              evidenceText: '',
+                              expectedEvidenceIds: [],
+                              matchPolicy: 'all',
                               question: item.question ?? '',
                               tags: visibleTags(item.tags),
                             },
@@ -662,6 +723,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                             mode: 'promote',
                             value: {
                               annotation: '',
+                              evidenceText: '',
+                              expectedEvidenceIds: [],
+                              matchPolicy: 'all',
                               question: item.question ?? '',
                               tags: visibleTags(item.tags),
                             },
@@ -743,6 +807,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         <GoldenQuestionDialog
           key={dialog.key}
           initialValue={dialog.value}
+          knowledgeSpaceId={knowledgeSpaceId}
           mode={dialog.mode}
           open
           error={dialogError}
@@ -759,6 +824,14 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             }
           }}
           onSubmit={submitDialog}
+        />
+      )}
+      {importOpen && (
+        <GoldenQuestionImportDialog
+          knowledgeSpaceId={knowledgeSpaceId}
+          open
+          onImported={invalidateQuality}
+          onOpenChange={setImportOpen}
         />
       )}
       <AlertDialog

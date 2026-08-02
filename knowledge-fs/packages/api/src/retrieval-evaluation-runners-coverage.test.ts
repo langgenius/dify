@@ -46,6 +46,9 @@ function questionRepository(page: ListGoldenQuestionsResult): GoldenQuestionRepo
     create: async () => {
       throw new Error("create is not used by evaluation runners");
     },
+    createMany: async () => {
+      throw new Error("createMany is not used by evaluation runners");
+    },
     delete: async () => {
       throw new Error("delete is not used by evaluation runners");
     },
