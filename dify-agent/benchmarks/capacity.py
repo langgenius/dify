@@ -196,11 +196,11 @@ def render_capacity_markdown(result: CapacityResult) -> str:
     lines.extend(
         [
             "",
-            "## Cost-model inputs",
+            "## Sizing inputs",
             "",
             "- Agent: use the measured `runs/s`, `CPU-ms/run`, and memory peak for one 2 vCPU / 2 GiB unit.",
             "- Redis: multiply `commands/run` by the expected Run count, then compare with cluster headroom.",
-            "- E2B: cost needs lifecycle execution time, vCPU count, and memory MiB; `bench-cost` applies the official CPU/RAM resource-second rates.",
+            "- E2B: `bench-sizing` maps lifecycle execution time, vCPU count, and memory MiB to the official calculator inputs.",
             "- Network: raw bytes remain in `result.json`; KB/run is observed container traffic, not cloud billable egress.",
             "- No Pod, Node, Redis-cluster, E2B-plan, quota, or monetary recommendation is generated.",
             "",
