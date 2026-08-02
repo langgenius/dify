@@ -444,17 +444,6 @@ export const zReplaceBindingsRequest = z.object({
 })
 
 /**
- * CurrentWorkspaceSummaryResponse
- */
-export const zCurrentWorkspaceSummaryResponse = z.object({
-  credits: z.int().nullable(),
-  id: z.string(),
-  name: z.string(),
-  plan: z.string().nullable(),
-  role: z.string(),
-})
-
-/**
  * ApiToolProviderDeletePayload
  */
 export const zApiToolProviderDeletePayload = z.object({
@@ -4787,11 +4776,6 @@ export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdR
  * Success
  */
 export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse = zWorkspaceAccessMatrix
-
-/**
- * Success
- */
-export const zGetWorkspacesCurrentSummaryResponse = zCurrentWorkspaceSummaryResponse
 
 /**
  * Tool labels retrieved successfully
