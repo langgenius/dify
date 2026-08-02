@@ -19,15 +19,59 @@ from benchmarks.schemas import BlockResult, CapacityPoint, CapacityResult, RunSa
 ScenarioId = Literal["basic", "shell", "resume", "config", "file"]
 ComponentStatus = Literal["calculated", "incomplete", "not_applicable"]
 ScenarioStatus = Literal["complete", "incomplete"]
+E2BPlan = Literal["hobby", "pro"]
 
 SCENARIO_IDS: tuple[ScenarioId, ...] = ("basic", "shell", "resume", "config", "file")
+E2B_CPU_USD_PER_VCPU_SECOND = 0.000014
+E2B_MEMORY_USD_PER_GIB_SECOND = 0.0000045
+E2B_HOBBY_MONTHLY_BASE_USD = 0.0
+E2B_PRO_MONTHLY_BASE_USD = 150.0
+E2B_PRO_INCLUDED_CONCURRENCY = 100
+E2B_PRO_ADDON_SLOTS = 500
+E2B_PRO_ADDON_MONTHLY_USD = 500.0
+E2B_PRO_MAX_CONCURRENCY = 1100
 
 
-class E2BBillingV1(BaseModel):
-    minimum_seconds: float = Field(ge=0)
-    increment_seconds: float = Field(gt=0)
+class E2BOfficialPricingV1(BaseModel):
+    """Auditable snapshot of E2B's public pricing used by this model."""
+
+    currency: Literal["USD"] = "USD"
+    cpu_usd_per_vcpu_second: float = E2B_CPU_USD_PER_VCPU_SECOND
+    memory_usd_per_gib_second: float = E2B_MEMORY_USD_PER_GIB_SECOND
+    hobby_monthly_base_usd: float = E2B_HOBBY_MONTHLY_BASE_USD
+    pro_monthly_base_usd: float = E2B_PRO_MONTHLY_BASE_USD
+    pro_included_concurrency: int = E2B_PRO_INCLUDED_CONCURRENCY
+    pro_concurrency_addon_slots: int = E2B_PRO_ADDON_SLOTS
+    pro_concurrency_addon_monthly_usd: float = E2B_PRO_ADDON_MONTHLY_USD
+    pro_max_concurrency: int = E2B_PRO_MAX_CONCURRENCY
+    source_url: Literal["https://e2b.dev/pricing"] = "https://e2b.dev/pricing"
+    billing_url: Literal["https://e2b.dev/docs/billing"] = "https://e2b.dev/docs/billing"
+    lifecycle_events_url: Literal["https://e2b.dev/docs/sandbox/lifecycle-events-webhooks"] = (
+        "https://e2b.dev/docs/sandbox/lifecycle-events-webhooks"
+    )
+    concurrency_addon_url: Literal["https://e2b.dev/docs/faq/increase-concurrency"] = (
+        "https://e2b.dev/docs/faq/increase-concurrency"
+    )
+    checked_at: Literal["2026-08-02"] = "2026-08-02"
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_official_snapshot(self) -> "E2BOfficialPricingV1":
+        expected: dict[str, float | int] = {
+            "cpu_usd_per_vcpu_second": E2B_CPU_USD_PER_VCPU_SECOND,
+            "memory_usd_per_gib_second": E2B_MEMORY_USD_PER_GIB_SECOND,
+            "hobby_monthly_base_usd": E2B_HOBBY_MONTHLY_BASE_USD,
+            "pro_monthly_base_usd": E2B_PRO_MONTHLY_BASE_USD,
+            "pro_included_concurrency": E2B_PRO_INCLUDED_CONCURRENCY,
+            "pro_concurrency_addon_slots": E2B_PRO_ADDON_SLOTS,
+            "pro_concurrency_addon_monthly_usd": E2B_PRO_ADDON_MONTHLY_USD,
+            "pro_max_concurrency": E2B_PRO_MAX_CONCURRENCY,
+        }
+        for name, value in expected.items():
+            if getattr(self, name) != value:
+                raise ValueError(f"{name} must match the official E2B pricing snapshot")
+        return self
 
 
 class CostInputV1(BaseModel):
@@ -36,10 +80,10 @@ class CostInputV1(BaseModel):
     peak_rps: float = Field(ge=0)
     usage_weights: dict[ScenarioId, float] | None = None
     peak_weights: dict[ScenarioId, float] | None = None
-    e2b_billing: E2BBillingV1 | None = None
-    e2b_price_per_billed_second: float | None = Field(default=None, ge=0)
-    currency: str | None = Field(default=None, min_length=1)
-    e2b_price_source: str | None = Field(default=None, min_length=1)
+    e2b_plan: E2BPlan
+    peak_running_sandboxes: int = Field(ge=0)
+    include_fixed_plan_cost: bool = True
+    e2b_pricing: E2BOfficialPricingV1 = Field(default_factory=E2BOfficialPricingV1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -60,13 +104,11 @@ class CostInputV1(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_price_provenance(self) -> "CostInputV1":
-        if self.e2b_price_per_billed_second is None:
-            return self
-        if self.currency is None or not self.currency.strip():
-            raise ValueError("currency is required when an E2B price is provided")
-        if self.e2b_price_source is None or not self.e2b_price_source.strip():
-            raise ValueError("e2b_price_source is required when an E2B price is provided")
+    def validate_plan_concurrency(self) -> "CostInputV1":
+        if self.e2b_plan == "hobby" and self.peak_running_sandboxes > 20:
+            raise ValueError("E2B Hobby supports at most 20 concurrent Sandboxes")
+        if self.e2b_plan == "pro" and self.peak_running_sandboxes > E2B_PRO_MAX_CONCURRENCY:
+            raise ValueError(f"E2B Pro supports at most {E2B_PRO_MAX_CONCURRENCY} concurrent Sandboxes")
         return self
 
 
@@ -84,6 +126,9 @@ class CostDemandV1(BaseModel):
     peak_rps: float = Field(ge=0)
     usage_weights: dict[ScenarioId, float] | None = None
     peak_weights: dict[ScenarioId, float] | None = None
+    e2b_plan: E2BPlan
+    peak_running_sandboxes: int = Field(ge=0)
+    include_fixed_plan_cost: bool
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -98,9 +143,15 @@ class AgentCostV1(BaseModel):
 
 class E2BCostV1(BaseModel):
     status: ComponentStatus
-    active_seconds_per_run: float | None = Field(default=None, ge=0)
-    billed_seconds_per_run: float | None = Field(default=None, ge=0)
-    monthly_billed_seconds: float | None = Field(default=None, ge=0)
+    running_seconds_per_run: float | None = Field(default=None, ge=0)
+    vcpu_seconds_per_run: float | None = Field(default=None, ge=0)
+    memory_gib_seconds_per_run: float | None = Field(default=None, ge=0)
+    usage_cost_per_run: float | None = Field(default=None, ge=0)
+    monthly_running_seconds: float | None = Field(default=None, ge=0)
+    monthly_usage_cost: float | None = Field(default=None, ge=0)
+    monthly_plan_base_cost: float | None = Field(default=None, ge=0)
+    monthly_concurrency_addon_cost: float | None = Field(default=None, ge=0)
+    fixed_cost_included: bool | None = None
     monthly_cost: float | None = Field(default=None, ge=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -134,8 +185,7 @@ class CostResultV1(BaseModel):
     schema_version: Literal[1] = 1
     capacity_schema_version: Literal[1] = 1
     source: CostSourceV1
-    currency: str | None = None
-    e2b_price_source: str | None = None
+    e2b_pricing: E2BOfficialPricingV1
     demand: CostDemandV1
     matrix_complete: bool
     complete: bool
@@ -154,7 +204,8 @@ class _UnitMetrics(BaseModel):
     agent_memory_peak_mib: float | None = Field(default=None, ge=0)
     e2b_applicable: bool
     e2b_active_seconds_per_run: float | None = Field(default=None, ge=0)
-    e2b_billed_seconds_per_run: float | None = Field(default=None, ge=0)
+    e2b_vcpu_seconds_per_run: float | None = Field(default=None, ge=0)
+    e2b_memory_gib_seconds_per_run: float | None = Field(default=None, ge=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -179,6 +230,7 @@ def calculate_cost_result(*, capacity_result_path: Path, cost_input: CostInputV1
             point_warnings.append("no valid capacity point is available")
             estimates[scenario_id] = _incomplete_estimate(
                 e2b_applicable=capacity.mode == "local-e2b" and scenario_id != "basic",
+                cost_input=cost_input,
                 warnings=point_warnings,
             )
             warnings.append(f"{scenario_id}: no valid capacity point")
@@ -188,12 +240,12 @@ def calculate_cost_result(*, capacity_result_path: Path, cost_input: CostInputV1
             capacity=capacity,
             point=selected,
             samples=samples,
-            billing=cost_input.e2b_billing,
         )
         point_warnings.extend(evidence_warnings)
         if metrics is None:
             estimates[scenario_id] = _incomplete_estimate(
                 e2b_applicable=capacity.mode == "local-e2b" and scenario_id != "basic",
+                cost_input=cost_input,
                 warnings=point_warnings,
                 selected_concurrency=selected.requested_concurrency,
             )
@@ -229,13 +281,15 @@ def calculate_cost_result(*, capacity_result_path: Path, cost_input: CostInputV1
             commit=capacity.target.commit,
             content_hash=capacity.target.content_hash,
         ),
-        currency=cost_input.currency,
-        e2b_price_source=cost_input.e2b_price_source,
+        e2b_pricing=cost_input.e2b_pricing,
         demand=CostDemandV1(
             monthly_runs=cost_input.monthly_runs,
             peak_rps=cost_input.peak_rps,
             usage_weights=cost_input.usage_weights,
             peak_weights=cost_input.peak_weights,
+            e2b_plan=cost_input.e2b_plan,
+            peak_running_sandboxes=cost_input.peak_running_sandboxes,
+            include_fixed_plan_cost=cost_input.include_fixed_plan_cost,
         ),
         matrix_complete=capacity.matrix_complete,
         complete=complete,
@@ -292,7 +346,6 @@ def _load_selected_metrics(
     capacity: CapacityResult,
     point: CapacityPoint,
     samples: Sequence[RunSample],
-    billing: E2BBillingV1 | None,
 ) -> tuple[_UnitMetrics | None, list[str]]:
     block_path = (
         capacity_result_path.parent
@@ -324,7 +377,8 @@ def _load_selected_metrics(
 
     e2b_applicable = capacity.mode == "local-e2b" and point.scenario_id != "basic"
     active_per_run = None
-    billed_per_run = None
+    vcpu_seconds_per_run = None
+    memory_gib_seconds_per_run = None
     warnings: list[str] = []
     if e2b_applicable:
         active_values = [sample.e2b_active_seconds for sample in selected_samples]
@@ -333,11 +387,24 @@ def _load_selected_metrics(
         else:
             active = [cast(float, value) for value in active_values]
             active_per_run = sum(active) / len(active)
-            if billing is None:
-                warnings.append("E2B billing minimum and increment are missing")
+            vcpu_counts = [sample.e2b_vcpu_count for sample in selected_samples]
+            if any(value is None for value in vcpu_counts):
+                warnings.append("one or more successful samples lack E2B vCPU count")
             else:
-                billed = [_bill_e2b_seconds(value, billing) for value in active]
-                billed_per_run = sum(billed) / len(billed)
+                vcpu_seconds = [
+                    active_seconds * cast(float, vcpu_count)
+                    for active_seconds, vcpu_count in zip(active, vcpu_counts, strict=True)
+                ]
+                vcpu_seconds_per_run = sum(vcpu_seconds) / len(vcpu_seconds)
+            memory_mib = [sample.e2b_memory_mib for sample in selected_samples]
+            if any(value is None for value in memory_mib):
+                warnings.append("one or more successful samples lack E2B memory MiB")
+            else:
+                memory_gib_seconds = [
+                    active_seconds * cast(float, memory) / 1024
+                    for active_seconds, memory in zip(active, memory_mib, strict=True)
+                ]
+                memory_gib_seconds_per_run = sum(memory_gib_seconds) / len(memory_gib_seconds)
     return (
         _UnitMetrics(
             capacity_runs_per_second=point.runs_per_second,
@@ -346,7 +413,8 @@ def _load_selected_metrics(
             agent_memory_peak_mib=point.agent_memory_peak_mib,
             e2b_applicable=e2b_applicable,
             e2b_active_seconds_per_run=active_per_run,
-            e2b_billed_seconds_per_run=billed_per_run,
+            e2b_vcpu_seconds_per_run=vcpu_seconds_per_run,
+            e2b_memory_gib_seconds_per_run=memory_gib_seconds_per_run,
         ),
         warnings,
     )
@@ -369,11 +437,6 @@ def _load_block_result(path: Path) -> BlockResult:
     return BlockResult.model_validate(payload)
 
 
-def _bill_e2b_seconds(active_seconds: float, billing: E2BBillingV1) -> float:
-    increments = math.ceil(max(0, active_seconds - 1e-12) / billing.increment_seconds)
-    return max(billing.minimum_seconds, increments * billing.increment_seconds)
-
-
 def _estimate_from_metrics(
     *,
     peak_metrics: _UnitMetrics | None,
@@ -391,7 +454,7 @@ def _estimate_from_metrics(
     if agent.status == "incomplete":
         estimate_warnings.append("Agent peak capacity is incomplete")
     if e2b.status == "incomplete":
-        estimate_warnings.append("E2B usage, billing rule, or price is incomplete")
+        estimate_warnings.append("E2B lifecycle resource evidence is incomplete")
     components_complete = agent.status == "calculated" and e2b.status in {"calculated", "not_applicable"}
     total = 0.0 if e2b.status == "not_applicable" else e2b.monthly_cost
     if not components_complete:
@@ -422,18 +485,55 @@ def _agent_capacity(metrics: _UnitMetrics | None, peak_rps: float) -> AgentCostV
 def _e2b_cost(metrics: _UnitMetrics | None, mode: BenchmarkMode, cost_input: CostInputV1) -> E2BCostV1:
     if mode == "local-runtime" or (metrics is not None and not metrics.e2b_applicable):
         return E2BCostV1(status="not_applicable")
+    plan_base, concurrency_addon = _fixed_e2b_cost(cost_input)
     if metrics is None:
-        return E2BCostV1(status="incomplete")
-    billed = metrics.e2b_billed_seconds_per_run
-    monthly_billed = cost_input.monthly_runs * billed if billed is not None else None
-    price = cost_input.e2b_price_per_billed_second
-    return E2BCostV1(
-        status="calculated" if monthly_billed is not None and price is not None else "incomplete",
-        active_seconds_per_run=metrics.e2b_active_seconds_per_run,
-        billed_seconds_per_run=billed,
-        monthly_billed_seconds=monthly_billed,
-        monthly_cost=(monthly_billed * price if monthly_billed is not None and price is not None else None),
+        return E2BCostV1(
+            status="incomplete",
+            monthly_plan_base_cost=plan_base,
+            monthly_concurrency_addon_cost=concurrency_addon,
+            fixed_cost_included=cost_input.include_fixed_plan_cost,
+        )
+    active = metrics.e2b_active_seconds_per_run
+    vcpu_seconds = metrics.e2b_vcpu_seconds_per_run
+    memory_gib_seconds = metrics.e2b_memory_gib_seconds_per_run
+    if vcpu_seconds is None or memory_gib_seconds is None:
+        return E2BCostV1(
+            status="incomplete",
+            running_seconds_per_run=active,
+            vcpu_seconds_per_run=vcpu_seconds,
+            memory_gib_seconds_per_run=memory_gib_seconds,
+            monthly_plan_base_cost=plan_base,
+            monthly_concurrency_addon_cost=concurrency_addon,
+            fixed_cost_included=cost_input.include_fixed_plan_cost,
+        )
+    pricing = cost_input.e2b_pricing
+    usage_per_run = (
+        vcpu_seconds * pricing.cpu_usd_per_vcpu_second + memory_gib_seconds * pricing.memory_usd_per_gib_second
     )
+    monthly_usage = usage_per_run * cost_input.monthly_runs
+    fixed = plan_base + concurrency_addon if cost_input.include_fixed_plan_cost else 0
+    return E2BCostV1(
+        status="calculated",
+        running_seconds_per_run=active,
+        vcpu_seconds_per_run=vcpu_seconds,
+        memory_gib_seconds_per_run=memory_gib_seconds,
+        usage_cost_per_run=usage_per_run,
+        monthly_running_seconds=active * cost_input.monthly_runs if active is not None else None,
+        monthly_usage_cost=monthly_usage,
+        monthly_plan_base_cost=plan_base,
+        monthly_concurrency_addon_cost=concurrency_addon,
+        fixed_cost_included=cost_input.include_fixed_plan_cost,
+        monthly_cost=monthly_usage + fixed,
+    )
+
+
+def _fixed_e2b_cost(cost_input: CostInputV1) -> tuple[float, float]:
+    pricing = cost_input.e2b_pricing
+    if cost_input.e2b_plan == "hobby":
+        return pricing.hobby_monthly_base_usd, 0
+    excess = max(0, cost_input.peak_running_sandboxes - pricing.pro_included_concurrency)
+    addon_count = math.ceil(excess / pricing.pro_concurrency_addon_slots)
+    return pricing.pro_monthly_base_usd, addon_count * pricing.pro_concurrency_addon_monthly_usd
 
 
 def _weighted_estimate(
@@ -488,7 +588,8 @@ def _weighted_metrics(
         )
     e2b_applicable = mode == "local-e2b" and any(scenario_id != "basic" for scenario_id in selected)
     active = None
-    billed = None
+    vcpu_seconds = None
+    memory_gib_seconds = None
     if e2b_applicable:
         applicable = cast(list[ScenarioId], [scenario_id for scenario_id in selected if scenario_id != "basic"])
         if all(metrics[scenario_id].e2b_active_seconds_per_run is not None for scenario_id in applicable):
@@ -496,9 +597,14 @@ def _weighted_metrics(
                 weights[scenario_id] * cast(float, metrics[scenario_id].e2b_active_seconds_per_run)
                 for scenario_id in applicable
             )
-        if all(metrics[scenario_id].e2b_billed_seconds_per_run is not None for scenario_id in applicable):
-            billed = sum(
-                weights[scenario_id] * cast(float, metrics[scenario_id].e2b_billed_seconds_per_run)
+        if all(metrics[scenario_id].e2b_vcpu_seconds_per_run is not None for scenario_id in applicable):
+            vcpu_seconds = sum(
+                weights[scenario_id] * cast(float, metrics[scenario_id].e2b_vcpu_seconds_per_run)
+                for scenario_id in applicable
+            )
+        if all(metrics[scenario_id].e2b_memory_gib_seconds_per_run is not None for scenario_id in applicable):
+            memory_gib_seconds = sum(
+                weights[scenario_id] * cast(float, metrics[scenario_id].e2b_memory_gib_seconds_per_run)
                 for scenario_id in applicable
             )
     return _UnitMetrics(
@@ -506,21 +612,24 @@ def _weighted_metrics(
         agent_cpu_ms_per_run=cpu,
         e2b_applicable=e2b_applicable,
         e2b_active_seconds_per_run=active,
-        e2b_billed_seconds_per_run=billed,
+        e2b_vcpu_seconds_per_run=vcpu_seconds,
+        e2b_memory_gib_seconds_per_run=memory_gib_seconds,
     )
 
 
 def _incomplete_estimate(
     *,
     e2b_applicable: bool,
+    cost_input: CostInputV1,
     warnings: Sequence[str],
     selected_concurrency: int | None = None,
 ) -> CostEstimateV1:
+    e2b = _e2b_cost(None, "local-e2b", cost_input) if e2b_applicable else E2BCostV1(status="not_applicable")
     return CostEstimateV1(
         status="incomplete",
         selected_concurrency=selected_concurrency,
         agent=AgentCostV1(status="incomplete"),
-        e2b=E2BCostV1(status="incomplete" if e2b_applicable else "not_applicable"),
+        e2b=e2b,
         warnings=list(warnings),
     )
 
@@ -546,6 +655,7 @@ def _cost_envelope(estimates: dict[ScenarioId, CostEstimateV1]) -> CostEnvelopeV
 
 def render_cost_report(result: CostResultV1) -> str:
     demand = result.demand
+    pricing = result.e2b_pricing
     lines = [
         f"# Dify Agent cost model: {result.source.mode}",
         "",
@@ -555,9 +665,17 @@ def render_cost_report(result: CostResultV1) -> str:
         "",
         f"- Capacity result: `{result.source.capacity_result_path}`",
         f"- Commit/content: `{result.source.commit}` / `{result.source.content_hash}`",
-        f"- Currency: **{result.currency or 'N/A'}**",
-        f"- E2B price source: **{result.e2b_price_source or 'N/A'}**",
-        "- E2B price origin: supplied by `COST_INPUT`; the benchmark contains no built-in vendor prices.",
+        f"- Currency: **{pricing.currency}**",
+        f"- E2B price source: **{pricing.source_url}**",
+        f"- E2B billing source: **{pricing.billing_url}**",
+        f"- E2B lifecycle source: **{pricing.lifecycle_events_url}**",
+        f"- E2B concurrency add-on source: **{pricing.concurrency_addon_url}**",
+        f"- Price checked at: **{pricing.checked_at}**",
+        f"- CPU: **{pricing.cpu_usd_per_vcpu_second:.6f} USD/vCPU-s**",
+        f"- Memory: **{pricing.memory_usd_per_gib_second:.7f} USD/GiB-s**",
+        f"- E2B plan: **{demand.e2b_plan}**",
+        f"- Peak running Sandboxes: **{demand.peak_running_sandboxes}**",
+        f"- Include fixed plan/add-on cost: `{str(demand.include_fixed_plan_cost).lower()}`",
         f"- Monthly Runs: **{demand.monthly_runs}**",
         f"- Peak Runs/s: **{_number(demand.peak_rps)}**",
         f"- Capacity matrix complete: `{str(result.matrix_complete).lower()}`",
@@ -565,9 +683,9 @@ def render_cost_report(result: CostResultV1) -> str:
         "",
         "## Pure scenarios",
         "",
-        "| Scenario | Status | C | Runs/s | ACU | E2B active s/run | E2B billed s/run | "
-        "E2B billed s/month | E2B Cost | Total Cost (E2B only) |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Scenario | Status | C | Runs/s | ACU | E2B running s/run | vCPU-s/run | GiB-s/run | Usage USD/run | "
+        "Usage USD/month | Fixed USD/month | Total Cost (E2B only) |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for scenario_id in SCENARIO_IDS:
         lines.append(_report_row(scenario_id, result.pure_scenarios[scenario_id]))
@@ -599,11 +717,17 @@ def render_cost_report(result: CostResultV1) -> str:
             "## Calculation contracts",
             "",
             "- Peak weights drive harmonic Agent capacity; ACU is a capacity count and has no price here.",
-            "- Usage weights drive E2B active time, billed time, and monetary cost.",
-            "- E2B rounds every successful Run before averaging; Basic is not applicable.",
+            "- Usage weights drive E2B running time, resource-seconds, and usage cost.",
+            "- E2B usage cost is `vCPU-s × CPU rate + GiB-s × memory rate`; there is no per-Run rounding.",
+            "- Running time, vCPU count, and memory MiB come from matching E2B pause lifecycle events.",
+            "- Paused time is not charged; Basic does not use E2B and is not applicable.",
+            "- The Basic row therefore excludes E2B plan fees; fixed cost appears only on E2B-applicable rows.",
+            "- Hobby includes 10 GiB storage and Pro includes 20 GiB; public storage-overage pricing is unavailable.",
+            "- One-time credits are excluded. Enterprise custom pricing is unsupported.",
+            "- Fixed USD/month is the official plan base plus any Pro concurrency add-ons; inclusion is explicit above.",
             "- Total Cost contains E2B cost only.",
             "- local-runtime is validation-only and is rejected by this cost command.",
-            "- A missing E2B price remains `null` and incomplete; a zero price remains calculated zero.",
+            "- Missing lifecycle resource fields produce `incomplete`; the model never guesses a template size.",
             "- No Pod, Node, or Kubernetes equivalent is produced.",
             "",
         ]
@@ -612,12 +736,17 @@ def render_cost_report(result: CostResultV1) -> str:
 
 
 def _report_row(label: str, estimate: CostEstimateV1) -> str:
+    fixed_cost = None
+    if estimate.e2b.monthly_plan_base_cost is not None and estimate.e2b.monthly_concurrency_addon_cost is not None:
+        fixed_cost = estimate.e2b.monthly_plan_base_cost + estimate.e2b.monthly_concurrency_addon_cost
     return (
         f"| `{label}` | `{estimate.status}` | {_number(estimate.selected_concurrency)} | "
         f"{_number(estimate.agent.capacity_runs_per_second)} | {_number(estimate.agent.acu)} | "
-        f"{_number(estimate.e2b.active_seconds_per_run)} | "
-        f"{_number(estimate.e2b.billed_seconds_per_run)} | "
-        f"{_number(estimate.e2b.monthly_billed_seconds)} | {_number(estimate.e2b.monthly_cost)} | "
+        f"{_number(estimate.e2b.running_seconds_per_run)} | "
+        f"{_number(estimate.e2b.vcpu_seconds_per_run)} | "
+        f"{_number(estimate.e2b.memory_gib_seconds_per_run)} | "
+        f"{_number(estimate.e2b.usage_cost_per_run)} | "
+        f"{_number(estimate.e2b.monthly_usage_cost)} | {_number(fixed_cost)} | "
         f"{_number(estimate.total_monthly_cost)} |"
     )
 

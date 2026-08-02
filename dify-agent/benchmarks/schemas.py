@@ -50,6 +50,8 @@ class RunSample(BaseModel):
     time_to_first_event_ms: float | None = None
     terminal_e2e_ms: float | None = None
     e2b_active_seconds: float | None = Field(default=None, ge=0)
+    e2b_vcpu_count: float | None = Field(default=None, gt=0)
+    e2b_memory_mib: float | None = Field(default=None, gt=0)
     event_count: int = 0
     terminal_status: TerminalStatus = "not_terminal"
     failure_kind: FailureKind | None = None
