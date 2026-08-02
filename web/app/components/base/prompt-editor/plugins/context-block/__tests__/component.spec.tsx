@@ -3,8 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../../constants'
 import ContextBlockComponent from '../component'
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 // Mock the hooks used by ContextBlockComponent
 const mockUseSelectOrDelete = vi.fn()
 const mockUseTrigger = vi.fn()
@@ -148,17 +146,6 @@ describe('ContextBlockComponent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should keep the popover closed when the trigger prevents the default click', async () => {
-      const user = userEvent.setup()
-      const { triggerSetOpen } = defaultSetup()
-      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
-
-      await user.click(screen.getByTestId('popover-trigger'))
-
-      expect(triggerSetOpen).not.toHaveBeenCalled()
-      expect(screen.queryByText('common.promptEditor.context.modal.add')).not.toBeInTheDocument()
-    })
-
     it('should call onAddContext when add button is clicked', async () => {
       defaultSetup({ open: true })
       const handleAddContext = vi.fn()

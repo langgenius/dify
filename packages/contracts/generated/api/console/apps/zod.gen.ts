@@ -560,7 +560,7 @@ export const zSandboxReadResponse = z.object({
  * WorkflowAgentSandboxUploadPayload
  */
 export const zWorkflowAgentSandboxUploadPayload = z.object({
-  node_execution_id: z.string().nullish(),
+  node_execution_id: z.string().min(1),
   path: z.string().min(1),
 })
 
@@ -5527,6 +5527,15 @@ export const zPutAppsByAppIdServerPath = z.object({
  */
 export const zPutAppsByAppIdServerResponse = zAppMcpServerResponse
 
+export const zPostAppsByAppIdServerRefreshPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * MCP server refreshed successfully
+ */
+export const zPostAppsByAppIdServerRefreshResponse = zAppMcpServerResponse
+
 export const zPostAppsByAppIdSiteBody = zAppSiteUpdatePayload
 
 export const zPostAppsByAppIdSitePath = z.object({
@@ -5931,7 +5940,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().optional().default('.'),
   })
 
@@ -5950,7 +5959,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().min(1),
   })
 
@@ -6772,12 +6781,3 @@ export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
  * API key deleted successfully
  */
 export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.void()
-
-export const zGetAppsByServerIdServerRefreshPath = z.object({
-  server_id: z.uuid(),
-})
-
-/**
- * MCP server refreshed successfully
- */
-export const zGetAppsByServerIdServerRefreshResponse = zAppMcpServerResponse

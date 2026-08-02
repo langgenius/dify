@@ -14,8 +14,6 @@ const mockUpdateMutate = vi.fn()
 const mockExportMutateAsync = vi.fn()
 const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
-let mockDropdownOpen = false
-let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     get workspacePermissionKeys() {
@@ -44,51 +42,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({
-    open,
-    onOpenChange,
-    children,
-  }: {
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-    children: React.ReactNode
-  }) => {
-    mockDropdownOpen = !!open
-    mockDropdownOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  DropdownMenuTrigger: ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => (
-    <button
-      type="button"
-      className={className}
-      onClick={() => mockDropdownOnOpenChange?.(!mockDropdownOpen)}
-    >
-      {children}
-    </button>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) =>
-    mockDropdownOpen ? <div>{children}</div> : null,
-  DropdownMenuItem: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: () => <hr />,
 }))
 
 vi.mock('@/service/use-snippets', () => ({
@@ -173,8 +126,6 @@ describe('SnippetInfoDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys = ['snippets.create_and_modify', 'snippets.management']
-    mockDropdownOpen = false
-    mockDropdownOnOpenChange = undefined
   })
 
   // Rendering coverage for the menu trigger itself.

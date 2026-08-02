@@ -13,7 +13,7 @@ export const useChunkStructure = () => {
 
   const GeneralOption: Option = {
     id: ChunkingMode.text,
-    icon: <GeneralChunk className="size-[18px]" />,
+    icon: <GeneralChunk className="size-4.5" />,
     iconActiveColor: 'text-util-colors-indigo-indigo-600',
     title: 'General',
     description: t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' }),
@@ -22,7 +22,7 @@ export const useChunkStructure = () => {
   }
   const ParentChildOption: Option = {
     id: ChunkingMode.parentChild,
-    icon: <ParentChildChunk className="size-[18px]" />,
+    icon: <ParentChildChunk className="size-4.5" />,
     iconActiveColor: 'text-util-colors-blue-light-blue-light-500',
     title: 'Parent-Child',
     description: t(($) => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' }),
@@ -31,7 +31,7 @@ export const useChunkStructure = () => {
   }
   const QuestionAnswerOption: Option = {
     id: ChunkingMode.qa,
-    icon: <QuestionAndAnswer className="size-[18px]" />,
+    icon: <QuestionAndAnswer className="size-4.5" />,
     title: 'Q&A',
     description: t(($) => $['stepTwo.qaTip'], { ns: 'datasetCreation' }),
   }

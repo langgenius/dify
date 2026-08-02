@@ -14,6 +14,7 @@ import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import StepByStepTourMount from '../mount'
 import { stepByStepTourSessionAtom } from '../state'
@@ -62,6 +63,9 @@ const mockEnableStepByStepTour = vi.hoisted(() => ({
   value: true,
 }))
 const mockHasBlockingModalOpen = vi.hoisted(() => ({
+  value: false,
+}))
+const mockEducationExpireNotice = vi.hoisted(() => ({
   value: false,
 }))
 const mockStepByStepTour = vi.hoisted(() => {
@@ -208,6 +212,15 @@ vi.mock('@/context/modal-context', () => ({
     selector({
       hasBlockingModalOpen: mockHasBlockingModalOpen.value,
     }),
+}))
+
+vi.mock('@/app/education-apply/use-expire-notice', () => ({
+  useEducationExpireNotice: () => [
+    mockEducationExpireNotice.value
+      ? { accountId: 'user-1', expireAt: 1, expired: false, phase: 'expiring' }
+      : null,
+    vi.fn(),
+  ],
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -480,7 +493,7 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourFixtureState>) 
   }
 }
 
-const renderStepByStepTourMount = () => {
+const renderStepByStepTourMount = (searchParams = '') => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   queryClient.setQueryData(
@@ -495,6 +508,7 @@ const renderStepByStepTourMount = () => {
   seedRegisteredConsoleStateFixture(jotaiStore)
   jotaiStore.set(queryClientAtom, queryClient)
   jotaiStore.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
+  const { wrapper } = createNuqsTestWrapper({ searchParams })
 
   return render(
     <JotaiProvider store={jotaiStore}>
@@ -502,6 +516,7 @@ const renderStepByStepTourMount = () => {
         <StepByStepTourMount />
       </QueryClientProvider>
     </JotaiProvider>,
+    { wrapper },
   )
 }
 
@@ -532,6 +547,7 @@ describe('StepByStepTourMount', () => {
     mockEnableLearnApp.value = true
     mockEnableStepByStepTour.value = true
     mockHasBlockingModalOpen.value = false
+    mockEducationExpireNotice.value = false
     mockPathname = '/apps'
     localStorage.clear()
     mockStepByStepTour.reset()
@@ -780,6 +796,57 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('hides expanded tour overlays while settings is open', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount('?settings=preferences')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('hides expanded tour overlays while the Education expiration notice is open', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    mockEducationExpireNotice.value = true
+    renderStepByStepTourMount()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('does not block the tour outside the Apps route for an unmounted Education notice', async () => {
+    mockPathname = '/datasets'
+    mockEducationExpireNotice.value = true
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
   it('keeps the minimized tour entry available while a blocking modal is open', async () => {

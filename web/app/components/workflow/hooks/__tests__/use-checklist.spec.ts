@@ -327,6 +327,7 @@ describe('useChecklist', () => {
         expect.objectContaining({
           id: nodeId,
           errorMessages: [scenario.errorMessage],
+          openInlineAgentPanel: true,
         }),
       ])
     })

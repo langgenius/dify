@@ -101,7 +101,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
           pluginID={detail.plugin_id}
           currentVersion={detail.version}
           onSelect={handleVersionSelect}
-          trigger={
+          trigger={() => (
             <Badge
               className="h-5 px-1.5"
               text={
@@ -118,7 +118,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
               hasRedCornerMark={hasNewVersion}
               uppercase={false}
             />
-          }
+          )}
         />
       )}
       {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (

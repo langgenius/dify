@@ -205,7 +205,7 @@ const ChatVariablePanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
@@ -228,7 +228,7 @@ const ChatVariablePanel = () => {
       {showTip && (
         <div className="shrink-0 px-3 pt-2.5 pb-2">
           <div className="relative rounded-2xl bg-background-section-burn p-3">
-            <div className="inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
+            <div className="inline-block rounded-[5px] border border-divider-deep px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
               TIPS
             </div>
             <div className="mt-1 mb-4 system-sm-regular text-text-secondary">
@@ -263,7 +263,7 @@ const ChatVariablePanel = () => {
                 </div>
               </div>
             </div>
-            <div className="absolute top-[-4px] right-[38px] z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+            <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
           </div>
         </div>
       )}

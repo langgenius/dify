@@ -1,6 +1,7 @@
 import type { EducationAddParams } from '@/app/education-apply/types'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { get, post } from './base'
+import { consoleClient } from './client'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'education'
@@ -8,8 +9,14 @@ const NAME_SPACE = 'education'
 export const useEducationVerify = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'education-verify'],
-    mutationFn: () => {
-      return get<{ token: string }>('/account/education/verify', {}, { silent: true })
+    mutationFn: async () => {
+      const response = await consoleClient.account.education.verify.get(
+        {},
+        { context: { silent: true } },
+      )
+      if (!response.token) throw new Error('Education verification token is missing')
+
+      return { token: response.token }
     },
   })
 }

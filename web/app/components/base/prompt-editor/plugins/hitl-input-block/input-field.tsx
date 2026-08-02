@@ -215,7 +215,7 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="flex max-h-[var(--shortcut-popup-max-height,80dvh)] w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+    <div className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
       <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">
           {t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })}
@@ -278,7 +278,7 @@ const InputField: React.FC<InputFieldProps> = ({
               {t(($) => $[`${i18nPrefix}.options`], { ns: 'workflow' })}
             </div>
             {tempPayload.option_source.type === 'variable' ? (
-              <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
+              <div className="relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
                 <VarReferencePicker
                   nodeId={nodeId}
                   value={tempPayload.option_source.selector}

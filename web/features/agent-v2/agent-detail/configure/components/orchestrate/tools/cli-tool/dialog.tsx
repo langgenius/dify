@@ -158,7 +158,7 @@ export function CliToolDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden p-0">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden p-0">
         <div className="relative px-6 pt-6 pb-3">
           <DialogCloseButton />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">

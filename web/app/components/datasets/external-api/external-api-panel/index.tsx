@@ -1,13 +1,14 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
+import { consoleQuery } from '@/service/client'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
@@ -22,8 +23,11 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
-  const { externalKnowledgeApiList, mutateExternalKnowledgeApis, isLoading } =
-    useExternalKnowledgeApi()
+  const queryClient = useQueryClient()
+  const externalKnowledgeApiQueryOptions =
+    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
+  const { data, isLoading } = useQuery(externalKnowledgeApiQueryOptions)
+  const externalKnowledgeApiList = data?.data ?? []
 
   const handleOpenExternalAPIModal = () => {
     if (!canManageExternalKnowledgeApi) return
@@ -32,10 +36,9 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
       payload: { name: '', settings: { endpoint: '', api_key: '' } },
       datasetBindings: [],
       onSaveCallback: () => {
-        mutateExternalKnowledgeApis()
-      },
-      onCancelCallback: () => {
-        mutateExternalKnowledgeApis()
+        void queryClient.invalidateQueries({
+          queryKey: externalKnowledgeApiQueryOptions.queryKey,
+        })
       },
       isEditMode: false,
     })
@@ -45,7 +48,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
     <div tabIndex={-1} className={cn('absolute top-14 right-0 bottom-2 z-10 flex outline-hidden')}>
       <div
         className={cn(
-          'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+          'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
         )}
       >
         <div className="flex items-start self-stretch p-4 pb-0">

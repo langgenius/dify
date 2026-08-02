@@ -23,7 +23,7 @@ export function AccessSubjectSelectionList({
   return (
     <div
       className={cn(
-        'flex max-h-[400px] flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2',
+        'flex max-h-100 flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2',
         className,
       )}
     >
@@ -154,7 +154,7 @@ function SelectedGroupItem({
     <SelectedBaseItem
       icon={
         <span
-          className="i-ri-organization-chart h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0"
+          className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
           aria-hidden="true"
         />
       }
@@ -205,7 +205,7 @@ function SelectedBaseItem({ icon, onRemove, children }: SelectedBaseItemProps) {
   return (
     <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
       <div className="size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-        <div className="flex size-full items-center justify-center bg-[image:var(--color-access-app-icon-mask-bg)]">
+        <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
           {icon}
         </div>
       </div>
@@ -217,7 +217,7 @@ function SelectedBaseItem({ icon, onRemove, children }: SelectedBaseItemProps) {
         onClick={onRemove}
       >
         <span
-          className="i-ri-close-circle-fill h-[14px] w-[14px] text-text-quaternary"
+          className="i-ri-close-circle-fill h-3.5 w-3.5 text-text-quaternary"
           aria-hidden="true"
         />
       </button>

@@ -89,7 +89,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
                 <button
                   key={label.name}
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
+                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-1.5 pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
@@ -101,7 +101,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
                   <Tag03 className="size-6 text-text-quaternary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">
+                  <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>
                 </div>

@@ -228,11 +228,11 @@ const Description = ({
 
   const defaultMarketplaceNav = (
     <div className="relative z-20 flex w-full flex-col items-start">
-      <div className="flex h-[60px] w-full items-center rounded-lg border-[0.5px] border-white/50 bg-components-panel-bg-blur backdrop-blur-[6px]">
+      <div className="flex h-15 w-full items-center rounded-lg border-[0.5px] border-white/50 bg-components-panel-bg-blur backdrop-blur-[6px]">
         <div className="flex h-full min-w-0 flex-1 items-center px-5 py-2">
           <div className="flex shrink-0 items-center gap-1.5">
-            <DifyLogo alt="Dify" className="h-6 w-[52px]" />
-            <span className="max-w-0 overflow-hidden title-3xl-semi-bold whitespace-nowrap text-text-primary opacity-0 transition-all duration-200 md:max-w-[150px] md:opacity-100">
+            <DifyLogo alt="Dify" className="h-6 w-13" />
+            <span className="max-w-0 overflow-hidden title-3xl-semi-bold whitespace-nowrap text-text-primary opacity-0 transition-all duration-200 md:max-w-37.5 md:opacity-100">
               {tCommon(($) => $['mainNav.marketplace'])}
             </span>
           </div>

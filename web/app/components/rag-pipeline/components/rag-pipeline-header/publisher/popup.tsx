@@ -215,7 +215,7 @@ export function Popup({
     <div
       className={cn(
         'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-        isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]',
+        isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-90' : 'w-100',
       )}
     >
       <div className="p-4 pt-3">

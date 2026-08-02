@@ -370,7 +370,7 @@ const ProviderConfigModal: FC<Props> = ({
         >
           <DialogContent className="max-h-[calc(100dvh-1rem)] w-auto max-w-[calc(100vw-1rem)] overflow-visible border-none bg-transparent p-0 shadow-none">
             <div className="flex items-center justify-center">
-              <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
+              <div className="mx-2 max-h-[calc(100vh-120px)] w-160 overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
                 <div className="px-8 pt-8">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="title-2xl-semi-bold text-text-primary">
@@ -773,7 +773,7 @@ const ProviderConfigModal: FC<Props> = ({
                   </div>
                   <div className="my-8 flex h-8 items-center justify-between">
                     <a
-                      className="flex items-center space-x-1 text-xs leading-[18px] font-normal text-[#155EEF]"
+                      className="flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
                       target="_blank"
                       href={docURL[type]}
                     >
@@ -796,7 +796,7 @@ const ProviderConfigModal: FC<Props> = ({
                               {t(($) => $['operation.remove'], { ns: 'common' })}
                             </span>
                           </Button>
-                          <Divider type="vertical" className="mx-3 h-[18px]" />
+                          <Divider type="vertical" className="mx-3 h-4.5" />
                         </>
                       )}
                       <Button

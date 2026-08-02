@@ -19,15 +19,17 @@ import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
+  useInstallOrUpdate,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
 } from '../use-plugins'
 
-const { mockGet, mockPost } = vi.hoisted(() => ({
+const { mockGet, mockPost, mockUninstallPlugin } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
+  mockUninstallPlugin: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -35,6 +37,11 @@ vi.mock('@/service/base', () => ({
   getMarketplace: vi.fn(),
   post: mockPost,
   postMarketplace: vi.fn(),
+}))
+
+vi.mock('@/service/plugins', () => ({
+  fetchPluginInfoFromMarketPlace: vi.fn(),
+  uninstallPlugin: mockUninstallPlugin,
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
@@ -301,6 +308,54 @@ describe('use-plugins mutations', () => {
     })
 
     resolvePost({})
+  })
+
+  it('preserves credentials when replacing an installed bundle package', async () => {
+    const queryClient = createQueryClient()
+    mockUninstallPlugin.mockResolvedValue({ success: true })
+    mockPost.mockResolvedValue({ all_installed: true, task_id: '' })
+    const payload = [
+      {
+        type: 'package' as const,
+        value: {
+          unique_identifier: 'langgenius/openai:0.0.2@new',
+          manifest: {},
+        },
+      },
+    ]
+    const plugin = [
+      {
+        org: 'langgenius',
+        name: 'openai',
+      },
+    ]
+    const installedInfo = {
+      'langgenius/openai': {
+        installedId: 'installation-id',
+        installedVersion: '0.0.1',
+        uniqueIdentifier: 'langgenius/openai:0.0.1@old',
+      },
+    }
+    const { result } = renderHook(() => useInstallOrUpdate({}), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        payload: payload as Parameters<typeof result.current.mutateAsync>[0]['payload'],
+        plugin: plugin as Parameters<typeof result.current.mutateAsync>[0]['plugin'],
+        installedInfo,
+      })
+    })
+
+    expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id', {
+      preserveCredentials: true,
+    })
+    expect(mockPost).toHaveBeenCalledWith('/workspaces/current/plugin/install/pkg', {
+      body: {
+        plugin_unique_identifiers: ['langgenius/openai:0.0.2@new'],
+      },
+    })
   })
 
   it('optimistically updates plugin permission cache before the request finishes', async () => {

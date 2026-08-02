@@ -1,15 +1,23 @@
 import base64
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from controllers.console import wraps as console_wraps
 from controllers.console.billing.billing import PartnerTenants
-from models.account import Account
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.model import DifySetup
 
 
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(DifySetup, Account, Tenant, TenantAccountJoin)],
+    indirect=True,
+)
 class TestPartnerTenants:
     """Unit tests for PartnerTenants controller."""
 
@@ -22,13 +30,27 @@ class TestPartnerTenants:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "account-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
+    def mock_account(self, sqlite_session: Session):
+        """Persist an initialized account with an owner workspace membership."""
+        tenant = Tenant(name="Billing Tenant")
+        account = Account(name="Billing User", email="test@example.com")
+        sqlite_session.add_all([tenant, account])
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    current=True,
+                    role=TenantAccountRole.OWNER,
+                    invited_by=None,
+                ),
+                DifySetup(version="test"),
+            ]
+        )
+        sqlite_session.commit()
+        account._current_tenant = tenant
+        sqlite_session.expunge(account)
         return account
 
     @pytest.fixture
@@ -38,16 +60,18 @@ class TestPartnerTenants:
             yield mock_service
 
     @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
+    def mock_decorators(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+        """Keep authentication mocked while the setup guard uses SQLite."""
+        console_wraps._is_setup_completed.reset_success()
+        monkeypatch.setattr(console_wraps.db, "session", sqlite_session)
         with (
-            patch("controllers.console.wraps.db") as mock_db,
             patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("libs.login.dify_config.LOGIN_DISABLED", False),
             patch("libs.login.check_csrf_token") as mock_csrf,
         ):
             mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
+            yield mock_csrf
+        console_wraps._is_setup_completed.reset_success()
 
     def test_put_success(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test successful partner tenants bindings sync."""
@@ -66,7 +90,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -93,7 +117,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -117,7 +141,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -159,7 +183,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -190,7 +214,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -216,7 +240,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):
@@ -242,7 +266,7 @@ class TestPartnerTenants:
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(mock_account, "tenant-456"),
+                    return_value=(mock_account, mock_account.current_tenant_id),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
             ):

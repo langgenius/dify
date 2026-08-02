@@ -1,18 +1,24 @@
 'use client'
 import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  TimePickerProps,
+  TriggerParams,
+} from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { RiTimeLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContextSelector } from '@/context/modal-context'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Label from '../label'
 import PluginsPicker from './plugins-picker'
@@ -35,12 +41,12 @@ type Props = Readonly<{
 const SettingTimeZone: FC<{
   children?: React.ReactNode
 }> = ({ children }) => {
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   return (
     <button
       type="button"
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
+      onClick={() => setSettingsDestination('preferences')}
     >
       {children}
     </button>
@@ -135,19 +141,26 @@ const AutoUpdateSetting: FC<Props> = ({ payload, onChange }) => {
     [payload, onChange],
   )
 
-  const renderTimePickerTrigger = useCallback(
-    ({ inputElem, onClick, isOpen }: TriggerParams) => {
+  const renderTimePickerTrigger = useCallback<NonNullable<TimePickerProps['renderTrigger']>>(
+    (props, state, { inputElem, onClick }: TriggerParams) => {
       return (
         <button
+          {...props}
           type="button"
-          className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onClick}
+          className={cn(
+            'group flex h-8 w-40 cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            props.className,
+          )}
+          onClick={(event) => {
+            onClick(event)
+            props.onClick?.(event)
+          }}
         >
           <div className="flex w-0 grow items-center gap-x-1">
             <RiTimeLine
               className={cn(
                 'size-4 shrink-0 text-text-tertiary',
-                isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
               )}
             />
             {inputElem}

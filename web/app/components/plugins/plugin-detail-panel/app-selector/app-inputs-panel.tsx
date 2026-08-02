@@ -30,11 +30,7 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
   const hasInputs = inputFormSchema.length > 0
 
   return (
-    <div
-      className={cn(
-        'flex max-h-[240px] flex-col rounded-b-2xl border-t border-divider-subtle pb-4',
-      )}
-    >
+    <div className={cn('flex max-h-60 flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
       {isLoading && (
         <div className="pt-3">
           <Loading type="app" />

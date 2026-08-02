@@ -452,10 +452,6 @@ export type InstalledPluginCategoryListResponse = {
   has_more: boolean
 }
 
-export type UninstallPluginResponse = {
-  success: boolean
-}
-
 export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
