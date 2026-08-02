@@ -1,4 +1,4 @@
-"""Translate one capacity result into auditable resource and cost evidence."""
+"""Translate one local-E2B capacity result into auditable cost evidence."""
 
 from __future__ import annotations
 
@@ -7,9 +7,10 @@ from datetime import datetime, timezone
 import json
 import math
 from pathlib import Path
+import sys
 from typing import ClassVar, Literal, Sequence, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from benchmarks.scenario import BenchmarkMode
 from benchmarks.schemas import BlockResult, CapacityPoint, CapacityResult, RunSample
@@ -56,6 +57,8 @@ class CostInputV1(BaseModel):
     acu_monthly_price: float | None = Field(default=None, ge=0)
     e2b_price_per_billed_second: float | None = Field(default=None, ge=0)
     network_price_per_gib: float | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, min_length=1)
+    price_source: str | None = Field(default=None, min_length=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -82,6 +85,25 @@ class CostInputV1(BaseModel):
         if len(names) != len(set(names)):
             raise ValueError("redis_tiers names must be unique")
         return value
+
+    @model_validator(mode="after")
+    def validate_price_provenance(self) -> "CostInputV1":
+        has_price = any(
+            price is not None
+            for price in (
+                self.acu_monthly_price,
+                self.e2b_price_per_billed_second,
+                self.network_price_per_gib,
+                *(tier.monthly_price for tier in self.redis_tiers),
+            )
+        )
+        if not has_price:
+            return self
+        if self.currency is None or not self.currency.strip():
+            raise ValueError("currency is required when any price is provided")
+        if self.price_source is None or not self.price_source.strip():
+            raise ValueError("price_source is required when any price is provided")
+        return self
 
 
 class CostSourceV1(BaseModel):
@@ -180,6 +202,8 @@ class CostResultV1(BaseModel):
     schema_version: Literal[1] = 1
     capacity_schema_version: Literal[1] = 1
     source: CostSourceV1
+    currency: str | None = None
+    price_source: str | None = None
     demand: CostDemandV1
     matrix_complete: bool
     complete: bool
@@ -212,6 +236,8 @@ def calculate_cost_result(*, capacity_result_path: Path, cost_input: CostInputV1
     capacity = CapacityResult.model_validate_json(capacity_result_path.read_text())
     if capacity.schema_version != 1:
         raise ValueError(f"unsupported capacity result schema {capacity.schema_version}")
+    if capacity.mode == "local-runtime":
+        raise ValueError("local-runtime is validation-only; use its capacity report instead of the cost model")
     samples = _load_samples(capacity_result_path.parent / "samples.jsonl")
     warnings = [] if capacity.matrix_complete else ["capacity matrix is incomplete"]
     estimates: dict[ScenarioId, CostEstimateV1] = {}
@@ -275,6 +301,8 @@ def calculate_cost_result(*, capacity_result_path: Path, cost_input: CostInputV1
             commit=capacity.target.commit,
             content_hash=capacity.target.content_hash,
         ),
+        currency=cost_input.currency,
+        price_source=cost_input.price_source,
         demand=CostDemandV1(
             monthly_runs=cost_input.monthly_runs,
             peak_rps=cost_input.peak_rps,
@@ -722,6 +750,9 @@ def render_cost_report(result: CostResultV1) -> str:
         "",
         f"- Capacity result: `{result.source.capacity_result_path}`",
         f"- Commit/content: `{result.source.commit}` / `{result.source.content_hash}`",
+        f"- Currency: **{result.currency or 'N/A'}**",
+        f"- Price source: **{result.price_source or 'N/A'}**",
+        "- Price origin: supplied by `COST_INPUT`; the benchmark contains no built-in vendor prices.",
         f"- Monthly Runs: **{demand.monthly_runs}**",
         f"- Peak Runs/s: **{_number(demand.peak_rps)}**",
         f"- Billing period: **{_number(demand.billing_period_seconds)} seconds**",
@@ -732,8 +763,8 @@ def render_cost_report(result: CostResultV1) -> str:
         "",
         "## Pure scenarios",
         "",
-        "| Scenario | Status | C | Runs/s | ACU / $ | Redis cmd/s | Retained MiB | Redis tier / $ | "
-        "E2B active / billed s/run | E2B monthly s / $ | Network GiB / $ | Total $ |",
+        "| Scenario | Status | C | Runs/s | ACU / Cost | Redis cmd/s | Retained MiB | Redis tier / Cost | "
+        "E2B active / billed s/run | E2B monthly s / Cost | Network GiB / Cost | Total Cost |",
         "|---|---|---:|---:|---:|---:|---:|---|---|---|---|---:|",
     ]
     for scenario_id in SCENARIO_IDS:
@@ -767,7 +798,8 @@ def render_cost_report(result: CostResultV1) -> str:
             "",
             "- Peak weights drive harmonic Agent capacity and Redis peak commands/network.",
             "- Usage weights drive monthly Redis commands/retained bytes, E2B time, and billable network.",
-            "- E2B rounds every successful Run before averaging; Basic and local-runtime are not applicable.",
+            "- E2B rounds every successful Run before averaging; Basic is not applicable.",
+            "- local-runtime is validation-only and is rejected by this cost command.",
             "- Network starts from Agent container KB/run; the egress ratio is an explicit planning assumption.",
             "- Missing prices remain `null` and incomplete; zero prices remain calculated zero.",
             "- No Pod, Node, or Kubernetes equivalent is produced.",
@@ -800,7 +832,7 @@ def _number(value: float | int | None) -> str:
         return "N/A"
     if isinstance(value, int):
         return str(value)
-    return f"{value:.6g}"
+    return f"{value:.4f}"
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -814,8 +846,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     capacity_result_path = cast(Path, args.capacity_result).resolve()
-    cost_input = CostInputV1.model_validate_json(cast(Path, args.cost_input).read_text())
-    result = calculate_cost_result(capacity_result_path=capacity_result_path, cost_input=cost_input)
+    try:
+        cost_input = CostInputV1.model_validate_json(cast(Path, args.cost_input).read_text())
+        result = calculate_cost_result(capacity_result_path=capacity_result_path, cost_input=cost_input)
+    except (OSError, ValueError) as exc:
+        print(f"bench-cost: {exc}", file=sys.stderr)
+        return 2
     requested_output = cast(Path | None, args.output_dir)
     output_dir = (
         requested_output.resolve()
