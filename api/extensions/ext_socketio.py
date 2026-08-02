@@ -1,4 +1,6 @@
+import socket
 import ssl
+import sys
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -19,6 +21,25 @@ def _get_ssl_cert_reqs() -> ssl.VerifyMode:
     return cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
 
 
+def _build_keepalive_options() -> dict[int, int]:
+    """Build the platform-specific TCP keepalive option set.
+
+    Mirrors the logic in ``extensions.ext_redis._get_connection_health_params``
+    so the Socket.IO Redis pub/sub connection gets the same idle-connection
+    probes as the regular Redis clients. Without these, cloud LBs and K8s
+    services silently close the idle pub/sub connection and the client only
+    notices on the next health check (issue #39812).
+    """
+    options: dict[int, int] = {}
+    if sys.platform == "linux":
+        options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+        options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+        options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+    elif sys.platform == "darwin":
+        options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+    return options
+
+
 def _build_redis_options(redis_url: str) -> dict[str, Any]:
     """Build Redis options for Socket.IO's cross-process pub/sub manager.
 
@@ -26,12 +47,23 @@ def _build_redis_options(redis_url: str) -> dict[str, Any]:
     blocking ``pubsub.listen()`` loop that idles indefinitely between messages;
     applying a read timeout there causes a reconnect storm (issue #39423).
     ``socket_connect_timeout`` still guards connection establishment.
+
+    Note: TCP keepalive probes are added so cloud LBs / K8s services do not
+    silently close the idle pub/sub connection (issue #39812). The same
+    ``dify_config.REDIS_KEEPALIVE*`` values are already used by the regular
+    Redis clients via ``extensions.ext_redis._get_connection_health_params``.
     """
     options: dict[str, Any] = {
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
     }
+
+    if dify_config.REDIS_KEEPALIVE:
+        options["socket_keepalive"] = dify_config.REDIS_KEEPALIVE
+        keepalive_options = _build_keepalive_options()
+        if keepalive_options:
+            options["socket_keepalive_options"] = keepalive_options
 
     if dify_config.REDIS_MAX_CONNECTIONS:
         options["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
