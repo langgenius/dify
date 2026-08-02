@@ -2745,6 +2745,75 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('navigates the source reference picker with arrow keys', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createReferencePickerSkillDetail()
+    preserveDraftFilesOnSave()
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    const sourceEditor = getSourceEditor()
+    sourceEditor.focus()
+    sourceEditor.setSelectionRange(sourceEditor.value.length, sourceEditor.value.length)
+
+    await user.keyboard('/')
+    expect(
+      await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
+    ).toBeInTheDocument()
+
+    await user.keyboard('{ArrowRight}')
+    expect(within(getReferencePicker()).getByText('docs')).toBeInTheDocument()
+
+    await user.keyboard('{ArrowLeft}')
+    expect(
+      await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
+    ).toBeInTheDocument()
+
+    await user.keyboard('{ArrowRight}')
+    expect(within(getReferencePicker()).getByText('docs')).toBeInTheDocument()
+
+    await user.keyboard('{ArrowUp}')
+    expect(
+      await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
+    ).toBeInTheDocument()
+
+    await user.keyboard('{ArrowRight}{ArrowDown}{Enter}')
+
+    await waitFor(() => {
+      expect(sourceEditor.value).toContain('[reference.md](<docs/reference.md>)')
+    })
+  })
+
+  it('handles reference picker Enter and ArrowUp keyboard edge cases', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createReferencePickerSkillDetail()
+    preserveDraftFilesOnSave()
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    const sourceEditor = getSourceEditor()
+    sourceEditor.focus()
+    sourceEditor.setSelectionRange(sourceEditor.value.length, sourceEditor.value.length)
+
+    await user.keyboard('/')
+    expect(
+      await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
+    ).toBeInTheDocument()
+
+    await user.keyboard('{ArrowDown}{ArrowUp}{Enter}')
+    expect(within(getReferencePicker()).getByText('docs')).toBeInTheDocument()
+  })
+
   it('inserts a reference file from live markdown slash picker', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createReferencePickerSkillDetail()
