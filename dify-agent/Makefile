@@ -3,7 +3,7 @@
 PROJECT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: help serve dev check fix typecheck test update-examples docs docs-serve \
-	bench-local-runtime bench-local-e2b bench-cost
+	bench-local-runtime bench-local-e2b bench-sizing
 
 help:
 	@echo "Dify agent targets:"
@@ -18,7 +18,7 @@ help:
 	@echo "  make docs-serve      - Serve MkDocs documentation locally"
 	@echo "  make bench-local-runtime - Measure Agent with the Local Runtime backend"
 	@echo "  make bench-local-e2b - Measure Agent with the real E2B backend"
-	@echo "  make bench-cost       - Calculate costs from an existing capacity result"
+	@echo "  make bench-sizing     - Derive ACU and E2B calculator inputs"
 
 serve:
 	@uv --directory "$(PROJECT_DIR)" run --project . --extra server uvicorn dify_agent.server.app:app --host 127.0.0.1 --port 8000
@@ -65,10 +65,14 @@ bench-local-e2b:
 		$(if $(BENCH_CONCURRENCY),--concurrency "$(BENCH_CONCURRENCY)",) \
 		$(if $(filter 1,$(KEEP_CONTAINERS)),--keep-containers,)
 
-bench-cost:
+bench-sizing:
 	@test -n "$(CAPACITY_RESULT)" || (echo "CAPACITY_RESULT is required" >&2; exit 2)
-	@test -n "$(COST_INPUT)" || (echo "COST_INPUT is required" >&2; exit 2)
+	@test -n "$(MONTHLY_RUNS)" || (echo "MONTHLY_RUNS is required" >&2; exit 2)
+	@test -n "$(PEAK_RPS)" || (echo "PEAK_RPS is required" >&2; exit 2)
+	@test -n "$(E2B_CONCURRENCY)" || (echo "E2B_CONCURRENCY is required" >&2; exit 2)
 	@UV_PYTHON=3.12.13 uv --directory "$(PROJECT_DIR)" run --project . --group benchmark \
-		python -m benchmarks.cost \
+		python -m benchmarks.sizing \
 		--capacity-result "$(CAPACITY_RESULT)" \
-		--cost-input "$(COST_INPUT)"
+		--monthly-runs "$(MONTHLY_RUNS)" \
+		--peak-rps "$(PEAK_RPS)" \
+		--e2b-concurrency "$(E2B_CONCURRENCY)"
