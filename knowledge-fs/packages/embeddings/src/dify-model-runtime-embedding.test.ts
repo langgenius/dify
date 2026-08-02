@@ -171,6 +171,44 @@ describe("Dify model runtime embedding provider", () => {
     ]);
   });
 
+  it("bounds Dify subrequests for an 81-chunk document and preserves result order", async () => {
+    const requestBatches: string[][] = [];
+    const provider = createDifyModelRuntimeEmbeddingProvider({
+      ...BASE,
+      client: fakeClient(async (input) => {
+        requestBatches.push([...input.texts]);
+        if (input.texts.length > 16) {
+          throw Object.assign(new Error("Dify model runtime request timed out"), {
+            code: "dify_model_runtime_timeout",
+            retryable: true,
+          });
+        }
+
+        return {
+          embeddings: input.texts.map((text) => [Number(text.slice("chunk-".length)), 1]),
+          usage: { total_tokens: input.texts.length },
+        };
+      }),
+    });
+    const texts = Array.from({ length: 81 }, (_, index) => `chunk-${index}`);
+
+    const result = await provider.embed({
+      inputType: "search_document",
+      model: BASE.model,
+      tenantId: "tenant-abc",
+      texts,
+    });
+
+    expect(requestBatches.map((batch) => batch.length)).toEqual([16, 16, 16, 16, 16, 1]);
+    expect(result.dense).toHaveLength(81);
+    expect(result.dense[0]).toEqual([0, 1]);
+    expect(result.dense[80]).toEqual([80, 1]);
+    expect(result.metadata.usage).toEqual({ totalTokens: 81 });
+    await expect(provider.models()).resolves.toEqual([
+      expect.objectContaining({ recommendedBatchSize: 16 }),
+    ]);
+  });
+
   it("synthesizes a model descriptor and validates constructor options", async () => {
     const provider = createDifyModelRuntimeEmbeddingProvider({
       ...BASE,
@@ -206,6 +244,21 @@ describe("Dify model runtime embedding provider", () => {
         ...BASE,
         client: fakeClient(async () => ({})),
         provider: "  ",
+      }),
+    ).toThrow(ProviderInputError);
+    expect(() =>
+      createDifyModelRuntimeEmbeddingProvider({
+        ...BASE,
+        client: fakeClient(async () => ({})),
+        maxRequestBatchSize: 0,
+      }),
+    ).toThrow(ProviderInputError);
+    expect(() =>
+      createDifyModelRuntimeEmbeddingProvider({
+        ...BASE,
+        client: fakeClient(async () => ({})),
+        maxBatchSize: 8,
+        maxRequestBatchSize: 9,
       }),
     ).toThrow(ProviderInputError);
   });

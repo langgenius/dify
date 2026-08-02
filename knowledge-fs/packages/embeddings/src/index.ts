@@ -404,6 +404,8 @@ export interface DifyModelRuntimeEmbeddingProviderOptions {
   /** Optional model configuration used for early response validation. */
   readonly dimension?: number | undefined;
   readonly maxBatchSize?: number | undefined;
+  /** Bounds each Dify/plugin-daemon response independently of the accepted caller batch. */
+  readonly maxRequestBatchSize?: number | undefined;
   readonly maxTextBytes?: number | undefined;
   readonly model: string;
   readonly models?: readonly EmbeddingModelInfo[] | undefined;
@@ -418,6 +420,11 @@ const DifyModelRuntimeEmbeddingDataSchema = z.object({
   // `tokens` / `total_tokens` (price fields are ignored here).
   usage: z.object({ tokens: z.number(), total_tokens: z.number() }).partial().optional(),
 });
+
+// A 3072-dimensional OpenAI embedding response for 81 chunks is approximately 5.5 MiB, which
+// exceeds plugin-daemon's default 5 MiB stdio buffer. Keep each daemon round-trip comfortably
+// below that boundary while still accepting the workspace-wide 128-item provider contract.
+const DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_BATCH_SIZE = 16;
 
 /**
  * EmbeddingProvider backed by Dify's tenant-bound ModelManager/ModelInstance runtime.
@@ -448,10 +455,22 @@ export function createDifyModelRuntimeEmbeddingProvider(
   }
 
   const maxBatchSize = options.maxBatchSize ?? defaultMaxBatchSize;
+  const maxRequestBatchSize =
+    options.maxRequestBatchSize ??
+    Math.min(DEFAULT_DIFY_MODEL_RUNTIME_REQUEST_BATCH_SIZE, maxBatchSize);
   const maxTextBytes = options.maxTextBytes ?? defaultMaxTextBytes;
-  const models = (options.models ?? [defaultDifyModelRuntimeEmbeddingModel(options)]).map(
-    cloneModelInfo,
-  );
+  if (
+    !Number.isSafeInteger(maxRequestBatchSize) ||
+    maxRequestBatchSize < 1 ||
+    maxRequestBatchSize > maxBatchSize
+  ) {
+    throw new ProviderInputError(
+      "Dify model runtime embedding maxRequestBatchSize must be between 1 and maxBatchSize",
+    );
+  }
+  const models = (
+    options.models ?? [defaultDifyModelRuntimeEmbeddingModel(options, maxRequestBatchSize)]
+  ).map(cloneModelInfo);
   const observedDimensions = new Map<string, number>();
 
   for (const model of models) {
@@ -472,44 +491,62 @@ export function createDifyModelRuntimeEmbeddingProvider(
         throw new ProviderInputError("Dify model runtime embedding requires a tenantId");
       }
 
-      const data = await options.client.invokeTextEmbedding({
-        inputType: input.inputType === "search_query" ? "query" : "document",
-        model: input.model,
-        pluginId: options.pluginId,
-        provider: options.provider,
-        tenantId,
-        texts: input.texts,
-        ...(input.signal ? { signal: input.signal } : {}),
-      });
-
-      const parsed = DifyModelRuntimeEmbeddingDataSchema.safeParse(data);
-
-      if (!parsed.success) {
-        throw new ProviderResponseError("Dify returned an invalid embedding response", {
-          cause: parsed.error,
-        });
-      }
-
-      if (parsed.data.embeddings.length !== input.texts.length) {
-        throw new ProviderResponseError(
-          `Dify returned ${parsed.data.embeddings.length} embeddings for ${input.texts.length} texts`,
-        );
-      }
-
-      const dimension = validateEmbeddingResponseVectors(parsed.data.embeddings);
       const configuredDimension = observedDimensions.get(input.model);
+      const dense: number[][] = [];
+      let responseDimension: number | undefined;
+      let totalTokens = 0;
+      let usageObserved = false;
 
-      if (configuredDimension !== undefined && configuredDimension !== dimension) {
-        throw new ProviderResponseError(
-          `Dify returned embedding dimension=${dimension}; expected ${configuredDimension} for model ${input.model}`,
-        );
+      for (let offset = 0; offset < input.texts.length; offset += maxRequestBatchSize) {
+        input.signal?.throwIfAborted();
+        const texts = input.texts.slice(offset, offset + maxRequestBatchSize);
+        const data = await options.client.invokeTextEmbedding({
+          inputType: input.inputType === "search_query" ? "query" : "document",
+          model: input.model,
+          pluginId: options.pluginId,
+          provider: options.provider,
+          tenantId,
+          texts,
+          ...(input.signal ? { signal: input.signal } : {}),
+        });
+        const parsed = DifyModelRuntimeEmbeddingDataSchema.safeParse(data);
+
+        if (!parsed.success) {
+          throw new ProviderResponseError("Dify returned an invalid embedding response", {
+            cause: parsed.error,
+          });
+        }
+        if (parsed.data.embeddings.length !== texts.length) {
+          throw new ProviderResponseError(
+            `Dify returned ${parsed.data.embeddings.length} embeddings for ${texts.length} texts`,
+          );
+        }
+
+        const batchDimension = validateEmbeddingResponseVectors(parsed.data.embeddings);
+        const expectedDimension = responseDimension ?? configuredDimension;
+        if (expectedDimension !== undefined && expectedDimension !== batchDimension) {
+          throw new ProviderResponseError(
+            `Dify returned embedding dimension=${batchDimension}; expected ${expectedDimension} for model ${input.model}`,
+          );
+        }
+        responseDimension = batchDimension;
+        dense.push(...parsed.data.embeddings.map((vector) => [...vector]));
+
+        const batchTokens = parsed.data.usage?.total_tokens ?? parsed.data.usage?.tokens;
+        if (batchTokens !== undefined) {
+          usageObserved = true;
+          totalTokens += batchTokens;
+        }
       }
 
+      if (responseDimension === undefined) {
+        throw new ProviderResponseError("Dify returned no embedding batches");
+      }
+      const dimension = responseDimension;
       observedDimensions.set(input.model, dimension);
-      const totalTokens = parsed.data.usage?.total_tokens ?? parsed.data.usage?.tokens;
 
       return {
-        dense: parsed.data.embeddings.map((vector) => [...vector]),
+        dense,
         metadata: {
           dimension,
           // Dify has already resolved and invoked the exact catalog route selected by the
@@ -517,7 +554,7 @@ export function createDifyModelRuntimeEmbeddingProvider(
           // versioned alias, so expose the stable Dify route identity to downstream checks.
           model: input.model,
           provider: "dify-model-runtime",
-          ...(totalTokens === undefined ? {} : { usage: { totalTokens } }),
+          ...(usageObserved ? { usage: { totalTokens } } : {}),
         },
         model: input.model,
       };
@@ -535,6 +572,7 @@ export function createDifyModelRuntimeEmbeddingProvider(
 
 function defaultDifyModelRuntimeEmbeddingModel(
   options: DifyModelRuntimeEmbeddingProviderOptions,
+  recommendedBatchSize: number,
 ): EmbeddingModelInfo {
   return {
     ...(options.dimension === undefined ? {} : { dimension: options.dimension }),
@@ -542,7 +580,7 @@ function defaultDifyModelRuntimeEmbeddingModel(
     id: options.model,
     maxInputTokens: 8192,
     provider: "dify-model-runtime",
-    recommendedBatchSize: options.maxBatchSize ?? defaultMaxBatchSize,
+    recommendedBatchSize,
     supportsDense: true,
     supportsMultiVector: false,
     supportsSparse: false,
