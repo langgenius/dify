@@ -456,7 +456,7 @@ def _report_row(label: str, sizing: ScenarioSizingV1) -> str:
     return (
         f"| `{label}` | `{sizing.status}` | {_number(sizing.selected_concurrency)} | "
         f"{_number(sizing.capacity_runs_per_second)} | {_number(sizing.required_acu)} | "
-        f"{_number(sizing.e2b.vcpus)} | {_number(sizing.e2b.ram_gb)} | "
+        f"{_compact_number(sizing.e2b.vcpus)} | {_compact_number(sizing.e2b.ram_gb)} | "
         f"{_integer_part(sizing.e2b.run_hours_per_month)} | {_number(sizing.e2b.concurrency)} |"
     )
 
