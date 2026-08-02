@@ -42,6 +42,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSFindQuery,
+    KnowledgeFSGoldenQuestionBulkImportPayload,
+    KnowledgeFSGoldenQuestionBulkImportRemotePayload,
+    KnowledgeFSGoldenQuestionBulkImportRemoteRowPayload,
+    KnowledgeFSGoldenQuestionBulkImportResponse,
+    KnowledgeFSGoldenQuestionEvidenceMatchPayload,
+    KnowledgeFSGoldenQuestionEvidenceMatchRemotePayload,
+    KnowledgeFSGoldenQuestionEvidenceMatchResponse,
     KnowledgeFSGoldenQuestionListResponse,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionRemotePayload,
@@ -1686,10 +1693,15 @@ class KnowledgeFSDataFacade:
         control_space_id: str,
         payload: KnowledgeFSGoldenQuestionPayload,
     ) -> KnowledgeFSGoldenQuestionResponse:
-        metadata: dict[str, object] = {"annotation": payload.annotation}
+        metadata: dict[str, object] = {
+            "annotation": payload.annotation,
+            "evidenceText": payload.evidence_text,
+            "matchPolicy": payload.match_policy,
+        }
         if payload.source_bad_case_id is not None:
             metadata["sourceBadCaseId"] = payload.source_bad_case_id
         remote_payload = KnowledgeFSGoldenQuestionRemotePayload(
+            expected_evidence_ids=payload.expected_evidence_ids,
             metadata=metadata,
             question=payload.question,
             tags=payload.tags,
@@ -1713,9 +1725,16 @@ class KnowledgeFSDataFacade:
         payload: KnowledgeFSGoldenQuestionPayload,
     ) -> KnowledgeFSGoldenQuestionResponse:
         metadata: dict[str, object] = {"annotation": payload.annotation}
+        if "evidence_text" in payload.model_fields_set:
+            metadata["evidenceText"] = payload.evidence_text
+        if "match_policy" in payload.model_fields_set:
+            metadata["matchPolicy"] = payload.match_policy
         if payload.source_bad_case_id is not None:
             metadata["sourceBadCaseId"] = payload.source_bad_case_id
         remote_payload = KnowledgeFSGoldenQuestionUpdateRemotePayload(
+            expected_evidence_ids=(
+                payload.expected_evidence_ids if "expected_evidence_ids" in payload.model_fields_set else None
+            ),
             metadata=metadata,
             question=payload.question,
             tags=payload.tags,
@@ -1730,6 +1749,67 @@ class KnowledgeFSDataFacade:
             payload=remote_payload,
         )
         return KnowledgeFSGoldenQuestionResponse.model_validate(raw)
+
+    def match_golden_question_evidence(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSGoldenQuestionEvidenceMatchPayload,
+    ) -> KnowledgeFSGoldenQuestionEvidenceMatchResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="matchGoldenQuestionEvidence",
+            payload=KnowledgeFSGoldenQuestionEvidenceMatchRemotePayload(
+                evidence_texts=[payload.evidence],
+                minimum_similarity=payload.minimum_similarity,
+                top_k=payload.top_k,
+            ),
+        )
+        items = raw.get("items")
+        if not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict):
+            raise KnowledgeFSProductRequestRejectedError("KnowledgeFS returned an invalid evidence match response")
+        item = items[0]
+        return KnowledgeFSGoldenQuestionEvidenceMatchResponse.model_validate(
+            {
+                "candidates": item.get("candidates", []),
+                "evidence": item.get("evidenceText", payload.evidence),
+                "matched": item.get("matched", False),
+            }
+        )
+
+    def bulk_import_golden_questions(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSGoldenQuestionBulkImportPayload,
+    ) -> KnowledgeFSGoldenQuestionBulkImportResponse:
+        remote_payload = KnowledgeFSGoldenQuestionBulkImportRemotePayload(
+            match_policy=payload.match_policy,
+            minimum_similarity=payload.minimum_similarity,
+            rows=[
+                KnowledgeFSGoldenQuestionBulkImportRemoteRowPayload(
+                    evidence=row.evidence,
+                    metadata={"evidenceText": row.evidence, "importSource": "csv"},
+                    question=row.question,
+                    tags=row.tags,
+                )
+                for row in payload.rows
+            ],
+        )
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="bulkImportGoldenQuestions",
+            payload=remote_payload,
+        )
+        return KnowledgeFSGoldenQuestionBulkImportResponse.model_validate(raw)
 
     def delete_golden_question(
         self,

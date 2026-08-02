@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import {
+  GoldenQuestionSchema,
   KnowledgeFsGcCandidateSchema,
   KnowledgeSpaceEmbeddingSelectionSchema,
   KnowledgeSpaceRetrievalProfileInputSchema,
@@ -7,6 +8,8 @@ import {
 } from "@knowledge/core";
 
 const MAX_GOLDEN_QUESTION_ANNOTATION_EVIDENCE = 50;
+export const MAX_GOLDEN_QUESTION_BULK_IMPORT_ROWS = 500;
+export const MAX_GOLDEN_QUESTION_EVIDENCE_MATCH_TEXTS = 500;
 const DEFAULT_LIST_LIMIT = 100;
 const BoundedListLimitSchema = z.preprocess(
   (value) => (value === undefined ? DEFAULT_LIST_LIMIT : value),
@@ -131,6 +134,87 @@ export const CreateGoldenQuestionSchema = z
     metadata: z.record(z.unknown()).default({}),
     question: z.string().min(1).max(4000),
     tags: z.array(z.string().min(1).max(80)).default([]),
+  })
+  .strict();
+
+export const GoldenQuestionMatchPolicySchema = z.enum(["all", "any"]);
+
+const GoldenQuestionEvidenceTextSchema = z.string().trim().min(1).max(8_000);
+const GoldenQuestionMinimumSimilaritySchema = z.number().min(0).max(1).default(0.7);
+const GoldenQuestionEvidenceTopKSchema = z.number().int().min(1).max(10).default(5);
+
+export const MatchGoldenQuestionEvidenceSchema = z
+  .object({
+    evidenceTexts: z
+      .array(GoldenQuestionEvidenceTextSchema)
+      .min(1)
+      .max(MAX_GOLDEN_QUESTION_EVIDENCE_MATCH_TEXTS),
+    minimumSimilarity: GoldenQuestionMinimumSimilaritySchema,
+    topK: GoldenQuestionEvidenceTopKSchema,
+  })
+  .strict();
+
+export const GoldenQuestionEvidenceCandidateSchema = z
+  .object({
+    documentAssetId: z.string().uuid(),
+    nodeId: z.string().uuid(),
+    pageNumber: z.number().int().positive().optional(),
+    projectionId: z.string().uuid(),
+    score: z.number().min(0).max(1),
+    sectionPath: z.array(z.string()),
+    text: z.string(),
+  })
+  .strict();
+
+export const GoldenQuestionEvidenceMatchSchema = z
+  .object({
+    candidates: z.array(GoldenQuestionEvidenceCandidateSchema),
+    evidenceText: GoldenQuestionEvidenceTextSchema,
+    matched: z.boolean(),
+  })
+  .strict();
+
+export const MatchGoldenQuestionEvidenceResponseSchema = z
+  .object({
+    items: z.array(GoldenQuestionEvidenceMatchSchema),
+  })
+  .strict();
+
+export const BulkImportGoldenQuestionsSchema = z
+  .object({
+    matchPolicy: GoldenQuestionMatchPolicySchema.default("all"),
+    minimumSimilarity: GoldenQuestionMinimumSimilaritySchema,
+    rows: z
+      .array(
+        z
+          .object({
+            evidence: GoldenQuestionEvidenceTextSchema,
+            metadata: z.record(z.unknown()).default({}),
+            question: z.string().trim().min(1).max(4_000),
+            tags: z.array(z.string().trim().min(1).max(80)).max(50).default([]),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(MAX_GOLDEN_QUESTION_BULK_IMPORT_ROWS),
+  })
+  .strict();
+
+export const BulkImportGoldenQuestionsResponseSchema = z
+  .object({
+    activeCount: z.number().int().nonnegative(),
+    draftCount: z.number().int().nonnegative(),
+    items: z.array(
+      z
+        .object({
+          expectedEvidenceId: z.string().uuid().optional(),
+          questionId: GoldenQuestionSchema.shape.id,
+          rowIndex: z.number().int().nonnegative(),
+          similarity: z.number().min(0).max(1).optional(),
+          status: z.enum(["active", "draft"]),
+        })
+        .strict(),
+    ),
   })
   .strict();
 

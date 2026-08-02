@@ -235,6 +235,98 @@ describe("golden question gateway", () => {
       tenantId: writeSubject.tenantId,
     });
   });
+
+  it("matches all CSV evidence once and creates active and draft rows in one batch", async () => {
+    const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+    const generatedIds = [
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f3a31",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f3a32",
+    ];
+    const goldenQuestions = createInMemoryGoldenQuestionRepository({
+      generateId: () => generatedIds.shift() as string,
+      maxListLimit: 10,
+      maxQuestions: 10,
+    });
+    const matchInputs: string[][] = [];
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      auth: createTestAuthVerifier(),
+      goldenQuestionEvidenceMatcher: {
+        match: async (input) => {
+          matchInputs.push([...input.evidenceTexts]);
+          return input.evidenceTexts.map((evidenceText, index) => ({
+            candidates:
+              index === 0
+                ? [
+                    {
+                      documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d31",
+                      nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d32",
+                      permissionScope: [`tenant:${writeSubject.tenantId}`],
+                      projectionId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d33",
+                      score: 0.91,
+                      sectionPath: ["Refunds"],
+                      text: "Refunds are available for 30 days.",
+                    },
+                  ]
+                : [],
+            evidenceText,
+            matched: index === 0,
+          }));
+        },
+      },
+      goldenQuestions,
+      knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
+        generateId: () => knowledgeSpaceId,
+        maxListLimit: 10,
+        maxSpaces: 10,
+      }),
+      now: () => "2026-08-02T12:00:00.000Z",
+    });
+    await createSpace(app, knowledgeSpaceId);
+
+    const response = await app.request(
+      `/knowledge-spaces/${knowledgeSpaceId}/golden-questions/bulk-import`,
+      {
+        body: JSON.stringify({
+          rows: [
+            { evidence: "30 day refund policy", question: "How long is the refund window?" },
+            { evidence: "Unpublished warranty", question: "What is the warranty?", tags: ["faq"] },
+          ],
+        }),
+        headers: { ...bearer(writeToken), "content-type": "application/json" },
+        method: "POST",
+      },
+    );
+
+    expect(response.status).toBe(201);
+    expect(matchInputs).toEqual([["30 day refund policy", "Unpublished warranty"]]);
+    expect(await response.json()).toMatchObject({
+      activeCount: 1,
+      draftCount: 1,
+      items: [
+        {
+          expectedEvidenceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d32",
+          questionId: "018f0d60-7a49-7cc2-9c1b-5b36f18f3a31",
+          rowIndex: 0,
+          similarity: 0.91,
+          status: "active",
+        },
+        {
+          questionId: "018f0d60-7a49-7cc2-9c1b-5b36f18f3a32",
+          rowIndex: 1,
+          status: "draft",
+        },
+      ],
+    });
+    await expect(
+      goldenQuestions.listTrusted({ knowledgeSpaceId, limit: 10 }),
+    ).resolves.toMatchObject({
+      items: [
+        { question: "How long is the refund window?" },
+        { question: "What is the warranty?" },
+      ],
+    });
+  });
 });
 
 async function createSpace(

@@ -104,6 +104,7 @@ export interface ListGoldenQuestionsResult {
 
 export interface GoldenQuestionRepository {
   create(input: CreateGoldenQuestionInput): Promise<GoldenQuestion>;
+  createMany(inputs: readonly CreateGoldenQuestionInput[]): Promise<GoldenQuestion[]>;
   delete(input: DeleteGoldenQuestionInput): Promise<boolean>;
   get(input: GoldenQuestionLookupInput): Promise<GoldenQuestion | null>;
   getTrusted(input: TrustedGoldenQuestionLookupInput): Promise<GoldenQuestion | null>;
@@ -308,6 +309,30 @@ export function createInMemoryGoldenQuestionRepository({
       }
       return createStored(input);
     },
+    createMany: async (inputs) => {
+      if (inputs.length === 0) return [];
+      if (questions.size + inputs.length > maxQuestions) {
+        throw new GoldenQuestionCapacityExceededError(maxQuestions);
+      }
+      for (const input of inputs) {
+        assertGoldenQuestionPermissionBinding(input.permission);
+        assertGoldenQuestionRequiredPermissionScope(
+          input.requiredPermissionScope,
+          input.permission.candidateGrants,
+        );
+        if (goldenQuestionSourceBadCaseId(input.metadata)) {
+          throw new Error("Batch golden question creation does not accept sourceBadCaseId");
+        }
+      }
+      const prepared = inputs.map(prepareCreate);
+      const ids = new Set<string>();
+      for (const item of prepared) {
+        if (ids.has(item.question.id)) throw new Error("Golden question id collision");
+        ids.add(item.question.id);
+      }
+      for (const item of prepared) commitPreparedCreate(item);
+      return prepared.map((item) => cloneGoldenQuestion(item.question));
+    },
     createTrusted: createStored,
     delete: async ({ id, knowledgeSpaceId, permission }) => {
       assertGoldenQuestionPermissionBinding(permission);
@@ -492,6 +517,138 @@ export function createDatabaseGoldenQuestionRepository({
 
       if (!question) throw new GoldenQuestionDeletionFenceActiveError();
       return question;
+    },
+    createMany: async (inputs) => {
+      if (inputs.length === 0) return [];
+      const first = inputs[0];
+      if (!first) return [];
+      assertGoldenQuestionPermissionBinding(first.permission);
+      for (const input of inputs) {
+        assertGoldenQuestionPermissionBinding(input.permission);
+        assertGoldenQuestionRequiredPermissionScope(
+          input.requiredPermissionScope,
+          input.permission.candidateGrants,
+        );
+        if (
+          input.knowledgeSpaceId !== first.knowledgeSpaceId ||
+          input.permission.tenantId !== first.permission.tenantId ||
+          JSON.stringify(input.permission) !== JSON.stringify(first.permission)
+        ) {
+          throw new Error("Batch golden questions must share one space and permission binding");
+        }
+        if (goldenQuestionSourceBadCaseId(input.metadata)) {
+          throw new Error("Batch golden question creation does not accept sourceBadCaseId");
+        }
+      }
+
+      const timestamp = now();
+      const ids = inputs.map(() => generateId());
+      if (new Set(ids).size !== ids.length) throw new Error("Golden question id collision");
+      const columns = [
+        "id",
+        "tenant_id",
+        "knowledge_space_id",
+        "question",
+        "expected_evidence_ids",
+        "tags",
+        "metadata",
+        "required_permission_scope",
+        "created_at",
+        "updated_at",
+      ];
+      const serialized = inputs.map((input, index) => ({
+        expectedEvidenceIds: JSON.stringify([...(input.expectedEvidenceIds ?? [])]),
+        id: ids[index] as string,
+        metadata: JSON.stringify(input.metadata ?? {}),
+        requiredPermissionScope: JSON.stringify(input.requiredPermissionScope),
+        tags: JSON.stringify([...(input.tags ?? [])]),
+      }));
+      const params = inputs.flatMap((input, index) => {
+        const row = serialized[index];
+        if (!row) throw new Error("Golden question batch serialization failed");
+        return [
+          row.id,
+          input.permission.tenantId,
+          input.knowledgeSpaceId,
+          input.question,
+          row.expectedEvidenceIds,
+          row.tags,
+          row.metadata,
+          row.requiredPermissionScope,
+          timestamp,
+          timestamp,
+        ];
+      }) satisfies readonly DatabaseQueryValue[];
+      const created = await database.transaction(async (transaction) => {
+        if (
+          !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
+            knowledgeSpaceId: first.knowledgeSpaceId,
+            tenantId: first.permission.tenantId,
+          }))
+        ) {
+          return null;
+        }
+        await assertGoldenQuestionDatabasePermission(
+          database,
+          transaction,
+          first.knowledgeSpaceId,
+          first.permission,
+          timestamp,
+        );
+        const valuesSql = inputs
+          .map((_, rowIndex) => {
+            const start = rowIndex * columns.length;
+            return `(${columns
+              .map((column, columnIndex) =>
+                jsonInsertPlaceholder(database, start + columnIndex + 1, column),
+              )
+              .join(", ")})`;
+          })
+          .join(", ");
+        const result = await transaction.execute({
+          maxRows: inputs.length,
+          operation: "insert",
+          params,
+          sql: `INSERT INTO ${quoteDatabaseIdentifier(database, tableName)} (${columns
+            .map((column) => quoteDatabaseIdentifier(database, column))
+            .join(
+              ", ",
+            )}) VALUES ${valuesSql}${database.dialect === "postgres" ? " RETURNING *" : ""};`,
+          tableName,
+        });
+        if (result.rows.length > 0) {
+          const byId = new Map(
+            result.rows.map((row) => {
+              const question = mapGoldenQuestionRow(row);
+              return [question.id, question] as const;
+            }),
+          );
+          return ids.map((id) => {
+            const question = byId.get(id);
+            if (!question) throw new Error("Golden question batch insert returned incomplete rows");
+            return question;
+          });
+        }
+        if (result.rowsAffected !== inputs.length) {
+          throw new Error("Golden question batch insert affected an unexpected number of rows");
+        }
+        return inputs.map((input, index) => {
+          const row = serialized[index];
+          if (!row) throw new Error("Golden question batch serialization failed");
+          return GoldenQuestionSchema.parse({
+            createdAt: timestamp,
+            expectedEvidenceIds: JSON.parse(row.expectedEvidenceIds),
+            id: row.id,
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            metadata: JSON.parse(row.metadata),
+            question: input.question,
+            tags: JSON.parse(row.tags),
+            updatedAt: timestamp,
+          });
+        });
+      });
+      if (!created) throw new GoldenQuestionDeletionFenceActiveError();
+      return created;
     },
     delete: async ({ id, knowledgeSpaceId, permission }) =>
       database.transaction(async (transaction) => {

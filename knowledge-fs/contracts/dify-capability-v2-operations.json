@@ -50,6 +50,23 @@
       "resourceType": "namespace"
     },
     {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "bulkImportGoldenQuestions",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/bulk-import",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "documents.bulk.reindex",
       "allowedCallerKinds": [
         "interactive",
@@ -1308,6 +1325,23 @@
         "namespace": true
       },
       "resourceType": "namespace"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "matchGoldenQuestionEvidence",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/evidence-matches",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
     },
     {
       "action": "documents.metadata.update",

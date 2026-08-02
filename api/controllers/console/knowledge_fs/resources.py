@@ -90,6 +90,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSExternalAccessResponse,
+    KnowledgeFSGoldenQuestionBulkImportPayload,
+    KnowledgeFSGoldenQuestionBulkImportResponse,
+    KnowledgeFSGoldenQuestionEvidenceMatchPayload,
+    KnowledgeFSGoldenQuestionEvidenceMatchResponse,
     KnowledgeFSGoldenQuestionListResponse,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionResponse,
@@ -205,6 +209,8 @@ register_schema_models(
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
+    KnowledgeFSGoldenQuestionBulkImportPayload,
+    KnowledgeFSGoldenQuestionEvidenceMatchPayload,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSCrawlPreviewPageListQuery,
@@ -267,6 +273,8 @@ register_response_schema_models(
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSGoldenQuestionBulkImportResponse,
+    KnowledgeFSGoldenQuestionEvidenceMatchResponse,
     KnowledgeFSGoldenQuestionListResponse,
     KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSExternalAccessResponse,
@@ -2367,6 +2375,52 @@ class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
             payload=_payload(KnowledgeFSGoldenQuestionPayload),
         )
         return dump_response(KnowledgeFSGoldenQuestionResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/evidence-matches")
+class KnowledgeFSSpaceGoldenQuestionEvidenceMatchesApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionEvidenceMatchPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS golden question evidence matches",
+        console_ns.models[KnowledgeFSGoldenQuestionEvidenceMatchResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.match_golden_question_evidence(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSGoldenQuestionEvidenceMatchPayload),
+        )
+        return dump_response(KnowledgeFSGoldenQuestionEvidenceMatchResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/bulk-import")
+class KnowledgeFSSpaceGoldenQuestionBulkImportApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionBulkImportPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED,
+        "KnowledgeFS golden questions imported",
+        console_ns.models[KnowledgeFSGoldenQuestionBulkImportResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.bulk_import_golden_questions(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSGoldenQuestionBulkImportPayload),
+        )
+        return dump_response(KnowledgeFSGoldenQuestionBulkImportResponse, result), HTTPStatus.CREATED
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/<string:question_id>")

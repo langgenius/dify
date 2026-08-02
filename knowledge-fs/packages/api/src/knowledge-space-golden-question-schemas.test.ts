@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   AnnotateGoldenQuestionSchema,
+  BulkImportGoldenQuestionsSchema,
   CreateGoldenQuestionSchema,
   CreateKnowledgeSpaceSchema,
   GoldenQuestionParamsSchema,
   KnowledgeSpaceParamsSchema,
   ListGoldenQuestionsQuerySchema,
   ListKnowledgeSpacesQuerySchema,
+  MatchGoldenQuestionEvidenceSchema,
   UpdateGoldenQuestionSchema,
   UpdateKnowledgeSpaceRetrievalProfileSchema,
   UpdateKnowledgeSpaceSchema,
@@ -154,6 +156,18 @@ describe("knowledge-space-golden-question-schemas", () => {
         note: "Needs one more citation",
       }),
     ).toMatchObject({ answerCorrectness: "partially-correct" });
+    expect(
+      MatchGoldenQuestionEvidenceSchema.parse({ evidenceTexts: ["  refund policy  "] }),
+    ).toEqual({ evidenceTexts: ["refund policy"], minimumSimilarity: 0.7, topK: 5 });
+    expect(
+      BulkImportGoldenQuestionsSchema.parse({
+        rows: [{ evidence: "  refund policy  ", question: "  How long?  " }],
+      }),
+    ).toEqual({
+      matchPolicy: "all",
+      minimumSimilarity: 0.7,
+      rows: [{ evidence: "refund policy", metadata: {}, question: "How long?", tags: [] }],
+    });
   });
 
   it("rejects invalid slugs and oversized annotation evidence", () => {

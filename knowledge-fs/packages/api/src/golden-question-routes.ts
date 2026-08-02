@@ -5,10 +5,14 @@ import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contr
 import { CreateProductionBadCaseSchema, ErrorResponseSchema } from "./gateway-route-schemas";
 import {
   AnnotateGoldenQuestionSchema,
+  BulkImportGoldenQuestionsResponseSchema,
+  BulkImportGoldenQuestionsSchema,
   CreateGoldenQuestionSchema,
   GoldenQuestionParamsSchema,
   KnowledgeSpaceParamsSchema,
   ListGoldenQuestionsQuerySchema,
+  MatchGoldenQuestionEvidenceResponseSchema,
+  MatchGoldenQuestionEvidenceSchema,
   UpdateGoldenQuestionSchema,
 } from "./knowledge-space-golden-question-schemas";
 
@@ -51,6 +55,84 @@ export const createGoldenQuestionRoute = createRoute({
         },
       },
       description: "Golden question capacity exceeded",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
+export const matchGoldenQuestionEvidenceRoute = createRoute({
+  method: "post",
+  operationId: "matchGoldenQuestionEvidence",
+  path: "/knowledge-spaces/{id}/golden-questions/evidence-matches",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: MatchGoldenQuestionEvidenceSchema,
+        },
+      },
+      required: true,
+    },
+    params: KnowledgeSpaceParamsSchema,
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: MatchGoldenQuestionEvidenceResponseSchema,
+        },
+      },
+      description: "Evidence candidates for golden questions",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Evidence matching unavailable",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
+export const bulkImportGoldenQuestionsRoute = createRoute({
+  method: "post",
+  operationId: "bulkImportGoldenQuestions",
+  path: "/knowledge-spaces/{id}/golden-questions/bulk-import",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: BulkImportGoldenQuestionsSchema,
+        },
+      },
+      required: true,
+    },
+    params: KnowledgeSpaceParamsSchema,
+  },
+  responses: {
+    201: {
+      content: {
+        "application/json": {
+          schema: BulkImportGoldenQuestionsResponseSchema,
+        },
+      },
+      description: "Imported golden questions",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    429: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Golden question capacity exceeded",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Evidence matching unavailable",
     },
     401: UnauthorizedResponse,
     403: ForbiddenResponse,

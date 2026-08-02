@@ -14,6 +14,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDiffQuery,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSFindQuery,
+    KnowledgeFSGoldenQuestionBulkImportPayload,
+    KnowledgeFSGoldenQuestionBulkImportRowPayload,
+    KnowledgeFSGoldenQuestionEvidenceMatchPayload,
+    KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGrepQuery,
     KnowledgeFSListQuery,
     KnowledgeFSProductRerankProfile,
@@ -1125,6 +1129,184 @@ def test_active_settings_reject_concurrent_profile_migrations() -> None:
 
     assert error.value.status_code == 422
     assert [request.operation_id for request in remote.requests] == ["getSettings"]
+
+
+def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
+    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+    raw = {
+        "createdAt": "2026-08-02T12:00:00Z",
+        "expectedEvidenceIds": ["node-1"],
+        "id": "golden-1",
+        "metadata": {
+            "annotation": "Reviewer note",
+            "evidenceText": "Refunds are available for 30 days.",
+            "matchPolicy": "all",
+        },
+        "question": "How long is the refund window?",
+        "tags": ["billing"],
+        "updatedAt": "2026-08-02T12:00:00Z",
+    }
+    interactive = MagicMock(return_value=raw)
+
+    with patch.object(facade, "_interactive", interactive):
+        result = facade.create_golden_question(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSGoldenQuestionPayload(
+                annotation=" Reviewer note ",
+                evidence_text=" Refunds are available for 30 days. ",
+                expected_evidence_ids=[" node-1 ", "node-1"],
+                question=" How long is the refund window? ",
+                tags=[" billing ", "billing"],
+            ),
+        )
+
+    assert result.status == "active"
+    assert result.expected_evidence_ids == ["node-1"]
+    delegated = interactive.call_args.kwargs
+    assert delegated["operation_id"] == "createGoldenQuestion"
+    assert delegated["payload"].model_dump(mode="json", by_alias=True) == {
+        "expectedEvidenceIds": ["node-1"],
+        "metadata": {
+            "annotation": "Reviewer note",
+            "evidenceText": "Refunds are available for 30 days.",
+            "matchPolicy": "all",
+        },
+        "question": "How long is the refund window?",
+        "tags": ["billing"],
+    }
+
+
+def test_golden_question_update_preserves_evidence_when_new_fields_are_omitted() -> None:
+    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+    interactive_child = MagicMock(
+        return_value={
+            "createdAt": "2026-08-02T12:00:00Z",
+            "expectedEvidenceIds": ["node-1"],
+            "id": "golden-1",
+            "metadata": {
+                "annotation": "Updated note",
+                "evidenceText": "Existing evidence",
+                "lifecycleStatus": "active",
+                "matchPolicy": "any",
+            },
+            "question": "Updated question?",
+            "tags": [],
+            "updatedAt": "2026-08-02T12:01:00Z",
+        }
+    )
+
+    with patch.object(facade, "_interactive_child", interactive_child):
+        result = facade.update_golden_question(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            question_id="golden-1",
+            payload=KnowledgeFSGoldenQuestionPayload(
+                annotation="Updated note",
+                question="Updated question?",
+            ),
+        )
+
+    assert result.expected_evidence_ids == ["node-1"]
+    assert result.match_policy == "any"
+    remote_payload = interactive_child.call_args.kwargs["payload"]
+    assert remote_payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "metadata": {"annotation": "Updated note"},
+        "question": "Updated question?",
+        "tags": [],
+    }
+
+
+def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch() -> None:
+    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+    interactive = MagicMock(
+        side_effect=[
+            {
+                "items": [
+                    {
+                        "candidates": [
+                            {
+                                "documentAssetId": "document-1",
+                                "nodeId": "node-1",
+                                "projectionId": "projection-1",
+                                "score": 0.91,
+                                "sectionPath": ["Refunds"],
+                                "text": "Refunds are available for 30 days.",
+                            }
+                        ],
+                        "evidenceText": "Refund policy",
+                        "matched": True,
+                    }
+                ]
+            },
+            {
+                "activeCount": 1,
+                "draftCount": 0,
+                "items": [
+                    {
+                        "expectedEvidenceId": "node-1",
+                        "questionId": "golden-1",
+                        "rowIndex": 0,
+                        "similarity": 0.91,
+                        "status": "active",
+                    }
+                ],
+            },
+        ]
+    )
+
+    with patch.object(facade, "_interactive", interactive):
+        match = facade.match_golden_question_evidence(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(evidence=" Refund policy "),
+        )
+        imported = facade.bulk_import_golden_questions(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSGoldenQuestionBulkImportPayload(
+                rows=[
+                    KnowledgeFSGoldenQuestionBulkImportRowPayload(
+                        evidence=" Refunds are available for 30 days. ",
+                        question=" How long is the refund window? ",
+                        tags=[" billing ", "billing"],
+                    )
+                ]
+            ),
+        )
+
+    assert match.matched is True
+    assert match.candidates[0].node_id == "node-1"
+    assert imported.active_count == 1
+    assert imported.items[0].question_id == "golden-1"
+    assert [call.kwargs["operation_id"] for call in interactive.call_args_list] == [
+        "matchGoldenQuestionEvidence",
+        "bulkImportGoldenQuestions",
+    ]
+    assert interactive.call_args_list[0].kwargs["payload"].model_dump(mode="json", by_alias=True) == {
+        "evidenceTexts": ["Refund policy"],
+        "minimumSimilarity": 0.7,
+        "topK": 5,
+    }
+    assert interactive.call_args_list[1].kwargs["payload"].model_dump(mode="json", by_alias=True) == {
+        "matchPolicy": "all",
+        "minimumSimilarity": 0.7,
+        "rows": [
+            {
+                "evidence": "Refunds are available for 30 days.",
+                "metadata": {
+                    "evidenceText": "Refunds are available for 30 days.",
+                    "importSource": "csv",
+                },
+                "question": "How long is the refund window?",
+                "tags": ["billing"],
+            }
+        ],
+    }
 
 
 def test_settings_dto_rejects_fast_threshold_without_rerank() -> None:

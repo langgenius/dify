@@ -64,6 +64,8 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
         "/knowledge-fs/spaces/<string:control_space_id>/traces",
+        "/knowledge-fs/spaces/<string:control_space_id>/golden-questions/bulk-import",
+        "/knowledge-fs/spaces/<string:control_space_id>/golden-questions/evidence-matches",
         "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions",
         (
             "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/"
@@ -155,6 +157,10 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSPresignedUploadResponse",
         "KnowledgeFSUploadSessionCreateResponse",
         "KnowledgeFSUploadSessionMutationResponse",
+        "KnowledgeFSGoldenQuestionBulkImportPayload",
+        "KnowledgeFSGoldenQuestionBulkImportResponse",
+        "KnowledgeFSGoldenQuestionEvidenceMatchPayload",
+        "KnowledgeFSGoldenQuestionEvidenceMatchResponse",
     }.issubset(console_ns.models)
     assert {
         "KnowledgeFSDocumentCreatePayload",

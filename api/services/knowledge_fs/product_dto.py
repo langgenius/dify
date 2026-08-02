@@ -2000,21 +2000,24 @@ class KnowledgeFSTraceListResponse(ResponseModel):
 
 class KnowledgeFSGoldenQuestionPayload(BaseModel):
     annotation: str = Field(min_length=1, max_length=2_000)
+    evidence_text: str = Field(default="", max_length=8_000)
+    expected_evidence_ids: list[str] = Field(default_factory=list, max_length=50)
+    match_policy: Literal["all", "any"] = "all"
     question: str = Field(min_length=1, max_length=4_000)
     source_bad_case_id: str | None = Field(default=None, max_length=255)
     tags: list[str] = Field(default_factory=list, max_length=50)
 
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("annotation", "question", mode="before")
+    @field_validator("annotation", "evidence_text", "question", mode="before")
     @classmethod
     def strip_required_text(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
 
-    @field_validator("tags")
+    @field_validator("expected_evidence_ids", "tags")
     @classmethod
-    def normalize_tags(cls, value: list[str]) -> list[str]:
-        return list(dict.fromkeys(tag.strip() for tag in value if tag.strip()))
+    def normalize_string_list(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(item.strip() for item in value if item.strip()))
 
 
 class KnowledgeFSGoldenQuestionRemotePayload(BaseModel):
@@ -2030,6 +2033,7 @@ class KnowledgeFSGoldenQuestionRemotePayload(BaseModel):
 
 
 class KnowledgeFSGoldenQuestionUpdateRemotePayload(BaseModel):
+    expected_evidence_ids: list[str] | None = Field(default=None, serialization_alias="expectedEvidenceIds")
     metadata: dict[str, object]
     question: str
     tags: list[str]
@@ -2041,6 +2045,12 @@ class KnowledgeFSGoldenQuestionResponse(ResponseModel):
     id: str
     question: str
     annotation: str
+    evidence_text: str = ""
+    expected_evidence_ids: list[str] = Field(
+        default_factory=list, validation_alias=AliasChoices("expected_evidence_ids", "expectedEvidenceIds")
+    )
+    match_policy: Literal["all", "any"] = "all"
+    status: Literal["active", "draft", "stale"]
     tags: list[str]
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
@@ -2052,12 +2062,120 @@ class KnowledgeFSGoldenQuestionResponse(ResponseModel):
             return value
         metadata = value.get("metadata")
         annotation = metadata.get("annotation") if isinstance(metadata, dict) else None
-        return {**value, "annotation": annotation if isinstance(annotation, str) else ""}
+        evidence_text = metadata.get("evidenceText") if isinstance(metadata, dict) else None
+        match_policy = metadata.get("matchPolicy") if isinstance(metadata, dict) else None
+        status = metadata.get("lifecycleStatus") if isinstance(metadata, dict) else None
+        expected_evidence_ids = value.get("expectedEvidenceIds", value.get("expected_evidence_ids", []))
+        if status not in {"active", "draft", "stale"}:
+            status = "active" if isinstance(expected_evidence_ids, list) and expected_evidence_ids else "draft"
+        return {
+            **value,
+            "annotation": annotation if isinstance(annotation, str) else "",
+            "evidence_text": evidence_text if isinstance(evidence_text, str) else "",
+            "match_policy": match_policy if match_policy in {"all", "any"} else "all",
+            "status": status,
+        }
 
 
 class KnowledgeFSGoldenQuestionListResponse(ResponseModel):
     data: list[KnowledgeFSGoldenQuestionResponse] = Field(validation_alias=AliasChoices("data", "items"))
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSGoldenQuestionEvidenceMatchPayload(BaseModel):
+    evidence: str = Field(min_length=1, max_length=8_000)
+    minimum_similarity: float = Field(default=0.7, ge=0, le=1)
+    top_k: int = Field(default=5, ge=1, le=10)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def strip_evidence(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class KnowledgeFSGoldenQuestionEvidenceMatchRemotePayload(BaseModel):
+    evidence_texts: list[str] = Field(serialization_alias="evidenceTexts")
+    minimum_similarity: float = Field(serialization_alias="minimumSimilarity")
+    top_k: int = Field(serialization_alias="topK")
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+
+class KnowledgeFSGoldenQuestionEvidenceCandidateResponse(ResponseModel):
+    document_asset_id: str = Field(validation_alias=AliasChoices("document_asset_id", "documentAssetId"))
+    node_id: str = Field(validation_alias=AliasChoices("node_id", "nodeId"))
+    page_number: int | None = Field(default=None, validation_alias=AliasChoices("page_number", "pageNumber"))
+    projection_id: str = Field(validation_alias=AliasChoices("projection_id", "projectionId"))
+    score: float = Field(ge=0, le=1)
+    section_path: list[str] = Field(validation_alias=AliasChoices("section_path", "sectionPath"))
+    text: str
+
+
+class KnowledgeFSGoldenQuestionEvidenceMatchResponse(ResponseModel):
+    candidates: list[KnowledgeFSGoldenQuestionEvidenceCandidateResponse]
+    evidence: str
+    matched: bool
+
+
+class KnowledgeFSGoldenQuestionBulkImportRowPayload(BaseModel):
+    evidence: str = Field(min_length=1, max_length=8_000)
+    question: str = Field(min_length=1, max_length=4_000)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("evidence", "question", mode="before")
+    @classmethod
+    def strip_required_text(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(tag.strip() for tag in value if tag.strip()))
+
+
+class KnowledgeFSGoldenQuestionBulkImportPayload(BaseModel):
+    match_policy: Literal["all", "any"] = "all"
+    minimum_similarity: float = Field(default=0.7, ge=0, le=1)
+    rows: list[KnowledgeFSGoldenQuestionBulkImportRowPayload] = Field(min_length=1, max_length=500)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSGoldenQuestionBulkImportRemoteRowPayload(BaseModel):
+    evidence: str
+    metadata: dict[str, object]
+    question: str
+    tags: list[str]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSGoldenQuestionBulkImportRemotePayload(BaseModel):
+    match_policy: Literal["all", "any"] = Field(serialization_alias="matchPolicy")
+    minimum_similarity: float = Field(serialization_alias="minimumSimilarity")
+    rows: list[KnowledgeFSGoldenQuestionBulkImportRemoteRowPayload]
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+
+class KnowledgeFSGoldenQuestionBulkImportItemResponse(ResponseModel):
+    expected_evidence_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("expected_evidence_id", "expectedEvidenceId")
+    )
+    question_id: str = Field(validation_alias=AliasChoices("question_id", "questionId"))
+    row_index: int = Field(ge=0, validation_alias=AliasChoices("row_index", "rowIndex"))
+    similarity: float | None = Field(default=None, ge=0, le=1)
+    status: Literal["active", "draft"]
+
+
+class KnowledgeFSGoldenQuestionBulkImportResponse(ResponseModel):
+    active_count: int = Field(ge=0, validation_alias=AliasChoices("active_count", "activeCount"))
+    draft_count: int = Field(ge=0, validation_alias=AliasChoices("draft_count", "draftCount"))
+    items: list[KnowledgeFSGoldenQuestionBulkImportItemResponse]
 
 
 class KnowledgeFSBadCaseUpdatePayload(BaseModel):

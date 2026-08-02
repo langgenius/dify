@@ -6,12 +6,14 @@ import { render } from '@/test/console/render'
 import { QualityPage } from '../quality/quality-page'
 
 const serviceMock = vi.hoisted(() => ({
+  bulkImport: vi.fn(),
   createGolden: vi.fn(),
   createReplay: vi.fn(),
   deleteGolden: vi.fn(),
   getBadCase: vi.fn(),
   getBadCases: vi.fn(),
   getGolden: vi.fn(),
+  matchEvidence: vi.fn(),
   getTraceReference: vi.fn(),
   updateBadCase: vi.fn(),
   updateGolden: vi.fn(),
@@ -61,6 +63,11 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           goldenQuestions: {
+            bulkImport: {
+              post: {
+                mutationOptions: () => ({ mutationFn: serviceMock.bulkImport }),
+              },
+            },
             byQuestionId: {
               delete: {
                 mutationOptions: () => ({ mutationFn: serviceMock.deleteGolden }),
@@ -81,6 +88,11 @@ vi.mock('@/service/client', () => ({
                   serviceMock.getGolden(options.input(pageParam)),
                 queryKey: ['quality', 'golden'],
               }),
+            },
+            evidenceMatches: {
+              post: {
+                mutationOptions: () => ({ mutationFn: serviceMock.matchEvidence }),
+              },
             },
             post: {
               mutationOptions: () => ({ mutationFn: serviceMock.createGolden }),
@@ -162,6 +174,8 @@ describe('QualityPage', () => {
       tags: ['billing'],
       updated_at: '2026-07-29T00:00:00Z',
     })
+    serviceMock.matchEvidence.mockResolvedValue({ candidates: [], evidence: '', matched: false })
+    serviceMock.bulkImport.mockResolvedValue({ active_count: 0, draft_count: 0, items: [] })
     serviceMock.getTraceReference.mockResolvedValue({ trace_id: 'trace-42' })
     serviceMock.getBadCase.mockResolvedValue({
       created_at: '2026-07-28T00:00:00Z',
@@ -198,11 +212,122 @@ describe('QualityPage', () => {
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
         annotation: 'Expected answer',
+        evidence_text: '',
+        expected_evidence_ids: [],
+        match_policy: 'all',
         question: 'New question',
         tags: [],
       },
       params: { control_space_id: 'space-1' },
     })
+  })
+
+  it('matches a human-readable evidence passage and stores the selected node id', async () => {
+    serviceMock.matchEvidence.mockResolvedValue({
+      candidates: [
+        {
+          document_asset_id: 'document-1',
+          node_id: 'node-1',
+          projection_id: 'projection-1',
+          score: 0.91,
+          section_path: ['Refund policy'],
+          text: 'Customers can request a refund within 30 days.',
+        },
+      ],
+      evidence: 'refund within 30 days',
+      matched: true,
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
+      'When can I request a refund?',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'The answer must cite the refund window.',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.evidencePlaceholder'),
+      'refund within 30 days',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.findEvidence' }),
+    )
+    await user.click(await screen.findByText('Customers can request a refund within 30 days.'))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+
+    expect(serviceMock.matchEvidence.mock.calls[0]?.[0]).toEqual({
+      body: { evidence: 'refund within 30 days' },
+      params: { control_space_id: 'space-1' },
+    })
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: 'The answer must cite the refund window.',
+          evidence_text: 'refund within 30 days',
+          expected_evidence_ids: ['node-1'],
+          match_policy: 'all',
+          question: 'When can I request a refund?',
+          tags: [],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
+  it('parses a CSV and sends all rows through one bulk-import mutation', async () => {
+    serviceMock.bulkImport.mockResolvedValue({ active_count: 1, draft_count: 1, items: [] })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.importCsv' }),
+    )
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(fileInput).not.toBeNull()
+    await user.upload(
+      fileInput!,
+      new File(
+        [
+          'question,evidence,tags\nWhat is the refund window?,Refunds are available for 30 days,"billing,policy"\nHow is SSO enabled?,Enable SSO in settings,enterprise',
+        ],
+        'golden-questions.csv',
+        { type: 'text/csv' },
+      ),
+    )
+
+    expect(await screen.findByText('What is the refund window?')).toBeInTheDocument()
+    const importButtons = screen.getAllByRole('button', {
+      name: 'dataset.newKnowledge.qualityPage.importCsv',
+    })
+    await user.click(importButtons.at(-1)!)
+
+    await waitFor(() =>
+      expect(serviceMock.bulkImport.mock.calls[0]?.[0]).toEqual({
+        body: {
+          rows: [
+            {
+              evidence: 'Refunds are available for 30 days',
+              question: 'What is the refund window?',
+              tags: ['billing', 'policy'],
+            },
+            {
+              evidence: 'Enable SSO in settings',
+              question: 'How is SSO enabled?',
+              tags: ['enterprise'],
+            },
+          ],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
   })
 
   it('shows both required-field messages after an empty golden question submission', async () => {
@@ -494,6 +619,9 @@ describe('QualityPage', () => {
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
         annotation: 'coverage gap',
+        evidence_text: '',
+        expected_evidence_ids: [],
+        match_policy: 'all',
         question: 'Refund after activation',
         source_bad_case_id: 'bad-1',
         tags: ['billing'],

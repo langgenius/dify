@@ -17,17 +17,24 @@ import type { DocumentAssetRepository } from "./document-asset-repository";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import { annotatedGoldenQuestionMetadata } from "./golden-question-annotation";
 import {
+  type GoldenQuestionEvidenceCandidate,
+  type GoldenQuestionEvidenceMatcher,
+  GoldenQuestionEvidenceMatchingUnavailableError,
+} from "./golden-question-evidence-matcher";
+import {
   GoldenQuestionCapacityExceededError,
   GoldenQuestionListLimitExceededError,
   type GoldenQuestionRepository,
 } from "./golden-question-repository";
 import {
   annotateGoldenQuestionRoute,
+  bulkImportGoldenQuestionsRoute,
   createGoldenQuestionRoute,
   createProductionBadCaseRoute,
   deleteGoldenQuestionRoute,
   getGoldenQuestionRoute,
   listGoldenQuestionsRoute,
+  matchGoldenQuestionEvidenceRoute,
   updateGoldenQuestionRoute,
 } from "./golden-question-routes";
 import { KnowledgeFsValidationError } from "./knowledge-fs-errors";
@@ -54,6 +61,7 @@ export interface RegisterGoldenQuestionHandlersOptions {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly assets: Pick<DocumentAssetRepository, "get">;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
+  readonly evidenceMatcher?: GoldenQuestionEvidenceMatcher | undefined;
   readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
   readonly now: () => string;
   readonly questions: GoldenQuestionRepository;
@@ -66,6 +74,7 @@ export function registerGoldenQuestionHandlers({
   app,
   assets,
   authorization,
+  evidenceMatcher,
   nodes,
   now,
   questions,
@@ -105,6 +114,7 @@ export function registerGoldenQuestionHandlers({
       const question = await questions.create({
         ...body,
         knowledgeSpaceId,
+        metadata: goldenQuestionLifecycleMetadata(body.metadata, body.expectedEvidenceIds ?? []),
         permission,
         requiredPermissionScope,
       });
@@ -118,6 +128,150 @@ export function registerGoldenQuestionHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
+      throw error;
+    }
+  });
+
+  app.openapi(matchGoldenQuestionEvidenceRoute, async (context) => {
+    try {
+      const subject = context.get("subject");
+      const knowledgeSpaceId = context.req.valid("param").id;
+      const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
+      if (!space) return context.json({ error: "Knowledge space not found" }, 404);
+      const permission = await issueGoldenQuestionWritePermission({
+        access,
+        authorization,
+        context,
+        knowledgeSpaceId,
+        now,
+      });
+      if (!evidenceMatcher) {
+        return context.json({ error: "Golden question evidence matching is unavailable" }, 503);
+      }
+      const body = context.req.valid("json");
+      const matches = await evidenceMatcher.match({
+        evidenceTexts: body.evidenceTexts,
+        knowledgeSpaceId,
+        minimumSimilarity: body.minimumSimilarity,
+        permissionScope: permission.candidateGrants,
+        tenantId: permission.tenantId,
+        topK: body.topK,
+      });
+      return context.json(
+        {
+          items: matches.map((match) => ({
+            candidates: match.candidates.map(publicEvidenceCandidate),
+            evidenceText: match.evidenceText,
+            matched: match.matched,
+          })),
+        },
+        200,
+      );
+    } catch (error) {
+      if (error instanceof GoldenQuestionEvidenceMatchingUnavailableError) {
+        return context.json({ error: error.message }, 503);
+      }
+      if (isGoldenQuestionPermissionError(error)) {
+        return context.json({ error: "Knowledge space access denied" }, 403);
+      }
+      throw error;
+    }
+  });
+
+  app.openapi(bulkImportGoldenQuestionsRoute, async (context) => {
+    try {
+      const subject = context.get("subject");
+      const knowledgeSpaceId = context.req.valid("param").id;
+      const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
+      if (!space) return context.json({ error: "Knowledge space not found" }, 404);
+      const permission = await issueGoldenQuestionWritePermission({
+        access,
+        authorization,
+        context,
+        knowledgeSpaceId,
+        now,
+      });
+      if (!evidenceMatcher) {
+        return context.json({ error: "Golden question evidence matching is unavailable" }, 503);
+      }
+      const body = context.req.valid("json");
+      const matches = await evidenceMatcher.match({
+        evidenceTexts: body.rows.map((row) => row.evidence),
+        knowledgeSpaceId,
+        minimumSimilarity: body.minimumSimilarity,
+        permissionScope: permission.candidateGrants,
+        tenantId: permission.tenantId,
+        topK: 1,
+      });
+      const matchedAt = now();
+      const prepared = body.rows.map((row, rowIndex) => {
+        const match = matches[rowIndex];
+        const candidate = match?.matched ? match.candidates[0] : undefined;
+        const status = candidate ? ("active" as const) : ("draft" as const);
+        return {
+          candidate,
+          input: {
+            expectedEvidenceIds: candidate ? [candidate.nodeId] : [],
+            knowledgeSpaceId,
+            metadata: {
+              ...row.metadata,
+              evidenceText: row.evidence,
+              lifecycleStatus: status,
+              matchPolicy: body.matchPolicy,
+              ...(candidate
+                ? {
+                    evidenceMatch: {
+                      documentAssetId: candidate.documentAssetId,
+                      matchedAt,
+                      nodeId: candidate.nodeId,
+                      projectionId: candidate.projectionId,
+                      score: candidate.score,
+                    },
+                  }
+                : {}),
+            },
+            permission,
+            question: row.question,
+            requiredPermissionScope: candidate ? candidate.permissionScope : [],
+            tags: row.tags,
+          },
+          rowIndex,
+          status,
+        };
+      });
+      const created = await questions.createMany(prepared.map((item) => item.input));
+      const items = prepared.map((item, index) => {
+        const question = created[index] as GoldenQuestion;
+        return {
+          ...(item.candidate
+            ? {
+                expectedEvidenceId: item.candidate.nodeId,
+                similarity: item.candidate.score,
+              }
+            : {}),
+          questionId: question.id,
+          rowIndex: item.rowIndex,
+          status: item.status,
+        };
+      });
+      return context.json(
+        {
+          activeCount: items.filter((item) => item.status === "active").length,
+          draftCount: items.filter((item) => item.status === "draft").length,
+          items,
+        },
+        201,
+      );
+    } catch (error) {
+      if (error instanceof GoldenQuestionCapacityExceededError) {
+        return context.json({ error: error.message }, 429);
+      }
+      if (error instanceof GoldenQuestionEvidenceMatchingUnavailableError) {
+        return context.json({ error: error.message }, 503);
+      }
+      if (isGoldenQuestionPermissionError(error)) {
+        return context.json({ error: "Knowledge space access denied" }, 403);
+      }
       throw error;
     }
   });
@@ -247,7 +401,14 @@ export function registerGoldenQuestionHandlers({
         ...body,
         id: params.questionId,
         knowledgeSpaceId: params.id,
-        ...(body.metadata ? { metadata: { ...existing.metadata, ...body.metadata } } : {}),
+        ...(body.metadata || body.expectedEvidenceIds
+          ? {
+              metadata: goldenQuestionLifecycleMetadata(
+                { ...existing.metadata, ...(body.metadata ?? {}) },
+                body.expectedEvidenceIds ?? existing.expectedEvidenceIds,
+              ),
+            }
+          : {}),
         permission,
         ...(requiredPermissionScope === undefined ? {} : { requiredPermissionScope }),
       });
@@ -456,6 +617,30 @@ export function registerGoldenQuestionHandlers({
       throw error;
     }
   });
+}
+
+function publicEvidenceCandidate(candidate: GoldenQuestionEvidenceCandidate) {
+  return {
+    documentAssetId: candidate.documentAssetId,
+    nodeId: candidate.nodeId,
+    ...(candidate.pageNumber === undefined ? {} : { pageNumber: candidate.pageNumber }),
+    projectionId: candidate.projectionId,
+    score: candidate.score,
+    sectionPath: [...candidate.sectionPath],
+    text: candidate.text,
+  };
+}
+
+function goldenQuestionLifecycleMetadata(
+  metadata: Readonly<Record<string, unknown>> | undefined,
+  expectedEvidenceIds: readonly string[],
+) {
+  const safeMetadata = metadata ?? {};
+  return {
+    ...safeMetadata,
+    lifecycleStatus: expectedEvidenceIds.length > 0 ? "active" : "draft",
+    matchPolicy: safeMetadata.matchPolicy === "any" ? "any" : "all",
+  };
 }
 
 function goldenQuestionReadScope(

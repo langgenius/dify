@@ -792,6 +792,20 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/golden-questions",
             "knowledge_space",
         ),
+        "matchGoldenQuestionEvidence": KnowledgeFSCapabilityOperation(
+            "golden-questions.write",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/golden-questions/evidence-matches",
+            "knowledge_space",
+        ),
+        "bulkImportGoldenQuestions": KnowledgeFSCapabilityOperation(
+            "golden-questions.write",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/golden-questions/bulk-import",
+            "knowledge_space",
+        ),
         "updateGoldenQuestion": KnowledgeFSCapabilityOperation(
             "golden-questions.write",
             _STANDARD_CALLERS,
