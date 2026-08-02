@@ -115,24 +115,6 @@ vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-  }: {
-    checked: boolean
-    onCheckedChange?: (v: boolean) => void
-  }) => (
-    <button
-      data-testid="rerank-switch"
-      data-checked={checked}
-      onClick={() => onCheckedChange?.(!checked)}
-    >
-      Switch
-    </button>
-  ),
-}))
-
 describe('RetrievalParamConfig', () => {
   const createDefaultConfig = (overrides?: Partial<RetrievalConfig>): RetrievalConfig => ({
     search_method: RETRIEVE_METHOD.semantic,
@@ -166,7 +148,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('rerank-switch'))!.toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeChecked()
     })
 
     it('should render model selector when reranking is enabled', () => {
@@ -232,7 +214,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('rerank-switch'))
+      fireEvent.click(screen.getByRole('switch'))
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -251,7 +233,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('rerank-switch'))
+      fireEvent.click(screen.getByRole('switch'))
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -375,7 +357,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('rerank-switch'))!.toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeChecked()
     })
 
     it('should hide score threshold when reranking is disabled for full text search', () => {
@@ -422,7 +404,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('rerank-switch')).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
 
     it('should not render model selector for keyword search', () => {
@@ -762,7 +744,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('rerank-switch')).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
 
     it('should update model selection for hybrid search', () => {
