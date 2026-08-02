@@ -44,9 +44,9 @@ make -C dify-agent bench-local-runtime \
 
 A filtered invocation records `matrix_complete=false`.
 
-## Calculate cost inputs
+## Calculate local-E2B costs
 
-Use an existing capacity result without rerunning the workload:
+Use an existing `local-e2b` capacity result without rerunning the workload:
 
 ```bash
 make -C dify-agent bench-cost \
@@ -54,8 +54,16 @@ make -C dify-agent bench-cost \
   COST_INPUT=/absolute/path/to/cost-input.json
 ```
 
-The input uses Schema v1. Unknown prices must be `null`; an explicit zero means
-the resource is free under the supplied assumptions.
+`local-runtime` is correctness and local-capacity validation only. Its original
+`report.md` is the final output; `bench-cost` rejects a `local-runtime` result
+instead of applying monetary prices to it.
+
+The cost input uses Schema v1. The harness has no built-in E2B, ACU, Redis, or
+network prices: every price comes from `COST_INPUT`. Unknown prices must be
+`null`; an explicit zero means the resource is free under the supplied
+assumptions. When any price is non-null, `currency` and `price_source` are
+required. The source should identify the vendor or internal catalog and the
+date the price was retrieved.
 
 ```json
 {
@@ -82,7 +90,9 @@ the resource is free under the supplied assumptions.
   ],
   "acu_monthly_price": null,
   "e2b_price_per_billed_second": null,
-  "network_price_per_gib": null
+  "network_price_per_gib": null,
+  "currency": null,
+  "price_source": null
 }
 ```
 
@@ -96,9 +106,10 @@ The command creates a new `benchmarks/results/<timestamp>-cost/` directory with
 `cost-input.json`, `cost-result.json`, and `cost-report.md`. It reports ACU,
 Redis, E2B, and network requirements and costs from the supplied assumptions.
 It does not calculate Kubernetes Pod or Node equivalents, model/Tool costs,
-quotas, or production SLOs. `local-runtime` has no E2B cost; `local-e2b` uses
-per-Run active-time samples and applies the configured billing quantum before
-averaging.
+quotas, or production SLOs. E2B cost uses per-Run active-time samples and
+applies the configured billing quantum before averaging. Markdown values are
+displayed with four decimal places while JSON artifacts retain the original
+calculation precision.
 
 ## Metrics
 
