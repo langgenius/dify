@@ -59,11 +59,11 @@ make -C dify-agent bench-cost \
 instead of applying monetary prices to it.
 
 The cost input uses Schema v1. ACU is a capacity count and has no monetary
-price in this model. The harness has no built-in E2B price: it only uses the
-value supplied by `COST_INPUT`. An unknown price must be `null`; an explicit
-zero means E2B is free under the supplied assumption. When the E2B price is
-non-null, `currency` and `e2b_price_source` are required. The source should
-identify the vendor contract or billing catalog and the retrieval date.
+price in this model. E2B usage uses the official public CPU and memory rates
+captured on 2026-08-02: `0.000014 USD/vCPU-second` and
+`0.0000045 USD/GiB-second`. The price snapshot and source are serialized in
+every cost input/result; arbitrary price overrides are rejected so the report
+cannot label a synthetic assumption as official.
 
 ```json
 {
@@ -72,15 +72,41 @@ identify the vendor contract or billing catalog and the retrieval date.
   "peak_rps": 20,
   "usage_weights": null,
   "peak_weights": null,
-  "e2b_billing": {
-    "minimum_seconds": 0,
-    "increment_seconds": 1
-  },
-  "e2b_price_per_billed_second": null,
-  "currency": null,
-  "e2b_price_source": null
+  "e2b_plan": "hobby",
+  "peak_running_sandboxes": 20,
+  "include_fixed_plan_cost": true,
+  "e2b_pricing": {
+    "currency": "USD",
+    "cpu_usd_per_vcpu_second": 0.000014,
+    "memory_usd_per_gib_second": 0.0000045,
+    "hobby_monthly_base_usd": 0.0,
+    "pro_monthly_base_usd": 150.0,
+    "pro_included_concurrency": 100,
+    "pro_concurrency_addon_slots": 500,
+    "pro_concurrency_addon_monthly_usd": 500.0,
+    "pro_max_concurrency": 1100,
+    "source_url": "https://e2b.dev/pricing",
+    "billing_url": "https://e2b.dev/docs/billing",
+    "lifecycle_events_url": "https://e2b.dev/docs/sandbox/lifecycle-events-webhooks",
+    "concurrency_addon_url": "https://e2b.dev/docs/faq/increase-concurrency",
+    "checked_at": "2026-08-02"
+  }
 }
 ```
+
+The official usage formula is applied to every successful Run and then
+averaged:
+
+```text
+usage USD/run
+= vCPU-seconds/run × 0.000014
++ GiB-seconds/run × 0.0000045
+```
+
+`execution_time`, `vcpu_count`, and `memory_mb` come from the matching E2B
+pause lifecycle event. There is no artificial minimum time, billing quantum,
+or per-Run ceiling. If a historical result lacks vCPU or memory lifecycle
+evidence, E2B cost is `incomplete`; the model does not guess the template size.
 
 Each scenario uses its highest-throughput `valid` point, with lower concurrency
 winning a tie. Invalid and saturated points remain visible as diagnostics but
@@ -94,19 +120,29 @@ count and E2B cost from the supplied assumptions. Redis and network metrics
 remain available in the original capacity result, but this cost command does
 not display or price them and does not include them in Total Cost. It does not
 calculate Kubernetes Pod or Node equivalents, model/Tool costs, quotas, or
-production SLOs. Markdown values are displayed with four decimal places while
-JSON artifacts retain the original calculation precision.
+production SLOs. Measured and calculated Markdown values use four decimal
+places; the two official rates are shown at their published precision. JSON
+artifacts retain the original calculation precision.
 
 The E2B columns have separate meanings:
 
-- `E2B active s/run`: measured provider execution time per successful Run.
-- `E2B billed s/run`: active time after applying the minimum and billing
-  increment to every Run individually, then averaging.
-- `E2B billed s/month`: billed seconds per Run multiplied by `monthly_runs`.
-- `E2B Cost`: monthly billed seconds multiplied by
-  `e2b_price_per_billed_second`.
+- `E2B running s/run`: measured provider execution time per successful Run.
+- `vCPU-s/run`: running seconds multiplied by vendor-reported vCPU count.
+- `GiB-s/run`: running seconds multiplied by vendor-reported memory GiB.
+- `Usage USD/run`: CPU resource cost plus memory resource cost.
+- `Usage USD/month`: usage cost per Run multiplied by `monthly_runs`.
+- `Fixed USD/month`: Hobby/Pro plan base plus applicable Pro concurrency
+  add-ons. `include_fixed_plan_cost` controls whether this enters Total Cost.
 
-`Total Cost` currently equals E2B Cost only.
+The `basic` workload never allocates E2B, so its E2B component and plan fee are
+`not_applicable`; fixed plan cost is shown only for E2B-applicable scenarios.
+
+`Total Cost` contains E2B usage and, when enabled, fixed E2B plan/add-on cost.
+It excludes one-time credits, storage overage (no public unit price), Redis,
+network, model/Tool, and Enterprise custom pricing. See the official
+[pricing](https://e2b.dev/pricing), [billing](https://e2b.dev/docs/billing),
+and [lifecycle event](https://e2b.dev/docs/sandbox/lifecycle-events-webhooks)
+documentation.
 
 ## Metrics
 
@@ -120,7 +156,8 @@ The main report uses:
 - terminal end-to-end `p95 ms`.
 - successful `runs/s`.
 
-E2B active time is measured provider execution time, not vendor billed time.
+E2B running time and resource size are lifecycle evidence used by the official
+CPU/RAM resource-second pricing model. Paused time is not charged.
 Container network traffic is not necessarily cloud billable egress.
 
 ## Results

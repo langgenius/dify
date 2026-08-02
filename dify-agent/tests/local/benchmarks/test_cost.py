@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from benchmarks.cost import (
     CostInputV1,
-    E2BBillingV1,
     SCENARIO_IDS,
     ScenarioId,
     calculate_cost_result,
@@ -101,6 +100,8 @@ def _write_capacity_artifacts(
     mode: BenchmarkMode,
     points: list[CapacityPoint],
     active_seconds: dict[ScenarioId, list[float]] | None = None,
+    e2b_vcpu_count: float | None = 2,
+    e2b_memory_mib: float | None = 512,
     storage_bytes_per_run: float = 100,
 ) -> Path:
     capacity_path = root / "result.json"
@@ -129,6 +130,8 @@ def _write_capacity_artifacts(
                     if mode == "local-e2b" and point.scenario_id != "basic" and scenario_active
                     else None
                 ),
+                e2b_vcpu_count=(e2b_vcpu_count if mode == "local-e2b" and point.scenario_id != "basic" else None),
+                e2b_memory_mib=(e2b_memory_mib if mode == "local-e2b" and point.scenario_id != "basic" else None),
                 terminal_status="succeeded",
                 ledger_valid=True,
                 event_replay_valid=True,
@@ -174,10 +177,9 @@ def _input(**updates: object) -> CostInputV1:
     values: dict[str, object] = {
         "monthly_runs": 1000,
         "peak_rps": 10,
-        "e2b_billing": E2BBillingV1(minimum_seconds=0, increment_seconds=1),
-        "e2b_price_per_billed_second": 1,
-        "currency": "USD",
-        "e2b_price_source": "test fixture E2B price",
+        "e2b_plan": "hobby",
+        "peak_running_sandboxes": 20,
+        "include_fixed_plan_cost": True,
     }
     values.update(updates)
     return CostInputV1.model_validate(values)
@@ -200,26 +202,28 @@ def test_peak_and_usage_weights_must_each_cover_five_scenarios_and_sum_to_one() 
     assert cost_input.peak_weights == weights
 
 
-def test_non_null_e2b_price_requires_currency_and_source() -> None:
+def test_cost_input_uses_the_official_e2b_pricing_snapshot() -> None:
+    pricing = _input().e2b_pricing
+
+    assert pricing.currency == "USD"
+    assert pricing.cpu_usd_per_vcpu_second == pytest.approx(0.000014)
+    assert pricing.memory_usd_per_gib_second == pytest.approx(0.0000045)
+    assert pricing.hobby_monthly_base_usd == 0
+    assert pricing.pro_monthly_base_usd == 150
+    assert pricing.source_url == "https://e2b.dev/pricing"
+    assert pricing.concurrency_addon_url == "https://e2b.dev/docs/faq/increase-concurrency"
+    assert pricing.checked_at == "2026-08-02"
+
     payload = _input().model_dump()
-    payload["e2b_price_source"] = None
-    with pytest.raises(ValidationError, match="e2b_price_source"):
+    payload["e2b_price_per_billed_second"] = 1
+    with pytest.raises(ValidationError, match="Extra inputs"):
         CostInputV1.model_validate(payload)
 
     payload = _input().model_dump()
-    payload["currency"] = None
-    with pytest.raises(ValidationError, match="currency"):
+    pricing_payload = cast(dict[str, object], payload["e2b_pricing"])
+    pricing_payload["cpu_usd_per_vcpu_second"] = 1
+    with pytest.raises(ValidationError, match="official E2B pricing snapshot"):
         CostInputV1.model_validate(payload)
-
-    payload = _input().model_dump()
-    payload.update(
-        {
-            "e2b_price_per_billed_second": None,
-            "currency": None,
-            "e2b_price_source": None,
-        }
-    )
-    assert CostInputV1.model_validate(payload).e2b_price_source is None
 
 
 def test_selects_fastest_valid_point_and_tie_uses_lower_concurrency(tmp_path: Path) -> None:
@@ -272,11 +276,16 @@ def test_no_valid_point_is_incomplete_and_does_not_fabricate_capacity(tmp_path: 
     points[1] = _point("shell", status="invalid")
     capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
 
-    result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
+    result = calculate_cost_result(
+        capacity_result_path=capacity_path,
+        cost_input=_input(e2b_plan="pro", peak_running_sandboxes=101),
+    )
 
     shell = result.pure_scenarios["shell"]
     assert shell.status == "incomplete"
     assert shell.agent.capacity_runs_per_second is None
+    assert shell.e2b.monthly_plan_base_cost == 150
+    assert shell.e2b.monthly_concurrency_addon_cost == 500
     assert "c1 invalid excluded: product error" in shell.warnings
     assert not result.complete
 
@@ -294,7 +303,7 @@ def test_invalid_point_diagnostics_are_single_line_and_bounded(tmp_path: Path) -
     assert len(warning) < 400
 
 
-def test_e2b_rounds_each_successful_sample_and_basic_is_not_applicable(tmp_path: Path) -> None:
+def test_e2b_uses_official_cpu_and_memory_resource_second_pricing_without_rounding(tmp_path: Path) -> None:
     points = _five_points(mode="local-e2b")
     active = {scenario: [0, 1.1] for scenario in SCENARIO_IDS if scenario != "basic"}
     capacity_path = _write_capacity_artifacts(
@@ -303,20 +312,19 @@ def test_e2b_rounds_each_successful_sample_and_basic_is_not_applicable(tmp_path:
         points=points,
         active_seconds=cast(dict[ScenarioId, list[float]], active),
     )
-    cost_input = _input(
-        e2b_billing=E2BBillingV1(minimum_seconds=1, increment_seconds=0.5),
-        e2b_price_per_billed_second=2,
-    )
-
-    result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=cost_input)
+    result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
 
     assert result.pure_scenarios["basic"].e2b.status == "not_applicable"
     shell = result.pure_scenarios["shell"].e2b
     assert shell.status == "calculated"
-    assert shell.active_seconds_per_run == pytest.approx(0.55)
-    assert shell.billed_seconds_per_run == pytest.approx(1.25)
-    assert shell.monthly_billed_seconds == pytest.approx(1250)
-    assert shell.monthly_cost == pytest.approx(2500)
+    assert shell.running_seconds_per_run == pytest.approx(0.55)
+    assert shell.vcpu_seconds_per_run == pytest.approx(1.1)
+    assert shell.memory_gib_seconds_per_run == pytest.approx(0.275)
+    expected_per_run = 1.1 * 0.000014 + 0.275 * 0.0000045
+    assert shell.usage_cost_per_run == pytest.approx(expected_per_run)
+    assert shell.monthly_running_seconds == pytest.approx(550)
+    assert shell.monthly_usage_cost == pytest.approx(expected_per_run * 1000)
+    assert shell.monthly_cost == pytest.approx(expected_per_run * 1000)
 
 
 def test_local_runtime_is_validation_only_and_rejected_by_cost_model(
@@ -346,25 +354,28 @@ def test_local_runtime_is_validation_only_and_rejected_by_cost_model(
     assert not output_dir.exists()
 
 
-def test_missing_e2b_billing_only_invalidates_e2b_component(tmp_path: Path) -> None:
+def test_missing_e2b_resource_evidence_only_invalidates_e2b_component(tmp_path: Path) -> None:
     active = {scenario: [0.5, 0.75] for scenario in SCENARIO_IDS if scenario != "basic"}
     capacity_path = _write_capacity_artifacts(
         tmp_path,
         mode="local-e2b",
         points=_five_points(mode="local-e2b"),
         active_seconds=cast(dict[ScenarioId, list[float]], active),
+        e2b_memory_mib=None,
     )
 
     shell = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(e2b_billing=None, e2b_price_per_billed_second=1),
+        cost_input=_input(e2b_plan="pro", peak_running_sandboxes=101),
     ).pure_scenarios["shell"]
 
     assert shell.status == "incomplete"
     assert shell.agent.status == "calculated"
     assert shell.e2b.status == "incomplete"
-    assert shell.e2b.active_seconds_per_run == pytest.approx(0.625)
-    assert shell.e2b.billed_seconds_per_run is None
+    assert shell.e2b.running_seconds_per_run == pytest.approx(0.625)
+    assert shell.e2b.memory_gib_seconds_per_run is None
+    assert shell.e2b.monthly_plan_base_cost == 150
+    assert shell.e2b.monthly_concurrency_addon_cost == 500
 
 
 def test_agent_capacity_and_total_use_selected_block_evidence(tmp_path: Path) -> None:
@@ -387,42 +398,49 @@ def test_agent_capacity_and_total_use_selected_block_evidence(tmp_path: Path) ->
     assert shell.total_monthly_cost == shell.e2b.monthly_cost
 
 
-def test_null_and_zero_e2b_prices_remain_distinct(tmp_path: Path) -> None:
+def test_official_hobby_and_pro_fixed_costs_are_explicit(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
 
-    zero = calculate_cost_result(
+    hobby = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(
-            e2b_price_per_billed_second=0,
-        ),
+        cost_input=_input(),
     ).pure_scenarios["shell"]
-    unknown_result = calculate_cost_result(
+    pro = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(
-            e2b_price_per_billed_second=None,
-            currency=None,
-            e2b_price_source=None,
-        ),
-    )
-    unknown = unknown_result.pure_scenarios["shell"]
-    assert zero.e2b.monthly_cost == 0
-    assert zero.total_monthly_cost == 0
-    assert unknown.agent.status == "calculated"
-    assert unknown.e2b.status == "incomplete"
-    assert unknown.total_monthly_cost is None
-    assert unknown_result.cost_envelope is None
+        cost_input=_input(e2b_plan="pro", peak_running_sandboxes=101),
+    ).pure_scenarios["shell"]
+
+    assert hobby.e2b.monthly_plan_base_cost == 0
+    assert hobby.e2b.monthly_concurrency_addon_cost == 0
+    assert hobby.e2b.monthly_cost == hobby.e2b.monthly_usage_cost
+    assert pro.e2b.monthly_plan_base_cost == 150
+    assert pro.e2b.monthly_concurrency_addon_cost == 500
+    assert pro.e2b.monthly_cost == pytest.approx(cast(float, pro.e2b.monthly_usage_cost) + 650)
 
 
-def test_missing_e2b_price_only_invalidates_e2b_cost(tmp_path: Path) -> None:
+def test_fixed_plan_cost_can_be_excluded_for_incremental_cost(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     estimate = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(e2b_price_per_billed_second=None, currency=None, e2b_price_source=None),
+        cost_input=_input(
+            e2b_plan="pro",
+            peak_running_sandboxes=101,
+            include_fixed_plan_cost=False,
+        ),
     ).pure_scenarios["shell"]
 
-    assert estimate.agent.status == "calculated"
-    assert estimate.e2b.status == "incomplete"
-    assert estimate.total_monthly_cost is None
+    assert estimate.e2b.monthly_plan_base_cost == 150
+    assert estimate.e2b.monthly_concurrency_addon_cost == 500
+    assert estimate.e2b.fixed_cost_included is False
+    assert estimate.e2b.monthly_cost == estimate.e2b.monthly_usage_cost
+    assert estimate.total_monthly_cost == estimate.e2b.monthly_usage_cost
+
+
+def test_plan_concurrency_limits_are_validated() -> None:
+    with pytest.raises(ValidationError, match="Hobby supports at most 20"):
+        _input(peak_running_sandboxes=21)
+    with pytest.raises(ValidationError, match="Pro supports at most 1100"):
+        _input(e2b_plan="pro", peak_running_sandboxes=1101)
 
 
 def test_peak_and_usage_weights_produce_separate_weighted_result(tmp_path: Path) -> None:
@@ -524,22 +542,26 @@ def test_cli_writes_three_artifacts_without_kubernetes_equivalents(tmp_path: Pat
     assert "| ACU |" in report
     assert "ACU / Cost" not in report
     assert "Redis" not in report
-    assert "E2B active s/run | E2B billed s/run | E2B billed s/month | E2B Cost" in report
+    assert "E2B running s/run | vCPU-s/run | GiB-s/run | Usage USD/run" in report
+    assert "Usage USD/month | Fixed USD/month | Total Cost (E2B only)" in report
+    assert "billed s/run" not in report
     assert "Network" not in report
-    assert "Total Cost (E2B only)" in report
     assert "monthly_cost" not in serialized["pure_scenarios"]["basic"]["agent"]
     assert "redis" not in serialized["pure_scenarios"]["basic"]
     assert "network" not in serialized["pure_scenarios"]["basic"]
     assert "acu_monthly_price" not in json.loads((output_dir / "cost-input.json").read_text())
     assert "redis_tiers" not in json.loads((output_dir / "cost-input.json").read_text())
     assert "network_price_per_gib" not in json.loads((output_dir / "cost-input.json").read_text())
+    assert json.loads((output_dir / "cost-input.json").read_text())["e2b_pricing"][
+        "cpu_usd_per_vcpu_second"
+    ] == pytest.approx(0.000014)
     assert serialized["pure_scenarios"]["basic"]["agent"]["capacity_runs_per_second"] == pytest.approx(1.23456789)
     assert "1.2346" in report
     assert "1.23457" not in report
     assert math.isfinite(serialized["pure_scenarios"]["basic"]["agent"]["capacity_runs_per_second"])
 
 
-def test_report_displays_price_provenance_and_four_decimal_places(tmp_path: Path) -> None:
+def test_report_displays_official_price_provenance_and_four_decimal_places(tmp_path: Path) -> None:
     points = _five_points()
     points[0] = _point("basic", runs_per_second=1.23456789)
     capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
@@ -548,7 +570,10 @@ def test_report_displays_price_provenance_and_four_decimal_places(tmp_path: Path
     report = render_cost_report(result)
 
     assert result.pure_scenarios["basic"].agent.capacity_runs_per_second == pytest.approx(1.23456789)
-    assert "E2B price source: **test fixture E2B price**" in report
+    assert "E2B price source: **https://e2b.dev/pricing**" in report
+    assert "Price checked at: **2026-08-02**" in report
+    assert "CPU: **0.000014 USD/vCPU-s**" in report
+    assert "Memory: **0.0000045 USD/GiB-s**" in report
     assert "Currency: **USD**" in report
     assert "1.2346" in report
     assert "1.23457" not in report
