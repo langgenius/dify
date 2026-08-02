@@ -22,7 +22,11 @@ def is_valid_trace_id(trace_id: str) -> bool:
 
     Requirements: 1-128 characters, only letters, numbers, '-', and '_'.
     """
-    return bool(re.match(r"^[a-zA-Z0-9\-_]{1,128}$", trace_id))
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # Python's '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "abc123\n". re.fullmatch requires the whole string
+    # to match. Regression for #39880 (sibling of #39234 / #39548 / #39666 / #39730).
+    return bool(re.fullmatch(r"[a-zA-Z0-9\-_]{1,128}", trace_id))
 
 
 def get_external_trace_id(request: Any) -> str | None:

@@ -24,9 +24,13 @@ class GenericProviderID:
         if not value:
             raise NotFound("plugin not found, please add plugin")
         # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
-        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
+        # Use re.fullmatch instead of re.match to reject trailing newlines.
+        # Python's '$' matches at end-of-string OR just before a trailing newline,
+        # so re.match accepts "google\n". re.fullmatch requires the whole string
+        # to match. Regression for #39880 (sibling of #39234 / #39548 / #39666 / #39730).
+        if not re.fullmatch(r"[a-z0-9_-]+/[a-z0-9_-]+/[a-z0-9_-]+", value):
             # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
-            if re.match(r"^[a-z0-9_-]+$", value):
+            if re.fullmatch(r"[a-z0-9_-]+", value):
                 value = f"langgenius/{value}/{value}"
             else:
                 raise ValueError(f"Invalid plugin id {value}")
