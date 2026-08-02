@@ -44,105 +44,43 @@ make -C dify-agent bench-local-runtime \
 
 A filtered invocation records `matrix_complete=false`.
 
-## Calculate local-E2B costs
+## Derive ACU and E2B calculator inputs
 
 Use an existing `local-e2b` capacity result without rerunning the workload:
 
 ```bash
-make -C dify-agent bench-cost \
+make -C dify-agent bench-sizing \
   CAPACITY_RESULT=/absolute/path/to/result.json \
-  COST_INPUT=/absolute/path/to/cost-input.json
+  MONTHLY_RUNS=10000000 \
+  PEAK_RPS=20 \
+  E2B_CONCURRENCY=20
 ```
 
 `local-runtime` is correctness and local-capacity validation only. Its original
-`report.md` is the final output; `bench-cost` rejects a `local-runtime` result
-instead of applying monetary prices to it.
-
-The cost input uses Schema v1. ACU is a capacity count and has no monetary
-price in this model. E2B usage uses the official public CPU and memory rates
-captured on 2026-08-02: `0.000014 USD/vCPU-second` and
-`0.0000045 USD/GiB-second`. The price snapshot and source are serialized in
-every cost input/result; arbitrary price overrides are rejected so the report
-cannot label a synthetic assumption as official.
-
-```json
-{
-  "schema_version": 1,
-  "monthly_runs": 10000000,
-  "peak_rps": 20,
-  "usage_weights": null,
-  "peak_weights": null,
-  "e2b_plan": "hobby",
-  "peak_running_sandboxes": 20,
-  "include_fixed_plan_cost": true,
-  "e2b_pricing": {
-    "currency": "USD",
-    "cpu_usd_per_vcpu_second": 0.000014,
-    "memory_usd_per_gib_second": 0.0000045,
-    "hobby_monthly_base_usd": 0.0,
-    "pro_monthly_base_usd": 150.0,
-    "pro_included_concurrency": 100,
-    "pro_concurrency_addon_slots": 500,
-    "pro_concurrency_addon_monthly_usd": 500.0,
-    "pro_max_concurrency": 1100,
-    "source_url": "https://e2b.dev/pricing",
-    "billing_url": "https://e2b.dev/docs/billing",
-    "lifecycle_events_url": "https://e2b.dev/docs/sandbox/lifecycle-events-webhooks",
-    "concurrency_addon_url": "https://e2b.dev/docs/faq/increase-concurrency",
-    "checked_at": "2026-08-02"
-  }
-}
-```
-
-The official usage formula is applied to every successful Run and then
-averaged:
-
-```text
-usage USD/run
-= vCPU-seconds/run × 0.000014
-+ GiB-seconds/run × 0.0000045
-```
-
-`execution_time`, `vcpu_count`, and `memory_mb` come from the matching E2B
-pause lifecycle event. There is no artificial minimum time, billing quantum,
-or per-Run ceiling. If a historical result lacks vCPU or memory lifecycle
-evidence, E2B cost is `incomplete`; the model does not guess the template size.
+`report.md` is the final output; `bench-sizing` rejects a `local-runtime`
+result because production ACU and E2B inputs must come from the same
+`local-e2b` capacity path.
 
 Each scenario uses its highest-throughput `valid` point, with lower concurrency
 winning a tie. Invalid and saturated points remain visible as diagnostics but
-never enter the calculation. If supplied, `usage_weights` and `peak_weights`
-must each contain all five scenario names, use non-negative values, and sum to
-one; they are never inferred or normalized.
+never enter the calculation.
 
-The command creates a new `benchmarks/results/<timestamp>-cost/` directory with
-`cost-input.json`, `cost-result.json`, and `cost-report.md`. It reports the ACU
-count and E2B cost from the supplied assumptions. Redis and network metrics
-remain available in the original capacity result, but this cost command does
-not display or price them and does not include them in Total Cost. It does not
-calculate Kubernetes Pod or Node equivalents, model/Tool costs, quotas, or
-production SLOs. Measured and calculated Markdown values use four decimal
-places; the two official rates are shown at their published precision. JSON
-artifacts retain the original calculation precision.
+The command creates `sizing-input.json`, `sizing-result.json`, and
+`sizing-report.md`. For each pure scenario it reports:
 
-The E2B columns have separate meanings:
+- `Required ACU = ceil(PEAK_RPS / selected runs/s)`, without a safety factor.
+- E2B `vCPUs`, from lifecycle `vcpu_count`.
+- E2B `RAM (GB)`, from lifecycle `memory_mb / 1024`.
+- E2B `Run Hours / Month = active-seconds/run × MONTHLY_RUNS / 3600`.
+- E2B concurrency, copied from the business-selected official option:
+  `20`, `100`, `600`, or `1100`.
 
-- `E2B running s/run`: measured provider execution time per successful Run.
-- `vCPU-s/run`: running seconds multiplied by vendor-reported vCPU count.
-- `GiB-s/run`: running seconds multiplied by vendor-reported memory GiB.
-- `Usage USD/run`: CPU resource cost plus memory resource cost.
-- `Usage USD/month`: usage cost per Run multiplied by `monthly_runs`.
-- `Fixed USD/month`: Hobby/Pro plan base plus applicable Pro concurrency
-  add-ons. `include_fixed_plan_cost` controls whether this enters Total Cost.
-
-The `basic` workload never allocates E2B, so its E2B component and plan fee are
-`not_applicable`; fixed plan cost is shown only for E2B-applicable scenarios.
-
-`Total Cost` contains E2B usage and, when enabled, fixed E2B plan/add-on cost.
-It excludes one-time credits, storage overage (no public unit price), Redis,
-network, model/Tool, and Enterprise custom pricing. See the official
-[pricing](https://e2b.dev/pricing), [billing](https://e2b.dev/docs/billing),
-and [lifecycle event](https://e2b.dev/docs/sandbox/lifecycle-events-webhooks)
-documentation.
+These are the four inputs accepted by the official
+[E2B Workload Pricing Estimator](https://pricing.e2b.dev/). The Harness does
+not calculate usage amounts, plan fees, add-ons, totals, Enterprise terms, or
+credits. Concurrency is a business demand input; it is not inferred from local
+test concurrency or peak RPS. Historical results without lifecycle vCPU or
+memory fields retain their ACU result but mark E2B inputs `incomplete`.
 
 ## Metrics
 
@@ -156,8 +94,8 @@ The main report uses:
 - terminal end-to-end `p95 ms`.
 - successful `runs/s`.
 
-E2B running time and resource size are lifecycle evidence used by the official
-CPU/RAM resource-second pricing model. Paused time is not charged.
+E2B running time and resource size are lifecycle evidence used to populate the
+official estimator inputs.
 Container network traffic is not necessarily cloud billable egress.
 
 ## Results
