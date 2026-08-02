@@ -141,7 +141,7 @@ function promiseToast<Value>(promiseValue: Promise<Value>, options: ToastPromise
   return toastManager.promise(promiseValue, options)
 }
 
-export const toast: ToastApi = Object.assign(showToast, {
+const toast: ToastApi = Object.assign(showToast, {
   success: createTypedToast('success'),
   error: createTypedToast('error'),
   warning: createTypedToast('warning'),
@@ -251,7 +251,7 @@ function ToastViewport() {
   )
 }
 
-export function ToastHost({ timeout, limit }: ToastHostProps) {
+function ToastHost({ timeout, limit }: ToastHostProps) {
   return (
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
@@ -260,3 +260,7 @@ export function ToastHost({ timeout, limit }: ToastHostProps) {
     </BaseToast.Provider>
   )
 }
+
+export { toast, ToastHost }
+
+export type { ToastHostProps }

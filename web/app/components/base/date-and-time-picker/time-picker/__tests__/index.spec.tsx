@@ -212,8 +212,8 @@ describe('TimePicker', () => {
     })
 
     it('should use renderTrigger when provided', () => {
-      const renderTrigger = vi.fn(({ inputElem, onClick }) => (
-        <div data-testid="custom-trigger" onClick={onClick}>
+      const renderTrigger = vi.fn((triggerProps, _state, { inputElem }) => (
+        <div {...triggerProps} data-testid="custom-trigger">
           {inputElem}
         </div>
       ))
@@ -222,6 +222,25 @@ describe('TimePicker', () => {
 
       expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
       expect(renderTrigger).toHaveBeenCalled()
+    })
+
+    it('should expose Base UI trigger state and props to a custom trigger', () => {
+      const renderTrigger = vi.fn((triggerProps, state, { inputElem }) => (
+        <button {...triggerProps} data-testid="state-trigger">
+          {state.open ? 'Open' : 'Closed'}
+          {inputElem}
+        </button>
+      ))
+
+      render(<TimePicker {...baseProps} renderTrigger={renderTrigger} />)
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Closed')
+      expect(screen.getByTestId('state-trigger')).not.toHaveAttribute('data-popup-open')
+
+      fireEvent.click(screen.getByTestId('state-trigger'))
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Open')
+      expect(screen.getByTestId('state-trigger')).toHaveAttribute('data-popup-open')
     })
 
     it('should render with notClearable prop without errors', () => {

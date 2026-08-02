@@ -43,12 +43,16 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
     <div className="flex items-center">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={
-            <button type="button" className="w-full border-none bg-transparent p-0 text-left">
+          render={(props, state) => (
+            <button
+              {...props}
+              type="button"
+              className={cn('w-full border-none bg-transparent p-0 text-left', props.className)}
+            >
               <div
                 className={cn(
                   'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
-                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  state.open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
               >
                 <StatusDot className={cn('shrink-0')} status={apiBaseUrl ? 'success' : 'warning'} />
@@ -57,7 +61,7 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
                 </div>
               </div>
             </button>
-          }
+          )}
         />
         <PopoverContent
           placement="top-start"

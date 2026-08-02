@@ -12,12 +12,8 @@ import { useNodesReadOnly } from '../../../../../hooks/use-workflow'
 import NextStep from '../index'
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger }: { trigger: ((open: boolean) => ReactNode) | ReactNode }) => {
-    return (
-      <div data-testid="next-step-block-selector">
-        {typeof trigger === 'function' ? trigger(false) : trigger}
-      </div>
-    )
+  default: ({ trigger }: { trigger: ReactNode }) => {
+    return <div data-testid="next-step-block-selector">{trigger}</div>
   },
 }))
 

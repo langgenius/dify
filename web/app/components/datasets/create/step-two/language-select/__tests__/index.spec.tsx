@@ -128,6 +128,7 @@ describe('LanguageSelect', () => {
             {children}
           </button>
         ),
+        SelectValue: ({ placeholder }: { placeholder?: React.ReactNode }) => <>{placeholder}</>,
         SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
@@ -154,7 +155,7 @@ describe('LanguageSelect', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'language' })
       expect(trigger).toBeDisabled()
-      expect(trigger).toHaveClass('cursor-not-allowed')
+      expect(trigger).toHaveAttribute('data-disabled')
     })
 
     it('should not open the listbox when disabled', () => {

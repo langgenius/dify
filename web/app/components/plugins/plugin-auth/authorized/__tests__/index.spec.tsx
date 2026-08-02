@@ -188,7 +188,7 @@ describe('Authorized Component', () => {
       expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
-    it('should render with custom trigger when renderTrigger is provided', () => {
+    it('should render a custom trigger from the actual popover state', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
@@ -203,8 +203,14 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      const trigger = screen.getByTestId('popover-trigger')
+      expect(trigger).not.toHaveAttribute('data-popup-open')
       expect(screen.getByText('Closed'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('custom-trigger'))
+
+      expect(trigger).toHaveAttribute('data-popup-open', '')
+      expect(screen.getByText('Open')).toBeInTheDocument()
     })
 
     it('should show singular authorization text for 1 credential', () => {

@@ -27,7 +27,6 @@ export type ProviderContextState = {
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
-  datasetOperatorEnabled: boolean
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
   isEducationAccount: boolean
@@ -61,7 +60,6 @@ export const baseProviderContextValue: ProviderContextState = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,

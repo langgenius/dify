@@ -20,12 +20,10 @@ import { SubjectType } from '@/models/access-control'
 export function SubjectItem({
   subject,
   selectedGroups,
-  selectedMembers,
   onExpandGroup,
 }: {
   subject: Subject
   selectedGroups: AccessControlGroup[]
-  selectedMembers: AccessControlAccount[]
   onExpandGroup: (group: AccessControlGroup) => void
 }) {
   if (subject.subjectType === SubjectType.GROUP) {
@@ -39,13 +37,7 @@ export function SubjectItem({
     )
   }
 
-  return (
-    <MemberItem
-      member={(subject as SubjectAccount).accountData}
-      subject={subject}
-      selectedMembers={selectedMembers}
-    />
-  )
+  return <MemberItem member={(subject as SubjectAccount).accountData} subject={subject} />
 }
 
 export function SelectedGroupsBreadCrumb({
@@ -122,19 +114,23 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
   return (
     <div className="flex items-center gap-2 rounded-lg hover:bg-state-base-hover">
       <ComboboxBaseItem subject={subject}>
-        <SelectionBox checked={isChecked} />
-        <ComboboxItemText className="flex grow items-center px-0">
-          <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-            <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
-              <span
-                className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
-                aria-hidden="true"
-              />
-            </div>
-          </div>
-          <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
-          <span className="system-xs-regular text-text-tertiary">{group.groupSize}</span>
-        </ComboboxItemText>
+        {(selected) => (
+          <>
+            <SelectionBox checked={selected} />
+            <ComboboxItemText className="flex grow items-center px-0">
+              <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+                <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
+                  <span
+                    className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
+              <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
+              <span className="system-xs-regular text-text-tertiary">{group.groupSize}</span>
+            </ComboboxItemText>
+          </>
+        )}
       </ComboboxBaseItem>
       <Button
         size="small"
@@ -156,30 +152,32 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
 type MemberItemProps = {
   member: AccessControlAccount
   subject: Subject
-  selectedMembers: AccessControlAccount[]
 }
 
-function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
+function MemberItem({ member, subject }: MemberItemProps) {
   const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
-  const isChecked = selectedMembers.some((selectedMember) => selectedMember.id === member.id)
   return (
     <ComboboxBaseItem subject={subject} className="pr-3">
-      <SelectionBox checked={isChecked} />
-      <ComboboxItemText className="flex grow items-center px-0">
-        <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-          <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
-            <Avatar size="xxs" avatar={null} name={member.name} />
-          </div>
-        </div>
-        <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
-        {currentUser.email === member.email && (
-          <span className="system-xs-regular text-text-tertiary">
-            ({t(($) => $.you, { ns: 'common' })})
-          </span>
-        )}
-      </ComboboxItemText>
-      <span className="system-xs-regular text-text-quaternary">{member.email}</span>
+      {(selected) => (
+        <>
+          <SelectionBox checked={selected} />
+          <ComboboxItemText className="flex grow items-center px-0">
+            <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+              <div className="flex size-full items-center justify-center bg-(image:--color-access-app-icon-mask-bg)">
+                <Avatar size="xxs" avatar={null} name={member.name} />
+              </div>
+            </div>
+            <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
+            {currentUser.email === member.email && (
+              <span className="system-xs-regular text-text-tertiary">
+                ({t(($) => $.you, { ns: 'common' })})
+              </span>
+            )}
+          </ComboboxItemText>
+          <span className="system-xs-regular text-text-quaternary">{member.email}</span>
+        </>
+      )}
     </ComboboxBaseItem>
   )
 }
@@ -187,7 +185,7 @@ function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
 type ComboboxBaseItemProps = {
   className?: string
   subject: Subject
-  children: ReactNode
+  children: (selected: boolean) => ReactNode
 }
 
 function ComboboxBaseItem({ children, className, subject }: ComboboxBaseItemProps) {
@@ -198,9 +196,12 @@ function ComboboxBaseItem({ children, className, subject }: ComboboxBaseItemProp
         'mx-0 flex min-h-8 grow grid-cols-none items-center gap-2 rounded-lg p-1 pl-2',
         className,
       )}
-    >
-      {children}
-    </ComboboxItem>
+      render={(props, state) => (
+        <div {...props} className={props.className}>
+          {children(state.selected)}
+        </div>
+      )}
+    />
   )
 }
 
