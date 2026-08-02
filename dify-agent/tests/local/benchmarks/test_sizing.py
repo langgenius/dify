@@ -309,7 +309,7 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
                 "--capacity-result",
                 str(capacity_path),
                 "--monthly-runs",
-                "1800",
+                "18000",
                 "--peak-rps",
                 "17",
                 "--e2b-concurrency",
@@ -334,4 +334,6 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
     assert "https://pricing.e2b.dev/" in report
     assert "1.2346" in report
     assert "1.23457" not in report
+    assert "| `shell` | `ready` | 1 | 1.2346 | 14 | 2.0000 | 0.5000 | 2 | 20 |" in report
+    assert "2.5000" not in report
     assert math.isfinite(serialized["scenarios"]["basic"]["capacity_runs_per_second"])
