@@ -5562,6 +5562,10 @@ export type PostWorkspacesInfoData = {
   url: '/workspaces/info'
 }
 
+export type PostWorkspacesInfoErrors = {
+  403: unknown
+}
+
 export type PostWorkspacesInfoResponses = {
   200: WorkspaceTenantResultResponse
 }
