@@ -19,6 +19,7 @@ from controllers.service_api.knowledge_fs import resources as service_resources
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentUploadAcceptedResponse,
+    KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSSpaceCreatePayload,
 )
@@ -311,6 +312,59 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
             "control_space_id": "control-1",
         }
     ]
+
+
+def test_logical_document_delete_accepts_initial_row_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class Facade:
+        def delete_logical_document(self, **kwargs):
+            calls.append(kwargs)
+            assert kwargs["payload"].expected_revision == 0
+            return KnowledgeFSDurableDeletionAcceptedResponse.model_validate(
+                {
+                    "job": {
+                        "checkpoint": "requested",
+                        "createdAt": "2030-01-01T00:00:00Z",
+                        "id": "00000000-0000-4000-8000-000000000001",
+                        "knowledgeSpaceId": "space-1",
+                        "runState": "queued",
+                        "targetId": "00000000-0000-4000-8000-000000000002",
+                        "targetType": "logical_document",
+                        "updatedAt": "2030-01-01T00:00:00Z",
+                    },
+                    "statusUrl": "/deletion-jobs/job-1",
+                }
+            )
+
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=Facade()))
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        method="DELETE",
+        json={"expectedRevision": 0},
+        headers={"Idempotency-Key": "delete-logical-document-once"},
+    ):
+        delete = inspect.unwrap(console_resources.KnowledgeFSSpaceLogicalDocumentApi.delete)
+        response, status = delete(
+            console_resources.KnowledgeFSSpaceLogicalDocumentApi(),
+            "control-1",
+            "document-1",
+        )
+
+    assert status == 202
+    assert response["job"]["target_type"] == "logical_document"
+    assert len(calls) == 1
+    assert {name: value for name, value in calls[0].items() if name != "payload"} == {
+        "tenant_id": "tenant-1",
+        "account_id": "account-1",
+        "control_space_id": "control-1",
+        "document_id": "document-1",
+        "idempotency_key": "delete-logical-document-once",
+    }
 
 
 def test_small_file_console_bff_maps_oversize_to_413() -> None:

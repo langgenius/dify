@@ -1150,6 +1150,12 @@ class KnowledgeFSDocumentDeletePayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSLogicalDocumentDeletePayload(BaseModel):
+    expected_revision: int = Field(ge=0, alias="expectedRevision")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
 class KnowledgeFSBulkDocumentDeleteItemPayload(KnowledgeFSDocumentDeletePayload):
     document_id: str = Field(min_length=1, alias="documentId")
 
@@ -2450,6 +2456,7 @@ __all__ = [
     "KnowledgeFSIdempotencyHeader",
     "KnowledgeFSJWKResponse",
     "KnowledgeFSJWKSResponse",
+    "KnowledgeFSLogicalDocumentDeletePayload",
     "KnowledgeFSLogicalDocumentListResponse",
     "KnowledgeFSLogicalDocumentResponse",
     "KnowledgeFSMemberBindingPayload",

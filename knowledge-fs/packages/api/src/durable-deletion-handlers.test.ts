@@ -85,7 +85,7 @@ describe("durable deletion handlers", () => {
     const response = await app.request(
       `/knowledge-spaces/${SPACE_ID}/logical-documents/${DOCUMENT_ID}`,
       {
-        body: JSON.stringify({ expectedRevision: 4 }),
+        body: JSON.stringify({ expectedRevision: 0 }),
         headers: requestHeaders(),
         method: "DELETE",
       },
@@ -101,11 +101,24 @@ describe("durable deletion handlers", () => {
       expect.objectContaining({
         callerKind: "interactive",
         documentId: DOCUMENT_ID,
-        expectedRevision: 4,
+        expectedRevision: 0,
         idempotencyKey: "delete-space-0001",
         knowledgeSpaceId: SPACE_ID,
       }),
     );
+    expect(service.requestDocumentDeletion).not.toHaveBeenCalled();
+  });
+
+  it("keeps document-asset deletion versions strictly positive", async () => {
+    const service = serviceStub();
+    const app = testApp(service);
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/documents/${DOCUMENT_ID}`, {
+      body: JSON.stringify({ expectedRevision: 0 }),
+      headers: requestHeaders(),
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(400);
     expect(service.requestDocumentDeletion).not.toHaveBeenCalled();
   });
 

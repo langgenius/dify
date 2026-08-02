@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
 const ExpectedRevisionSchema = z.number().int().positive();
+const LogicalDocumentExpectedRevisionSchema = z.number().int().nonnegative();
 
 export const DurableDeletionIdempotencyHeadersSchema = z
   .object({
@@ -51,6 +52,12 @@ export const DeleteDocumentBodySchema = z
   })
   .strict();
 
+export const DeleteLogicalDocumentBodySchema = z
+  .object({
+    expectedRevision: LogicalDocumentExpectedRevisionSchema,
+  })
+  .strict();
+
 export const BulkDeleteDocumentsBodySchema = z
   .object({
     documents: z
@@ -72,6 +79,7 @@ export type DeleteSourceBody = z.infer<typeof DeleteSourceBodySchema>;
 export type DeleteSourceParams = z.infer<typeof DeleteSourceParamsSchema>;
 export type DeleteSourceQuery = z.infer<typeof DurableDeleteSourceQuerySchema>;
 export type DeleteDocumentBody = z.infer<typeof DeleteDocumentBodySchema>;
+export type DeleteLogicalDocumentBody = z.infer<typeof DeleteLogicalDocumentBodySchema>;
 export type DeleteDocumentParams = z.infer<typeof DeleteDocumentParamsSchema>;
 export type BulkDeleteDocumentsBody = z.infer<typeof BulkDeleteDocumentsBodySchema>;
 export type DurableDeletionIdempotencyHeaders = z.infer<

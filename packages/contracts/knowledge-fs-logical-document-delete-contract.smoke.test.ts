@@ -3,6 +3,7 @@ import { logicalDocuments } from './generated/api/console/knowledge-fs/orpc.gen'
 import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
+  zKnowledgeFsDocumentDeletePayload,
 } from './generated/api/console/knowledge-fs/zod.gen'
 
 describe('generated KnowledgeFS logical document deletion contract', () => {
@@ -15,6 +16,11 @@ describe('generated KnowledgeFS logical document deletion contract', () => {
     ).toBe(true)
     expect(
       zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody.safeParse({
+        expectedRevision: 0,
+      }).success,
+    ).toBe(true)
+    expect(
+      zKnowledgeFsDocumentDeletePayload.safeParse({
         expectedRevision: 0,
       }).success,
     ).toBe(false)

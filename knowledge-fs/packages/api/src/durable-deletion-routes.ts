@@ -6,6 +6,7 @@ import {
   DeleteDocumentParamsSchema,
   DeleteKnowledgeSpaceBodySchema,
   DeleteKnowledgeSpaceParamsSchema,
+  DeleteLogicalDocumentBodySchema,
   DeleteSourceBodySchema,
   DeleteSourceParamsSchema,
   DurableDeleteSourceQuerySchema,
@@ -129,7 +130,7 @@ export const requestLogicalDocumentDeletionRoute = createRoute({
   path: "/knowledge-spaces/{id}/logical-documents/{documentId}",
   request: {
     body: {
-      content: { "application/json": { schema: DeleteDocumentBodySchema } },
+      content: { "application/json": { schema: DeleteLogicalDocumentBodySchema } },
       required: true,
     },
     headers: DurableDeletionIdempotencyHeadersSchema,

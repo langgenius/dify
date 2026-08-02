@@ -270,6 +270,13 @@ export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
 })
 
 /**
+ * KnowledgeFSLogicalDocumentDeletePayload
+ */
+export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
+  expectedRevision: z.int().gte(0),
+})
+
+/**
  * KnowledgeFSBadCaseCreatePayload
  */
 export const zKnowledgeFsBadCaseCreatePayload = z.object({
@@ -2577,7 +2584,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
-  zKnowledgeFsDocumentDeletePayload
+  zKnowledgeFsLogicalDocumentDeletePayload
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders = z.object(
   {

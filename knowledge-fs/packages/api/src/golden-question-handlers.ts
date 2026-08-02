@@ -62,7 +62,7 @@ export interface RegisterGoldenQuestionHandlersOptions {
   readonly assets: Pick<DocumentAssetRepository, "get">;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
   readonly evidenceMatcher?: GoldenQuestionEvidenceMatcher | undefined;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
   readonly now: () => string;
   readonly questions: GoldenQuestionRepository;
   readonly spaces: KnowledgeSpaceRepository;
@@ -726,7 +726,7 @@ async function productionBadCaseEvidencePermissionScope(input: {
   readonly assets: Pick<DocumentAssetRepository, "get">;
   readonly bundle: EvidenceBundle | null;
   readonly knowledgeSpaceId: string;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
   readonly permissionScopes: readonly string[];
 }): Promise<readonly string[] | null> {
   if (!input.bundle) {
@@ -746,7 +746,7 @@ async function productionBadCaseEvidencePermissionScope(input: {
       .map((missing) => missing.expectedEvidenceId)
       .filter((id): id is string => id !== undefined),
   );
-  const referencedNodes = await input.nodes.getMany({
+  const referencedNodes = await input.nodes.getManyByIdsAcrossGenerations({
     ids: uniqueStrings([...requiredNodeIds, ...optionalMissingNodeIds]),
     knowledgeSpaceId: input.knowledgeSpaceId,
   });
@@ -804,12 +804,12 @@ export async function goldenQuestionEvidencePermissionScope(input: {
   readonly candidateGrants: readonly string[];
   readonly expectedEvidenceIds: readonly string[];
   readonly knowledgeSpaceId: string;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
 }): Promise<readonly string[] | null> {
   const evidenceIds = uniqueStrings(input.expectedEvidenceIds);
   if (evidenceIds.length !== input.expectedEvidenceIds.length) return null;
   if (evidenceIds.length === 0) return [];
-  const nodes = await input.nodes.getMany({
+  const nodes = await input.nodes.getManyByIdsAcrossGenerations({
     ids: evidenceIds,
     knowledgeSpaceId: input.knowledgeSpaceId,
   });

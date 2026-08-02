@@ -34,7 +34,7 @@ export interface RegisterFailedQueryHandlersOptions {
   readonly failedQueries: FailedQueryRepository;
   readonly failedQueryTriageRunner?: FailedQueryTriageRunner | undefined;
   readonly now?: () => string;
-  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
   readonly spaces: KnowledgeSpaceRepository;
 }
 

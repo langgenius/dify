@@ -99,6 +99,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSIdempotencyHeader,
     KnowledgeFSJWKSResponse,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMembersReplacePayload,
@@ -207,6 +208,7 @@ register_schema_models(
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSGoldenQuestionBulkImportPayload,
@@ -1126,7 +1128,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 
-    @console_ns.expect(console_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
+    @console_ns.expect(console_ns.models[KnowledgeFSLogicalDocumentDeletePayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
@@ -1144,7 +1146,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
             account_id=actor_id,
             control_space_id=control_space_id,
             document_id=document_id,
-            payload=_payload(KnowledgeFSDocumentDeletePayload),
+            payload=_payload(KnowledgeFSLogicalDocumentDeletePayload),
             idempotency_key=_idempotency_key(),
         )
         return dump_response(KnowledgeFSDurableDeletionAcceptedResponse, result), HTTPStatus.ACCEPTED

@@ -556,7 +556,7 @@ describe.each(["postgres", "tidb"] as const)(
               ? [
                   jobRow({
                     idempotency_key: "delete-logical-a",
-                    target_revision: 4,
+                    target_revision: 0,
                     target_type: "logical_document",
                   }),
                 ]
@@ -582,7 +582,7 @@ describe.each(["postgres", "tidb"] as const)(
             rows: [
               {
                 active_revision: null,
-                row_version: 4,
+                row_version: 0,
                 source_id: null,
                 status: "failed",
               },
@@ -638,7 +638,7 @@ describe.each(["postgres", "tidb"] as const)(
           accessChannel: "interactive",
           createdAt,
           documentId: targetId,
-          expectedDocumentRowVersion: 4,
+          expectedDocumentRowVersion: 0,
           idempotencyKey: "delete-logical-a",
           knowledgeSpaceId,
           permissionSnapshotId,
@@ -648,7 +648,7 @@ describe.each(["postgres", "tidb"] as const)(
         }),
       ).resolves.toMatchObject({
         created: true,
-        job: { targetRevision: 4, targetType: "logical_document" },
+        job: { targetRevision: 0, targetType: "logical_document" },
       });
 
       const logicalUpdate = calls.find(
@@ -665,7 +665,7 @@ describe.each(["postgres", "tidb"] as const)(
         tenantId,
         knowledgeSpaceId,
         targetId,
-        4,
+        0,
       ]);
       expect(assetUpdate?.inTransaction).toBe(true);
       expect(assetUpdate?.sql).toContain("owned_revision");

@@ -284,7 +284,7 @@ function failedQueryFixture(options: FailedQueryFixtureOptions = {}) {
     ...(options.triageRunner === null
       ? {}
       : { failedQueryTriageRunner: { run: triageRun } as never }),
-    nodes: { getMany: vi.fn(async () => []) } as never,
+    nodes: { getManyByIdsAcrossGenerations: vi.fn(async () => []) } as never,
     now: () => "2026-07-14T12:00:00.000Z",
     spaces: {
       get: vi.fn(async () => (options.space === undefined ? { id: SPACE_ID } : options.space)),

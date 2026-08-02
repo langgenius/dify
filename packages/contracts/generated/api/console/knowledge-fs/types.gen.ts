@@ -378,6 +378,10 @@ export type KnowledgeFsLogicalDocumentListResponse = {
   next_cursor?: string | null
 }
 
+export type KnowledgeFsLogicalDocumentDeletePayload = {
+  expectedRevision: number
+}
+
 export type KnowledgeFsMembersReplacePayload = {
   members: Array<KnowledgeFsMemberBindingPayload>
 }
@@ -2255,7 +2259,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
-  body: KnowledgeFsDocumentDeletePayload
+  body: KnowledgeFsLogicalDocumentDeletePayload
   headers: {
     'Idempotency-Key': string
   }

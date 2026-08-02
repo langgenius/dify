@@ -58,6 +58,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGrepResponse,
     KnowledgeFSListQuery,
     KnowledgeFSListResponse,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewActivityListResponse,
@@ -627,7 +628,7 @@ class KnowledgeFSDataFacade:
         account_id: str,
         control_space_id: str,
         document_id: str,
-        payload: KnowledgeFSDocumentDeletePayload,
+        payload: KnowledgeFSLogicalDocumentDeletePayload,
         idempotency_key: str,
     ) -> KnowledgeFSDurableDeletionAcceptedResponse:
         raw = self._interactive_child(

@@ -231,6 +231,33 @@ describe("golden-question handler branch coverage", () => {
 });
 
 describe("golden-question evidence permission scope branches", () => {
+  it("resolves published-generation evidence nodes by their durable ids", async () => {
+    const getMany = vi.fn(async () => []);
+    const getManyByIdsAcrossGenerations = vi.fn(async () => [
+      {
+        documentAssetId: ASSET_ID,
+        id: NODE_ID,
+        permissionScope: ["team:a"],
+        publicationGenerationId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46",
+      },
+    ]);
+
+    await expect(
+      goldenQuestionEvidencePermissionScope({
+        assets: { get: vi.fn(async () => ({ metadata: {} })) } as never,
+        candidateGrants: ["team:a"],
+        expectedEvidenceIds: [NODE_ID],
+        knowledgeSpaceId: SPACE_ID,
+        nodes: { getMany, getManyByIdsAcrossGenerations } as never,
+      }),
+    ).resolves.toEqual(["team:a"]);
+    expect(getManyByIdsAcrossGenerations).toHaveBeenCalledWith({
+      ids: [NODE_ID],
+      knowledgeSpaceId: SPACE_ID,
+    });
+    expect(getMany).not.toHaveBeenCalled();
+  });
+
   it("handles empty, duplicate, direct-asset, and node-backed evidence", async () => {
     await expect(evidenceScope({ expectedEvidenceIds: [] })).resolves.toEqual([]);
     await expect(evidenceScope({ expectedEvidenceIds: [ASSET_ID, ASSET_ID] })).resolves.toBeNull();
@@ -353,7 +380,7 @@ function goldenFixture(options: GoldenFixtureOptions = {}) {
       get: vi.fn(async () => (options.asset === undefined ? { metadata: {} } : options.asset)),
     } as never,
     authorization: { authorize } as never,
-    nodes: { getMany: vi.fn(async () => []) } as never,
+    nodes: { getManyByIdsAcrossGenerations: vi.fn(async () => []) } as never,
     now: () => "2026-07-14T12:00:00.000Z",
     questions: questions as never,
     spaces: {
@@ -414,7 +441,7 @@ function evidenceScope(options: {
     candidateGrants: options.candidateGrants ?? [],
     expectedEvidenceIds: options.expectedEvidenceIds,
     knowledgeSpaceId: SPACE_ID,
-    nodes: { getMany: vi.fn(async () => options.nodes ?? []) } as never,
+    nodes: { getManyByIdsAcrossGenerations: vi.fn(async () => options.nodes ?? []) } as never,
   });
 }
 

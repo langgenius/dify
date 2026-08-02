@@ -6,6 +6,7 @@ import type {
   DeleteDocumentParams,
   DeleteKnowledgeSpaceBody,
   DeleteKnowledgeSpaceParams,
+  DeleteLogicalDocumentBody,
   DeleteSourceBody,
   DeleteSourceParams,
   DeleteSourceQuery,
@@ -176,7 +177,7 @@ export function registerDurableDeletionHandlers({
         return unavailable(context);
       }
       const params = context.req.valid("param") as DeleteDocumentParams;
-      const body = context.req.valid("json") as DeleteDocumentBody;
+      const body = context.req.valid("json") as DeleteLogicalDocumentBody;
       const headers = context.req.valid("header") as DurableDeletionIdempotencyHeaders;
       try {
         const accepted = await service.requestLogicalDocumentDeletion({

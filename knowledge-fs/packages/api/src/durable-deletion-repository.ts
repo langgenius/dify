@@ -609,7 +609,7 @@ export function createDatabaseDurableDeletionRepository({
           : target.type === "logical_document"
             ? {
                 deleteMode: "cascade" as const,
-                expectedRevision: positiveInteger(
+                expectedRevision: nonnegativeInteger(
                   (input as RequestLogicalDocumentDeletionInput).expectedDocumentRowVersion,
                   "expectedDocumentRowVersion",
                 ),

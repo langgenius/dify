@@ -20,6 +20,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGrepQuery,
     KnowledgeFSListQuery,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSProductRerankProfile,
     KnowledgeFSProductRetrievalProfile,
     KnowledgeFSProductScoreThreshold,
@@ -1421,6 +1422,27 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
         "trace-1",
         "document-1",
     ]
+
+
+def test_logical_document_delete_preserves_initial_row_version() -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)  # type: ignore[arg-type]
+
+    deletion = facade.delete_logical_document(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        document_id="document-1",
+        payload=KnowledgeFSLogicalDocumentDeletePayload(expected_revision=0),
+        idempotency_key="delete-logical-once",
+    )
+
+    request = remote.requests[-1]
+    assert deletion.job.target_type == "logical_document"
+    assert request.operation_id == "deleteLogicalDocument"
+    assert request.path == "/knowledge-spaces/space-1/logical-documents/document-1"
+    assert request.payload == {"expectedRevision": 0}
+    assert request.headers == (("Idempotency-Key", "delete-logical-once"),)
 
 
 @pytest.mark.parametrize(
