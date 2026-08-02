@@ -37,6 +37,16 @@ class BindingCleanupError(RuntimeError):
 
 
 @dataclass(slots=True, frozen=True)
+class _E2BExecutionWindow:
+    """Official E2B lifecycle evidence for one running window."""
+
+    occurred_at: float
+    active_seconds: float
+    vcpu_count: float | None
+    memory_mib: float | None
+
+
+@dataclass(slots=True, frozen=True)
 class CapacityDriverSettings:
     """One fully resolved scenario/concurrency block."""
 
@@ -517,12 +527,16 @@ async def _attach_e2b_active_windows(
                         binding_ref,
                         timeout_seconds=max(0, deadline - time.monotonic()),
                     )
-                    active_windows = _active_windows_from_events(
+                    execution_windows = _execution_windows_from_events(
                         events,
                         windows=[(observation.started_at_ns, observation.ended_at_ns) for observation in items],
                     )
-                    for observation, active_seconds in zip(items, active_windows, strict=True):
-                        observation.sample.e2b_active_seconds = active_seconds
+                    for observation, execution_window in zip(items, execution_windows, strict=True):
+                        if execution_window is None:
+                            continue
+                        observation.sample.e2b_active_seconds = execution_window.active_seconds
+                        observation.sample.e2b_vcpu_count = execution_window.vcpu_count
+                        observation.sample.e2b_memory_mib = execution_window.memory_mib
                     if all(item.sample.e2b_active_seconds is not None for item in items):
                         return
                     await asyncio.sleep(0.5)
@@ -586,8 +600,19 @@ def _active_windows_from_events(
     *,
     windows: Sequence[tuple[int, int]],
 ) -> list[float | None]:
+    return [
+        execution.active_seconds if execution is not None else None
+        for execution in _execution_windows_from_events(events, windows=windows)
+    ]
+
+
+def _execution_windows_from_events(
+    events: Sequence[object],
+    *,
+    windows: Sequence[tuple[int, int]],
+) -> list[_E2BExecutionWindow | None]:
     pause_events = _parse_pause_events(events)
-    matched: list[float | None] = [None] * len(windows)
+    matched: list[_E2BExecutionWindow | None] = [None] * len(windows)
     available = set(range(len(pause_events)))
     for window_index, (started_at_ns, ended_at_ns) in sorted(
         enumerate(windows),
@@ -596,22 +621,24 @@ def _active_windows_from_events(
         lower_bound = started_at_ns / 1_000_000_000 - 1
         upper_bound = ended_at_ns / 1_000_000_000 + 10
         candidates = [
-            event_index for event_index in available if lower_bound <= pause_events[event_index][0] <= upper_bound
+            event_index
+            for event_index in available
+            if lower_bound <= pause_events[event_index].occurred_at <= upper_bound
         ]
         if not candidates:
             continue
         ended_at = ended_at_ns / 1_000_000_000
         selected = min(
             candidates,
-            key=lambda event_index: abs(pause_events[event_index][0] - ended_at),
+            key=lambda event_index: abs(pause_events[event_index].occurred_at - ended_at),
         )
-        matched[window_index] = pause_events[selected][1]
+        matched[window_index] = pause_events[selected]
         available.remove(selected)
     return matched
 
 
-def _parse_pause_events(events: Sequence[object]) -> list[tuple[float, float]]:
-    parsed: list[tuple[float, float]] = []
+def _parse_pause_events(events: Sequence[object]) -> list[_E2BExecutionWindow]:
+    parsed: list[_E2BExecutionWindow] = []
     for raw_event in events:
         if not isinstance(raw_event, dict) or raw_event.get("type") != "sandbox.lifecycle.paused":
             continue
@@ -629,9 +656,27 @@ def _parse_pause_events(events: Sequence[object]) -> list[tuple[float, float]]:
         if not isinstance(execution, dict):
             continue
         execution_time_ms = execution.get("execution_time", execution.get("executionTime"))
-        if isinstance(execution_time_ms, (float, int)) and execution_time_ms >= 0:
-            parsed.append((occurred_at, float(execution_time_ms) / 1000))
-    return sorted(parsed)
+        if isinstance(execution_time_ms, bool) or not isinstance(execution_time_ms, (float, int)):
+            continue
+        if execution_time_ms < 0:
+            continue
+        vcpu_count = _positive_number(execution.get("vcpu_count", execution.get("vcpuCount")))
+        memory_mib = _positive_number(execution.get("memory_mb", execution.get("memoryMb")))
+        parsed.append(
+            _E2BExecutionWindow(
+                occurred_at=occurred_at,
+                active_seconds=float(execution_time_ms) / 1000,
+                vcpu_count=vcpu_count,
+                memory_mib=memory_mib,
+            )
+        )
+    return sorted(parsed, key=lambda item: item.occurred_at)
+
+
+def _positive_number(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (float, int)) or value <= 0:
+        return None
+    return float(value)
 
 
 async def _prepare_resume_contexts(

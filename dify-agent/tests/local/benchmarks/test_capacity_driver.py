@@ -17,6 +17,7 @@ from benchmarks.capacity_driver import (
     _active_windows_from_events,
     _cancel_and_drain_run,
     _execute_load_phase,
+    _execution_windows_from_events,
     _fetch_e2b_pause_events,
     _invalid_reasons,
     _load_phase_integrity_errors,
@@ -176,6 +177,32 @@ def test_active_window_uses_vendor_execution_time() -> None:
     )
 
     assert value == 1.25
+
+
+def test_execution_window_preserves_official_e2b_resource_evidence() -> None:
+    values = _execution_windows_from_events(
+        [
+            {
+                "type": "sandbox.lifecycle.paused",
+                "timestamp": "2026-01-01T00:00:01Z",
+                "event_data": {
+                    "execution": {
+                        "execution_time": 1250,
+                        "vcpu_count": 2,
+                        "memory_mb": 512,
+                    }
+                },
+            }
+        ],
+        windows=[
+            (1767225600 * 1_000_000_000, 1767225602 * 1_000_000_000),
+        ],
+    )
+
+    assert values[0] is not None
+    assert values[0].active_seconds == 1.25
+    assert values[0].vcpu_count == 2
+    assert values[0].memory_mib == 512
 
 
 def test_reused_binding_matches_each_pause_event_once() -> None:
