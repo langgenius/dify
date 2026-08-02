@@ -981,6 +981,172 @@ describe('SkillDetailPage', () => {
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
+  it('renders CSV files as a table preview', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-csv',
+          path: 'references/refunds.csv',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/csv',
+          content: 'Policy,Window\nStandard,7 days\nEscalated,Manual review',
+          tool_file_id: null,
+          size: 55,
+          hash: 'hash-csv',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    await user.click(getFileTreeButton('references/refunds.csv'))
+
+    expect(screen.getByRole('columnheader', { name: 'Policy' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Window' })).toBeInTheDocument()
+    expect(screen.getByText('Standard')).toBeInTheDocument()
+    expect(screen.getByText('7 days')).toBeInTheDocument()
+    expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
+  })
+
+  it('shows an unsupported preview for non-previewable binary files', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-bin',
+          path: 'assets/archive.bin',
+          kind: 'file',
+          storage: 'tool_file',
+          mime_type: 'application/octet-stream',
+          content: null,
+          tool_file_id: 'tool-file-bin',
+          size: 42,
+          hash: 'hash-bin',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    await user.click(getFileTreeButton('assets/archive.bin'))
+
+    expect(screen.getByText('skill.skillManagement.detail.previewUnsupported')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'skill.skillManagement.detail.fileMeta:{"size":42,"type":"application/octet-stream"}',
+      ),
+    ).toBeInTheDocument()
+    expect(mocks.fetchSkillFileBlob).not.toHaveBeenCalled()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('downloads unsupported binary files on request', async () => {
+    const user = userEvent.setup()
+    mocks.fetchSkillFileBlob.mockResolvedValue(new Blob(['binary']))
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-bin',
+          path: 'assets/archive.bin',
+          kind: 'file',
+          storage: 'tool_file',
+          mime_type: 'application/octet-stream',
+          content: null,
+          tool_file_id: 'tool-file-bin',
+          size: 42,
+          hash: 'hash-bin',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    await user.click(getFileTreeButton('assets/archive.bin'))
+    await user.click(
+      screen.getByRole('button', { name: /skill\.skillManagement\.detail\.downloadFile/ }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.fetchSkillFileBlob).toHaveBeenCalledWith({
+        download: true,
+        path: 'assets/archive.bin',
+        skillId: 'skill-1',
+        versionId: null,
+      })
+    })
+  })
+
+  it('renders image tool files after loading their preview blob', async () => {
+    const user = userEvent.setup()
+    const imageBlob = new Blob(['image'], { type: 'image/png' })
+    mocks.fetchSkillFileBlob.mockResolvedValue(imageBlob)
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-image',
+          path: 'assets/logo.png',
+          kind: 'file',
+          storage: 'tool_file',
+          mime_type: 'image/png',
+          content: null,
+          tool_file_id: 'tool-file-image',
+          size: 128,
+          hash: 'hash-image',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    await user.click(getFileTreeButton('assets/logo.png'))
+
+    const preview = await screen.findByAltText('assets/logo.png')
+    expect(preview).toBeInTheDocument()
+    expect(mocks.fetchSkillFileBlob).toHaveBeenCalledWith({
+      path: 'assets/logo.png',
+      skillId: 'skill-1',
+      versionId: null,
+    })
+  })
+
+  it('shows an image preview error when the tool file blob cannot be loaded', async () => {
+    const user = userEvent.setup()
+    mocks.fetchSkillFileBlob.mockRejectedValue(new Error('preview unavailable'))
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-image',
+          path: 'assets/logo.png',
+          kind: 'file',
+          storage: 'tool_file',
+          mime_type: 'image/png',
+          content: null,
+          tool_file_id: 'tool-file-image',
+          size: 128,
+          hash: 'hash-image',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    await user.click(getFileTreeButton('assets/logo.png'))
+
+    expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
+  })
+
   it('sends only one autosave request while the first save is pending', async () => {
     const user = userEvent.setup()
     mocks.saveDraftFileMutationFn.mockImplementation(() => new Promise(() => undefined))
@@ -1153,9 +1319,12 @@ describe('SkillDetailPage', () => {
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
     )
 
-    await waitFor(() => {
-      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
-    })
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
+      },
+      { timeout: 2500 },
+    )
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -1228,9 +1397,12 @@ describe('SkillDetailPage', () => {
     await user.type(displayNameInput, 'Editor Display Name')
     await user.tab()
 
-    await waitFor(() => {
-      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
-    })
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
+      },
+      { timeout: 2500 },
+    )
     const savedContent = mocks.saveDraftFileMutationFn.mock.calls.at(-1)?.[0].body.content
     expect(savedContent).toMatch(
       /name: github-actions-failure-debugging[\s\S]*display-name: Editor Display Name/,
@@ -1461,6 +1633,54 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('removes uploaded Skill Builder attachments before sending', async () => {
+    const user = userEvent.setup()
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    expect(await screen.findByText('guide.md')).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.removeAttachment:{"name":"guide.md"}',
+      }),
+    )
+
+    expect(screen.queryByText('guide.md')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.send',
+      }),
+    ).toBeDisabled()
+  })
+
+  it('opens the Skill Builder attachment picker from the toolbar button', async () => {
+    const user = userEvent.setup()
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+    const clickSpy = vi.spyOn(attachmentInput!, 'click')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.attach',
+      }),
+    )
+
+    expect(clickSpy).toHaveBeenCalledOnce()
+  })
+
   it('does not send the Skill Builder prompt while an attachment is uploading', async () => {
     const user = userEvent.setup()
     mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
@@ -1627,6 +1847,64 @@ describe('SkillDetailPage', () => {
     )
   })
 
+  it('shows unavailable feedback for Skill Builder voice input', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.voice',
+      }),
+    )
+
+    expect(toast.info).toHaveBeenCalledWith('skill.skillManagement.detail.builder.voiceUnavailable')
+  })
+
+  it('shows an error and re-enables Skill Builder input when sending fails', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockRejectedValue(new Error('builder unavailable'))
+
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.builder.placeholder',
+    )
+    await user.type(promptInput, 'Create a support triage skill{Enter}')
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('builder unavailable')
+    })
+    expect(
+      screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
+    ).toBeEnabled()
+  })
+
+  it('shows Skill Builder completion errors returned by the assistant stream', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted }) => {
+      onCompleted?.(true, 'builder stream failed')
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('builder stream failed')
+    })
+    expect(
+      screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
+    ).toBeEnabled()
+  })
+
   it('shows a publish confirmation for referenced skills before publishing updates', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
@@ -1666,6 +1944,121 @@ describe('SkillDetailPage', () => {
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
+  })
+
+  it('cancels publishing from the referenced skill confirmation dialog', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({
+        data: [createAgentReference()],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+
+    const publishDialog = await screen.findByRole('dialog', {
+      name: 'skill.skillManagement.detail.publishReferencesTitle',
+    })
+    await user.click(within(publishDialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'skill.skillManagement.detail.publishReferencesTitle',
+        }),
+      ).not.toBeInTheDocument()
+    })
+    expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('opens the sidebar references panel from the file tree footer', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({
+        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+      }),
+    )
+
+    expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()
+    expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          params: {
+            skill_id: 'skill-1',
+          },
+        },
+      }),
+    )
+  })
+
+  it('opens files from the file tree search dialog', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-guide',
+          path: 'docs/guide.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Guide',
+          tool_file_id: null,
+          size: 7,
+          hash: 'hash-guide',
+        },
+        {
+          id: 'file-policy',
+          path: 'references/policy.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Policy',
+          tool_file_id: null,
+          size: 8,
+          hash: 'hash-policy',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.searchFiles' }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'skill.skillManagement.detail.searchFiles' }),
+      'guide',
+    )
+
+    expect(screen.getByRole('button', { name: 'docs/guide.md' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'references/policy.md' })).not.toBeInTheDocument()
+
+    await user.keyboard('{Enter}')
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('scrolls the publish reference list after ten items', async () => {
@@ -1865,6 +2258,51 @@ describe('SkillDetailPage', () => {
 
     await waitFor(() => {
       expect(sourceEditor.value).toContain('[guide.md](<docs/guide.md>)')
+    })
+  })
+
+  it('inserts a reference file from live markdown slash picker', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'docs/guide.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Guide',
+          tool_file_id: null,
+          size: 7,
+          hash: 'hash-2',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.markdownLiveMode',
+    })
+    const liveEditor = screen
+      .getAllByRole('textbox')
+      .find(
+        (editor): editor is HTMLDivElement =>
+          editor instanceof HTMLDivElement && editor.isContentEditable,
+      )
+    expect(liveEditor).toBeDefined()
+
+    await user.click(liveEditor!)
+    await user.keyboard('/')
+    expect(
+      await screen.findByText('skill.skillManagement.detail.referenceFiles.title'),
+    ).toBeInTheDocument()
+
+    await user.keyboard('{ArrowRight}{Enter}')
+
+    await waitFor(() => {
+      expect(liveEditor!.textContent).toContain('guide.md')
     })
   })
 
@@ -2131,6 +2569,39 @@ describe('SkillDetailPage', () => {
 
     expect(await screen.findByText('I can create that reference file.')).toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('sends Skill Builder follow-up suggestions after an assistant reply', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData }) => {
+      onData?.('Drafted the skill.', true, {})
+      onCompleted?.()
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+    await screen.findByText('Drafted the skill.')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.followUpDisplayName',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'skill.skillManagement.detail.builder.followUpDisplayName',
+        }),
+      )
+    })
   })
 
   it('serializes editor autosave and file creation with the latest timestamp', async () => {
@@ -2485,6 +2956,36 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('collapses and expands nested folders from the file tree', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-2',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    const folder = await waitFor(() => getFileTreeItem('scripts'))
+    expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
+
+    await user.dblClick(folder)
+    expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
+
+    await user.dblClick(folder)
+    expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
   })
 
   it('uses only the native path tooltip for a file tree item', async () => {
@@ -2946,6 +3447,48 @@ describe('SkillDetailPage', () => {
     expect(screen.getByText('skill.skillManagement.detail.uploadFilesMenu')).toBeInTheDocument()
   })
 
+  it('selects a file tree range with Shift-click', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'file-2',
+          path: 'README.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Readme',
+          tool_file_id: null,
+          size: 8,
+          hash: 'hash-2',
+        },
+        {
+          id: 'file-3',
+          path: 'scripts/example.ts',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/typescript',
+          content: 'export {}\n',
+          tool_file_id: null,
+          size: 10,
+          hash: 'hash-3',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
+    })
+    fireEvent.click(getFileTreeButton('SKILL.md'))
+    fireEvent.click(getFileTreeButton('scripts/example.ts'), { shiftKey: true })
+
+    expect(getFileTreeItem('SKILL.md')).toHaveClass('bg-state-accent-hover')
+    expect(getFileTreeItem('README.md')).toHaveClass('bg-state-accent-hover')
+    expect(getFileTreeItem('scripts')).toHaveClass('bg-state-accent-hover')
+    expect(getFileTreeItem('scripts/example.ts')).toHaveClass('bg-state-accent-hover')
+  })
+
   it('uploads externally dragged files to the highlighted folder', async () => {
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -2989,6 +3532,98 @@ describe('SkillDetailPage', () => {
             operation: 'upsert_tool_file',
             path: 'references/guide.md',
             tool_file_id: 'tool-file-1',
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('cancels an active file upload from the upload status panel', async () => {
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'directory-1',
+          path: 'references',
+          kind: 'directory',
+          storage: 'text',
+          mime_type: null,
+          content: null,
+          tool_file_id: null,
+          size: 0,
+          hash: 'directory-hash',
+        },
+      ],
+    })
+    mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
+    const abortSpy = vi.spyOn(XMLHttpRequest.prototype, 'abort')
+    renderSkillDetailPage()
+
+    const folder = await waitFor(() => getFileTreeItem('references'))
+    const upload = new File(['guide'], 'guide.md', { type: 'text/markdown' })
+    fireEvent.drop(folder.closest('li')!, {
+      dataTransfer: createDataTransfer([upload]).dataTransfer,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(abortSpy).toHaveBeenCalledOnce()
+  })
+
+  it('retries failed file uploads from the upload status panel', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          id: 'directory-1',
+          path: 'references',
+          kind: 'directory',
+          storage: 'text',
+          mime_type: null,
+          content: null,
+          tool_file_id: null,
+          size: 0,
+          hash: 'directory-hash',
+        },
+      ],
+    })
+    mocks.uploadSkillFile
+      .mockRejectedValueOnce(new Error('network timeout'))
+      .mockResolvedValueOnce({
+        id: 'tool-file-retry',
+        name: 'guide.md',
+        mime_type: 'text/markdown',
+        size: 5,
+      })
+    renderSkillDetailPage()
+
+    const folder = await waitFor(() => getFileTreeItem('references'))
+    const upload = new File(['guide'], 'guide.md', { type: 'text/markdown' })
+    fireEvent.drop(folder.closest('li')!, {
+      dataTransfer: createDataTransfer([upload]).dataTransfer,
+    })
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'skill.skillManagement.detail.uploadFilesFailedStatus:{"count":1}',
+      )
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillFile).toHaveBeenCalledTimes(2)
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'upsert_tool_file',
+            path: 'references/guide.md',
+            tool_file_id: 'tool-file-retry',
           }),
         }),
         expect.anything(),
