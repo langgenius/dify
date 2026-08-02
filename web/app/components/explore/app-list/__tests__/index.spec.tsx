@@ -1474,6 +1474,41 @@ describe('AppList', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
 
+    it('should preserve template search after a failed refetch is retried', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [
+          createApp(),
+          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
+        ],
+      }
+      const { queryClient } = renderAppList()
+      const input = screen.getByPlaceholderText('common.operation.search')
+
+      fireEvent.change(input, { target: { value: 'gam' } })
+      await waitFor(() => {
+        expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+      })
+
+      ;(fetchAppList as unknown as Mock).mockRejectedValueOnce(
+        new Error('Failed to refresh explore apps'),
+      )
+      await queryClient.invalidateQueries({ queryKey: exploreAppListQueryKey })
+
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+      ;(fetchAppList as unknown as Mock).mockResolvedValue({
+        categories: mockExploreData.categories,
+        recommended_apps: mockExploreData.allList,
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+      expect(await screen.findByText('Gamma')).toBeInTheDocument()
+      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toHaveValue('gam')
+    })
+
     it('should keep only the templates skeleton after middle settles first', () => {
       mockExploreData = undefined
       mockIsLoading = true
@@ -1481,6 +1516,19 @@ describe('AppList', () => {
       renderAppList()
 
       expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
+    })
+
+    it('should replace a slow templates skeleton with a local loading state after the reveal deadline', async () => {
+      mockExploreData = undefined
+      mockIsLoading = true
+
+      renderAppList()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      expect(screen.getByRole('heading', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('should close create modal via hide button', async () => {

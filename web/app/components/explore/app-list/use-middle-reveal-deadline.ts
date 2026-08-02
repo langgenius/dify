@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 
-const MIDDLE_REVEAL_DEADLINE_MS = 5000
+const REVEAL_DEADLINE_MS = 5000
 
-export function useMiddleRevealDeadline(isPending: boolean) {
+export function useRevealDeadline(isPending: boolean) {
   const [hasReachedDeadline, setHasReachedDeadline] = useState(false)
 
   useEffect(() => {
@@ -12,10 +12,12 @@ export function useMiddleRevealDeadline(isPending: boolean) {
 
     const timeout = setTimeout(() => {
       setHasReachedDeadline(true)
-    }, MIDDLE_REVEAL_DEADLINE_MS)
+    }, REVEAL_DEADLINE_MS)
 
     return () => clearTimeout(timeout)
   }, [hasReachedDeadline, isPending])
 
   return isPending && !hasReachedDeadline
 }
+
+export const useMiddleRevealDeadline = useRevealDeadline

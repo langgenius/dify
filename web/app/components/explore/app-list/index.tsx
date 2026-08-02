@@ -6,16 +6,11 @@ import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/ty
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueries, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import AppCard from '@/app/components/explore/app-card'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ContinueWork from '@/app/components/explore/continue-work'
 import { LearnDifyContent } from '@/app/components/explore/learn-dify'
 import {
@@ -36,7 +31,6 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/tasks'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
@@ -46,13 +40,9 @@ import { fetchAppDetail } from '@/service/explore'
 import { useLearnDifyAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
-import { ExploreAppListHeader } from './explore-app-list-header'
-import {
-  getHomeContinueWorkQueryOptions,
-  getHomeTemplatesQueryOptions,
-} from './home-queries-client'
-import { MiddleSkeleton, TemplatesSkeleton } from './loading-skeletons'
-import s from './style.module.css'
+import { getHomeContinueWorkQueryOptions } from './home-queries-client'
+import { MiddleSkeleton } from './loading-skeletons'
+import { TemplatesSection } from './templates-section'
 import { useMiddleRevealDeadline } from './use-middle-reveal-deadline'
 
 const TryApp = dynamic(() => import('../try-app'), { ssr: false })
@@ -64,46 +54,10 @@ const DSLConfirmModal = dynamic(
 
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
-function TemplatesErrorState({
-  isRetrying,
-  onRetry,
-}: {
-  isRetrying: boolean
-  onRetry: () => void
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <section className="px-8 pt-4 pb-6" aria-labelledby="templates-error-title">
-      <div
-        role="alert"
-        className="flex min-h-12 items-center justify-between gap-4 rounded-xl bg-background-section px-4 py-3"
-      >
-        <div className="min-w-0">
-          <h2 id="templates-error-title" className="truncate system-sm-medium text-text-secondary">
-            {t(($) => $['apps.title'], { ns: 'explore' })}
-          </h2>
-          <p className="system-xs-regular text-text-tertiary">
-            {t(($) => $['errorBoundary.title'], { ns: 'common' })}
-          </p>
-        </div>
-        <Button size="small" variant="secondary" loading={isRetrying} onClick={onRetry}>
-          {t(($) => $['operation.retry'], { ns: 'common' })}
-        </Button>
-      </div>
-    </section>
-  )
-}
-
 export const HomeAppListContent = ({ onSuccess }: { onSuccess?: () => void }) => {
-  const { t } = useTranslation()
-  const locale = useLocale()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [templatesQuery, continueWorkQuery] = useQueries({
-    queries: [getHomeTemplatesQueryOptions(locale), getHomeContinueWorkQueryOptions()],
-  })
-  const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
+  const continueWorkQuery = useQuery(getHomeContinueWorkQueryOptions())
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
@@ -154,56 +108,6 @@ export const HomeAppListContent = ({ onSuccess }: { onSuccess?: () => void }) =>
     },
     [canCreateApp],
   )
-
-  const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
-
-  const [currCategory, setCurrCategory] = useQueryState('category', {
-    defaultValue: allCategoriesEn,
-  })
-
-  const visibleCategories = useMemo(() => {
-    if (!templatesQuery.data) return []
-
-    const categoriesWithApps = new Set<string>()
-    templatesQuery.data.allList.forEach((app) => {
-      app.categories.forEach((category) => categoriesWithApps.add(category))
-    })
-
-    return templatesQuery.data.categories.filter((category) => categoriesWithApps.has(category))
-  }, [templatesQuery.data])
-
-  const activeCategory = visibleCategories.includes(currCategory) ? currCategory : allCategoriesEn
-
-  const filteredList = useMemo(() => {
-    if (!templatesQuery.data) return []
-    return templatesQuery.data.allList.filter(
-      (item) => activeCategory === allCategoriesEn || item.categories?.includes(activeCategory),
-    )
-  }, [templatesQuery.data, activeCategory, allCategoriesEn])
-
-  const searchFilteredList = useMemo(() => {
-    if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
-
-    const lowerCaseSearchKeywords = searchKeywords.toLowerCase()
-
-    return filteredList.filter(
-      (item) =>
-        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
-    )
-  }, [searchKeywords, filteredList])
 
   const [currApp, setCurrApp] = useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
@@ -457,8 +361,6 @@ export const HomeAppListContent = ({ onSuccess }: { onSuccess?: () => void }) =>
 
   const shouldRenderCommittedLearnDify =
     shouldShowLearnDify && learnDifyQuery.isSuccess && Boolean(learnDifyQuery.data?.length)
-  const isTemplatesError =
-    templatesQuery.isError || (!templatesQuery.isPending && !templatesQuery.data)
 
   return (
     <>
@@ -482,39 +384,12 @@ export const HomeAppListContent = ({ onSuccess }: { onSuccess?: () => void }) =>
         </>
       )}
 
-      {isMiddlePending || templatesQuery.isPending ? (
-        <TemplatesSkeleton />
-      ) : isTemplatesError ? (
-        <TemplatesErrorState
-          isRetrying={templatesQuery.isFetching}
-          onRetry={() => void templatesQuery.refetch()}
-        />
-      ) : (
-        <>
-          <ExploreAppListHeader
-            allCategoriesEn={allCategoriesEn}
-            categories={visibleCategories}
-            currCategory={activeCategory}
-            keywords={keywords}
-            onCategoryChange={setCurrCategory}
-            onKeywordsChange={handleKeywordsChange}
-          />
-
-          <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-            <nav className={cn(s.appList, 'grid shrink-0 content-start gap-3 px-8')}>
-              {searchFilteredList.map((app) => (
-                <AppCard
-                  key={app.app_id}
-                  app={app}
-                  canCreate={canCreateApp}
-                  onCreate={() => handleCreateFromAppList(app)}
-                  onTry={handleTryApp}
-                />
-              ))}
-            </nav>
-          </div>
-        </>
-      )}
+      <TemplatesSection
+        canCreate={canCreateApp}
+        canReveal={!isMiddlePending}
+        onCreate={handleCreateFromAppList}
+        onTry={handleTryApp}
+      />
       {isShowCreateModal && (
         <CreateAppModal
           appIconType={currApp?.app.icon_type || 'emoji'}
