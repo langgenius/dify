@@ -434,7 +434,7 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
     assert "- Peak Runs/s: **17**" in report
     assert "- E2B Template vCPUs: **2**" in report
     assert "- E2B Template RAM GB: **1**" in report
-    assert "| `shell` | `ready` | 1 | 1.2346 | 14 | 2.0000 | 1.0000 | 2 | 20 |" in report
+    assert "| `shell` | `ready` | 1 | 1.2346 | 14 | 2 | 1 | 2 | 20 |" in report
     assert "2.5000" not in report
     assert serialized["schema_version"] == 2
     assert serialized["sizing_input"]["schema_version"] == 2
