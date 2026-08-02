@@ -393,7 +393,7 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
     points = [
         _point(scenario, runs_per_second=1.23456789) for scenario in ("basic", "shell", "resume", "config", "file")
     ]
-    capacity_path = _write_capacity_artifacts(tmp_path, points=points)
+    capacity_path = _write_capacity_artifacts(tmp_path, points=points, e2b_memory_mib=[1024, 1024])
     output_dir = tmp_path / "sizing-output"
 
     assert (
@@ -410,7 +410,7 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
                 "--e2b-template-vcpus",
                 "2",
                 "--e2b-template-ram-gb",
-                "0.5",
+                "1",
                 "--output-dir",
                 str(output_dir),
             ]
@@ -431,10 +431,13 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
     assert "https://pricing.e2b.dev/" in report
     assert "1.2346" in report
     assert "1.23457" not in report
-    assert "| `shell` | `ready` | 1 | 1.2346 | 14 | 2.0000 | 0.5000 | 2 | 20 |" in report
+    assert "- Peak Runs/s: **17**" in report
+    assert "- E2B Template vCPUs: **2**" in report
+    assert "- E2B Template RAM GB: **1**" in report
+    assert "| `shell` | `ready` | 1 | 1.2346 | 14 | 2.0000 | 1.0000 | 2 | 20 |" in report
     assert "2.5000" not in report
     assert serialized["schema_version"] == 2
     assert serialized["sizing_input"]["schema_version"] == 2
     assert serialized["sizing_input"]["e2b_template_vcpus"] == 2
-    assert serialized["sizing_input"]["e2b_template_ram_gb"] == 0.5
+    assert serialized["sizing_input"]["e2b_template_ram_gb"] == 1
     assert math.isfinite(serialized["scenarios"]["basic"]["capacity_runs_per_second"])

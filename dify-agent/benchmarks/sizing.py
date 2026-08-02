@@ -410,9 +410,9 @@ def render_sizing_report(result: SizingResultV2) -> str:
         f"- Capacity result: `{result.source.capacity_result_path}`",
         f"- Commit/content: `{result.source.commit}` / `{result.source.content_hash}`",
         f"- Monthly Runs: **{sizing_input.monthly_runs}**",
-        f"- Peak Runs/s: **{_number(sizing_input.peak_rps)}**",
-        f"- E2B Template vCPUs: **{_number(sizing_input.e2b_template_vcpus)}**",
-        f"- E2B Template RAM GB: **{_number(sizing_input.e2b_template_ram_gb)}**",
+        f"- Peak Runs/s: **{_compact_number(sizing_input.peak_rps)}**",
+        f"- E2B Template vCPUs: **{_compact_number(sizing_input.e2b_template_vcpus)}**",
+        f"- E2B Template RAM GB: **{_compact_number(sizing_input.e2b_template_ram_gb)}**",
         f"- E2B concurrency selection: **{sizing_input.e2b_concurrency}**",
         f"- E2B calculator: {result.e2b_calculator_url}",
         f"- Calculator inputs checked at: **{result.e2b_calculator_checked_at}**",
@@ -463,6 +463,12 @@ def _report_row(label: str, sizing: ScenarioSizingV1) -> str:
 
 def _integer_part(value: float | None) -> str:
     return "N/A" if value is None else str(math.trunc(value))
+
+
+def _compact_number(value: float | int | None) -> str:
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return _number(value)
 
 
 def _number(value: float | int | None) -> str:
