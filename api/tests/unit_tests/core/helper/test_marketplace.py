@@ -17,7 +17,7 @@ from core.helper.marketplace import (
 def test_get_plugin_pkg_url_contains_unique_identifier() -> None:
     url = get_plugin_pkg_url("langgenius/openai:0.4.2@checksum")
 
-    assert "api/v1/plugins/download" in url
+    assert "api/v1/plugins/download-url" in url
     assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in url
 
 
