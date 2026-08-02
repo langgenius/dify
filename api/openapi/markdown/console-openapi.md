@@ -7037,13 +7037,6 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
 
-### [POST] /info
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
-
 ### [GET] /installed-apps
 #### Parameters
 
@@ -10068,13 +10061,6 @@ Returns information about why and where the workflow is paused.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
-
-### [POST] /workspaces/current
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
 
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details

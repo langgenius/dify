@@ -3,14 +3,14 @@ from collections.abc import Iterator
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import (
@@ -20,13 +20,13 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.console import console_ns
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import (
     CurrentWorkspaceSummaryApi,
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
-    TenantApi,
     TenantInfoResponse,
     TenantListApi,
     WebappLogoWorkspaceApi,
@@ -299,66 +299,11 @@ class TestWorkspaceListApi:
         assert result["has_more"] is True
 
 
-class TestTenantApi:
-    def test_post_active_tenant(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        tenant = make_tenant()
-        user = make_account_with_tenant(tenant)
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert status == HTTPStatus.OK
-        assert result["id"] == "t1"
+def test_legacy_current_workspace_routes_are_not_registered():
+    urls = {url for _resource, resource_urls, _route_doc, _kwargs in console_ns.resources for url in resource_urls}
 
-    def test_post_archived_with_switch(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        archived = make_tenant(status=TenantStatus.ARCHIVE)
-        new_tenant = make_tenant("new")
-        user = make_account_with_tenant(archived)
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[new_tenant]),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant") as switch_tenant,
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "new"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert result["id"] == "new"
-        switch_tenant.assert_called_once_with(user, new_tenant.id, session=ANY)
-
-    def test_post_archived_no_tenant(self, app: Flask):
-        api = TenantApi()
-        method = unwrap(api.post)
-        user = make_account_with_tenant(make_tenant(status=TenantStatus.ARCHIVE))
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[]),
-        ):
-            with pytest.raises(Unauthorized):
-                method(api, MagicMock(), user)
-
-    def test_post_info_path(self, app: Flask, caplog: pytest.LogCaptureFixture):
-        api = TenantApi()
-        method = unwrap(api.post)
-        tenant = make_tenant()
-        user = make_account_with_tenant(tenant)
-        with (
-            app.test_request_context("/info"),
-            caplog.at_level(logging.WARNING, logger="controllers.console.workspace.workspace"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
-        ):
-            result, status = method(api, MagicMock(), user)
-        assert "Deprecated URL /info was used." in caplog.messages
-        assert status == HTTPStatus.OK
+    assert "/workspaces/current" not in urls
+    assert "/info" not in urls
 
 
 class TestCurrentWorkspaceSummaryApi:

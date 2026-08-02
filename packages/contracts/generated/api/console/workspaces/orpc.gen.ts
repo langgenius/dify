@@ -318,7 +318,6 @@ import {
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse,
   zPostWorkspacesCurrentRbacRolesResponse,
-  zPostWorkspacesCurrentResponse,
   zPostWorkspacesCurrentToolProviderApiAddBody,
   zPostWorkspacesCurrentToolProviderApiAddResponse,
   zPostWorkspacesCurrentToolProviderApiDeleteBody,
@@ -4168,18 +4167,7 @@ export const triggers = {
   get: get91,
 }
 
-export const post71 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrent',
-    path: '/workspaces/current',
-    tags: ['console'],
-  })
-  .output(zPostWorkspacesCurrentResponse)
-
 export const current = {
-  post: post71,
   agentProvider,
   agentProviders,
   customizedSnippets,
@@ -4201,7 +4189,7 @@ export const current = {
   triggers,
 }
 
-export const post72 = oc
+export const post71 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4214,7 +4202,7 @@ export const post72 = oc
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
 
 export const upload2 = {
-  post: post72,
+  post: post71,
 }
 
 export const webappLogo = {
@@ -4231,7 +4219,7 @@ export const get92 = oc
   })
   .output(zGetWorkspacesCustomConfigResponse)
 
-export const post73 = oc
+export const post72 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4244,11 +4232,11 @@ export const post73 = oc
 
 export const customConfig = {
   get: get92,
-  post: post73,
+  post: post72,
   webappLogo,
 }
 
-export const post74 = oc
+export const post73 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4260,10 +4248,10 @@ export const post74 = oc
   .output(zPostWorkspacesInfoResponse)
 
 export const info4 = {
-  post: post74,
+  post: post73,
 }
 
-export const post75 = oc
+export const post74 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4275,7 +4263,7 @@ export const post75 = oc
   .output(zPostWorkspacesSwitchResponse)
 
 export const switch3 = {
-  post: post75,
+  post: post74,
 }
 
 export const get93 = oc

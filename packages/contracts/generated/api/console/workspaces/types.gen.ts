@@ -8,22 +8,6 @@ export type TenantListResponse = {
   workspaces: Array<TenantListItemResponse>
 }
 
-export type TenantInfoResponse = {
-  created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse | null
-  id: string
-  in_trial?: boolean | null
-  name?: string | null
-  next_credit_reset_date?: number | null
-  plan?: string | null
-  role?: string | null
-  status?: string | null
-  trial_credits?: number | null
-  trial_credits_exhausted_at?: number | null
-  trial_credits_used?: number | null
-  trial_end_reason?: string | null
-}
-
 export type AgentProviderResponse = {
   [key: string]: unknown
 }
@@ -1681,6 +1665,22 @@ export type TriggerProviderSubscriptionApiEntity = {
   workflows_in_use: number
 }
 
+export type TenantInfoResponse = {
+  created_at?: number | null
+  custom_config?: WorkspaceCustomConfigResponse | null
+  id: string
+  in_trial?: boolean | null
+  name?: string | null
+  next_credit_reset_date?: number | null
+  plan?: string | null
+  role?: string | null
+  status?: string | null
+  trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
+  trial_credits_used?: number | null
+  trial_end_reason?: string | null
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2448,20 +2448,6 @@ export type GetWorkspacesResponses = {
 }
 
 export type GetWorkspacesResponse = GetWorkspacesResponses[keyof GetWorkspacesResponses]
-
-export type PostWorkspacesCurrentData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current'
-}
-
-export type PostWorkspacesCurrentResponses = {
-  200: TenantInfoResponse
-}
-
-export type PostWorkspacesCurrentResponse =
-  PostWorkspacesCurrentResponses[keyof PostWorkspacesCurrentResponses]
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
   body?: never

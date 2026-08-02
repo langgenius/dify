@@ -599,38 +599,11 @@ export const zWorkspaceCustomConfigResponse = z.object({
 })
 
 /**
- * TenantInfoResponse
- */
-export const zTenantInfoResponse = z.object({
-  created_at: z.int().nullish(),
-  custom_config: zWorkspaceCustomConfigResponse.nullish(),
-  id: z.string(),
-  in_trial: z.boolean().nullish(),
-  name: z.string().nullish(),
-  next_credit_reset_date: z.int().nullish(),
-  plan: z.string().nullish(),
-  role: z.string().nullish(),
-  status: z.string().nullish(),
-  trial_credits: z.int().nullish(),
-  trial_credits_exhausted_at: z.int().nullish(),
-  trial_credits_used: z.int().nullish(),
-  trial_end_reason: z.string().nullish(),
-})
-
-/**
  * WorkspaceCustomConfigPayload
  */
 export const zWorkspaceCustomConfigPayload = z.object({
   remove_webapp_brand: z.boolean().nullish(),
   replace_webapp_logo: z.string().nullish(),
-})
-
-/**
- * WorkspaceTenantResultResponse
- */
-export const zWorkspaceTenantResultResponse = z.object({
-  result: z.string(),
-  tenant: zTenantInfoResponse,
 })
 
 /**
@@ -652,14 +625,6 @@ export const zWorkspaceInfoPayload = z.object({
  */
 export const zSwitchWorkspacePayload = z.object({
   tenant_id: z.string(),
-})
-
-/**
- * SwitchWorkspaceResponse
- */
-export const zSwitchWorkspaceResponse = z.object({
-  new_tenant: zTenantInfoResponse,
-  result: z.string(),
 })
 
 /**
@@ -1578,6 +1543,41 @@ export const zTriggerProviderSubscriptionApiEntity = z.object({
 export const zTriggerProviderSubscriptionListResponse = z.array(
   zTriggerProviderSubscriptionApiEntity,
 )
+
+/**
+ * TenantInfoResponse
+ */
+export const zTenantInfoResponse = z.object({
+  created_at: z.int().nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
+  id: z.string(),
+  in_trial: z.boolean().nullish(),
+  name: z.string().nullish(),
+  next_credit_reset_date: z.int().nullish(),
+  plan: z.string().nullish(),
+  role: z.string().nullish(),
+  status: z.string().nullish(),
+  trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
+  trial_credits_used: z.int().nullish(),
+  trial_end_reason: z.string().nullish(),
+})
+
+/**
+ * WorkspaceTenantResultResponse
+ */
+export const zWorkspaceTenantResultResponse = z.object({
+  result: z.string(),
+  tenant: zTenantInfoResponse,
+})
+
+/**
+ * SwitchWorkspaceResponse
+ */
+export const zSwitchWorkspaceResponse = z.object({
+  new_tenant: zTenantInfoResponse,
+  result: z.string(),
+})
 
 /**
  * PluginDependencyType
@@ -3427,11 +3427,6 @@ export const zAccountWithRoleListResponseWritable = z.object({
  * Success
  */
 export const zGetWorkspacesResponse = zTenantListResponse
-
-/**
- * Success
- */
-export const zPostWorkspacesCurrentResponse = zTenantInfoResponse
 
 export const zGetWorkspacesCurrentAgentProviderByProviderNamePath = z.object({
   provider_name: z.string(),

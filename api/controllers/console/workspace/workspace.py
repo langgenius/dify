@@ -7,7 +7,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound
 
 import services
 from configs import dify_config
@@ -303,39 +303,6 @@ class WorkspaceListApi(Resource):
         return WorkspacePaginationResponse(
             data=tenants.items, has_more=has_more, limit=args.limit, page=args.page, total=tenants.total or 0
         ).model_dump(mode="json"), HTTPStatus.OK
-
-
-@console_ns.route("/workspaces/current", endpoint="workspaces_current")
-@console_ns.route("/info", endpoint="info")  # Deprecated
-class TenantApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantInfoResponse.__name__])
-    @with_current_user
-    @with_session
-    def post(self, session: Session, current_user: Account):
-        if request.path == "/info":
-            logger.warning("Deprecated URL /info was used.")
-
-        tenant = current_user.current_tenant
-        if not tenant:
-            raise ValueError("No current tenant")
-
-        if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user, session=session)
-            # if there is any tenant, switch to the first one
-            if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id, session=session)
-                tenant = tenants[0]
-            # else, raise Unauthorized
-            else:
-                raise Unauthorized("workspace is archived")
-
-        return (
-            dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, session=session)),
-            HTTPStatus.OK,
-        )
 
 
 @console_ns.route("/workspaces/current/summary")
