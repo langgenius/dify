@@ -3,34 +3,37 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
+from importlib.metadata import PackageNotFoundError, version
 import json
 import os
 from pathlib import Path
+import sys
+import tempfile
 import time
 from typing import cast
-from uuid import uuid4
 
 import httpx
 from redis.asyncio import Redis
 
+from benchmarks.capacity_protocol import CapacityObservation, build_capacity_run_request
+from benchmarks.load_phase import LoadPhaseRequest, LoadPhaseResult, PhaseKind, WorkerContext
 from benchmarks.scenario import BenchmarkMode, CapacityScenario, load_scenario_manifest
 from benchmarks.schemas import (
     BlockResult,
-    FailureKind,
     FakeDependencyLedger,
     RedisSnapshot,
     RunOutcomeSummary,
     RunSample,
-    TerminalStatus,
 )
 
 
-_TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
+class BindingCleanupError(RuntimeError):
+    """One or more benchmark bindings could not be destroyed."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -73,29 +76,6 @@ class CapacityDriverSettings:
         )
 
 
-@dataclass(slots=True)
-class CapacityObservation:
-    sample: RunSample
-    sse_event_ids: list[str]
-    session_snapshot: dict[str, object] | None
-    binding_ref: str | None
-    started_at_ns: int
-    ended_at_ns: int
-
-
-@dataclass(slots=True)
-class ActiveRunTracker:
-    active: int = 0
-    peak: int = 0
-
-    def admitted(self) -> None:
-        self.active += 1
-        self.peak = max(self.peak, self.active)
-
-    def finished(self) -> None:
-        self.active -= 1
-
-
 async def run_block(settings: CapacityDriverSettings) -> BlockResult:
     """Run warmup, measurement, validation, and cleanup for one matrix point."""
     if settings.concurrency < 1:
@@ -116,7 +96,11 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
     elapsed_seconds = 0.000001
     measurement_started_at_ns = time.time_ns()
     measurement_ended_at_ns = measurement_started_at_ns + 1
-    tracker = ActiveRunTracker()
+    measurement_phase: LoadPhaseResult | None = None
+    phase_errors: list[str] = []
+    load_engine_phases: dict[str, object] = {}
+    bindings_destroyed = True
+    allocation_journal = settings.results_dir / ".e2b-allocations.jsonl" if external_runtime else None
     try:
         async with (
             httpx.AsyncClient(base_url=settings.agent_url, timeout=timeout, limits=limits) as agent_client,
@@ -128,57 +112,79 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
                 binding_pool_size=binding_pool_size,
                 creation_retry_attempts=3 if external_runtime else 0,
                 fallback_e2b_api_key=settings.e2b_api_key if external_runtime else None,
+                allocation_journal=allocation_journal,
             ) as allocations,
         ):
             binding_refs = [allocation[0] for allocation in allocations] or [None] * settings.concurrency
-
-            async def prepare_resume(binding_ref: str | None) -> dict[str, object] | None:
-                return await _prepare_resume_snapshot(
+            contexts = [
+                WorkerContext(worker_index=index, binding_ref=binding_ref)
+                for index, binding_ref in enumerate(binding_refs)
+            ]
+            with tempfile.TemporaryDirectory(prefix="dify-agent-bench-load-") as private_directory:
+                private_dir = Path(private_directory)
+                contexts, resume_phases, resume_errors = await _prepare_resume_contexts(
                     scenario=scenario,
                     settings=settings,
-                    agent_client=agent_client,
-                    fake_client=fake_client,
-                    binding_ref=binding_ref,
+                    contexts=contexts,
+                    private_dir=private_dir,
+                    prime_first=not external_runtime,
                 )
+                phase_errors.extend(resume_errors)
+                if resume_phases:
+                    load_engine_phases["resume_setup"] = [phase.model_dump(mode="json") for phase in resume_phases]
+                _write_redacted_contexts(settings.results_dir / "worker-context.redacted.json", contexts)
+                await _reset(redis, fake_client)
+                if resume_errors:
+                    warmup_phase = _record_skipped_load_phase(
+                        settings=settings,
+                        phase="warmup",
+                        requested_users=len(contexts),
+                        stats_path=settings.results_dir / "locust-warmup-stats.json",
+                        reason="warmup skipped because resume setup failed",
+                    )
+                    warmup: list[CapacityObservation] = []
+                else:
+                    warmup_phase, warmup = await _execute_load_phase(
+                        settings=settings,
+                        contexts=contexts,
+                        phase="warmup",
+                        private_dir=private_dir,
+                        duration_seconds=settings.warmup_seconds,
+                        stats_path=settings.results_dir / "locust-warmup-stats.json",
+                    )
+                load_engine_phases["warmup"] = warmup_phase.model_dump(mode="json")
+                if warmup_phase.fatal_errors:
+                    phase_errors.extend(f"warmup: {error}" for error in warmup_phase.fatal_errors)
+                if not resume_errors and not any(item.sample.terminal_status == "succeeded" for item in warmup):
+                    phase_errors.append("warmup produced no successful Runs")
+                if not external_runtime and not await _delete_all_runtime_jobs(runtime_client):
+                    phase_errors.append("failed to clean warmup Runtime jobs")
 
-            session_snapshots = await _prepare_resume_snapshot_pool(
-                scenario=scenario,
-                binding_refs=binding_refs,
-                prepare=prepare_resume,
-                prime_first=not external_runtime,
-            )
-            await _reset(redis, fake_client)
-            warmup = await _run_timed(
-                duration_seconds=settings.warmup_seconds,
-                scenario=scenario,
-                settings=settings,
-                agent_client=agent_client,
-                fake_client=fake_client,
-                binding_refs=binding_refs,
-                session_snapshots=session_snapshots,
-                tracker=None,
-            )
-            if warmup and not any(item.sample.terminal_status == "succeeded" for item in warmup):
-                raise RuntimeError("warmup produced no successful Runs")
-            if not external_runtime and not await _delete_all_runtime_jobs(runtime_client):
-                raise RuntimeError("failed to clean warmup Runtime jobs")
-
-            await _reset(redis, fake_client)
-            redis_before = await capture_redis_snapshot(redis)
-            measurement_started_at_ns = time.time_ns()
-            started_perf_ns = time.perf_counter_ns()
-            observations = await _run_timed(
-                duration_seconds=settings.measurement_seconds,
-                scenario=scenario,
-                settings=settings,
-                agent_client=agent_client,
-                fake_client=fake_client,
-                binding_refs=binding_refs,
-                session_snapshots=session_snapshots,
-                tracker=tracker,
-            )
-            elapsed_seconds = (time.perf_counter_ns() - started_perf_ns) / 1_000_000_000
-            measurement_ended_at_ns = time.time_ns()
+                await _reset(redis, fake_client)
+                redis_before = await capture_redis_snapshot(redis)
+                if phase_errors:
+                    measurement_phase = _record_skipped_load_phase(
+                        settings=settings,
+                        phase="measurement",
+                        requested_users=len(contexts),
+                        stats_path=settings.results_dir / "locust-measurement-stats.json",
+                        reason="measurement skipped because setup or warmup failed",
+                    )
+                    observations = []
+                else:
+                    measurement_phase, observations = await _execute_load_phase(
+                        settings=settings,
+                        contexts=contexts,
+                        phase="measurement",
+                        private_dir=private_dir,
+                        duration_seconds=settings.measurement_seconds,
+                        stats_path=settings.results_dir / "locust-measurement-stats.json",
+                    )
+                load_engine_phases["measurement"] = measurement_phase.model_dump(mode="json")
+                phase_errors.extend(measurement_phase.fatal_errors)
+                elapsed_seconds = measurement_phase.elapsed_seconds
+                measurement_started_at_ns = measurement_phase.started_at_ns
+                measurement_ended_at_ns = measurement_phase.ended_at_ns
             if external_runtime and scenario.workload != "basic":
                 assert settings.e2b_api_key is not None
                 await _attach_e2b_active_windows(observations, api_key=settings.e2b_api_key)
@@ -204,13 +210,48 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
                 (settings.results_dir / "runtime-jobs-after.json").write_text(
                     json.dumps({"external_runtime": True}, indent=2, sort_keys=True)
                 )
+    except Exception as exc:
+        if isinstance(exc, BindingCleanupError):
+            bindings_destroyed = False
+        phase_errors.append(f"driver pipeline: {type(exc).__name__}: {exc}")
+        if "warmup" not in load_engine_phases:
+            warmup_phase = _record_skipped_load_phase(
+                settings=settings,
+                phase="warmup",
+                requested_users=settings.concurrency,
+                stats_path=settings.results_dir / "locust-warmup-stats.json",
+                reason="warmup did not start because the driver pipeline failed",
+            )
+            load_engine_phases["warmup"] = warmup_phase.model_dump(mode="json")
+        if measurement_phase is None:
+            measurement_phase = _record_skipped_load_phase(
+                settings=settings,
+                phase="measurement",
+                requested_users=settings.concurrency,
+                stats_path=settings.results_dir / "locust-measurement-stats.json",
+                reason="measurement did not start because the driver pipeline failed",
+            )
+            load_engine_phases["measurement"] = measurement_phase.model_dump(mode="json")
+        if not external_runtime:
+            jobs_empty = False
+        if not (settings.results_dir / "runtime-jobs-after.json").exists():
+            (settings.results_dir / "runtime-jobs-after.json").write_text(
+                json.dumps({"error": f"{type(exc).__name__}: {exc}"}, indent=2, sort_keys=True)
+            )
     finally:
-        await redis.aclose()
+        try:
+            await redis.aclose()
+        except Exception as exc:
+            phase_errors.append(f"Redis cleanup: {type(exc).__name__}: {exc}")
 
     samples = [observation.sample for observation in observations]
     for sample in samples:
-        sample.cleanup_valid = jobs_empty
-    outcomes = summarize_outcomes(samples=samples, elapsed_seconds=elapsed_seconds, max_active=tracker.peak)
+        sample.cleanup_valid = jobs_empty and bindings_destroyed
+    outcomes = summarize_outcomes(
+        samples=samples,
+        elapsed_seconds=elapsed_seconds,
+        max_active=measurement_phase.observed_max_active if measurement_phase is not None else 0,
+    )
     invalid_reasons = _invalid_reasons(
         samples=samples,
         redis_before=redis_before,
@@ -218,6 +259,10 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
         jobs_empty=jobs_empty,
         require_e2b_active_windows=external_runtime and scenario.workload != "basic",
     )
+    invalid_reasons.extend(f"Locust load engine: {error}" for error in phase_errors)
+    if not bindings_destroyed:
+        invalid_reasons.append("one or more E2B bindings were not destroyed by the driver")
+    invalid_reasons = list(dict.fromkeys(invalid_reasons))
     result = BlockResult(
         mode=settings.mode,
         scenario_id=scenario.id,
@@ -232,13 +277,20 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
         redis_before=redis_before,
         redis_after=redis_after,
         samples=samples,
-        cleanup={"jobs_empty": jobs_empty, "bindings_destroyed": True},
+        cleanup={"jobs_empty": jobs_empty, "bindings_destroyed": bindings_destroyed},
         valid=not invalid_reasons,
         invalid_reasons=invalid_reasons,
     )
     if outcomes.successful_runs:
         command_deltas = redis_command_call_deltas(redis_before, redis_after)
         result.resources.redis_commands_per_run = sum(command_deltas.values()) / outcomes.successful_runs
+    (settings.results_dir / "load-engine.json").write_text(
+        json.dumps(
+            {"engine": "locust", "spawn_rate": 200, "phases": load_engine_phases},
+            indent=2,
+            sort_keys=True,
+        )
+    )
     _write_artifacts(settings.results_dir, result)
     return result
 
@@ -329,19 +381,29 @@ async def _managed_binding_pool(
     binding_pool_size: int,
     creation_retry_attempts: int = 0,
     fallback_e2b_api_key: str | None = None,
+    allocation_journal: Path | None = None,
 ) -> AsyncIterator[list[tuple[str | None, str | None]]]:
     """Create one binding per worker and destroy every successful allocation."""
     allocations: list[tuple[str | None, str | None]] = []
+
+    async def create_and_record(worker_index: int) -> tuple[str | None, str | None]:
+        binding_ref, workspace_ref = await _create_binding(
+            agent_client,
+            f"{block_id}-worker-{worker_index}",
+            retry_attempts=creation_retry_attempts,
+        )
+        if binding_ref is not None and workspace_ref is not None:
+            _append_binding_journal_event(
+                allocation_journal,
+                state="allocated",
+                binding_ref=binding_ref,
+                workspace_ref=workspace_ref,
+            )
+        return binding_ref, workspace_ref
+
     try:
         results = await asyncio.gather(
-            *(
-                _create_binding(
-                    agent_client,
-                    f"{block_id}-worker-{worker_index}",
-                    retry_attempts=creation_retry_attempts,
-                )
-                for worker_index in range(binding_pool_size)
-            ),
+            *(create_and_record(worker_index) for worker_index in range(binding_pool_size)),
             return_exceptions=True,
         )
         allocations.extend(result for result in results if isinstance(result, tuple))
@@ -364,11 +426,40 @@ async def _managed_binding_pool(
             ),
             return_exceptions=True,
         )
+        for (binding_ref, workspace_ref), cleanup_result in zip(allocations, cleanup_results, strict=True):
+            if not isinstance(cleanup_result, BaseException) and binding_ref is not None and workspace_ref is not None:
+                _append_binding_journal_event(
+                    allocation_journal,
+                    state="destroyed",
+                    binding_ref=binding_ref,
+                    workspace_ref=workspace_ref,
+                )
         errors = [result for result in cleanup_results if isinstance(result, BaseException)]
         if errors:
-            raise RuntimeError(f"failed to destroy {len(errors)} of {len(allocations)} benchmark bindings") from errors[
-                0
-            ]
+            raise BindingCleanupError(
+                f"failed to destroy {len(errors)} of {len(allocations)} benchmark bindings"
+            ) from errors[0]
+
+
+def _append_binding_journal_event(
+    path: Path | None,
+    *,
+    state: str,
+    binding_ref: str,
+    workspace_ref: str,
+) -> None:
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "binding_ref": binding_ref,
+        "state": state,
+        "workspace_ref": workspace_ref,
+    }
+    with path.open("a", encoding="utf-8", buffering=1) as output:
+        output.write(json.dumps(payload, sort_keys=True) + "\n")
+        output.flush()
+        os.fsync(output.fileno())
 
 
 async def _destroy_binding_with_fallback(
@@ -418,8 +509,8 @@ async def _attach_e2b_active_windows(
     ) as client:
 
         async def attach(binding_ref: str, items: list[CapacityObservation]) -> None:
-            deadline = time.monotonic() + 15
             async with semaphore:
+                deadline = time.monotonic() + 15
                 while time.monotonic() < deadline:
                     events = await _fetch_e2b_pause_events(
                         client,
@@ -543,318 +634,435 @@ def _parse_pause_events(events: Sequence[object]) -> list[tuple[float, float]]:
     return sorted(parsed)
 
 
-async def _prepare_resume_snapshot(
+async def _prepare_resume_contexts(
     *,
     scenario: CapacityScenario,
     settings: CapacityDriverSettings,
-    agent_client: httpx.AsyncClient,
-    fake_client: httpx.AsyncClient,
-    binding_ref: str | None,
-) -> dict[str, object] | None:
-    if scenario.workload != "resume":
-        return None
-    observation = await _run_once(
-        sequence=-1,
-        worker_index=0,
-        scenario=scenario,
-        settings=settings,
-        agent_client=agent_client,
-        fake_client=fake_client,
-        binding_ref=binding_ref,
-        session_snapshot=None,
-        tracker=None,
-        suspend=True,
-    )
-    if observation.sample.terminal_status != "succeeded" or observation.session_snapshot is None:
-        raise RuntimeError(f"failed to build resume snapshot: {observation.sample.error}")
-    return observation.session_snapshot
-
-
-async def _prepare_resume_snapshot_pool(
-    *,
-    scenario: CapacityScenario,
-    binding_refs: Sequence[str | None],
-    prepare: Callable[[str | None], Awaitable[dict[str, object] | None]],
+    contexts: list[WorkerContext],
+    private_dir: Path,
     prime_first: bool,
-) -> list[dict[str, object] | None]:
+) -> tuple[list[WorkerContext], list[LoadPhaseResult], list[str]]:
     if scenario.workload != "resume":
-        return [None for _ in binding_refs]
-    if prime_first:
-        first = await prepare(binding_refs[0])
-        remaining = await asyncio.gather(*(prepare(binding_ref) for binding_ref in binding_refs[1:]))
-        return [first, *remaining]
-    return list(await asyncio.gather(*(prepare(binding_ref) for binding_ref in binding_refs)))
-
-
-async def _run_timed(
-    *,
-    duration_seconds: float,
-    scenario: CapacityScenario,
-    settings: CapacityDriverSettings,
-    agent_client: httpx.AsyncClient,
-    fake_client: httpx.AsyncClient,
-    binding_refs: Sequence[str | None],
-    session_snapshots: Sequence[dict[str, object] | None],
-    tracker: ActiveRunTracker | None,
-) -> list[CapacityObservation]:
-    deadline = time.perf_counter() + duration_seconds
-    observations: list[CapacityObservation] = []
-
-    async def worker(worker_index: int) -> None:
-        await asyncio.sleep(worker_index * 0.005)
-        sequence = worker_index
-        binding_ref, session_snapshot = _worker_context(
-            worker_index,
-            binding_refs=binding_refs,
-            session_snapshots=session_snapshots,
+        return contexts, [], []
+    groups = [contexts]
+    if prime_first and len(contexts) > 1:
+        groups = [contexts[:1], contexts[1:]]
+    phases: list[LoadPhaseResult] = []
+    snapshots: dict[int, dict[str, object]] = {}
+    errors: list[str] = []
+    for index, group in enumerate(groups):
+        if not group:
+            continue
+        phase, observations = await _execute_load_phase(
+            settings=settings,
+            contexts=group,
+            phase="resume-setup",
+            private_dir=private_dir,
+            iterations_per_user=1,
+            suspend=True,
+            stats_path=private_dir / f"resume-setup-{index}-stats.json",
+            artifact_label=f"resume-setup-{index}",
         )
-        while True:
-            if time.perf_counter() >= deadline:
-                return
-            observation = await _run_once(
-                sequence=sequence,
-                worker_index=worker_index,
-                scenario=scenario,
-                settings=settings,
-                agent_client=agent_client,
-                fake_client=fake_client,
-                binding_ref=binding_ref,
-                session_snapshot=session_snapshot,
-                tracker=tracker,
-            )
-            observations.append(observation)
-            sequence += settings.concurrency
+        phases.append(phase)
+        if phase.fatal_errors:
+            errors.extend(f"resume setup: {error}" for error in phase.fatal_errors)
+            break
+        by_worker = {observation.sample.worker_index: observation for observation in observations}
+        for context in group:
+            observation = by_worker.get(context.worker_index)
+            if (
+                observation is None
+                or observation.sample.terminal_status != "succeeded"
+                or observation.session_snapshot is None
+            ):
+                detail = observation.sample.error if observation is not None else "missing observation"
+                errors.append(f"failed to build resume snapshot for worker {context.worker_index}: {detail}")
+                continue
+            snapshots[context.worker_index] = observation.session_snapshot
+        if errors:
+            break
+    if errors:
+        return contexts, phases, errors
+    return (
+        [context.model_copy(update={"session_snapshot": snapshots[context.worker_index]}) for context in contexts],
+        phases,
+        [],
+    )
 
-    await asyncio.gather(*(worker(index) for index in range(settings.concurrency)))
-    return observations
 
-
-def _worker_context(
-    worker_index: int,
+async def _execute_load_phase(
     *,
-    binding_refs: Sequence[str | None],
-    session_snapshots: Sequence[dict[str, object] | None],
-) -> tuple[str | None, dict[str, object] | None]:
-    if not binding_refs or len(binding_refs) != len(session_snapshots):
-        raise ValueError("binding refs and session snapshots must be aligned")
-    index = worker_index % len(binding_refs)
-    return binding_refs[index], session_snapshots[index]
-
-
-async def _run_once(
-    *,
-    sequence: int,
-    worker_index: int,
-    scenario: CapacityScenario,
     settings: CapacityDriverSettings,
-    agent_client: httpx.AsyncClient,
-    fake_client: httpx.AsyncClient,
-    binding_ref: str | None,
-    session_snapshot: dict[str, object] | None,
-    tracker: ActiveRunTracker | None,
+    contexts: Sequence[WorkerContext],
+    phase: PhaseKind,
+    private_dir: Path,
+    stats_path: Path,
+    duration_seconds: float | None = None,
+    iterations_per_user: int | None = None,
     suspend: bool = False,
-) -> CapacityObservation:
-    benchmark_run_id = f"{settings.block_id}-{sequence}-{uuid4().hex}"
-    prepare = await fake_client.post(
-        "/__bench/prepare",
-        json={
-            "benchmark_run_id": benchmark_run_id,
-            "scenario_id": scenario.id,
-            "scenario_version": scenario.version,
-            "payload_bytes": scenario.payload_bytes if scenario.workload == "file" else None,
-        },
-    )
-    prepare.raise_for_status()
-    sample = RunSample(
+    artifact_label: str | None = None,
+) -> tuple[LoadPhaseResult, list[CapacityObservation]]:
+    label = artifact_label or phase
+    contexts_path = private_dir / f"{label}-contexts.json"
+    observations_path = private_dir / f"{label}-observations.jsonl"
+    active_runs_path = private_dir / f"{label}-active-runs.jsonl"
+    result_path = private_dir / f"{label}-result.json"
+    request_path = private_dir / f"{label}-request.json"
+    contexts_path.write_text(json.dumps([context.model_dump(mode="json") for context in contexts], sort_keys=True))
+    request = LoadPhaseRequest(
         mode=settings.mode,
-        scenario_id=scenario.id,
+        phase=phase,
+        agent_url=settings.agent_url,
+        fake_deps_url=settings.fake_deps_url,
+        scenario_id=settings.scenario_id,
         block_id=settings.block_id,
-        benchmark_run_id=benchmark_run_id,
-        worker_index=worker_index,
-        payload_bytes=scenario.payload_bytes,
+        contexts_path=contexts_path,
+        observations_path=observations_path,
+        active_runs_path=active_runs_path,
+        stats_path=stats_path,
+        result_path=result_path,
+        duration_seconds=duration_seconds,
+        iterations_per_user=iterations_per_user,
+        sequence_stride=settings.concurrency,
+        suspend=suspend,
     )
-    sse_event_ids: list[str] = []
-    terminal_snapshot: dict[str, object] | None = None
-    started_at_ns = time.time_ns()
-    started_ns = time.perf_counter_ns()
+    request_path.write_text(request.model_dump_json(indent=2))
+    timeout_seconds = (duration_seconds or 0) + request.drain_timeout_seconds + 30
+    parent_started_at_ns = time.time_ns()
+    parent_started_perf = time.perf_counter()
+    stdout = b""
+    stderr = b""
+    process: asyncio.subprocess.Process | None = None
+    timed_out = False
+    parent_errors: list[str] = []
     try:
-        response = await agent_client.post(
-            "/runs",
-            json=build_capacity_run_request(
-                scenario=scenario,
-                benchmark_run_id=benchmark_run_id,
-                binding_ref=binding_ref,
-                session_snapshot=session_snapshot,
-                suspend=suspend,
-            ),
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-m",
+            "benchmarks.locust_load",
+            "--request",
+            str(request_path),
+            cwd=Path(__file__).resolve().parents[1],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=_load_subprocess_environment(),
         )
-        sample.create_run_http_ms = (time.perf_counter_ns() - started_ns) / 1_000_000
-        response.raise_for_status()
-        run_id = response.json().get("run_id")
-        if not isinstance(run_id, str):
-            raise TypeError("create-run response did not contain run_id")
-        sample.run_id = run_id
-        sample.admitted = True
-        if tracker:
-            tracker.admitted()
-        first_event_ns: int | None = None
-        terminal_type: str | None = None
-        async with agent_client.stream("GET", f"/runs/{run_id}/events/sse") as stream_response:
-            stream_response.raise_for_status()
-            async for event in iter_sse_data(stream_response):
-                received_ns = time.perf_counter_ns()
-                first_event_ns = first_event_ns or received_ns
-                if isinstance(event.get("id"), str):
-                    sse_event_ids.append(cast(str, event["id"]))
-                sample.event_count += 1
-                event_type = event.get("type")
-                if event_type in _TERMINAL_EVENT_TYPES:
-                    terminal_type = cast(str, event_type)
-                    data = event.get("data")
-                    if isinstance(data, dict) and isinstance(data.get("session_snapshot"), dict):
-                        terminal_snapshot = cast(dict[str, object], data["session_snapshot"])
-                    if terminal_type == "run_failed" and isinstance(data, dict) and isinstance(data.get("error"), str):
-                        sample.error = cast(str, data["error"])
-                    break
-        if first_event_ns is None or terminal_type is None:
-            raise RuntimeError("SSE stream ended before a terminal event")
-        sample.time_to_first_event_ms = (first_event_ns - started_ns) / 1_000_000
-        sample.terminal_e2e_ms = (time.perf_counter_ns() - started_ns) / 1_000_000
-        sample.terminal_status = cast(
-            TerminalStatus,
-            {
-                "run_succeeded": "succeeded",
-                "run_failed": "failed",
-                "run_cancelled": "cancelled",
-            }[terminal_type],
-        )
-        if sample.terminal_status != "succeeded":
-            sample.failure_kind = "terminal_failed"
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
+        except TimeoutError:
+            timed_out = True
+            parent_errors.append(f"Locust {label} subprocess exceeded {timeout_seconds:.0f}s")
+            try:
+                process.terminate()
+            except ProcessLookupError:
+                pass
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=5)
+            except TimeoutError:
+                process.kill()
+                stdout, stderr = await process.communicate()
     except Exception as exc:
-        sample.failure_kind = cast(FailureKind, "stream_error" if sample.admitted else "admission_error")
-        sample.error = f"{type(exc).__name__}: {exc}"
+        parent_errors.append(f"failed to execute Locust {label} subprocess: {type(exc).__name__}: {exc}")
     finally:
-        if sample.admitted and tracker:
-            tracker.finished()
-    return CapacityObservation(
-        sample=sample,
-        sse_event_ids=sse_event_ids,
-        session_snapshot=terminal_snapshot,
-        binding_ref=binding_ref,
-        started_at_ns=started_at_ns,
-        ended_at_ns=time.time_ns(),
+        if process is not None and process.returncode is None:
+            try:
+                process.kill()
+                remaining_stdout, remaining_stderr = await asyncio.wait_for(process.communicate(), timeout=5)
+                stdout += remaining_stdout
+                stderr += remaining_stderr
+            except Exception as exc:
+                parent_errors.append(f"failed to reap Locust {label} subprocess: {type(exc).__name__}: {exc}")
+        log_payload = stdout + stderr
+        if parent_errors:
+            log_payload += ("\n[parent-driver]\n" + "\n".join(parent_errors) + "\n").encode()
+        (settings.results_dir / f"locust-{label}.log").write_bytes(log_payload)
+
+    active_run_ids, active_checkpoint_errors = _read_active_run_checkpoint(active_runs_path)
+    parent_errors.extend(active_checkpoint_errors)
+    if active_run_ids:
+        terminal_count, recovery_errors = await _cancel_and_drain_active_runs(
+            agent_url=settings.agent_url,
+            run_ids=active_run_ids,
+        )
+        recovery_summary = (
+            f"Locust {label} exited with {len(active_run_ids)} active Runs; terminal-drained {terminal_count}"
+        )
+        parent_errors.append(recovery_summary)
+        parent_errors.extend(recovery_errors)
+        with (settings.results_dir / f"locust-{label}.log").open("ab") as log:
+            log.write(("\n[parent-recovery]\n" + recovery_summary + "\n").encode())
+            if recovery_errors:
+                log.write(("\n".join(recovery_errors) + "\n").encode())
+
+    observations, observation_errors = _read_partial_observations(observations_path)
+    parent_errors.extend(observation_errors)
+    result: LoadPhaseResult | None = None
+    if result_path.exists():
+        try:
+            result = LoadPhaseResult.model_validate_json(result_path.read_text())
+        except Exception as exc:
+            parent_errors.append(f"Locust {label} wrote an invalid phase result: {type(exc).__name__}: {exc}")
+    else:
+        returncode = process.returncode if process is not None else None
+        parent_errors.append(f"Locust {label} subprocess exited with {returncode} without a phase result")
+
+    parent_ended_at_ns = time.time_ns()
+    parent_elapsed_seconds = max(0.000001, time.perf_counter() - parent_started_perf)
+    if result is None:
+        result = LoadPhaseResult(
+            phase=phase,
+            started_at_ns=parent_started_at_ns,
+            ended_at_ns=parent_ended_at_ns,
+            elapsed_seconds=parent_elapsed_seconds,
+            drain_seconds=max(0, parent_elapsed_seconds - (duration_seconds or parent_elapsed_seconds)),
+            requested_users=len(contexts),
+            spawned_users=0,
+            observed_max_active=0,
+            observation_count=len(observations),
+            timed_out=timed_out,
+            fatal_errors=[],
+            locust_version=_installed_locust_version(),
+        )
+    if timed_out:
+        result.timed_out = True
+    result.fatal_errors.extend(parent_errors)
+    if process is not None and process.returncode:
+        result.fatal_errors.append(f"subprocess exited with status {process.returncode}")
+    result.fatal_errors.extend(
+        _load_phase_integrity_errors(
+            result=result,
+            observations=observations,
+            label=label,
+            scenario_id=settings.scenario_id,
+        )
     )
+    result.fatal_errors = list(dict.fromkeys(result.fatal_errors))
+    _write_incomplete_locust_stats(
+        stats_path,
+        phase=phase,
+        fatal_errors=result.fatal_errors,
+    )
+    return result, observations
 
 
-def build_capacity_run_request(
+def _load_phase_integrity_errors(
     *,
-    scenario: CapacityScenario,
-    benchmark_run_id: str,
-    binding_ref: str | None,
-    session_snapshot: dict[str, object] | None,
-    suspend: bool,
-) -> dict[str, object]:
-    credentials = {
-        "benchmark_run_id": benchmark_run_id,
-        "scenario_id": scenario.id,
-        "scenario_version": scenario.version,
-    }
-    execution_context = {
-        "tenant_id": "benchmark-tenant",
-        "user_id": benchmark_run_id,
-        "user_from": "account",
-        "agent_id": benchmark_run_id,
-        "agent_config_version_id": "benchmark-config",
-        "agent_config_version_kind": "snapshot",
-        "agent_mode": "workflow_run",
-        "invoke_from": "service-api",
-    }
-    layers: list[dict[str, object]] = [
-        {
-            "name": "prompt",
-            "type": "plain.prompt",
-            "config": {"prefix": "deterministic capacity benchmark", "user": "execute the benchmark plan"},
-        },
-        {"name": "execution_context", "type": "dify.execution_context", "config": execution_context},
-    ]
-    if scenario.workload != "basic":
-        if binding_ref is not None:
-            layers.append(
-                {
-                    "name": "runtime",
-                    "type": "dify.runtime",
-                    "config": {"backend_binding_ref": binding_ref},
-                }
-            )
-        shell_dependencies = {"execution_context": "execution_context"}
-        if binding_ref is not None:
-            shell_dependencies["runtime"] = "runtime"
-        layers.append(
-            {
-                "name": "shell",
-                "type": "dify.shell",
-                "deps": shell_dependencies,
-                "config": {"agent_stub_drive_ref": f"agent-{benchmark_run_id}"},
-            }
-        )
-    if scenario.workload == "config":
-        skills = [
-            {
-                "name": f"skill-{index}",
-                "description": "deterministic benchmark skill",
-                "size": scenario.item_bytes,
-                "mime_type": "application/zip",
-            }
-            for index in range(scenario.config_skill_count)
-        ]
-        files = [
-            {
-                "name": f"file-{index}.bin",
-                "size": scenario.item_bytes,
-                "mime_type": "application/octet-stream",
-            }
-            for index in range(scenario.config_file_count)
-        ]
-        layers.append(
-            {
-                "name": "config",
-                "type": "dify.config",
-                "deps": {"shell": "shell"},
-                "config": {
-                    "agent_id": benchmark_run_id,
-                    "config_version": {"id": "benchmark-config", "kind": "snapshot", "writable": False},
-                    "skills": skills,
-                    "files": files,
-                    "mentioned_skill_names": [item["name"] for item in skills],
-                    "mentioned_file_names": [item["name"] for item in files],
-                },
-            }
-        )
-    layers.append(
-        {
-            "name": "llm",
-            "type": "dify.plugin.llm",
-            "deps": {"execution_context": "execution_context"},
-            "config": {
-                "plugin_id": "benchmark/model",
-                "model_provider": "benchmark",
-                "model": "benchmark-model",
-                "credentials": credentials,
-            },
-        }
+    result: LoadPhaseResult,
+    observations: Sequence[CapacityObservation],
+    label: str,
+    scenario_id: str,
+) -> list[str]:
+    errors: list[str] = []
+    if result.observation_count != len(observations):
+        errors.append(f"phase reported {result.observation_count} observations but wrote {len(observations)}")
+    composite = result.composite_request
+    unsuccessful_count = sum(
+        observation.sample.terminal_status != "succeeded" for observation in observations
     )
-    request: dict[str, object] = {
-        "composition": {"schema_version": 1, "layers": layers},
-        "metadata": {
-            "benchmark_run_id": benchmark_run_id,
-            "scenario_id": scenario.id,
-            "scenario_version": scenario.version,
-        },
-        "on_exit": {"default": "suspend" if suspend else "delete", "layers": {}},
+    if composite is None:
+        errors.append(f"Locust {label} phase did not report AGENT_RUN/{scenario_id} stats")
+        return errors
+    if composite.request_count != len(observations):
+        errors.append(
+            f"Locust {label} reported {composite.request_count} composite requests "
+            f"for {len(observations)} observations"
+        )
+    if composite.failure_count != unsuccessful_count:
+        errors.append(
+            f"Locust {label} reported {composite.failure_count} composite failures "
+            f"for {unsuccessful_count} unsuccessful observations"
+        )
+    return errors
+
+
+def _read_active_run_checkpoint(path: Path) -> tuple[list[str], list[str]]:
+    if not path.exists():
+        return [], ["Locust active-Run checkpoint was not written"]
+    text = path.read_text()
+    if not text.strip():
+        return [], []
+    unresolved: dict[str, None] = {}
+    errors: list[str] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except Exception as exc:
+            errors.append(f"failed to read active-Run journal line {line_number}: {type(exc).__name__}: {exc}")
+            continue
+        if not isinstance(event, dict) or not isinstance(event.get("run_id"), str):
+            errors.append(f"active-Run journal line {line_number} was not a valid event")
+            continue
+        run_id = cast(str, event["run_id"])
+        state = event.get("state")
+        if state == "admitted":
+            unresolved[run_id] = None
+        elif state == "terminal":
+            unresolved.pop(run_id, None)
+        else:
+            errors.append(f"active-Run journal line {line_number} had unknown state {state!r}")
+    return sorted(unresolved), errors
+
+
+async def _cancel_and_drain_active_runs(
+    *,
+    agent_url: str,
+    run_ids: Sequence[str],
+    timeout_seconds: float = 30,
+) -> tuple[int, list[str]]:
+    timeout = httpx.Timeout(connect=10, read=10, write=10, pool=10)
+    limits = httpx.Limits(max_connections=max(1, len(run_ids)), max_keepalive_connections=max(1, len(run_ids)))
+    async with httpx.AsyncClient(base_url=agent_url, timeout=timeout, limits=limits) as client:
+        results = await asyncio.gather(
+            *(_cancel_and_drain_run(client, run_id, timeout_seconds=timeout_seconds) for run_id in run_ids)
+        )
+    terminal_count = sum(error is None for error in results)
+    errors = [error for error in results if error is not None]
+    return terminal_count, cast(list[str], errors)
+
+
+async def _cancel_and_drain_run(
+    client: httpx.AsyncClient,
+    run_id: str,
+    *,
+    timeout_seconds: float,
+) -> str | None:
+    deadline = time.monotonic() + timeout_seconds
+    try:
+        status = await client.get(f"/runs/{run_id}")
+        status.raise_for_status()
+        if _run_status_is_terminal(status):
+            return None
+        cancel = await client.post(
+            f"/runs/{run_id}/cancel",
+            json={"reason": "benchmark load engine interrupted"},
+        )
+        if cancel.status_code not in {httpx.codes.OK, httpx.codes.CONFLICT}:
+            cancel.raise_for_status()
+        while time.monotonic() < deadline:
+            status = await client.get(f"/runs/{run_id}")
+            status.raise_for_status()
+            if _run_status_is_terminal(status):
+                return None
+            await asyncio.sleep(0.1)
+        return f"Run {run_id} did not reach terminal status within the recovery timeout"
+    except Exception as exc:
+        return f"failed to recover interrupted Run {run_id}: {type(exc).__name__}: {exc}"
+
+
+def _run_status_is_terminal(response: httpx.Response) -> bool:
+    payload = response.json()
+    return isinstance(payload, dict) and payload.get("status") in {"succeeded", "failed", "cancelled"}
+
+
+def _read_partial_observations(path: Path) -> tuple[list[CapacityObservation], list[str]]:
+    observations: list[CapacityObservation] = []
+    errors: list[str] = []
+    if not path.exists():
+        return observations, errors
+    for line_number, line in enumerate(path.read_text().splitlines(), start=1):
+        if not line:
+            continue
+        try:
+            observations.append(CapacityObservation.model_validate_json(line))
+        except Exception as exc:
+            errors.append(f"failed to parse observation line {line_number}: {type(exc).__name__}: {exc}")
+    return observations, errors
+
+
+def _write_incomplete_locust_stats(
+    path: Path,
+    *,
+    phase: PhaseKind,
+    fatal_errors: Sequence[str],
+) -> None:
+    if path.exists():
+        return
+    path.write_text(
+        json.dumps(
+            {
+                "locust_version": _installed_locust_version(),
+                "phase": phase,
+                "entries": [],
+                "errors": [],
+                "total": {},
+                "incomplete": True,
+                "fatal_errors": list(fatal_errors),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+def _record_skipped_load_phase(
+    *,
+    settings: CapacityDriverSettings,
+    phase: PhaseKind,
+    requested_users: int,
+    stats_path: Path,
+    reason: str,
+) -> LoadPhaseResult:
+    now_ns = time.time_ns()
+    result = LoadPhaseResult(
+        phase=phase,
+        started_at_ns=now_ns,
+        ended_at_ns=now_ns + 1,
+        elapsed_seconds=0.000001,
+        drain_seconds=0,
+        requested_users=requested_users,
+        spawned_users=0,
+        observed_max_active=0,
+        observation_count=0,
+        fatal_errors=[reason],
+        locust_version=_installed_locust_version(),
+    )
+    _write_incomplete_locust_stats(stats_path, phase=phase, fatal_errors=result.fatal_errors)
+    (settings.results_dir / f"locust-{phase}.log").write_text(f"[parent-driver]\n{reason}\n")
+    return result
+
+
+def _installed_locust_version() -> str:
+    try:
+        return version("locust")
+    except PackageNotFoundError:
+        return "not-installed"
+
+
+def _load_subprocess_environment() -> dict[str, str]:
+    allowed = {
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "NO_PROXY",
+        "PATH",
+        "PYTHONPATH",
+        "PYTHONDONTWRITEBYTECODE",
+        "PYTHONUNBUFFERED",
+        "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
+        "TZ",
+        "VIRTUAL_ENV",
     }
-    if session_snapshot is not None:
-        request["session_snapshot"] = session_snapshot
-    return request
+    return {name: value for name, value in os.environ.items() if name in allowed}
+
+
+def _write_redacted_contexts(path: Path, contexts: Sequence[WorkerContext]) -> None:
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "worker_index": context.worker_index,
+                    "has_binding": context.binding_ref is not None,
+                    "has_session_snapshot": context.session_snapshot is not None,
+                }
+                for context in contexts
+            ],
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 async def _validate_observations(

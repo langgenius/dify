@@ -73,6 +73,7 @@ docs = [
 ]
 benchmark = [
     "docker>=7.1.0,<8.0.0",
+    "locust>=2.44.4,<2.45.0",
 ]
 
 [build-system]
