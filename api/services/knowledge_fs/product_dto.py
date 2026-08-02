@@ -1883,6 +1883,7 @@ class KnowledgeFSResearchTaskStreamQuery(BaseModel):
 
 
 class KnowledgeFSResearchTaskPartialResponse(ResponseModel):
+    answer: str | None = Field(default=None, min_length=1, max_length=20_000)
     evidence_bundle: dict[str, object] = Field(validation_alias=AliasChoices("evidence_bundle", "evidenceBundle"))
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     research_task_job_id: str = Field(validation_alias=AliasChoices("research_task_job_id", "researchTaskJobId"))

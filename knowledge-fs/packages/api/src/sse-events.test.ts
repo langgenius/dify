@@ -40,6 +40,24 @@ describe("SSE event formatting", () => {
     );
   });
 
+  it("names Research answer deltas consistently with direct query streams", () => {
+    expect(
+      formatResearchTaskProgressSseEvent({
+        createdAt: "2026-05-13T00:00:01.000Z",
+        id: "event-answer-1",
+        knowledgeSpaceId: "ks-1",
+        payload: { delta: "hello", executionAttempt: 1, offset: 0 },
+        researchTaskJobId: "job-1",
+        sequence: 8,
+        stage: "generating",
+        tenantId: "tenant-1",
+        type: "research_task.answer_delta",
+      }),
+    ).toBe(
+      'id: 8\nevent: answer.delta\ndata: {"createdAt":"2026-05-13T00:00:01.000Z","id":"event-answer-1","payload":{"delta":"hello","executionAttempt":1,"offset":0},"researchTaskJobId":"job-1","sequence":8,"stage":"generating","type":"research_task.answer_delta"}\n\n',
+    );
+  });
+
   it("normalizes durable Research terminal stages for direct clients", () => {
     expect(
       formatResearchTaskProgressSseEvent({

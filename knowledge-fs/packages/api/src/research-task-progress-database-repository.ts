@@ -42,6 +42,7 @@ export interface AppendDatabaseResearchTaskProgressEventInTransactionOptions {
 const progressTable = "research_task_progress_events";
 const jobTable = "research_task_jobs";
 const eventTypes = new Set<ResearchTaskProgressEventType>([
+  "research_task.answer_delta",
   "research_task.canceled",
   "research_task.failed",
   "research_task.paused",

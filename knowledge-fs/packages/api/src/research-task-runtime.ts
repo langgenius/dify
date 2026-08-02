@@ -46,6 +46,7 @@ import {
 } from "./research-task-job";
 import type {
   ResearchTaskProgressEventType,
+  ResearchTaskProgressPublishOptions,
   ResearchTaskProgressPublisher,
 } from "./research-task-progress";
 import {
@@ -105,6 +106,7 @@ type ResearchTaskRuntimeOutcome = Exclude<keyof ResearchTaskRuntimeTickResult, "
 
 const terminalStages = new Set<ResearchTaskJobStage>(["completed", "failed", "canceled"]);
 const modePlanner = createRetrievalPlanner({ maxTopK: 100 });
+const RESEARCH_TASK_ANSWER_DELTA_BATCH_CHARS = 128;
 
 export function createResearchTaskRuntime({
   access,
@@ -153,9 +155,10 @@ export function createResearchTaskRuntime({
     job: ResearchTaskJob,
     type: ResearchTaskProgressEventType,
     payload?: Record<string, unknown>,
+    options?: ResearchTaskProgressPublishOptions,
   ): Promise<void> => {
     try {
-      await progress?.publish(job, type, payload);
+      await progress?.publish(job, type, payload, options);
     } catch (error) {
       // Progress is durable observability, not the execution fence. A transient append failure
       // must not roll back or duplicate an already durable stage transition.
@@ -516,6 +519,7 @@ async function runResearchTask({
     job: ResearchTaskJob,
     type: ResearchTaskProgressEventType,
     payload?: Record<string, unknown>,
+    options?: ResearchTaskProgressPublishOptions,
   ) => Promise<void>;
   readonly repository: ResearchTaskDurableRepository;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
@@ -614,7 +618,31 @@ async function runResearchTask({
       : undefined);
 
   let answer = "";
+  let pendingAnswerDelta = "";
+  let pendingAnswerOffset = 0;
+  let publishedAnswerDelta = false;
   let evidenceBundle: EvidenceBundle | undefined;
+  const flushAnswerDelta = async (): Promise<void> => {
+    if (!pendingAnswerDelta) return;
+    current = getCurrent();
+    const delta = pendingAnswerDelta;
+    const offset = pendingAnswerOffset;
+    pendingAnswerDelta = "";
+    pendingAnswerOffset = answer.length;
+    await publishProgress(
+      current,
+      "research_task.answer_delta",
+      {
+        delta,
+        executionAttempt: current.executionAttempts,
+        offset,
+      },
+      {
+        idempotencyKey: `research-task-progress:${current.id}:attempt:${current.executionAttempts}:answer:${offset}`,
+      },
+    );
+    publishedAnswerDelta = true;
+  };
   const iterator = generator
     .stream({
       ...(frozenRuntime?.embeddingProfile
@@ -653,7 +681,18 @@ async function runResearchTask({
           `Research task partial result answer exceeds maxChars=${RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS}`,
         );
       }
+      if (!pendingAnswerDelta) {
+        pendingAnswerOffset = answer.length;
+      }
       answer += event.delta;
+      pendingAnswerDelta += event.delta;
+      if (
+        pendingAnswerDelta &&
+        (!publishedAnswerDelta ||
+          pendingAnswerDelta.length >= RESEARCH_TASK_ANSWER_DELTA_BATCH_CHARS)
+      ) {
+        await flushAnswerDelta();
+      }
     }
     evidenceBundle = evidenceBundleFromEvent(event) ?? evidenceBundle;
     if (
@@ -671,6 +710,8 @@ async function runResearchTask({
       await advance("generating");
     }
   }
+
+  await flushAnswerDelta();
 
   if (current.stage === "retrieving") {
     await advance("analyzing");

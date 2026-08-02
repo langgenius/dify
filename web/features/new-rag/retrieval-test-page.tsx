@@ -19,6 +19,7 @@ import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Markdown } from '@/app/components/base/markdown'
 import Link from '@/next/link'
 import { useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -33,7 +34,10 @@ import {
 } from './retrieval-test-model'
 import { newKnowledgeDocumentDetailPath, newKnowledgeQualityPath } from './routes'
 import { streamKnowledgeQuery } from './services/knowledge-query-events'
-import { streamResearchTaskEvents } from './services/research-task-events'
+import {
+  researchTaskAnswerFromEvents,
+  streamResearchTaskEvents,
+} from './services/research-task-events'
 
 type LocalQueryRun = {
   endedAt?: number
@@ -330,6 +334,38 @@ function FailedResult({ description, onRetry }: { description: string; onRetry: 
         {t(($) => $['newKnowledge.retrievalTest.retry'])}
       </Button>
     </div>
+  )
+}
+
+function ResearchAnswer({ answer, streaming }: { answer: string; streaming: boolean }) {
+  const { t } = useTranslation('dataset')
+  return (
+    <section className="mt-3 rounded-xl border border-components-panel-border bg-components-panel-bg px-4 py-3.5 shadow-xs">
+      <header className="mb-3 flex items-center gap-2">
+        <span aria-hidden className="i-ri-sparkling-2-fill size-4 text-text-accent" />
+        <h3 className="system-sm-semibold text-text-primary">
+          {t(($) =>
+            streaming
+              ? $['newKnowledge.retrievalTest.generatingActive']
+              : $['newKnowledge.retrievalTest.generating'],
+          )}
+        </h3>
+        {streaming && (
+          <span
+            aria-hidden
+            className="size-1.5 animate-pulse rounded-full bg-text-accent motion-reduce:animate-none"
+          />
+        )}
+      </header>
+      <div aria-live="polite" aria-atomic="false">
+        <Markdown
+          className="text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
+          content={answer}
+          isAnimating={streaming}
+          mode={streaming ? 'streaming' : undefined}
+        />
+      </div>
+    </section>
   )
 }
 
@@ -813,6 +849,17 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
 
   const historicalEvidence = extractRetrievalEvidence(traceEvidenceQuery.data)
   const researchEvidence = extractRetrievalEvidence(researchPartialsQuery.data)
+  const selectedResearchEvents = selectedResearchTask
+    ? (researchEvents[selectedResearchTask.id] ?? [])
+    : []
+  const streamedResearchAnswer = researchTaskAnswerFromEvents(selectedResearchEvents)
+  const persistedResearchAnswer = [...(researchPartialsQuery.data?.data ?? [])]
+    .sort((left, right) => right.sequence - left.sequence)
+    .find((partial) => partial.answer?.trim())
+    ?.answer?.trim()
+  const researchAnswer = selectedResearchTask
+    ? (persistedResearchAnswer ?? streamedResearchAnswer)
+    : ''
   const currentEvidence =
     selected?.kind === 'local' && localRun
       ? localRun.evidence.length
@@ -1201,7 +1248,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   <ResearchProcess
                     task={selectedResearchTask}
                     plan={researchPlans[selectedResearchTask.id]}
-                    events={researchEvents[selectedResearchTask.id] ?? []}
+                    events={selectedResearchEvents}
                     evidenceCount={currentEvidence.length}
                     expanded={selectedResearchExpanded}
                     onToggle={() =>
@@ -1215,6 +1262,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                         ? () => void cancelResearch(selectedResearchTask.id)
                         : undefined
                     }
+                  />
+                )}
+
+                {selectedResearchTask && researchAnswer && (
+                  <ResearchAnswer
+                    answer={researchAnswer}
+                    streaming={selectedResearchActive && !persistedResearchAnswer}
                   />
                 )}
 
@@ -1232,6 +1286,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 {!selectedIsLoading &&
                   !selectedFailed &&
                   !researchTaskIsActive(selectedResearchTask) &&
+                  !researchAnswer &&
                   (selectedHasNoResults || currentEvidence.length === 0) && (
                     <EmptyState
                       kind="no-results"

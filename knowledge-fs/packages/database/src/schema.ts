@@ -5325,8 +5325,8 @@ const tables = [
       },
       {
         expression: {
-          postgres: `"event_type" IN ('research_task.canceled', 'research_task.failed', 'research_task.paused', 'research_task.resumed', 'research_task.stage_changed', 'research_task.started')`,
-          tidb: "`event_type` IN ('research_task.canceled', 'research_task.failed', 'research_task.paused', 'research_task.resumed', 'research_task.stage_changed', 'research_task.started')",
+          postgres: `"event_type" IN ('research_task.answer_delta', 'research_task.canceled', 'research_task.failed', 'research_task.paused', 'research_task.resumed', 'research_task.stage_changed', 'research_task.started')`,
+          tidb: "`event_type` IN ('research_task.answer_delta', 'research_task.canceled', 'research_task.failed', 'research_task.paused', 'research_task.resumed', 'research_task.stage_changed', 'research_task.started')",
         },
         name: "research_task_progress_event_ck",
       },

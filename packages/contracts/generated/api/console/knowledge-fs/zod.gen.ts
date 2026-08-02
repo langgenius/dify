@@ -1272,6 +1272,7 @@ export const zKnowledgeFsResearchTaskPlanResponse = z.object({
  * KnowledgeFSResearchTaskPartialResponse
  */
 export const zKnowledgeFsResearchTaskPartialResponse = z.object({
+  answer: z.string().min(1).max(20000).nullish(),
   evidence_bundle: z.record(z.string(), z.unknown()),
   knowledge_space_id: z.string(),
   research_task_job_id: z.string(),

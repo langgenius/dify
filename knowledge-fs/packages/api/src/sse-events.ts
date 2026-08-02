@@ -47,6 +47,7 @@ function researchTaskSseEventName(event: ResearchTaskProgressEvent): string {
   if (event.stage === "completed") return "completed";
   if (event.stage === "failed") return "failed";
   if (event.stage === "canceled") return "cancelled";
+  if (event.type === "research_task.answer_delta") return "answer.delta";
   return "research_task.progress";
 }
 

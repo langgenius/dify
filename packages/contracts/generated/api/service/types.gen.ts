@@ -1427,6 +1427,7 @@ export type KnowledgeFsResearchTaskPartialListResponse = {
 }
 
 export type KnowledgeFsResearchTaskPartialResponse = {
+  answer?: string | null
   evidence_bundle: {
     [key: string]: unknown
   }

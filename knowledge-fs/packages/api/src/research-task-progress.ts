@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import type { ResearchTaskJob, ResearchTaskJobStage } from "./research-task-job";
 
 export type ResearchTaskProgressEventType =
+  | "research_task.answer_delta"
   | "research_task.canceled"
   | "research_task.failed"
   | "research_task.paused"
@@ -72,7 +73,12 @@ export interface ResearchTaskProgressPublisher {
     job: ResearchTaskJob,
     type: ResearchTaskProgressEventType,
     payload?: Record<string, unknown>,
+    options?: ResearchTaskProgressPublishOptions,
   ): Promise<ResearchTaskProgressEvent>;
+}
+
+export interface ResearchTaskProgressPublishOptions {
+  readonly idempotencyKey?: string | undefined;
 }
 
 export interface ResearchTaskProgressPublisherOptions {
@@ -221,9 +227,10 @@ export function createResearchTaskProgressPublisher({
   webhook,
 }: ResearchTaskProgressPublisherOptions): ResearchTaskProgressPublisher {
   return {
-    publish: async (job, type, payload = {}) => {
+    publish: async (job, type, payload = {}, options = {}) => {
       const event = await repository.append({
-        idempotencyKey: `research-task-progress:${job.id}:${job.rowVersion}:${type}`,
+        idempotencyKey:
+          options.idempotencyKey ?? `research-task-progress:${job.id}:${job.rowVersion}:${type}`,
         knowledgeSpaceId: job.knowledgeSpaceId,
         payload,
         researchTaskJobId: job.id,

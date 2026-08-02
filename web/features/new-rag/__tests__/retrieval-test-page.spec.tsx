@@ -11,6 +11,7 @@ const apiMock = vi.hoisted(() => ({
   createGolden: vi.fn(),
   createResearch: vi.fn(),
   planResearch: vi.fn(),
+  partials: [] as Array<Record<string, unknown>>,
   queryAdmission: vi.fn(),
   refetchPartials: vi.fn(),
   refetchTasks: vi.fn(),
@@ -39,7 +40,8 @@ vi.mock('../services/knowledge-query-events', () => ({
   streamKnowledgeQuery: apiMock.streamQuery,
 }))
 
-vi.mock('../services/research-task-events', () => ({
+vi.mock('../services/research-task-events', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/research-task-events')>()),
   streamResearchTaskEvents: apiMock.streamResearchEvents,
 }))
 
@@ -77,7 +79,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         }
       if (resource === 'partials')
         return {
-          data: undefined,
+          data: { data: apiMock.partials },
           refetch: apiMock.refetchPartials,
         }
       return { data: undefined, isPending: false }
@@ -207,6 +209,7 @@ describe('RetrievalTestPage', () => {
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
     apiMock.documentReferences = {}
     apiMock.evidence = undefined
+    apiMock.partials = []
     apiMock.traceDetail = undefined
     apiMock.traces = []
     navigationMock.trace = undefined
@@ -328,6 +331,95 @@ describe('RetrievalTestPage', () => {
     expect(screen.getByText('11s')).toBeInTheDocument()
     expect(apiMock.refetchTasks).not.toHaveBeenCalled()
     expect(apiMock.refetchPartials).not.toHaveBeenCalled()
+  })
+
+  it('renders generated Research answer deltas while the task is still active', async () => {
+    apiMock.researchTasks = [
+      {
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-active',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'What is the warranty?',
+        stage: 'generating',
+        updated_at: 1_800_000_005,
+      },
+    ]
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        onEvent({
+          createdAt: '2027-01-15T08:00:10.000Z',
+          id: 'answer-1',
+          payload: { delta: 'The warranty ', executionAttempt: 1, offset: 0 },
+          researchTaskJobId: 'research-active',
+          sequence: 1,
+          stage: 'generating',
+          type: 'research_task.answer_delta',
+        })
+        onEvent({
+          createdAt: '2027-01-15T08:00:11.000Z',
+          id: 'answer-2',
+          payload: { delta: 'is two years.', executionAttempt: 1, offset: 13 },
+          researchTaskJobId: 'research-active',
+          sequence: 2,
+          stage: 'generating',
+          type: 'research_task.answer_delta',
+        })
+        return { cursor: '2', reconnect: false, terminal: false }
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByText('What is the warranty?'))
+
+    const answer = await screen.findByText('The warranty is two years.')
+    expect(answer.closest('[aria-live="polite"]')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'dataset.newKnowledge.retrievalTest.generatingActive',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the persisted final answer when reopening completed Research history', async () => {
+    apiMock.researchTasks = [
+      {
+        completed_at: 1_800_000_025,
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-completed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'What is the warranty?',
+        stage: 'completed',
+        updated_at: 1_800_000_025,
+      },
+    ]
+    apiMock.partials = [
+      {
+        answer: 'The persisted warranty answer.',
+        evidence_bundle: {},
+        knowledge_space_id: 'space-1',
+        research_task_job_id: 'research-completed',
+        sequence: 1,
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByText('What is the warranty?'))
+
+    expect(await screen.findByText('The persisted warranty answer.')).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.retrievalTest.generating' }),
+    ).toBeInTheDocument()
   })
 
   it('reconnects an active research event stream from its latest cursor', async () => {

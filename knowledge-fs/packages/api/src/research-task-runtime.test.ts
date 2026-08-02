@@ -276,8 +276,9 @@ describe("research task production runtime", () => {
           generationInputs.push(input);
           yield traceStep("query.retrieve");
           yield traceStep("query.answer");
-          yield { delta: "The warranty ", type: "delta" as const };
-          yield { delta: "is two years.", type: "delta" as const };
+          for (const delta of "The warranty is two years.") {
+            yield { delta, type: "delta" as const };
+          }
           yield {
             finishReason: "retrieval-evidence",
             metadata: { evidenceBundle: evidenceBundle() },
@@ -339,6 +340,16 @@ describe("research task production runtime", () => {
         { stage: "retrieving", type: "research_task.stage_changed" },
         { stage: "analyzing", type: "research_task.stage_changed" },
         { stage: "generating", type: "research_task.stage_changed" },
+        {
+          payload: { delta: "T", executionAttempt: 1, offset: 0 },
+          stage: "generating",
+          type: "research_task.answer_delta",
+        },
+        {
+          payload: { delta: "he warranty is two years.", executionAttempt: 1, offset: 1 },
+          stage: "generating",
+          type: "research_task.answer_delta",
+        },
         { stage: "completed", type: "research_task.stage_changed" },
       ],
     });

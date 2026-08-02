@@ -702,6 +702,14 @@ describe("database schema catalog", () => {
       "research_task_progress_event_ck",
       "research_task_progress_stage_ck",
     ]);
+    expect(
+      progress.checkConstraints?.find(
+        (constraint) => constraint.name === "research_task_progress_event_ck",
+      )?.expression,
+    ).toEqual({
+      postgres: expect.stringContaining("'research_task.answer_delta'"),
+      tidb: expect.stringContaining("'research_task.answer_delta'"),
+    });
     expect(progress.foreignKeys).toEqual([
       {
         columns: ["tenant_id", "knowledge_space_id", "research_task_job_id"],

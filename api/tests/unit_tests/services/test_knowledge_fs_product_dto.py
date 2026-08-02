@@ -30,6 +30,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSQualityListQuery,
     KnowledgeFSRerankIntent,
+    KnowledgeFSResearchTaskPartialListResponse,
     KnowledgeFSRetrievalProfileIntent,
     KnowledgeFSScoreThresholdIntent,
     KnowledgeFSSettingsPayload,
@@ -154,6 +155,34 @@ def test_knowledge_fs_responses_translate_each_kfs_wire_shape() -> None:
     assert diff.new_path == "/knowledge/docs/new.md"
     assert cat.content_type == "text/markdown"
     assert stat.size_bytes == 5
+
+
+def test_research_task_partials_preserve_the_generated_answer() -> None:
+    response = KnowledgeFSResearchTaskPartialListResponse.model_validate(
+        {
+            "items": [
+                {
+                    "answer": "The warranty is two years.",
+                    "evidenceBundle": {"evidence": []},
+                    "knowledgeSpaceId": "space-1",
+                    "researchTaskJobId": "research-1",
+                    "sequence": 1,
+                }
+            ]
+        }
+    )
+
+    assert response.model_dump(mode="json", exclude_none=True) == {
+        "data": [
+            {
+                "answer": "The warranty is two years.",
+                "evidence_bundle": {"evidence": []},
+                "knowledge_space_id": "space-1",
+                "research_task_job_id": "research-1",
+                "sequence": 1,
+            }
+        ]
+    }
 
 
 def test_space_list_item_serializes_naive_database_timestamps_as_utc() -> None:

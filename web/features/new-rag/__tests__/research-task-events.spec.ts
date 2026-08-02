@@ -1,5 +1,9 @@
 import type { KnowledgeFsStreamCapabilityResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import { streamResearchTaskEvents } from '../services/research-task-events'
+import type { ResearchTaskProgressEvent } from '../services/research-task-events'
+import {
+  researchTaskAnswerFromEvents,
+  streamResearchTaskEvents,
+} from '../services/research-task-events'
 
 describe('streamResearchTaskEvents', () => {
   it('gets the capability stream and validates progress events', async () => {
@@ -13,7 +17,12 @@ describe('streamResearchTaskEvents', () => {
         )
         controller.enqueue(
           encoder.encode(
-            'id: 2\nevent: completed\ndata: {"createdAt":"2026-07-31T10:00:12.000Z","id":"event-2","payload":{},"researchTaskJobId":"task-1","sequence":2,"stage":"completed","type":"research_task.stage_changed"}\n\n',
+            'id: 2\nevent: answer.delta\ndata: {"createdAt":"2026-07-31T10:00:10.000Z","id":"event-2","payload":{"delta":"The answer","executionAttempt":1,"offset":0},"researchTaskJobId":"task-1","sequence":2,"stage":"generating","type":"research_task.answer_delta"}\n\n',
+          ),
+        )
+        controller.enqueue(
+          encoder.encode(
+            'id: 3\nevent: completed\ndata: {"createdAt":"2026-07-31T10:00:12.000Z","id":"event-3","payload":{},"researchTaskJobId":"task-1","sequence":3,"stage":"completed","type":"research_task.stage_changed"}\n\n',
           ),
         )
         controller.close()
@@ -58,18 +67,70 @@ describe('streamResearchTaskEvents', () => {
         type: 'research_task.started',
       },
       {
-        createdAt: '2026-07-31T10:00:12.000Z',
+        createdAt: '2026-07-31T10:00:10.000Z',
         id: 'event-2',
-        payload: {},
+        payload: { delta: 'The answer', executionAttempt: 1, offset: 0 },
         researchTaskJobId: 'task-1',
         sequence: 2,
+        stage: 'generating',
+        type: 'research_task.answer_delta',
+      },
+      {
+        createdAt: '2026-07-31T10:00:12.000Z',
+        id: 'event-3',
+        payload: {},
+        researchTaskJobId: 'task-1',
+        sequence: 3,
         stage: 'completed',
         type: 'research_task.stage_changed',
       },
     ])
-    expect(result).toEqual({ cursor: '2', reconnect: false, terminal: true })
+    expect(result).toEqual({ cursor: '3', reconnect: false, terminal: true })
 
     fetchMock.mockRestore()
+  })
+
+  it('reconstructs answer deltas idempotently and resets a retried attempt', () => {
+    const event = (
+      sequence: number,
+      type: ResearchTaskProgressEvent['type'],
+      payload: Record<string, unknown>,
+    ): ResearchTaskProgressEvent => ({
+      createdAt: `2026-07-31T10:00:0${sequence}.000Z`,
+      id: `event-${sequence}`,
+      payload,
+      researchTaskJobId: 'task-1',
+      sequence,
+      stage: 'generating',
+      type,
+    })
+
+    expect(
+      researchTaskAnswerFromEvents([
+        event(1, 'research_task.stage_changed', { executionAttempt: 1, workerClaimed: true }),
+        event(2, 'research_task.answer_delta', {
+          delta: 'Old answer',
+          executionAttempt: 1,
+          offset: 0,
+        }),
+        event(3, 'research_task.answer_delta', {
+          delta: 'Old answer',
+          executionAttempt: 1,
+          offset: 0,
+        }),
+        event(4, 'research_task.stage_changed', { executionAttempt: 2, workerClaimed: true }),
+        event(5, 'research_task.answer_delta', {
+          delta: 'New ',
+          executionAttempt: 2,
+          offset: 0,
+        }),
+        event(6, 'research_task.answer_delta', {
+          delta: 'answer',
+          executionAttempt: 2,
+          offset: 4,
+        }),
+      ]),
+    ).toBe('New answer')
   })
 
   it('resumes from the latest cursor after a timeout', async () => {

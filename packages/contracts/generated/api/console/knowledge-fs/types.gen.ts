@@ -1231,6 +1231,7 @@ export type KnowledgeFsResearchTaskRetrievalPlanResponse = {
 }
 
 export type KnowledgeFsResearchTaskPartialResponse = {
+  answer?: string | null
   evidence_bundle: {
     [key: string]: unknown
   }

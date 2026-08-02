@@ -12,6 +12,7 @@ export type ResearchTaskProgressEvent = {
   sequence: number
   stage: KnowledgeFsResearchTaskResponse['stage']
   type:
+    | 'research_task.answer_delta'
     | 'research_task.canceled'
     | 'research_task.failed'
     | 'research_task.paused'
@@ -39,6 +40,7 @@ const researchStages = new Set<KnowledgeFsResearchTaskResponse['stage']>([
 ])
 
 const progressEventTypes = new Set<ResearchTaskProgressEvent['type']>([
+  'research_task.answer_delta',
   'research_task.canceled',
   'research_task.failed',
   'research_task.paused',
@@ -89,6 +91,59 @@ function timeoutCursor(data: unknown) {
   if (!data || typeof data !== 'object') return
   const cursor = (data as Record<string, unknown>).cursor
   return typeof cursor === 'string' && cursor ? cursor : undefined
+}
+
+function positiveSafeInteger(value: unknown) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined
+}
+
+function nonnegativeSafeInteger(value: unknown) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+}
+
+export function researchTaskAnswerFromEvents(events: ResearchTaskProgressEvent[]) {
+  let executionAttempt = 0
+  let text = ''
+
+  for (const event of [...events].sort((left, right) => left.sequence - right.sequence)) {
+    const eventAttempt = positiveSafeInteger(event.payload.executionAttempt)
+    if (
+      event.type !== 'research_task.answer_delta' &&
+      event.payload.workerClaimed === true &&
+      eventAttempt !== undefined &&
+      eventAttempt > executionAttempt
+    ) {
+      executionAttempt = eventAttempt
+      text = ''
+      continue
+    }
+    if (event.type !== 'research_task.answer_delta') continue
+
+    const delta = event.payload.delta
+    const offset = nonnegativeSafeInteger(event.payload.offset)
+    if (
+      eventAttempt === undefined ||
+      offset === undefined ||
+      offset > 20_000 ||
+      typeof delta !== 'string' ||
+      !delta ||
+      delta.length > 20_000 ||
+      eventAttempt < executionAttempt
+    )
+      continue
+    if (eventAttempt > executionAttempt) {
+      executionAttempt = eventAttempt
+      text = ''
+    }
+    if (offset > text.length) continue
+
+    const overlap = text.slice(offset)
+    if (overlap.startsWith(delta)) continue
+    if (!delta.startsWith(overlap)) continue
+    text += delta.slice(overlap.length)
+  }
+
+  return text
 }
 
 export async function streamResearchTaskEvents({
