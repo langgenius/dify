@@ -12,6 +12,7 @@ from configs import dify_config
 from controllers.console.workspace.model_providers import (
     ModelProviderCredentialApi,
     ModelProviderCredentialSwitchApi,
+    ModelProviderCreditsApi,
     ModelProviderIconApi,
     ModelProviderListApi,
     ModelProviderPaymentCheckoutUrlApi,
@@ -30,6 +31,7 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
     SystemConfigurationResponse,
 )
+from services.workspace_service import EffectiveCreditPool
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
@@ -138,6 +140,60 @@ class TestModelProviderListApi:
 
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=None)
         assert result == {"data": []}
+
+
+class TestModelProviderCreditsApi:
+    def test_get_success(self):
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        session = SimpleNamespace()
+        credit_pool = EffectiveCreditPool(
+            plan="team",
+            pool_type="paid",
+            quota_limit=-1,
+            quota_used=999,
+            next_credit_reset_date=1775001600,
+        )
+
+        with patch(
+            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
+            return_value=credit_pool,
+        ) as get_effective_credit_pool:
+            result = method(api, session, "tenant1")
+
+        get_effective_credit_pool.assert_called_once_with("tenant1", session=session)
+        assert result == {
+            "pool_type": "paid",
+            "quota_limit": -1,
+            "quota_used": 999,
+            "remaining_credits": -1,
+            "is_unlimited": True,
+            "is_exhausted": False,
+            "exhausted_at": None,
+            "next_credit_reset_date": 1775001600,
+        }
+
+    def test_get_without_effective_pool(self):
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        session = SimpleNamespace()
+
+        with patch(
+            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
+            return_value=EffectiveCreditPool(),
+        ):
+            result = method(api, session, "tenant1")
+
+        assert result == {
+            "pool_type": None,
+            "quota_limit": None,
+            "quota_used": None,
+            "remaining_credits": None,
+            "is_unlimited": False,
+            "is_exhausted": True,
+            "exhausted_at": None,
+            "next_credit_reset_date": None,
+        }
 
 
 class TestModelProviderCredentialApi:

@@ -10597,6 +10597,13 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
 
+### [GET] /workspaces/current/model-providers/credits
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider credits retrieved successfully | **application/json**: [ModelProviderCreditsResponse](#modelprovidercreditsresponse)<br> |
+
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
 
@@ -12815,6 +12822,13 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
+
+### [GET] /workspaces/custom-config
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -19360,6 +19374,19 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
+
+#### ModelProviderCreditsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| exhausted_at | integer |  | Yes |
+| is_exhausted | boolean |  | Yes |
+| is_unlimited | boolean |  | Yes |
+| next_credit_reset_date | integer |  | Yes |
+| pool_type | string |  | Yes |
+| quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
+| quota_used | integer |  | Yes |
+| remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
 
 #### ModelProviderListResponse
 

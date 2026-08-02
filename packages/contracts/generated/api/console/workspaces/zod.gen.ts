@@ -159,6 +159,20 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
+ * ModelProviderCreditsResponse
+ */
+export const zModelProviderCreditsResponse = z.object({
+  exhausted_at: z.int().nullable(),
+  is_exhausted: z.boolean(),
+  is_unlimited: z.boolean(),
+  next_credit_reset_date: z.int().nullable(),
+  pool_type: z.enum(['paid', 'trial']).nullable(),
+  quota_limit: z.int().nullable(),
+  quota_used: z.int().nullable(),
+  remaining_credits: z.int().nullable(),
+})
+
+/**
  * ModelProviderPaymentCheckoutUrlResponse
  */
 export const zModelProviderPaymentCheckoutUrlResponse = z.object({
@@ -577,55 +591,6 @@ export const zTriggerProviderErrorResponse = z.object({
 })
 
 /**
- * WorkspaceCustomConfigPayload
- */
-export const zWorkspaceCustomConfigPayload = z.object({
-  remove_webapp_brand: z.boolean().nullish(),
-  replace_webapp_logo: z.string().nullish(),
-})
-
-/**
- * WorkspaceLogoUploadResponse
- */
-export const zWorkspaceLogoUploadResponse = z.object({
-  id: z.string(),
-})
-
-/**
- * WorkspaceInfoPayload
- */
-export const zWorkspaceInfoPayload = z.object({
-  name: z.string(),
-})
-
-/**
- * SwitchWorkspacePayload
- */
-export const zSwitchWorkspacePayload = z.object({
-  tenant_id: z.string(),
-})
-
-/**
- * TenantListItemResponse
- */
-export const zTenantListItemResponse = z.object({
-  created_at: z.int().nullish(),
-  current: z.boolean(),
-  id: z.string(),
-  last_opened_at: z.int().nullish(),
-  name: z.string().nullish(),
-  plan: z.string().nullish(),
-  status: z.string().nullish(),
-})
-
-/**
- * TenantListResponse
- */
-export const zTenantListResponse = z.object({
-  workspaces: z.array(zTenantListItemResponse),
-})
-
-/**
  * WorkspaceCustomConfigResponse
  */
 export const zWorkspaceCustomConfigResponse = z.object({
@@ -653,6 +618,14 @@ export const zTenantInfoResponse = z.object({
 })
 
 /**
+ * WorkspaceCustomConfigPayload
+ */
+export const zWorkspaceCustomConfigPayload = z.object({
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
+})
+
+/**
  * WorkspaceTenantResultResponse
  */
 export const zWorkspaceTenantResultResponse = z.object({
@@ -661,11 +634,52 @@ export const zWorkspaceTenantResultResponse = z.object({
 })
 
 /**
+ * WorkspaceLogoUploadResponse
+ */
+export const zWorkspaceLogoUploadResponse = z.object({
+  id: z.string(),
+})
+
+/**
+ * WorkspaceInfoPayload
+ */
+export const zWorkspaceInfoPayload = z.object({
+  name: z.string(),
+})
+
+/**
+ * SwitchWorkspacePayload
+ */
+export const zSwitchWorkspacePayload = z.object({
+  tenant_id: z.string(),
+})
+
+/**
  * SwitchWorkspaceResponse
  */
 export const zSwitchWorkspaceResponse = z.object({
   new_tenant: zTenantInfoResponse,
   result: z.string(),
+})
+
+/**
+ * TenantListItemResponse
+ */
+export const zTenantListItemResponse = z.object({
+  created_at: z.int().nullish(),
+  current: z.boolean(),
+  id: z.string(),
+  last_opened_at: z.int().nullish(),
+  name: z.string().nullish(),
+  plan: z.string().nullish(),
+  status: z.string().nullish(),
+})
+
+/**
+ * TenantListResponse
+ */
+export const zTenantListResponse = z.object({
+  workspaces: z.array(zTenantListItemResponse),
 })
 
 /**
@@ -3707,6 +3721,11 @@ export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
  */
 export const zGetWorkspacesCurrentModelProvidersResponse = zModelProviderListResponse
 
+/**
+ * Model provider credits retrieved successfully
+ */
+export const zGetWorkspacesCurrentModelProvidersCreditsResponse = zModelProviderCreditsResponse
+
 export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.object({
   provider: z.string(),
 })
@@ -5263,6 +5282,11 @@ export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsU
  * Trigger providers retrieved successfully
  */
 export const zGetWorkspacesCurrentTriggersResponse = zTriggerProviderListResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCustomConfigResponse = zWorkspaceCustomConfigResponse
 
 export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 

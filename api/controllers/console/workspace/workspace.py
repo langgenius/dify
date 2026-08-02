@@ -397,6 +397,31 @@ class SwitchWorkspaceApi(Resource):
 
 @console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceCustomConfigResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str):
+        tenant = TenantService.get_tenant_by_id(current_tenant_id, session=session)
+        if tenant is None:
+            raise NotFound()
+
+        custom_config = tenant.custom_config_dict
+        replace_webapp_logo = (
+            f"{dify_config.FILES_URL}/files/workspaces/{tenant.id}/webapp-logo"
+            if custom_config.get("replace_webapp_logo")
+            else None
+        )
+        return dump_response(
+            WorkspaceCustomConfigResponse,
+            {
+                "remove_webapp_brand": custom_config.get("remove_webapp_brand", False),
+                "replace_webapp_logo": replace_webapp_logo,
+            },
+        )
+
     @console_ns.expect(console_ns.models[WorkspaceCustomConfigPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @setup_required

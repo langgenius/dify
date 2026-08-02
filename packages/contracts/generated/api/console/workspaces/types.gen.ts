@@ -227,6 +227,17 @@ export type ModelProviderListResponse = {
   data: Array<ProviderResponse>
 }
 
+export type ModelProviderCreditsResponse = {
+  exhausted_at: number | null
+  is_exhausted: boolean
+  is_unlimited: boolean
+  next_credit_reset_date: number | null
+  pool_type: 'paid' | 'trial' | null
+  quota_limit: number | null
+  quota_used: number | null
+  remaining_credits: number | null
+}
+
 export type ModelProviderPaymentCheckoutUrlResponse = {
   payment_link: string
 }
@@ -1009,6 +1020,11 @@ export type TriggerOAuthAuthorizeResponse = {
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
 
+export type WorkspaceCustomConfigResponse = {
+  remove_webapp_brand?: boolean | null
+  replace_webapp_logo?: string | null
+}
+
 export type WorkspaceCustomConfigPayload = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
@@ -1044,11 +1060,6 @@ export type TenantListItemResponse = {
   name?: string | null
   plan?: string | null
   status?: string | null
-}
-
-export type WorkspaceCustomConfigResponse = {
-  remove_webapp_brand?: boolean | null
-  replace_webapp_logo?: string | null
 }
 
 export type SnippetListItemResponse = {
@@ -3036,6 +3047,20 @@ export type GetWorkspacesCurrentModelProvidersResponses = {
 
 export type GetWorkspacesCurrentModelProvidersResponse =
   GetWorkspacesCurrentModelProvidersResponses[keyof GetWorkspacesCurrentModelProvidersResponses]
+
+export type GetWorkspacesCurrentModelProvidersCreditsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/credits'
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponses = {
+  200: ModelProviderCreditsResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponse =
+  GetWorkspacesCurrentModelProvidersCreditsResponses[keyof GetWorkspacesCurrentModelProvidersCreditsResponses]
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   body?: never
@@ -5550,6 +5575,20 @@ export type GetWorkspacesCurrentTriggersResponses = {
 
 export type GetWorkspacesCurrentTriggersResponse =
   GetWorkspacesCurrentTriggersResponses[keyof GetWorkspacesCurrentTriggersResponses]
+
+export type GetWorkspacesCustomConfigData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/custom-config'
+}
+
+export type GetWorkspacesCustomConfigResponses = {
+  200: WorkspaceCustomConfigResponse
+}
+
+export type GetWorkspacesCustomConfigResponse =
+  GetWorkspacesCustomConfigResponses[keyof GetWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigData = {
   body: WorkspaceCustomConfigPayload

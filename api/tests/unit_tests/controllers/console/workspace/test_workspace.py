@@ -10,7 +10,7 @@ from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 import services
 from controllers.common.errors import (
@@ -480,6 +480,43 @@ class TestSwitchWorkspaceApi:
 
 
 class TestCustomConfigWorkspaceApi:
+    def test_get_workspace_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+
+        with app.test_request_context("/workspaces/custom-config"), pytest.raises(NotFound):
+            method(api, workspace_session, "missing")
+
+    def test_get_defaults(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(custom_config={})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with app.test_request_context("/workspaces/custom-config"):
+            result = method(api, workspace_session, tenant.id)
+
+        assert result == {"remove_webapp_brand": False, "replace_webapp_logo": None}
+
+    def test_get_configured_brand(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = CustomConfigWorkspaceApi()
+        method = unwrap(api.get)
+        tenant = make_tenant(custom_config={"remove_webapp_brand": True, "replace_webapp_logo": "logo-file-id"})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with (
+            app.test_request_context("/workspaces/custom-config"),
+            patch("controllers.console.workspace.workspace.dify_config.FILES_URL", "https://files.example.com"),
+        ):
+            result = method(api, workspace_session, tenant.id)
+
+        assert result == {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo",
+        }
+
     def test_post_success(self, app: Flask, workspace_session: scoped_session[Session]):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
