@@ -149,6 +149,7 @@ def is_core_coverage_path(path: str) -> bool:
     if path in {
         "api/commands/knowledge_fs.py",
         "api/configs/extra/knowledge_fs_config.py",
+        "api/controllers/openapi/knowledge_fs.py",
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/services/knowledge_fs_capability.py",
     }:
