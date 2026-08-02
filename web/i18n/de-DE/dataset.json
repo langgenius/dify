@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Ihre Übersicht füllt sich mit der Bearbeitung der Dokumente.",
   "newKnowledge.overview.indexingInProgress": "Indizierung läuft",
   "newKnowledge.overview.indexingInProgressDescription": "Dokumente und Slices werden hier angezeigt, wenn die Indizierung abgeschlossen ist.",
+  "newKnowledge.overview.indexingSource": "Indizierung von {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Letzte 30 Tage",
   "newKnowledge.overview.last7Days": "Letzte 7 Tage",

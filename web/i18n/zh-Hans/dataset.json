@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "文档处理完成后，概览数据会自动显示。",
   "newKnowledge.overview.indexingInProgress": "正在索引",
   "newKnowledge.overview.indexingInProgressDescription": "文档和分段将在索引完成时显示在这里。",
+  "newKnowledge.overview.indexingSource": "正在索引 {{source}}",
   "newKnowledge.overview.inventory": "知识库存",
   "newKnowledge.overview.last30Days": "过去 30 天",
   "newKnowledge.overview.last7Days": "过去 7 天",

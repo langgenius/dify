@@ -416,6 +416,20 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/overview/inventory",
             "knowledge_space",
         ),
+        "listKnowledgeSpaceOverviewAttention": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.overview.attention.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/overview/attention",
+            "knowledge_space",
+        ),
+        "listKnowledgeSpaceOverviewActivity": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.overview.activity.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/overview/activity",
+            "knowledge_space",
+        ),
         "getKnowledgeSpaceProductHealth": KnowledgeFSCapabilityOperation(
             "knowledge_spaces.overview.health.read",
             _STANDARD_CALLERS,

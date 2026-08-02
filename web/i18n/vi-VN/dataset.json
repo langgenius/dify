@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Trang tổng quan sẽ được cập nhật khi tài liệu được xử lý.",
   "newKnowledge.overview.indexingInProgress": "Đang lập chỉ mục",
   "newKnowledge.overview.indexingInProgressDescription": "Tài liệu và phân đoạn sẽ xuất hiện tại đây khi quá trình lập chỉ mục hoàn tất.",
+  "newKnowledge.overview.indexingSource": "Đang lập chỉ mục {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "30 ngày qua",
   "newKnowledge.overview.last7Days": "7 ngày qua",

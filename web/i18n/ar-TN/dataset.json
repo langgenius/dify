@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "سيتم ملء النظرة العامة الخاصة بك أثناء معالجة المستندات.",
   "newKnowledge.overview.indexingInProgress": "الفهرسة قيد التقدم",
   "newKnowledge.overview.indexingInProgressDescription": "ستظهر المستندات والشرائح هنا عند اكتمال الفهرسة.",
+  "newKnowledge.overview.indexingSource": "فهرسة {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "آخر 30 يومًا",
   "newKnowledge.overview.last7Days": "آخر 7 أيام",

@@ -27,6 +27,8 @@ export const KnowledgeSpaceAttentionParamsSchema = z.object({
 export const ListKnowledgeSpaceActivityQuerySchema = z
   .object({
     action: z.enum(KnowledgeSpaceActivityActions).optional(),
+    actorId: z.string().min(1).max(255).optional(),
+    actorType: z.enum(["member", "system"]).optional(),
     cursor: z.string().min(1).max(512).optional(),
     from: IsoDateTimeSchema.optional(),
     limit: BoundedOverviewLimitSchema,
@@ -35,6 +37,9 @@ export const ListKnowledgeSpaceActivityQuerySchema = z
     to: IsoDateTimeSchema.optional(),
   })
   .strict()
+  .refine((value) => value.actorType !== "system" || !value.actorId, {
+    message: "actorId cannot be combined with the system actor type",
+  })
   .refine((value) => !value.from || !value.to || value.from <= value.to, {
     message: "from must not be after to",
   });

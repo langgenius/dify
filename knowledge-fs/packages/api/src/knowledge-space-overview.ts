@@ -68,6 +68,8 @@ export interface KnowledgeSpaceActivityCursor {
 
 export interface ListKnowledgeSpaceActivityInput {
   readonly action?: KnowledgeSpaceActivityAction | undefined;
+  readonly actorId?: string | undefined;
+  readonly actorType?: "member" | "system" | undefined;
   readonly candidateGrants: readonly string[];
   readonly cursor?: KnowledgeSpaceActivityCursor | undefined;
   readonly from?: string | undefined;
@@ -398,6 +400,8 @@ export function createInMemoryKnowledgeSpaceOverviewRepository(options: {
             candidatePermissionScopeAllows(event.requiredPermissionScope, input.candidateGrants),
         )
         .filter((event) => !input.action || event.action === input.action)
+        .filter((event) => !input.actorType || event.actor.type === input.actorType)
+        .filter((event) => !input.actorId || event.actor.id === input.actorId)
         .filter((event) => !input.resourceType || event.resource.type === input.resourceType)
         .filter((event) => !input.result || event.result === input.result)
         .filter((event) => !input.from || event.occurredAt >= input.from)

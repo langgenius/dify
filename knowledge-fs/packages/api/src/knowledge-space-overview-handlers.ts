@@ -107,6 +107,8 @@ export function registerKnowledgeSpaceOverviewHandlers(input: {
     try {
       const result = await input.overview.listActivity({
         ...(query.action ? { action: query.action } : {}),
+        ...(query.actorId ? { actorId: query.actorId } : {}),
+        ...(query.actorType ? { actorType: query.actorType } : {}),
         candidateGrants: scope.candidateGrants,
         ...(query.cursor ? { cursor: decodeKnowledgeSpaceActivityCursor(query.cursor) } : {}),
         ...(query.from ? { from: query.from } : {}),

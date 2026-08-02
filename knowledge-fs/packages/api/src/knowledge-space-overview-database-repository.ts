@@ -93,6 +93,14 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
         params.push(input.action);
         filters.push(`event.${q(database, "action")} = ${p(database, params.length)}`);
       }
+      if (input.actorType) {
+        params.push(input.actorType);
+        filters.push(`event.${q(database, "actor_type")} = ${p(database, params.length)}`);
+      }
+      if (input.actorId) {
+        params.push(input.actorId);
+        filters.push(`event.${q(database, "actor_subject_id")} = ${p(database, params.length)}`);
+      }
       if (input.resourceType) {
         params.push(input.resourceType);
         filters.push(`event.${q(database, "resource_type")} = ${p(database, params.length)}`);

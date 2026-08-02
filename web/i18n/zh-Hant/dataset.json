@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "文件處理完成後，概覽資料會自動顯示。",
   "newKnowledge.overview.indexingInProgress": "正在建立索引",
   "newKnowledge.overview.indexingInProgressDescription": "文件和分段會在索引建立完成時顯示於此。",
+  "newKnowledge.overview.indexingSource": "正在索引 {{source}}",
   "newKnowledge.overview.inventory": "知識庫存",
   "newKnowledge.overview.last30Days": "過去 30 天",
   "newKnowledge.overview.last7Days": "過去 7 天",

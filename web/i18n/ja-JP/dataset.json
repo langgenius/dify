@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "文書が処理されると、概要が入力されます。",
   "newKnowledge.overview.indexingInProgress": "インデックス作成中です",
   "newKnowledge.overview.indexingInProgressDescription": "インデックス作成が完了すると、ドキュメントとスライスがここに表示されます。",
+  "newKnowledge.overview.indexingSource": "{{source}} のインデックス作成",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "過去 30 日間",
   "newKnowledge.overview.last7Days": "過去 7 日間",

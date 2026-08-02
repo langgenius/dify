@@ -355,6 +355,15 @@ export type KnowledgeFsPermissionListResponse = {
   data: Array<KnowledgeFsPermissionResponse>
 }
 
+export type KnowledgeFsOverviewActivityListResponse = {
+  data: Array<KnowledgeFsOverviewActivityResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsOverviewAttentionListResponse = {
+  data: Array<KnowledgeFsOverviewAttentionResponse>
+}
+
 export type KnowledgeFsOverviewHealthResponse = {
   components: KnowledgeFsOverviewHealthComponentsResponse
   generated_at: string
@@ -1042,6 +1051,49 @@ export type KnowledgeFsPermissionResponse = {
   status: string
 }
 
+export type KnowledgeFsOverviewActivityResponse = {
+  action:
+    | 'document.failed'
+    | 'document.published'
+    | 'permission.updated'
+    | 'profile.published'
+    | 'query.completed'
+    | 'query.failed'
+    | 'query.requested'
+    | 'settings.updated'
+    | 'source.failed'
+    | 'source.synced'
+    | 'worker.failed'
+  actor: KnowledgeFsOverviewActivityActorResponse
+  details: {
+    [key: string]: boolean | number | string
+  }
+  id: string
+  occurred_at: string
+  resource: KnowledgeFsOverviewActivityResourceResponse
+  result: 'canceled' | 'failure' | 'pending' | 'success'
+}
+
+export type KnowledgeFsOverviewAttentionResponse = {
+  action: KnowledgeFsOverviewAttentionActionResponse
+  dismissed_until?: string | null
+  evidence: Array<KnowledgeFsOverviewAttentionEvidenceResponse>
+  issue_key: string
+  knowledge_space_id: string
+  resource: KnowledgeFsOverviewAttentionResourceResponse
+  revision: number
+  rule_id:
+    | 'failed-document'
+    | 'low-quality-query'
+    | 'model-readiness'
+    | 'permission-readiness'
+    | 'stale-source'
+  severity: 'critical' | 'info' | 'warning'
+  status: 'active' | 'dismissed' | 'resolved'
+  title: string
+  updated_at: string
+}
+
 export type KnowledgeFsOverviewHealthComponentsResponse = {
   index: KnowledgeFsOverviewHealthComponentResponse
   ingestion: KnowledgeFsOverviewHealthComponentResponse
@@ -1319,6 +1371,41 @@ export type KnowledgeFsDurableDeletionProgressResponse = {
 }
 
 export type KnowledgeFsControlSpacePermissionRole = 'editor' | 'owner' | 'viewer'
+
+export type KnowledgeFsOverviewActivityActorResponse = {
+  id?: string | null
+  type: 'member' | 'system'
+}
+
+export type KnowledgeFsOverviewActivityResourceResponse = {
+  id?: string | null
+  type:
+    | 'document'
+    | 'knowledge-space'
+    | 'permission'
+    | 'profile'
+    | 'publication'
+    | 'query'
+    | 'source'
+    | 'worker'
+}
+
+export type KnowledgeFsOverviewAttentionActionResponse = {
+  kind: 'open-resource' | 'review-models' | 'review-permissions'
+  resource_id?: string | null
+  resource_type: 'document' | 'failed-query' | 'knowledge-space' | 'source'
+}
+
+export type KnowledgeFsOverviewAttentionEvidenceResponse = {
+  code: string
+  observed_at: string
+  value?: number | string | null
+}
+
+export type KnowledgeFsOverviewAttentionResourceResponse = {
+  id: string
+  type: 'document' | 'failed-query' | 'knowledge-space' | 'source'
+}
 
 export type KnowledgeFsOverviewHealthComponentResponse = {
   codes: Array<string>
@@ -2131,6 +2218,70 @@ export type PutKnowledgeFsSpacesByControlSpaceIdMembersResponses = {
 
 export type PutKnowledgeFsSpacesByControlSpaceIdMembersResponse =
   PutKnowledgeFsSpacesByControlSpaceIdMembersResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdMembersResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    action?:
+      | 'document.failed'
+      | 'document.published'
+      | 'permission.updated'
+      | 'profile.published'
+      | 'query.completed'
+      | 'query.failed'
+      | 'query.requested'
+      | 'settings.updated'
+      | 'source.failed'
+      | 'source.synced'
+      | 'worker.failed'
+    actor_id?: string
+    actor_type?: 'member' | 'system'
+    cursor?: string
+    from_at?: string
+    limit?: number
+    resource_type?:
+      | 'document'
+      | 'knowledge-space'
+      | 'permission'
+      | 'profile'
+      | 'publication'
+      | 'query'
+      | 'source'
+      | 'worker'
+    result?: 'canceled' | 'failure' | 'pending' | 'success'
+    to_at?: string
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/overview/activity'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponses = {
+  200: KnowledgeFsOverviewActivityListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    include_dismissed?: boolean
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/overview/attention'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponses = {
+  200: KnowledgeFsOverviewAttentionListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthData = {
   body?: never

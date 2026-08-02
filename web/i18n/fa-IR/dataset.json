@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "نمای کلی شما با پردازش اسناد تکمیل می شود.",
   "newKnowledge.overview.indexingInProgress": "نمایه سازی در حال انجام است",
   "newKnowledge.overview.indexingInProgressDescription": "اسناد و برش ها در اینجا به عنوان نمایه سازی کامل نشان داده می شوند.",
+  "newKnowledge.overview.indexingSource": "نمایه‌سازی {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "30 روز گذشته",
   "newKnowledge.overview.last7Days": "7 روز گذشته",

@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Огляд заповнюватиметься в міру обробки документів.",
   "newKnowledge.overview.indexingInProgress": "Триває індексування",
   "newKnowledge.overview.indexingInProgressDescription": "Документи та фрагменти з’являтимуться тут у міру завершення індексування.",
+  "newKnowledge.overview.indexingSource": "Індексування {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Останні 30 днів",
   "newKnowledge.overview.last7Days": "Останні 7 днів",

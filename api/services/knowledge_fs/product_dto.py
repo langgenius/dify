@@ -530,6 +530,161 @@ class KnowledgeFSOverviewHealthResponse(ResponseModel):
     state: Literal["healthy", "degraded", "unavailable", "unknown"]
 
 
+class KnowledgeFSOverviewAttentionListQuery(BaseModel):
+    include_dismissed: bool = False
+    limit: int = Field(default=50, ge=1, le=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSOverviewAttentionActionResponse(ResponseModel):
+    kind: Literal["open-resource", "review-permissions", "review-models"]
+    resource_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("resource_id", "resourceId"),
+    )
+    resource_type: Literal["knowledge-space", "document", "source", "failed-query"] = Field(
+        validation_alias=AliasChoices("resource_type", "resourceType")
+    )
+
+
+class KnowledgeFSOverviewAttentionEvidenceResponse(ResponseModel):
+    code: str
+    observed_at: datetime = Field(validation_alias=AliasChoices("observed_at", "observedAt"))
+    value: float | str | None = None
+
+
+class KnowledgeFSOverviewAttentionResourceResponse(ResponseModel):
+    id: str
+    type: Literal["knowledge-space", "document", "source", "failed-query"]
+
+
+class KnowledgeFSOverviewAttentionResponse(ResponseModel):
+    action: KnowledgeFSOverviewAttentionActionResponse
+    dismissed_until: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices("dismissed_until", "dismissedUntil"),
+    )
+    evidence: list[KnowledgeFSOverviewAttentionEvidenceResponse]
+    issue_key: str = Field(validation_alias=AliasChoices("issue_key", "issueKey"))
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    resource: KnowledgeFSOverviewAttentionResourceResponse
+    revision: int = Field(ge=1)
+    rule_id: Literal[
+        "stale-source",
+        "failed-document",
+        "low-quality-query",
+        "permission-readiness",
+        "model-readiness",
+    ] = Field(validation_alias=AliasChoices("rule_id", "ruleId"))
+    severity: Literal["critical", "warning", "info"]
+    status: Literal["active", "dismissed", "resolved"]
+    title: str
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSOverviewAttentionListResponse(ResponseModel):
+    data: list[KnowledgeFSOverviewAttentionResponse] = Field(validation_alias=AliasChoices("data", "items"))
+
+
+class KnowledgeFSOverviewActivityListQuery(BaseModel):
+    action: (
+        Literal[
+            "query.requested",
+            "query.completed",
+            "query.failed",
+            "document.published",
+            "document.failed",
+            "source.synced",
+            "source.failed",
+            "settings.updated",
+            "permission.updated",
+            "profile.published",
+            "worker.failed",
+        ]
+        | None
+    ) = None
+    actor_id: str | None = Field(default=None, min_length=1, max_length=255)
+    actor_type: Literal["member", "system"] | None = None
+    cursor: str | None = Field(default=None, min_length=1, max_length=512)
+    from_at: datetime | None = Field(default=None, validation_alias=AliasChoices("from_at", "from"))
+    limit: int = Field(default=50, ge=1, le=100)
+    resource_type: (
+        Literal[
+            "knowledge-space",
+            "query",
+            "document",
+            "source",
+            "permission",
+            "profile",
+            "publication",
+            "worker",
+        ]
+        | None
+    ) = None
+    result: Literal["pending", "success", "failure", "canceled"] | None = None
+    to_at: datetime | None = Field(default=None, validation_alias=AliasChoices("to_at", "to"))
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_time_range(self) -> KnowledgeFSOverviewActivityListQuery:
+        if self.actor_type == "system" and self.actor_id is not None:
+            raise ValueError("actor_id cannot be combined with the system actor type")
+        if self.from_at is not None and self.to_at is not None and self.from_at > self.to_at:
+            raise ValueError("from must not be after to")
+        return self
+
+
+class KnowledgeFSOverviewActivityActorResponse(ResponseModel):
+    id: str | None = None
+    type: Literal["member", "system"]
+
+
+class KnowledgeFSOverviewActivityResourceResponse(ResponseModel):
+    id: str | None = None
+    type: Literal[
+        "knowledge-space",
+        "query",
+        "document",
+        "source",
+        "permission",
+        "profile",
+        "publication",
+        "worker",
+    ]
+
+
+class KnowledgeFSOverviewActivityResponse(ResponseModel):
+    action: Literal[
+        "query.requested",
+        "query.completed",
+        "query.failed",
+        "document.published",
+        "document.failed",
+        "source.synced",
+        "source.failed",
+        "settings.updated",
+        "permission.updated",
+        "profile.published",
+        "worker.failed",
+    ]
+    actor: KnowledgeFSOverviewActivityActorResponse
+    details: dict[str, bool | float | str]
+    id: str
+    occurred_at: datetime = Field(validation_alias=AliasChoices("occurred_at", "occurredAt"))
+    resource: KnowledgeFSOverviewActivityResourceResponse
+    result: Literal["pending", "success", "failure", "canceled"]
+
+
+class KnowledgeFSOverviewActivityListResponse(ResponseModel):
+    data: list[KnowledgeFSOverviewActivityResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("next_cursor", "nextCursor"),
+    )
+
+
 class KnowledgeFSOverviewCountComparisonResponse(ResponseModel):
     change_rate: float | None
     previous_value: int = Field(ge=0)

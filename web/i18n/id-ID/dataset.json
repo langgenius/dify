@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Ikhtisar Anda akan terisi saat dokumen diproses.",
   "newKnowledge.overview.indexingInProgress": "Pengindeksan sedang berlangsung",
   "newKnowledge.overview.indexingInProgressDescription": "Dokumen dan irisan akan muncul di sini saat pengindeksan selesai.",
+  "newKnowledge.overview.indexingSource": "Mengindeks {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "30 hari terakhir",
   "newKnowledge.overview.last7Days": "7 hari terakhir",

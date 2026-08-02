@@ -1,28 +1,66 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { KnowledgeOverviewPage } from '../overview/knowledge-overview-page'
 
 const queryOptionsMocks = vi.hoisted(() => ({
-  health: vi.fn(),
+  activity: vi.fn(),
+  attention: vi.fn(),
   inventory: vi.fn(),
   outcomes: vi.fn(),
+  source: vi.fn(),
   stats: vi.fn(),
 }))
 
+const infiniteOptionsMocks = vi.hoisted(() => ({
+  activity: vi.fn(),
+  tasks: vi.fn(),
+}))
+
+const chartOptions = vi.hoisted(() => ({ current: undefined as unknown }))
+
 const queryData = vi.hoisted(() => ({
-  health: {
-    components: {
-      index: { codes: [] as string[], state: 'healthy' },
-      ingestion: { codes: [] as string[], state: 'healthy' },
-      profile_publication: { codes: [] as string[], state: 'healthy' },
-      query_availability: { codes: [] as string[], state: 'healthy' },
-      source_freshness: { codes: [] as string[], state: 'healthy' },
-      worker_readiness: { codes: [] as string[], state: 'healthy' },
-    },
-    generated_at: '2026-07-29T09:00:00Z',
-    knowledge_space_id: 'knowledge-1',
-    state: 'healthy',
+  activity: {
+    data: [
+      {
+        action: 'source.synced',
+        actor: { id: 'dify-account:member-1', type: 'member' },
+        details: { count: 1 } as Record<string, boolean | number | string>,
+        id: 'activity-1',
+        occurred_at: '2026-07-29T08:05:00Z',
+        resource: { id: 'source-1', type: 'source' },
+        result: 'success',
+      },
+    ],
+    next_cursor: null,
+  },
+  attention: {
+    data: [] as Array<{
+      action: {
+        kind: 'open-resource' | 'review-models' | 'review-permissions'
+        resource_id?: string
+        resource_type: 'document' | 'failed-query' | 'knowledge-space' | 'source'
+      }
+      evidence: Array<{ code: string; observed_at: string }>
+      issue_key: string
+      knowledge_space_id: string
+      resource: {
+        id: string
+        type: 'document' | 'failed-query' | 'knowledge-space' | 'source'
+      }
+      revision: number
+      rule_id:
+        | 'failed-document'
+        | 'low-quality-query'
+        | 'model-readiness'
+        | 'permission-readiness'
+        | 'stale-source'
+      severity: 'critical' | 'info' | 'warning'
+      status: 'active' | 'dismissed' | 'resolved'
+      title: string
+      updated_at: string
+    }>,
   },
   inventory: {
     generated_at: '2026-07-29T09:00:00Z',
@@ -59,6 +97,9 @@ const queryData = vi.hoisted(() => ({
     since: '2026-07-28T09:00:00Z',
     window: '24h',
   },
+  source: {
+    name: 'Notion — Support SOP',
+  },
   stats: {
     answer_rate: { change_percentage_points: 4, previous_value: 0.8, value: 0.84 },
     documents: 5,
@@ -85,6 +126,7 @@ const queryData = vi.hoisted(() => ({
       progress_failed: 0,
       progress_percent: 100,
       progress_total: 1,
+      source_id: undefined as null | string | undefined,
       state: 'completed',
       task_kind: 'source',
       updated_at: '2026-07-29T08:05:00Z',
@@ -106,9 +148,11 @@ const retryTaskMutationState = vi.hoisted(() => ({
 }))
 
 const overviewQueryState = vi.hoisted(() => ({
-  health: { isError: false, isFetching: false, isPending: false },
+  activity: { isError: false, isFetching: false, isPending: false },
+  attention: { isError: false, isFetching: false, isPending: false },
   inventory: { isError: false, isFetching: false, isPending: false },
   outcomes: { isError: false, isFetching: false, isPending: false },
+  source: { isError: false, isFetching: false, isPending: false },
   stats: { isError: false, isFetching: false, isPending: false },
 }))
 
@@ -125,7 +169,10 @@ const systemFeaturesState = vi.hoisted(() => ({
 }))
 
 vi.mock('echarts-for-react', () => ({
-  default: () => <div aria-label="query outcomes chart" />,
+  default: ({ option }: { option: unknown }) => {
+    chartOptions.current = option
+    return <div aria-label="query outcomes chart" />
+  },
 }))
 
 vi.mock('@/context/permission-state', () => ({
@@ -152,28 +199,45 @@ vi.mock('jotai', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({ data: { accounts: [] } }),
+  useMembers: () => ({
+    data: {
+      accounts: [
+        {
+          avatar_url: 'https://example.com/avatar.png',
+          email: 'ada@example.com',
+          id: 'member-1',
+          name: 'Ada',
+        },
+      ],
+    },
+  }),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useInfiniteQuery: () => ({
-      data: { pages: [{ data: queryData.tasks, next_cursor: null }] },
+    useInfiniteQuery: (options: { queryKey: string[] }) => ({
+      data: {
+        pages: [
+          options.queryKey[0] === 'activityInfinite'
+            ? queryData.activity
+            : { data: queryData.tasks, next_cursor: null },
+        ],
+      },
       fetchNextPage: vi.fn(),
       hasNextPage: false,
-      isError: tasksQueryState.isError,
+      isError: options.queryKey[0] === 'activityInfinite' ? false : tasksQueryState.isError,
       isFetchingNextPage: false,
       isPending: tasksQueryState.isPending,
       isRefetching: tasksQueryState.isRefetching,
-      refetch: tasksQueryState.refetch,
+      refetch: options.queryKey[0] === 'activityInfinite' ? vi.fn() : tasksQueryState.refetch,
     }),
-    useQuery: (options: { queryKey: string[] }) => {
+    useQuery: (options: { input?: unknown; queryKey: string[] }) => {
       const name = options.queryKey[0] as keyof typeof overviewQueryState
       const state = overviewQueryState[name]
       return {
-        data: state.isError ? undefined : queryData[name],
+        data: state.isError || options.input === original.skipToken ? undefined : queryData[name],
         ...state,
         refetch: vi.fn(),
       }
@@ -186,7 +250,7 @@ vi.mock('@/service/client', () => {
   const query = (name: keyof typeof queryOptionsMocks) => ({
     queryOptions: (options: unknown) => {
       queryOptionsMocks[name](options)
-      return { queryKey: [name] }
+      return { input: (options as { input?: unknown }).input, queryKey: [name] }
     },
   })
 
@@ -206,14 +270,31 @@ vi.mock('@/service/client', () => {
                 },
               },
               get: {
-                infiniteOptions: () => ({}),
+                infiniteOptions: (options: unknown) => {
+                  infiniteOptionsMocks.tasks(options)
+                  return { ...(options as object), queryKey: ['tasksInfinite'] }
+                },
               },
             },
             overview: {
-              health: { get: query('health') },
+              activity: {
+                get: {
+                  ...query('activity'),
+                  infiniteOptions: (options: unknown) => {
+                    infiniteOptionsMocks.activity(options)
+                    return { ...(options as object), queryKey: ['activityInfinite'] }
+                  },
+                },
+              },
+              attention: { get: query('attention') },
               inventory: { get: query('inventory') },
               queryOutcomes: { get: query('outcomes') },
               stats: { get: query('stats') },
+            },
+            sources: {
+              bySourceId: {
+                get: query('source'),
+              },
             },
           },
         },
@@ -239,10 +320,11 @@ describe('KnowledgeOverviewPage', () => {
     permissionState.datasetKeys = ['dataset.acl.edit']
     permissionState.workspaceKeys = ['dataset.external.connect']
     systemFeaturesState.uploadAvailable = true
-    for (const component of Object.values(queryData.health.components)) {
-      component.codes = []
-      component.state = 'healthy'
-    }
+    queryData.attention.data = []
+    queryData.activity.data[0]!.action = 'source.synced'
+    queryData.activity.data[0]!.actor = { id: 'dify-account:member-1', type: 'member' }
+    queryData.activity.data[0]!.occurred_at = '2026-07-29T08:05:00Z'
+    queryData.activity.data[0]!.result = 'success'
     queryData.stats.source_count = 3
     queryData.stats.documents = 5
     queryData.outcomes.buckets = []
@@ -252,6 +334,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.progress_completed = 1
     queryData.tasks[0]!.progress_percent = 100
     queryData.tasks[0]!.progress_total = 1
+    queryData.tasks[0]!.source_id = undefined
     queryData.tasks[0]!.state = 'completed'
     queryData.tasks[0]!.updated_at = '2026-07-29T08:05:00Z'
     queryData.stats.generated_at = '2026-07-29T09:00:00Z'
@@ -335,6 +418,33 @@ describe('KnowledgeOverviewPage', () => {
     expect(screen.getByLabelText('query outcomes chart')).toBeInTheDocument()
   })
 
+  it('uses straight segments and a single-series tooltip for query outcomes', () => {
+    queryData.outcomes.buckets = [
+      {
+        answered: 8,
+        low_confidence: 1,
+        no_evidence: 1,
+        start_at: '2026-07-29T09:00:00Z',
+      },
+    ]
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    const options = chartOptions.current as {
+      series: Array<{ smooth: boolean }>
+      tooltip: { trigger: string }
+    }
+    expect(options.series.every((series) => series.smooth === false)).toBe(true)
+    expect(options.tooltip.trigger).toBe('item')
+  })
+
+  it('shows the member who performed an activity instead of a system placeholder', () => {
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('Ada')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.overview.system')).not.toBeInTheDocument()
+  })
+
   it('keeps the designed skeleton until every initial snapshot resolves to the empty state', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
@@ -377,37 +487,50 @@ describe('KnowledgeOverviewPage', () => {
 
   it('shows an activity error with a retry action instead of an empty state', async () => {
     const user = userEvent.setup()
-    tasksQueryState.isError = true
+    overviewQueryState.activity.isError = true
 
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.tasksErrorDescription')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(tasksQueryState.refetch).toHaveBeenCalledOnce()
     const activitySection = screen
       .getByRole('heading', { name: 'dataset.newKnowledge.overview.recentActivity' })
       .closest('section')
     expect(activitySection).not.toBeNull()
+    await user.click(
+      within(activitySection!).getByRole('button', { name: 'common.operation.retry' }),
+    )
     expect(
       within(activitySection!).queryByText('dataset.newKnowledge.overview.noActivity'),
     ).not.toBeInTheDocument()
   })
 
-  it('localizes health issues and clamps the page when polling removes issues', async () => {
+  it('renders specific attention findings and clamps the page when polling removes issues', async () => {
     const user = userEvent.setup()
-    for (const component of Object.values(queryData.health.components)) component.state = 'degraded'
-    queryData.health.components.ingestion.codes = ['INGESTION_FAILURE_PRESENT']
+    queryData.attention.data = Array.from({ length: 6 }, (_, index) => ({
+      action: {
+        kind: 'open-resource' as const,
+        resource_id: `source-${index}`,
+        resource_type: 'source' as const,
+      },
+      evidence: [{ code: 'SOURCE_STALE', observed_at: '2026-07-29T08:00:00Z' }],
+      issue_key: `issue-${index}`,
+      knowledge_space_id: 'knowledge-1',
+      resource: { id: `source-${index}`, type: 'source' as const },
+      revision: 1,
+      rule_id: 'stale-source' as const,
+      severity: index === 0 ? ('critical' as const) : ('warning' as const),
+      status: 'active' as const,
+      title: `Source ${index} has not synced in 7 days`,
+      updated_at: '2026-07-29T08:00:00Z',
+    }))
     const rendered = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.queryByText('INGESTION_FAILURE_PRESENT')).not.toBeInTheDocument()
-    expect(
-      screen.getByText('dataset.newKnowledge.overview.operation.document_processing'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Source 0 has not synced in 7 days')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.overview.blocker')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     expect(screen.getByText('2 / 2')).toBeInTheDocument()
 
-    for (const component of Object.values(queryData.health.components)) component.state = 'healthy'
-    queryData.health.components.ingestion.state = 'degraded'
+    queryData.attention.data = queryData.attention.data.slice(0, 1)
     rendered.rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('1 / 1')).toBeInTheDocument()
@@ -417,6 +540,9 @@ describe('KnowledgeOverviewPage', () => {
   it('opens the complete activity view from recent activity', async () => {
     const user = userEvent.setup()
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    const whenHeader = screen.getByRole('columnheader', {
+      name: 'dataset.newKnowledge.overview.when',
+    })
 
     await user.click(
       screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
@@ -431,8 +557,92 @@ describe('KnowledgeOverviewPage', () => {
       screen.getByRole('combobox', { name: 'dataset.newKnowledge.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.overview.operator' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.overview.operator' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+    ).toBeInTheDocument()
+    expect(document.querySelector('.bg-transparent')).toBeInTheDocument()
+    expect(whenHeader).not.toHaveClass('opacity-0')
+  })
+
+  it('restarts activity pagination when the date or operator filter changes', async () => {
+    const user = userEvent.setup()
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
+    )
+
+    const operator = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.overview.operator',
+    })
+    await user.click(operator)
+    await user.click(await screen.findByRole('option', { name: 'Ada' }))
+
+    const memberOptions = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
+      input: (cursor: string | null) => {
+        query: Record<string, unknown>
+      }
+      queryKey: unknown[]
+    }
+    expect(memberOptions.queryKey).toEqual([
+      'knowledge-fs-overview-activity',
+      'space-1',
+      expect.any(String),
+      expect.any(String),
+      'member:member-1',
+    ])
+    expect(memberOptions.input(null).query).toMatchObject({
+      actor_id: 'dify-account:member-1',
+      actor_type: 'member',
+      limit: 20,
+    })
+    expect(memberOptions.input('older').query.cursor).toBe('older')
+
+    const timeRange = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.overview.timeRange',
+    })
+    await user.click(timeRange)
+    await user.click(
+      await screen.findByRole('option', { name: 'dataset.newKnowledge.overview.today' }),
+    )
+
+    const todayOptions = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
+      input: (cursor: string | null) => {
+        query: Record<string, unknown>
+      }
+      queryKey: unknown[]
+    }
+    expect(todayOptions.queryKey[4]).toBe('member:member-1')
+    expect(todayOptions.input(null).query).toMatchObject({
+      actor_id: 'dify-account:member-1',
+      actor_type: 'member',
+      from_at: expect.any(String),
+      to_at: expect.any(String),
+    })
+    expect(dayjs(todayOptions.input(null).query.from_at as string).isSame(dayjs(), 'day')).toBe(
+      true,
+    )
+  })
+
+  it('shows safe activity details and relative times for today in the drawer', async () => {
+    const user = userEvent.setup()
+    queryData.activity.data[0]!.action = 'source.failed'
+    queryData.activity.data[0]!.details = { reasonCode: 'CREDENTIALS_EXPIRED' }
+    queryData.activity.data[0]!.occurred_at = new Date(Date.now() - 2 * 60 * 60_000).toISOString()
+    queryData.activity.data[0]!.result = 'failure'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.overview.allActivity',
+    })
+    expect(dialog).toHaveTextContent('Credentials expired')
+    expect(dialog).toHaveTextContent('dataset.newKnowledge.overview.activityFailed')
+    expect(within(dialog).getByText(/2h ago|2 hr\. ago|2 hours ago/)).toBeInTheDocument()
   })
 
   it('refreshes overview snapshots until they catch up with a completed background task', () => {
@@ -580,7 +790,7 @@ describe('KnowledgeOverviewPage', () => {
   })
 
   it('shows explicit section errors instead of healthy or zero-value fallbacks', () => {
-    overviewQueryState.health.isError = true
+    overviewQueryState.attention.isError = true
     overviewQueryState.inventory.isError = true
 
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
@@ -642,6 +852,27 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.progress_completed = 1
     queryData.tasks[0]!.progress_percent = 50
     queryData.tasks[0]!.progress_total = 2
+    queryData.tasks[0]!.source_id = 'source-1'
+    queryData.tasks[0]!.state = 'running'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'dataset.newKnowledge.overview.indexingSource:{"source":"Notion — Support SOP"}',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":1,"total":2}'),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the generic first-indexing title when the task has no source', () => {
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 1
+    queryData.inventory.index_coverage.indexed = 0
+    queryData.tasks[0]!.operation = 'document_processing'
+    queryData.tasks[0]!.source_id = null
     queryData.tasks[0]!.state = 'running'
 
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
@@ -649,15 +880,12 @@ describe('KnowledgeOverviewPage', () => {
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.indexing' }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":1,"total":2}'),
-    ).toBeInTheDocument()
   })
 
   it('shows the actual elapsed minutes for recent activity', () => {
     const now = Date.parse('2026-07-29T09:04:30Z')
     vi.spyOn(Date, 'now').mockReturnValue(now)
-    queryData.tasks[0]!.updated_at = '2026-07-29T08:05:00Z'
+    queryData.activity.data[0]!.occurred_at = '2026-07-29T08:05:00Z'
 
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 

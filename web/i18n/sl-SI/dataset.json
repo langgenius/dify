@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "Pregled se bo dopolnjeval med obdelavo dokumentov.",
   "newKnowledge.overview.indexingInProgress": "Indeksiranje poteka",
   "newKnowledge.overview.indexingInProgressDescription": "Dokumenti in segmenti se bodo prikazali tukaj, ko bo indeksiranje končano.",
+  "newKnowledge.overview.indexingSource": "Indeksiranje vira {{source}}",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "Zadnjih 30 dni",
   "newKnowledge.overview.last7Days": "Zadnjih 7 dni",

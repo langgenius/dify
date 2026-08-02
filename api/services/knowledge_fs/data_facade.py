@@ -53,6 +53,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSListResponse,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
+    KnowledgeFSOverviewActivityListResponse,
+    KnowledgeFSOverviewAttentionListResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
@@ -402,6 +404,64 @@ class KnowledgeFSDataFacade:
             operation_id="getOverviewInventory",
         )
         return KnowledgeFSOverviewInventoryResponse.model_validate(raw)
+
+    def list_overview_attention(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        include_dismissed: bool,
+        limit: int,
+    ) -> KnowledgeFSOverviewAttentionListResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listOverviewAttention",
+            query=(("includeDismissed", str(include_dismissed).lower()), ("limit", str(limit))),
+        )
+        return KnowledgeFSOverviewAttentionListResponse.model_validate(raw)
+
+    def list_overview_activity(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        action: str | None,
+        actor_id: str | None,
+        actor_type: str | None,
+        cursor: str | None,
+        from_at: str | None,
+        limit: int,
+        resource_type: str | None,
+        result: str | None,
+        to_at: str | None,
+    ) -> KnowledgeFSOverviewActivityListResponse:
+        query = tuple(
+            (key, value)
+            for key, value in (
+                ("action", action),
+                ("actorId", actor_id),
+                ("actorType", actor_type),
+                ("cursor", cursor),
+                ("from", from_at),
+                ("limit", str(limit)),
+                ("resourceType", resource_type),
+                ("result", result),
+                ("to", to_at),
+            )
+            if value is not None
+        )
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listOverviewActivity",
+            query=query,
+        )
+        return KnowledgeFSOverviewActivityListResponse.model_validate(raw)
 
     def get_overview_health(
         self, *, tenant_id: str, account_id: str, control_space_id: str

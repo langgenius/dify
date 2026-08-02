@@ -2,11 +2,16 @@
 
 import type {
   KnowledgeFsBackgroundTaskResponse,
-  KnowledgeFsOverviewHealthResponse,
+  KnowledgeFsOverviewActivityResponse,
+  KnowledgeFsOverviewAttentionResponse,
   KnowledgeFsOverviewQueryOutcomeBucketResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { Dayjs } from 'dayjs'
 import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
+import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -28,13 +33,14 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { Infotip } from '@/app/components/base/infotip'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -43,29 +49,46 @@ import {
 import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { useMembers } from '@/service/use-common'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import {
   newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
-  newKnowledgeQualityPath,
   newKnowledgeRetrievalTestPath,
+  newKnowledgeSettingsPath,
 } from '../routes'
 
 type OverviewWindow = '24h' | '7d' | '30d'
-type ActivityRange = 'today' | '7d' | '30d' | '90d' | 'all'
+type ActivityRange = 'today' | '7d' | '30d' | '90d' | 'all' | 'custom'
+type ActivityOperator = 'all' | 'system' | `member:${string}`
+type ActivityDateRange = { end: Dayjs; start: Dayjs }
 
 const WINDOWS: OverviewWindow[] = ['24h', '7d', '30d']
+const ACTIVITY_RANGES: ActivityRange[] = ['today', '7d', '30d', '90d', 'all', 'custom']
 const QUERY_OUTCOMES_WINDOW: OverviewWindow = '7d'
 const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'queued',
   'running',
 ])
 const TASK_PAGE_SIZE = 20
+const ACTIVITY_PAGE_SIZE = 20
 const OVERVIEW_REFRESH_INTERVAL = 2000
 const overviewWindowParser = parseAsStringLiteral(WINDOWS)
   .withDefault('24h')
   .withOptions({ history: 'push' })
+
+function activityDatesForRange(range: Exclude<ActivityRange, 'custom'>): ActivityDateRange {
+  const end = dayjs().endOf('day')
+  if (range === 'all') return { end, start: dayjs(0) }
+  if (range === 'today') return { end, start: dayjs().startOf('day') }
+  return {
+    end,
+    start: dayjs()
+      .subtract(Number.parseInt(range) - 1, 'day')
+      .startOf('day'),
+  }
+}
 
 function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
   return (
@@ -115,7 +138,7 @@ function Skeleton({ className, style }: { className?: string; style?: CSSPropert
     <span
       aria-hidden
       className={cn(
-        'block animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none',
+        'block animate-pulse rounded bg-util-colors-gray-gray-200 [animation-duration:1.2s] motion-reduce:animate-none',
         className,
       )}
       style={style}
@@ -252,7 +275,7 @@ function QueryOutcomesChart({
           data: buckets.map((bucket) => bucket.answered),
           name: t(($) => $['newKnowledge.overview.answered']),
           showSymbol: true,
-          smooth: true,
+          smooth: false,
           symbolSize: 6,
           type: 'line',
         },
@@ -260,7 +283,7 @@ function QueryOutcomesChart({
           data: buckets.map((bucket) => bucket.low_confidence),
           name: t(($) => $['newKnowledge.overview.lowConfidence']),
           showSymbol: true,
-          smooth: true,
+          smooth: false,
           symbolSize: 5,
           type: 'line',
         },
@@ -268,12 +291,12 @@ function QueryOutcomesChart({
           data: buckets.map((bucket) => bucket.no_evidence),
           name: t(($) => $['newKnowledge.overview.noEvidence']),
           showSymbol: true,
-          smooth: true,
+          smooth: false,
           symbolSize: 5,
           type: 'line',
         },
       ],
-      tooltip: { trigger: 'axis' },
+      tooltip: { confine: true, trigger: 'item' },
       xAxis: {
         axisLabel: { color: '#9ca3af', fontSize: 10, hideOverlap: true },
         axisLine: { lineStyle: { color: '#e5e7eb' } },
@@ -333,7 +356,7 @@ function QueryOutcomesChart({
     )
 
   return (
-    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-91 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['newKnowledge.overview.queryOutcomes'])}
@@ -346,7 +369,7 @@ function QueryOutcomesChart({
           </Infotip>
         </h2>
       </div>
-      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="flex h-77 flex-col overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <div className="space-y-6 pt-2">
             {[
@@ -367,7 +390,7 @@ function QueryOutcomesChart({
             <ReactECharts
               option={chartOptions}
               opts={{ renderer: 'svg' }}
-              style={{ height: 285, width: '100%' }}
+              style={{ height: 276, width: '100%' }}
             />
           </>
         ) : (
@@ -426,67 +449,45 @@ function OverviewErrorInline() {
   )
 }
 
-function HealthPanel({
+function AttentionPanel({
+  attention,
   empty,
   error,
-  health,
   knowledgeSpaceId,
   loading,
 }: {
+  attention: KnowledgeFsOverviewAttentionResponse[]
   empty: boolean
   error: boolean
-  health?: KnowledgeFsOverviewHealthResponse
   knowledgeSpaceId: string
   loading: boolean
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const [issuePage, setIssuePage] = useState(0)
-  const issueOrder = [
-    'query_availability',
-    'ingestion',
-    'index',
-    'profile_publication',
-    'source_freshness',
-    'worker_readiness',
-  ]
-  const issues = health
-    ? Object.entries(health.components)
-        .filter(([, component]) => component.state !== 'healthy')
-        .sort(([a], [b]) => issueOrder.indexOf(a) - issueOrder.indexOf(b))
-    : []
-  const issuePageCount = Math.max(1, Math.ceil(issues.length / 5))
+  const issuePageCount = Math.max(1, Math.ceil(attention.length / 5))
   const activeIssuePage = Math.min(issuePage, issuePageCount - 1)
-  const visibleIssues = issues.slice(activeIssuePage * 5, activeIssuePage * 5 + 5)
-  const issueLabel = (name: string) => {
-    if (name === 'query_availability') return t(($) => $['newKnowledge.overview.queryOutcomes'])
-    if (name === 'ingestion')
-      return t(($) => $['newKnowledge.overview.operation.document_processing'])
-    if (name === 'index') return t(($) => $['newKnowledge.overview.indexCoverage'])
-    if (name === 'profile_publication') return t(($) => $['newKnowledge.retrievalTest.title'])
-    if (name === 'source_freshness') return t(($) => $['newKnowledge.overview.freshness'])
-    return t(($) => $['newKnowledge.backgroundTasks'])
-  }
-  const issueAction = (name: string) => {
-    if (name === 'query_availability')
+  const visibleIssues = attention.slice(activeIssuePage * 5, activeIssuePage * 5 + 5)
+  const issueAction = (issue: KnowledgeFsOverviewAttentionResponse) => {
+    if (issue.action.kind === 'review-permissions')
+      return {
+        href: newKnowledgeSettingsPath(knowledgeSpaceId),
+        label: t(($) => $['newKnowledge.permission']),
+      }
+    if (issue.action.kind === 'review-models')
+      return {
+        href: newKnowledgeSettingsPath(knowledgeSpaceId),
+        label: t(($) => $['newKnowledge.retrievalTest.title']),
+      }
+    if (issue.action.resource_type === 'failed-query' || issue.rule_id === 'low-quality-query')
       return {
         href: newKnowledgeRetrievalTestPath(knowledgeSpaceId),
         label: t(($) => $['newKnowledge.overview.reviewConflict']),
       }
-    if (name === 'ingestion')
+    if (issue.action.resource_type === 'source')
       return {
         href: newKnowledgeDetailPath(knowledgeSpaceId),
         label: t(($) => $['newKnowledge.overview.fixSource']),
-      }
-    if (name === 'index')
-      return {
-        href: newKnowledgeDocumentsPath(knowledgeSpaceId),
-        label: t(($) => $['newKnowledge.overview.rebuildIndex']),
-      }
-    if (name === 'profile_publication')
-      return {
-        href: newKnowledgeQualityPath(knowledgeSpaceId),
-        label: t(($) => $['newKnowledge.overview.updateEvidence']),
       }
     return {
       href: newKnowledgeDocumentsPath(knowledgeSpaceId),
@@ -524,15 +525,15 @@ function HealthPanel({
     )
 
   return (
-    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
+    <section className="flex h-91 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.needsAttention'])}
         </h2>
       </div>
-      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle px-4 py-3 shadow-none">
+      <Panel className="flex h-77 flex-col overflow-hidden border border-divider-subtle px-4 pt-3 pb-1 shadow-none">
         {loading ? (
-          <div className="space-y-6.75 pt-4">
+          <div>
             {[
               ['attention-1', 100],
               ['attention-2', 100],
@@ -540,50 +541,52 @@ function HealthPanel({
               ['attention-4', 100],
               ['attention-5', 86],
             ].map(([key, width]) => (
-              <Skeleton key={key} className="h-3.5" style={{ width: `${width}%` }} />
+              <div key={key} className="flex h-12 items-center">
+                <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
+              </div>
             ))}
           </div>
-        ) : issues.length ? (
+        ) : attention.length ? (
           <>
             <ul className="min-h-0 flex-1 overflow-hidden">
-              {visibleIssues.map(([name]) => (
-                <li key={name} className="flex h-12 min-w-0 items-center gap-4">
+              {visibleIssues.map((issue) => (
+                <li key={issue.issue_key} className="flex h-12 min-w-0 items-center gap-4">
                   <span
                     className={cn(
                       'shrink-0 rounded-md px-2 py-0.5 system-xs-medium',
-                      name === 'query_availability'
+                      issue.severity === 'critical'
                         ? 'bg-state-destructive-hover text-text-destructive'
-                        : name === 'ingestion'
+                        : issue.severity === 'warning'
                           ? 'bg-state-warning-hover text-text-warning'
                           : 'bg-background-section text-text-tertiary',
                     )}
                   >
-                    {name === 'query_availability'
+                    {issue.severity === 'critical'
                       ? t(($) => $['newKnowledge.overview.blocker'])
-                      : name === 'ingestion'
+                      : issue.severity === 'warning'
                         ? t(($) => $['newKnowledge.overview.serious'])
                         : t(($) => $['newKnowledge.overview.review'])}
                   </span>
                   <p className="min-w-0 flex-1 truncate system-sm-regular text-text-primary">
-                    {issueLabel(name)}
+                    {issue.title}
                   </p>
                   <Button
-                    render={<Link href={issueAction(name).href} />}
+                    render={<Link href={issueAction(issue).href} />}
                     nativeButton={false}
                     size="small"
-                    tone={name === 'query_availability' ? 'destructive' : 'default'}
-                    variant={name === 'query_availability' ? 'primary' : 'secondary'}
+                    tone={issue.severity === 'critical' ? 'destructive' : 'default'}
+                    variant={issue.severity === 'critical' ? 'primary' : 'secondary'}
                     className={cn(
-                      name === 'query_availability' &&
+                      issue.severity === 'critical' &&
                         'border-[#ff4d14] bg-[#ff4d14] hover:border-[#e64210] hover:bg-[#e64210]',
                     )}
                   >
-                    {issueAction(name).label}
+                    {issueAction(issue).label}
                   </Button>
                 </li>
               ))}
             </ul>
-            <div className="flex h-13.25 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
+            <div className="flex h-13 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
               <div className="flex h-8 items-center rounded-lg border border-divider-subtle p-0.5">
                 <button
                   type="button"
@@ -621,39 +624,125 @@ function HealthPanel({
   )
 }
 
-function operationLabel(
-  task: KnowledgeFsBackgroundTaskResponse,
+function activityOperationLabel(
+  activity: KnowledgeFsOverviewActivityResponse,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
 ) {
-  return t(($) => $[`newKnowledge.overview.operation.${task.operation}`])
+  if (activity.action.startsWith('source.'))
+    return t(($) => $['newKnowledge.overview.operation.source_sync'])
+  if (activity.action.startsWith('document.'))
+    return t(($) => $['newKnowledge.overview.operation.document_processing'])
+  if (activity.action.startsWith('query.'))
+    return t(($) => $['newKnowledge.overview.queryOutcomes'])
+  if (activity.action === 'permission.updated') return t(($) => $['newKnowledge.permission'])
+  if (activity.action === 'profile.published')
+    return t(($) => $['newKnowledge.retrievalTest.title'])
+  if (activity.action === 'settings.updated')
+    return t(($) => $['newKnowledge.overview.updateEvidence'])
+  return t(($) => $['newKnowledge.backgroundTasks'])
 }
 
 function activityLabel(
-  task: KnowledgeFsBackgroundTaskResponse,
+  activity: KnowledgeFsOverviewActivityResponse,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
 ) {
-  const operation = operationLabel(task, t)
-  if (task.state === 'completed')
-    return t(($) => $['newKnowledge.overview.activityCompleted'], { operation })
-  if (task.state === 'failed')
-    return t(($) => $['newKnowledge.overview.activityFailed'], { operation })
-  if (task.state === 'canceled')
-    return t(($) => $['newKnowledge.overview.activityCanceled'], { operation })
-  if (task.state === 'queued')
-    return t(($) => $['newKnowledge.overview.activityQueued'], { operation })
-  return t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+  const operation = activityOperationLabel(activity, t)
+  let label: string
+  if (activity.result === 'success')
+    label = t(($) => $['newKnowledge.overview.activityCompleted'], { operation })
+  else if (activity.result === 'failure')
+    label = t(($) => $['newKnowledge.overview.activityFailed'], { operation })
+  else if (activity.result === 'canceled')
+    label = t(($) => $['newKnowledge.overview.activityCanceled'], { operation })
+  else
+    label =
+      activity.action === 'query.requested'
+        ? t(($) => $['newKnowledge.overview.activityQueued'], { operation })
+        : t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+
+  const detail = [
+    activity.details.reasonCode,
+    activity.details.statusCode,
+    activity.details.documentType,
+    activity.details.providerId,
+    activity.details.mode,
+  ].find((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+  if (!detail) return label
+
+  const readableDetail = /^[A-Z0-9_]+$/.test(detail)
+    ? detail
+        .toLocaleLowerCase()
+        .replaceAll('_', ' ')
+        .replace(/^./, (character) => character.toLocaleUpperCase())
+    : detail
+  return `${label} — ${readableDetail}`
+}
+
+function compactIdentifier(value: string) {
+  const normalized = value.replace(/^dify-account:/, '')
+  return normalized.length > 16 ? `${normalized.slice(0, 8)}…${normalized.slice(-4)}` : normalized
+}
+
+function activityActor(
+  activity: KnowledgeFsOverviewActivityResponse,
+  members: Member[],
+  systemLabel: string,
+) {
+  if (activity.actor.type === 'system') return { avatar: null, name: systemLabel, system: true }
+
+  const accountId = activity.actor.id?.replace(/^dify-account:/, '')
+  const member = members.find((candidate) => candidate.id === accountId)
+  return {
+    avatar: member?.avatar_url ?? null,
+    name: member?.name || compactIdentifier(activity.actor.id || systemLabel),
+    system: false,
+  }
+}
+
+function ActivityActor({
+  activity,
+  members,
+  showName = true,
+  size = 'xxs',
+}: {
+  activity: KnowledgeFsOverviewActivityResponse
+  members: Member[]
+  showName?: boolean
+  size?: 'xxs' | 'xs'
+}) {
+  const { t } = useTranslation('dataset')
+  const actor = activityActor(
+    activity,
+    members,
+    t(($) => $['newKnowledge.overview.system']),
+  )
+
+  return (
+    <>
+      {actor.system ? (
+        <span className="system-2xs-semibold flex size-5 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
+          S
+        </span>
+      ) : (
+        <Avatar avatar={actor.avatar} name={actor.name} size={size} />
+      )}
+      {showName && <span className="truncate text-text-secondary">{actor.name}</span>}
+    </>
+  )
 }
 
 function RecentActivity({
+  activities,
   empty,
   error,
   indexing = false,
   loading,
+  members,
   onOpenAll,
   onRetry,
   retrying,
-  tasks,
 }: {
+  activities: KnowledgeFsOverviewActivityResponse[]
   empty: boolean
   error: boolean
   indexing?: boolean
@@ -661,7 +750,7 @@ function RecentActivity({
   onOpenAll: () => void
   onRetry: () => void
   retrying: boolean
-  tasks: KnowledgeFsBackgroundTaskResponse[]
+  members: Member[]
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -710,8 +799,8 @@ function RecentActivity({
 
   if (empty)
     return (
-      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-66.75' : 'h-63')}>
-        <h2 className="system-md-medium text-text-secondary">
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-67.75' : 'h-63')}>
+        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
         <Panel
@@ -740,7 +829,7 @@ function RecentActivity({
   return (
     <section className="flex min-w-0 flex-col gap-2 pt-6">
       <header className="flex h-6 items-center justify-between">
-        <h2 className="text-[16px] leading-6 font-medium text-text-secondary">
+        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
         <Button disabled={loading} size="small" variant="secondary" onClick={onOpenAll}>
@@ -748,7 +837,7 @@ function RecentActivity({
         </Button>
       </header>
       <Panel className="flex h-63.5 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
-        {loading || tasks.length ? (
+        {loading || activities.length ? (
           <div
             role="table"
             aria-label={t(($) => $['newKnowledge.overview.recentActivity'])}
@@ -758,9 +847,7 @@ function RecentActivity({
               role="row"
               className="grid grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
             >
-              <span role="columnheader" className="opacity-0">
-                {t(($) => $['newKnowledge.overview.when'])}
-              </span>
+              <span role="columnheader">{t(($) => $['newKnowledge.overview.when'])}</span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.activity'])}</span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.operator'])}</span>
             </div>
@@ -777,29 +864,20 @@ function RecentActivity({
                     <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
                   </div>
                 ))
-              : tasks.slice(0, 5).map((task) => (
+              : activities.slice(0, 5).map((activity) => (
                   <div
-                    key={task.id}
+                    key={activity.id}
                     role="row"
                     className="-mx-3 grid h-9 grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 rounded-lg px-3 system-xs-regular transition-colors hover:bg-state-base-hover motion-reduce:transition-none"
                   >
                     <span role="cell" className="whitespace-nowrap text-text-tertiary">
-                      {formatWhen(task.updated_at)}
+                      {formatWhen(activity.occurred_at)}
                     </span>
                     <span role="cell" className="min-w-0 truncate text-text-secondary">
-                      <strong className="font-semibold text-text-primary">
-                        {operationLabel(task, t)}
-                      </strong>
-                      {' — '}
-                      {activityLabel(task, t)}
+                      {activityLabel(activity, t)}
                     </span>
                     <span role="cell" className="flex min-w-0 items-center gap-2">
-                      <span className="system-2xs-semibold flex size-5 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
-                        S
-                      </span>
-                      <span className="truncate text-text-secondary">
-                        {t(($) => $['newKnowledge.overview.system'])}
-                      </span>
+                      <ActivityActor activity={activity} members={members} />
                     </span>
                   </div>
                 ))}
@@ -816,35 +894,112 @@ function RecentActivity({
   )
 }
 
+function ActivityDateRangePicker({
+  dates,
+  onChange,
+}: {
+  dates: ActivityDateRange
+  onChange: (dates: ActivityDateRange) => void
+}) {
+  const { t, i18n } = useTranslation('dataset')
+  const today = dayjs()
+  const formatter = useMemo(
+    () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
+    [i18n.language],
+  )
+  const renderTrigger =
+    (edge: 'start' | 'end') =>
+    ({ handleClickTrigger, isOpen, value }: TriggerProps) => (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${t(($) => $['newKnowledge.overview.timeRange'])} ${edge}`}
+        aria-expanded={isOpen}
+        className={cn(
+          'min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left system-xs-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
+          isOpen && 'bg-state-base-hover',
+        )}
+        onClick={handleClickTrigger}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          handleClickTrigger(event as unknown as React.MouseEvent)
+        }}
+      >
+        {value ? formatter.format(value.toDate()) : '—'}
+      </div>
+    )
+
+  return (
+    <div
+      role="group"
+      aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
+      className="flex h-6 w-35 shrink-0 items-center rounded-lg bg-background-section px-1"
+    >
+      <DatePicker
+        noConfirm
+        needTimePicker={false}
+        value={dates.start}
+        onChange={(start) => start && onChange({ end: dates.end, start: start.startOf('day') })}
+        onClear={() => undefined}
+        renderTrigger={renderTrigger('start')}
+        getIsDateDisabled={(date) => date.isAfter(today, 'day') || date.isAfter(dates.end, 'day')}
+      />
+      <span aria-hidden className="text-text-quaternary">
+        –
+      </span>
+      <DatePicker
+        noConfirm
+        needTimePicker={false}
+        value={dates.end}
+        onChange={(end) => end && onChange({ end: end.endOf('day'), start: dates.start })}
+        onClear={() => undefined}
+        renderTrigger={renderTrigger('end')}
+        getIsDateDisabled={(date) =>
+          date.isAfter(today, 'day') || date.isBefore(dates.start, 'day')
+        }
+      />
+    </div>
+  )
+}
+
 function ActivityDrawer({
+  activities,
+  dates,
   hasNextPage,
   isFetchingNextPage,
   loading,
+  members,
+  onDatesChange,
   onFetchNextPage,
   onOpenChange,
+  onOperatorChange,
+  onRangeChange,
   open,
-  tasks,
+  operator,
+  range,
 }: {
+  activities: KnowledgeFsOverviewActivityResponse[]
+  dates: ActivityDateRange
   hasNextPage: boolean
   isFetchingNextPage: boolean
   loading: boolean
+  members: Member[]
+  onDatesChange: (dates: ActivityDateRange) => void
   onFetchNextPage: () => void
   onOpenChange: (open: boolean) => void
+  onOperatorChange: (operator: ActivityOperator) => void
+  onRangeChange: (range: ActivityRange) => void
   open: boolean
-  tasks: KnowledgeFsBackgroundTaskResponse[]
+  operator: ActivityOperator
+  range: ActivityRange
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tDeployments } = useTranslation('deployments')
-  const [range, setRange] = useState<ActivityRange>('7d')
+  const { t: tActivityLog } = useTranslation('appLog')
   const rangeTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreFilterFocusRef = useRef(false)
   const now = dayjs()
-  const filteredTasks = tasks.filter((task) => {
-    if (range === 'all') return true
-    const createdAt = dayjs(task.created_at)
-    if (range === 'today') return createdAt.isAfter(now.startOf('day'))
-    return createdAt.isAfter(now.subtract(Number.parseInt(range), 'day'))
-  })
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(i18n.language, {
@@ -858,9 +1013,13 @@ function ActivityDrawer({
     () => new Intl.DateTimeFormat(i18n.language, { hour: 'numeric', minute: '2-digit' }),
     [i18n.language],
   )
-  const groups = filteredTasks.reduce<Record<string, KnowledgeFsBackgroundTaskResponse[]>>(
+  const relativeTimeFormatter = useMemo(
+    () => new Intl.RelativeTimeFormat(i18n.language, { numeric: 'auto', style: 'narrow' }),
+    [i18n.language],
+  )
+  const groups = activities.reduce<Record<string, KnowledgeFsOverviewActivityResponse[]>>(
     (result, task) => {
-      const key = dayjs(task.created_at).format('YYYY-MM-DD')
+      const key = dayjs(task.occurred_at).format('YYYY-MM-DD')
       result[key] ??= []
       result[key].push(task)
       return result
@@ -874,16 +1033,37 @@ function ActivityDrawer({
       return t(($) => $['newKnowledge.overview.yesterday'])
     return dateFormatter.format(date.toDate())
   }
+  const activityTime = (occurredAt: string) => {
+    const occurred = dayjs(occurredAt)
+    if (!occurred.isSame(now, 'day')) return timeFormatter.format(occurred.toDate())
+    const elapsedMinutes = Math.max(0, now.diff(occurred, 'minute'))
+    if (elapsedMinutes < 60) return relativeTimeFormatter.format(-elapsedMinutes, 'minute')
+    return relativeTimeFormatter.format(-Math.floor(elapsedMinutes / 60), 'hour')
+  }
   const rangeLabel: Record<ActivityRange, string> = {
     '30d': t(($) => $['newKnowledge.overview.last30Days']),
     '7d': t(($) => $['newKnowledge.overview.last7Days']),
     '90d': t(($) => $['newKnowledge.overview.last90Days']),
     all: t(($) => $['newKnowledge.overview.allTime']),
+    custom: tActivityLog(($) => $['filter.period.custom']),
     today: t(($) => $['newKnowledge.overview.today']),
   }
+  const rangeTriggerLabel: Record<ActivityRange, string> = {
+    ...rangeLabel,
+    '30d': t(($) => $['newKnowledge.overview.thirtyDays']),
+    '7d': t(($) => $['newKnowledge.overview.sevenDays']),
+    '90d': '90d',
+  }
+  const operatorLabel =
+    operator === 'all'
+      ? tActivityLog(($) => $['filter.annotation.all'])
+      : operator === 'system'
+        ? t(($) => $['newKnowledge.overview.system'])
+        : members.find((member) => `member:${member.id}` === operator)?.name || operator.slice(7)
   const clearFilters = () => {
     restoreFilterFocusRef.current = true
-    setRange('7d')
+    onRangeChange('7d')
+    onOperatorChange('all')
   }
 
   useEffect(() => {
@@ -895,7 +1075,7 @@ function ActivityDrawer({
   return (
     <Drawer open={open} swipeDirection="right" onOpenChange={onOpenChange}>
       <DrawerPortal>
-        <DrawerBackdrop />
+        <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
@@ -907,19 +1087,58 @@ function ActivityDrawer({
                   <DrawerCloseButton />
                 </div>
               </header>
-              <div className="flex h-9 shrink-0 border-b border-divider-subtle px-5">
-                <Select value={range} onValueChange={(value) => setRange(value as ActivityRange)}>
+              <div className="flex h-9 shrink-0 items-start gap-1 border-b border-divider-subtle px-5">
+                <Select
+                  value={range}
+                  onValueChange={(value) => onRangeChange(value as ActivityRange)}
+                >
                   <SelectTrigger
                     ref={rangeTriggerRef}
                     aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
-                    className="h-6 min-w-0 flex-1 border-0 bg-background-section shadow-none"
+                    className="h-6 w-20 min-w-0 shrink-0 border-0 bg-background-section shadow-none"
                   >
-                    <span className="truncate">{rangeLabel[range]}</span>
+                    <span className="truncate">{rangeTriggerLabel[range]}</span>
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(rangeLabel) as ActivityRange[]).map((value) => (
+                    {ACTIVITY_RANGES.map((value) => (
                       <SelectItem key={value} value={value}>
                         <SelectItemText>{rangeLabel[value]}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {range === 'all' ? (
+                  <div className="flex h-6 w-35 shrink-0 items-center rounded-lg bg-background-section px-2 system-xs-regular text-text-tertiary">
+                    {rangeLabel.all}
+                  </div>
+                ) : (
+                  <ActivityDateRangePicker dates={dates} onChange={onDatesChange} />
+                )}
+                <Select
+                  value={operator}
+                  onValueChange={(value) => onOperatorChange(value as ActivityOperator)}
+                >
+                  <SelectTrigger
+                    aria-label={t(($) => $['newKnowledge.overview.operator'])}
+                    className="h-6 w-50 min-w-0 shrink-0 border-0 bg-background-section shadow-none"
+                  >
+                    <span className="truncate">{operatorLabel}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <SelectItemText>
+                        {tActivityLog(($) => $['filter.annotation.all'])}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value="system">
+                      <SelectItemText>{t(($) => $['newKnowledge.overview.system'])}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={`member:${member.id}`}>
+                        <SelectItemText>{member.name || member.email}</SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>
                     ))}
@@ -943,7 +1162,7 @@ function ActivityDrawer({
                       ))}
                     </div>
                   </div>
-                ) : filteredTasks.length ? (
+                ) : activities.length ? (
                   <>
                     {Object.entries(groups).map(([key, group]) => (
                       <section key={key}>
@@ -951,27 +1170,38 @@ function ActivityDrawer({
                           {groupLabel(key)}
                         </h3>
                         <ul>
-                          {group.map((task) => (
+                          {group.map((activity) => (
                             <li
-                              key={task.id}
+                              key={activity.id}
                               className="flex min-h-13.5 items-start gap-3 px-5 py-2.5"
                             >
-                              <span className="system-2xs-semibold flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-gray-gray-300 text-text-secondary">
-                                S
+                              <span className="flex size-6 shrink-0 items-center">
+                                <ActivityActor
+                                  activity={activity}
+                                  members={members}
+                                  showName={false}
+                                  size="xs"
+                                />
                               </span>
                               <div className="min-w-0 flex-1 leading-4">
                                 <p className="line-clamp-2 system-sm-regular text-text-secondary">
-                                  {activityLabel(task, t)}
+                                  {activityLabel(activity, t)}
                                 </p>
                                 <p className="system-xs-regular text-text-tertiary">
-                                  {t(($) => $['newKnowledge.overview.system'])}
+                                  {
+                                    activityActor(
+                                      activity,
+                                      members,
+                                      t(($) => $['newKnowledge.overview.system']),
+                                    ).name
+                                  }
                                 </p>
                               </div>
                               <time
                                 className="shrink-0 system-xs-regular text-text-tertiary"
-                                dateTime={task.updated_at}
+                                dateTime={activity.occurred_at}
                               >
-                                {timeFormatter.format(new Date(task.updated_at))}
+                                {activityTime(activity.occurred_at)}
                               </time>
                             </li>
                           ))}
@@ -1092,14 +1322,14 @@ function InventoryPanel({
 
   if (empty)
     return (
-      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65.25' : 'h-68.75')}>
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65' : 'h-68.75')}>
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.inventory'])}
         </h2>
         <Panel
           className={cn(
             'flex border border-components-panel-border p-4 shadow-none',
-            indexing ? 'h-51.25' : 'h-54.75',
+            indexing ? 'h-51' : 'h-54.75',
           )}
         >
           <EmptyInline
@@ -1121,14 +1351,16 @@ function InventoryPanel({
 
   return (
     <section className="flex min-w-0 flex-col gap-2 pt-6">
-      <h2 className="flex h-6 items-center text-[16px] leading-6 font-medium text-text-secondary">
+      <h2 className="flex h-6 items-center text-[15px] leading-6 font-medium text-text-secondary">
         {t(($) => $['newKnowledge.overview.inventory'])}
       </h2>
-      <Panel className="h-45 overflow-hidden border border-divider-subtle p-4 shadow-none">
+      <Panel className="h-44.25 overflow-hidden border border-divider-subtle p-4 shadow-none">
         {loading ? (
           <>
             <Skeleton className="h-6 w-full" />
-            <Skeleton className="mt-2.5 h-3.5 w-80" />
+            <div className="mt-2.5 h-3.75">
+              <Skeleton className="h-3.5 w-80" />
+            </div>
             <div className="mt-4 grid grid-cols-3 gap-3">
               {[0, 1, 2].map((index) => (
                 <div key={index} className="h-20 rounded-lg bg-background-section p-3">
@@ -1154,11 +1386,11 @@ function InventoryPanel({
                 />
               ))}
             </div>
-            <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+            <ul className="mt-2.5 flex min-h-3.75 flex-wrap gap-x-4 gap-y-1">
               {categories.map((category) => (
                 <li
                   key={category.label}
-                  className="flex items-center gap-1.5 system-xs-regular text-text-tertiary"
+                  className="flex items-center gap-1.5 text-[12px] leading-[15px] font-normal text-text-tertiary"
                 >
                   <span aria-hidden className={cn('size-2 rounded-full', category.color)} />
                   {category.label}
@@ -1211,6 +1443,7 @@ function Onboarding({
   canUpload,
   failedTask,
   indexingTask,
+  indexingSourceName,
   knowledgeSpaceId,
   onRetryTask,
 }: {
@@ -1218,6 +1451,7 @@ function Onboarding({
   canUpload: boolean
   failedTask?: KnowledgeFsBackgroundTaskResponse
   indexingTask?: KnowledgeFsBackgroundTaskResponse
+  indexingSourceName?: string
   knowledgeSpaceId: string
   onRetryTask: () => Promise<unknown>
 }) {
@@ -1258,10 +1492,14 @@ function Onboarding({
   if (indexingTask)
     return (
       <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
-        <h2 className="text-[18px] leading-6 font-semibold text-text-primary">
-          {t(($) => $['newKnowledge.overview.indexing'])}
+        <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
+          {indexingSourceName
+            ? t(($) => $['newKnowledge.overview.indexingSource'], {
+                source: indexingSourceName,
+              })
+            : t(($) => $['newKnowledge.overview.indexing'])}
         </h2>
-        <p className="mt-0.5 body-xs-regular text-text-secondary">
+        <p className="mt-1 text-[13px] leading-4 font-normal text-text-primary">
           {t(($) => $['newKnowledge.overview.indexingConnectedDescription'])}
         </p>
         <div className="mt-3">
@@ -1271,7 +1509,7 @@ function Onboarding({
               style={{ width: `${indexingTask.progress_percent}%` }}
             />
           </div>
-          <p className="mt-2 system-xs-regular text-text-tertiary">
+          <p className="mt-2.5 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.overview.indexedDocuments'], {
               indexed: indexingTask.progress_completed,
               total: indexingTask.progress_total,
@@ -1436,6 +1674,27 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     uploadAvailable && hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const [window, setWindow] = useQueryState('window', overviewWindowParser)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [activityRange, setActivityRange] = useState<ActivityRange>('7d')
+  const [activityDates, setActivityDates] = useState<ActivityDateRange>(() =>
+    activityDatesForRange('7d'),
+  )
+  const [activityOperator, setActivityOperator] = useState<ActivityOperator>('all')
+  const activityFrom = activityRange === 'all' ? undefined : activityDates.start.toISOString()
+  const activityTo = activityRange === 'all' ? undefined : activityDates.end.toISOString()
+  const activityActorType =
+    activityOperator === 'all' ? undefined : activityOperator === 'system' ? 'system' : 'member'
+  const activityActorId = activityOperator.startsWith('member:')
+    ? `dify-account:${activityOperator.slice(7)}`
+    : undefined
+  const handleActivityRangeChange = (range: ActivityRange) => {
+    setActivityRange(range)
+    if (range !== 'custom') setActivityDates(activityDatesForRange(range))
+  }
+  const handleActivityDatesChange = (dates: ActivityDateRange) => {
+    setActivityDates(dates)
+    setActivityRange('custom')
+  }
+  const membersQuery = useMembers()
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
       getNextPageParam: (lastPage) => lastPage.next_cursor,
@@ -1501,19 +1760,64 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         }),
     }),
   )
-  const healthQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.health.get.queryOptions({
-      input: { params: { control_space_id: knowledgeSpaceId } },
-      refetchInterval: (query) =>
-        overviewRefreshInterval({
-          generatedAt: query.state.data?.generated_at,
-          hasActiveTasks,
-          latestTaskUpdatedAt,
-        }),
+  const attentionQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.attention.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { include_dismissed: false, limit: 100 },
+      },
+      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
     }),
   )
+  const activityPreviewQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: 5 },
+      },
+      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
+    }),
+  )
+  const activityDrawerQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.infiniteOptions({
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
+      initialPageParam: null as string | null,
+      queryKey: [
+        'knowledge-fs-overview-activity',
+        knowledgeSpaceId,
+        activityFrom,
+        activityTo,
+        activityOperator,
+      ],
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        query: {
+          ...(activityActorId ? { actor_id: activityActorId } : {}),
+          ...(activityActorType ? { actor_type: activityActorType } : {}),
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          ...(activityFrom ? { from_at: activityFrom } : {}),
+          limit: ACTIVITY_PAGE_SIZE,
+          ...(activityTo ? { to_at: activityTo } : {}),
+        },
+      }),
+    }),
+  )
+  const activities = activityDrawerQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const members = membersQuery.data?.accounts ?? []
   const indexingTask = tasks.find(
     (task) => ACTIVE_TASK_STATES.has(task.state) && isFirstSourceTask(task),
+  )
+  const indexingSourceQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get.queryOptions({
+      input: indexingTask?.source_id
+        ? {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              source_id: indexingTask.source_id,
+            },
+          }
+        : skipToken,
+    }),
   )
   const latestFirstSourceTask = tasks
     .filter(isFirstSourceTask)
@@ -1524,10 +1828,16 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     statsQuery.isPending ||
     outcomesQuery.isPending ||
     inventoryQuery.isPending ||
-    healthQuery.isPending
+    attentionQuery.isPending ||
+    activityPreviewQuery.isPending ||
+    (indexingTask?.source_id != null && indexingSourceQuery.isPending)
   const firstLoadFailed =
     !pageLoading &&
-    (statsQuery.isError || outcomesQuery.isError || inventoryQuery.isError || healthQuery.isError)
+    (statsQuery.isError ||
+      outcomesQuery.isError ||
+      inventoryQuery.isError ||
+      attentionQuery.isError ||
+      activityPreviewQuery.isError)
   const hasContent =
     (statsQuery.data?.source_count ?? 0) > 0 || (statsQuery.data?.documents ?? 0) > 0
   const empty = !pageLoading && !statsQuery.isError && !hasContent
@@ -1542,7 +1852,8 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       statsQuery.refetch(),
       outcomesQuery.refetch(),
       inventoryQuery.refetch(),
-      healthQuery.refetch(),
+      attentionQuery.refetch(),
+      activityPreviewQuery.refetch(),
       tasksQuery.refetch(),
     ])
 
@@ -1550,7 +1861,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="mx-auto w-full max-w-332 px-5 py-6 sm:px-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="title-2xl-semi-bold text-text-primary">
+          <h1 className="text-[18px] leading-[1.2] font-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}
           </h1>
           {!empty && !showIndexing && (
@@ -1565,7 +1876,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
               {WINDOWS.map((value) => (
                 <SegmentedControlItem<OverviewWindow>
                   key={value}
-                  className="h-6.5 px-3 system-xs-medium"
+                  className="h-6.5 px-2.5"
                   value={value}
                 >
                   {value === '24h'
@@ -1601,6 +1912,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
               failedTask={failedTask}
               knowledgeSpaceId={knowledgeSpaceId}
               indexingTask={indexingTask}
+              indexingSourceName={indexingSourceQuery.data?.name}
               onRetryTask={tasksQuery.refetch}
             />
           </div>
@@ -1675,13 +1987,13 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         <div
           className={cn(
             'grid lg:grid-cols-2',
-            showIndexing ? 'mt-4.5 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-2 gap-3',
+            showIndexing ? 'mt-3 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-3 gap-2.5',
           )}
         >
-          <HealthPanel
+          <AttentionPanel
+            attention={attentionQuery.data?.data ?? []}
             empty={showEmptyModules}
-            error={healthQuery.isError}
-            health={healthQuery.data}
+            error={attentionQuery.isError}
             knowledgeSpaceId={knowledgeSpaceId}
             loading={pageLoading}
           />
@@ -1694,17 +2006,18 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         </div>
         <div className="mt-3">
           <RecentActivity
+            activities={activityPreviewQuery.data?.data ?? []}
             empty={showEmptyModules}
-            error={tasksQuery.isError}
+            error={activityPreviewQuery.isError}
             indexing={showIndexing}
             loading={pageLoading}
-            retrying={tasksQuery.isRefetching}
-            tasks={tasks}
+            members={members}
+            retrying={activityPreviewQuery.isRefetching}
             onOpenAll={() => {
               setActivityOpen(true)
-              void tasksQuery.refetch()
+              void activityDrawerQuery.refetch()
             }}
-            onRetry={() => void tasksQuery.refetch()}
+            onRetry={() => void activityPreviewQuery.refetch()}
           />
         </div>
         <div className="mt-3">
@@ -1718,13 +2031,20 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         </div>
       </div>
       <ActivityDrawer
-        hasNextPage={Boolean(tasksQuery.hasNextPage)}
-        isFetchingNextPage={tasksQuery.isFetchingNextPage}
-        loading={tasksQuery.isPending || tasksQuery.isRefetching}
+        activities={activities}
+        dates={activityDates}
+        hasNextPage={Boolean(activityDrawerQuery.hasNextPage)}
+        isFetchingNextPage={activityDrawerQuery.isFetchingNextPage}
+        loading={activityDrawerQuery.isPending || activityDrawerQuery.isRefetching}
+        members={members}
         open={activityOpen}
-        tasks={tasks}
-        onFetchNextPage={() => void tasksQuery.fetchNextPage()}
+        operator={activityOperator}
+        range={activityRange}
+        onDatesChange={handleActivityDatesChange}
+        onFetchNextPage={() => void activityDrawerQuery.fetchNextPage()}
         onOpenChange={setActivityOpen}
+        onOperatorChange={setActivityOperator}
+        onRangeChange={handleActivityRangeChange}
       />
     </main>
   )

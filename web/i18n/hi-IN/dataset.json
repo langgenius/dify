@@ -354,6 +354,7 @@
   "newKnowledge.overview.indexingDescription": "दस्तावेज़ संसाधित होते ही आपका अवलोकन भर जाएगा।",
   "newKnowledge.overview.indexingInProgress": "अनुक्रमण प्रगति पर है",
   "newKnowledge.overview.indexingInProgressDescription": "अनुक्रमणिका पूर्ण होते ही दस्तावेज़ और स्लाइस यहां दिखाई देंगे।",
+  "newKnowledge.overview.indexingSource": "{{source}} को अनुक्रमित किया जा रहा है",
   "newKnowledge.overview.inventory": "Knowledge inventory",
   "newKnowledge.overview.last30Days": "पिछले 30 दिन",
   "newKnowledge.overview.last7Days": "पिछले 7 दिन",

@@ -97,6 +97,8 @@ describe("knowledge-space Overview handler branch coverage", () => {
       activityResult: { items: [activity()], nextCursor },
       query: {
         action: "document.failed",
+        actorId: "dify-account:editor-1",
+        actorType: "member",
         cursor: encodeKnowledgeSpaceActivityCursor(nextCursor),
         from: "2026-07-13T12:00:00.000Z",
         limit: 5,
@@ -114,6 +116,8 @@ describe("knowledge-space Overview handler branch coverage", () => {
     expect(fixture.overview.listActivity).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "document.failed",
+        actorId: "dify-account:editor-1",
+        actorType: "member",
         resourceType: "document",
         result: "failure",
       }),
