@@ -8,7 +8,6 @@ import { Carousel, useCarousel } from '@/app/components/base/carousel'
 import { userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { BannerItem } from './banner-item'
-import { getBannerContent } from './content'
 import { IndicatorButton } from './indicator-button'
 
 const AUTOPLAY_DELAY = 5000
@@ -90,7 +89,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
     trackEvent('explore_banner_impression', {
       banner_id: activeBanner.id,
-      title: getBannerContent(activeBanner.content).title,
+      title: activeBanner.content.title,
       sort: selectedIndex + 1,
       link: activeBanner.link,
       page: 'explore',
@@ -133,7 +132,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
             <IndicatorButton
               key={banner.id}
               index={index}
-              label={`${String(index + 1).padStart(2, '0')} ${getBannerContent(banner.content).title}`}
+              label={`${String(index + 1).padStart(2, '0')} ${banner.content.title}`}
               isCurrent={index === selectedIndex}
               isNextSlide={index === nextIndex}
               autoplayDelay={AUTOPLAY_DELAY}
@@ -192,9 +191,6 @@ export function Banner({ banners }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const userProfile = useAtomValue(userProfileAtom)
-  const enabledBanners = banners.filter((banner) => banner.status === 'enabled')
-  const firstBannerContent = getBannerContent(enabledBanners[0]?.content)
-  const carouselLabel = firstBannerContent.category || firstBannerContent.title
   const [carouselPlugins] = useState(() => [
     Carousel.Plugin.Fade(),
     Carousel.Plugin.Autoplay({
@@ -207,6 +203,11 @@ export function Banner({ banners }: BannerProps) {
       },
     }),
   ])
+  const firstBanner = banners[0]
+
+  if (!firstBanner) return null
+
+  const carouselLabel = firstBanner.content.category || firstBanner.content.title
 
   return (
     <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
@@ -219,20 +220,14 @@ export function Banner({ banners }: BannerProps) {
         </p>
       </div>
 
-      {enabledBanners.length > 0 ? (
-        <Carousel
-          opts={CAROUSEL_OPTIONS}
-          plugins={carouselPlugins}
-          aria-label={carouselLabel}
-          className="@container/banner w-full rounded-2xl"
-        >
-          <BannerCarouselContent
-            banners={enabledBanners}
-            accountId={userProfile.id}
-            language={locale}
-          />
-        </Carousel>
-      ) : null}
+      <Carousel
+        opts={CAROUSEL_OPTIONS}
+        plugins={carouselPlugins}
+        aria-label={carouselLabel}
+        className="@container/banner w-full rounded-2xl"
+      >
+        <BannerCarouselContent banners={banners} accountId={userProfile.id} language={locale} />
+      </Carousel>
     </div>
   )
 }

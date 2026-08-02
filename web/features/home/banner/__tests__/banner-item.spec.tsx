@@ -14,6 +14,7 @@ const createMockBanner = (overrides: Partial<BannerResponse> = {}): BannerRespon
   id: 'banner-1',
   status: 'enabled',
   link: 'https://example.com',
+  created_at: '2024-01-01T00:00:00Z',
   content: {
     category: 'Featured',
     title: 'Test Banner Title',
