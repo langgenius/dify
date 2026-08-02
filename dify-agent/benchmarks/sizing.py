@@ -332,7 +332,11 @@ def _sizing_from_evidence(
         )
         resource_mismatches = _resource_mismatch_warnings(evidence=evidence, sizing_input=sizing_input)
         result_warnings.extend(resource_mismatches)
-        ready = evidence.active_seconds_per_run is not None and evidence.resource_crosscheck_valid and not resource_mismatches
+        ready = (
+            evidence.active_seconds_per_run is not None
+            and evidence.resource_crosscheck_valid
+            and not resource_mismatches
+        )
         e2b = E2BCalculatorInputsV1(
             status="ready" if ready else "incomplete",
             vcpus=sizing_input.e2b_template_vcpus,
