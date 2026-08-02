@@ -3,7 +3,7 @@ import pytest
 from clients.agent_backend.factory import create_agent_backend_run_client
 
 
-def test_missing_base_url_raises_helpful_error():
+def test_missing_base_url_raises_helpful_error() -> None:
     """When AGENT_BACKEND_BASE_URL is not set, the error should mention the
     environment variable and suggest alternatives (issue #39161)."""
     with pytest.raises(ValueError) as exc_info:
@@ -16,7 +16,7 @@ def test_missing_base_url_raises_helpful_error():
     assert "agent-chat" in message
 
 
-def test_use_fake_does_not_require_base_url():
+def test_use_fake_does_not_require_base_url() -> None:
     """The fake client path should not raise even when base_url is None."""
     client = create_agent_backend_run_client(use_fake=True, base_url=None)
     assert client is not None
