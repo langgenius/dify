@@ -28,6 +28,7 @@ from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import file_manager
+from graphon.file.enums import FileType
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMUsage,
@@ -46,6 +47,16 @@ from models.model import Conversation, Message, MessageAgentThought, MessageFile
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+# Maps each file type to the model feature required to pass it to the LLM.
+# Mirrors _REQUIRED_MODEL_FEATURE_BY_CONTENT_TYPE in graphon so that non-image
+# files (e.g. documents) are not dropped just because the model lacks vision.
+_REQUIRED_MODEL_FEATURE_BY_FILE_TYPE: dict[FileType, ModelFeature] = {
+    FileType.IMAGE: ModelFeature.VISION,
+    FileType.DOCUMENT: ModelFeature.DOCUMENT,
+    FileType.AUDIO: ModelFeature.AUDIO,
+    FileType.VIDEO: ModelFeature.VIDEO,
+}
 
 
 class BaseAgentRunner(AppRunner):
@@ -122,7 +133,14 @@ class BaseAgentRunner(AppRunner):
         model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
-        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
+        # Filter files by the model feature each file type requires, instead of
+        # gating all files on vision alone. Without this, document/audio/video
+        # files are silently dropped when the model does not support vision.
+        self.files = [
+            f
+            for f in (application_generate_entity.files or [])
+            if _REQUIRED_MODEL_FEATURE_BY_FILE_TYPE.get(f.type, ModelFeature.VISION) in features
+        ]
         self.query: str = ""
         self._current_thoughts: list[PromptMessage] = []
 
