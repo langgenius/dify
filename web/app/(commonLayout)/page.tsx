@@ -6,6 +6,7 @@ import {
 } from '@/app/components/explore/app-list/loading-skeletons'
 import { HomeBanner } from '@/app/components/explore/banner/home-banner'
 import { BannerSkeleton } from '@/app/components/explore/banner/skeleton'
+import { HomeHydrationBoundary } from './home-hydration-boundary'
 import { HomeTitle } from './home-title'
 
 export default function Home() {
@@ -25,7 +26,9 @@ export default function Home() {
               </>
             }
           >
-            <HomeAppListContent />
+            <HomeHydrationBoundary>
+              <HomeAppListContent />
+            </HomeHydrationBoundary>
           </Suspense>
         </div>
       </div>

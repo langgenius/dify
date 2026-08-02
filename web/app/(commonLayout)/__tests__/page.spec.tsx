@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Home from '../page'
@@ -12,10 +13,14 @@ vi.mock('@/hooks/use-document-title', () => ({
 }))
 
 vi.mock('@/app/components/explore/app-list', () => ({
-  HomeAppListContent: () => {
+  HomeAppListContent: () => <div data-testid="home-content">content</div>,
+}))
+
+vi.mock('../home-hydration-boundary', () => ({
+  HomeHydrationBoundary: ({ children }: { children: ReactNode }) => {
     if (mocks.suspendHomeContent) throw new Promise(() => {})
 
-    return <div data-testid="home-content">content</div>
+    return <>{children}</>
   },
 }))
 
@@ -29,7 +34,7 @@ describe('Home', () => {
     mocks.suspendHomeContent = false
   })
 
-  it('should keep the title client island and banner outside the Home content boundary', () => {
+  it('should keep the title client island and banner outside the route hydration boundary', () => {
     render(<Home />)
 
     expect(mocks.useDocumentTitle).toHaveBeenCalledWith('common.mainNav.home')
@@ -37,7 +42,7 @@ describe('Home', () => {
     expect(screen.getByTestId('home-content')).toBeInTheDocument()
   })
 
-  it('should keep the banner visible with a stable Home content fallback', () => {
+  it('should keep the banner visible with a stable Home content fallback while prefetching', () => {
     mocks.suspendHomeContent = true
 
     render(<Home />)
