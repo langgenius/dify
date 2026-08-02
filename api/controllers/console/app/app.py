@@ -77,6 +77,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
+from services.errors.app import WorkflowReferencedError
 from services.feature_service import FeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -934,6 +935,7 @@ class AppApi(Resource):
     @console_ns.doc(description="Delete application")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(204, "App deleted successfully")
+    @console_ns.response(400, "Workflow is referenced by published workflows")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -946,7 +948,10 @@ class AppApi(Resource):
     def delete(self, session: Session, app_model: App):
         """Delete app"""
         app_service = AppService()
-        app_service.delete_app(app_model, session=session)
+        try:
+            app_service.delete_app(app_model, session=session)
+        except WorkflowReferencedError as exc:
+            raise BadRequest(str(exc)) from exc
 
         return "", 204
 
