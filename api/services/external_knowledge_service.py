@@ -114,7 +114,7 @@ class ExternalDatasetService:
         if response.status_code == 404:
             raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 403:
-            raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
+            raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
     @staticmethod
     def get_external_knowledge_api(

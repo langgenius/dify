@@ -784,6 +784,26 @@ class TestExternalDatasetServiceCheckEndpoint:
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
     @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_403_forbidden_does_not_leak_api_key(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """The 403 error message must describe the auth failure without
+        echoing the api_key value into logs and HTTP responses."""
+        # Arrange
+        settings = {"endpoint": "https://api.example.com", "api_key": "sk-sensitive-key-12345"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_proxy.post.return_value = mock_response
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed") as exc_info:
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        # The error message must NOT contain the raw api_key value
+        assert "sk-sensitive-key-12345" not in str(exc_info.value)
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that other 4xx codes don't raise exceptions."""
         # Arrange
