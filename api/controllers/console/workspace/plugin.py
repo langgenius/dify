@@ -163,6 +163,7 @@ class ParserGithubUpgrade(BaseModel):
 
 class ParserUninstall(BaseModel):
     plugin_installation_id: str
+    preserve_credentials: bool = False
 
 
 class ParserPermissionChange(BaseModel):
@@ -1062,7 +1063,13 @@ class PluginUninstallApi(Resource):
         args = ParserUninstall.model_validate(console_ns.payload)
 
         try:
-            return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
+            return {
+                "success": PluginService.uninstall(
+                    tenant_id,
+                    args.plugin_installation_id,
+                    preserve_credentials=args.preserve_credentials,
+                )
+            }
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 

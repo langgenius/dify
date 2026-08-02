@@ -302,21 +302,27 @@ vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
   }: {
     value?: string | { format: (format: string) => string }
     onChange: (value: { hour: () => number; minute: () => number }) => void
-    renderTrigger: (params: {
-      inputElem: ReactNode
-      onClick: () => void
-      isOpen: boolean
-    }) => ReactNode
+    renderTrigger: (
+      props: Record<string, never>,
+      state: { open: boolean },
+      params: {
+        inputElem: ReactNode
+        onClick: () => void
+      },
+    ) => ReactNode
   }) => {
     const displayValue = typeof value === 'string' ? value : value?.format('HH:mm')
 
     return (
       <div data-testid="update-time-picker">
-        {renderTrigger({
-          inputElem: <span data-testid="update-time-value">{displayValue}</span>,
-          onClick: vi.fn(),
-          isOpen: false,
-        })}
+        {renderTrigger(
+          {},
+          { open: false },
+          {
+            inputElem: <span data-testid="update-time-value">{displayValue}</span>,
+            onClick: vi.fn(),
+          },
+        )}
         <button
           type="button"
           onClick={() =>

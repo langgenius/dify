@@ -122,7 +122,7 @@ const LogViewer = ({ logs, className }: Props) => {
             )}
           >
             {isError && (
-              <div className="pointer-events-none absolute top-0 left-0 h-7 w-[179px]">
+              <div className="pointer-events-none absolute top-0 left-0 h-7 w-44.75">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="179"

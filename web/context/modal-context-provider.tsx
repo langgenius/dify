@@ -4,10 +4,8 @@ import type { ReactNode } from 'react'
 import type { ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useAtomValue } from 'jotai'
@@ -53,13 +51,6 @@ const ExternalAPIModal = dynamic(
     ssr: false,
   },
 )
-const ModelLoadBalancingModal = dynamic(
-  () =>
-    import('@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'),
-  {
-    ssr: false,
-  },
-)
 const OpeningSettingModal = dynamic(
   () => import('@/app/components/base/features/new-feature-panel/conversation-opener/modal'),
   {
@@ -70,9 +61,6 @@ const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugi
   ssr: false,
 })
 
-const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
-  ssr: false,
-})
 const TriggerEventsLimitModal = dynamic(
   () => import('@/app/components/billing/trigger-events-limit-modal'),
   {
@@ -92,8 +80,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] =
     useState<ModalState<CreateExternalAPIReq> | null>(null)
-  const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] =
-    useState<ModelLoadBalancingModalProps | null>(null)
   const [showOpeningModal, setShowOpeningModal] = useState<ModalState<
     OpeningStatement & {
       promptVariables?: PromptVariable[]
@@ -103,17 +89,11 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   > | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] =
     useState<ModalState<UpdatePluginPayload> | null>(null)
-  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] =
-    useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const { plan, isFetchedPlan } = useProviderContext()
-  const {
-    showTriggerEventsLimitModal,
-    setShowTriggerEventsLimitModal,
-    persistTriggerEventsLimitModalDismiss,
-  } = useTriggerEventsLimitModal({
+  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal({
     plan,
     isFetchedPlan,
     currentWorkspaceId,
@@ -218,11 +198,9 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     showAnnotationFullModal ||
     showModelModal ||
     showExternalKnowledgeAPIModal ||
-    showModelLoadBalancingModal ||
     showOpeningModal ||
     showUpdatePluginModal ||
-    showEducationExpireNoticeModal ||
-    showTriggerEventsLimitModal,
+    triggerEventsLimitModal,
   )
 
   return (
@@ -235,11 +213,8 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
         setShowModelModal,
         setShowExternalKnowledgeAPIModal,
-        setShowModelLoadBalancingModal,
         setShowOpeningModal,
         setShowUpdatePluginModal,
-        setShowEducationExpireNoticeModal,
-        setShowTriggerEventsLimitModal,
       }}
     >
       <>
@@ -294,9 +269,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             isEditMode={showExternalKnowledgeAPIModal.isEditMode ?? false}
           />
         )}
-        {Boolean(showModelLoadBalancingModal) && (
-          <ModelLoadBalancingModal {...showModelLoadBalancingModal!} />
-        )}
         {showOpeningModal && (
           <OpeningSettingModal
             data={showOpeningModal.payload}
@@ -321,25 +293,15 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             }}
           />
         )}
-        {!!showEducationExpireNoticeModal && (
-          <ExpireNoticeModal
-            {...showEducationExpireNoticeModal.payload}
-            onClose={() => setShowEducationExpireNoticeModal(null)}
-          />
-        )}
-        {!!showTriggerEventsLimitModal && (
+        {!!triggerEventsLimitModal && (
           <TriggerEventsLimitModal
             show
-            usage={showTriggerEventsLimitModal.payload.usage}
-            total={showTriggerEventsLimitModal.payload.total}
-            resetInDays={showTriggerEventsLimitModal.payload.resetInDays}
-            onClose={() => {
-              persistTriggerEventsLimitModalDismiss()
-              setShowTriggerEventsLimitModal(null)
-            }}
+            usage={triggerEventsLimitModal.usage}
+            total={triggerEventsLimitModal.total}
+            resetInDays={triggerEventsLimitModal.resetInDays}
+            onClose={dismissTriggerEventsLimitModal}
             onUpgrade={() => {
-              persistTriggerEventsLimitModalDismiss()
-              setShowTriggerEventsLimitModal(null)
+              dismissTriggerEventsLimitModal()
               handleShowPricingModal()
             }}
           />

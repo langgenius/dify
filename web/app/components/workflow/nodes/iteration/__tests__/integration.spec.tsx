@@ -42,13 +42,17 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     availableBlocksTypes = [],
     disabled,
   }: {
-    trigger?: (open: boolean) => ReactNode
+    trigger?:
+      | ReactNode
+      | ((props: React.HTMLAttributes<HTMLElement>, state: { open: boolean }) => ReactNode)
     onSelect?: (type: BlockEnum) => void
     availableBlocksTypes?: BlockEnum[]
     disabled?: boolean
   }) => (
     <div>
-      {trigger ? <div>{trigger(false)}</div> : null}
+      {trigger ? (
+        <div>{typeof trigger === 'function' ? trigger({}, { open: false }) : trigger}</div>
+      ) : null}
       <button
         type="button"
         disabled={disabled}

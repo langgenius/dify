@@ -201,7 +201,7 @@ describe('SecretKeyButton', () => {
     it('should have horizontal padding', () => {
       render(<SecretKeyButton />)
       const text = screen.getByText('appApi.apiKey')
-      expect(text.className).toContain('px-[3px]')
+      expect(text.className).toContain('px-0.75')
     })
 
     it('should have tertiary text color', () => {

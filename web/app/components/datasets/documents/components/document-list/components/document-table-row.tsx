@@ -114,7 +114,7 @@ const DocumentTableRow = React.memo(
           </div>
         </td>
         <td>
-          <div className="group mr-6 flex max-w-[460px] items-center hover:mr-0">
+          <div className="group mr-6 flex max-w-115 items-center hover:mr-0">
             <div className="flex shrink-0 items-center">
               <DocumentSourceIcon doc={doc} fileType={fileType} />
             </div>

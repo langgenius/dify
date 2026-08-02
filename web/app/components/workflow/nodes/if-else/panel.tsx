@@ -70,7 +70,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({ id, data }) => {
       </div>
       <div className="mx-3 my-2 h-px bg-divider-subtle"></div>
       <Field title={t(($) => $[`${i18nPrefix}.else`], { ns: 'workflow' })} className="px-4 py-2">
-        <div className="text-xs leading-[18px] font-normal text-text-tertiary">
+        <div className="text-xs leading-4.5 font-normal text-text-tertiary">
           {t(($) => $[`${i18nPrefix}.elseDescription`], { ns: 'workflow' })}
         </div>
       </Field>

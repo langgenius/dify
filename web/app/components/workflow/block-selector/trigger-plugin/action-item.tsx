@@ -1,5 +1,6 @@
 'use client'
-import type { ComponentProps, FC } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
+import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -26,8 +27,8 @@ export type TriggerPluginActionPreviewPayload = {
   language: ReturnType<typeof useGetLanguage>
 }
 
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
-export type TriggerPluginActionPreviewCardHandle = PreviewCardHandle
+export type TriggerPluginActionPreviewCardHandle =
+  PreviewCardHandle<TriggerPluginActionPreviewPayload>
 
 const TriggerPluginActionItem: FC<Props> = ({
   provider,
@@ -48,7 +49,7 @@ const TriggerPluginActionItem: FC<Props> = ({
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
       className={cn(
-        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-5.25 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={() => {
@@ -124,7 +125,7 @@ export function TriggerPluginActionPreviewCard({ payload }: TriggerPluginActionP
       <div className="mb-1 text-sm/5 text-text-primary">
         {payload.payload.label[payload.language]}
       </div>
-      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+      <div className="text-xs leading-4.5 wrap-break-word text-text-secondary">
         {payload.payload.description[payload.language]}
       </div>
     </BlockSelectorPreviewCardContent>

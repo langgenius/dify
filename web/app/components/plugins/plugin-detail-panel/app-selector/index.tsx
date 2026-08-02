@@ -2,6 +2,7 @@
 
 import type { Placement } from '@langgenius/dify-ui/popover'
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
@@ -126,18 +127,22 @@ export function AppSelector({
       <PopoverTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
         disabled={disabled}
-        render={
-          <button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />
-        }
-      >
-        <AppTrigger open={isShow} appDetail={currentAppInfo} />
-      </PopoverTrigger>
+        render={(props, state) => (
+          <button
+            {...props}
+            type="button"
+            className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+          >
+            <AppTrigger open={state.open} appDetail={currentAppInfo} />
+          </button>
+        )}
+      />
       <PopoverContent
         placement={placement}
         sideOffset={offset}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="relative min-h-20 w-97.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="flex flex-col gap-1 px-4 py-3">
             <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
               {t(($) => $['appSelector.label'], { ns: 'app' })}

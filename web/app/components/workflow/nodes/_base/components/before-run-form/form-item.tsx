@@ -10,6 +10,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine } from '@remixicon/react'
@@ -93,7 +94,7 @@ const FormItem: FC<Props> = ({
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
               <div
-                className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-text-secondary"
+                className="mx-0.5 max-w-37.5 truncate text-xs font-medium text-text-secondary"
                 title={nodeName}
               >
                 {nodeName}
@@ -106,7 +107,7 @@ const FormItem: FC<Props> = ({
             {isChatVar && <BubbleX className="size-3.5 text-util-colors-teal-teal-700" />}
             <div
               className={cn(
-                'ml-0.5 max-w-[150px] truncate text-xs font-medium',
+                'ml-0.5 max-w-37.5 truncate text-xs font-medium',
                 isChatVar && 'text-text-secondary',
               )}
               title={variable}
@@ -190,7 +191,7 @@ const FormItem: FC<Props> = ({
         )}
 
         {type === InputVarType.select && (
-          <Select
+          <Select<string>
             value={value || payload.default || null}
             onValueChange={(nextValue) => {
               if (!nextValue) return
@@ -198,9 +199,7 @@ const FormItem: FC<Props> = ({
             }}
           >
             <SelectTrigger className="w-full">
-              {String(
-                value || payload.default || t(($) => $['placeholder.select'], { ns: 'common' }),
-              )}
+              <SelectValue placeholder={t(($) => $['placeholder.select'], { ns: 'common' })} />
             </SelectTrigger>
             <SelectContent>
               {(payload.options || []).map((option) => (
@@ -236,7 +235,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+            className="bg h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={<div className="whitespace-pre">{jsonSchemaPlaceholder}</div>}
           />
         )}

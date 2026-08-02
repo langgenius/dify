@@ -35,13 +35,11 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
     [nodeId, sourceHandle, handleNodeChange],
   )
 
-  const renderTrigger = useCallback(() => {
-    return (
-      <Button variant="ghost" size="medium" className="w-full justify-start px-2">
-        {t(($) => $['panel.change'], { ns: 'workflow' })}
-      </Button>
-    )
-  }, [t])
+  const triggerElement = (
+    <Button variant="ghost" size="medium" className="w-full justify-start px-2">
+      {t(($) => $['panel.change'], { ns: 'workflow' })}
+    </Button>
+  )
 
   return (
     <BlockSelector
@@ -49,7 +47,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
       placement="top-end"
       sideOffset={6}
       alignOffset={8}
-      trigger={renderTrigger}
+      trigger={triggerElement}
       popupClassName="w-[328px]!"
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(
         (item) => item !== nodeCatalogType,
@@ -87,7 +85,7 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         alignOffset={-4}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
+        <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
           <div className="p-1">
             <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
             <div

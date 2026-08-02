@@ -107,8 +107,10 @@ describe('BlockSelector', () => {
         onSelect={onSelect}
         blocks={[createBlock(BlockEnum.LLM, 'LLM'), createBlock(BlockEnum.End, 'End')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
-        trigger={(open) => (
-          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
+        trigger={(props, state) => (
+          <button {...props} type="button">
+            {state.open ? 'selector-open' : 'selector-closed'}
+          </button>
         )}
       />,
     )
@@ -155,8 +157,10 @@ describe('BlockSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
         showStartTab
-        trigger={(open) => (
-          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
+        trigger={(props, state) => (
+          <button {...props} type="button">
+            {state.open ? 'selector-open' : 'selector-closed'}
+          </button>
         )}
       />,
     )
@@ -192,7 +196,7 @@ describe('BlockSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
         showStartTab
-        trigger={() => <button type="button">selector-open</button>}
+        trigger={<button type="button">selector-open</button>}
       />,
     )
 
@@ -218,8 +222,10 @@ describe('BlockSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
         showStartTab
-        trigger={(open) => (
-          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
+        trigger={(props, state) => (
+          <button {...props} type="button">
+            {state.open ? 'selector-open' : 'selector-closed'}
+          </button>
         )}
       />,
     )
@@ -255,8 +261,10 @@ describe('BlockSelector', () => {
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={(open) => (
-          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
+        trigger={(props, state) => (
+          <button {...props} type="button">
+            {state.open ? 'selector-open' : 'selector-closed'}
+          </button>
         )}
       />,
     )
@@ -287,7 +295,7 @@ describe('BlockSelector', () => {
           onOpenChange={setOpen}
           onSelect={vi.fn()}
           blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
-          trigger={() => <button type="button">selector-trigger</button>}
+          trigger={<button type="button">selector-trigger</button>}
         />
       )
     }
@@ -314,7 +322,7 @@ describe('BlockSelector', () => {
       <BlockSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
-        trigger={() => <button type="button">selector-trigger</button>}
+        trigger={<button type="button">selector-trigger</button>}
       />,
     )
 
@@ -339,11 +347,11 @@ describe('BlockSelector', () => {
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={() => (
+        trigger={
           <button type="button" onClick={onTriggerClick}>
             open-selector
           </button>
-        )}
+        }
       />,
     )
 
@@ -369,7 +377,7 @@ describe('BlockSelector', () => {
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={() => <ForwardingButtonTrigger />}
+        trigger={<ForwardingButtonTrigger />}
       />,
     )
 
@@ -388,7 +396,7 @@ describe('BlockSelector', () => {
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={() => <Button variant="primary">open-shared-button-trigger</Button>}
+        trigger={<Button variant="primary">open-shared-button-trigger</Button>}
       />,
     )
 

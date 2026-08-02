@@ -58,7 +58,7 @@ type BlockSelectorProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onSelect?: (type: BlockEnum, pluginDefaultValue?: { pluginId: string }) => void
-  triggerClassName?: (open: boolean) => string
+  triggerClassName?: string
 }
 
 vi.mock('reactflow', () => ({
@@ -83,7 +83,8 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     <div>
       <button
         type="button"
-        className={triggerClassName?.(open)}
+        className={triggerClassName}
+        data-popup-open={open ? '' : undefined}
         onClick={(e) => {
           e.stopPropagation()
           onOpenChange?.(!open)
@@ -214,14 +215,14 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       // Trigger stays pointer-events-none so it never steals mousedown from
       // the underlying React Flow handle (drag-to-connect must keep working).
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
 
       fireEvent.click(getSelectNodeButton())
 
@@ -275,7 +276,7 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(getSelectNodeButton())
@@ -293,7 +294,7 @@ describe('node-handle', () => {
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
     })
 
     it('should keep the source add trigger visible when the node is selected', () => {
@@ -323,7 +324,7 @@ describe('node-handle', () => {
 
       const addNodeButton = getAddNodeButton()
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       expect(addNodeButton).toHaveClass('pointer-events-none')
       expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)

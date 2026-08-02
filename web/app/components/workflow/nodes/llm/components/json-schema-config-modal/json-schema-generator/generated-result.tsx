@@ -56,9 +56,9 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   }, [schema, onApply])
 
   return (
-    <div className="flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
+    <div className="flex w-120 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       {isGenerating ? (
-        <div className="flex h-[600px] flex-col items-center justify-center gap-y-3">
+        <div className="flex h-150 flex-col items-center justify-center gap-y-3">
           <Loading type="area" />
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['nodes.llm.jsonSchema.generating'], { ns: 'workflow' })}

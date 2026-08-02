@@ -119,7 +119,13 @@ describe('Authorized', () => {
       />,
     )
 
+    const trigger = screen.getByTestId('popover-trigger')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
     fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(screen.getByRole('button', { name: /trigger\s*open/i })).toBeInTheDocument()
     expect(screen.getByTestId('authorized-item'))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /addApiKey/i }))!.toBeInTheDocument()
   })

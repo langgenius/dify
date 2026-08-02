@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +12,8 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useProviderContext } from '@/context/provider-context'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'
@@ -32,7 +33,10 @@ const RetrievalMethodConfig: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { supportRetrievalMethods } = useProviderContext()
+  const { data: retrievalSetting } = useQuery(
+    consoleQuery.datasets.retrievalSetting.get.queryOptions(),
+  )
+  const supportedRetrievalMethods = new Set(retrievalSetting?.retrieval_method ?? [])
   const { defaultModel: rerankDefaultModel, currentModel: isRerankDefaultModelValid } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
@@ -107,7 +111,7 @@ const RetrievalMethodConfig: FC<Props> = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
+      {supportedRetrievalMethods.has(RETRIEVE_METHOD.semantic) && (
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
           disabled={disabled}
@@ -131,7 +135,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.fullText) && (
+      {supportedRetrievalMethods.has(RETRIEVE_METHOD.fullText) && (
         <OptionCard
           id={RETRIEVE_METHOD.fullText}
           disabled={disabled}
@@ -155,7 +159,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.hybrid) && (
+      {supportedRetrievalMethods.has(RETRIEVE_METHOD.hybrid) && (
         <OptionCard
           id={RETRIEVE_METHOD.hybrid}
           disabled={disabled}

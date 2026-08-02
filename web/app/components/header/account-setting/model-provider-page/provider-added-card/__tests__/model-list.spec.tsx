@@ -1,10 +1,12 @@
 import type { ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, screen } from '@testing-library/react'
+import type { ModelLoadBalancingModalProps } from '../model-load-balancing-modal'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import { render } from '@/test/console/render'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelList from '../model-list'
 
-const mockSetShowModelLoadBalancingModal = vi.fn()
 let mockWorkspacePermissionKeys: string[] = [
   'plugin.model_config',
   'credential.manage',
@@ -18,12 +20,38 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (
-    selector: (state: {
-      setShowModelLoadBalancingModal: typeof mockSetShowModelLoadBalancingModal
-    }) => unknown,
-  ) => selector({ setShowModelLoadBalancingModal: mockSetShowModelLoadBalancingModal }),
+vi.mock('@/next/dynamic', () => ({
+  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+    const LazyComponent = React.lazy(loader)
+    return function DynamicComponent(props: Record<string, unknown>) {
+      return React.createElement(
+        React.Suspense,
+        { fallback: null },
+        React.createElement(LazyComponent, props),
+      )
+    }
+  },
+}))
+
+vi.mock('../model-load-balancing-modal', () => ({
+  default: ({ model, onClose, onSave, open, provider }: ModelLoadBalancingModalProps) =>
+    open ? (
+      <div role="dialog" aria-label={`Load balancing for ${model.model}`}>
+        <span>{provider.provider}</span>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onSave?.(provider.provider)
+            onClose?.()
+          }}
+        >
+          Save
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../model-list-item', () => ({
@@ -34,7 +62,11 @@ vi.mock('../model-list-item', () => ({
     model: ModelItem
     onModifyLoadBalancing: (model: ModelItem) => void
   }) => (
-    <button type="button" onClick={() => onModifyLoadBalancing(model)}>
+    <button
+      type="button"
+      aria-label={`Modify load balancing for ${model.model}`}
+      onClick={() => onModifyLoadBalancing(model)}
+    >
       {model.model}
     </button>
   ),
@@ -74,8 +106,12 @@ describe('ModelList', () => {
       />,
     )
     expect(screen.getAllByText(/modelProvider\.modelsNum/).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'gpt-4' }))!.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'gpt-3.5' }))!.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Modify load balancing for gpt-4' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Modify load balancing for gpt-3.5' }),
+    ).toBeInTheDocument()
   })
 
   it('should trigger collapse when collapsed label is clicked', () => {
@@ -93,7 +129,8 @@ describe('ModelList', () => {
     expect(mockOnCollapse).toHaveBeenCalled()
   })
 
-  it('should open load balancing modal for selected model', () => {
+  it('should open the selected model and reset the payload after close', async () => {
+    const user = userEvent.setup()
     render(
       <ModelList
         provider={mockProvider}
@@ -103,8 +140,28 @@ describe('ModelList', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
-    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Modify load balancing for gpt-4' }))
+
+    const firstDialog = await screen.findByRole('dialog', {
+      name: 'Load balancing for gpt-4',
+    })
+    expect(within(firstDialog).getByText('test-provider')).toBeInTheDocument()
+
+    await user.click(within(firstDialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Load balancing for gpt-4' }),
+      ).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Modify load balancing for gpt-3.5' }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Load balancing for gpt-3.5' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Load balancing for gpt-4' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should hide custom model actions without plugin.model_config', () => {
@@ -173,7 +230,8 @@ describe('ModelList', () => {
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should call onSave (onChange) and onClose from the load balancing modal callbacks', () => {
+  it('should refresh the provider and close after saving load balancing changes', async () => {
+    const user = userEvent.setup()
     render(
       <ModelList
         provider={mockProvider}
@@ -183,16 +241,19 @@ describe('ModelList', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
-    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Modify load balancing for gpt-4' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Load balancing for gpt-4',
+    })
 
-    const callArg = mockSetShowModelLoadBalancingModal.mock.calls[0]![0]
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
-    callArg.onSave('test-provider')
     expect(mockOnChange).toHaveBeenCalledWith('test-provider')
-
-    callArg.onClose()
-    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalledWith(null)
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Load balancing for gpt-4' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('should hide custom model actions when provider uses fetchFromRemote only', () => {

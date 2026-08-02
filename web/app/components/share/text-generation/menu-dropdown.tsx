@@ -52,7 +52,7 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
         <DropdownMenuTrigger
           render={
             <ActionButton size="l" className="data-popup-open:bg-state-base-hover">
-              <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
+              <span aria-hidden className="i-ri-equalizer-2-line h-4.5 w-4.5" />
             </ActionButton>
           }
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}

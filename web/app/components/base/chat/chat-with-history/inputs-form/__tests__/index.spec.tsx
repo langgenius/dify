@@ -44,7 +44,7 @@ const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
   currentConversationId: '',
   handleStartChat: mockHandleStartChat,
   allInputsHidden: false,
-  themeBuilder: undefined,
+  theme: undefined,
   inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
   currentConversationInputs: {},
   newConversationInputs: {},
@@ -112,9 +112,7 @@ describe('InputsFormNode', () => {
 
     setMockContext({
       currentConversationId: '',
-      themeBuilder: {
-        theme: { primaryColor: themeColor },
-      } as unknown as ChatWithHistoryContextValue['themeBuilder'],
+      theme: { primaryColor: themeColor } as unknown as ChatWithHistoryContextValue['theme'],
     })
 
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
