@@ -350,7 +350,14 @@ describe('WorkspaceCard', () => {
   it('opens workspace actions and switcher in a popover panel', async () => {
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    const workspaceTrigger = screen.getByRole('button', {
+      name: 'common.mainNav.workspace.openMenu',
+    })
+    expect(workspaceTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(workspaceTrigger)
+
+    expect(workspaceTrigger).toHaveAttribute('data-popup-open', '')
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(panel).toBeInTheDocument()
@@ -438,7 +445,14 @@ describe('WorkspaceCard', () => {
 
     expect(defaultWorkspaceOptions).toEqual(['Atlas Workspace', 'Solar Studio', 'Evan Workspace'])
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }))
+    const sortTrigger = screen.getByRole('button', {
+      name: 'common.mainNav.workspace.sort.openMenu',
+    })
+    expect(sortTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(sortTrigger)
+
+    expect(sortTrigger).toHaveAttribute('data-popup-open', '')
 
     expect(
       await screen.findByRole('menuitemradio', {

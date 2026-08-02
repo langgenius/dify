@@ -85,7 +85,6 @@ function WorkspaceCreditsLabel({ credits, unit }: { credits: string; unit: strin
 }
 
 function WorkspaceCardTrigger({
-  open,
   name,
   status,
   credits,
@@ -96,7 +95,6 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces,
   onPlanClick,
 }: {
-  open: boolean
   name: string
   status: ReactNode
   credits: number | null
@@ -127,7 +125,7 @@ function WorkspaceCardTrigger({
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
-          open && 'bg-linear-to-b from-background-section-burn to-background-section',
+          'data-popup-open:bg-linear-to-b data-popup-open:from-background-section-burn data-popup-open:to-background-section',
         )}
       >
         <WorkspaceAvatar name={name} size="sm" />
@@ -319,7 +317,6 @@ export function WorkspaceCard() {
     <Popover open={open} onOpenChange={setOpen}>
       <>
         <WorkspaceCardTrigger
-          open={open}
           name={currentWorkspace.name}
           status={renderWorkspaceStatus()}
           credits={currentWorkspace.credits}

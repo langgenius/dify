@@ -974,7 +974,12 @@ describe('MainNav', () => {
 
     renderMainNav({ enable_learn_app: true })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const helpTrigger = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    expect(helpTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(helpTrigger)
+
+    expect(helpTrigger).toHaveAttribute('data-popup-open', '')
     const learnDifyItem = await screen.findByRole('menuitemcheckbox', {
       name: 'common.mainNav.help.learnDify',
     })
