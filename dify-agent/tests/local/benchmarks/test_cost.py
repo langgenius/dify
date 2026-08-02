@@ -9,7 +9,6 @@ from pydantic import ValidationError
 from benchmarks.cost import (
     CostInputV1,
     E2BBillingV1,
-    RedisTierV1,
     SCENARIO_IDS,
     ScenarioId,
     calculate_cost_result,
@@ -175,24 +174,10 @@ def _input(**updates: object) -> CostInputV1:
     values: dict[str, object] = {
         "monthly_runs": 1000,
         "peak_rps": 10,
-        "billing_period_seconds": 100,
-        "retention_seconds": 10,
-        "billable_egress_ratio": 1,
         "e2b_billing": E2BBillingV1(minimum_seconds=0, increment_seconds=1),
-        "redis_tiers": [
-            RedisTierV1(
-                name="large",
-                max_commands_per_second=10000,
-                max_memory_bytes=10_000_000,
-                max_network_mbps=1000,
-                monthly_price=20,
-            )
-        ],
-        "acu_monthly_price": 30,
         "e2b_price_per_billed_second": 1,
-        "network_price_per_gib": 2,
         "currency": "USD",
-        "price_source": "test fixture prices",
+        "e2b_price_source": "test fixture E2B price",
     }
     values.update(updates)
     return CostInputV1.model_validate(values)
@@ -215,10 +200,10 @@ def test_peak_and_usage_weights_must_each_cover_five_scenarios_and_sum_to_one() 
     assert cost_input.peak_weights == weights
 
 
-def test_non_null_prices_require_currency_and_source() -> None:
+def test_non_null_e2b_price_requires_currency_and_source() -> None:
     payload = _input().model_dump()
-    payload["price_source"] = None
-    with pytest.raises(ValidationError, match="price_source"):
+    payload["e2b_price_source"] = None
+    with pytest.raises(ValidationError, match="e2b_price_source"):
         CostInputV1.model_validate(payload)
 
     payload = _input().model_dump()
@@ -229,15 +214,12 @@ def test_non_null_prices_require_currency_and_source() -> None:
     payload = _input().model_dump()
     payload.update(
         {
-            "acu_monthly_price": None,
             "e2b_price_per_billed_second": None,
-            "network_price_per_gib": None,
             "currency": None,
-            "price_source": None,
+            "e2b_price_source": None,
         }
     )
-    payload["redis_tiers"][0]["monthly_price"] = None
-    assert CostInputV1.model_validate(payload).price_source is None
+    assert CostInputV1.model_validate(payload).e2b_price_source is None
 
 
 def test_selects_fastest_valid_point_and_tie_uses_lower_concurrency(tmp_path: Path) -> None:
@@ -380,14 +362,12 @@ def test_missing_e2b_billing_only_invalidates_e2b_component(tmp_path: Path) -> N
 
     assert shell.status == "incomplete"
     assert shell.agent.status == "calculated"
-    assert shell.redis.status == "calculated"
-    assert shell.network.status == "calculated"
     assert shell.e2b.status == "incomplete"
     assert shell.e2b.active_seconds_per_run == pytest.approx(0.625)
     assert shell.e2b.billed_seconds_per_run is None
 
 
-def test_redis_and_network_formulas_use_selected_block_evidence(tmp_path: Path) -> None:
+def test_agent_capacity_and_total_use_selected_block_evidence(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(
         tmp_path,
         mode="local-e2b",
@@ -397,107 +377,52 @@ def test_redis_and_network_formulas_use_selected_block_evidence(tmp_path: Path) 
 
     result = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(billable_egress_ratio=0.5),
+        cost_input=_input(),
     )
 
     basic = result.pure_scenarios["basic"]
     assert basic.agent.acu == 1
-    assert basic.redis.peak_commands_per_second == 50
-    assert basic.redis.monthly_commands == 5000
-    assert basic.redis.storage_bytes_per_run == 100
-    assert basic.redis.retained_bytes == 10_000
-    assert basic.redis.peak_network_mbps == pytest.approx(0.16)
-    assert basic.redis.selected_tier == "large"
-    expected_gib = 1000 * 4 * 1000 / 1024**3 * 0.5
-    assert basic.network.monthly_billable_gib == pytest.approx(expected_gib)
+    assert basic.total_monthly_cost == 0
+    shell = result.pure_scenarios["shell"]
+    assert shell.total_monthly_cost == shell.e2b.monthly_cost
 
 
-def test_no_matching_redis_tier_has_explicit_no_capacity_recommendation(tmp_path: Path) -> None:
+def test_null_and_zero_e2b_prices_remain_distinct(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
-    small = RedisTierV1(
-        name="small",
-        max_commands_per_second=1,
-        max_memory_bytes=1,
-        max_network_mbps=0.001,
-        monthly_price=0,
-    )
-
-    result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input(redis_tiers=[small]))
-
-    basic = result.pure_scenarios["basic"]
-    assert basic.status == "incomplete"
-    assert basic.redis.status == "incomplete"
-    assert basic.redis.capacity_recommendation == "no_capacity_recommendation"
-    assert basic.redis.selected_tier is None
-
-
-def test_null_and_zero_inputs_remain_distinct(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
-    free_tier = RedisTierV1(
-        name="free",
-        max_commands_per_second=10000,
-        max_memory_bytes=10_000_000,
-        max_network_mbps=1000,
-        monthly_price=0,
-    )
 
     zero = calculate_cost_result(
         capacity_result_path=capacity_path,
         cost_input=_input(
-            billable_egress_ratio=0,
-            redis_tiers=[free_tier],
-            acu_monthly_price=0,
-            network_price_per_gib=0,
+            e2b_price_per_billed_second=0,
         ),
-    ).pure_scenarios["basic"]
+    ).pure_scenarios["shell"]
     unknown_result = calculate_cost_result(
         capacity_result_path=capacity_path,
         cost_input=_input(
-            billable_egress_ratio=0,
-            redis_tiers=[free_tier],
-            acu_monthly_price=None,
-            network_price_per_gib=0,
+            e2b_price_per_billed_second=None,
+            currency=None,
+            e2b_price_source=None,
         ),
     )
-    unknown = unknown_result.pure_scenarios["basic"]
-    missing_ratio = calculate_cost_result(
-        capacity_result_path=capacity_path,
-        cost_input=_input(billable_egress_ratio=None),
-    ).pure_scenarios["basic"]
-
-    assert zero.network.monthly_billable_gib == 0
+    unknown = unknown_result.pure_scenarios["shell"]
+    assert zero.e2b.monthly_cost == 0
     assert zero.total_monthly_cost == 0
-    assert unknown.agent.monthly_cost is None
-    assert unknown.agent.status == "incomplete"
+    assert unknown.agent.status == "calculated"
+    assert unknown.e2b.status == "incomplete"
     assert unknown.total_monthly_cost is None
     assert unknown_result.cost_envelope is None
-    assert missing_ratio.status == "incomplete"
 
 
-def test_each_missing_component_price_marks_only_that_component_incomplete(tmp_path: Path) -> None:
+def test_missing_e2b_price_only_invalidates_e2b_cost(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
-    unpriced_tier = RedisTierV1(
-        name="unpriced",
-        max_commands_per_second=10000,
-        max_memory_bytes=10_000_000,
-        max_network_mbps=1000,
-        monthly_price=None,
-    )
-
-    redis_missing = calculate_cost_result(
+    estimate = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(redis_tiers=[unpriced_tier]),
-    ).pure_scenarios["basic"]
-    network_missing = calculate_cost_result(
-        capacity_result_path=capacity_path,
-        cost_input=_input(network_price_per_gib=None),
-    ).pure_scenarios["basic"]
+        cost_input=_input(e2b_price_per_billed_second=None, currency=None, e2b_price_source=None),
+    ).pure_scenarios["shell"]
 
-    assert redis_missing.redis.selected_tier == "unpriced"
-    assert redis_missing.redis.status == "incomplete"
-    assert redis_missing.agent.status == "calculated"
-    assert network_missing.network.monthly_billable_gib is not None
-    assert network_missing.network.status == "incomplete"
+    assert estimate.agent.status == "calculated"
+    assert estimate.e2b.status == "incomplete"
+    assert estimate.total_monthly_cost is None
 
 
 def test_peak_and_usage_weights_produce_separate_weighted_result(tmp_path: Path) -> None:
@@ -520,8 +445,7 @@ def test_peak_and_usage_weights_produce_separate_weighted_result(tmp_path: Path)
     assert result.cost_envelope is not None
     assert result.cost_envelope.best_scenario == "basic"
     assert result.cost_envelope.worst_scenario == "shell"
-    assert result.cost_envelope.worst_to_best_ratio is not None
-    assert result.cost_envelope.worst_to_best_ratio > 1
+    assert result.cost_envelope.worst_to_best_ratio is None
 
 
 def test_missing_weight_group_only_invalidates_its_weighted_dimensions(tmp_path: Path) -> None:
@@ -539,14 +463,10 @@ def test_missing_weight_group_only_invalidates_its_weighted_dimensions(tmp_path:
 
     assert peak_only is not None
     assert peak_only.agent.status == "calculated"
-    assert peak_only.network.status == "incomplete"
-    assert peak_only.redis.peak_commands_per_second is not None
-    assert peak_only.redis.monthly_commands is None
+    assert peak_only.e2b.status == "incomplete"
     assert usage_only is not None
     assert usage_only.agent.status == "incomplete"
-    assert usage_only.network.status == "calculated"
-    assert usage_only.redis.peak_commands_per_second is None
-    assert usage_only.redis.monthly_commands is not None
+    assert usage_only.e2b.status == "calculated"
 
 
 def test_zero_weight_scenario_without_valid_point_does_not_block_weighted_result(tmp_path: Path) -> None:
@@ -601,9 +521,18 @@ def test_cli_writes_three_artifacts_without_kubernetes_equivalents(tmp_path: Pat
     assert "kubernetes" not in keys
     assert serialized["source"]["commit"] == "abc"
     assert serialized["demand"]["monthly_runs"] == 1000
-    assert "Redis cmd/s" in report
-    assert "E2B active / billed s/run" in report
-    assert "Network GiB" in report
+    assert "| ACU |" in report
+    assert "ACU / Cost" not in report
+    assert "Redis" not in report
+    assert "E2B active s/run | E2B billed s/run | E2B billed s/month | E2B Cost" in report
+    assert "Network" not in report
+    assert "Total Cost (E2B only)" in report
+    assert "monthly_cost" not in serialized["pure_scenarios"]["basic"]["agent"]
+    assert "redis" not in serialized["pure_scenarios"]["basic"]
+    assert "network" not in serialized["pure_scenarios"]["basic"]
+    assert "acu_monthly_price" not in json.loads((output_dir / "cost-input.json").read_text())
+    assert "redis_tiers" not in json.loads((output_dir / "cost-input.json").read_text())
+    assert "network_price_per_gib" not in json.loads((output_dir / "cost-input.json").read_text())
     assert serialized["pure_scenarios"]["basic"]["agent"]["capacity_runs_per_second"] == pytest.approx(1.23456789)
     assert "1.2346" in report
     assert "1.23457" not in report
@@ -619,7 +548,7 @@ def test_report_displays_price_provenance_and_four_decimal_places(tmp_path: Path
     report = render_cost_report(result)
 
     assert result.pure_scenarios["basic"].agent.capacity_runs_per_second == pytest.approx(1.23456789)
-    assert "Price source: **test fixture prices**" in report
+    assert "E2B price source: **test fixture E2B price**" in report
     assert "Currency: **USD**" in report
     assert "1.2346" in report
     assert "1.23457" not in report

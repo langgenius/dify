@@ -58,41 +58,27 @@ make -C dify-agent bench-cost \
 `report.md` is the final output; `bench-cost` rejects a `local-runtime` result
 instead of applying monetary prices to it.
 
-The cost input uses Schema v1. The harness has no built-in E2B, ACU, Redis, or
-network prices: every price comes from `COST_INPUT`. Unknown prices must be
-`null`; an explicit zero means the resource is free under the supplied
-assumptions. When any price is non-null, `currency` and `price_source` are
-required. The source should identify the vendor or internal catalog and the
-date the price was retrieved.
+The cost input uses Schema v1. ACU is a capacity count and has no monetary
+price in this model. The harness has no built-in E2B price: it only uses the
+value supplied by `COST_INPUT`. An unknown price must be `null`; an explicit
+zero means E2B is free under the supplied assumption. When the E2B price is
+non-null, `currency` and `e2b_price_source` are required. The source should
+identify the vendor contract or billing catalog and the retrieval date.
 
 ```json
 {
   "schema_version": 1,
   "monthly_runs": 10000000,
   "peak_rps": 20,
-  "billing_period_seconds": 2592000,
-  "retention_seconds": 0,
   "usage_weights": null,
   "peak_weights": null,
-  "billable_egress_ratio": null,
   "e2b_billing": {
     "minimum_seconds": 0,
     "increment_seconds": 1
   },
-  "redis_tiers": [
-    {
-      "name": "example",
-      "max_commands_per_second": 100000,
-      "max_memory_bytes": 1073741824,
-      "max_network_mbps": 1000,
-      "monthly_price": null
-    }
-  ],
-  "acu_monthly_price": null,
   "e2b_price_per_billed_second": null,
-  "network_price_per_gib": null,
   "currency": null,
-  "price_source": null
+  "e2b_price_source": null
 }
 ```
 
@@ -103,13 +89,24 @@ must each contain all five scenario names, use non-negative values, and sum to
 one; they are never inferred or normalized.
 
 The command creates a new `benchmarks/results/<timestamp>-cost/` directory with
-`cost-input.json`, `cost-result.json`, and `cost-report.md`. It reports ACU,
-Redis, E2B, and network requirements and costs from the supplied assumptions.
-It does not calculate Kubernetes Pod or Node equivalents, model/Tool costs,
-quotas, or production SLOs. E2B cost uses per-Run active-time samples and
-applies the configured billing quantum before averaging. Markdown values are
-displayed with four decimal places while JSON artifacts retain the original
-calculation precision.
+`cost-input.json`, `cost-result.json`, and `cost-report.md`. It reports the ACU
+count and E2B cost from the supplied assumptions. Redis and network metrics
+remain available in the original capacity result, but this cost command does
+not display or price them and does not include them in Total Cost. It does not
+calculate Kubernetes Pod or Node equivalents, model/Tool costs, quotas, or
+production SLOs. Markdown values are displayed with four decimal places while
+JSON artifacts retain the original calculation precision.
+
+The E2B columns have separate meanings:
+
+- `E2B active s/run`: measured provider execution time per successful Run.
+- `E2B billed s/run`: active time after applying the minimum and billing
+  increment to every Run individually, then averaging.
+- `E2B billed s/month`: billed seconds per Run multiplied by `monthly_runs`.
+- `E2B Cost`: monthly billed seconds multiplied by
+  `e2b_price_per_billed_second`.
+
+`Total Cost` currently equals E2B Cost only.
 
 ## Metrics
 
