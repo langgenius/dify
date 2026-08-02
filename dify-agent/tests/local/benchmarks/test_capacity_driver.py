@@ -320,9 +320,7 @@ def test_load_phase_timeout_preserves_logs_partial_observations_and_stats(
 
     async def create_subprocess(*_args: object, **kwargs: object) -> TimedOutProcess:
         subprocess_kwargs.update(kwargs)
-        (private_dir / "measurement-active-runs.jsonl").write_text(
-            '{"run_id":"run-active","state":"admitted"}\n'
-        )
+        (private_dir / "measurement-active-runs.jsonl").write_text('{"run_id":"run-active","state":"admitted"}\n')
         return process
 
     recover = AsyncMock(return_value=(1, []))

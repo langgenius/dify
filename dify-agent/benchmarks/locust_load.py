@@ -181,6 +181,7 @@ class _PhaseUser(User):
             self._record_fatal(exc)
             self._finish_phase_participation()
             raise StopUser() from exc
+
     @task
     def run_agent(self) -> None:
         if self.phase_state.should_stop(self.iterations):

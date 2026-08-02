@@ -304,7 +304,9 @@ def _excluded_point_warnings(points: Sequence[CapacityPoint]) -> list[str]:
     for point in sorted(points, key=lambda item: item.requested_concurrency):
         if point.status == "valid":
             continue
-        reason = "; ".join(_compact_reason(item) for item in point.reasons) if point.reasons else "canonical point status"
+        reason = (
+            "; ".join(_compact_reason(item) for item in point.reasons) if point.reasons else "canonical point status"
+        )
         warnings.append(f"c{point.requested_concurrency} {point.status} excluded: {reason}")
     return warnings
 
