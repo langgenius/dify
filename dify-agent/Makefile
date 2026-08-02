@@ -70,9 +70,13 @@ bench-sizing:
 	@test -n "$(MONTHLY_RUNS)" || (echo "MONTHLY_RUNS is required" >&2; exit 2)
 	@test -n "$(PEAK_RPS)" || (echo "PEAK_RPS is required" >&2; exit 2)
 	@test -n "$(E2B_CONCURRENCY)" || (echo "E2B_CONCURRENCY is required" >&2; exit 2)
+	@test -n "$(E2B_TEMPLATE_VCPUS)" || (echo "E2B_TEMPLATE_VCPUS is required" >&2; exit 2)
+	@test -n "$(E2B_TEMPLATE_RAM_GB)" || (echo "E2B_TEMPLATE_RAM_GB is required" >&2; exit 2)
 	@UV_PYTHON=3.12.13 uv --directory "$(PROJECT_DIR)" run --project . --group benchmark \
 		python -m benchmarks.sizing \
 		--capacity-result "$(CAPACITY_RESULT)" \
 		--monthly-runs "$(MONTHLY_RUNS)" \
 		--peak-rps "$(PEAK_RPS)" \
-		--e2b-concurrency "$(E2B_CONCURRENCY)"
+		--e2b-concurrency "$(E2B_CONCURRENCY)" \
+		--e2b-template-vcpus "$(E2B_TEMPLATE_VCPUS)" \
+		--e2b-template-ram-gb "$(E2B_TEMPLATE_RAM_GB)"

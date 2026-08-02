@@ -27,11 +27,13 @@ E2B_CALCULATOR_URL = "https://pricing.e2b.dev/"
 E2B_CALCULATOR_CHECKED_AT = "2026-08-02"
 
 
-class SizingInputV1(BaseModel):
-    schema_version: Literal[1] = 1
+class SizingInputV2(BaseModel):
+    schema_version: Literal[2] = 2
     monthly_runs: int = Field(ge=0)
     peak_rps: float = Field(ge=0)
     e2b_concurrency: E2BConcurrency
+    e2b_template_vcpus: float = Field(gt=0, allow_inf_nan=False)
+    e2b_template_ram_gb: float = Field(gt=0, allow_inf_nan=False)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -67,11 +69,11 @@ class ScenarioSizingV1(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class SizingResultV1(BaseModel):
-    schema_version: Literal[1] = 1
+class SizingResultV2(BaseModel):
+    schema_version: Literal[2] = 2
     capacity_schema_version: Literal[1] = 1
     source: SizingSourceV1
-    sizing_input: SizingInputV1
+    sizing_input: SizingInputV2
     e2b_calculator_url: Literal["https://pricing.e2b.dev/"] = E2B_CALCULATOR_URL
     e2b_calculator_checked_at: Literal["2026-08-02"] = E2B_CALCULATOR_CHECKED_AT
     matrix_complete: bool
@@ -87,13 +89,14 @@ class _SelectedEvidence:
     active_seconds_per_run: float | None
     vcpus: float | None
     ram_gb: float | None
+    resource_crosscheck_valid: bool
 
 
 def calculate_sizing_result(
     *,
     capacity_result_path: Path,
-    sizing_input: SizingInputV1,
-) -> SizingResultV1:
+    sizing_input: SizingInputV2,
+) -> SizingResultV2:
     capacity_result_path = capacity_result_path.resolve()
     capacity = CapacityResult.model_validate_json(capacity_result_path.read_text())
     if capacity.schema_version != 1:
@@ -112,6 +115,7 @@ def calculate_sizing_result(
             warnings.append("no valid capacity point is available")
             scenarios[scenario_id] = _incomplete_sizing(
                 e2b_applicable=scenario_id != "basic",
+                sizing_input=sizing_input,
                 warnings=warnings,
             )
             result_warnings.append(f"{scenario_id}: no valid capacity point")
@@ -126,6 +130,7 @@ def calculate_sizing_result(
         if evidence is None:
             scenarios[scenario_id] = _incomplete_sizing(
                 e2b_applicable=scenario_id != "basic",
+                sizing_input=sizing_input,
                 warnings=warnings,
                 selected=selected,
             )
@@ -140,7 +145,7 @@ def calculate_sizing_result(
         )
 
     complete = capacity.matrix_complete and all(item.status == "ready" for item in scenarios.values())
-    return SizingResultV1(
+    return SizingResultV2(
         source=SizingSourceV1(
             capacity_result_path=str(capacity_result_path),
             mode=capacity.mode,
@@ -228,7 +233,12 @@ def _load_selected_evidence(
     if len(selected_samples) != block.outcomes.successful_runs:
         return None, ["selected samples.jsonl successful Run count does not match the block"]
     if point.scenario_id == "basic":
-        return _SelectedEvidence(active_seconds_per_run=None, vcpus=None, ram_gb=None), []
+        return _SelectedEvidence(
+            active_seconds_per_run=None,
+            vcpus=None,
+            ram_gb=None,
+            resource_crosscheck_valid=True,
+        ), []
 
     warnings: list[str] = []
     active_values = [sample.e2b_active_seconds for sample in selected_samples]
@@ -238,32 +248,51 @@ def _load_selected_evidence(
     else:
         active = [cast(float, value) for value in active_values]
         active_seconds_per_run = sum(active) / len(active)
-    vcpus, vcpu_warning = _consistent_value(
-        [sample.e2b_vcpu_count for sample in selected_samples],
-        label="E2B vCPU count",
-    )
-    ram_mib, memory_warning = _consistent_value(
-        [sample.e2b_memory_mib for sample in selected_samples],
-        label="E2B memory MiB",
-    )
-    warnings.extend(item for item in (vcpu_warning, memory_warning) if item is not None)
+    if _historical_resource_fields_omitted(selected_samples):
+        vcpus = None
+        ram_mib = None
+        resource_crosscheck_valid = True
+        warnings.append("E2B lifecycle resource evidence was not recorded; using template configuration")
+    else:
+        vcpus, vcpu_warning, vcpu_crosscheck_valid = _consistent_value(
+            [sample.e2b_vcpu_count for sample in selected_samples],
+            label="E2B vCPU count",
+        )
+        ram_mib, memory_warning, memory_crosscheck_valid = _consistent_value(
+            [sample.e2b_memory_mib for sample in selected_samples],
+            label="E2B memory MiB",
+        )
+        resource_crosscheck_valid = vcpu_crosscheck_valid and memory_crosscheck_valid
+        warnings.extend(item for item in (vcpu_warning, memory_warning) if item is not None)
     return (
         _SelectedEvidence(
             active_seconds_per_run=active_seconds_per_run,
             vcpus=vcpus,
             ram_gb=ram_mib / 1024 if ram_mib is not None else None,
+            resource_crosscheck_valid=resource_crosscheck_valid,
         ),
         warnings,
     )
 
 
-def _consistent_value(values: Sequence[float | None], *, label: str) -> tuple[float | None, str | None]:
+def _consistent_value(
+    values: Sequence[float | None],
+    *,
+    label: str,
+) -> tuple[float | None, str | None, bool]:
+    if all(value is None for value in values):
+        return None, f"all successful samples lack {label}", False
     if any(value is None for value in values):
-        return None, f"one or more successful samples lack {label}"
+        return None, f"one or more successful samples lack {label}", False
     present = [cast(float, value) for value in values]
     if len(set(present)) != 1:
-        return None, f"successful samples contain multiple {label} values"
-    return present[0], None
+        return None, f"successful samples contain multiple {label} values", False
+    return present[0], None, True
+
+
+def _historical_resource_fields_omitted(samples: Sequence[RunSample]) -> bool:
+    resource_fields = {"e2b_vcpu_count", "e2b_memory_mib"}
+    return all(resource_fields.isdisjoint(sample.model_fields_set) for sample in samples)
 
 
 def _load_block_result(path: Path) -> BlockResult:
@@ -288,10 +317,11 @@ def _sizing_from_evidence(
     scenario_id: ScenarioId,
     point: CapacityPoint,
     evidence: _SelectedEvidence,
-    sizing_input: SizingInputV1,
+    sizing_input: SizingInputV2,
     warnings: Sequence[str],
 ) -> ScenarioSizingV1:
     required_acu = math.ceil(sizing_input.peak_rps / point.runs_per_second)
+    result_warnings = list(warnings)
     if scenario_id == "basic":
         e2b = E2BCalculatorInputsV1(status="not_applicable")
     else:
@@ -300,13 +330,13 @@ def _sizing_from_evidence(
             if evidence.active_seconds_per_run is not None
             else None
         )
-        ready = (
-            evidence.active_seconds_per_run is not None and evidence.vcpus is not None and evidence.ram_gb is not None
-        )
+        resource_mismatches = _resource_mismatch_warnings(evidence=evidence, sizing_input=sizing_input)
+        result_warnings.extend(resource_mismatches)
+        ready = evidence.active_seconds_per_run is not None and evidence.resource_crosscheck_valid and not resource_mismatches
         e2b = E2BCalculatorInputsV1(
             status="ready" if ready else "incomplete",
-            vcpus=evidence.vcpus,
-            ram_gb=evidence.ram_gb,
+            vcpus=sizing_input.e2b_template_vcpus,
+            ram_gb=sizing_input.e2b_template_ram_gb,
             run_hours_per_month=run_hours,
             concurrency=sizing_input.e2b_concurrency,
             active_seconds_per_run=evidence.active_seconds_per_run,
@@ -317,13 +347,31 @@ def _sizing_from_evidence(
         capacity_runs_per_second=point.runs_per_second,
         required_acu=required_acu,
         e2b=e2b,
-        warnings=list(dict.fromkeys(warnings)),
+        warnings=list(dict.fromkeys(result_warnings)),
     )
+
+
+def _resource_mismatch_warnings(
+    *,
+    evidence: _SelectedEvidence,
+    sizing_input: SizingInputV2,
+) -> list[str]:
+    warnings: list[str] = []
+    if evidence.vcpus is not None and not math.isclose(evidence.vcpus, sizing_input.e2b_template_vcpus):
+        warnings.append(
+            f"template vCPUs {sizing_input.e2b_template_vcpus} do not match lifecycle vCPUs {evidence.vcpus}"
+        )
+    if evidence.ram_gb is not None and not math.isclose(evidence.ram_gb, sizing_input.e2b_template_ram_gb):
+        warnings.append(
+            f"template RAM GB {sizing_input.e2b_template_ram_gb} does not match lifecycle RAM GB {evidence.ram_gb}"
+        )
+    return warnings
 
 
 def _incomplete_sizing(
     *,
     e2b_applicable: bool,
+    sizing_input: SizingInputV2,
     warnings: Sequence[str],
     selected: CapacityPoint | None = None,
 ) -> ScenarioSizingV1:
@@ -332,12 +380,21 @@ def _incomplete_sizing(
         selected_concurrency=selected.requested_concurrency if selected is not None else None,
         capacity_runs_per_second=selected.runs_per_second if selected is not None else None,
         required_acu=None,
-        e2b=E2BCalculatorInputsV1(status="incomplete" if e2b_applicable else "not_applicable"),
+        e2b=(
+            E2BCalculatorInputsV1(
+                status="incomplete",
+                vcpus=sizing_input.e2b_template_vcpus,
+                ram_gb=sizing_input.e2b_template_ram_gb,
+                concurrency=sizing_input.e2b_concurrency,
+            )
+            if e2b_applicable
+            else E2BCalculatorInputsV1(status="not_applicable")
+        ),
         warnings=list(warnings),
     )
 
 
-def render_sizing_report(result: SizingResultV1) -> str:
+def render_sizing_report(result: SizingResultV2) -> str:
     sizing_input = result.sizing_input
     lines = [
         "# Dify Agent ACU and E2B calculator inputs",
@@ -350,6 +407,8 @@ def render_sizing_report(result: SizingResultV1) -> str:
         f"- Commit/content: `{result.source.commit}` / `{result.source.content_hash}`",
         f"- Monthly Runs: **{sizing_input.monthly_runs}**",
         f"- Peak Runs/s: **{_number(sizing_input.peak_rps)}**",
+        f"- E2B Template vCPUs: **{_number(sizing_input.e2b_template_vcpus)}**",
+        f"- E2B Template RAM GB: **{_number(sizing_input.e2b_template_ram_gb)}**",
         f"- E2B concurrency selection: **{sizing_input.e2b_concurrency}**",
         f"- E2B calculator: {result.e2b_calculator_url}",
         f"- Calculator inputs checked at: **{result.e2b_calculator_checked_at}**",
@@ -377,7 +436,9 @@ def render_sizing_report(result: SizingResultV1) -> str:
             "",
             "- `Required ACU = ceil(peak_rps / selected capacity runs/s)`; no safety factor is added.",
             "- `Run Hours / Month = active-seconds/run × monthly_runs / 3600` for each pure scenario.",
-            "- E2B vCPUs, RAM, and active time come from matching pause lifecycle events.",
+            "- E2B vCPUs and RAM come from the explicit Template configuration inputs.",
+            "- Matching pause lifecycle resources cross-check the Template configuration when available.",
+            "- E2B active time comes from matching pause lifecycle events.",
             "- E2B concurrency is a business input and is not inferred from benchmark concurrency or peak RPS.",
             "- Copy vCPUs, RAM GB, Run Hours/month, and concurrency into the official E2B calculator.",
             "- Basic does not allocate E2B, so its E2B fields are not applicable.",
@@ -414,6 +475,8 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--monthly-runs", type=int, required=True)
     parser.add_argument("--peak-rps", type=float, required=True)
     parser.add_argument("--e2b-concurrency", type=int, choices=(20, 100, 600, 1100), required=True)
+    parser.add_argument("--e2b-template-vcpus", type=float, required=True)
+    parser.add_argument("--e2b-template-ram-gb", type=float, required=True)
     parser.add_argument("--output-dir", type=Path)
     return parser.parse_args(argv)
 
@@ -422,10 +485,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     capacity_result_path = cast(Path, args.capacity_result).resolve()
     try:
-        sizing_input = SizingInputV1(
+        sizing_input = SizingInputV2(
             monthly_runs=cast(int, args.monthly_runs),
             peak_rps=cast(float, args.peak_rps),
             e2b_concurrency=cast(E2BConcurrency, args.e2b_concurrency),
+            e2b_template_vcpus=cast(float, args.e2b_template_vcpus),
+            e2b_template_ram_gb=cast(float, args.e2b_template_ram_gb),
         )
         result = calculate_sizing_result(
             capacity_result_path=capacity_result_path,

@@ -17,7 +17,7 @@ from benchmarks.schemas import (
     RunSample,
     TargetIdentity,
 )
-from benchmarks.sizing import ScenarioId, SizingInputV1, calculate_sizing_result, main
+from benchmarks.sizing import ScenarioId, SizingInputV2, calculate_sizing_result, main
 
 
 def _point(
@@ -155,17 +155,20 @@ def _write_capacity_artifacts(
     return capacity_path
 
 
-def _input(**updates: object) -> SizingInputV1:
+def _input(**updates: object) -> SizingInputV2:
     values: dict[str, object] = {
         "monthly_runs": 1800,
         "peak_rps": 17,
         "e2b_concurrency": 20,
+        "e2b_template_vcpus": 2,
+        "e2b_template_ram_gb": 0.5,
     }
     values.update(updates)
-    return SizingInputV1.model_validate(values)
+    return SizingInputV2.model_validate(values)
 
 
 def test_sizing_input_only_accepts_official_calculator_concurrency_options() -> None:
+    assert _input().schema_version == 2
     assert _input(e2b_concurrency=20).e2b_concurrency == 20
     assert _input(e2b_concurrency=100).e2b_concurrency == 100
     assert _input(e2b_concurrency=600).e2b_concurrency == 600
@@ -175,6 +178,14 @@ def test_sizing_input_only_accepts_official_calculator_concurrency_options() -> 
         _input(e2b_concurrency=50)
     with pytest.raises(ValidationError):
         _input(monthly_runs=-1)
+    with pytest.raises(ValidationError):
+        _input(e2b_template_vcpus=0)
+    with pytest.raises(ValidationError):
+        _input(e2b_template_ram_gb=0)
+    with pytest.raises(ValidationError):
+        _input(e2b_template_vcpus=math.inf)
+    with pytest.raises(ValidationError):
+        _input(e2b_template_ram_gb=math.inf)
 
 
 def test_selects_fastest_valid_point_and_tie_uses_lower_concurrency(tmp_path: Path) -> None:
@@ -219,7 +230,85 @@ def test_calculates_acu_and_official_e2b_calculator_inputs(tmp_path: Path) -> No
     assert result.scenarios["basic"].e2b.status == "not_applicable"
 
 
-def test_missing_or_mixed_lifecycle_resources_keep_acu_but_mark_e2b_incomplete(tmp_path: Path) -> None:
+def test_historical_samples_without_lifecycle_resources_use_template_configuration(tmp_path: Path) -> None:
+    capacity_path = _write_capacity_artifacts(
+        tmp_path,
+        e2b_vcpu_counts=[None, None],
+        e2b_memory_mib=[None, None],
+    )
+    samples_path = tmp_path / "samples.jsonl"
+    historical_samples: list[str] = []
+    for line in samples_path.read_text().splitlines():
+        payload: dict[str, object] = json.loads(line)
+        payload.pop("e2b_vcpu_count")
+        payload.pop("e2b_memory_mib")
+        historical_samples.append(json.dumps(payload))
+    samples_path.write_text("\n".join(historical_samples) + "\n")
+
+    shell = calculate_sizing_result(capacity_result_path=capacity_path, sizing_input=_input()).scenarios["shell"]
+
+    assert shell.required_acu == 2
+    assert shell.status == "ready"
+    assert shell.e2b.status == "ready"
+    assert shell.e2b.run_hours_per_month == pytest.approx(0.25)
+    assert shell.e2b.vcpus == 2
+    assert shell.e2b.ram_gb == pytest.approx(0.5)
+    assert "lifecycle resource evidence was not recorded" in " ".join(shell.warnings)
+
+
+def test_explicit_null_lifecycle_resources_do_not_use_historical_fallback(tmp_path: Path) -> None:
+    capacity_path = _write_capacity_artifacts(
+        tmp_path,
+        e2b_vcpu_counts=[None, None],
+        e2b_memory_mib=[None, None],
+    )
+
+    shell = calculate_sizing_result(capacity_result_path=capacity_path, sizing_input=_input()).scenarios["shell"]
+
+    assert shell.status == "incomplete"
+    assert "all successful samples lack E2B vCPU count" in shell.warnings
+    assert "all successful samples lack E2B memory MiB" in shell.warnings
+
+
+def test_one_omitted_lifecycle_resource_field_is_incomplete(tmp_path: Path) -> None:
+    capacity_path = _write_capacity_artifacts(
+        tmp_path,
+        e2b_vcpu_counts=[None, None],
+        e2b_memory_mib=[512, 512],
+    )
+    samples_path = tmp_path / "samples.jsonl"
+    samples_without_vcpu: list[str] = []
+    for line in samples_path.read_text().splitlines():
+        payload: dict[str, object] = json.loads(line)
+        payload.pop("e2b_vcpu_count")
+        samples_without_vcpu.append(json.dumps(payload))
+    samples_path.write_text("\n".join(samples_without_vcpu) + "\n")
+
+    shell = calculate_sizing_result(capacity_result_path=capacity_path, sizing_input=_input()).scenarios["shell"]
+
+    assert shell.status == "incomplete"
+    assert "all successful samples lack E2B vCPU count" in shell.warnings
+
+
+def test_lifecycle_resource_mismatch_marks_template_inputs_incomplete(tmp_path: Path) -> None:
+    capacity_path = _write_capacity_artifacts(
+        tmp_path,
+        e2b_vcpu_counts=[4, 4],
+        e2b_memory_mib=[1024, 1024],
+    )
+
+    shell = calculate_sizing_result(capacity_result_path=capacity_path, sizing_input=_input()).scenarios["shell"]
+
+    assert shell.required_acu == 2
+    assert shell.status == "incomplete"
+    assert shell.e2b.status == "incomplete"
+    assert shell.e2b.vcpus == 2
+    assert shell.e2b.ram_gb == pytest.approx(0.5)
+    assert "template vCPUs 2.0 do not match lifecycle vCPUs 4.0" in shell.warnings
+    assert "template RAM GB 0.5 does not match lifecycle RAM GB 1.0" in shell.warnings
+
+
+def test_partial_or_mixed_lifecycle_resource_evidence_is_incomplete(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(
         tmp_path,
         e2b_vcpu_counts=[2, None],
@@ -228,12 +317,9 @@ def test_missing_or_mixed_lifecycle_resources_keep_acu_but_mark_e2b_incomplete(t
 
     shell = calculate_sizing_result(capacity_result_path=capacity_path, sizing_input=_input()).scenarios["shell"]
 
-    assert shell.required_acu == 2
     assert shell.status == "incomplete"
-    assert shell.e2b.status == "incomplete"
-    assert shell.e2b.run_hours_per_month == pytest.approx(0.25)
-    assert shell.e2b.vcpus is None
-    assert shell.e2b.ram_gb is None
+    assert shell.e2b.vcpus == 2
+    assert shell.e2b.ram_gb == pytest.approx(0.5)
     assert "lack E2B vCPU count" in " ".join(shell.warnings)
     assert "multiple E2B memory" in " ".join(shell.warnings)
 
@@ -248,6 +334,9 @@ def test_no_valid_point_is_incomplete_without_fabricating_acu(tmp_path: Path) ->
     assert shell.status == "incomplete"
     assert shell.required_acu is None
     assert shell.e2b.status == "incomplete"
+    assert shell.e2b.vcpus == 2
+    assert shell.e2b.ram_gb == pytest.approx(0.5)
+    assert shell.e2b.concurrency == 20
     assert "c1 invalid excluded: product error" in shell.warnings
 
 
@@ -286,6 +375,10 @@ def test_local_runtime_is_validation_only_and_rejected(
                 "10",
                 "--e2b-concurrency",
                 "20",
+                "--e2b-template-vcpus",
+                "2",
+                "--e2b-template-ram-gb",
+                "0.5",
                 "--output-dir",
                 str(output_dir),
             ]
@@ -314,6 +407,10 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
                 "17",
                 "--e2b-concurrency",
                 "20",
+                "--e2b-template-vcpus",
+                "2",
+                "--e2b-template-ram-gb",
+                "0.5",
                 "--output-dir",
                 str(output_dir),
             ]
@@ -336,4 +433,8 @@ def test_cli_writes_only_sizing_artifacts_and_no_monetary_model(tmp_path: Path) 
     assert "1.23457" not in report
     assert "| `shell` | `ready` | 1 | 1.2346 | 14 | 2.0000 | 0.5000 | 2 | 20 |" in report
     assert "2.5000" not in report
+    assert serialized["schema_version"] == 2
+    assert serialized["sizing_input"]["schema_version"] == 2
+    assert serialized["sizing_input"]["e2b_template_vcpus"] == 2
+    assert serialized["sizing_input"]["e2b_template_ram_gb"] == 0.5
     assert math.isfinite(serialized["scenarios"]["basic"]["capacity_runs_per_second"])
