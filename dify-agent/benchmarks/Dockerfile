@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir uv==${UV_VERSION}
 
 COPY dify-agent/pyproject.toml dify-agent/uv.lock dify-agent/README.md ./
 COPY dify-agent/src ./src
-RUN uv sync --frozen --no-dev --no-editable --extra server
+RUN uv sync --frozen --no-dev --no-editable --extra server --group benchmark
 
 COPY dify-agent/benchmarks ./benchmarks
 

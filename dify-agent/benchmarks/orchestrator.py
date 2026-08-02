@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import logging
+import math
 import os
 from pathlib import Path
 import platform
@@ -43,6 +44,10 @@ _HARNESS_VERSION = 1
 _REDIS_IMAGE = "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
 _CLOUDFLARED_IMAGE = "cloudflare/cloudflared@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf"
 _COMPOSE_FILE = "docker-compose.capacity.yml"
+_E2B_ALLOCATION_JOURNAL = ".e2b-allocations.jsonl"
+_LOCUST_DRAIN_TIMEOUT_SECONDS = 180
+_LOCUST_PROCESS_BUFFER_SECONDS = 30
+_DRIVER_LIFECYCLE_BUFFER_SECONDS = 180
 _AGENT_INPUTS = (
     "dify-agent/src",
     "dify-agent/pyproject.toml",
@@ -242,6 +247,7 @@ def _run_compose_block(
     sampler: DockerStatsSampler | None = None
     sampler_stopped = False
     result: BlockResult | None = None
+    driver_finished = False
     try:
         if needs_public_tunnel:
             if public_tunnel is None:
@@ -265,11 +271,18 @@ def _run_compose_block(
             raise BenchmarkCommandError(f"Compose project {project} did not expose all container ids")
         sampler = DockerStatsSampler(container_ids)
         sampler.start()
-        driver = _run_command(
-            [*compose, "run", "--rm", "-T", "--no-deps", "driver"],
-            env=environment,
-            check=False,
-        )
+        try:
+            driver = _run_command(
+                [*compose, "run", "--rm", "-T", "--no-deps", "driver"],
+                env=environment,
+                check=False,
+                timeout_seconds=_driver_timeout_seconds(point),
+            )
+        except BenchmarkCommandError as exc:
+            (logs_dir / f"{block_name}-driver.log").write_text(f"{exc}\n")
+            raise
+        driver_finished = True
+        (logs_dir / f"{block_name}-driver.log").write_text(driver.stdout + driver.stderr)
         sampler.stop()
         sampler_stopped = True
         sampler.write_jsonl(block_dir / "docker-stats.jsonl")
@@ -312,23 +325,293 @@ def _run_compose_block(
         result.valid = not result.invalid_reasons
         result_path.write_text(result.model_dump_json(indent=2))
         return result
+    except Exception as exc:
+        if result is None:
+            raise
+        result.invalid_reasons.append(f"orchestrator post-processing failed: {type(exc).__name__}: {exc}")
+        result.invalid_reasons = list(dict.fromkeys(result.invalid_reasons))
+        result.valid = False
+        (block_dir / "block-result.json").write_text(result.model_dump_json(indent=2))
+        return result
     finally:
+        finalization_errors: list[str] = []
         if sampler is not None and not sampler_stopped:
-            sampler.stop()
-            sampler.write_jsonl(block_dir / "docker-stats.jsonl")
-        logs = _run_command(
-            [*compose, "logs", "--no-color", "--timestamps", *services],
-            env=environment,
-            check=False,
+            try:
+                sampler.stop()
+                sampler.write_jsonl(block_dir / "docker-stats.jsonl")
+            except Exception as exc:
+                finalization_errors.append(f"Docker stats finalization raised {type(exc).__name__}: {exc}")
+        if not driver_finished:
+            try:
+                _stop_compose_service_containers(
+                    project=project,
+                    service="driver",
+                    environment=environment,
+                )
+            except BenchmarkCommandError as exc:
+                finalization_errors.append(str(exc))
+        try:
+            logs = _run_command(
+                [*compose, "logs", "--no-color", "--timestamps", *services],
+                env=environment,
+                check=False,
+            )
+            (logs_dir / f"{block_name}.log").write_text(logs.stdout + logs.stderr)
+        except Exception as exc:
+            finalization_errors.append(f"Compose log capture raised {type(exc).__name__}: {exc}")
+        keep_failed_project = _should_keep_failed_compose_project(
+            mode=point.mode,
+            keep_containers=keep_containers,
+            block_valid=result.valid if result is not None else None,
         )
-        (logs_dir / f"{block_name}.log").write_text(logs.stdout + logs.stderr)
-        if keep_containers and (result is None or not result.valid):
+        if keep_failed_project:
             logger.warning("keeping failed benchmark Compose project %s", project)
         else:
-            _ = _run_command([*compose, "down", "-v", "--remove-orphans"], env=environment, check=False)
+            if keep_containers and point.mode == "local-e2b" and (result is None or not result.valid):
+                logger.warning(
+                    "ignoring KEEP_CONTAINERS for local-e2b project %s to avoid retaining credentials", project
+                )
+            try:
+                _teardown_compose_project(compose=compose, project=project, environment=environment)
+            except BenchmarkCommandError as exc:
+                finalization_errors.append(str(exc))
+        if point.mode == "local-e2b":
+            allocation_journal = block_dir / _E2B_ALLOCATION_JOURNAL
+            if e2b_api_key is None:
+                cleanup_valid = False
+                cleanup_evidence = _empty_e2b_cleanup_evidence(journal_found=allocation_journal.exists())
+                cleanup_evidence["orchestration_errors"] = 1
+                finalization_errors.append("host E2B allocation cleanup lacked an API key")
+            else:
+                try:
+                    cleanup_valid, cleanup_evidence = _cleanup_e2b_allocation_journal(
+                        allocation_journal,
+                        api_key=e2b_api_key,
+                    )
+                except Exception as exc:
+                    cleanup_valid = False
+                    cleanup_evidence = _empty_e2b_cleanup_evidence(journal_found=allocation_journal.exists())
+                    cleanup_evidence["orchestration_errors"] = 1
+                    finalization_errors.append(f"host E2B allocation cleanup raised {type(exc).__name__}: {exc}")
+            try:
+                _write_json(block_dir / "e2b-allocation-cleanup.json", cleanup_evidence)
+            except Exception as exc:
+                finalization_errors.append(f"E2B cleanup evidence write raised {type(exc).__name__}: {exc}")
+            if result is not None:
+                result.cleanup["host_e2b_allocations_destroyed"] = cleanup_valid
+            if not cleanup_valid:
+                finalization_errors.append("host E2B allocation cleanup failed")
         if e2b_api_key:
-            _redact_secret_in_directory(block_dir, e2b_api_key)
-            _redact_secret_in_directory(logs_dir, e2b_api_key)
+            for directory in (block_dir, logs_dir):
+                try:
+                    _redact_secret_in_directory(directory, e2b_api_key)
+                except Exception as exc:
+                    finalization_errors.append(
+                        f"secret redaction for {directory.name} raised {type(exc).__name__}: {exc}"
+                    )
+        _finalize_block_result(result=result, block_dir=block_dir, errors=finalization_errors)
+
+
+def _driver_timeout_seconds(point: CapacityMatrixPoint) -> float:
+    """Bound the parent Driver while allowing every Locust phase to drain."""
+    load_phase_count = 2
+    if point.scenario.workload == "resume":
+        load_phase_count += 2 if point.mode == "local-runtime" and point.requested_concurrency > 1 else 1
+    per_phase_overhead = _LOCUST_DRAIN_TIMEOUT_SECONDS + _LOCUST_PROCESS_BUFFER_SECONDS
+    return math.ceil(
+        point.warmup_seconds
+        + point.measurement_seconds
+        + load_phase_count * per_phase_overhead
+        + _DRIVER_LIFECYCLE_BUFFER_SECONDS
+    )
+
+
+def _finalize_block_result(
+    *,
+    result: BlockResult | None,
+    block_dir: Path,
+    errors: Sequence[str],
+) -> None:
+    if result is None:
+        if errors:
+            raise BenchmarkCommandError("; ".join(errors))
+        return
+    if errors:
+        result.invalid_reasons.extend(errors)
+        result.invalid_reasons = list(dict.fromkeys(result.invalid_reasons))
+        result.valid = False
+    (block_dir / "block-result.json").write_text(result.model_dump_json(indent=2))
+
+
+def _should_keep_failed_compose_project(
+    *,
+    mode: BenchmarkMode,
+    keep_containers: bool,
+    block_valid: bool | None,
+) -> bool:
+    return keep_containers and mode == "local-runtime" and block_valid is not True
+
+
+def _cleanup_e2b_allocation_journal(path: Path, *, api_key: str) -> tuple[bool, dict[str, object]]:
+    """Kill unresolved E2B allocations recorded by the disposable Driver."""
+    evidence = _empty_e2b_cleanup_evidence(journal_found=path.exists())
+    if not path.exists():
+        return True, evidence
+
+    unresolved: dict[str, None] = {}
+    parse_errors = 0
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except (TypeError, ValueError):
+            parse_errors += 1
+            continue
+        if not isinstance(event, dict):
+            parse_errors += 1
+            continue
+        binding_ref = event.get("binding_ref")
+        workspace_ref = event.get("workspace_ref")
+        state = event.get("state")
+        if not isinstance(binding_ref, str) or not isinstance(workspace_ref, str):
+            parse_errors += 1
+            continue
+        if state == "allocated":
+            evidence["allocated_events"] = cast(int, evidence["allocated_events"]) + 1
+            unresolved[binding_ref] = None
+        elif state == "destroyed":
+            evidence["destroyed_events"] = cast(int, evidence["destroyed_events"]) + 1
+            unresolved.pop(binding_ref, None)
+        else:
+            parse_errors += 1
+
+    evidence["parse_errors"] = parse_errors
+    evidence["unresolved_allocations"] = len(unresolved)
+    killed = 0
+    kill_errors = 0
+    for binding_ref in unresolved:
+        try:
+            _kill_e2b_sandbox(binding_ref, api_key=api_key)
+        except Exception:
+            kill_errors += 1
+        else:
+            killed += 1
+    evidence["killed_allocations"] = killed
+    evidence["kill_errors"] = kill_errors
+    cleanup_valid = parse_errors == 0 and kill_errors == 0
+    if cleanup_valid:
+        path.unlink()
+    else:
+        path.chmod(0o600)
+    return cleanup_valid, evidence
+
+
+def _empty_e2b_cleanup_evidence(*, journal_found: bool) -> dict[str, object]:
+    return {
+        "journal_found": journal_found,
+        "allocated_events": 0,
+        "destroyed_events": 0,
+        "unresolved_allocations": 0,
+        "killed_allocations": 0,
+        "parse_errors": 0,
+        "kill_errors": 0,
+        "orchestration_errors": 0,
+    }
+
+
+def _kill_e2b_sandbox(sandbox_id: str, *, api_key: str) -> None:
+    from e2b import NotFoundException, Sandbox, SandboxNotFoundException
+
+    try:
+        _ = Sandbox.kill(sandbox_id, api_key=api_key)
+    except (NotFoundException, SandboxNotFoundException):
+        pass
+
+
+def _teardown_compose_project(
+    *,
+    compose: Sequence[str],
+    project: str,
+    environment: dict[str, str],
+) -> None:
+    errors: list[str] = []
+    down = _run_command([*compose, "down", "-v", "--remove-orphans"], env=environment, check=False)
+    if down.returncode != 0:
+        errors.append(f"docker compose down exited with status {down.returncode}")
+
+    label = f"label=com.docker.compose.project={project}"
+    residual_commands = {
+        "containers": (
+            ["docker", "container", "ls", "--all", "--quiet", "--filter", label],
+            ["docker", "container", "rm", "--force"],
+        ),
+        "volumes": (
+            ["docker", "volume", "ls", "--quiet", "--filter", label],
+            ["docker", "volume", "rm", "--force"],
+        ),
+        "networks": (
+            ["docker", "network", "ls", "--quiet", "--filter", label],
+            ["docker", "network", "rm"],
+        ),
+    }
+    for resource, (list_command, remove_command) in residual_commands.items():
+        listing = _run_command(list_command, env=environment, check=False)
+        if listing.returncode != 0:
+            errors.append(f"failed to inspect residual Compose {resource}: status {listing.returncode}")
+            continue
+        residual_ids = [line.strip() for line in listing.stdout.splitlines() if line.strip()]
+        if not residual_ids:
+            continue
+        removal = _run_command([*remove_command, *residual_ids], env=environment, check=False)
+        if removal.returncode != 0:
+            errors.append(f"failed to force-remove residual Compose {resource}: status {removal.returncode}")
+        verification = _run_command(list_command, env=environment, check=False)
+        if verification.returncode != 0:
+            errors.append(f"failed to verify residual Compose {resource}: status {verification.returncode}")
+            continue
+        remaining = len([line for line in verification.stdout.splitlines() if line.strip()])
+        if remaining:
+            errors.append(f"Compose project retained {remaining} {resource} after force removal")
+    if errors:
+        raise BenchmarkCommandError("Compose teardown failed: " + "; ".join(errors))
+
+
+def _stop_compose_service_containers(
+    *,
+    project: str,
+    service: str,
+    environment: dict[str, str],
+) -> None:
+    containers = _run_command(
+        [
+            "docker",
+            "container",
+            "ls",
+            "--all",
+            "--quiet",
+            "--filter",
+            f"label=com.docker.compose.project={project}",
+            "--filter",
+            f"label=com.docker.compose.service={service}",
+        ],
+        env=environment,
+        check=False,
+    )
+    if containers.returncode != 0:
+        raise BenchmarkCommandError(f"failed to inspect {service} containers: status {containers.returncode}")
+    container_ids = [line.strip() for line in containers.stdout.splitlines() if line.strip()]
+    if not container_ids:
+        return
+    killed = _run_command(
+        ["docker", "container", "kill", *container_ids],
+        env=environment,
+        check=False,
+    )
+    if killed.returncode != 0:
+        raise BenchmarkCommandError(
+            f"failed to stop {len(container_ids)} {service} containers: status {killed.returncode}"
+        )
 
 
 def _build_harness_image(root: Path) -> str:
@@ -377,7 +660,7 @@ def _build_target_images(root: Path, *, mode: BenchmarkMode) -> TargetIdentity:
         cwd=root,
     )
     agent_id = _image_id(agent_tag)
-    _remember_image_tag(agent_id, agent_tag)
+    _pin_target_image(agent_id, prefix="dify-agent-bench-frozen")
     runtime_id: str | None = None
     if mode == "local-runtime":
         runtime_hash = _hash_paths(root, _RUNTIME_INPUTS)
@@ -412,7 +695,7 @@ def _build_target_images(root: Path, *, mode: BenchmarkMode) -> TargetIdentity:
             cwd=root,
         )
         runtime_id = _image_id(runtime_tag)
-        _remember_image_tag(runtime_id, runtime_tag)
+        _pin_target_image(runtime_id, prefix="dify-agent-runtime-bench-frozen")
         content_hash = hashlib.sha256(f"{content_hash}:{runtime_hash}".encode()).hexdigest()
     return TargetIdentity(
         commit=commit,
@@ -421,6 +704,14 @@ def _build_target_images(root: Path, *, mode: BenchmarkMode) -> TargetIdentity:
         agent_image_id=agent_id,
         runtime_image_id=runtime_id,
     )
+
+
+def _pin_target_image(image_id: str, *, prefix: str) -> str:
+    """Give an immutable image ID its own local tag so later builds cannot orphan it."""
+    frozen_tag = f"{prefix}:{image_id.removeprefix('sha256:')}"
+    _run_command(["docker", "image", "tag", image_id, frozen_tag])
+    _remember_image_tag(image_id, frozen_tag)
+    return frozen_tag
 
 
 _IMAGE_TAGS: dict[str, str] = {}
@@ -733,15 +1024,25 @@ def _run_command(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
     check: bool = True,
+    timeout_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(
-        list(command),
-        cwd=cwd,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            list(command),
+            cwd=cwd,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _subprocess_output_text(exc.stdout)
+        stderr = _subprocess_output_text(exc.stderr)
+        timeout_label = f"{timeout_seconds:.0f}s" if timeout_seconds is not None else "configured timeout"
+        raise BenchmarkCommandError(
+            f"command timed out after {timeout_label}: {' '.join(command)}\n{stdout}{stderr}"
+        ) from exc
     if check and result.returncode != 0:
         raise BenchmarkCommandError(
             f"command failed ({result.returncode}): {' '.join(command)}\n{result.stdout}{result.stderr}"
@@ -749,14 +1050,20 @@ def _run_command(
     return result
 
 
-def _parse_args() -> CapacityOptions:
+def _subprocess_output_text(value: object) -> str:
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value if isinstance(value, str) else ""
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> CapacityOptions:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("local-runtime", "local-e2b"))
     parser.add_argument("--scenario", choices=("basic", "shell", "resume", "config", "file"))
     parser.add_argument("--concurrency", type=int)
     parser.add_argument("--keep-containers", action="store_true")
     parser.add_argument("--results-root", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     mode = cast(BenchmarkMode, args.mode)
     return CapacityOptions(
         mode=mode,
