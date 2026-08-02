@@ -1,7 +1,7 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { commonQueryKeys } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
@@ -195,6 +195,64 @@ describe('ModelAuthDropdown', () => {
   })
 
   describe('Popover behavior', () => {
+    it('should keep the popover open and allow retrying when loading a summary detail fails', async () => {
+      const providerSummary = {
+        provider: 'test',
+        plugin_id: 'test-plugin',
+        label: { en_US: 'Test', zh_Hans: 'Test' },
+        supported_model_types: ['llm'],
+        configurate_methods: [],
+        preferred_provider_type: 'system',
+        is_configured: true,
+        custom_configuration: {
+          status: 'active',
+          has_custom_models: false,
+          available_credentials: [],
+          current_credential_usable: false,
+        },
+        system_configuration: { enabled: true },
+      } satisfies ModelProviderSummaryResponse
+      const fullProvider = createProvider()
+      render(
+        <ModelAuthDropdown
+          provider={providerSummary}
+          state={createState()}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+        />,
+      )
+      let resolveFirstRequest: ((response: Response) => void) | undefined
+      const fetchMock = vi.mocked(globalThis.fetch)
+      fetchMock.mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFirstRequest = resolve
+          }),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /addApiKey/i }))
+
+      expect(await screen.findByRole('status')).toBeInTheDocument()
+      await act(async () => {
+        resolveFirstRequest?.(new Response(null, { status: 500 }))
+      })
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [fullProvider] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('common.modelProvider.card.noApiKeysTitle')).toBeInTheDocument()
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
     it('should open popover on button click and show dropdown content', async () => {
       render(
         <ModelAuthDropdown

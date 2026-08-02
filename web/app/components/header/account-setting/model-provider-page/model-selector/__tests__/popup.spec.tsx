@@ -1,5 +1,6 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { Model, ModelItem, ModelProvider } from '../../declarations'
+import type { Model, ModelItem } from '../../declarations'
 import type { PopupProps } from '../popup'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -44,7 +45,7 @@ vi.mock('@/utils/tool-call', () => ({
 }))
 
 type MockContextProvider = Pick<
-  ModelProvider,
+  ModelProviderSummaryResponse,
   | 'provider'
   | 'label'
   | 'icon_small'
@@ -1003,6 +1004,52 @@ describe('Popup', () => {
     expect(screen.getByTestId('credits-exhausted-alert'))!.toHaveAttribute(
       'data-has-api-key-fallback',
       'false',
+    )
+  })
+
+  it('should only mark API key fallback when the current credential is usable', () => {
+    Object.assign(mockTrialCredits, {
+      credits: 0,
+      totalCredits: 200,
+      isExhausted: true,
+    })
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        custom_configuration: {
+          status: 'active',
+          current_credential_usable: false,
+        } as MockContextProvider['custom_configuration'],
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+
+    const { rerender } = renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
+
+    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
+      'data-has-api-key-fallback',
+      'false',
+    )
+
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        custom_configuration: {
+          status: 'active',
+          current_credential_usable: true,
+        } as MockContextProvider['custom_configuration'],
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+    rerender(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
+
+    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
+      'data-has-api-key-fallback',
+      'true',
     )
   })
 

@@ -24,30 +24,37 @@ function ModelAuthDropdown({
 }: ModelAuthDropdownProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [isProviderDetailError, setIsProviderDetailError] = useState(false)
   const isFullProvider = !('is_configured' in provider) || 'provider_credential_schema' in provider
   const { providerDetail, loadProviderDetail, isProviderDetailEnabled, isLoadingProviderDetail } =
     useLazyModelProviderDetail(provider.provider)
   const currentProvider = isFullProvider ? provider : providerDetail
 
-  const handleClose = useCallback(() => setOpen(false), [])
+  const handleClose = useCallback(() => {
+    setOpen(false)
+    setIsProviderDetailError(false)
+  }, [])
 
   const buttonConfig = getButtonConfig(state.variant, state.hasCredentials, t)
-  const handleOpenChange = async (nextOpen: boolean) => {
+  const loadDetail = useCallback(async () => {
+    setIsProviderDetailError(false)
+    const detail = await loadProviderDetail()
+    if (!detail) setIsProviderDetailError(true)
+  }, [loadProviderDetail])
+
+  const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setOpen(false)
+      handleClose()
       return
     }
+
+    setOpen(true)
 
     if (
-      isFullProvider ||
-      (currentProvider && isProviderDetailEnabled && !isLoadingProviderDetail)
-    ) {
-      setOpen(true)
-      return
-    }
-
-    const detail = await loadProviderDetail()
-    if (detail) setOpen(true)
+      !isFullProvider &&
+      !(currentProvider && isProviderDetailEnabled && !isLoadingProviderDetail)
+    )
+      void loadDetail()
   }
 
   return (
@@ -67,7 +74,7 @@ function ModelAuthDropdown({
         }
       />
       <PopoverContent placement="bottom-end">
-        {currentProvider && (
+        {currentProvider ? (
           <DropdownContent
             provider={currentProvider}
             state={state}
@@ -75,6 +82,29 @@ function ModelAuthDropdown({
             onChangePriority={onChangePriority}
             onClose={handleClose}
           />
+        ) : isProviderDetailError ? (
+          <div className="flex w-80 flex-col items-start gap-3 p-4" role="alert">
+            <span className="system-sm-medium text-text-primary">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </span>
+            <Button size="small" variant="secondary" onClick={() => void loadDetail()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        ) : (
+          <div
+            className="flex w-80 items-center justify-center gap-2 p-4"
+            role="status"
+            aria-busy="true"
+          >
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+            />
+            <span className="system-sm-regular text-text-secondary">
+              {t(($) => $.loading, { ns: 'common' })}
+            </span>
+          </div>
         )}
       </PopoverContent>
     </Popover>

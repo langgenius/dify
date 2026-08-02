@@ -2996,14 +2996,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/config-model.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1

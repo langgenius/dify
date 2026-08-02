@@ -136,7 +136,11 @@ function Popup({
   const hasApiKeyFallback = modelProviders.some((provider) => {
     const isApiKeyActive =
       provider.custom_configuration?.status === CustomConfigurationStatusEnum.active
-    return isApiKeyActive && providerSupportsCredits(provider, trialModels, deploymentEdition)
+    return (
+      isApiKeyActive &&
+      provider.custom_configuration.current_credential_usable &&
+      providerSupportsCredits(provider, trialModels, deploymentEdition)
+    )
   })
 
   const handleInstallPlugin = useCallback(

@@ -26,6 +26,8 @@ type ModelListItemProps = {
   model: ModelItem
   provider: ModelProvider | ModelProviderSummaryResponse
   isConfigurable: boolean
+  isLoadingLoadBalancing?: boolean
+  isLoadBalancingDisabled?: boolean
   onChange?: (provider: string) => void
   onModifyLoadBalancing?: (model: ModelItem) => void
 }
@@ -34,6 +36,8 @@ const ModelListItem = ({
   model,
   provider,
   isConfigurable,
+  isLoadingLoadBalancing,
+  isLoadBalancingDisabled,
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
@@ -133,6 +137,8 @@ const ModelListItem = ({
           [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
+              loading={isLoadingLoadBalancing}
+              disabled={isLoadBalancingDisabled}
               loadBalancingEnabled={model.load_balancing_enabled}
               loadBalancingInvalid={model.has_invalid_load_balancing_configs}
               credentialRemoved={model.status === ModelStatusEnum.credentialRemoved}
