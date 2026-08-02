@@ -856,16 +856,13 @@ def _load_phase_integrity_errors(
     if result.observation_count != len(observations):
         errors.append(f"phase reported {result.observation_count} observations but wrote {len(observations)}")
     composite = result.composite_request
-    unsuccessful_count = sum(
-        observation.sample.terminal_status != "succeeded" for observation in observations
-    )
+    unsuccessful_count = sum(observation.sample.terminal_status != "succeeded" for observation in observations)
     if composite is None:
         errors.append(f"Locust {label} phase did not report AGENT_RUN/{scenario_id} stats")
         return errors
     if composite.request_count != len(observations):
         errors.append(
-            f"Locust {label} reported {composite.request_count} composite requests "
-            f"for {len(observations)} observations"
+            f"Locust {label} reported {composite.request_count} composite requests for {len(observations)} observations"
         )
     if composite.failure_count != unsuccessful_count:
         errors.append(
