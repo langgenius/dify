@@ -123,6 +123,7 @@ from services.knowledge_fs.product_dto import (
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
     KnowledgeFSProductRemotePort,
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSRemoteBinaryRequest,
@@ -1769,9 +1770,11 @@ class KnowledgeFSDataFacade:
                 top_k=payload.top_k,
             ),
         )
+        if not isinstance(raw, dict):
+            raise KnowledgeFSProductRemoteError("KnowledgeFS returned an invalid evidence match response")
         items = raw.get("items")
         if not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict):
-            raise KnowledgeFSProductRequestRejectedError("KnowledgeFS returned an invalid evidence match response")
+            raise KnowledgeFSProductRemoteError("KnowledgeFS returned an invalid evidence match response")
         item = items[0]
         return KnowledgeFSGoldenQuestionEvidenceMatchResponse.model_validate(
             {

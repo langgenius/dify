@@ -40,6 +40,7 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
@@ -1307,6 +1308,25 @@ def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch()
             }
         ],
     }
+
+
+@pytest.mark.parametrize(
+    "remote_response",
+    [None, True, 1, 1.5, [], "invalid", {}, {"items": []}, {"items": [None]}],
+)
+def test_golden_question_evidence_match_rejects_malformed_remote_response(remote_response: object) -> None:
+    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+
+    with (
+        patch.object(facade, "_interactive", return_value=remote_response),
+        pytest.raises(KnowledgeFSProductRemoteError, match="invalid evidence match response"),
+    ):
+        facade.match_golden_question_evidence(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(evidence="Refund policy"),
+        )
 
 
 def test_settings_dto_rejects_fast_threshold_without_rerank() -> None:
