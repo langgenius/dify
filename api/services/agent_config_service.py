@@ -194,7 +194,7 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": self._config_version_payload(target),
-            "items": self._skill_items_for_target(target),
+            "items": self._skill_items_for_target(target, include_runtime_workspace_skills=False),
         }
 
     def list_files(
@@ -1190,7 +1190,9 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": AgentConfigService._config_version_payload(target),
-            "skills": {"items": AgentConfigService._skill_items_for_target(target)},
+            "skills": {
+                "items": AgentConfigService._skill_items_for_target(target, include_runtime_workspace_skills=True)
+            },
             "files": {
                 "items": [
                     AgentConfigService._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files
@@ -1201,8 +1203,13 @@ class AgentConfigService:
         }
 
     @staticmethod
-    def _skill_items_for_target(target: AgentConfigTarget) -> list[dict[str, object]]:
+    def _skill_items_for_target(
+        target: AgentConfigTarget, *, include_runtime_workspace_skills: bool
+    ) -> list[dict[str, object]]:
         items = [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+        if not include_runtime_workspace_skills:
+            return items
+
         seen_names = {str(item["name"]) for item in items}
         for item in SkillManagementService().list_runtime_agent_skills(
             tenant_id=target.tenant_id,

@@ -180,7 +180,7 @@ const defaultSkillDescription = 'Describe what this Skill does and when an Agent
 const defaultSkillBody =
   '# Untitled skill\n\nDescribe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.'
 
-export const emptySkillDraftContentPlaceholder = '<!-- dify-skill-empty-draft -->'
+const emptySkillDraftContentPlaceholder = '<!-- dify-skill-empty-draft -->'
 
 function isLegacyUntitledSkillDraftContent(content: string) {
   const normalizedContent = content.replace(/\r\n?/g, '\n').trim()
