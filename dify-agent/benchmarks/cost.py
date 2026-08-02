@@ -21,7 +21,6 @@ ComponentStatus = Literal["calculated", "incomplete", "not_applicable"]
 ScenarioStatus = Literal["complete", "incomplete"]
 
 SCENARIO_IDS: tuple[ScenarioId, ...] = ("basic", "shell", "resume", "config", "file")
-_GIB_BYTES = 1024**3
 
 
 class E2BBillingV1(BaseModel):
@@ -31,34 +30,16 @@ class E2BBillingV1(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class RedisTierV1(BaseModel):
-    """Tiers are evaluated in input order; the first fitting tier is selected."""
-
-    name: str = Field(min_length=1)
-    max_commands_per_second: float = Field(gt=0)
-    max_memory_bytes: float = Field(gt=0)
-    max_network_mbps: float = Field(gt=0)
-    monthly_price: float | None = Field(default=None, ge=0)
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
 class CostInputV1(BaseModel):
     schema_version: Literal[1] = 1
     monthly_runs: int = Field(ge=0)
     peak_rps: float = Field(ge=0)
-    billing_period_seconds: float = Field(gt=0)
-    retention_seconds: float = Field(ge=0)
     usage_weights: dict[ScenarioId, float] | None = None
     peak_weights: dict[ScenarioId, float] | None = None
-    billable_egress_ratio: float | None = Field(default=None, ge=0, le=1)
     e2b_billing: E2BBillingV1 | None = None
-    redis_tiers: list[RedisTierV1] = Field(default_factory=list)
-    acu_monthly_price: float | None = Field(default=None, ge=0)
     e2b_price_per_billed_second: float | None = Field(default=None, ge=0)
-    network_price_per_gib: float | None = Field(default=None, ge=0)
     currency: str | None = Field(default=None, min_length=1)
-    price_source: str | None = Field(default=None, min_length=1)
+    e2b_price_source: str | None = Field(default=None, min_length=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -78,31 +59,14 @@ class CostInputV1(BaseModel):
             raise ValueError("weights must sum to 1")
         return value
 
-    @field_validator("redis_tiers")
-    @classmethod
-    def validate_redis_tier_names(cls, value: list[RedisTierV1]) -> list[RedisTierV1]:
-        names = [tier.name for tier in value]
-        if len(names) != len(set(names)):
-            raise ValueError("redis_tiers names must be unique")
-        return value
-
     @model_validator(mode="after")
     def validate_price_provenance(self) -> "CostInputV1":
-        has_price = any(
-            price is not None
-            for price in (
-                self.acu_monthly_price,
-                self.e2b_price_per_billed_second,
-                self.network_price_per_gib,
-                *(tier.monthly_price for tier in self.redis_tiers),
-            )
-        )
-        if not has_price:
+        if self.e2b_price_per_billed_second is None:
             return self
         if self.currency is None or not self.currency.strip():
-            raise ValueError("currency is required when any price is provided")
-        if self.price_source is None or not self.price_source.strip():
-            raise ValueError("price_source is required when any price is provided")
+            raise ValueError("currency is required when an E2B price is provided")
+        if self.e2b_price_source is None or not self.e2b_price_source.strip():
+            raise ValueError("e2b_price_source is required when an E2B price is provided")
         return self
 
 
@@ -118,11 +82,8 @@ class CostSourceV1(BaseModel):
 class CostDemandV1(BaseModel):
     monthly_runs: int = Field(ge=0)
     peak_rps: float = Field(ge=0)
-    billing_period_seconds: float = Field(gt=0)
-    retention_seconds: float = Field(ge=0)
     usage_weights: dict[ScenarioId, float] | None = None
     peak_weights: dict[ScenarioId, float] | None = None
-    billable_egress_ratio: float | None = Field(default=None, ge=0, le=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -131,23 +92,6 @@ class AgentCostV1(BaseModel):
     status: Literal["calculated", "incomplete"]
     capacity_runs_per_second: float | None = Field(default=None, ge=0)
     acu: int | None = Field(default=None, ge=0)
-    monthly_cost: float | None = Field(default=None, ge=0)
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class RedisCostV1(BaseModel):
-    status: Literal["calculated", "incomplete"]
-    capacity_recommendation: Literal["selected", "no_capacity_recommendation"] | None = None
-    commands_per_run: float | None = Field(default=None, ge=0)
-    peak_commands_per_second: float | None = Field(default=None, ge=0)
-    monthly_commands: float | None = Field(default=None, ge=0)
-    storage_bytes_per_run: float | None = Field(default=None, ge=0)
-    retained_bytes: float | None = Field(default=None, ge=0)
-    network_kb_per_run: float | None = Field(default=None, ge=0)
-    peak_network_mbps: float | None = Field(default=None, ge=0)
-    selected_tier: str | None = None
-    monthly_cost: float | None = Field(default=None, ge=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -162,16 +106,6 @@ class E2BCostV1(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class NetworkCostV1(BaseModel):
-    status: Literal["calculated", "incomplete"]
-    observed_kb_per_run: float | None = Field(default=None, ge=0)
-    billable_egress_ratio: float | None = Field(default=None, ge=0, le=1)
-    monthly_billable_gib: float | None = Field(default=None, ge=0)
-    monthly_cost: float | None = Field(default=None, ge=0)
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
 class CostEstimateV1(BaseModel):
     status: ScenarioStatus
     selected_concurrency: int | None = Field(default=None, ge=1)
@@ -179,9 +113,7 @@ class CostEstimateV1(BaseModel):
     agent_cpu_ms_per_run: float | None = Field(default=None, ge=0)
     agent_memory_peak_mib: float | None = Field(default=None, ge=0)
     agent: AgentCostV1
-    redis: RedisCostV1
     e2b: E2BCostV1
-    network: NetworkCostV1
     total_monthly_cost: float | None = Field(default=None, ge=0)
     warnings: list[str] = Field(default_factory=list)
 
@@ -203,7 +135,7 @@ class CostResultV1(BaseModel):
     capacity_schema_version: Literal[1] = 1
     source: CostSourceV1
     currency: str | None = None
-    price_source: str | None = None
+    e2b_price_source: str | None = None
     demand: CostDemandV1
     matrix_complete: bool
     complete: bool
@@ -220,10 +152,6 @@ class _UnitMetrics(BaseModel):
     terminal_p95_ms: float | None = Field(default=None, ge=0)
     agent_cpu_ms_per_run: float | None = Field(default=None, ge=0)
     agent_memory_peak_mib: float | None = Field(default=None, ge=0)
-    redis_commands_per_run: float = Field(ge=0)
-    redis_storage_bytes_per_run: float = Field(ge=0)
-    redis_network_kb_per_run: float = Field(ge=0)
-    agent_network_kb_per_run: float = Field(ge=0)
     e2b_applicable: bool
     e2b_active_seconds_per_run: float | None = Field(default=None, ge=0)
     e2b_billed_seconds_per_run: float | None = Field(default=None, ge=0)
@@ -302,15 +230,12 @@ def calculate_cost_result(*, capacity_result_path: Path, cost_input: CostInputV1
             content_hash=capacity.target.content_hash,
         ),
         currency=cost_input.currency,
-        price_source=cost_input.price_source,
+        e2b_price_source=cost_input.e2b_price_source,
         demand=CostDemandV1(
             monthly_runs=cost_input.monthly_runs,
             peak_rps=cost_input.peak_rps,
-            billing_period_seconds=cost_input.billing_period_seconds,
-            retention_seconds=cost_input.retention_seconds,
             usage_weights=cost_input.usage_weights,
             peak_weights=cost_input.peak_weights,
-            billable_egress_ratio=cost_input.billable_egress_ratio,
         ),
         matrix_complete=capacity.matrix_complete,
         complete=complete,
@@ -391,21 +316,12 @@ def _load_selected_metrics(
         return None, ["selected block artifact does not match its capacity point"]
     if block.outcomes.successful_runs <= 0 or block.outcomes.successful_runs != point.successful_runs:
         return None, ["selected block successful Run count does not match its capacity point"]
-    if (
-        point.redis_commands_per_run is None
-        or point.redis_network_kb_per_run is None
-        or point.agent_network_kb_per_run is None
-    ):
-        return None, ["selected point lacks Redis commands, Redis network, or Agent network metrics"]
     selected_samples = [
         sample for sample in samples if sample.block_id == block.block_id and sample.terminal_status == "succeeded"
     ]
     if len(selected_samples) != block.outcomes.successful_runs:
         return None, ["selected samples.jsonl successful Run count does not match the block"]
 
-    storage_delta = block.redis_after.storage_bytes - block.redis_before.storage_bytes
-    if storage_delta < 0:
-        return None, ["selected block has a negative Redis storage delta"]
     e2b_applicable = capacity.mode == "local-e2b" and point.scenario_id != "basic"
     active_per_run = None
     billed_per_run = None
@@ -428,10 +344,6 @@ def _load_selected_metrics(
             terminal_p95_ms=point.terminal_p95_ms,
             agent_cpu_ms_per_run=point.agent_cpu_ms_per_run,
             agent_memory_peak_mib=point.agent_memory_peak_mib,
-            redis_commands_per_run=point.redis_commands_per_run,
-            redis_storage_bytes_per_run=storage_delta / block.outcomes.successful_runs,
-            redis_network_kb_per_run=point.redis_network_kb_per_run,
-            agent_network_kb_per_run=point.agent_network_kb_per_run,
             e2b_applicable=e2b_applicable,
             e2b_active_seconds_per_run=active_per_run,
             e2b_billed_seconds_per_run=billed_per_run,
@@ -473,31 +385,17 @@ def _estimate_from_metrics(
     memory_peak_mib: float | None,
     warnings: Sequence[str],
 ) -> CostEstimateV1:
-    agent = _agent_cost(peak_metrics, cost_input)
-    redis = _redis_cost(peak_metrics, usage_metrics, cost_input)
-    network = _network_cost(usage_metrics, cost_input)
+    agent = _agent_capacity(peak_metrics, cost_input.peak_rps)
     e2b = _e2b_cost(usage_metrics, mode, cost_input)
     estimate_warnings = list(warnings)
     if agent.status == "incomplete":
-        estimate_warnings.append("Agent peak capacity or ACU price is incomplete")
-    if redis.capacity_recommendation == "no_capacity_recommendation":
-        estimate_warnings.append("no Redis tier satisfies peak commands, retained memory, and peak network")
-    elif redis.status == "incomplete":
-        estimate_warnings.append("Redis capacity evidence or selected-tier price is incomplete")
-    if network.status == "incomplete":
-        estimate_warnings.append("network usage ratio, usage weights, or price is incomplete")
+        estimate_warnings.append("Agent peak capacity is incomplete")
     if e2b.status == "incomplete":
         estimate_warnings.append("E2B usage, billing rule, or price is incomplete")
-    components_complete = (
-        agent.status == "calculated"
-        and redis.status == "calculated"
-        and network.status == "calculated"
-        and e2b.status in {"calculated", "not_applicable"}
-    )
-    cost_values = [agent.monthly_cost, redis.monthly_cost, network.monthly_cost]
-    if e2b.status != "not_applicable":
-        cost_values.append(e2b.monthly_cost)
-    total = _total_cost(*cost_values) if components_complete else None
+    components_complete = agent.status == "calculated" and e2b.status in {"calculated", "not_applicable"}
+    total = 0.0 if e2b.status == "not_applicable" else e2b.monthly_cost
+    if not components_complete:
+        total = None
     return CostEstimateV1(
         status="complete" if components_complete else "incomplete",
         selected_concurrency=selected_concurrency,
@@ -505,97 +403,19 @@ def _estimate_from_metrics(
         agent_cpu_ms_per_run=(usage_metrics.agent_cpu_ms_per_run if usage_metrics is not None else None),
         agent_memory_peak_mib=memory_peak_mib,
         agent=agent,
-        redis=redis,
         e2b=e2b,
-        network=network,
         total_monthly_cost=total,
         warnings=list(dict.fromkeys(estimate_warnings)),
     )
 
 
-def _agent_cost(metrics: _UnitMetrics | None, cost_input: CostInputV1) -> AgentCostV1:
+def _agent_capacity(metrics: _UnitMetrics | None, peak_rps: float) -> AgentCostV1:
     if metrics is None:
         return AgentCostV1(status="incomplete")
-    acu = math.ceil(cost_input.peak_rps / metrics.capacity_runs_per_second)
-    price = cost_input.acu_monthly_price
     return AgentCostV1(
-        status="calculated" if price is not None else "incomplete",
+        status="calculated",
         capacity_runs_per_second=metrics.capacity_runs_per_second,
-        acu=acu,
-        monthly_cost=None if price is None else acu * price,
-    )
-
-
-def _redis_cost(
-    peak_metrics: _UnitMetrics | None,
-    usage_metrics: _UnitMetrics | None,
-    cost_input: CostInputV1,
-) -> RedisCostV1:
-    peak_commands = cost_input.peak_rps * peak_metrics.redis_commands_per_run if peak_metrics is not None else None
-    peak_network = (
-        cost_input.peak_rps * peak_metrics.redis_network_kb_per_run * 8 / 1000 if peak_metrics is not None else None
-    )
-    monthly_commands = (
-        cost_input.monthly_runs * usage_metrics.redis_commands_per_run if usage_metrics is not None else None
-    )
-    retained_bytes = (
-        cost_input.monthly_runs
-        / cost_input.billing_period_seconds
-        * usage_metrics.redis_storage_bytes_per_run
-        * cost_input.retention_seconds
-        if usage_metrics is not None
-        else None
-    )
-    selected = None
-    if peak_commands is not None and peak_network is not None and retained_bytes is not None:
-        selected = next(
-            (
-                tier
-                for tier in cost_input.redis_tiers
-                if tier.max_commands_per_second >= peak_commands
-                and tier.max_memory_bytes >= retained_bytes
-                and tier.max_network_mbps >= peak_network
-            ),
-            None,
-        )
-    recommendation = None
-    if peak_metrics is not None and usage_metrics is not None:
-        recommendation = "selected" if selected is not None else "no_capacity_recommendation"
-    calculated = selected is not None and selected.monthly_price is not None
-    return RedisCostV1(
-        status="calculated" if calculated else "incomplete",
-        capacity_recommendation=cast(
-            Literal["selected", "no_capacity_recommendation"] | None,
-            recommendation,
-        ),
-        commands_per_run=(usage_metrics.redis_commands_per_run if usage_metrics is not None else None),
-        peak_commands_per_second=peak_commands,
-        monthly_commands=monthly_commands,
-        storage_bytes_per_run=(usage_metrics.redis_storage_bytes_per_run if usage_metrics is not None else None),
-        retained_bytes=retained_bytes,
-        network_kb_per_run=(peak_metrics.redis_network_kb_per_run if peak_metrics is not None else None),
-        peak_network_mbps=peak_network,
-        selected_tier=selected.name if selected is not None else None,
-        monthly_cost=selected.monthly_price if selected is not None else None,
-    )
-
-
-def _network_cost(metrics: _UnitMetrics | None, cost_input: CostInputV1) -> NetworkCostV1:
-    if metrics is None:
-        return NetworkCostV1(status="incomplete")
-    ratio = cost_input.billable_egress_ratio
-    gib = (
-        cost_input.monthly_runs * metrics.agent_network_kb_per_run * 1000 / _GIB_BYTES * ratio
-        if ratio is not None
-        else None
-    )
-    price = cost_input.network_price_per_gib
-    return NetworkCostV1(
-        status="calculated" if gib is not None and price is not None else "incomplete",
-        observed_kb_per_run=metrics.agent_network_kb_per_run,
-        billable_egress_ratio=ratio,
-        monthly_billable_gib=gib,
-        monthly_cost=(gib * price if gib is not None and price is not None else None),
+        acu=math.ceil(peak_rps / metrics.capacity_runs_per_second),
     )
 
 
@@ -661,11 +481,6 @@ def _weighted_metrics(
         return None
     capacity = 1 / sum(weights[scenario_id] / metrics[scenario_id].capacity_runs_per_second for scenario_id in selected)
 
-    def weighted(attribute: str) -> float:
-        return sum(
-            weights[scenario_id] * cast(float, getattr(metrics[scenario_id], attribute)) for scenario_id in selected
-        )
-
     cpu = None
     if all(metrics[scenario_id].agent_cpu_ms_per_run is not None for scenario_id in selected):
         cpu = sum(
@@ -689,10 +504,6 @@ def _weighted_metrics(
     return _UnitMetrics(
         capacity_runs_per_second=capacity,
         agent_cpu_ms_per_run=cpu,
-        redis_commands_per_run=weighted("redis_commands_per_run"),
-        redis_storage_bytes_per_run=weighted("redis_storage_bytes_per_run"),
-        redis_network_kb_per_run=weighted("redis_network_kb_per_run"),
-        agent_network_kb_per_run=weighted("agent_network_kb_per_run"),
         e2b_applicable=e2b_applicable,
         e2b_active_seconds_per_run=active,
         e2b_billed_seconds_per_run=billed,
@@ -709,9 +520,7 @@ def _incomplete_estimate(
         status="incomplete",
         selected_concurrency=selected_concurrency,
         agent=AgentCostV1(status="incomplete"),
-        redis=RedisCostV1(status="incomplete"),
         e2b=E2BCostV1(status="incomplete" if e2b_applicable else "not_applicable"),
-        network=NetworkCostV1(status="incomplete"),
         warnings=list(warnings),
     )
 
@@ -735,10 +544,6 @@ def _cost_envelope(estimates: dict[ScenarioId, CostEstimateV1]) -> CostEnvelopeV
     )
 
 
-def _total_cost(*values: float | None) -> float | None:
-    return None if any(value is None for value in values) else sum(cast(float, value) for value in values)
-
-
 def render_cost_report(result: CostResultV1) -> str:
     demand = result.demand
     lines = [
@@ -751,21 +556,18 @@ def render_cost_report(result: CostResultV1) -> str:
         f"- Capacity result: `{result.source.capacity_result_path}`",
         f"- Commit/content: `{result.source.commit}` / `{result.source.content_hash}`",
         f"- Currency: **{result.currency or 'N/A'}**",
-        f"- Price source: **{result.price_source or 'N/A'}**",
-        "- Price origin: supplied by `COST_INPUT`; the benchmark contains no built-in vendor prices.",
+        f"- E2B price source: **{result.e2b_price_source or 'N/A'}**",
+        "- E2B price origin: supplied by `COST_INPUT`; the benchmark contains no built-in vendor prices.",
         f"- Monthly Runs: **{demand.monthly_runs}**",
         f"- Peak Runs/s: **{_number(demand.peak_rps)}**",
-        f"- Billing period: **{_number(demand.billing_period_seconds)} seconds**",
-        f"- Retention: **{_number(demand.retention_seconds)} seconds**",
-        f"- Billable egress ratio: **{_number(demand.billable_egress_ratio)}**",
         f"- Capacity matrix complete: `{str(result.matrix_complete).lower()}`",
         f"- Cost result complete: `{str(result.complete).lower()}`",
         "",
         "## Pure scenarios",
         "",
-        "| Scenario | Status | C | Runs/s | ACU / Cost | Redis cmd/s | Retained MiB | Redis tier / Cost | "
-        "E2B active / billed s/run | E2B monthly s / Cost | Network GiB / Cost | Total Cost |",
-        "|---|---|---:|---:|---:|---:|---:|---|---|---|---|---:|",
+        "| Scenario | Status | C | Runs/s | ACU | E2B active s/run | E2B billed s/run | "
+        "E2B billed s/month | E2B Cost | Total Cost (E2B only) |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for scenario_id in SCENARIO_IDS:
         lines.append(_report_row(scenario_id, result.pure_scenarios[scenario_id]))
@@ -796,12 +598,12 @@ def render_cost_report(result: CostResultV1) -> str:
             "",
             "## Calculation contracts",
             "",
-            "- Peak weights drive harmonic Agent capacity and Redis peak commands/network.",
-            "- Usage weights drive monthly Redis commands/retained bytes, E2B time, and billable network.",
+            "- Peak weights drive harmonic Agent capacity; ACU is a capacity count and has no price here.",
+            "- Usage weights drive E2B active time, billed time, and monetary cost.",
             "- E2B rounds every successful Run before averaging; Basic is not applicable.",
+            "- Total Cost contains E2B cost only.",
             "- local-runtime is validation-only and is rejected by this cost command.",
-            "- Network starts from Agent container KB/run; the egress ratio is an explicit planning assumption.",
-            "- Missing prices remain `null` and incomplete; zero prices remain calculated zero.",
+            "- A missing E2B price remains `null` and incomplete; a zero price remains calculated zero.",
             "- No Pod, Node, or Kubernetes equivalent is produced.",
             "",
         ]
@@ -810,21 +612,14 @@ def render_cost_report(result: CostResultV1) -> str:
 
 
 def _report_row(label: str, estimate: CostEstimateV1) -> str:
-    retained_mib = estimate.redis.retained_bytes / 1024**2 if estimate.redis.retained_bytes is not None else None
     return (
         f"| `{label}` | `{estimate.status}` | {_number(estimate.selected_concurrency)} | "
-        f"{_number(estimate.agent.capacity_runs_per_second)} | {_pair(estimate.agent.acu, estimate.agent.monthly_cost)} | "
-        f"{_number(estimate.redis.peak_commands_per_second)} | {_number(retained_mib)} | "
-        f"{estimate.redis.selected_tier or 'N/A'} / {_number(estimate.redis.monthly_cost)} | "
-        f"{_pair(estimate.e2b.active_seconds_per_run, estimate.e2b.billed_seconds_per_run)} | "
-        f"{_pair(estimate.e2b.monthly_billed_seconds, estimate.e2b.monthly_cost)} | "
-        f"{_pair(estimate.network.monthly_billable_gib, estimate.network.monthly_cost)} | "
+        f"{_number(estimate.agent.capacity_runs_per_second)} | {_number(estimate.agent.acu)} | "
+        f"{_number(estimate.e2b.active_seconds_per_run)} | "
+        f"{_number(estimate.e2b.billed_seconds_per_run)} | "
+        f"{_number(estimate.e2b.monthly_billed_seconds)} | {_number(estimate.e2b.monthly_cost)} | "
         f"{_number(estimate.total_monthly_cost)} |"
     )
-
-
-def _pair(left: float | int | None, right: float | int | None) -> str:
-    return f"{_number(left)} / {_number(right)}"
 
 
 def _number(value: float | int | None) -> str:
