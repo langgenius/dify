@@ -14,6 +14,7 @@ from benchmarks.cost import (
     ScenarioId,
     calculate_cost_result,
     main,
+    render_cost_report,
 )
 from benchmarks.scenario import BenchmarkMode
 from benchmarks.schemas import (
@@ -32,7 +33,7 @@ from benchmarks.schemas import (
 def _point(
     scenario_id: ScenarioId,
     *,
-    mode: BenchmarkMode = "local-runtime",
+    mode: BenchmarkMode = "local-e2b",
     concurrency: int = 1,
     runs_per_second: float = 10,
     status: CapacityStatus = "valid",
@@ -110,7 +111,10 @@ def _write_capacity_artifacts(
         if point.status != "valid":
             continue
         block_id = f"run-{point.scenario_id}-c{point.requested_concurrency}"
-        scenario_active = (active_seconds or {}).get(cast(ScenarioId, point.scenario_id), [])
+        scenario_active = (active_seconds or {}).get(
+            cast(ScenarioId, point.scenario_id),
+            [0.5] * point.successful_runs,
+        )
         block_samples = [
             RunSample(
                 mode=mode,
@@ -174,6 +178,7 @@ def _input(**updates: object) -> CostInputV1:
         "billing_period_seconds": 100,
         "retention_seconds": 10,
         "billable_egress_ratio": 1,
+        "e2b_billing": E2BBillingV1(minimum_seconds=0, increment_seconds=1),
         "redis_tiers": [
             RedisTierV1(
                 name="large",
@@ -184,13 +189,16 @@ def _input(**updates: object) -> CostInputV1:
             )
         ],
         "acu_monthly_price": 30,
+        "e2b_price_per_billed_second": 1,
         "network_price_per_gib": 2,
+        "currency": "USD",
+        "price_source": "test fixture prices",
     }
     values.update(updates)
     return CostInputV1.model_validate(values)
 
 
-def _five_points(*, mode: BenchmarkMode = "local-runtime") -> list[CapacityPoint]:
+def _five_points(*, mode: BenchmarkMode = "local-e2b") -> list[CapacityPoint]:
     return [_point(scenario_id, mode=mode) for scenario_id in SCENARIO_IDS]
 
 
@@ -207,6 +215,31 @@ def test_peak_and_usage_weights_must_each_cover_five_scenarios_and_sum_to_one() 
     assert cost_input.peak_weights == weights
 
 
+def test_non_null_prices_require_currency_and_source() -> None:
+    payload = _input().model_dump()
+    payload["price_source"] = None
+    with pytest.raises(ValidationError, match="price_source"):
+        CostInputV1.model_validate(payload)
+
+    payload = _input().model_dump()
+    payload["currency"] = None
+    with pytest.raises(ValidationError, match="currency"):
+        CostInputV1.model_validate(payload)
+
+    payload = _input().model_dump()
+    payload.update(
+        {
+            "acu_monthly_price": None,
+            "e2b_price_per_billed_second": None,
+            "network_price_per_gib": None,
+            "currency": None,
+            "price_source": None,
+        }
+    )
+    payload["redis_tiers"][0]["monthly_price"] = None
+    assert CostInputV1.model_validate(payload).price_source is None
+
+
 def test_selects_fastest_valid_point_and_tie_uses_lower_concurrency(tmp_path: Path) -> None:
     points = _five_points()
     points.extend(
@@ -216,7 +249,7 @@ def test_selects_fastest_valid_point_and_tie_uses_lower_concurrency(tmp_path: Pa
             _point("shell", concurrency=20, runs_per_second=100, status="invalid"),
         ]
     )
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=points)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
 
     result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
 
@@ -227,7 +260,7 @@ def test_selects_fastest_valid_point_and_tie_uses_lower_concurrency(tmp_path: Pa
 
 
 def test_known_historical_schema_v1_block_field_is_accepted(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     block_path = tmp_path / "blocks" / "basic-c1" / "block-result.json"
     payload = json.loads(block_path.read_text())
     payload["minimum_successful_runs"] = 100
@@ -239,7 +272,7 @@ def test_known_historical_schema_v1_block_field_is_accepted(tmp_path: Path) -> N
 
 
 def test_unknown_historical_block_field_remains_invalid(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     block_path = tmp_path / "blocks" / "basic-c1" / "block-result.json"
     payload = json.loads(block_path.read_text())
     payload["unknown_field"] = "not-compatible"
@@ -255,7 +288,7 @@ def test_unknown_historical_block_field_remains_invalid(tmp_path: Path) -> None:
 def test_no_valid_point_is_incomplete_and_does_not_fabricate_capacity(tmp_path: Path) -> None:
     points = _five_points()
     points[1] = _point("shell", status="invalid")
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=points)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
 
     result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
 
@@ -270,7 +303,7 @@ def test_invalid_point_diagnostics_are_single_line_and_bounded(tmp_path: Path) -
     points = _five_points()
     points[1] = _point("shell", status="invalid")
     points[1].reasons = ["driver failed\n" + "trace " * 100]
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=points)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
 
     result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
 
@@ -304,12 +337,31 @@ def test_e2b_rounds_each_successful_sample_and_basic_is_not_applicable(tmp_path:
     assert shell.monthly_cost == pytest.approx(2500)
 
 
-def test_local_runtime_e2b_is_not_applicable_for_every_scenario(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+def test_local_runtime_is_validation_only_and_rejected_by_cost_model(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    points = _five_points(mode="local-runtime")
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=points)
+    input_path = tmp_path / "input.json"
+    input_path.write_text(_input().model_dump_json())
+    output_dir = tmp_path / "must-not-exist"
 
-    result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
-
-    assert all(estimate.e2b.status == "not_applicable" for estimate in result.pure_scenarios.values())
+    assert (
+        main(
+            [
+                "--capacity-result",
+                str(capacity_path),
+                "--cost-input",
+                str(input_path),
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
+        == 2
+    )
+    assert "local-runtime is validation-only" in capsys.readouterr().err
+    assert not output_dir.exists()
 
 
 def test_missing_e2b_billing_only_invalidates_e2b_component(tmp_path: Path) -> None:
@@ -323,7 +375,7 @@ def test_missing_e2b_billing_only_invalidates_e2b_component(tmp_path: Path) -> N
 
     shell = calculate_cost_result(
         capacity_result_path=capacity_path,
-        cost_input=_input(e2b_price_per_billed_second=1),
+        cost_input=_input(e2b_billing=None, e2b_price_per_billed_second=1),
     ).pure_scenarios["shell"]
 
     assert shell.status == "incomplete"
@@ -338,7 +390,7 @@ def test_missing_e2b_billing_only_invalidates_e2b_component(tmp_path: Path) -> N
 def test_redis_and_network_formulas_use_selected_block_evidence(tmp_path: Path) -> None:
     capacity_path = _write_capacity_artifacts(
         tmp_path,
-        mode="local-runtime",
+        mode="local-e2b",
         points=_five_points(),
         storage_bytes_per_run=100,
     )
@@ -361,7 +413,7 @@ def test_redis_and_network_formulas_use_selected_block_evidence(tmp_path: Path) 
 
 
 def test_no_matching_redis_tier_has_explicit_no_capacity_recommendation(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     small = RedisTierV1(
         name="small",
         max_commands_per_second=1,
@@ -380,7 +432,7 @@ def test_no_matching_redis_tier_has_explicit_no_capacity_recommendation(tmp_path
 
 
 def test_null_and_zero_inputs_remain_distinct(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     free_tier = RedisTierV1(
         name="free",
         max_commands_per_second=10000,
@@ -423,7 +475,7 @@ def test_null_and_zero_inputs_remain_distinct(tmp_path: Path) -> None:
 
 
 def test_each_missing_component_price_marks_only_that_component_incomplete(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     unpriced_tier = RedisTierV1(
         name="unpriced",
         max_commands_per_second=10000,
@@ -452,7 +504,7 @@ def test_peak_and_usage_weights_produce_separate_weighted_result(tmp_path: Path)
     points = [
         _point(scenario_id, runs_per_second=float(10 * (index + 1))) for index, scenario_id in enumerate(SCENARIO_IDS)
     ]
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=points)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
     weights = cast(dict[ScenarioId, float], {scenario: 0.2 for scenario in SCENARIO_IDS})
 
     result = calculate_cost_result(
@@ -466,14 +518,14 @@ def test_peak_and_usage_weights_produce_separate_weighted_result(tmp_path: Path)
     assert result.weighted.selected_concurrency is None
     assert result.weighted.agent_memory_peak_mib is None
     assert result.cost_envelope is not None
-    assert result.cost_envelope.best_scenario == "resume"
-    assert result.cost_envelope.worst_scenario == "basic"
+    assert result.cost_envelope.best_scenario == "basic"
+    assert result.cost_envelope.worst_scenario == "shell"
     assert result.cost_envelope.worst_to_best_ratio is not None
     assert result.cost_envelope.worst_to_best_ratio > 1
 
 
 def test_missing_weight_group_only_invalidates_its_weighted_dimensions(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=_five_points())
     weights = cast(dict[ScenarioId, float], {scenario: 0.2 for scenario in SCENARIO_IDS})
 
     peak_only = calculate_cost_result(
@@ -500,7 +552,7 @@ def test_missing_weight_group_only_invalidates_its_weighted_dimensions(tmp_path:
 def test_zero_weight_scenario_without_valid_point_does_not_block_weighted_result(tmp_path: Path) -> None:
     points = _five_points()
     points[1] = _point("shell", status="invalid")
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=points)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
     weights = cast(
         dict[ScenarioId, float],
         {"basic": 1, "shell": 0, "resume": 0, "config": 0, "file": 0},
@@ -518,7 +570,9 @@ def test_zero_weight_scenario_without_valid_point_does_not_block_weighted_result
 
 
 def test_cli_writes_three_artifacts_without_kubernetes_equivalents(tmp_path: Path) -> None:
-    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-runtime", points=_five_points())
+    points = _five_points()
+    points[0] = _point("basic", runs_per_second=1.23456789)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
     input_path = tmp_path / "input-source.json"
     input_path.write_text(_input().model_dump_json(indent=2))
     output_dir = tmp_path / "cost-output"
@@ -550,4 +604,23 @@ def test_cli_writes_three_artifacts_without_kubernetes_equivalents(tmp_path: Pat
     assert "Redis cmd/s" in report
     assert "E2B active / billed s/run" in report
     assert "Network GiB" in report
+    assert serialized["pure_scenarios"]["basic"]["agent"]["capacity_runs_per_second"] == pytest.approx(1.23456789)
+    assert "1.2346" in report
+    assert "1.23457" not in report
     assert math.isfinite(serialized["pure_scenarios"]["basic"]["agent"]["capacity_runs_per_second"])
+
+
+def test_report_displays_price_provenance_and_four_decimal_places(tmp_path: Path) -> None:
+    points = _five_points()
+    points[0] = _point("basic", runs_per_second=1.23456789)
+    capacity_path = _write_capacity_artifacts(tmp_path, mode="local-e2b", points=points)
+
+    result = calculate_cost_result(capacity_result_path=capacity_path, cost_input=_input())
+    report = render_cost_report(result)
+
+    assert result.pure_scenarios["basic"].agent.capacity_runs_per_second == pytest.approx(1.23456789)
+    assert "Price source: **test fixture prices**" in report
+    assert "Currency: **USD**" in report
+    assert "1.2346" in report
+    assert "1.23457" not in report
+    assert "$" not in report
