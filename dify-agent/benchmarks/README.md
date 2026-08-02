@@ -53,7 +53,9 @@ make -C dify-agent bench-sizing \
   CAPACITY_RESULT=/absolute/path/to/result.json \
   MONTHLY_RUNS=10000000 \
   PEAK_RPS=20 \
-  E2B_CONCURRENCY=20
+  E2B_CONCURRENCY=20 \
+  E2B_TEMPLATE_VCPUS=2 \
+  E2B_TEMPLATE_RAM_GB=1
 ```
 
 `local-runtime` is correctness and local-capacity validation only. Its original
@@ -65,12 +67,13 @@ Each scenario uses its highest-throughput `valid` point, with lower concurrency
 winning a tie. Invalid and saturated points remain visible as diagnostics but
 never enter the calculation.
 
-The command creates `sizing-input.json`, `sizing-result.json`, and
-`sizing-report.md`. For each pure scenario it reports:
+The command reads Capacity Result Schema v1 and creates Sizing Schema v2
+`sizing-input.json`, `sizing-result.json`, and `sizing-report.md`. For each pure
+scenario it reports:
 
 - `Required ACU = ceil(PEAK_RPS / selected runs/s)`, without a safety factor.
-- E2B `vCPUs`, from lifecycle `vcpu_count`.
-- E2B `RAM (GB)`, from lifecycle `memory_mb / 1024`.
+- E2B `vCPUs`, from the explicit Template configuration input.
+- E2B `RAM (GB)`, from the explicit Template configuration input.
 - E2B `Run Hours / Month = active-seconds/run × MONTHLY_RUNS / 3600`.
 - E2B concurrency, copied from the business-selected official option:
   `20`, `100`, `600`, or `1100`.
@@ -79,8 +82,10 @@ These are the four inputs accepted by the official
 [E2B Workload Pricing Estimator](https://pricing.e2b.dev/). The Harness does
 not calculate usage amounts, plan fees, add-ons, totals, Enterprise terms, or
 credits. Concurrency is a business demand input; it is not inferred from local
-test concurrency or peak RPS. Historical results without lifecycle vCPU or
-memory fields retain their ACU result but mark E2B inputs `incomplete`.
+test concurrency or peak RPS. Lifecycle `vcpu_count` and `memory_mb` cross-check
+the configured Template resources when available. Historical results without
+those lifecycle fields use the explicit Template inputs and retain a diagnostic
+warning; a lifecycle mismatch marks the scenario `incomplete`.
 
 ## Metrics
 
@@ -94,8 +99,9 @@ The main report uses:
 - terminal end-to-end `p95 ms`.
 - successful `runs/s`.
 
-E2B running time and resource size are lifecycle evidence used to populate the
-official estimator inputs.
+E2B running time comes from lifecycle evidence. Template vCPU and RAM inputs
+populate the official estimator and matching lifecycle resources cross-check
+them when available.
 Container network traffic is not necessarily cloud billable egress.
 
 ## Results
