@@ -13,6 +13,8 @@
   "embedding.segmentLength": "खंडों की लंबाई",
   "embedding.segments": "पैराग्राफ",
   "embedding.textCleaning": "पाठ पूर्व-परिभाषा और सफाई",
+  "embedding.vectorSpaceEstimateExceeded.description": "दस्तावेज़ प्राप्त हो गया है, लेकिन अपलोड के बाद अनुमानित कुल वेक्टर स्टोरेज {{estimated}} MB है, जो आपके मौजूदा प्लान की {{limit}} MB सीमा से अधिक है। इसलिए कोई वेक्टर नहीं लिखा गया। फ़ाइल का आकार या खंडों की संख्या कम करें, फिर दोबारा कोशिश करें।",
+  "embedding.vectorSpaceEstimateExceeded.title": "अपलोड के बाद अनुमानित वेक्टर स्टोरेज आपके प्लान की क्षमता से अधिक है",
   "embedding.waiting": "इनपुट की प्रतीक्षा कर रहा हूं...",
   "list.action.addButton": "खंड जोड़ें",
   "list.action.archive": "संग्रहीत करें",

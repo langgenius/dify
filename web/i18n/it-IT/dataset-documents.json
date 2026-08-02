@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Lunghezza dei segmenti",
   "embedding.segments": "Paragrafi",
   "embedding.textCleaning": "Pre-definizione e pulizia del testo",
+  "embedding.vectorSpaceEstimateExceeded.description": "Il documento è stato ricevuto, ma lo spazio vettoriale totale stimato dopo il caricamento è di {{estimated}} MB e supera il limite di {{limit}} MB del tuo piano attuale, quindi non è stato scritto alcun vettore. Riduci le dimensioni del file o il numero di segmenti, quindi riprova.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Lo spazio vettoriale stimato dopo il caricamento supera la capacità del tuo piano",
   "embedding.waiting": "Attesa dell'incorporamento...",
   "list.action.addButton": "Aggiungi blocco",
   "list.action.archive": "Archivia",

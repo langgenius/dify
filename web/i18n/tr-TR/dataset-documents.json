@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Parçalar uzunluğu",
   "embedding.segments": "Paragraflar",
   "embedding.textCleaning": "Metin önişleme ve temizlik",
+  "embedding.vectorSpaceEstimateExceeded.description": "Belge alındı ancak yükleme sonrası tahmini toplam vektör depolama alanı {{estimated}} MB ve mevcut planınızın {{limit}} MB sınırını aştığı için henüz hiçbir vektör yazılmadı. Dosya boyutunu veya parça sayısını azaltıp tekrar deneyin.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Yükleme sonrası tahmini vektör depolama alanı plan kapasitenizi aşıyor",
   "embedding.waiting": "Gömme bekleniyor...",
   "list.action.addButton": "Parça ekle",
   "list.action.archive": "Arşivle",

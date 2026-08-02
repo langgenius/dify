@@ -226,6 +226,7 @@ def mock_indexing_runner():
     with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner_class:
         mock_runner = MagicMock()
         mock_runner_class.return_value = mock_runner
+        mock_runner._constructor_mock = mock_runner_class
         yield mock_runner
 
 
@@ -422,6 +423,7 @@ class TestBatchProcessing:
                 assert doc.processing_started_at is not None
 
             # IndexingRunner should be called with all documents
+            mock_indexing_runner._constructor_mock.assert_called_once_with(enforce_vector_space_admission=True)
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
             assert len(call_args) == len(document_ids)
@@ -666,7 +668,12 @@ class TestErrorHandling:
     """Test cases for error handling and retry mechanisms."""
 
     def test_error_handling_sets_document_error_status(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_feature_service
+        self,
+        dataset_id,
+        document_ids,
+        mock_db_session,
+        mock_dataset,
+        mock_feature_service,
     ):
         """
         Test that errors during validation set document error status.
@@ -692,8 +699,8 @@ class TestErrorHandling:
         # Set up to trigger vector space limit error
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
+        mock_feature_service.get_features.return_value.vector_space.size = 100
         mock_feature_service.get_features.return_value.vector_space.limit = 100
-        mock_feature_service.get_features.return_value.vector_space.size = 100  # At limit
 
         # Act
         _document_indexing(dataset_id, document_ids)
@@ -982,7 +989,12 @@ class TestAdvancedScenarios:
                 assert mock_redis.setex.call_count >= concurrency_limit
 
     def test_vector_space_limit_edge_case_at_exact_limit(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_feature_service
+        self,
+        dataset_id,
+        document_ids,
+        mock_db_session,
+        mock_dataset,
+        mock_feature_service,
     ):
         """
         Test vector space limit validation at exact boundary.
@@ -1017,8 +1029,8 @@ class TestAdvancedScenarios:
         # Set vector space exactly at limit
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
+        mock_feature_service.get_features.return_value.vector_space.size = 100
         mock_feature_service.get_features.return_value.vector_space.limit = 100
-        mock_feature_service.get_features.return_value.vector_space.size = 100  # Exactly at limit
 
         # Act
         _document_indexing(dataset_id, document_ids)
@@ -1333,7 +1345,12 @@ class TestPerformanceScenarios:
     """Test performance-related scenarios and optimizations."""
 
     def test_large_document_batch_processing(
-        self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
+        self,
+        dataset_id,
+        mock_db_session,
+        mock_dataset,
+        mock_indexing_runner,
+        mock_feature_service,
     ):
         """
         Test processing a large batch of documents at batch limit.
@@ -1371,8 +1388,8 @@ class TestPerformanceScenarios:
         # Configure billing with sufficient limits
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
+        mock_feature_service.get_features.return_value.vector_space.size = 40.75
         mock_feature_service.get_features.return_value.vector_space.limit = 10000
-        mock_feature_service.get_features.return_value.vector_space.size = 0
 
         with patch("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", str(batch_limit)):
             # Act
@@ -1385,6 +1402,7 @@ class TestPerformanceScenarios:
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
             assert len(call_args) == batch_limit
+            mock_feature_service.get_features.assert_called_once_with(mock_dataset.tenant_id)
 
     def test_tenant_queue_handles_burst_traffic(self, tenant_id, dataset_id, mock_redis, mock_db_session, mock_dataset):
         """

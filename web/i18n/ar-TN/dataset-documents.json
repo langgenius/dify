@@ -13,6 +13,8 @@
   "embedding.segmentLength": "أقصى طول للقطعة",
   "embedding.segments": "الفقرات",
   "embedding.textCleaning": "قواعد المعالجة المسبقة للنص",
+  "embedding.vectorSpaceEstimateExceeded.description": "تم استلام المستند، لكن إجمالي مساحة تخزين المتجهات المقدّرة بعد الرفع يبلغ {{estimated}} MB، متجاوزًا حد خطتك الحالية البالغ {{limit}} MB، لذلك لم تُكتب أي متجهات. قلّل حجم الملف أو عدد الأجزاء، ثم حاول مرة أخرى.",
+  "embedding.vectorSpaceEstimateExceeded.title": "تتجاوز مساحة تخزين المتجهات المقدّرة بعد الرفع سعة خطتك",
   "embedding.waiting": "انتظار التضمين...",
   "list.action.addButton": "إضافة قطعة",
   "list.action.archive": "أرشيف",

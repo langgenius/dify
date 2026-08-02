@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Chunk-Länge",
   "embedding.segments": "Absätze",
   "embedding.textCleaning": "Textvordefinition und -bereinigung",
+  "embedding.vectorSpaceEstimateExceeded.description": "Das Dokument wurde empfangen, aber der geschätzte gesamte Vektorspeicher nach dem Upload beträgt {{estimated}} MB und überschreitet damit das Limit Ihres aktuellen Tarifs von {{limit}} MB. Daher wurden noch keine Vektoren gespeichert. Verkleinern Sie die Datei oder reduzieren Sie die Anzahl der Chunks und versuchen Sie es erneut.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Der geschätzte Vektorspeicher nach dem Upload überschreitet Ihre Tarifkapazität",
   "embedding.waiting": "Einbettung wartet...",
   "list.action.addButton": "Chunk hinzufügen",
   "list.action.archive": "Archivieren",

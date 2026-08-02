@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Длина сегментов",
   "embedding.segments": "Абзацы",
   "embedding.textCleaning": "Предварительная очистка текста",
+  "embedding.vectorSpaceEstimateExceeded.description": "Документ получен, но расчётный общий объём векторного хранилища после загрузки составляет {{estimated}} MB и превышает лимит вашего текущего тарифа в {{limit}} MB, поэтому векторы ещё не записаны. Уменьшите размер файла или количество фрагментов и повторите попытку.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Расчётный объём векторного хранилища после загрузки превышает лимит вашего тарифа",
   "embedding.waiting": "Ожидание встраивания...",
   "list.action.addButton": "Добавить фрагмент",
   "list.action.archive": "Архивировать",

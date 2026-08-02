@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Độ dài đoạn",
   "embedding.segments": "Đoạn",
   "embedding.textCleaning": "Định nghĩa và làm sạch văn bản",
+  "embedding.vectorSpaceEstimateExceeded.description": "Tài liệu đã được tiếp nhận, nhưng tổng dung lượng lưu trữ vector ước tính sau khi tải lên là {{estimated}} MB, vượt quá giới hạn {{limit}} MB của gói hiện tại, nên chưa có vector nào được ghi. Hãy giảm kích thước tệp hoặc số lượng đoạn, rồi thử lại.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Dung lượng lưu trữ vector ước tính sau khi tải lên vượt quá giới hạn gói",
   "embedding.waiting": "Đang chờ nhúng...",
   "list.action.addButton": "Thêm đoạn",
   "list.action.archive": "Lưu trữ",
