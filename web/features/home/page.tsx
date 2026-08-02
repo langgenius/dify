@@ -3,9 +3,9 @@ import { Suspense } from 'react'
 import { getQueryClientServer, makeQueryClient } from '@/context/query-client-server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
-import { HomeContent } from './components/home-content/home-content'
-import { HomeShell } from './components/home-shell'
-import { HomeSkeleton } from './components/home-skeleton'
+import { HomeContent } from './home-content/home-content'
+import { HomeShell } from './home-shell'
+import { HomeSkeleton } from './home-skeleton'
 
 export async function HomePage() {
   const homeQueryClient = makeQueryClient()
