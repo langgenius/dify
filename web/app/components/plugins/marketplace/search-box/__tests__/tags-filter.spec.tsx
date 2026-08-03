@@ -33,8 +33,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 describe('TagsFilter', () => {
   const ensurePopoverOpen = async (user: ReturnType<typeof userEvent.setup>) => {
     if (!screen.queryByRole('searchbox', { name: 'pluginTags.searchTags' }))

@@ -69,33 +69,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({
-    children,
-    render,
-  }: {
-    children?: React.ReactNode
-    render?: React.ReactElement
-  }) => {
-    if (render && React.isValidElement(render)) {
-      const renderElement = render as React.ReactElement<{ children?: React.ReactNode }>
-      return React.cloneElement(renderElement, renderElement.props, children)
-    }
-
-    return <>{children}</>
-  },
-  TooltipContent: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 vi.mock('../../utils', async () => {
   const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {

@@ -17,33 +17,6 @@ const mockSystemFeatures = {
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
 
-let mockDialogOnOpenChange: ((open: boolean) => void) | undefined
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    mockDialogOnOpenChange = onOpenChange
-    return open === false ? null : <>{children}</>
-  },
-  DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div data-testid="modal" className={className}>
-      {children}
-    </div>
-  ),
-  DialogCloseButton: () => (
-    <button data-testid="modal-close" onClick={() => mockDialogOnOpenChange?.(false)}>
-      Close
-    </button>
-  ),
-}))
-
 // Mock OptionCard component
 vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
   default: ({
@@ -280,7 +253,7 @@ describe('reference-setting-modal', () => {
 
         // Assert
         // Assert
-        expect(screen.getByTestId('modal-close'))!.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Close' }))!.toBeInTheDocument()
       })
 
       it('should disable permission controls with settings permissions tooltip beside titles when RBAC is enabled', () => {
@@ -381,7 +354,7 @@ describe('reference-setting-modal', () => {
 
         // Act
         render(<ReferenceSettingModal {...defaultProps} onHide={onHide} />)
-        fireEvent.click(screen.getByTestId('modal-close'))
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
         // Assert
         expect(onHide).toHaveBeenCalledTimes(1)
@@ -843,7 +816,7 @@ describe('reference-setting-modal', () => {
 
         // Assert - modal should be visible
         // Assert - modal should be visible
-        expect(screen.getByTestId('modal'))!.toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
 
