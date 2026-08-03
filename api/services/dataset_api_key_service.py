@@ -13,11 +13,11 @@ The caller owns the transaction boundary (commit/flush).
 
 from collections.abc import Iterable
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset
-from models.model import DatasetApiTokenBinding
+from models.model import ApiToken, DatasetApiTokenBinding
 
 
 def get_bound_dataset_ids(session: Session, api_token_id: str) -> set[str]:
@@ -63,3 +63,32 @@ def bind_datasets(session: Session, api_token_id: str, dataset_ids: Iterable[str
     """Add one binding row per dataset id. The caller controls the transaction."""
     for dataset_id in dataset_ids:
         session.add(DatasetApiTokenBinding(api_token_id=api_token_id, dataset_id=dataset_id))
+
+
+def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
+    """Delete dataset API keys whose only binding is ``dataset_id``.
+
+    A deleted knowledge base cascades its bindings away. A key bound solely to it
+    would otherwise drop to zero bindings and silently become unrestricted
+    (access-all) under the "no bindings = access all" rule. To keep scope from
+    escalating, delete those keys (their remaining rows cascade with the token).
+    Keys also bound to other datasets keep those bindings and survive.
+
+    Must run before the dataset row is deleted (so the bindings still exist).
+    Returns the deleted api_token ids; the caller controls the transaction.
+    """
+    orphan_ids = [
+        str(token_id)
+        for token_id in session.scalars(
+            select(DatasetApiTokenBinding.api_token_id)
+            .where(DatasetApiTokenBinding.dataset_id == dataset_id)
+            .where(
+                DatasetApiTokenBinding.api_token_id.notin_(
+                    select(DatasetApiTokenBinding.api_token_id).where(DatasetApiTokenBinding.dataset_id != dataset_id)
+                )
+            )
+        ).all()
+    ]
+    if orphan_ids:
+        session.execute(delete(ApiToken).where(ApiToken.id.in_(orphan_ids)))
+    return orphan_ids

@@ -339,3 +339,73 @@ class TestDatasetApiKeyResource:
             select(DatasetApiTokenBinding).where(DatasetApiTokenBinding.api_token_id == api_key_id)
         ).all()
         assert remaining == []
+
+
+class TestDatasetDeleteCascadesToScopedKeys:
+    """Deleting a knowledge base must not let a scoped key degrade to access-all."""
+
+    def _create_other_dataset(self, session: Session, tenant_id: str, created_by: str) -> Dataset:
+        other = Dataset(
+            tenant_id=tenant_id,
+            name=f"Other Dataset {uuid4()}",
+            description="Second dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=created_by,
+            permission="only_me",
+            provider="vendor",
+        )
+        session.add(other)
+        session.commit()
+        return other
+
+    def test_deleting_last_bound_dataset_deletes_the_scoped_key(
+        self,
+        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
+        db_session_with_containers: Session,
+    ) -> None:
+        """A key bound only to the deleted dataset is removed, never left unrestricted."""
+        client, headers, dataset = setup_dataset
+        dataset_id = dataset.id
+        create_resp = client.post(
+            "/console/api/datasets/api-keys",
+            headers=headers,
+            json={"dataset_ids": [dataset_id]},
+        )
+        assert create_resp.json is not None
+        api_key_id = create_resp.json["id"]
+
+        resp = client.delete(f"/console/api/datasets/{dataset_id}", headers=headers)
+
+        assert resp.status_code == 204
+        assert db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == api_key_id)) is None
+
+    def test_deleting_one_bound_dataset_keeps_a_multi_scoped_key(
+        self,
+        setup_dataset: tuple[FlaskClient, dict[str, str], Dataset],
+        db_session_with_containers: Session,
+    ) -> None:
+        """A key bound to several datasets survives and just drops the deleted one."""
+        client, headers, dataset = setup_dataset
+        dataset_id = dataset.id
+        other = self._create_other_dataset(db_session_with_containers, dataset.tenant_id, dataset.created_by)
+        other_id = other.id
+        create_resp = client.post(
+            "/console/api/datasets/api-keys",
+            headers=headers,
+            json={"dataset_ids": [dataset_id, other_id]},
+        )
+        assert create_resp.json is not None
+        api_key_id = create_resp.json["id"]
+
+        resp = client.delete(f"/console/api/datasets/{dataset_id}", headers=headers)
+
+        assert resp.status_code == 204
+        # The key survives, still scoped to the remaining dataset only.
+        assert db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == api_key_id)) is not None
+        remaining = {
+            str(ds_id)
+            for ds_id in db_session_with_containers.scalars(
+                select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_key_id)
+            ).all()
+        }
+        assert remaining == {other_id}
