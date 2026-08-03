@@ -64,10 +64,10 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
                     index_node_ids.extend(attachment_ids)
+            session.commit()
             index_processor.clean(
                 dataset, index_node_ids, with_keywords=True, delete_child_chunks=False, session=session
             )
-            session.commit()
 
             # Disable summary indexes for these segments
             from services.summary_index_service import SummaryIndexService
@@ -76,8 +76,10 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             try:
                 # Get disabled_by from first segment (they should all have the same disabled_by)
                 disabled_by = segments[0].disabled_by if segments else None
+                session.commit()
                 SummaryIndexService.disable_summaries_for_segments(
                     dataset=dataset,
+                    session=session,
                     segment_ids=segment_ids_list,
                     disabled_by=disabled_by,
                 )

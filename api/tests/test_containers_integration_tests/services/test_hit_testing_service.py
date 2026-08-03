@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from models.dataset import Dataset, DatasetQuery, DocumentSegment
+from models.dataset import Dataset, DatasetQuery, DocumentSegment, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from services.external_knowledge_service import ResolvedExternalKnowledgeConfig
 from services.hit_testing_service import HitTestingService
 
 
@@ -167,7 +168,12 @@ class TestHitTestingService:
         mock_format.return_value = [mock_record]
 
         response = _RetrieveResponse.model_validate(
-            HitTestingService.compact_retrieve_response(query, [mock_doc], session=db_session_with_containers)
+            HitTestingService.compact_retrieve_response(
+                query,
+                [mock_doc],
+                dataset_id="dataset-1",
+                session=db_session_with_containers,
+            )
         )
 
         assert response.query.content == query
@@ -217,7 +223,36 @@ class TestHitTestingService:
         account_id = str(uuid4())
         account = MagicMock()
         account.id = account_id
-        mock_ext_retrieve.return_value = [{"content": "ext content", "score": 1.0}]
+
+        def retrieve_external(**_kwargs: object) -> list[dict[str, object]]:
+            assert not db_session_with_containers.in_transaction()
+            return [{"content": "ext content", "score": 1.0}]
+
+        mock_ext_retrieve.side_effect = retrieve_external
+        dataset_id = dataset.id
+        tenant_id = dataset.tenant_id
+        settings_json = json.dumps({"endpoint": "https://api.example.com", "api_key": "test-key"})
+        external_api = ExternalKnowledgeApis(
+            name="test-api",
+            description="test API",
+            tenant_id=tenant_id,
+            settings=settings_json,
+            created_by=account_id,
+            updated_by=account_id,
+        )
+        db_session_with_containers.add(external_api)
+        db_session_with_containers.flush()
+        external_knowledge_id = "external-knowledge-1"
+        db_session_with_containers.add(
+            ExternalKnowledgeBindings(
+                tenant_id=tenant_id,
+                external_knowledge_api_id=external_api.id,
+                dataset_id=dataset_id,
+                external_knowledge_id=external_knowledge_id,
+                created_by=account_id,
+            )
+        )
+        db_session_with_containers.commit()
 
         before_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
 
@@ -235,9 +270,13 @@ class TestHitTestingService:
         assert response.query.content == 'test "query"'
         assert response.records[0].content == "ext content"
         mock_ext_retrieve.assert_called_once_with(
-            session=db_session_with_containers,
-            dataset_id=dataset.id,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
             query='test \\"query\\"',
+            resolved_config=ResolvedExternalKnowledgeConfig(
+                settings_json=settings_json,
+                external_knowledge_id=external_knowledge_id,
+            ),
             external_retrieval_model={"model": "test"},
             metadata_filtering_conditions={"key": "val"},
         )

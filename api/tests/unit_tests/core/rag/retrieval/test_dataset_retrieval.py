@@ -1,3 +1,4 @@
+import inspect
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
@@ -27,7 +28,7 @@ from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities import Condition as AppCondition
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -37,7 +38,8 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrieval
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType
+from services.external_knowledge_service import ResolvedExternalKnowledgeConfig
 
 # ==================== Helper Functions ====================
 
@@ -91,6 +93,20 @@ def _dataset(**values: object) -> Dataset:
     return cast(Dataset, SimpleNamespace(**values))
 
 
+class _ExpireAfterCommitDataset(SimpleNamespace):
+    """Fail if retrieval code touches ORM-like attributes after its transaction ends."""
+
+    _expired = False
+
+    def expire(self) -> None:
+        self._expired = True
+
+    def __getattribute__(self, name: str) -> object:
+        if not name.startswith("_") and object.__getattribute__(self, "_expired"):
+            raise AssertionError(f"post-commit dataset access would refresh expired attribute {name!r}")
+        return super().__getattribute__(name)
+
+
 def _metadata_condition() -> AppMetadataFilteringCondition:
     return AppMetadataFilteringCondition(logical_operator="and", conditions=[])
 
@@ -101,6 +117,7 @@ def _patched_retriever_session():
     session_ctx = MagicMock()
     session_ctx.__enter__.return_value = session
     session_ctx.__exit__.return_value = None
+    session.context_manager = session_ctx
     with patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session", return_value=session_ctx):
         yield session
 
@@ -4209,7 +4226,6 @@ class TestDatasetRetrievalAdditionalHelpers:
             assert "stop" not in config.parameters
 
     def test_automatic_metadata_filter_func(self, retrieval: DatasetRetrieval) -> None:
-        metadata_field = SimpleNamespace(name="author")
         model_instance = Mock()
         model_instance.invoke_llm.return_value = iter([Mock()])
         model_config = ModelConfigWithCredentialsEntity.model_construct(
@@ -4224,17 +4240,17 @@ class TestDatasetRetrievalAdditionalHelpers:
         )
         usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         session_scalars = Mock()
-        session_scalars.all.return_value = [metadata_field]
-        session = MagicMock()
-        session.scalars.return_value = session_scalars
+        session_scalars.all.return_value = ["author"]
 
         with (
+            _patched_retriever_session() as read_session,
             patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, model_config)),
             patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
             patch.object(retrieval, "_handle_invoke_result", return_value=('{"metadata_map":[]}', usage)),
             patch("core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown") as mock_parse,
             patch.object(retrieval, "_record_usage") as mock_record_usage,
         ):
+            read_session.scalars.return_value = session_scalars
             mock_parse.return_value = {
                 "metadata_map": [
                     {
@@ -4250,7 +4266,6 @@ class TestDatasetRetrievalAdditionalHelpers:
                 ]
             }
             result = retrieval._automatic_metadata_filter_func(
-                session,
                 dataset_ids=["d1"],
                 query="python",
                 tenant_id="tenant-1",
@@ -4260,13 +4275,16 @@ class TestDatasetRetrievalAdditionalHelpers:
 
         assert result == [{"metadata_name": "author", "value": "Alice", "condition": "contains"}]
         mock_record_usage.assert_called_once_with(usage)
+        metadata_statement = read_session.scalars.call_args.args[0]
+        assert [column.key for column in metadata_statement.selected_columns] == ["name"]
 
         with (
+            _patched_retriever_session() as read_session,
             patch.object(retrieval, "_fetch_model_config", side_effect=RuntimeError("boom")),
         ):
+            read_session.scalars.return_value = session_scalars
             with pytest.raises(RuntimeError, match="boom"):
                 retrieval._automatic_metadata_filter_func(
-                    session,
                     dataset_ids=["d1"],
                     query="python",
                     tenant_id="tenant-1",
@@ -4275,13 +4293,10 @@ class TestDatasetRetrievalAdditionalHelpers:
                 )
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval) -> None:
-        scalars_result = Mock()
-        scalars_result.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
-        session = MagicMock()
-        session.scalars.return_value = scalars_result
+        execute_result = Mock()
+        execute_result.all.return_value = [("d1", "doc-1")]
 
         mapping, condition = retrieval.get_metadata_filter_condition(
-            session,
             dataset_ids=["d1"],
             query="python",
             tenant_id="tenant-1",
@@ -4296,10 +4311,11 @@ class TestDatasetRetrievalAdditionalHelpers:
 
         automatic_filters = [{"condition": "contains", "metadata_name": "author", "value": "Alice"}]
         with (
+            _patched_retriever_session() as read_session,
             patch.object(retrieval, "_automatic_metadata_filter_func", return_value=automatic_filters),
         ):
+            read_session.execute.return_value = execute_result
             mapping, condition = retrieval.get_metadata_filter_condition(
-                session,
                 dataset_ids=["d1"],
                 query="python",
                 tenant_id="tenant-1",
@@ -4317,26 +4333,28 @@ class TestDatasetRetrievalAdditionalHelpers:
             logical_operator="and",
             conditions=[AppCondition(name="author", comparison_operator="contains", value="{{name}}")],
         )
-        mapping, condition = retrieval.get_metadata_filter_condition(
-            session,
-            dataset_ids=["d1"],
-            query="python",
-            tenant_id="tenant-1",
-            user_id="u1",
-            metadata_filtering_mode="manual",
-            metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
-            metadata_filtering_conditions=manual_conditions,
-            inputs={"name": "Alice"},
-        )
+        with _patched_retriever_session() as read_session:
+            read_session.execute.return_value = execute_result
+            mapping, condition = retrieval.get_metadata_filter_condition(
+                dataset_ids=["d1"],
+                query="python",
+                tenant_id="tenant-1",
+                user_id="u1",
+                metadata_filtering_mode="manual",
+                metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+                metadata_filtering_conditions=manual_conditions,
+                inputs={"name": "Alice"},
+            )
         assert mapping == {"d1": ["doc-1"]}
         assert condition is not None
         assert condition.conditions
         first_condition = condition.conditions[0]
         assert first_condition.value == "Alice"
+        document_statement = read_session.execute.call_args.args[0]
+        assert [column.key for column in document_statement.selected_columns] == ["dataset_id", "id"]
 
         with pytest.raises(ValueError, match="Invalid metadata filtering mode"):
             retrieval.get_metadata_filter_condition(
-                session,
                 dataset_ids=["d1"],
                 query="python",
                 tenant_id="tenant-1",
@@ -4661,7 +4679,12 @@ class TestRetrieveCoverage:
 
         mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
         mock_single_retrieve.assert_called_once()
-        assert mock_single_retrieve.call_args.args[9] == PlanningStrategy.ROUTER
+        single_retrieve_args = inspect.signature(DatasetRetrieval.single_retrieve).bind(
+            retrieval,
+            *mock_single_retrieve.call_args.args,
+            **mock_single_retrieve.call_args.kwargs,
+        )
+        assert single_retrieve_args.arguments["planning_strategy"] == PlanningStrategy.ROUTER
         assert model_config.provider_model_bundle is bound_bundle
         assert model_config.credentials == {"api_key": "secret"}
         assert model_config.model_schema is bound_schema
@@ -4826,6 +4849,148 @@ class TestSingleAndMultipleRetrieveCoverage:
     def retrieval(self) -> DatasetRetrieval:
         return DatasetRetrieval()
 
+    def test_dataset_retrieval_config_is_tenant_scoped_plain_snapshot(self, retrieval: DatasetRetrieval) -> None:
+        dataset = _dataset(
+            id="ds-1",
+            name="Dataset",
+            provider="dify",
+            tenant_id="tenant-1",
+            retrieval_model={"top_k": 2},
+            indexing_technique="high_quality",
+        )
+
+        with _patched_retriever_session() as read_session:
+            read_session.scalar.return_value = dataset
+            config = retrieval._get_dataset_retrieval_config("ds-1", "tenant-1")
+
+        assert config is not None
+        assert config.id == "ds-1"
+        assert config.tenant_id == "tenant-1"
+        statement = read_session.scalar.call_args.args[0]
+        compiled_statement = str(statement)
+        assert "datasets.description" not in compiled_statement
+        assert "datasets.id = :id_1" in compiled_statement
+        assert "datasets.tenant_id = :tenant_id_1" in compiled_statement
+
+    def test_dataset_retrieval_config_returns_none_for_unknown_tenant_dataset(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        with _patched_retriever_session() as read_session:
+            read_session.scalar.return_value = None
+            config = retrieval._get_dataset_retrieval_config("missing", "tenant-1")
+
+        assert config is None
+
+    def test_single_retrieve_rejects_external_dataset_without_resolved_config(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        dataset = _dataset(
+            id="external-1",
+            name="External",
+            description="external dataset",
+            provider="external",
+            tenant_id="tenant-1",
+            retrieval_model={"top_k": 2},
+            indexing_technique="high_quality",
+        )
+        with (
+            _patched_retriever_session() as read_session,
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as router,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.resolve_external_knowledge_config",
+                return_value=None,
+            ),
+        ):
+            read_session.scalar.return_value = dataset
+            router.return_value.invoke.return_value = ("external-1", LLMUsage.empty_usage())
+            with pytest.raises(RuntimeError, match="configuration was not resolved"):
+                retrieval.single_retrieve(
+                    app_id="app-1",
+                    tenant_id="tenant-1",
+                    user_id="user-1",
+                    user_from="workflow",
+                    query="python",
+                    available_datasets=[dataset],
+                    model_instance=Mock(),
+                    model_config=Mock(),
+                    planning_strategy=PlanningStrategy.REACT_ROUTER,
+                )
+
+    def test_worker_retriever_rejects_external_dataset_without_resolved_config(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        dataset = _dataset(
+            id="external-1",
+            name="External",
+            provider="external",
+            tenant_id="tenant-1",
+            retrieval_model={"top_k": 2},
+            indexing_technique="high_quality",
+        )
+        session = MagicMock()
+        session.scalar.return_value = dataset
+
+        with (
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.resolve_external_knowledge_config",
+                return_value=None,
+            ),
+            pytest.raises(RuntimeError, match="configuration was not resolved"),
+        ):
+            retrieval._retriever(
+                Flask(__name__),
+                session,
+                "external-1",
+                "query",
+                2,
+                [],
+            )
+
+        session.commit.assert_called_once_with()
+
+    def test_worker_retriever_rejects_incomplete_external_dataset_snapshot(self, retrieval: DatasetRetrieval) -> None:
+        dataset = Dataset(
+            id="external-1",
+            tenant_id="tenant-1",
+            name="External",
+            description="external dataset",
+            provider="external",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            created_by=str(uuid4()),
+            retrieval_model={"top_k": 2},
+        )
+        # Exercise the defensive boundary for a corrupt row without replacing the ORM entity with a mock.
+        dataset.name = None  # type: ignore[assignment]
+        session = MagicMock()
+        session.scalar.return_value = dataset
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
+        )
+
+        with (
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.resolve_external_knowledge_config",
+                return_value=resolved_config,
+            ),
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
+            ) as external_retrieve,
+            pytest.raises(RuntimeError, match="values were not resolved"),
+        ):
+            retrieval._retriever(
+                Flask(__name__),
+                session,
+                dataset.id,
+                "query",
+                2,
+                [],
+            )
+
+        session.commit.assert_called_once_with()
+        external_retrieve.assert_not_called()
+
     def test_single_retrieve_external_path(self, retrieval: DatasetRetrieval) -> None:
         dataset = _dataset(
             id="ds-1",
@@ -4833,15 +4998,22 @@ class TestSingleAndMultipleRetrieveCoverage:
             description=None,
             provider="external",
             tenant_id="tenant-1",
-            retrieval_model={"top_k": 2},
+            retrieval_model=None,
             indexing_technique="high_quality",
+        )
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
         )
         app = Flask(__name__)
         usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
-        session = MagicMock()
-        session.scalar.return_value = dataset
         with app.app_context():
             with (
+                _patched_retriever_session() as read_session,
+                patch(
+                    "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.resolve_external_knowledge_config",
+                    return_value=resolved_config,
+                ),
                 patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
                 patch(
                     "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
@@ -4850,12 +5022,15 @@ class TestSingleAndMultipleRetrieveCoverage:
                 patch.object(retrieval, "_on_retrieval_end") as mock_end,
                 patch.object(retrieval, "_on_query"),
             ):
+                read_session.scalar.return_value = dataset
                 mock_router_cls.return_value.invoke.return_value = ("ds-1", usage)
-                mock_external.return_value = [
-                    {"content": "ext result", "metadata": {"k": "v"}, "score": 0.9, "title": "Ext Doc"}
-                ]
+
+                def fetch_external(**_kwargs):
+                    assert read_session.context_manager.__exit__.called
+                    return [{"content": "ext result", "metadata": {"k": "v"}, "score": 0.9, "title": "Ext Doc"}]
+
+                mock_external.side_effect = fetch_external
                 result = retrieval.single_retrieve(
-                    session,
                     app_id="app-1",
                     tenant_id="tenant-1",
                     user_id="user-1",
@@ -4870,6 +5045,11 @@ class TestSingleAndMultipleRetrieveCoverage:
 
         assert len(result) == 1
         assert result[0].provider == "external"
+        assert mock_external.call_args.kwargs["external_retrieval_parameters"] == {
+            "top_k": 2,
+            "score_threshold": 0.0,
+        }
+        assert mock_external.call_args.kwargs["resolved_config"] is resolved_config
         mock_end.assert_called_once()
         assert retrieval.llm_usage.total_tokens == 2
 
@@ -4895,10 +5075,9 @@ class TestSingleAndMultipleRetrieveCoverage:
         app = Flask(__name__)
         usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1})
         result_doc = _doc(provider="dify", score=0.7, dataset_id="ds-1", document_id="doc-1", doc_id="node-1")
-        session = MagicMock()
-        session.scalar.return_value = dataset
         with app.app_context():
             with (
+                _patched_retriever_session() as read_session,
                 patch("core.rag.retrieval.dataset_retrieval.FunctionCallMultiDatasetRouter") as mock_router_cls,
                 patch(
                     "core.rag.retrieval.dataset_retrieval.RetrievalService.retrieve", return_value=[result_doc]
@@ -4907,9 +5086,9 @@ class TestSingleAndMultipleRetrieveCoverage:
                 patch.object(retrieval, "_on_retrieval_end"),
                 patch.object(retrieval, "_on_query"),
             ):
+                read_session.scalar.return_value = dataset
                 mock_router_cls.return_value.invoke.return_value = ("ds-1", usage)
                 results = retrieval.single_retrieve(
-                    session,
                     app_id="app-1",
                     tenant_id="tenant-1",
                     user_id="user-1",
@@ -4931,7 +5110,6 @@ class TestSingleAndMultipleRetrieveCoverage:
         with patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls:
             mock_router_cls.return_value.invoke.return_value = (None, LLMUsage.empty_usage())
             results = retrieval.single_retrieve(
-                MagicMock(),
                 app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
@@ -4957,13 +5135,12 @@ class TestSingleAndMultipleRetrieveCoverage:
             retrieval_model={"top_k": 2, "search_method": "semantic_search", "reranking_enable": False},
         )
         with (
+            _patched_retriever_session() as read_session,
             patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
         ):
-            session = MagicMock()
-            session.scalar.return_value = dataset
+            read_session.scalar.return_value = dataset
             mock_router_cls.return_value.invoke.return_value = ("ds-1", LLMUsage.empty_usage())
             no_filter = retrieval.single_retrieve(
-                session,
                 app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
@@ -4977,7 +5154,6 @@ class TestSingleAndMultipleRetrieveCoverage:
                 metadata_condition=_metadata_condition(),
             )
             missing_doc_ids = retrieval.single_retrieve(
-                session,
                 app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
@@ -5248,7 +5424,7 @@ class TestInternalHooksCoverage:
             == []
         )
 
-        external_dataset = SimpleNamespace(
+        external_dataset = _ExpireAfterCommitDataset(
             id="ext-ds",
             name="External",
             provider="external",
@@ -5256,14 +5432,28 @@ class TestInternalHooksCoverage:
             retrieval_model={"top_k": 2},
             indexing_technique="high_quality",
         )
+        resolved_config = ResolvedExternalKnowledgeConfig(
+            settings_json='{"endpoint": "https://api.example.com"}',
+            external_knowledge_id="knowledge-1",
+        )
         with (
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.resolve_external_knowledge_config",
+                return_value=resolved_config,
+            ),
             patch(
                 "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
             ) as mock_external,
         ):
             session = MagicMock()
             session.scalar.return_value = external_dataset
-            mock_external.return_value = [{"content": "e", "metadata": {}, "score": 0.8, "title": "Ext"}]
+            session.commit.side_effect = external_dataset.expire
+
+            def fetch_external(**_kwargs):
+                session.commit.assert_called_once_with()
+                return [{"content": "e", "metadata": {}, "score": 0.8, "title": "Ext"}]
+
+            mock_external.side_effect = fetch_external
             retrieval._retriever(
                 flask_app=flask_app,  # type: ignore[arg-type]
                 session=session,
@@ -5272,6 +5462,7 @@ class TestInternalHooksCoverage:
                 top_k=1,
                 all_documents=all_documents,
             )
+            assert mock_external.call_args.kwargs["resolved_config"] is resolved_config
 
         economy_dataset = SimpleNamespace(
             id="eco-ds",
@@ -5418,11 +5609,10 @@ class TestInternalHooksCoverage:
         assert len(ranked) == 1
         assert ranked[0].metadata.get("score") == 0.0
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars") as mock_scalars:
-            mock_scalars.return_value.all.return_value = []
+        with _patched_retriever_session() as read_session:
+            read_session.scalars.return_value.all.return_value = []
             with pytest.raises(ValueError):
                 retrieval._automatic_metadata_filter_func(
-                    MagicMock(),
                     dataset_ids=["d1"],
                     query="python",
                     tenant_id="tenant-1",
@@ -5431,19 +5621,19 @@ class TestInternalHooksCoverage:
                 )
 
         session_scalars = Mock()
-        session_scalars.all.return_value = [SimpleNamespace(name="author")]
+        session_scalars.all.return_value = ["author"]
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=session_scalars),
+            _patched_retriever_session() as read_session,
             patch.object(retrieval, "_fetch_model_config", return_value=(Mock(), Mock())),
             patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
             patch.object(retrieval, "_record_usage"),
         ):
+            read_session.scalars.return_value = session_scalars
             model_instance = Mock()
             model_instance.invoke_llm.side_effect = RuntimeError("nope")
             with patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, Mock())):
                 assert (
                     retrieval._automatic_metadata_filter_func(
-                        MagicMock(),
                         dataset_ids=["d1"],
                         query="python",
                         tenant_id="tenant-1",

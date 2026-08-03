@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
+from core.db.session_factory import session_factory
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.entities import DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -59,7 +60,20 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     @override
     def _run(self, session: Session, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
-        dataset = session.scalar(dataset_stmt)
+        # Workflow tools may be consumed inside an outer ``Session.begin()``.
+        # Keep the tool-owned session untouched so model/vector/provider I/O
+        # cannot retain that transaction's connection.
+        with session_factory.create_session() as read_session:
+            dataset = read_session.scalar(dataset_stmt)
+            external_knowledge_config = (
+                ExternalDatasetService.resolve_external_knowledge_config(
+                    tenant_id=dataset.tenant_id,
+                    dataset_id=dataset.id,
+                    session=read_session,
+                )
+                if dataset is not None and dataset.provider == "external"
+                else None
+            )
 
         if not dataset:
             return ""
@@ -67,7 +81,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             hit_callback.on_query(query, dataset.id, session)
         dataset_retrieval = DatasetRetrieval()
         metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-            session,
             [dataset.id],
             query,
             self.tenant_id,
@@ -82,14 +95,16 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         else:
             document_ids_filter = None
         if dataset.provider == "external":
+            if external_knowledge_config is None:
+                raise RuntimeError("External knowledge configuration was not resolved")
             results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                session=session,
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 query=query,
                 external_retrieval_parameters=dataset.retrieval_model,
                 metadata_condition=metadata_condition,
+                resolved_config=external_knowledge_config,
             )
             for external_document in external_documents:
                 document = RetrievalDocument(
@@ -169,7 +184,11 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
                 document_context_list: list[DocumentContext] = []
                 with Session(bind=session.get_bind()) as format_session:
-                    records = RetrievalService.format_retrieval_documents(format_session, documents)
+                    records = RetrievalService.format_retrieval_documents(
+                        format_session,
+                        documents,
+                        allowed_dataset_ids={dataset.id},
+                    )
                 if records:
                     for record in records:
                         segment = record.segment

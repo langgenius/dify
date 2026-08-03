@@ -3,13 +3,45 @@ import os
 import sys
 import types
 from collections import UserDict
+from contextlib import nullcontext
 from types import SimpleNamespace
-from typing import override
+from typing import Any, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from models.dataset import Dataset
+
+
+def _dataset() -> Dataset:
+    dataset = Dataset()
+    dataset.id = "dataset-1"
+    dataset.tenant_id = "tenant-1"
+    dataset.collection_binding_id = None
+    dataset.index_struct = None
+    return dataset
+
+
+class _UnusedEmbeddings(Embeddings):
+    """Concrete embedding dependency for factory tests that never request embeddings."""
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise AssertionError("embed_documents should not be called")
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+        raise AssertionError("embed_multimodal_documents should not be called")
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        raise AssertionError("embed_query should not be called")
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+        raise AssertionError("embed_multimodal_query should not be called")
 
 
 def _build_fake_qdrant_modules():
@@ -91,26 +123,30 @@ def _build_fake_qdrant_modules():
             super().__init__(**kwargs)
             self._load = MagicMock()
 
-    qdrant_client.QdrantClient = QdrantClient
-    qdrant_http_models.FilterSelector = FilterSelector
-    qdrant_http_models.HnswConfigDiff = HnswConfigDiff
-    qdrant_http_models.PayloadSchemaType = SimpleNamespace(KEYWORD="KEYWORD")
-    qdrant_http_models.TextIndexParams = TextIndexParams
-    qdrant_http_models.TextIndexType = SimpleNamespace(TEXT="TEXT")
-    qdrant_http_models.TokenizerType = SimpleNamespace(MULTILINGUAL="MULTILINGUAL")
-    qdrant_http_models.VectorParams = VectorParams
-    qdrant_http_models.Distance = _Distance()
-    qdrant_http_models.PointStruct = PointStruct
-    qdrant_http_models.Filter = Filter
-    qdrant_http_models.FieldCondition = FieldCondition
-    qdrant_http_models.MatchValue = MatchValue
-    qdrant_http_models.MatchAny = MatchAny
-    qdrant_http_models.MatchText = MatchText
-    qdrant_http_exceptions.UnexpectedResponse = UnexpectedResponseError
+    vars(qdrant_client).update({"QdrantClient": QdrantClient})
+    vars(qdrant_http_models).update(
+        {
+            "FilterSelector": FilterSelector,
+            "HnswConfigDiff": HnswConfigDiff,
+            "PayloadSchemaType": SimpleNamespace(KEYWORD="KEYWORD"),
+            "TextIndexParams": TextIndexParams,
+            "TextIndexType": SimpleNamespace(TEXT="TEXT"),
+            "TokenizerType": SimpleNamespace(MULTILINGUAL="MULTILINGUAL"),
+            "VectorParams": VectorParams,
+            "Distance": _Distance(),
+            "PointStruct": PointStruct,
+            "Filter": Filter,
+            "FieldCondition": FieldCondition,
+            "MatchValue": MatchValue,
+            "MatchAny": MatchAny,
+            "MatchText": MatchText,
+        }
+    )
+    vars(qdrant_http_exceptions).update({"UnexpectedResponse": UnexpectedResponseError})
 
-    qdrant_http.models = qdrant_http_models
-    qdrant_local_mod.QdrantLocal = QdrantLocal
-    qdrant_local_pkg.qdrant_local = qdrant_local_mod
+    vars(qdrant_http).update({"models": qdrant_http_models})
+    vars(qdrant_local_mod).update({"QdrantLocal": QdrantLocal})
+    vars(qdrant_local_pkg).update({"qdrant_local": qdrant_local_mod})
 
     return {
         "qdrant_client": qdrant_client,
@@ -292,13 +328,8 @@ def test_search_and_helper_methods(qdrant_module):
 
 def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     factory = qdrant_module.QdrantVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        collection_binding_id=None,
-        index_struct_dict=None,
-        index_struct=None,
-    )
+    dataset = _dataset()
+    embeddings = _UnusedEmbeddings()
     monkeypatch.setattr(qdrant_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_URL", "http://localhost:6333")
@@ -309,22 +340,22 @@ def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_REPLICATION_FACTOR", 1)
 
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=embeddings)
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "AUTO_COLLECTION"
     assert dataset.index_struct is not None
 
     # collection binding lookup path
     dataset.collection_binding_id = "binding-1"
-    dataset.index_struct_dict = {"vector_store": {"class_prefix": "existing"}}
-    monkeypatch.setattr(qdrant_module, "select", lambda _model: SimpleNamespace(where=lambda *_args: "stmt"))
-    qdrant_module.db.session.scalars = MagicMock(
-        return_value=SimpleNamespace(one_or_none=lambda: SimpleNamespace(collection_name="BOUND_COLLECTION"))
-    )
+    binding_session = MagicMock()
+    binding_session.scalar.return_value = "BOUND_COLLECTION"
+    create_session = MagicMock(return_value=nullcontext(binding_session))
+    monkeypatch.setattr(qdrant_module.session_factory, "create_session", create_session)
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=embeddings)
     assert vector_cls.call_args.kwargs["collection_name"] == "BOUND_COLLECTION"
+    create_session.assert_called_once_with()
 
-    qdrant_module.db.session.scalars = MagicMock(return_value=SimpleNamespace(one_or_none=lambda: None))
+    binding_session.scalar.return_value = None
     with pytest.raises(ValueError, match="Dataset Collection Bindings does not exist"):
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=embeddings)

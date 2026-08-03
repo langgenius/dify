@@ -21,13 +21,13 @@ from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetCollectionBinding
 
@@ -499,10 +499,13 @@ class QdrantVectorFactory(AbstractVectorFactory):
     @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
         if dataset.collection_binding_id:
-            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-            dataset_collection_binding = db.session.scalars(stmt).one_or_none()
-            if dataset_collection_binding:
-                collection_name = dataset_collection_binding.collection_name
+            stmt = select(DatasetCollectionBinding.collection_name).where(
+                DatasetCollectionBinding.id == dataset.collection_binding_id
+            )
+            with session_factory.create_session() as session:
+                collection_name = session.scalar(stmt)
+            if collection_name:
+                collection_name = str(collection_name)
             else:
                 raise ValueError("Dataset Collection Bindings does not exist!")
         else:

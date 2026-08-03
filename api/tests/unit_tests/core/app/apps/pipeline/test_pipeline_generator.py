@@ -373,11 +373,19 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
         user_id="user",
     )
 
-    session = DummySession()
+    events: list[str] = []
+
+    class TrackedSession(DummySession):
+        def __exit__(self, exc_type, exc, tb):
+            events.append("session-close")
+            return False
+
+    session = TrackedSession()
     session.scalar.side_effect = [MagicMock(), MagicMock(session_id="session")]
     _patch_session(mocker, session)
 
     runner_instance = MagicMock()
+    runner_instance.run.side_effect = lambda: events.append("runner")
     mocker.patch.object(module, "PipelineRunner", return_value=runner_instance)
 
     generator._generate_worker(
@@ -391,6 +399,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
     )
 
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
+    assert events == ["session-close", "runner"]
 
 
 def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture):
@@ -427,8 +436,11 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
     workflow = MagicMock(id="wf", tenant_id="tenant", app_id="pipe", graph_dict={})
+    events: list[str] = []
     session = MagicMock()
     session.get.return_value = workflow
+    session.expire_on_commit = True
+    session.commit.side_effect = lambda: events.append(f"commit-expire={session.expire_on_commit}")
     mocker.patch.object(module.db, "session", session)
 
     queue_manager = MagicMock()
@@ -436,6 +448,7 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
 
     worker_thread = MagicMock()
     worker_thread.is_alive.return_value = False
+    worker_thread.start.side_effect = lambda: events.append("worker-start")
     mocker.patch.object(module.threading, "Thread", return_value=worker_thread)
 
     mocker.patch.object(generator, "_get_draft_var_saver_factory", return_value=MagicMock())
@@ -463,6 +476,8 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
 
     assert result == "converted"
     worker_thread.join.assert_called_once_with(timeout=300)
+    assert events == ["commit-expire=False", "worker-start"]
+    assert session.expire_on_commit is True
 
 
 def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):

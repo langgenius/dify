@@ -1000,6 +1000,7 @@ class TestIndexingRunnerRun:
 
     def test_run_counts_each_transformed_document_once(self, mock_dependencies, sample_dataset_documents):
         runner = IndexingRunner()
+        phase_events: list[str] = []
         dataset_document = sample_dataset_documents[0]
         dataset = Mock(spec=Dataset)
         dataset.id = dataset_document.dataset_id
@@ -1016,6 +1017,7 @@ class TestIndexingRunnerRun:
             Account: current_user,
         }
         mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
+        mock_dependencies["session"].commit.side_effect = lambda: phase_events.append("commit")
         process_rule = Mock(spec=DatasetProcessRule)
         process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
         mock_dependencies["session"].scalar.return_value = process_rule
@@ -1027,11 +1029,12 @@ class TestIndexingRunnerRun:
             patch.object(runner, "_load") as load,
             patch(
                 "core.indexing_runner.calculate_segment_token_counts",
-                return_value=[11, 22],
+                side_effect=lambda **_kwargs: phase_events.append("count") or [11, 22],
             ) as calculate_token_counts,
         ):
             runner.run([dataset_document], mock_dependencies["session"])
 
+        assert phase_events == ["commit", "commit", "count", "commit"]
         calculate_token_counts.assert_called_once_with(dataset=dataset, documents=transformed_documents)
         load_segments.assert_called_once_with(
             session=mock_dependencies["session"],
@@ -1046,6 +1049,7 @@ class TestIndexingRunnerRun:
         self, mock_dependencies, sample_dataset_documents
     ):
         runner = IndexingRunner()
+        phase_events: list[str] = []
         dataset_document = sample_dataset_documents[0]
         dataset_document.created_by = "user-1"
         dataset = Mock(spec=Dataset)
@@ -1063,6 +1067,7 @@ class TestIndexingRunnerRun:
             Account: current_user,
         }
         mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
+        mock_dependencies["session"].commit.side_effect = lambda: phase_events.append("commit")
         mock_dependencies["session"].scalars.return_value.all.return_value = []
         process_rule = Mock(spec=DatasetProcessRule)
         process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -1075,11 +1080,12 @@ class TestIndexingRunnerRun:
             patch.object(runner, "_load") as load,
             patch(
                 "core.indexing_runner.calculate_segment_token_counts",
-                return_value=[11, 22],
+                side_effect=lambda **_kwargs: phase_events.append("count") or [11, 22],
             ) as calculate_token_counts,
         ):
             runner.run_in_splitting_status(dataset_document, mock_dependencies["session"])
 
+        assert phase_events == ["commit", "commit", "commit", "count", "commit"]
         calculate_token_counts.assert_called_once_with(dataset=dataset, documents=transformed_documents)
         load_segments.assert_called_once_with(
             session=mock_dependencies["session"],

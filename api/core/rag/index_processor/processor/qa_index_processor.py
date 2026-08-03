@@ -4,11 +4,10 @@ import logging
 import re
 import threading
 import uuid
-from typing import Any, TypedDict, override
+from typing import Any, TypedDict, cast, override
 
 import pandas as pd
 from flask import Flask, current_app
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
@@ -27,7 +26,7 @@ from core.rag.models.document import AttachmentDocument, Document, QAStructureCh
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.account import Account
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
 
@@ -154,7 +153,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset, session=session)
+            vector = Vector(dataset)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
@@ -170,26 +169,15 @@ class QAIndexProcessor(BaseIndexProcessor):
         # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
         delete_summaries = kwargs.get("delete_summaries", False)
         if delete_summaries:
-            if node_ids:
-                # Find segments by index_node_id
-                segments = session.scalars(
-                    select(DocumentSegment).where(
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.index_node_id.in_(node_ids),
-                    )
-                ).all()
-                segment_ids = [segment.id for segment in segments]
-                if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
-            else:
-                # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
+            segment_ids = cast(list[str] | None, kwargs.get("segment_ids"))
+            if node_ids is not None and segment_ids is None:
+                raise ValueError("segment_ids are required for partial summary cleanup")
+            SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=segment_ids, session=session)
 
-        vector = Vector(dataset, session=session)
-        if node_ids:
-            vector.delete_by_ids(node_ids)
-        else:
-            vector.delete()
+        if node_ids is None:
+            Vector(dataset).delete()
+        elif node_ids:
+            Vector(dataset).delete_by_ids(node_ids)
 
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
@@ -206,6 +194,9 @@ class QAIndexProcessor(BaseIndexProcessor):
             doc = Document(page_content=qa_chunk.question, metadata=metadata)
             documents.append(doc)
         if documents:
+            # End any caller-owned read transaction before token counting can call the embedding provider.
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                session.commit()
             token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
@@ -217,7 +208,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             )
             session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                vector = Vector(dataset, session=session)
+                vector = Vector(dataset)
                 vector.create(documents)
             else:
                 raise ValueError("Indexing technique must be high quality.")

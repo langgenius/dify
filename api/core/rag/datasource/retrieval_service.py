@@ -34,8 +34,9 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.dataset import Document as DatasetDocument
+from models.enums import IndexingStatus, SummaryStatus
 from models.model import UploadFile
-from services.external_knowledge_service import ExternalDatasetService
+from services.external_knowledge_service import ExternalDatasetService, ResolvedExternalKnowledgeConfig
 
 
 class SegmentAttachmentResult(TypedDict):
@@ -175,28 +176,25 @@ class RetrievalService:
     @classmethod
     def external_retrieve(
         cls,
-        session: Session,
+        tenant_id: str,
         dataset_id: str,
         query: str,
+        resolved_config: ResolvedExternalKnowledgeConfig,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
-        stmt = select(Dataset).where(Dataset.id == dataset_id)
-        dataset = session.scalar(stmt)
-        if not dataset:
-            return []
         metadata_condition = (
             MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
             if metadata_filtering_conditions
             else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            tenant_id=dataset.tenant_id,
+            tenant_id=tenant_id,
             dataset_id=dataset_id,
             query=query,
             external_retrieval_parameters=external_retrieval_model or {},
             metadata_condition=metadata_condition,
-            session=session,
+            resolved_config=resolved_config,
         )
         return all_documents
 
@@ -328,31 +326,30 @@ class RetrievalService:
                 embedding_score_threshold = (
                     0.0 if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
                 )
-                with Session(db.engine) as session:
-                    vector = Vector(dataset=dataset, session=session)
-                    if query_type == QueryType.TEXT_QUERY:
-                        documents.extend(
-                            vector.search_by_vector(
-                                query,
-                                search_type="similarity_score_threshold",
-                                top_k=top_k,
-                                score_threshold=embedding_score_threshold,
-                                filter={"group_id": [dataset.id]},
-                                document_ids_filter=document_ids_filter,
-                            )
+                vector = Vector(dataset=dataset)
+                if query_type == QueryType.TEXT_QUERY:
+                    documents.extend(
+                        vector.search_by_vector(
+                            query,
+                            search_type="similarity_score_threshold",
+                            top_k=top_k,
+                            score_threshold=embedding_score_threshold,
+                            filter={"group_id": [dataset.id]},
+                            document_ids_filter=document_ids_filter,
                         )
-                    if query_type == QueryType.IMAGE_QUERY:
-                        if not dataset.is_multimodal:
-                            return
-                        documents.extend(
-                            vector.search_by_file(
-                                file_id=query,
-                                top_k=top_k,
-                                score_threshold=embedding_score_threshold,
-                                filter={"group_id": [dataset.id]},
-                                document_ids_filter=document_ids_filter,
-                            )
+                    )
+                if query_type == QueryType.IMAGE_QUERY:
+                    if not dataset.is_multimodal:
+                        return
+                    documents.extend(
+                        vector.search_by_file(
+                            file_id=query,
+                            top_k=top_k,
+                            score_threshold=embedding_score_threshold,
+                            filter={"group_id": [dataset.id]},
+                            document_ids_filter=document_ids_filter,
                         )
+                    )
 
                 if documents:
                     if (
@@ -428,11 +425,13 @@ class RetrievalService:
                 if not dataset:
                     raise ValueError("dataset not found")
 
-                with Session(db.engine) as session:
-                    vector_processor = Vector(dataset=dataset, session=session)
+                vector_processor = Vector(dataset=dataset)
 
                 documents = vector_processor.search_by_full_text(
-                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+                    cls.escape_query_for_search(query),
+                    top_k=top_k,
+                    filter={"group_id": [dataset.id]},
+                    document_ids_filter=document_ids_filter,
                 )
                 if documents:
                     if (
@@ -469,7 +468,13 @@ class RetrievalService:
         return query.replace('"', '\\"')
 
     @classmethod
-    def format_retrieval_documents(cls, session: Session, documents: list[Document]) -> list[RetrievalSegments]:
+    def format_retrieval_documents(
+        cls,
+        session: Session,
+        documents: list[Document],
+        *,
+        allowed_dataset_ids: set[str],
+    ) -> list[RetrievalSegments]:
         """Format retrieval documents with optimized batch processing"""
         if not documents:
             return []
@@ -485,8 +490,24 @@ class RetrievalService:
                 doc.id: doc
                 for doc in session.scalars(
                     select(DatasetDocument)
-                    .where(DatasetDocument.id.in_(document_ids))
-                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                    .where(
+                        DatasetDocument.id.in_(document_ids),
+                        DatasetDocument.dataset_id.in_(allowed_dataset_ids),
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
+                        DatasetDocument.indexing_status == IndexingStatus.COMPLETED,
+                    )
+                    .options(
+                        load_only(
+                            DatasetDocument.id,
+                            DatasetDocument.doc_form,
+                            DatasetDocument.dataset_id,
+                            DatasetDocument.tenant_id,
+                            DatasetDocument.enabled,
+                            DatasetDocument.archived,
+                            DatasetDocument.indexing_status,
+                        )
+                    )
                 ).all()
             }
 
@@ -495,8 +516,8 @@ class RetrievalService:
             child_index_node_ids = []
             index_node_ids = []
             doc_to_document_map = {}
-            summary_segment_ids = set()  # Track segments retrieved via summary
-            summary_score_map: dict[str, float] = {}  # Map original_chunk_id to summary score
+            summary_hit_scores: dict[tuple[str, str, str], float | None] = {}
+            summary_score_map: dict[str, float] = {}
 
             # First pass: collect all document IDs and identify summary documents
             for document in documents:
@@ -507,6 +528,17 @@ class RetrievalService:
                 dataset_document = dataset_documents[document_id]
                 if not dataset_document:
                     continue
+                if dataset_document.dataset_id not in allowed_dataset_ids:
+                    continue
+                if (
+                    not dataset_document.enabled
+                    or dataset_document.archived
+                    or dataset_document.indexing_status != IndexingStatus.COMPLETED
+                ):
+                    continue
+                vector_dataset_id = document.metadata.get("dataset_id")
+                if vector_dataset_id is None or str(vector_dataset_id) != dataset_document.dataset_id:
+                    continue
                 valid_dataset_documents[document_id] = dataset_document
 
                 doc_id = document.metadata.get("doc_id") or ""
@@ -515,25 +547,19 @@ class RetrievalService:
                 # Check if this is a summary document
                 is_summary = document.metadata.get("is_summary", False)
                 if is_summary:
-                    # For summary documents, find the original chunk via original_chunk_id
                     original_chunk_id = document.metadata.get("original_chunk_id")
-                    if original_chunk_id:
-                        summary_segment_ids.add(original_chunk_id)
-                        # Save summary's score for later use
-                        summary_score = document.metadata.get("score")
-                        if summary_score is not None:
+                    if original_chunk_id and doc_id:
+                        summary_score: float | None = None
+                        raw_summary_score = document.metadata.get("score")
+                        if raw_summary_score is not None:
                             try:
-                                summary_score_float = float(summary_score)
-                                # If the same segment has multiple summary hits, take the highest score
-                                if original_chunk_id not in summary_score_map:
-                                    summary_score_map[original_chunk_id] = summary_score_float
-                                else:
-                                    summary_score_map[original_chunk_id] = max(
-                                        summary_score_map[original_chunk_id], summary_score_float
-                                    )
+                                summary_score = float(raw_summary_score)
                             except (ValueError, TypeError):
-                                # Skip invalid score values
                                 pass
+                        summary_key = (dataset_document.dataset_id, original_chunk_id, doc_id)
+                        previous_score = summary_hit_scores.get(summary_key)
+                        if previous_score is None or (summary_score is not None and summary_score > previous_score):
+                            summary_hit_scores[summary_key] = summary_score
                     continue  # Skip adding to other lists for summary documents
 
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -547,6 +573,9 @@ class RetrievalService:
                     else:
                         index_node_ids.append(doc_id)
 
+            if not valid_dataset_documents:
+                return []
+
             image_doc_ids = [i for i in image_doc_ids if i]
             child_index_node_ids = [i for i in child_index_node_ids if i]
             index_node_ids = [i for i in index_node_ids if i]
@@ -558,8 +587,16 @@ class RetrievalService:
             child_chunk_map: dict[str, list[ChildChunk]] = {}
             doc_segment_map: dict[str, list[str]] = {}
             segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
+            summary_segment_ids: set[str] = set()
+            valid_dataset_ids = {document.dataset_id for document in valid_dataset_documents.values()}
+            valid_tenant_ids = {document.tenant_id for document in valid_dataset_documents.values()}
 
-            attachments = cls.get_segment_attachment_infos(image_doc_ids, session)
+            attachments = cls.get_segment_attachment_infos(
+                image_doc_ids,
+                session,
+                dataset_ids=valid_dataset_ids,
+                tenant_ids=valid_tenant_ids,
+            )
 
             for attachment in attachments:
                 segment_ids.append(attachment["segment_id"])
@@ -572,7 +609,10 @@ class RetrievalService:
                 else:
                     doc_segment_map[attachment["segment_id"]] = [attachment["attachment_id"]]
 
-            child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(child_index_node_ids))
+            child_chunk_stmt = select(ChildChunk).where(
+                ChildChunk.index_node_id.in_(child_index_node_ids),
+                ChildChunk.dataset_id.in_(valid_dataset_ids),
+            )
             child_index_nodes = session.execute(child_chunk_stmt).scalars().all()
 
             for i in child_index_nodes:
@@ -592,6 +632,7 @@ class RetrievalService:
                     DocumentSegment.enabled == True,
                     DocumentSegment.status == "completed",
                     DocumentSegment.index_node_id.in_(index_node_ids),
+                    DocumentSegment.dataset_id.in_(valid_dataset_ids),
                 )
                 index_node_segments = session.execute(document_segment_stmt).scalars().all()
                 for index_node_segment in index_node_segments:
@@ -603,19 +644,63 @@ class RetrievalService:
                     DocumentSegment.enabled == True,
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id.in_(valid_dataset_ids),
                 )
                 segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore
 
             if index_node_segments:
                 segments.extend(index_node_segments)
 
-            # Handle summary documents: query segments by original_chunk_id
+            # A vector-store hit is authoritative only while its node ID matches
+            # the current enabled summary pointer. This rejects old replacement
+            # vectors and vectors left behind by delayed cleanup.
+            if summary_hit_scores:
+                candidate_segment_ids = {key[1] for key in summary_hit_scores}
+                candidate_dataset_ids = {key[0] for key in summary_hit_scores}
+                summaries = session.scalars(
+                    select(DocumentSegmentSummary)
+                    .where(
+                        DocumentSegmentSummary.dataset_id.in_(candidate_dataset_ids),
+                        DocumentSegmentSummary.chunk_id.in_(candidate_segment_ids),
+                    )
+                    .order_by(
+                        DocumentSegmentSummary.dataset_id,
+                        DocumentSegmentSummary.chunk_id,
+                        DocumentSegmentSummary.updated_at.desc(),
+                        DocumentSegmentSummary.id.desc(),
+                    )
+                ).all()
+                canonical_summary_keys: set[tuple[str, str]] = set()
+                for summary in summaries:
+                    canonical_key = (summary.dataset_id, summary.chunk_id)
+                    if canonical_key in canonical_summary_keys:
+                        continue
+                    canonical_summary_keys.add(canonical_key)
+                    if summary.status != SummaryStatus.COMPLETED or not summary.enabled:
+                        continue
+                    summary_node_id = summary.summary_index_node_id
+                    if not summary_node_id or not summary.summary_content:
+                        continue
+                    summary_key = (summary.dataset_id, summary.chunk_id, summary_node_id)
+                    if summary_key not in summary_hit_scores:
+                        continue
+                    summary_segment_ids.add(summary.chunk_id)
+                    segment_summary_map[summary.chunk_id] = summary.summary_content
+                    summary_score = summary_hit_scores[summary_key]
+                    if summary_score is not None:
+                        summary_score_map[summary.chunk_id] = max(
+                            summary_score_map.get(summary.chunk_id, summary_score),
+                            summary_score,
+                        )
+
+            # Handle validated summary documents: query segments by original_chunk_id.
             if summary_segment_ids:
                 summary_segment_ids_list = list(summary_segment_ids)
                 summary_segment_stmt = select(DocumentSegment).where(
                     DocumentSegment.enabled == True,
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(summary_segment_ids_list),
+                    DocumentSegment.dataset_id.in_(valid_dataset_ids),
                 )
                 summary_segments = session.execute(summary_segment_stmt).scalars().all()  # type: ignore
                 segments.extend(summary_segments)
@@ -623,19 +708,6 @@ class RetrievalService:
                 for seg in summary_segments:
                     if seg.id not in segment_ids:
                         segment_ids.append(seg.id)
-
-            # Batch query summaries for segments retrieved via summary (only enabled summaries)
-            if summary_segment_ids:
-                summaries = session.scalars(
-                    select(DocumentSegmentSummary).where(
-                        DocumentSegmentSummary.chunk_id.in_(list(summary_segment_ids)),
-                        DocumentSegmentSummary.status == "completed",
-                        DocumentSegmentSummary.enabled.is_(True),  # Only retrieve enabled summaries
-                    )
-                ).all()
-                for summary in summaries:
-                    if summary.summary_content:
-                        segment_summary_map[summary.chunk_id] = summary.summary_content
 
             include_segment_ids = set()
             segment_child_map: dict[str, SegmentChildMapDetail] = {}
@@ -646,7 +718,12 @@ class RetrievalService:
                 attachment_infos: list[AttachmentInfoDict] = attachment_map.get(segment.id, [])
                 ds_dataset_document: DatasetDocument | None = valid_dataset_documents.get(segment.document_id)
 
-                if ds_dataset_document and ds_dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                # The vector hit is only a lookup hint. The segment's own
+                # document must still be one of the active rows validated above.
+                if ds_dataset_document is None:
+                    continue
+
+                if ds_dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
                         # Check if this segment was retrieved via summary
@@ -918,11 +995,22 @@ class RetrievalService:
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
     ) -> SegmentAttachmentResult | None:
-        upload_file = session.scalar(select(UploadFile).where(UploadFile.id == attachment_id).limit(1))
+        upload_file = session.scalar(
+            select(UploadFile)
+            .where(
+                UploadFile.id == attachment_id,
+                UploadFile.tenant_id == tenant_id,
+            )
+            .limit(1)
+        )
         if upload_file:
             attachment_binding = session.scalar(
                 select(SegmentAttachmentBinding)
-                .where(SegmentAttachmentBinding.attachment_id == upload_file.id)
+                .where(
+                    SegmentAttachmentBinding.attachment_id == upload_file.id,
+                    SegmentAttachmentBinding.dataset_id == dataset_id,
+                    SegmentAttachmentBinding.tenant_id == tenant_id,
+                )
                 .limit(1)
             )
             if attachment_binding:
@@ -940,15 +1028,28 @@ class RetrievalService:
 
     @classmethod
     def get_segment_attachment_infos(
-        cls, attachment_ids: list[str], session: Session
+        cls,
+        attachment_ids: list[str],
+        session: Session,
+        *,
+        dataset_ids: set[str] | None = None,
+        tenant_ids: set[str] | None = None,
     ) -> list[SegmentAttachmentInfoResult]:
         attachment_infos: list[SegmentAttachmentInfoResult] = []
         granted_upload_file_ids: list[str] = []
-        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
+        upload_file_filters = [UploadFile.id.in_(attachment_ids)]
+        if tenant_ids is not None:
+            upload_file_filters.append(UploadFile.tenant_id.in_(tenant_ids))
+        upload_files = session.scalars(select(UploadFile).where(*upload_file_filters)).all()
         if upload_files:
             upload_file_ids = [upload_file.id for upload_file in upload_files]
+            attachment_binding_filters = [SegmentAttachmentBinding.attachment_id.in_(upload_file_ids)]
+            if dataset_ids is not None:
+                attachment_binding_filters.append(SegmentAttachmentBinding.dataset_id.in_(dataset_ids))
+            if tenant_ids is not None:
+                attachment_binding_filters.append(SegmentAttachmentBinding.tenant_id.in_(tenant_ids))
             attachment_bindings = session.scalars(
-                select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
+                select(SegmentAttachmentBinding).where(*attachment_binding_filters)
             ).all()
             attachment_binding_map = {binding.attachment_id: binding for binding in attachment_bindings}
 

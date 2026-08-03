@@ -1,10 +1,12 @@
 import json
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, cast
 from urllib.parse import urlparse
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
@@ -25,6 +27,14 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 )
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
+
+
+@dataclass(frozen=True)
+class ResolvedExternalKnowledgeConfig:
+    """Plain provider configuration that is safe to retain after its database transaction ends."""
+
+    settings_json: str
+    external_knowledge_id: str
 
 
 class ExternalDatasetService:
@@ -335,6 +345,47 @@ class ExternalDatasetService:
         return dataset
 
     @staticmethod
+    def resolve_external_knowledge_config(
+        tenant_id: str,
+        dataset_id: str,
+        *,
+        session: Session,
+    ) -> ResolvedExternalKnowledgeConfig:
+        """Resolve tenant-scoped provider configuration without finalizing the caller's transaction."""
+        try:
+            config_row = session.execute(
+                select(
+                    ExternalKnowledgeBindings.external_knowledge_id,
+                    ExternalKnowledgeApis.settings,
+                )
+                .select_from(ExternalKnowledgeBindings)
+                .outerjoin(
+                    ExternalKnowledgeApis,
+                    and_(
+                        ExternalKnowledgeApis.id == ExternalKnowledgeBindings.external_knowledge_api_id,
+                        ExternalKnowledgeApis.tenant_id == tenant_id,
+                    ),
+                )
+                .where(
+                    ExternalKnowledgeBindings.dataset_id == dataset_id,
+                    ExternalKnowledgeBindings.tenant_id == tenant_id,
+                )
+            ).one_or_none()
+        except MultipleResultsFound as error:
+            raise ExternalKnowledgeRetrievalError("multiple external knowledge bindings found") from error
+        if config_row is None:
+            raise ExternalKnowledgeRetrievalError("external knowledge binding not found")
+
+        external_knowledge_id, settings_json = config_row
+        if settings_json is None:
+            raise ExternalKnowledgeRetrievalError("external api template not found")
+
+        return ResolvedExternalKnowledgeConfig(
+            settings_json=settings_json,
+            external_knowledge_id=external_knowledge_id,
+        )
+
+    @staticmethod
     def fetch_external_knowledge_retrieval(
         tenant_id: str,
         dataset_id: str,
@@ -342,37 +393,16 @@ class ExternalDatasetService:
         external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
         *,
-        session: Session,
+        resolved_config: ResolvedExternalKnowledgeConfig,
     ):
         """Fetch retrieval records from an external knowledge provider.
 
-        Success requires a tenant-scoped binding plus API template and a ``200``
-        response body shaped like ``{"records": [...]}``. All dependency
-        failures, non-200 responses, and malformed success payloads must be
-        normalized to ``ExternalKnowledgeRetrievalError`` so callers—especially
-        the inner knowledge retrieval API—can consistently expose
-        ``502 external_knowledge_failed``.
+        ``resolved_config`` must be loaded with ``resolve_external_knowledge_config`` and the resolving transaction
+        must be ended before this method is called. This method performs no database access, so provider latency cannot
+        retain a connection. Non-200 responses and malformed success payloads are normalized to
+        ``ExternalKnowledgeRetrievalError``.
         """
-        external_knowledge_binding = session.scalar(
-            select(ExternalKnowledgeBindings)
-            .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
-            .limit(1)
-        )
-        if not external_knowledge_binding:
-            raise ExternalKnowledgeRetrievalError("external knowledge binding not found")
-
-        external_knowledge_api = session.scalar(
-            select(ExternalKnowledgeApis)
-            .where(
-                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
-                ExternalKnowledgeApis.tenant_id == tenant_id,
-            )
-            .limit(1)
-        )
-        if external_knowledge_api is None or external_knowledge_api.settings is None:
-            raise ExternalKnowledgeRetrievalError("external api template not found")
-
-        settings = json.loads(external_knowledge_api.settings)
+        settings = json.loads(resolved_config.settings_json)
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
@@ -384,7 +414,7 @@ class ExternalDatasetService:
                 "score_threshold": score_threshold,
             },
             "query": query,
-            "knowledge_id": external_knowledge_binding.external_knowledge_id,
+            "knowledge_id": resolved_config.external_knowledge_id,
             "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
         }
 

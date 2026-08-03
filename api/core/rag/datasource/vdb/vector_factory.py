@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_backend_registry import get_vector_factory_class
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
@@ -99,16 +100,23 @@ class _LazyEmbeddings(Embeddings):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None, *, session: Session):
+    def __init__(
+        self,
+        dataset: Dataset,
+        attributes: list | None = None,
+        *,
+        session: Session | None = None,
+    ):
+        """Create a vector adapter without retaining database session state.
+
+        Callers may pass their session so an already-active transaction can
+        resolve whitelist routing without a second pool checkout. An idle caller
+        session is not started solely for this lookup; the short internal
+        session remains preferable in that case.
+        """
         if attributes is None:
-            # `is_summary` and `original_chunk_id` are stored on summary vectors
-            # by `SummaryIndexService` and read back by `RetrievalService` to
-            # route summary hits through their original parent chunks. They
-            # must be listed here so vector backends that use this list as an
-            # explicit return-properties projection (notably Weaviate) actually
-            # return those fields; without them, summary hits silently
-            # collapse into `is_summary = False` branches and the summary
-            # retrieval path is a no-op. See #34884.
+            # Summary retrieval needs both fields from backends that use an
+            # explicit return-property projection.
             attributes = [
                 "doc_id",
                 "dataset_id",
@@ -120,15 +128,17 @@ class Vector:
             ]
         self._dataset = dataset
         # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
-        # never transitively trigger billing API calls during ``Vector(dataset, session=...)``
+        # never transitively trigger billing API calls during ``Vector(dataset)``
         # construction. The real embedding model is materialized only when an
         # ``embed_*`` method is actually invoked (i.e. create / search paths).
         self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
-        self._session = session
-        self._vector_processor = self._init_vector(session=session)
+        if session is not None and session.in_transaction():
+            self._vector_processor = self._init_vector(session=session)
+        else:
+            self._vector_processor = self._init_vector()
 
-    def _init_vector(self, *, session: Session) -> BaseVector:
+    def _init_vector(self, *, session: Session | None = None) -> BaseVector:
         vector_type = dify_config.VECTOR_STORE
 
         if self._dataset.index_struct_dict:
@@ -138,7 +148,11 @@ class Vector:
                 stmt = select(Whitelist).where(
                     Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
-                whitelist = session.scalars(stmt).one_or_none()
+                if session is None:
+                    with session_factory.create_session() as read_session:
+                        whitelist = read_session.scalars(stmt).one_or_none()
+                else:
+                    whitelist = session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
@@ -192,20 +206,25 @@ class Vector:
                 batch_start = time.time()
                 logger.info("Processing batch %s/%s (%s files)", i // batch_size + 1, total_batches, len(batch))
 
-                # Batch query all upload files to avoid N+1 queries
-                attachment_ids = [doc.metadata["doc_id"] for doc in batch]
-                stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                upload_files = self._session.scalars(stmt).all()
-                upload_file_map = {str(f.id): f for f in upload_files}
+                # Fetch only the storage identifiers needed below. Tenant scoping prevents a document carrying an
+                # unrelated file UUID from reading another tenant's object.
+                attachment_ids = list(dict.fromkeys(str(doc.metadata["doc_id"]) for doc in batch))
+                stmt = select(UploadFile.id, UploadFile.key).where(
+                    UploadFile.id.in_(attachment_ids),
+                    UploadFile.tenant_id == self._dataset.tenant_id,
+                )
+                with session_factory.create_session() as read_session:
+                    upload_files = read_session.execute(stmt).all()
+                upload_file_map = {str(upload_file_id): storage_key for upload_file_id, storage_key in upload_files}
 
                 file_base64_list = []
                 real_batch = []
                 for document in batch:
-                    attachment_id = document.metadata["doc_id"]
+                    attachment_id = str(document.metadata["doc_id"])
                     doc_type = document.metadata["doc_type"]
-                    upload_file = upload_file_map.get(attachment_id)
-                    if upload_file:
-                        blob = storage.load_once(upload_file.key)
+                    storage_key = upload_file_map.get(attachment_id)
+                    if storage_key is not None:
+                        blob = storage.load_once(storage_key)
                         file_base64_str = base64.b64encode(blob).decode()
                         file_base64_list.append(
                             {
@@ -253,11 +272,16 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
+        stmt = select(UploadFile.key).where(
+            UploadFile.id == file_id,
+            UploadFile.tenant_id == self._dataset.tenant_id,
+        )
+        with session_factory.create_session() as read_session:
+            storage_key = read_session.scalar(stmt)
 
-        if not upload_file:
+        if storage_key is None:
             return []
-        blob = storage.load_once(upload_file.key)
+        blob = storage.load_once(storage_key)
         file_base64_str = base64.b64encode(blob).decode()
         multimodal_vector = self._embeddings.embed_multimodal_query(
             {

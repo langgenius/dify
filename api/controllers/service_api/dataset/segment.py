@@ -26,6 +26,7 @@ from controllers.service_api.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.segment_fields import (
     ChildChunkDetailResponse,
@@ -377,6 +378,8 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Document not found.")
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
+        # Release the materialized dataset-token auth session before the service commits and publishes cleanup.
+        db.session.remove()
         SegmentService.delete_segment(segment, document, dataset, session)
         return "", 204
 
@@ -440,6 +443,10 @@ class DatasetSegmentApi(DatasetApiResource):
 
         payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
 
+        # Dataset-token authentication uses Flask-SQLAlchemy's scoped session, while this handler uses the
+        # explicitly injected session. The authenticated account and tenant are materialized by this point, so
+        # release the auth session before update paths can call embedding or vector providers.
+        db.session.remove()
         updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset, session)
         summary = SummaryIndexService.get_segment_summary(
             segment_id=updated_segment.id, dataset_id=dataset_id_str, session=session
@@ -586,6 +593,9 @@ class ChildChunkApi(DatasetApiResource):
         payload = ChildChunkCreatePayload.model_validate(service_api_ns.payload or {})
 
         try:
+            # Dataset-token authentication has materialized its scoped session. Release it before embedding and
+            # vector-provider I/O; the explicitly injected controller session remains the write owner.
+            db.session.remove()
             child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
@@ -726,6 +736,7 @@ class DatasetChildChunkApi(DatasetApiResource):
             raise NotFound("Child chunk not found.")
 
         try:
+            db.session.remove()
             SegmentService.delete_child_chunk(child_chunk, dataset, session)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
@@ -799,6 +810,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         payload = ChildChunkUpdatePayload.model_validate(service_api_ns.payload or {})
 
         try:
+            db.session.remove()
             child_chunk = SegmentService.update_child_chunk(
                 payload.content, child_chunk, segment, document, dataset, session
             )

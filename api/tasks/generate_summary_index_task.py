@@ -45,7 +45,14 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
                 logger.error(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
 
-            document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1))
+            document = session.scalar(
+                select(DatasetDocument)
+                .where(
+                    DatasetDocument.id == document_id,
+                    DatasetDocument.dataset_id == dataset_id,
+                )
+                .limit(1)
+            )
             if not document:
                 logger.error(click.style(f"Document not found: {document_id}", fg="red"))
                 return
@@ -85,23 +92,22 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
             # Determine if only parent chunks should be processed
             only_parent_chunks = dataset.chunk_structure == "parent_child_index"
 
-            # Generate summaries
-            summary_records = SummaryIndexService.generate_summaries_for_document(
-                dataset=dataset,
-                document=document,
-                summary_index_setting=summary_index_setting,
-                segment_ids=segment_ids,
-                only_parent_chunks=only_parent_chunks,
-            )
+        summary_records = SummaryIndexService.generate_summaries_for_document(
+            dataset=dataset,
+            document=document,
+            summary_index_setting=summary_index_setting,
+            segment_ids=segment_ids,
+            only_parent_chunks=only_parent_chunks,
+        )
 
-            end_at = time.perf_counter()
-            logger.info(
-                click.style(
-                    f"Summary index generation completed for document {document_id}: "
-                    f"{len(summary_records)} summaries generated, latency: {end_at - start_at}",
-                    fg="green",
-                )
+        end_at = time.perf_counter()
+        logger.info(
+            click.style(
+                f"Summary index generation completed for document {document_id}: "
+                f"{len(summary_records)} summaries generated, latency: {end_at - start_at}",
+                fg="green",
             )
+        )
 
     except Exception as e:
         logger.exception("Failed to generate summary index for document %s", document_id)

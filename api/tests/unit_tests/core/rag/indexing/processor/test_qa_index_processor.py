@@ -221,7 +221,7 @@ class TestQAIndexProcessor:
             vector = mock_vector_cls.return_value
             processor.load(dataset, docs, multimodal_documents=multimodal_docs, session=session)
 
-        mock_vector_cls.assert_called_once_with(dataset, session=session)
+        mock_vector_cls.assert_called_once_with(dataset)
         vector.create.assert_called_once_with(docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
 
@@ -251,9 +251,9 @@ class TestQAIndexProcessor:
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):
             vector = mock_vector_cls.return_value
-            processor.clean(dataset, ["node-1"], delete_summaries=True, session=mock_session)
+            processor.clean(dataset, ["node-1"], delete_summaries=True, segment_ids=["seg-1"], session=mock_session)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"], session=mock_session)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=["seg-1"], session=mock_session)
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
     def test_clean_handles_dataset_wide_cleanup(self, processor: QAIndexProcessor, dataset: Mock) -> None:
@@ -267,8 +267,29 @@ class TestQAIndexProcessor:
             vector = mock_vector_cls.return_value
             processor.clean(dataset, None, delete_summaries=True, session=session)
 
-        mock_summary.assert_called_once_with(dataset, None, session=session)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=None, session=session)
         vector.delete.assert_called_once()
+
+    def test_clean_empty_partial_selection_does_not_delete_vector_index(
+        self, processor: QAIndexProcessor, dataset: Mock
+    ) -> None:
+        session = Mock()
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexService.delete_summaries_for_segments"
+            ) as mock_summary,
+            patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
+        ):
+            processor.clean(dataset, [], delete_summaries=True, segment_ids=[], session=session)
+
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=[], session=session)
+        mock_vector_cls.assert_not_called()
+
+    def test_clean_rejects_partial_summary_cleanup_without_durable_segment_ids(
+        self, processor: QAIndexProcessor, dataset: Mock
+    ) -> None:
+        with pytest.raises(ValueError, match="segment_ids are required"):
+            processor.clean(dataset, ["node-1"], delete_summaries=True, session=Mock())
 
     def test_index_adds_documents_and_vectors_for_high_quality(
         self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
@@ -302,7 +323,7 @@ class TestQAIndexProcessor:
             mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, {"qa_chunks": []}, session)
 
-        assert phase_events == ["count", "store", "commit", "vector"]
+        assert phase_events == ["commit", "count", "store", "commit", "vector"]
         documents = mock_token_counter.call_args.kwargs["documents"]
         assert [document.page_content for document in documents] == ["Q1", "Q2"]
         mock_token_counter.assert_called_once_with(dataset=dataset, documents=documents)

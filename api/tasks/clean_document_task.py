@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -11,6 +11,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from services.vector_service import VectorService
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def clean_document_task(
     """
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
-    total_attachment_files = []
+    total_attachment_files: list[str] = []
     vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
@@ -45,11 +46,22 @@ def clean_document_task(
                 raise Exception("Document has no dataset")
 
             dataset_tenant_id = dataset.tenant_id
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
+            ).all()
             # Use JOIN to fetch attachments with bindings in a single query
             attachments_with_bindings = session.execute(
                 select(SegmentAttachmentBinding, UploadFile)
-                .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                .outerjoin(
+                    UploadFile,
+                    and_(
+                        UploadFile.id == SegmentAttachmentBinding.attachment_id,
+                        UploadFile.tenant_id == dataset.tenant_id,
+                    ),
+                )
                 .where(
                     SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
                     SegmentAttachmentBinding.dataset_id == dataset_id,
@@ -57,18 +69,22 @@ def clean_document_task(
                 )
             ).all()
 
-            attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
+            attachment_ids = [binding.attachment_id for binding, _ in attachments_with_bindings]
             binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-            total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
+            total_attachment_files.extend(
+                attachment_file.key for _, attachment_file in attachments_with_bindings if attachment_file is not None
+            )
 
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+            segment_ids = [segment.id for segment in segments]
             segment_contents = [segment.content for segment in segments]
         except Exception:
             logger.exception("Cleaned document when document deleted failed")
             return
 
-    # check segment is exist
-    if index_node_ids:
+    # Summary/child cleanup is keyed by segment ID and must still run for
+    # partially indexed segments that never received a primary vector node ID.
+    if index_node_ids or segment_ids:
         # Wrap vector / keyword index cleanup in try/except so that a transient
         # failure here (e.g. billing API hiccup propagated via FeatureService when
         # ModelManager is initialized inside ``Vector(dataset)``) does not abort
@@ -79,40 +95,61 @@ def clean_document_task(
         # the vector backend or one of its transitive dependencies was unhappy.
         try:
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            with session_factory.create_session() as session, session.begin():
+            with session_factory.create_session() as session:
                 dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                 if dataset:
+                    session.commit()
                     index_processor.clean(
                         dataset,
                         index_node_ids,
                         with_keywords=True,
                         delete_child_chunks=True,
                         delete_summaries=True,
+                        segment_ids=segment_ids,
                         session=session,
                     )
+                    session.commit()
                     vector_cleanup_succeeded = True
         except Exception:
             logger.exception(
                 "Failed to clean vector / keyword index in clean_document_task, "
                 "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
-                "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
+                "Continuing with PG / storage cleanup; stale external index objects may remain.",
                 document_id,
                 dataset_id,
                 len(index_node_ids),
             )
 
-    total_image_files = []
+    total_image_files: list[str] = []
     with session_factory.create_session() as session, session.begin():
         for segment_content in segment_contents:
             image_upload_file_ids = get_image_upload_file_ids(segment_content)
-            image_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))).all()
+            image_files = session.scalars(
+                select(UploadFile).where(
+                    UploadFile.id.in_(image_upload_file_ids),
+                    UploadFile.tenant_id == dataset_tenant_id,
+                )
+            ).all()
             total_image_files.extend([image_file.key for image_file in image_files])
-            image_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
+            image_file_delete_stmt = delete(UploadFile).where(
+                UploadFile.id.in_(image_upload_file_ids),
+                UploadFile.tenant_id == dataset_tenant_id,
+            )
             session.execute(image_file_delete_stmt)
 
     with session_factory.create_session() as session, session.begin():
-        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
-        session.execute(segment_delete_stmt)
+        # In case index_preprocessor.clean misses these
+        VectorService.delete_segment_index_artifacts(
+            session=session,
+            dataset_id=dataset_id,
+            segment_ids=segment_ids,
+        )
+        session.execute(
+            delete(DocumentSegment).where(
+                DocumentSegment.document_id == document_id,
+                DocumentSegment.dataset_id == dataset_id,
+            )
+        )
 
     for image_file_key in total_image_files:
         try:
@@ -124,20 +161,34 @@ def clean_document_task(
                 image_file_key,
             )
 
+    document_file_key: str | None = None
     with session_factory.create_session() as session, session.begin():
         if file_id:
-            file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            file = session.scalar(
+                select(UploadFile)
+                .where(
+                    UploadFile.id == file_id,
+                    UploadFile.tenant_id == dataset_tenant_id,
+                )
+                .limit(1)
+            )
             if file:
-                try:
-                    storage.delete(file.key)
-                except Exception:
-                    logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
+                document_file_key = file.key
                 session.delete(file)
+
+    if document_file_key:
+        try:
+            storage.delete(document_file_key)
+        except Exception:
+            logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
 
     with session_factory.create_session() as session, session.begin():
         # delete segment attachments
         if attachment_ids:
-            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
+            attachment_file_delete_stmt = delete(UploadFile).where(
+                UploadFile.id.in_(attachment_ids),
+                UploadFile.tenant_id == dataset_tenant_id,
+            )
             session.execute(attachment_file_delete_stmt)
 
         if binding_ids:

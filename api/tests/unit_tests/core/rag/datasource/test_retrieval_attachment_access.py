@@ -20,13 +20,14 @@ from core.app.file_access import (
 )
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document as RagDocument
 from core.rag.retrieval import dataset_retrieval as dataset_retrieval_module
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from extensions.storage.storage_type import StorageType
 from models import UploadFile
-from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
 
@@ -101,6 +102,153 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
     assert "upload_files.id IN" in whereclause
 
 
+@pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
+def test_segment_attachment_lookup_rejects_cross_tenant_and_cross_dataset_rows(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    foreign_tenant_id = str(uuid4())
+    foreign_dataset_id = str(uuid4())
+    user_id = str(uuid4())
+
+    local_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="uploads/local.png",
+        name="local.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=user_id,
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    foreign_file = UploadFile(
+        tenant_id=foreign_tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="uploads/foreign.png",
+        name="foreign.png",
+        size=20,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=user_id,
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    local_binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=str(uuid4()),
+        segment_id=str(uuid4()),
+        attachment_id=local_file.id,
+    )
+    foreign_binding = SegmentAttachmentBinding(
+        tenant_id=foreign_tenant_id,
+        dataset_id=foreign_dataset_id,
+        document_id=str(uuid4()),
+        segment_id=str(uuid4()),
+        attachment_id=foreign_file.id,
+    )
+    sqlite_session.add_all([local_file, foreign_file, local_binding, foreign_binding])
+    sqlite_session.commit()
+
+    assert (
+        RetrievalService.get_segment_attachment_info(
+            dataset_id,
+            tenant_id,
+            foreign_file.id,
+            sqlite_session,
+        )
+        is None
+    )
+
+    results = RetrievalService.get_segment_attachment_infos(
+        [local_file.id, foreign_file.id],
+        sqlite_session,
+        dataset_ids={dataset_id},
+        tenant_ids={tenant_id},
+    )
+
+    assert [result["attachment_id"] for result in results] == [local_file.id]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(Dataset, DatasetDocument, DocumentSegment, ChildChunk, UploadFile, SegmentAttachmentBinding)],
+    indirect=True,
+)
+def test_format_retrieval_documents_enforces_vector_and_authorized_dataset_scope(sqlite_session: Session) -> None:
+    local_dataset_id = str(uuid4())
+    foreign_dataset_id = str(uuid4())
+    foreign_tenant_id = str(uuid4())
+    creator_id = str(uuid4())
+    foreign_dataset = Dataset(
+        tenant_id=foreign_tenant_id,
+        name="Foreign dataset",
+        created_by=creator_id,
+    )
+    foreign_dataset.id = foreign_dataset_id
+    foreign_document = DatasetDocument(
+        tenant_id=foreign_tenant_id,
+        dataset_id=foreign_dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="foreign-batch",
+        name="Foreign document",
+        created_from=DocumentCreatedFrom.API,
+        created_by=creator_id,
+        doc_metadata={},
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    foreign_document.id = str(uuid4())
+    foreign_segment = DocumentSegment(
+        tenant_id=foreign_tenant_id,
+        dataset_id=foreign_dataset_id,
+        document_id=foreign_document.id,
+        position=1,
+        content="foreign content",
+        word_count=2,
+        tokens=2,
+        created_by=creator_id,
+        index_node_id=str(uuid4()),
+        index_node_hash="foreign-hash",
+        hit_count=1,
+        status=SegmentStatus.COMPLETED,
+        enabled=True,
+    )
+    sqlite_session.add_all([foreign_dataset, foreign_document, foreign_segment])
+    sqlite_session.commit()
+
+    poisoned_vector_hit = RagDocument(
+        page_content=foreign_segment.content,
+        metadata={
+            "dataset_id": local_dataset_id,
+            "document_id": foreign_document.id,
+            "doc_id": foreign_segment.index_node_id,
+            "score": 0.99,
+        },
+    )
+    consistently_forged_vector_hit = RagDocument(
+        page_content=foreign_segment.content,
+        metadata={
+            "dataset_id": foreign_dataset_id,
+            "document_id": foreign_document.id,
+            "doc_id": foreign_segment.index_node_id,
+            "score": 0.99,
+        },
+    )
+
+    assert (
+        RetrievalService.format_retrieval_documents(
+            sqlite_session,
+            [poisoned_vector_hit, consistently_forged_vector_hit],
+            allowed_dataset_ids={local_dataset_id},
+        )
+        == []
+    )
+
+
 @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetDocument, DocumentSegment)], indirect=True)
 def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     monkeypatch: pytest.MonkeyPatch,
@@ -152,7 +300,11 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
         "multiple_retrieve",
         lambda **kwargs: [RagDocument(page_content="segment content", provider="dify")],
     )
-    monkeypatch.setattr(RetrievalService, "format_retrieval_documents", lambda _session, documents: [record])
+    monkeypatch.setattr(
+        RetrievalService,
+        "format_retrieval_documents",
+        lambda _session, documents, **_: [record],
+    )
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", factory)
     scope = FileAccessScope(

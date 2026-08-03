@@ -827,11 +827,12 @@ class TestCleanDatasetTask:
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
         segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
         upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        upload_file_id = upload_file.id
 
         # Update document with file reference
         import json
 
-        document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
+        document.data_source_info = json.dumps({"upload_file_id": upload_file_id})
         db_session_with_containers.commit()
 
         # Mock storage to raise exceptions
@@ -856,12 +857,12 @@ class TestCleanDatasetTask:
         # Note: When storage operations fail, the upload file may not be deleted
         # This demonstrates that the cleanup process continues even with storage errors
         remaining_files = db_session_with_containers.scalars(
-            select(UploadFile).where(UploadFile.id == upload_file.id)
+            select(UploadFile).where(UploadFile.id == upload_file_id)
         ).all()
         # The upload file should still be deleted from the database even if storage cleanup fails
         # However, this depends on the specific implementation of clean_dataset_task
         if len(remaining_files) > 0:
-            print(f"Warning: Upload file {upload_file.id} was not deleted despite storage failure")
+            print(f"Warning: Upload file {upload_file_id} was not deleted despite storage failure")
             print("This demonstrates that the cleanup process continues even with storage errors")
         # We don't assert here as the behavior depends on the specific implementation
 

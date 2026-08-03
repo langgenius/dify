@@ -68,8 +68,14 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         tenant_id = document.tenant_id
         index_type = document.doc_form
 
-        segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+        segments = session.scalars(
+            select(DocumentSegment).where(
+                DocumentSegment.document_id == document_id,
+                DocumentSegment.dataset_id == dataset_id,
+            )
+        ).all()
         index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+        segment_ids = [segment.id for segment in segments]
 
     # Get credentials from datasource provider
     datasource_provider_service = DatasourceProviderService()
@@ -130,6 +136,8 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                         index_node_ids,
                         with_keywords=True,
                         delete_child_chunks=True,
+                        delete_summaries=True,
+                        segment_ids=segment_ids,
                         session=session,
                     )
                     session.commit()
@@ -149,7 +157,10 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             document.indexing_status = IndexingStatus.PARSING
             document.processing_started_at = naive_utc_now()
 
-            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            segment_delete_stmt = delete(DocumentSegment).where(
+                DocumentSegment.document_id == document_id,
+                DocumentSegment.dataset_id == dataset_id,
+            )
             session.execute(segment_delete_stmt)
             # Make the source update and segment deletion visible before extraction.
             session.commit()

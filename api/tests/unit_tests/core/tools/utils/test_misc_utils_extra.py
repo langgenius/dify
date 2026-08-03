@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from yaml import YAMLError
@@ -18,10 +18,21 @@ from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRet
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.utils.yaml_utils import _load_yaml_file, load_yaml_file_cached
+from models.dataset import Dataset
+from services.external_knowledge_service import ResolvedExternalKnowledgeConfig
 
 
 def _retrieve_config() -> DatasetRetrieveConfigEntity:
     return DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE)
+
+
+def _read_session_context(dataset):
+    read_session = Mock()
+    read_session.scalar.return_value = dataset
+    read_context = MagicMock()
+    read_context.__enter__.return_value = read_session
+    read_context.__exit__.return_value = None
+    return read_session, read_context
 
 
 class _FakeFlaskApp:
@@ -136,7 +147,11 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
         {"logical_operator": "and"},
     )
     session = Mock()
-    session.scalar.return_value = dataset
+    read_session, read_context = _read_session_context(dataset)
+    resolved_config = ResolvedExternalKnowledgeConfig(
+        settings_json='{"endpoint": "https://api.example.com"}',
+        external_knowledge_id="knowledge-1",
+    )
     external_documents = [
         {"content": "first", "metadata": {"document_id": "doc-a"}, "score": 0.9, "title": "Doc A"},
         {"content": "second", "metadata": {"document_id": "doc-b"}, "score": 0.8, "title": "Doc B"},
@@ -152,13 +167,27 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
         inputs={"x": 1},
     )
 
-    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-        with patch.object(
+    with (
+        patch.object(single_retriever_module.session_factory, "create_session", return_value=read_context),
+        patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval),
+        patch.object(
+            single_retriever_module.ExternalDatasetService,
+            "resolve_external_knowledge_config",
+            return_value=resolved_config,
+        ) as resolve_mock,
+        patch.object(
             single_retriever_module.ExternalDatasetService,
             "fetch_external_knowledge_retrieval",
-            return_value=external_documents,
-        ) as fetch_mock:
-            result = tool.run(session=session, query="hello")
+        ) as fetch_mock,
+    ):
+
+        def fetch_external(**_kwargs):
+            assert read_context.__exit__.called
+            session.scalar.assert_not_called()
+            return external_documents
+
+        fetch_mock.side_effect = fetch_external
+        result = tool.run(session=session, query="hello")
 
     assert result == "first\nsecond"
     assert callback.queries == [("hello", "dataset-1")]
@@ -166,8 +195,46 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
     resource_info = callback.resources
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].dataset_id == "dataset-1"
+    resolve_mock.assert_called_once_with(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        session=read_session,
+    )
     fetch_mock.assert_called_once()
-    assert fetch_mock.call_args.kwargs["session"] is session
+    assert fetch_mock.call_args.kwargs["resolved_config"] is resolved_config
+
+
+def test_single_dataset_retriever_rejects_missing_external_configuration():
+    dataset = Dataset(
+        tenant_id="tenant-1",
+        name="External Knowledge",
+        created_by="account-1",
+        provider="external",
+        indexing_technique="high_quality",
+        retrieval_model={},
+    )
+    dataset.id = "dataset-1"
+    _, read_context = _read_session_context(dataset)
+    tool = SingleDatasetRetrieverTool(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        retrieve_config=_retrieve_config(),
+        return_resource=False,
+        retriever_from="dev",
+        hit_callbacks=[],
+        inputs={},
+    )
+
+    with (
+        patch.object(single_retriever_module.session_factory, "create_session", return_value=read_context),
+        patch.object(
+            single_retriever_module.ExternalDatasetService,
+            "resolve_external_knowledge_config",
+            return_value=None,
+        ),
+        pytest.raises(RuntimeError, match="configuration was not resolved"),
+    ):
+        tool.run(session=Mock(), query="hello")
 
 
 def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_documents():
@@ -182,7 +249,7 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     dataset_retrieval = Mock()
     dataset_retrieval.get_metadata_filter_condition.return_value = ({"dataset-1": []}, {"logical_operator": "and"})
     session = Mock()
-    session.scalar.return_value = dataset
+    _, read_context = _read_session_context(dataset)
 
     tool = SingleDatasetRetrieverTool(
         tenant_id="tenant-1",
@@ -194,9 +261,12 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
         inputs={},
     )
 
-    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-        with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
-            result = tool.run(session=session, query="hello")
+    with (
+        patch.object(single_retriever_module.session_factory, "create_session", return_value=read_context),
+        patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval),
+        patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock,
+    ):
+        result = tool.run(session=session, query="hello")
 
     assert result == ""
     retrieve_mock.assert_not_called()
@@ -261,8 +331,9 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources():
         id="doc-high", name="Document High", data_source_type="notion", doc_metadata={"lang": "fr"}
     )
     session = Mock()
-    session.scalar.side_effect = [dataset, lookup_doc_low, lookup_doc_high]
+    session.scalar.side_effect = [lookup_doc_low, lookup_doc_high]
     session.get.return_value = dataset
+    _, read_context = _read_session_context(dataset)
 
     tool = SingleDatasetRetrieverTool(
         tenant_id="tenant-1",
@@ -275,14 +346,17 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources():
         top_k=2,
     )
 
-    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-        with patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents):
-            with patch.object(
-                single_retriever_module.RetrievalService,
-                "format_retrieval_documents",
-                return_value=records,
-            ):
-                result = tool.run(session=session, query="hello")
+    with (
+        patch.object(single_retriever_module.session_factory, "create_session", return_value=read_context),
+        patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval),
+        patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents),
+        patch.object(
+            single_retriever_module.RetrievalService,
+            "format_retrieval_documents",
+            return_value=records,
+        ),
+    ):
+        result = tool.run(session=session, query="hello")
 
     assert result == "signed high\nsummary low\nquestion:signed low answer:low answer"
     assert callback.documents == documents

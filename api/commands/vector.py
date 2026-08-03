@@ -1,9 +1,12 @@
 import json
+from collections.abc import Sequence
 from typing import cast
 
 import click
 from flask import current_app
-from sqlalchemy import select
+from flask.cli import with_appcontext
+from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,18 +14,28 @@ from configs import dify_config
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.models.document import ChildDocument, Document
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from libs.pagination import paginate_query
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    DocumentSegment,
+    DocumentSegmentSummary,
+)
 from models.dataset import Document as DatasetDocument
-from models.enums import DatasetMetadataType, IndexingStatus, SegmentStatus
+from models.enums import DatasetMetadataType, IndexingStatus, SegmentStatus, SummaryStatus
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 
 
 @click.command("vdb-migrate", help="Migrate vector db.")
 @click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
+@with_appcontext
 def vdb_migrate(scope: str):
     if scope in {"knowledge", "all"}:
         migrate_knowledge_vector_database()
@@ -102,8 +115,7 @@ def migrate_annotation_vector_database():
                         )
                         documents.append(document)
 
-                with Session(db.engine) as session:
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
+                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
                 click.echo(f"Migrating annotations for app: {app.id}.")
 
                 try:
@@ -141,9 +153,150 @@ def migrate_annotation_vector_database():
     )
 
 
+def _collect_dataset_vector_documents(
+    dataset: Dataset,
+    *,
+    session: Session,
+) -> tuple[list[Document], int]:
+    """Snapshot the canonical vector payload while the read transaction is open."""
+    dataset_documents = session.scalars(
+        select(DatasetDocument).where(
+            DatasetDocument.tenant_id == dataset.tenant_id,
+            DatasetDocument.dataset_id == dataset.id,
+            DatasetDocument.indexing_status == IndexingStatus.COMPLETED,
+            DatasetDocument.enabled == True,
+            DatasetDocument.archived == False,
+        )
+    ).all()
+
+    documents: list[Document] = []
+    segments_count = 0
+    for dataset_document in dataset_documents:
+        segments = session.scalars(
+            select(DocumentSegment).where(
+                DocumentSegment.tenant_id == dataset.tenant_id,
+                DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.status == SegmentStatus.COMPLETED,
+                DocumentSegment.enabled == True,
+            )
+        ).all()
+        segment_ids = [segment.id for segment in segments]
+        summaries = (
+            session.scalars(
+                select(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.dataset_id == dataset.id,
+                    DocumentSegmentSummary.document_id == dataset_document.id,
+                    DocumentSegmentSummary.chunk_id.in_(segment_ids),
+                )
+                .order_by(
+                    DocumentSegmentSummary.chunk_id,
+                    DocumentSegmentSummary.updated_at.desc(),
+                    DocumentSegmentSummary.id.desc(),
+                )
+            ).all()
+            if segment_ids
+            else []
+        )
+        canonical_summaries: dict[str, DocumentSegmentSummary] = {}
+        for summary_record in summaries:
+            canonical_summaries.setdefault(summary_record.chunk_id, summary_record)
+
+        for segment in segments:
+            base_metadata = {
+                "doc_id": segment.index_node_id,
+                "doc_hash": segment.index_node_hash,
+                "document_id": segment.document_id,
+                "dataset_id": segment.dataset_id,
+                "doc_type": DocType.TEXT,
+                "is_summary": False,
+            }
+            if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                child_chunks = session.scalars(
+                    select(ChildChunk)
+                    .where(
+                        ChildChunk.tenant_id == dataset.tenant_id,
+                        ChildChunk.dataset_id == dataset.id,
+                        ChildChunk.document_id == dataset_document.id,
+                        ChildChunk.segment_id == segment.id,
+                    )
+                    .order_by(ChildChunk.position)
+                ).all()
+                for child_chunk in child_chunks:
+                    documents.append(
+                        Document(
+                            page_content=child_chunk.content,
+                            metadata={
+                                "doc_id": child_chunk.index_node_id,
+                                "doc_hash": child_chunk.index_node_hash,
+                                "document_id": segment.document_id,
+                                "dataset_id": segment.dataset_id,
+                                "doc_type": DocType.TEXT,
+                                "is_summary": False,
+                            },
+                        )
+                    )
+            elif segment.index_node_id:
+                documents.append(Document(page_content=segment.content, metadata=base_metadata))
+
+            summary = canonical_summaries.get(segment.id)
+            if (
+                summary is not None
+                and summary.status == SummaryStatus.COMPLETED
+                and summary.enabled
+                and summary.summary_content
+                and summary.summary_index_node_id
+            ):
+                documents.append(
+                    Document(
+                        page_content=summary.summary_content,
+                        metadata={
+                            "doc_id": summary.summary_index_node_id,
+                            "doc_hash": summary.summary_index_node_hash,
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                            "original_chunk_id": segment.id,
+                            "doc_type": DocType.TEXT,
+                            "is_summary": True,
+                        },
+                    )
+                )
+            segments_count += 1
+
+    return documents, segments_count
+
+
+def _vector_documents_signature(documents: Sequence[Document]) -> tuple[tuple[str, ...], ...]:
+    """Return a stable signature for detecting relational changes during vector I/O."""
+    return tuple(
+        sorted(
+            (
+                type(document).__name__,
+                document.page_content,
+                str(document.metadata.get("doc_id") or ""),
+                str(document.metadata.get("doc_hash") or ""),
+                str(document.metadata.get("document_id") or ""),
+                str(document.metadata.get("dataset_id") or ""),
+                str(document.metadata.get("original_chunk_id") or ""),
+                str(document.metadata.get("doc_type") or ""),
+                str(bool(document.metadata.get("is_summary"))),
+            )
+            for document in documents
+        )
+    )
+
+
 def migrate_knowledge_vector_database():
-    """
-    Migrate vector database data to target vector database.
+    """Migrate each high-quality dataset to the configured vector provider.
+
+    Relational payloads are copied inside short read transactions; vector I/O
+    never owns a database connection. Before activation, the payload is read
+    again in the activation transaction and the dataset pointer is compare-and-swap
+    updated together with every setting that selected the target collection or
+    embedding space. This detects changes committed during provider I/O.
+    Cross-store atomicity is impossible here, so operators must quiesce dataset
+    writes to eliminate the final concurrent-write window.
     """
     click.echo(click.style("Starting vector database migration.", fg="green"))
     create_count = 0
@@ -178,7 +331,7 @@ def migrate_knowledge_vector_database():
         VectorType.OCEANBASE,
     }
     page = 1
-    db_session = db.session()
+    session_maker = sessionmaker(db.engine, expire_on_commit=False)
     while True:
         try:
             stmt = (
@@ -186,9 +339,10 @@ def migrate_knowledge_vector_database():
                 .where(Dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY)
                 .order_by(Dataset.created_at.desc())
             )
-
-            datasets = paginate_query(stmt, page=page, per_page=50, max_per_page=50, session=db_session)
-            if not datasets.items:
+            with session_maker() as read_session:
+                dataset_page = paginate_query(stmt, page=page, per_page=50, max_per_page=50, session=read_session)
+                datasets = list(dataset_page.items)
+            if not datasets:
                 break
         except SQLAlchemyError:
             raise
@@ -201,6 +355,12 @@ def migrate_knowledge_vector_database():
             )
             try:
                 click.echo(f"Creating dataset vector database index: {dataset.id}")
+                source_index_struct = dataset.index_struct
+                source_provider = dataset.provider
+                source_indexing_technique = dataset.indexing_technique
+                source_embedding_model = dataset.embedding_model
+                source_embedding_model_provider = dataset.embedding_model_provider
+                source_collection_binding_id = dataset.collection_binding_id
                 if dataset.index_struct_dict:
                     if dataset.index_struct_dict["type"] == vector_type:
                         skipped_count = skipped_count + 1
@@ -211,11 +371,12 @@ def migrate_knowledge_vector_database():
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
-                        dataset_collection_binding = db.session.execute(
-                            select(DatasetCollectionBinding).where(
-                                DatasetCollectionBinding.id == dataset.collection_binding_id
+                        with session_maker() as read_session:
+                            dataset_collection_binding = read_session.scalar(
+                                select(DatasetCollectionBinding).where(
+                                    DatasetCollectionBinding.id == dataset.collection_binding_id
+                                )
                             )
-                        ).scalar_one_or_none()
                         if dataset_collection_binding:
                             collection_name = dataset_collection_binding.collection_name
                         else:
@@ -230,8 +391,12 @@ def migrate_knowledge_vector_database():
 
                 index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
                 dataset.index_struct = json.dumps(index_struct_dict)
-                with Session(db.engine) as session:
-                    vector = Vector(dataset, session=session)
+                with session_maker() as read_session:
+                    documents, segments_count = _collect_dataset_vector_documents(dataset, session=read_session)
+                source_signature = _vector_documents_signature(documents)
+
+                # All relational state is now copied to plain RAG documents and the read transaction is closed.
+                vector = Vector(dataset)
                 click.echo(f"Migrating dataset {dataset.id}.")
 
                 try:
@@ -247,56 +412,6 @@ def migrate_knowledge_vector_database():
                     )
                     raise e
 
-                dataset_documents = db.session.scalars(
-                    select(DatasetDocument).where(
-                        DatasetDocument.dataset_id == dataset.id,
-                        DatasetDocument.indexing_status == IndexingStatus.COMPLETED,
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
-                    )
-                ).all()
-
-                documents = []
-                segments_count = 0
-                for dataset_document in dataset_documents:
-                    segments = db.session.scalars(
-                        select(DocumentSegment).where(
-                            DocumentSegment.document_id == dataset_document.id,
-                            DocumentSegment.status == SegmentStatus.COMPLETED,
-                            DocumentSegment.enabled == True,
-                        )
-                    ).all()
-
-                    for segment in segments:
-                        document = Document(
-                            page_content=segment.content,
-                            metadata={
-                                "doc_id": segment.index_node_id,
-                                "doc_hash": segment.index_node_hash,
-                                "document_id": segment.document_id,
-                                "dataset_id": segment.dataset_id,
-                            },
-                        )
-                        if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                            child_chunks = segment.get_child_chunks(session=db_session)
-                            if child_chunks:
-                                child_documents = []
-                                for child_chunk in child_chunks:
-                                    child_document = ChildDocument(
-                                        page_content=child_chunk.content,
-                                        metadata={
-                                            "doc_id": child_chunk.index_node_id,
-                                            "doc_hash": child_chunk.index_node_hash,
-                                            "document_id": segment.document_id,
-                                            "dataset_id": segment.dataset_id,
-                                        },
-                                    )
-                                    child_documents.append(child_document)
-                                document.children = child_documents
-
-                        documents.append(document)
-                        segments_count = segments_count + 1
-
                 if documents:
                     try:
                         click.echo(
@@ -306,23 +421,68 @@ def migrate_knowledge_vector_database():
                                 fg="green",
                             )
                         )
-                        all_child_documents = []
-                        for doc in documents:
-                            if doc.children:
-                                all_child_documents.extend(doc.children)
                         vector.create(documents)
-                        if all_child_documents:
-                            vector.create(all_child_documents)
                         click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
                         raise e
-                db.session.add(dataset)
-                db.session.commit()
+                source_index_condition = (
+                    Dataset.index_struct.is_(None)
+                    if source_index_struct is None
+                    else Dataset.index_struct == source_index_struct
+                )
+                source_embedding_model_condition = (
+                    Dataset.embedding_model.is_(None)
+                    if source_embedding_model is None
+                    else Dataset.embedding_model == source_embedding_model
+                )
+                source_embedding_model_provider_condition = (
+                    Dataset.embedding_model_provider.is_(None)
+                    if source_embedding_model_provider is None
+                    else Dataset.embedding_model_provider == source_embedding_model_provider
+                )
+                source_collection_binding_condition = (
+                    Dataset.collection_binding_id.is_(None)
+                    if source_collection_binding_id is None
+                    else Dataset.collection_binding_id == source_collection_binding_id
+                )
+                with session_maker.begin() as write_session:
+                    current_documents, current_segments_count = _collect_dataset_vector_documents(
+                        dataset, session=write_session
+                    )
+                    if (
+                        current_segments_count != segments_count
+                        or _vector_documents_signature(current_documents) != source_signature
+                    ):
+                        raise RuntimeError(
+                            f"Dataset {dataset.id} changed while its vector index was being migrated; "
+                            "the database pointer was not updated"
+                        )
+                    update_result = cast(
+                        CursorResult,
+                        write_session.execute(
+                            update(Dataset)
+                            .where(
+                                Dataset.id == dataset.id,
+                                Dataset.tenant_id == dataset.tenant_id,
+                                source_index_condition,
+                                Dataset.provider == source_provider,
+                                Dataset.indexing_technique == source_indexing_technique,
+                                source_embedding_model_condition,
+                                source_embedding_model_provider_condition,
+                                source_collection_binding_condition,
+                            )
+                            .values(index_struct=dataset.index_struct)
+                        ),
+                    )
+                    if update_result.rowcount != 1:
+                        raise RuntimeError(
+                            f"Dataset {dataset.id} vector configuration changed concurrently; "
+                            "the migration result was not activated"
+                        )
                 click.echo(f"Successfully migrated dataset {dataset.id}.")
                 create_count += 1
             except Exception as e:
-                db.session.rollback()
                 click.echo(click.style(f"Error creating dataset index: {e.__class__.__name__} {str(e)}", fg="red"))
                 continue
 

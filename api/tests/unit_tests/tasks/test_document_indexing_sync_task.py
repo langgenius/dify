@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.db import session_factory as session_factory_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 pytestmark = pytest.mark.parametrize(
@@ -111,6 +111,26 @@ def document(
     sqlite_session.add(document)
     sqlite_session.commit()
     return document
+
+
+@pytest.fixture
+def segment(sqlite_session: Session, dataset: Dataset, document: Document) -> DocumentSegment:
+    """Persist the old segment whose primary and summary vectors must be removed."""
+    segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        position=1,
+        content="Old Notion content",
+        word_count=3,
+        tokens=3,
+        created_by=document.created_by,
+        index_node_id="node-1",
+        status=SegmentStatus.COMPLETED,
+    )
+    sqlite_session.add(segment)
+    sqlite_session.commit()
+    return segment
 
 
 @pytest.fixture(autouse=True)
@@ -240,11 +260,14 @@ class TestDataSourceInfoSerialization:
     def test_data_source_info_serialized_as_json_string(
         self,
         document: Document,
+        segment: DocumentSegment,
         sqlite_session: Session,
         dataset_id: str,
         document_id: str,
     ):
         """data_source_info must be serialized with json.dumps before DB write."""
+        segment_id = segment.id
+        index_node_id = segment.index_node_id
         with (
             patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_service_class,
             patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_extractor_class,
@@ -281,3 +304,10 @@ class TestDataSourceInfoSerialization:
             assert parsed["last_edited_time"] == "2024-02-01T00:00:00Z"
             assert stored_document.indexing_status == IndexingStatus.PARSING
             assert stored_document.processing_started_at is not None
+            cleanup_args, cleanup_kwargs = mock_ip.clean.call_args
+            assert cleanup_args[0].id == dataset_id
+            assert cleanup_args[1] == [index_node_id]
+            assert cleanup_kwargs["delete_summaries"] is True
+            assert cleanup_kwargs["segment_ids"] == [segment_id]
+            assert cleanup_kwargs["session"] is not None
+            assert sqlite_session.get(DocumentSegment, segment_id) is None

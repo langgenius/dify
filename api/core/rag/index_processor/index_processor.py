@@ -9,7 +9,6 @@ from flask import current_app
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
@@ -86,7 +85,8 @@ class IndexProcessor:
         created_at_value = document.created_at
         if summary_index_setting is None:
             summary_index_setting = dataset.summary_index_setting
-        index_node_ids = []
+        index_node_ids: list[str] = []
+        segment_ids: list[str] = []
 
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
         if original_document_id:
@@ -99,14 +99,22 @@ class IndexProcessor:
             ).all()
             if segments:
                 index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                segment_ids = [segment.id for segment in segments]
 
         indexing_start_at = time.perf_counter()
         # The metadata reads above must not keep a transaction open across vector I/O.
         session.commit()
-        # delete from vector index
-        if index_node_ids:
+        # Summary cleanup is keyed by database segment IDs and must still run
+        # when indexing failed before an index_node_id was assigned.
+        if segment_ids:
             index_processor.clean(
-                dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
+                dataset,
+                index_node_ids,
+                with_keywords=True,
+                delete_child_chunks=True,
+                delete_summaries=True,
+                segment_ids=segment_ids,
+                session=session,
             )
             session.commit()
             segment_delete_stmt = delete(DocumentSegment).where(
@@ -225,16 +233,14 @@ class IndexProcessor:
                 """Generate summary for a single chunk."""
                 if flask_app:
                     with flask_app.app_context():
-                        with session_factory.create_session() as worker_session:
-                            summary, _ = ParagraphIndexProcessor.generate_summary(
-                                tenant_id=tenant_id,
-                                text=preview_item.content if preview_item.content is not None else "",
-                                summary_index_setting=summary_index_setting,
-                                document_language=doc_language,
-                                session=worker_session,
-                            )
-                            if summary:
-                                preview_item.summary = summary
+                        summary, _ = ParagraphIndexProcessor.generate_summary(
+                            tenant_id=tenant_id,
+                            text=preview_item.content if preview_item.content is not None else "",
+                            summary_index_setting=summary_index_setting,
+                            document_language=doc_language,
+                        )
+                        if summary:
+                            preview_item.summary = summary
 
             # Generate summaries concurrently using ThreadPoolExecutor
             # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)

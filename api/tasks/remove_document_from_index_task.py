@@ -45,7 +45,12 @@ def remove_document_from_index_task(document_id: str):
 
             index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.document_id == document.id,
+                    DocumentSegment.dataset_id == document.dataset_id,
+                )
+            ).all()
 
             # Disable summary indexes for all segments in this document
             from services.summary_index_service import SummaryIndexService
@@ -53,8 +58,10 @@ def remove_document_from_index_task(document_id: str):
             segment_ids_list = [segment.id for segment in segments]
             if segment_ids_list:
                 try:
+                    session.commit()
                     SummaryIndexService.disable_summaries_for_segments(
                         dataset=dataset,
+                        session=session,
                         segment_ids=segment_ids_list,
                         disabled_by=document.disabled_by,
                     )
@@ -76,7 +83,10 @@ def remove_document_from_index_task(document_id: str):
             # update segment to disable
             session.execute(
                 update(DocumentSegment)
-                .where(DocumentSegment.document_id == document.id)
+                .where(
+                    DocumentSegment.document_id == document.id,
+                    DocumentSegment.dataset_id == document.dataset_id,
+                )
                 .values(
                     enabled=False,
                     disabled_at=naive_utc_now(),

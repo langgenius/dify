@@ -60,16 +60,18 @@ def disable_segment_from_index_task(segment_id: str):
 
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
-            assert segment.index_node_id
-            index_processor.clean(dataset, [segment.index_node_id], session=session)
             session.commit()
+            if segment.index_node_id:
+                index_processor.clean(dataset, [segment.index_node_id], session=session)
 
             # Disable summary index for this segment
             from services.summary_index_service import SummaryIndexService
 
             try:
+                session.commit()
                 SummaryIndexService.disable_summaries_for_segments(
                     dataset=dataset,
+                    session=session,
                     segment_ids=[segment.id],
                     disabled_by=segment.disabled_by,
                 )

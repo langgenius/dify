@@ -52,6 +52,7 @@ def add_document_to_index_task(dataset_document_id: str):
                 select(DocumentSegment)
                 .where(
                     DocumentSegment.document_id == dataset_document.id,
+                    DocumentSegment.dataset_id == dataset_document.dataset_id,
                     DocumentSegment.status == SegmentStatus.COMPLETED,
                 )
                 .order_by(DocumentSegment.position.asc())
@@ -103,6 +104,7 @@ def add_document_to_index_task(dataset_document_id: str):
 
             index_type = dataset.get_doc_form(session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            session.commit()
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
             # delete auto disable log
@@ -113,7 +115,10 @@ def add_document_to_index_task(dataset_document_id: str):
             # update segment to enable
             session.execute(
                 update(DocumentSegment)
-                .where(DocumentSegment.document_id == dataset_document.id)
+                .where(
+                    DocumentSegment.document_id == dataset_document.id,
+                    DocumentSegment.dataset_id == dataset_document.dataset_id,
+                )
                 .values(enabled=True, disabled_at=None, disabled_by=None, updated_at=naive_utc_now())
             )
             session.commit()

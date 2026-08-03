@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from typing import Annotated, Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
+from celery import Task
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import ColumnElement, delete, exists, func, select, update
@@ -117,6 +118,19 @@ class ProcessRulesDict(TypedDict):
 class AutoDisableLogsDict(TypedDict):
     document_ids: list[str]
     count: int
+
+
+class DocumentStatusAsyncTask(TypedDict):
+    function: Task
+    args: list[str]
+
+
+class DocumentStatusUpdate(TypedDict):
+    document: Document
+    document_id: str
+    updates: dict[str, Any]
+    async_task: DocumentStatusAsyncTask | None
+    set_cache: bool
 
 
 class _EstimatePreProcessingRule(BaseModel):
@@ -3153,7 +3167,7 @@ class DocumentService:
         action: Literal["enable", "disable", "archive", "un_archive"],
         user,
         session: Session,
-    ):
+    ) -> None:
         """
         Batch update document status.
 
@@ -3175,7 +3189,7 @@ class DocumentService:
         if action not in valid_actions:
             raise ValueError(f"Invalid action: {action}. Must be one of {valid_actions}")
 
-        documents_to_update = []
+        documents_to_update: list[DocumentStatusUpdate] = []
 
         # First pass: validate all documents and prepare updates
         for document_id in document_ids:
@@ -3226,18 +3240,17 @@ class DocumentService:
                         task_func.delay(*task_args)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logger.exception("Error executing async task for document %s", update_info["document"].id)
+                    logger.exception("Error executing async task for document %s", update_info["document_id"])
                     # don't raise the error immediately, but capture it for later
                     propagation_error = e
                 try:
                     # Set Redis cache if needed after successful commit
                     if update_info["set_cache"]:
-                        document = update_info["document"]
-                        indexing_cache_key = f"document_{document.id}_indexing"
+                        indexing_cache_key = f"document_{update_info['document_id']}_indexing"
                         redis_client.setex(indexing_cache_key, 600, 1)
                 except Exception:
                     # Log the error but do not rollback the transaction
-                    logger.exception("Error setting cache for document %s", update_info["document"].id)
+                    logger.exception("Error setting cache for document %s", update_info["document_id"])
             # Raise any propagation error after all updates
             if propagation_error:
                 raise propagation_error
@@ -3245,7 +3258,7 @@ class DocumentService:
     @staticmethod
     def _prepare_document_status_update(
         document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
-    ):
+    ) -> DocumentStatusUpdate | None:
         """Prepare document status update information.
 
         Args:
@@ -3271,20 +3284,22 @@ class DocumentService:
         return None
 
     @staticmethod
-    def _prepare_enable_update(document, now):
+    def _prepare_enable_update(document, now) -> DocumentStatusUpdate | None:
         """Prepare updates for enabling a document."""
         if document.enabled:
             return None
 
-        return {
+        update_info: DocumentStatusUpdate = {
             "document": document,
+            "document_id": document.id,
             "updates": {"enabled": True, "disabled_at": None, "disabled_by": None, "updated_at": now},
             "async_task": {"function": add_document_to_index_task, "args": [document.id]},
             "set_cache": True,
         }
+        return update_info
 
     @staticmethod
-    def _prepare_disable_update(document, user, now):
+    def _prepare_disable_update(document, user, now) -> DocumentStatusUpdate | None:
         """Prepare updates for disabling a document."""
         if not document.completed_at or document.indexing_status != IndexingStatus.COMPLETED:
             raise DocumentIndexingError(f"Document: {document.name} is not completed.")
@@ -3292,21 +3307,24 @@ class DocumentService:
         if not document.enabled:
             return None
 
-        return {
+        update_info: DocumentStatusUpdate = {
             "document": document,
+            "document_id": document.id,
             "updates": {"enabled": False, "disabled_at": now, "disabled_by": user.id, "updated_at": now},
             "async_task": {"function": remove_document_from_index_task, "args": [document.id]},
             "set_cache": True,
         }
+        return update_info
 
     @staticmethod
-    def _prepare_archive_update(document, user, now):
+    def _prepare_archive_update(document, user, now) -> DocumentStatusUpdate | None:
         """Prepare updates for archiving a document."""
         if document.archived:
             return None
 
-        update_info = {
+        update_info: DocumentStatusUpdate = {
             "document": document,
+            "document_id": document.id,
             "updates": {"archived": True, "archived_at": now, "archived_by": user.id, "updated_at": now},
             "async_task": None,
             "set_cache": False,
@@ -3321,13 +3339,14 @@ class DocumentService:
         return update_info
 
     @staticmethod
-    def _prepare_unarchive_update(document, now):
+    def _prepare_unarchive_update(document, now) -> DocumentStatusUpdate | None:
         """Prepare updates for unarchiving a document."""
         if not document.archived:
             return None
 
-        update_info = {
+        update_info: DocumentStatusUpdate = {
             "document": document,
+            "document_id": document.id,
             "updates": {"archived": False, "archived_at": None, "archived_by": None, "updated_at": now},
             "async_task": None,
             "set_cache": False,
@@ -3628,24 +3647,18 @@ class SegmentService:
                     # summary_index_setting is only needed for LLM generation, not for manual summary vectorization
                     # Vectorization uses dataset.embedding_model, which doesn't require summary_index_setting
                     if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                        # Query existing summary from database
-                        from models.dataset import DocumentSegmentSummary
+                        from services.summary_index_service import SummaryIndexService
 
-                        existing_summary = session.scalar(
-                            select(DocumentSegmentSummary)
-                            .where(
-                                DocumentSegmentSummary.chunk_id == segment.id,
-                                DocumentSegmentSummary.dataset_id == dataset.id,
-                            )
-                            .limit(1)
+                        existing_summary = SummaryIndexService.get_segment_summary(
+                            segment.id,
+                            dataset.id,
+                            session=session,
                         )
 
                         # Check if summary has changed
                         existing_summary_content = existing_summary.summary_content if existing_summary else None
                         if existing_summary_content != args.summary:
                             # Summary has changed, update it
-                            from services.summary_index_service import SummaryIndexService
-
                             try:
                                 SummaryIndexService.update_summary_for_segment(
                                     segment,
@@ -3728,15 +3741,12 @@ class SegmentService:
                     VectorService.update_segment_vector(args.keywords, segment, dataset, session=session)
                 # Handle summary index when content changed
                 if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                    from models.dataset import DocumentSegmentSummary
+                    from services.summary_index_service import SummaryIndexService
 
-                    existing_summary = session.scalar(
-                        select(DocumentSegmentSummary)
-                        .where(
-                            DocumentSegmentSummary.chunk_id == segment.id,
-                            DocumentSegmentSummary.dataset_id == dataset.id,
-                        )
-                        .limit(1)
+                    existing_summary = SummaryIndexService.get_segment_summary(
+                        segment.id,
+                        dataset.id,
+                        session=session,
                     )
 
                     if args.summary is None:
@@ -3748,8 +3758,6 @@ class SegmentService:
                             and dataset.summary_index_setting.get("enable") is True
                         ):
                             # Segment previously had summary, regenerate it with new content
-                            from services.summary_index_service import SummaryIndexService
-
                             try:
                                 SummaryIndexService.generate_and_vectorize_summary(
                                     segment,
@@ -3767,8 +3775,6 @@ class SegmentService:
                         existing_summary_content = existing_summary.summary_content if existing_summary else None
                         if existing_summary_content != args.summary:
                             # Summary has changed, use user-provided summary
-                            from services.summary_index_service import SummaryIndexService
-
                             try:
                                 SummaryIndexService.update_summary_for_segment(
                                     segment,
@@ -3788,8 +3794,6 @@ class SegmentService:
                                 and dataset.summary_index_setting
                                 and dataset.summary_index_setting.get("enable") is True
                             ):
-                                from services.summary_index_service import SummaryIndexService
-
                                 try:
                                     SummaryIndexService.generate_and_vectorize_summary(
                                         segment,
@@ -3820,31 +3824,32 @@ class SegmentService:
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset, session: Session):
+        """Delete one segment, then publish index cleanup using IDs captured before the commit.
+
+        RDBMS is authoritative here: the row deletion commits before broker I/O so a fast worker cannot remove
+        vectors for a segment whose deletion later rolls back. If publishing fails, stale index data is unreachable
+        through database-backed retrieval and can be reconciled by later cleanup.
+        """
         indexing_cache_key = f"segment_{segment.id}_delete_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
 
-        # enabled segment need to delete index
-        if segment.enabled:
-            # send delete segment index task
-            redis_client.setex(indexing_cache_key, 600, 1)
-
-            # Get child chunk IDs before parent segment is deleted
-            child_node_ids = []
-            if segment.index_node_id:
-                child_node_ids = list(
-                    session.scalars(
-                        select(ChildChunk.index_node_id).where(
-                            ChildChunk.segment_id == segment.id,
-                            ChildChunk.dataset_id == dataset.id,
-                        )
-                    ).all()
+        # Actual deletion must remove summary rows even when the segment was
+        # already disabled or never received a vector node ID.
+        redis_client.setex(indexing_cache_key, 600, 1)
+        child_node_ids = [
+            node_id
+            for node_id in session.scalars(
+                select(ChildChunk.index_node_id).where(
+                    ChildChunk.segment_id == segment.id,
+                    ChildChunk.dataset_id == dataset.id,
                 )
-
-            delete_segment_from_index_task.delay(
-                [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
-            )
+            ).all()
+            if node_id
+        ]
+        index_node_ids = [segment.index_node_id] if segment.index_node_id else []
+        segment_id = segment.id
 
         session.delete(segment)
         # update document word count
@@ -3852,9 +3857,25 @@ class SegmentService:
         document.word_count -= segment.word_count
         session.add(document)
         session.commit()
+        try:
+            delete_segment_from_index_task.delay(
+                index_node_ids,
+                dataset.id,
+                document.id,
+                [segment_id],
+                child_node_ids,
+            )
+        except Exception:
+            cls._remove_orphaned_summary_rows_after_publish_failure(session, dataset.id, [segment_id])
+            raise
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset, session: Session):
+        """Delete validated segments, then publish index cleanup after the relational commit.
+
+        Durable segment and vector IDs are captured first because the cleanup worker runs after the source rows no
+        longer exist. Keeping broker I/O after commit avoids holding a database connection across publication.
+        """
         assert current_user is not None
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
@@ -3871,29 +3892,21 @@ class SegmentService:
         if not segments_info:
             return
 
-        index_node_ids = [info[0] for info in segments_info]
+        index_node_ids = [info[0] for info in segments_info if info[0]]
         segment_db_ids = [info[1] for info in segments_info]
         total_words = sum(info[2] for info in segments_info if info[2] is not None)
 
         # Get child chunk IDs before parent segments are deleted
-        child_node_ids = []
-        if index_node_ids:
-            child_node_ids = [
-                nid
-                for nid in session.scalars(
-                    select(ChildChunk.index_node_id).where(
-                        ChildChunk.segment_id.in_(segment_db_ids),
-                        ChildChunk.dataset_id == dataset.id,
-                    )
-                ).all()
-                if nid
-            ]
-
-        # Start async cleanup with both parent and child node IDs
-        if index_node_ids or child_node_ids:
-            delete_segment_from_index_task.delay(
-                index_node_ids, dataset.id, document.id, segment_db_ids, child_node_ids
-            )
+        child_node_ids = [
+            node_id
+            for node_id in session.scalars(
+                select(ChildChunk.index_node_id).where(
+                    ChildChunk.segment_id.in_(segment_db_ids),
+                    ChildChunk.dataset_id == dataset.id,
+                )
+            ).all()
+            if node_id
+        ]
 
         if document.word_count is None:
             document.word_count = 0
@@ -3912,6 +3925,47 @@ class SegmentService:
             )
         )
         session.commit()
+        # Dispatch based on database segment IDs because summary cleanup does
+        # not depend on either parent or child vector IDs being present.
+        try:
+            delete_segment_from_index_task.delay(
+                index_node_ids,
+                dataset.id,
+                document.id,
+                segment_db_ids,
+                child_node_ids,
+            )
+        except Exception:
+            cls._remove_orphaned_summary_rows_after_publish_failure(session, dataset.id, segment_db_ids)
+            raise
+
+    @staticmethod
+    def _remove_orphaned_summary_rows_after_publish_failure(
+        session: Session,
+        dataset_id: str,
+        segment_ids: list[str],
+    ) -> None:
+        """Remove relational dependants when external cleanup cannot be enqueued.
+
+        Vector objects can be reconciled later and are rejected by database-backed retrieval once their segment is
+        gone. The remaining rows have no database cascade from ``document_segments`` and must not be left orphaned
+        solely because the broker was unavailable after the authoritative segment deletion committed.
+        """
+        try:
+            VectorService.delete_segment_relational_dependants(
+                session=session,
+                dataset_id=dataset_id,
+                segment_ids=segment_ids,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception(
+                "Failed to remove orphaned relational rows after segment cleanup publish failure, "
+                "dataset_id=%s, segment_ids=%s",
+                dataset_id,
+                segment_ids,
+            )
 
     @classmethod
     def update_segments_status(

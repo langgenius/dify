@@ -211,7 +211,7 @@ class TestParentChildIndexProcessor:
             vector = mock_vector_cls.return_value
             processor.load(dataset, [parent_doc], multimodal_documents=multimodal_docs, session=session)
 
-        mock_vector_cls.assert_called_once_with(dataset, session=session)
+        mock_vector_cls.assert_called_once_with(dataset)
         assert vector.create.call_count == 1
         formatted_docs = vector.create.call_args[0][0]
         assert len(formatted_docs) == 2
@@ -266,6 +266,63 @@ class TestParentChildIndexProcessor:
         session.execute.assert_called()
         session.flush.assert_called_once()
 
+    def test_clean_empty_partial_selection_does_not_delete_dataset(
+        self, processor: ParentChildIndexProcessor, dataset: Mock
+    ) -> None:
+        session = Mock()
+
+        with patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls:
+            processor.clean(
+                dataset,
+                [],
+                delete_child_chunks=True,
+                precomputed_child_node_ids=[],
+                session=session,
+            )
+
+        mock_vector_cls.assert_not_called()
+        session.execute.assert_not_called()
+        session.commit.assert_not_called()
+
+    def test_clean_rejects_partial_summary_cleanup_without_durable_segment_ids(
+        self, processor: ParentChildIndexProcessor, dataset: Mock
+    ) -> None:
+        with pytest.raises(ValueError, match="segment_ids are required"):
+            processor.clean(dataset, ["node-1"], delete_summaries=True, session=Mock())
+
+    def test_clean_no_node_or_segment_ids_is_a_partial_noop(
+        self, processor: ParentChildIndexProcessor, dataset: Mock
+    ) -> None:
+        session = Mock()
+        with patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as vector_cls:
+            processor.clean(dataset, [], delete_child_chunks=False, session=session)
+
+        vector_cls.assert_not_called()
+        session.execute.assert_not_called()
+
+    def test_clean_uses_segment_ids_when_parent_has_no_vector_id(
+        self, processor: ParentChildIndexProcessor, dataset: Mock
+    ) -> None:
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = ["child-1", None, "child-2"]
+
+        with patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls:
+            processor.clean(
+                dataset,
+                [],
+                delete_child_chunks=True,
+                segment_ids=["segment-1"],
+                session=session,
+            )
+
+        mock_vector_cls.assert_called_once_with(dataset)
+        mock_vector_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
+        child_lookup = session.scalars.call_args.args[0]
+        child_delete = session.execute.call_args.args[0]
+        assert any("segment-1" in value for value in child_lookup.compile().params.values() if isinstance(value, list))
+        assert any("segment-1" in value for value in child_delete.compile().params.values() if isinstance(value, list))
+        session.flush.assert_called_once()
+
     def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
         scalars_result = Mock()
         scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
@@ -281,9 +338,16 @@ class TestParentChildIndexProcessor:
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
         ):
-            processor.clean(dataset, ["node-1"], delete_summaries=True, precomputed_child_node_ids=[], session=session)
+            processor.clean(
+                dataset,
+                ["node-1"],
+                delete_summaries=True,
+                precomputed_child_node_ids=[],
+                segment_ids=["seg-1"],
+                session=session,
+            )
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"], session=session)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=["seg-1"], session=session)
 
     def test_clean_deletes_all_summaries_when_node_ids_missing(
         self, processor: ParentChildIndexProcessor, dataset: Mock
@@ -297,7 +361,7 @@ class TestParentChildIndexProcessor:
             session = MagicMock()
             processor.clean(dataset, None, delete_summaries=True, session=session)
 
-        mock_summary.assert_called_once_with(dataset, None, session=session)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=None, session=session)
 
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=None)
@@ -372,7 +436,7 @@ class TestParentChildIndexProcessor:
             mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
-        assert phase_events == ["count", "store", "commit", "vector"]
+        assert phase_events == ["commit", "count", "store", "commit", "vector"]
         assert dataset_document.dataset_process_rule_id == "rule-1"
         session.add.assert_called_once_with(dataset_rule)
         session.flush.assert_called_once()
@@ -385,7 +449,7 @@ class TestParentChildIndexProcessor:
             token_counts=[11],
             save_child=True,
         )
-        mock_vector_cls.assert_called_once_with(dataset, session=session)
+        mock_vector_cls.assert_called_once_with(dataset)
         assert mock_vector_cls.return_value.create.call_count == 1
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
 
@@ -481,29 +545,17 @@ class TestParentChildIndexProcessor:
     def test_generate_summary_preview_sets_summaries(self, processor: ParentChildIndexProcessor) -> None:
         preview_texts = [PreviewDetail(content="chunk-1"), PreviewDetail(content="chunk-2")]
         session = MagicMock()
-        worker_sessions = [MagicMock(), MagicMock()]
 
-        with (
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.session_factory.create_session",
-                side_effect=[nullcontext(worker_session) for worker_session in worker_sessions],
-            ) as create_session,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.ParagraphIndexProcessor.generate_summary",
-                return_value=("summary", None),
-            ) as mock_generate_summary,
-        ):
+        with patch(
+            "core.rag.index_processor.processor.paragraph_index_processor.ParagraphIndexProcessor.generate_summary",
+            return_value=("summary", None),
+        ) as mock_generate_summary:
             result = processor.generate_summary_preview(
                 "tenant-1", preview_texts, {"enable": True}, doc_language="English", session=session
             )
 
         assert all(item.summary == "summary" for item in result)
-        call_sessions = [call.kwargs["session"] for call in mock_generate_summary.call_args_list]
-        assert create_session.call_count == len(preview_texts)
-        assert all(call_session is not session for call_session in call_sessions)
-        assert {id(call_session) for call_session in call_sessions} == {
-            id(worker_session) for worker_session in worker_sessions
-        }
+        assert all("session" not in call.kwargs for call in mock_generate_summary.call_args_list)
 
     def test_generate_summary_preview_raises_when_worker_fails(self, processor: ParentChildIndexProcessor) -> None:
         preview_texts = [PreviewDetail(content="chunk-1")]
