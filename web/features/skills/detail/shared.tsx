@@ -213,10 +213,14 @@ type SkillUploadStatus = 'failed' | 'saving' | 'uploaded' | 'uploading'
 
 export type SkillUploadQueueItem = {
   error?: string
+  failureKind?: 'conflict' | 'network'
+  file: File
   id: string
   name: string
+  path: string
   progress: number
   status: SkillUploadStatus
+  suggestedPath?: string
 }
 
 export type SkillFileClipboard = {

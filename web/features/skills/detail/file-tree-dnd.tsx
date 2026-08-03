@@ -35,12 +35,12 @@ export function SkillUploadStatusPanel({
   items,
   onCancel,
   onDismiss,
-  onRetry,
+  onViewErrors,
 }: {
   items: SkillUploadQueueItem[]
   onCancel: () => void
   onDismiss: () => void
-  onRetry: () => void
+  onViewErrors: () => void
 }) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
@@ -62,7 +62,10 @@ export function SkillUploadStatusPanel({
     <div className="pointer-events-none absolute inset-x-1 bottom-2 z-10">
       <div
         className={cn(
-          'pointer-events-auto relative flex h-8 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg py-1 pr-1.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
+          'pointer-events-auto relative overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
+          failedCount > 0 && !hasActiveUpload
+            ? 'min-h-[72px] px-2 py-2'
+            : 'flex h-8 items-center gap-2 py-1 pr-1.5 pl-2',
           !hasActiveUpload &&
             (failedCount > 0
               ? 'before:absolute before:inset-0 before:bg-gradient-to-r before:from-state-warning-hover before:to-transparent before:opacity-40'
@@ -75,30 +78,53 @@ export function SkillUploadStatusPanel({
             style={{ width: `${averageProgress}%` }}
           />
         )}
-        <span
-          aria-hidden
+        <div
           className={cn(
-            'relative size-4 shrink-0',
-            hasActiveUpload
-              ? 'i-ri-upload-cloud-2-line text-text-accent'
-              : failedCount > 0
-                ? 'i-ri-error-warning-fill text-text-warning-secondary'
-                : 'i-ri-checkbox-circle-fill text-text-success',
+            'relative flex min-w-0 flex-1',
+            failedCount > 0 && !hasActiveUpload ? 'items-start gap-2' : 'items-center gap-2',
           )}
-        />
-        <span className="relative min-w-0 flex-1 truncate system-xs-semibold text-text-primary">
-          {hasActiveUpload
-            ? t(($) => $['skillManagement.detail.uploadFilesProgress'], {
-                completed: completedCount,
-                total: items.length,
-              })
-            : failedCount > 0
-              ? t(($) => $['skillManagement.detail.uploadFilesResult'], {
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'relative size-4 shrink-0',
+              hasActiveUpload
+                ? 'i-ri-upload-cloud-2-line text-text-accent'
+                : failedCount > 0
+                  ? 'i-ri-error-warning-fill text-text-warning-secondary'
+                  : 'i-ri-checkbox-circle-fill text-text-success',
+            )}
+          />
+          {failedCount > 0 && !hasActiveUpload ? (
+            <div className="min-w-0 flex-1">
+              <div className="truncate system-xs-semibold text-text-primary">
+                {t(($) => $['skillManagement.detail.uploadFailureTitle'])}
+              </div>
+              <div className="mt-1 border-l border-divider-subtle pl-2 system-xs-regular text-text-tertiary">
+                {t(($) => $['skillManagement.detail.uploadFailureSummary'], {
                   failed: failedCount,
-                  uploaded: uploadedCount,
-                })
-              : `${uploadedCount} ${uploadedCount === 1 ? 'file' : 'files'} uploaded`}
-        </span>
+                  total: items.length,
+                })}
+                <button
+                  type="button"
+                  className="block cursor-pointer text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={onViewErrors}
+                >
+                  {t(($) => $['skillManagement.detail.viewUploadErrors'])}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <span className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary">
+              {hasActiveUpload
+                ? t(($) => $['skillManagement.detail.uploadFilesProgress'], {
+                    completed: completedCount,
+                    total: items.length,
+                  })
+                : `${uploadedCount} ${uploadedCount === 1 ? 'file' : 'files'} uploaded`}
+            </span>
+          )}
+        </div>
         {hasActiveUpload ? (
           <button
             type="button"
@@ -110,19 +136,12 @@ export function SkillUploadStatusPanel({
           </button>
         ) : (
           <div className="relative flex shrink-0 items-center gap-1">
-            {failedCount > 0 && (
-              <button
-                type="button"
-                className="flex size-6 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                aria-label={tCommon(($) => $['operation.retry'])}
-                onClick={onRetry}
-              >
-                <span aria-hidden className="i-ri-restart-line size-[18px]" />
-              </button>
-            )}
             <button
               type="button"
-              className="flex size-6 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className={cn(
+                'flex size-6 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                failedCount > 0 && 'absolute top-1 right-1',
+              )}
               aria-label={t(($) => $['skillManagement.detail.uploadStatusDismiss'])}
               onClick={onDismiss}
             >

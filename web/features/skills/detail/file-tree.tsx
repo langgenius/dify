@@ -2,6 +2,7 @@
 
 import type {
   SkillDetailResponse,
+  SkillFileCheckResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
@@ -19,6 +20,7 @@ import type {
   SkillFileMutationCoordinator,
   SkillUploadQueueItem,
 } from './shared'
+import type { SkillUploadDecision, SkillUploadReviewItem } from './upload-workflow'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -92,6 +94,13 @@ import {
 } from './shared'
 import { SkillDisplayNameEditor } from './skill-display-name-editor'
 import { SkillReferencesPanel, SkillTagsEditor } from './skill-metadata'
+import { SkillUploadFailuresDialog, SkillUploadReviewDialog } from './upload-dialogs'
+import {
+  buildUploadReviewItems,
+  createAvailableUploadPath,
+  isUploadReviewItemSkipped,
+  resolveUploadReviewItem,
+} from './upload-workflow'
 
 const skillSidebarMinWidth = 240
 const skillSidebarMaxWidth = 420
@@ -264,6 +273,9 @@ export function FileTree({
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string>()
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
   const [uploadItems, setUploadItems] = useState<SkillUploadQueueItem[]>([])
+  const [uploadReviewItems, setUploadReviewItems] = useState<SkillUploadReviewItem[]>([])
+  const [uploadReviewOpen, setUploadReviewOpen] = useState(false)
+  const [uploadFailuresOpen, setUploadFailuresOpen] = useState(false)
   const [deleteNode, setDeleteNode] = useState<FileTreeNode>()
   const [sidebarWidth, setSidebarWidth] = useState(skillSidebarMinWidth)
   const [sidebarFloating, setSidebarFloating] = useState(false)
@@ -272,14 +284,6 @@ export function FileTree({
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
   const closeSidebarFloatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const uploadBatchRef = useRef<
-    | {
-        files: File[]
-        itemIds: string[]
-        targetDirectory: string | undefined
-      }
-    | undefined
-  >(undefined)
 
   const handleReferencesRegionBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
     const nextTarget = event.relatedTarget
@@ -374,12 +378,17 @@ export function FileTree({
       context: { silent: true },
     }),
   )
+  const fileCheckMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.files.check.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const tree = toFileTree(files)
   const flatTree = flattenFileTree(tree)
   const isUploading = uploadItems.some(
     (item) => item.status === 'uploading' || item.status === 'saving',
   )
-  const isMutating = fileMutation.isPending || isUploading
+  const isMutating = fileMutation.isPending || fileCheckMutation.isPending || isUploading
   const fileCount = files.filter((file) => !isDirectory(file)).length
 
   const mutateFile = (
@@ -504,18 +513,58 @@ export function FileTree({
   const handleUploadFiles = async (filesToUpload: File[], targetDirectory: string | undefined) => {
     if (!detail || filesToUpload.length === 0 || isMutating) return
 
-    const nextUploadItems = filesToUpload.map((file, index) => ({
-      id: createUploadItemId(file, index),
-      name: getUploadFileName(file),
+    const itemIds = filesToUpload.map((file, index) => createUploadItemId(file, index))
+    const paths = filesToUpload.map((file) => getUploadPath(file, targetDirectory))
+    try {
+      const response = (await fileCheckMutation.mutateAsync({
+        params: { skill_id: skillId },
+        body: {
+          files: filesToUpload.map((file, index) => ({
+            filename: file.name,
+            mime_type: file.type || null,
+            path: paths[index],
+            size: file.size,
+          })),
+        },
+      })) as SkillFileCheckResponse
+      const reviewItems = buildUploadReviewItems({
+        checks: response.data ?? {},
+        existingFiles: files,
+        files: filesToUpload,
+        itemIds,
+        paths,
+      })
+      setUploadReviewItems(reviewItems)
+      setUploadReviewOpen(true)
+    } catch {
+      toast.error(t(($) => $['skillManagement.detail.uploadCheckFailed']))
+    }
+  }
+
+  const startUpload = async (reviewItems: SkillUploadReviewItem[], replaceQueue = true) => {
+    if (!detail || isMutating) return
+
+    const uploadableItems = reviewItems.filter(
+      (item) => !isUploadReviewItemSkipped(item) && item.resolvedPath,
+    )
+    const nextUploadItems = uploadableItems.map((item) => ({
+      file: item.file,
+      id: item.id,
+      name: getUploadFileName(item.file),
+      path: item.resolvedPath!,
       progress: 0,
       status: 'uploading' as const,
     }))
-    setUploadItems(nextUploadItems)
-    uploadBatchRef.current = {
-      files: filesToUpload,
-      itemIds: nextUploadItems.map((item) => item.id),
-      targetDirectory,
+    if (replaceQueue) setUploadItems(nextUploadItems)
+    else {
+      setUploadItems((currentItems) => {
+        const replacements = new Map(nextUploadItems.map((item) => [item.id, item]))
+        const mergedItems = currentItems.map((item) => replacements.get(item.id) ?? item)
+        const currentIds = new Set(currentItems.map((item) => item.id))
+        return [...mergedItems, ...nextUploadItems.filter((item) => !currentIds.has(item.id))]
+      })
     }
+    setUploadFailuresOpen(false)
     cancelUploadRef.current = false
 
     let latestDetail = detail
@@ -523,7 +572,7 @@ export function FileTree({
     let successCount = 0
     let failedCount = 0
 
-    for (const [index, file] of filesToUpload.entries()) {
+    for (const [index, file] of uploadableItems.map((item) => item.file).entries()) {
       const item = nextUploadItems[index]
       if (!item) continue
       if (cancelUploadRef.current) {
@@ -549,7 +598,7 @@ export function FileTree({
         activeUploadXhrRef.current = undefined
         patchUploadItem(item.id, { progress: 100, status: 'saving' })
 
-        const path = getUploadPath(file, targetDirectory)
+        const path = item.path
         const nextDetail = await runSkillFileMutation(
           fileMutationCoordinator,
           (expectedUpdatedAt) =>
@@ -575,12 +624,34 @@ export function FileTree({
       } catch (error) {
         activeUploadXhrRef.current = undefined
         failedCount += 1
+        const errorPayload = await getAsyncSkillErrorPayload(error)
+        const errorCode = getErrorCode(errorPayload ?? error)
+        let failureKind: SkillUploadQueueItem['failureKind'] = 'network'
+        let errorMessage =
+          (await getAsyncSkillErrorMessage(error)) ??
+          t(($) => $['skillManagement.detail.uploadNetworkFailure'])
+        let suggestedPath: string | undefined
+        if (errorCode === 'skill_conflict') {
+          failureKind = 'conflict'
+          errorMessage = t(($) => $['skillManagement.detail.uploadLateConflict'])
+          try {
+            const refreshedDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
+            fileMutationCoordinator.latestDetail = refreshedDetail
+            latestDetail = refreshedDetail
+            suggestedPath = createAvailableUploadPath(
+              item.path,
+              (refreshedDetail.files ?? []).map((file) => file.path),
+            )
+          } catch {
+            // Replace remains available even if refreshing the latest paths fails.
+          }
+        }
         patchUploadItem(item.id, {
-          error:
-            (await getAsyncSkillErrorMessage(error)) ??
-            t(($) => $['skillManagement.detail.uploadFileFailed']),
+          error: errorMessage,
+          failureKind,
           progress: 100,
           status: 'failed',
+          suggestedPath,
         })
       }
     }
@@ -607,17 +678,77 @@ export function FileTree({
   }
 
   const handleRetryUpload = () => {
-    const batch = uploadBatchRef.current
-    if (!batch) return
-
-    const failedIds = new Set(
-      uploadItems.filter((item) => item.status === 'failed').map((item) => item.id),
+    const failedItems = uploadItems.filter(
+      (item) => item.status === 'failed' && item.failureKind !== 'conflict',
     )
-    const failedFiles = batch.files.filter((_, index) => {
-      const itemId = batch.itemIds[index]
-      return itemId ? failedIds.has(itemId) : false
-    })
-    void handleUploadFiles(failedFiles, batch.targetDirectory)
+    void startUpload(
+      failedItems.map((item) => ({
+        check: {
+          errors: [],
+          extension: '',
+          filename: item.file.name,
+          mime_type: item.file.type,
+          path: item.path,
+          size: item.file.size,
+        },
+        file: item.file,
+        id: item.id,
+        kind: 'ready',
+        originalPath: item.path,
+        resolvedPath: item.path,
+      })),
+      false,
+    )
+  }
+
+  const handleRetryUploadItem = (id: string, path?: string) => {
+    const item = uploadItems.find((uploadItem) => uploadItem.id === id)
+    if (!item) return
+    const resolvedPath = path ?? item.path
+    setUploadFailuresOpen(false)
+    void startUpload(
+      [
+        {
+          check: {
+            errors: [],
+            extension: '',
+            filename: item.file.name,
+            mime_type: item.file.type,
+            path: resolvedPath,
+            size: item.file.size,
+          },
+          file: item.file,
+          id: item.id,
+          kind: 'ready',
+          originalPath: item.path,
+          resolvedPath,
+        },
+      ],
+      false,
+    )
+  }
+
+  const handleFailedUploadDecision = (id: string, decision: SkillUploadDecision) => {
+    const item = uploadItems.find((uploadItem) => uploadItem.id === id)
+    if (!item) return
+    if (decision === 'skip') {
+      setUploadItems((currentItems) => currentItems.filter((uploadItem) => uploadItem.id !== id))
+      if (uploadItems.filter((uploadItem) => uploadItem.status === 'failed').length === 1)
+        setUploadFailuresOpen(false)
+      return
+    }
+    handleRetryUploadItem(id, decision === 'keep-both' ? item.suggestedPath : item.path)
+  }
+
+  const handleUploadDecision = (id: string, decision: SkillUploadDecision) => {
+    setUploadReviewItems((currentItems) =>
+      currentItems.map((item) => (item.id === id ? resolveUploadReviewItem(item, decision) : item)),
+    )
+  }
+
+  const handleConfirmUpload = () => {
+    setUploadReviewOpen(false)
+    void startUpload(uploadReviewItems)
   }
 
   const handleItemSelect = (node: FileTreeNode, event: MouseEvent<HTMLElement>) => {
@@ -1388,10 +1519,25 @@ export function FileTree({
                 items={uploadItems}
                 onCancel={handleCancelUpload}
                 onDismiss={() => setUploadItems([])}
-                onRetry={handleRetryUpload}
+                onViewErrors={() => setUploadFailuresOpen(true)}
               />
             )}
           </ScrollArea>
+          <SkillUploadReviewDialog
+            items={uploadReviewItems}
+            open={uploadReviewOpen}
+            onDecision={handleUploadDecision}
+            onOpenChange={setUploadReviewOpen}
+            onUpload={handleConfirmUpload}
+          />
+          <SkillUploadFailuresDialog
+            items={uploadItems}
+            open={uploadFailuresOpen}
+            onDecision={handleFailedUploadDecision}
+            onDismiss={() => setUploadFailuresOpen(false)}
+            onRetry={handleRetryUpload}
+            onRetryItem={handleRetryUploadItem}
+          />
           <AlertDialog
             open={!!deleteNode}
             onOpenChange={(open) => !open && setDeleteNode(undefined)}
