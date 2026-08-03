@@ -158,7 +158,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const shellMode = useStepByStepTourShellModeValue()
   const setShellMode = useSetStepByStepTourShellMode()
   const anchorRef = useRef<HTMLDivElement>(null)
-  const checklistInitialFocusRef = useRef<HTMLButtonElement>(null)
+  const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
   const restoreTriggerRef = useRef<HTMLButtonElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
@@ -615,7 +615,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
           : undefined
       }
       tasks={tasks}
-      initialFocusRef={checklistInitialFocusRef}
+      closeButtonRef={checklistCloseButtonRef}
       skipLabel={t(($) => $['stepByStepTour.skip'])}
       minimizeLabel={t(($) => $['stepByStepTour.minimize'])}
       getTaskCompleteLabel={(taskTitle) =>
@@ -762,7 +762,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
               }}
               popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
               popupProps={{
-                initialFocus: checklistInitialFocusRef,
+                initialFocus: checklistCloseButtonRef,
                 finalFocus: restoreTriggerRef,
               }}
             >

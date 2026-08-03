@@ -794,7 +794,7 @@ describe('StepByStepTourMount', () => {
     expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
   })
 
-  it('focuses the current task primary action when the checklist opens', async () => {
+  it('focuses the minimize button when the checklist opens', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
@@ -805,9 +805,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    const currentTaskAction = (await screen.findAllByRole('button', { name: 'Take a look' }))[0]!
+    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
     await waitFor(() => {
-      expect(currentTaskAction).toHaveFocus()
+      expect(minimizeButton).toHaveFocus()
     })
   })
 
