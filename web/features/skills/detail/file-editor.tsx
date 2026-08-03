@@ -89,6 +89,7 @@ export function FileEditor({
   hasLocalUnpublishedChanges,
   onLocalUnpublishedChangesChange,
   onPromoteFile,
+  onOpenBuilder,
   onOpenVersions,
   onPublish,
   onRestoreVersion,
@@ -111,6 +112,7 @@ export function FileEditor({
   hasLocalUnpublishedChanges: boolean
   onLocalUnpublishedChangesChange: (hasChanges: boolean) => void
   onPromoteFile: (path: string) => void
+  onOpenBuilder?: () => void
   onOpenVersions: () => void
   onPublish: () => void
   onRestoreVersion: () => void
@@ -974,6 +976,19 @@ export function FileEditor({
   return (
     <main className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
       <FileTabs
+        endAction={
+          onOpenBuilder && (
+            <button
+              type="button"
+              aria-label={t(($) => $['skillManagement.detail.builder.open'])}
+              className="flex h-8 w-[133px] cursor-pointer items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-xs-semibold-uppercase text-text-accent shadow-xs outline-hidden backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={onOpenBuilder}
+            >
+              <span aria-hidden className="i-ri-box-3-line size-4" />
+              {t(($) => $['skillManagement.detail.builder.title'])}
+            </button>
+          )
+        }
         files={openFiles}
         onClose={onCloseFile}
         onSelect={onSelectFile}

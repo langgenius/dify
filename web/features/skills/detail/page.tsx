@@ -21,7 +21,7 @@ import {
   isDirectory,
   setSkillDetailCache,
 } from './shared'
-import { DetailSkeleton, SkillDetailRightPanelRail } from './shell'
+import { DetailSkeleton } from './shell'
 import { VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
@@ -32,7 +32,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const [previewFilePath, setPreviewFilePath] = useState<string>()
   const [rightPanelMode, setRightPanelMode] = useState<'builder' | 'hidden' | 'versions'>('builder')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>()
   const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
   const [hasLocalUnpublishedChanges, setHasLocalUnpublishedChanges] = useState(false)
   const [publishedOverride, setPublishedOverride] = useState<{
@@ -80,7 +80,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     rightPanelMode === 'versions'
       ? (versions.find((version) => version.is_latest)?.id ?? versions[0]?.id ?? null)
       : null
-  const activeVersionId = selectedVersionId ?? defaultVersionId
+  const activeVersionId = selectedVersionId === undefined ? defaultVersionId : selectedVersionId
   const versionDetailQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.get.queryOptions({
       input: {
@@ -300,7 +300,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   }
 
   const handleExitVersion = () => {
-    setSelectedVersionId(null)
+    setSelectedVersionId(undefined)
     setRightPanelMode('builder')
     setSelectedPath(undefined)
     setOpenFilePaths([])
@@ -308,6 +308,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   }
 
   const handleOpenVersions = () => {
+    setSelectedVersionId(undefined)
     setRightPanelMode('versions')
     setSelectedPath(undefined)
     setOpenFilePaths([])
@@ -359,6 +360,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           onDraftDetailChange={handleDraftDetailChange}
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onPromoteFile={handlePromoteFile}
+          onOpenBuilder={
+            rightPanelMode === 'hidden' ? () => setRightPanelMode('builder') : undefined
+          }
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
           onRestoreVersion={handleRestoreSelectedVersion}
@@ -380,12 +384,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             skillId={skillId}
             onDraftDetailChange={handleDraftDetailChange}
             onClose={() => setRightPanelMode('hidden')}
-          />
-        )}
-        {rightPanelMode === 'hidden' && (
-          <SkillDetailRightPanelRail
-            onOpenBuilder={() => setRightPanelMode('builder')}
-            onOpenVersions={handleOpenVersions}
           />
         )}
         {rightPanelMode === 'versions' && (

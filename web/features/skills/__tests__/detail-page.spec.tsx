@@ -9,6 +9,7 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import copy from 'copy-to-clipboard'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillDetailPage from '../detail-page'
 
@@ -54,12 +55,32 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+vi.mock('copy-to-clipboard', () => ({
+  default: vi.fn(),
+}))
+
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div>{content}</div>,
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
+}))
+
+vi.mock('@/app/components/main-nav/components/account-section', () => ({
+  default: ({ compact = false }: { compact?: boolean }) => (
+    <button type="button" aria-label={compact ? 'compact-account-section' : 'account-section'}>
+      Current account
+    </button>
+  ),
+}))
+
+vi.mock('@/app/components/main-nav/components/help-menu', () => ({
+  default: () => (
+    <button type="button" aria-label="help-menu">
+      Help
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -72,12 +93,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <button type="button">model-settings</button>,
-  }),
-)
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  default: () => <button type="button">model-settings</button>,
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ onChange, value }: { onChange?: (value: string) => void; value: string }) => (
@@ -698,18 +716,24 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const sidebar = await screen.findByTestId('skill-detail-sidebar')
+    const sidebarShell = screen.getByTestId('skill-detail-sidebar-shell')
     const header = screen.getByTestId('skill-detail-sidebar-header')
 
-    expect(sidebar).toHaveClass('m-1', 'w-60', 'rounded-lg', 'bg-background-default')
-    expect(header).toHaveClass('h-12', 'gap-2', 'px-3')
-    expect(header.querySelector('.i-ri-arrow-left-line')).toBeInTheDocument()
-    expect(header.querySelector('.i-ri-box-3-line')).toBeInTheDocument()
+    expect(sidebarShell).toHaveClass('bg-background-body', 'p-1')
+    expect(sidebar).toHaveClass('rounded-lg', 'bg-components-panel-bg')
+    expect(sidebar).toHaveStyle({ width: '240px' })
+    expect(header).toHaveClass('h-12', 'py-2', 'pr-2', 'pl-1')
+    expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
+    expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
     expect(header).toHaveTextContent('SKILLS')
     expect(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.searchFiles',
       }),
-    ).toHaveClass('size-6', 'rounded-md')
+    ).toHaveClass('size-8', 'rounded-[10px]')
+    expect(document.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'account-section' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'help-menu' })).toBeInTheDocument()
   })
 
   it('opens the inline tag selector with workspace tag options', async () => {
@@ -728,7 +752,11 @@ describe('SkillDetailPage', () => {
     ).toHaveFocus()
     expect(screen.getByRole('option', { name: 'Search' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Productivity' })).toBeInTheDocument()
-    expect(screen.getByRole('separator')).toHaveClass('my-0')
+    expect(
+      screen
+        .getAllByRole('separator')
+        .find((separator) => separator.getAttribute('aria-orientation') === 'horizontal'),
+    ).toHaveClass('my-0')
     expect(
       screen
         .getByRole('button', { name: 'common.tag.manageTags' })
@@ -1082,6 +1110,30 @@ describe('SkillDetailPage', () => {
     expect(
       screen.queryByText('skill.skillManagement.detail.builder.editIntro'),
     ).not.toBeInTheDocument()
+  })
+
+  it('moves the collapsed Skill Builder entry into the file tab header', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.close',
+      }),
+    )
+
+    const openBuilderButton = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.open',
+    })
+    expect(openBuilderButton).toHaveClass('h-8', 'w-[133px]')
+    expect(openBuilderButton.closest('main')).toBeInTheDocument()
+
+    await user.click(openBuilderButton)
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.close',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('does not render the code editor when external file content fails to load', async () => {
@@ -1949,6 +2001,9 @@ describe('SkillDetailPage', () => {
         name: 'skill.skillManagement.detail.builder.send',
       }),
     )
+    expect(
+      screen.queryByText('skill.skillManagement.detail.builder.editIntro'),
+    ).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
@@ -2240,6 +2295,46 @@ describe('SkillDetailPage', () => {
     ).toBeEnabled()
   })
 
+  it('replaces optimistic Skill Builder replies when the assistant stream returns an error', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onData, onError }) => {
+      onData?.('已创建用于客户问题分级处理的 skill 草案', true, {
+        messageId: 'assistant-message',
+      })
+      onError?.(
+        'the Skill Authoring assistant could not apply its response',
+        'skill_assistant_failed',
+      )
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'the Skill Authoring assistant could not apply its response',
+      )
+    })
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    const errorMessage = screen.getByText(
+      'the Skill Authoring assistant could not apply its response',
+    )
+    expect(errorMessage).toBeInTheDocument()
+    expect(errorMessage.closest('.rounded-xl')).toHaveClass(
+      'border-state-destructive-border',
+      'bg-state-destructive-hover',
+      'text-text-destructive',
+    )
+    expect(screen.queryByText('已创建用于客户问题分级处理的 skill 草案')).not.toBeInTheDocument()
+  })
+
   it('shows a publish confirmation for referenced skills before publishing updates', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
@@ -2493,6 +2588,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+    expect(screen.getByTestId('skill-detail-sidebar-shell')).toHaveClass('w-16')
 
     await user.click(
       screen.getByRole('button', {
@@ -2500,6 +2596,68 @@ describe('SkillDetailPage', () => {
       }),
     )
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+  })
+
+  it('shows the Figma floating sidebar when the collapsed rail is hovered', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.collapseSidebar',
+      }),
+    )
+    expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+
+    fireEvent.mouseEnter(screen.getByTestId('skill-detail-sidebar-shell'))
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(screen.getByTestId('skill-detail-sidebar')).toHaveClass(
+      'absolute',
+      'w-60',
+      'border',
+      'shadow-lg',
+    )
+    expect(screen.getByTestId('skill-detail-sidebar')).toHaveStyle({ width: '240px' })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.collapseSidebar',
+      }),
+    )
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+  })
+
+  it('resizes the file tree sidebar between the Figma minimum and maximum widths', async () => {
+    renderSkillDetailPage()
+
+    const resizeHandle = await screen.findByRole('separator', {
+      name: 'skill.skillManagement.detail.resizeSidebar',
+    })
+    const sidebar = screen.getByTestId('skill-detail-sidebar')
+
+    expect(resizeHandle).toHaveAttribute('aria-valuemin', '240')
+    expect(resizeHandle).toHaveAttribute('aria-valuemax', '420')
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
+    expect(sidebar).toHaveStyle({ width: '240px' })
+
+    fireEvent.pointerDown(resizeHandle, { button: 0, clientX: 244 })
+    fireEvent.pointerMove(document, { clientX: 600 })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
+    expect(sidebar).toHaveStyle({ width: '420px' })
+
+    fireEvent.pointerMove(document, { clientX: 0 })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
+    expect(sidebar).toHaveStyle({ width: '240px' })
+    fireEvent.pointerUp(document)
+
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '248')
+    fireEvent.keyDown(resizeHandle, { key: 'End' })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
+    fireEvent.keyDown(resizeHandle, { key: 'Home' })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
   })
 
   it('scrolls the publish reference list after ten items', async () => {
@@ -2658,6 +2816,58 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('matches the versions timeline interactions and omits the unused copy id action', async () => {
+    const user = userEvent.setup()
+    const namedVersion = createSkillVersion({
+      id: 'version-1',
+      is_latest: true,
+      version_name: 'Named version',
+    })
+    const unnamedVersion = createSkillVersion({
+      id: 'version-2',
+      version_number: 2,
+      version_name: '',
+    })
+    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-versions', options],
+      queryFn: async () => ({
+        data: [namedVersion, unnamedVersion],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+    )
+
+    const panelTitle = await screen.findByText('skill.skillManagement.detail.versions')
+    expect(panelTitle.closest('aside')).toHaveClass('w-67', 'py-1')
+    expect(screen.getAllByRole('button', { current: true })).toHaveLength(1)
+
+    await openVersionRowActions(user, '#2')
+    expect(screen.queryByText('skill.skillManagement.detail.copyVersionId')).not.toBeInTheDocument()
+    expect(await screen.findByRole('menu')).toHaveClass('w-[184px]')
+
+    await user.keyboard('{Escape}')
+    await user.click(
+      screen.getByRole('button', {
+        name: /workflow\.versionHistory\.filter\.all/,
+      }),
+    )
+    await user.click(
+      await screen.findByText('workflow.versionHistory.filter.onlyShowNamedVersions'),
+    )
+
+    expect(screen.queryByText('#2')).not.toBeInTheDocument()
+
+    const currentDraft = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.currentDraft',
+    })
+    await user.click(currentDraft)
+    expect(currentDraft).toHaveAttribute('aria-current', 'true')
   })
 
   it('inserts a reference file from source editor slash picker', async () => {
@@ -3022,8 +3232,9 @@ describe('SkillDetailPage', () => {
       )
     })
     expect(
-      await screen.findByText('skill.skillManagement.detail.builder.thinking:{"seconds":0}'),
+      await screen.findByText('skill.skillManagement.detail.builder.thinking'),
     ).toBeInTheDocument()
+    expect(screen.getByText('0s')).toBeInTheDocument()
     expect(
       await screen.findByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeDisabled()
@@ -3127,6 +3338,8 @@ describe('SkillDetailPage', () => {
     )
 
     expect(await screen.findByText('I can create that reference file.')).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.detail.builder.thinking')).toBeInTheDocument()
+    expect(screen.getByText('0s')).toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
@@ -3702,7 +3915,7 @@ describe('SkillDetailPage', () => {
       ...primaryModifier,
     })
 
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.copyContentSuccess')
   })
 
   it('cuts the context-menu file with the displayed keyboard shortcut', async () => {
@@ -3751,7 +3964,7 @@ describe('SkillDetailPage', () => {
     await user.click(getFileTreeButton('SKILL.md'))
     fireEvent.copy(getFileTreeButton('SKILL.md'))
     await user.click(screen.getByRole('button', { name: 'scripts' }))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3764,6 +3977,58 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('lets editable fields handle native copy even when page selection contains an empty draft marker', async () => {
+    const user = userEvent.setup()
+    const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => '<!-- dify-skill-empty-draft -->',
+    } as Selection)
+    try {
+      renderSkillDetailPage()
+
+      await waitFor(() => {
+        expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+      })
+      await user.click(getFileTreeButton('SKILL.md'))
+      const builderInput = screen.getByPlaceholderText(
+        'skill.skillManagement.detail.builder.modifyPlaceholder',
+      )
+      fireEvent.copy(builderInput)
+
+      expect(copy).not.toHaveBeenCalledWith('<!-- dify-skill-empty-draft -->')
+      expect(toast.success).not.toHaveBeenCalledWith(
+        'skill.skillManagement.detail.copyContentSuccess',
+      )
+      expect(toast.success).not.toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
+    } finally {
+      getSelectionSpy.mockRestore()
+    }
+  })
+
+  it('does not let file-tree copy hotkeys override copying from the builder panel', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+    })
+    await user.click(getFileTreeButton('SKILL.md'))
+
+    const builderControl = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.close',
+    })
+    fireEvent.keyDown(builderControl, {
+      code: 'KeyC',
+      key: 'c',
+      ...primaryModifier,
+    })
+
+    expect(copy).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalledWith(
+      'skill.skillManagement.detail.copyContentSuccess',
+    )
+    expect(toast.success).not.toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
   })
 
   it('opens only the copied file after pasting it beside the source file', async () => {
@@ -3794,7 +4059,7 @@ describe('SkillDetailPage', () => {
     })
     await user.click(getFileTreeButton('SKILL.md'))
     fireEvent.copy(getFileTreeButton('SKILL.md'))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3868,7 +4133,7 @@ describe('SkillDetailPage', () => {
     })
     await user.click(getFileTreeButton('SKILL.md'))
     fireEvent.copy(getFileTreeButton('SKILL.md'))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
@@ -3948,7 +4213,7 @@ describe('SkillDetailPage', () => {
     await user.click(getFileTreeButton('alpha.md'))
     fireEvent.click(getFileTreeButton('beta.md'), primaryModifier)
     fireEvent.copy(getFileTreeButton('beta.md'))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(3)

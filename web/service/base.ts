@@ -556,6 +556,7 @@ export const ssePost = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -617,7 +618,7 @@ export const ssePost = async (
           }
         } else {
           res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
+            if (!silent) toast.error(data.message || 'Server Error')
           })
           onError?.('Server Error')
         }
@@ -629,7 +630,8 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage))
+              toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -670,7 +672,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
+      if (!silent && shouldNotifyStreamError(e)) toast.error(errorMessage)
       onError?.(errorMessage)
     })
 }

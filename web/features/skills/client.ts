@@ -175,6 +175,7 @@ export function sendSkillAssistMessage({
   skillId: string
   targetPath?: string
 }) {
+  let streamErrorHandled = false
   return ssePost(
     `/workspaces/current/skills/${encodeURIComponent(skillId)}/assist/messages`,
     {
@@ -186,10 +187,24 @@ export function sendSkillAssistMessage({
       },
     },
     {
+      silent: true,
       getAbortController,
-      onCompleted,
-      onData,
-      onError,
+      onCompleted: (hasError, errorMessage) => {
+        onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)
+      },
+      onData: (chunk, isFirstMessage, moreInfo) => {
+        if (moreInfo.errorMessage) {
+          streamErrorHandled = true
+          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+          return
+        }
+
+        onData?.(chunk, isFirstMessage, moreInfo)
+      },
+      onError: (errorMessage, errorCode) => {
+        streamErrorHandled = true
+        onError?.(errorMessage, errorCode)
+      },
       onUnhandledEvent,
     },
   )

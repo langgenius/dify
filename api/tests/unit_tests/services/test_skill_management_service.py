@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Table, delete, func, select
+from sqlalchemy.exc import IntegrityError
 
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
@@ -489,6 +490,69 @@ def test_create_assistant_action_stream_strips_skill_frontmatter_from_reference_
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     reference = next(file for file in draft["files"] if file["path"] == "references/refund-policy.md")
     assert reference["content"] == "# Refund Policy\n"
+
+
+def test_create_assistant_action_stream_reports_skill_name_database_conflict() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="untitled-skill-1", description="Draft skill."),
+    )
+    model_output = json.dumps(
+        {
+            "reply": "已创建用于客户问题分级处理的 skill 草案",
+            "operations": [
+                {
+                    "operation": "upsert_text",
+                    "path": "SKILL.md",
+                    "mime_type": "text/markdown",
+                    "content": (
+                        "---\n"
+                        "name: customer-issue-triage\n"
+                        "description: Customer issue triage.\n"
+                        "metadata:\n"
+                        "  display-name: Customer Issue Triage\n"
+                        "---\n"
+                        "# Customer Issue Triage\n"
+                    ),
+                }
+            ],
+        }
+    )
+    model = SimpleNamespace(
+        invoke_llm=lambda **_kwargs: SimpleNamespace(
+            message=SimpleNamespace(get_text_content=lambda: model_output),
+        )
+    )
+    manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
+    integrity_error = IntegrityError(
+        "UPDATE skills",
+        {},
+        Exception(
+            'duplicate key value violates unique constraint "skill_tenant_name_unique"\n'
+            "DETAIL:  Key (tenant_id, name)=(tenant, customer-issue-triage) already exists."
+        ),
+    )
+
+    with (
+        patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager),
+        patch.object(service, "apply_draft_file_operation", side_effect=integrity_error),
+    ):
+        response = list(
+            service.create_assistant_action_stream(
+                tenant_id=TENANT,
+                user_id=USER,
+                skill_id=created["id"],
+                message="创建客户问题分级处理 skill",
+            )
+        )
+
+    events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
+    assert [event["event"] for event in events] == ["message", "error"]
+    assert events[1]["code"] == "skill_name_conflict"
+    assert events[1]["message"] == 'Skill name "customer-issue-triage" already exists. Please choose a different name.'
+    assert events[1]["details"] == {"name": "customer-issue-triage"}
 
 
 def test_sync_assistant_model_config_updates_debugger_draft() -> None:
@@ -1562,6 +1626,187 @@ def test_apply_draft_file_operation_syncs_frontmatter_display_name_to_db() -> No
     assert updated["name"] == "refund-approval"
     assert updated["display_name"] == "Refund Approval"
     assert updated["description"] == "Handle refund approvals."
+
+
+def test_apply_draft_file_operation_generates_name_for_builder_created_skill() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+
+    updated = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="SKILL.md",
+            content=(
+                "---\n"
+                f"name: {created['name']}\n"
+                "description: Classify and route customer issues.\n"
+                "metadata:\n"
+                "  display-name: Customer Issue Tiered Handling\n"
+                "---\n"
+                "# Customer Issue Tiered Handling\n"
+            ),
+        ),
+    )
+
+    skill_md = next(item for item in updated["files"] if item["path"] == "SKILL.md")
+    assert updated["name"] == "customer-issue-tiered-handling"
+    assert updated["display_name"] == "Customer Issue Tiered Handling"
+    assert updated["name_manually_edited"] is False
+    assert "name: customer-issue-tiered-handling" in skill_md["content"]
+    assert f"name: {created['name']}" not in skill_md["content"]
+
+
+def test_apply_draft_file_operation_prefers_builder_display_name_for_generated_name() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+
+    updated = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="SKILL.md",
+            content=(
+                "---\n"
+                "name: customer-issue-triage\n"
+                "description: Classify and route customer issues.\n"
+                "metadata:\n"
+                "  display-name: Customer Issue Tiered Handling\n"
+                "---\n"
+                "# Customer Issue Tiered Handling\n"
+            ),
+        ),
+    )
+
+    skill_md = next(item for item in updated["files"] if item["path"] == "SKILL.md")
+    assert updated["name"] == "customer-issue-tiered-handling"
+    assert updated["display_name"] == "Customer Issue Tiered Handling"
+    assert updated["name_manually_edited"] is False
+    assert "name: customer-issue-tiered-handling" in skill_md["content"]
+    assert "name: customer-issue-triage" not in skill_md["content"]
+
+
+def test_apply_draft_file_operation_uses_builder_heading_when_display_name_is_placeholder() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+
+    updated = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="SKILL.md",
+            content=(
+                "---\n"
+                f"name: {created['name']}\n"
+                "description: Classify and route customer issues.\n"
+                "metadata:\n"
+                "  display-name: Untitled skill\n"
+                "---\n"
+                "# Customer Issue Tiered Handling\n"
+            ),
+        ),
+    )
+
+    skill_md = next(item for item in updated["files"] if item["path"] == "SKILL.md")
+    assert updated["name"] == "customer-issue-tiered-handling"
+    assert updated["display_name"] == "Customer Issue Tiered Handling"
+    assert updated["name_manually_edited"] is False
+    assert "name: customer-issue-tiered-handling" in skill_md["content"]
+    assert "display-name: Customer Issue Tiered Handling" in skill_md["content"]
+    assert f"name: {created['name']}" not in skill_md["content"]
+
+
+def test_apply_draft_file_operation_keeps_auto_generated_name_in_sync_with_builder_display_name() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    first_update = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="SKILL.md",
+            content=(
+                "---\n"
+                "name: customer-issue-triage\n"
+                "description: Classify customer issues.\n"
+                "metadata:\n"
+                "  display-name: Customer Issue Triage\n"
+                "---\n"
+                "# Customer Issue Triage\n"
+            ),
+        ),
+    )
+    assert first_update["name"] == "customer-issue-triage"
+    assert first_update["name_manually_edited"] is False
+
+    updated = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="SKILL.md",
+            content=(
+                "---\n"
+                "name: customer-issue-triage\n"
+                "description: Classify and route customer issues.\n"
+                "metadata:\n"
+                "  display-name: Customer Issue Tiered Handling\n"
+                "---\n"
+                "# Customer Issue Tiered Handling\n"
+            ),
+        ),
+    )
+
+    skill_md = next(item for item in updated["files"] if item["path"] == "SKILL.md")
+    assert updated["name"] == "customer-issue-tiered-handling"
+    assert updated["display_name"] == "Customer Issue Tiered Handling"
+    assert updated["name_manually_edited"] is False
+    assert "name: customer-issue-tiered-handling" in skill_md["content"]
+    assert "name: customer-issue-triage" not in skill_md["content"]
+
+
+def test_apply_draft_file_operation_reports_builder_generated_name_conflict() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="customer-issue-tiered-handling"),
+    )
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.apply_draft_file_operation(
+            tenant_id=TENANT,
+            user_id=USER,
+            skill_id=created["id"],
+            payload=SkillDraftFileOperationPayload(
+                operation="upsert_text",
+                path="SKILL.md",
+                content=(
+                    "---\n"
+                    "name: customer-issue-triage\n"
+                    "description: Classify and route customer issues.\n"
+                    "metadata:\n"
+                    "  display-name: Customer Issue Tiered Handling\n"
+                    "---\n"
+                    "# Customer Issue Tiered Handling\n"
+                ),
+            ),
+        )
+
+    assert exc_info.value.code == "skill_name_conflict"
+    assert exc_info.value.details == {"name": "customer-issue-tiered-handling"}
+    assert exc_info.value.message == (
+        'Skill name "customer-issue-tiered-handling" already exists. Please choose a different name.'
+    )
 
 
 def test_publish_syncs_frontmatter_display_name_from_existing_draft() -> None:

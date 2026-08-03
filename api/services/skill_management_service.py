@@ -108,13 +108,28 @@ draft file operations:
 - delete: delete a draft file or directory. Never delete SKILL.md.
 
 Allowed write targets are SKILL.md and files/directories under scripts/,
-references/, and assets/. When revising SKILL.md, preserve valid frontmatter and
-include a lowercase kebab-case name, a non-empty description, and
-metadata.display-name when appropriate. Do not claim that you published a Skill
-or changed anything outside the draft files. Only SKILL.md should contain Skill
-frontmatter fields such as name, description, or metadata.display-name. Ordinary
-Markdown files under references/ should contain only their own document content
-unless the user explicitly asks for YAML frontmatter in that file.
+references/, and assets/. When creating or revising SKILL.md, preserve valid
+frontmatter and include a meaningful lowercase kebab-case name, a non-empty
+description, and metadata.display-name. If the current draft is untitled, never
+keep placeholder values such as name: untitled-skill-*, metadata.display-name:
+Untitled skill, or the default placeholder description in the completed
+SKILL.md. The frontmatter name, metadata.display-name, and first H1 heading must
+describe the same Skill. Derive the kebab-case name from the actual Skill title,
+for example:
+---
+name: customer-issue-tiered-handling
+description: Classify and route customer support issues by severity and handling path.
+metadata:
+  display-name: Customer Issue Tiered Handling
+---
+
+# Customer Issue Tiered Handling
+
+Do not claim that you published a Skill or changed anything outside the draft
+files. Only SKILL.md should contain Skill frontmatter fields such as name,
+description, or metadata.display-name. Ordinary Markdown files under references/
+should contain only their own document content unless the user explicitly asks
+for YAML frontmatter in that file.
 
 Respond with JSON only:
 {
@@ -761,6 +776,19 @@ class SkillManagementService:
                         "status": exc.status_code,
                     }
                 )
+            except IntegrityError as exc:
+                logger.warning("skill_assistant_action_conflict skill_id=%s error=%s", skill_id, exc)
+                error_message, details = self._skill_name_conflict_from_integrity_error(exc)
+                payload: dict[str, Any] = {
+                    "event": "error",
+                    "id": message_id,
+                    "code": "skill_name_conflict",
+                    "message": error_message,
+                    "status": 422,
+                }
+                if details:
+                    payload["details"] = details
+                yield self._assistant_sse(payload)
             except Exception:
                 logger.exception("skill_assistant_action_failed skill_id=%s", skill_id)
                 yield self._assistant_sse(
@@ -885,6 +913,15 @@ class SkillManagementService:
     @staticmethod
     def _assistant_sse(payload: dict[str, Any]) -> str:
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    @staticmethod
+    def _skill_name_conflict_from_integrity_error(exc: IntegrityError) -> tuple[str, dict[str, str]]:
+        text = str(getattr(exc, "orig", exc))
+        match = re.search(r"Key \(tenant_id, name\)=\([^,]+,\s*([^)]+)\) already exists", text)
+        if match:
+            name = match.group(1)
+            return f'Skill name "{name}" already exists. Please choose a different name.', {"name": name}
+        return "Skill name already exists. Please choose a different name.", {}
 
     @classmethod
     def _sanitize_assistant_operation_content(cls, operation: SkillAssistDraftOperationPayload) -> str | None:
@@ -2381,10 +2418,7 @@ class SkillManagementService:
         display_name: str,
         current_skill_id: str,
     ) -> str:
-        base = re.sub(r"[^a-z0-9]+", "-", display_name.strip().lower()).strip("-")
-        if not base:
-            base = _UNTITLED_SKILL_NAME_PREFIX
-        base = validate_skill_name(base[:64].strip("-") or _UNTITLED_SKILL_NAME_PREFIX)
+        base = SkillManagementService._name_from_display_name(display_name)
         names = set(
             session.scalars(select(Skill.name).where(Skill.tenant_id == tenant_id, Skill.id != current_skill_id))
         )
@@ -2397,6 +2431,38 @@ class SkillManagementService:
             if candidate not in names:
                 return candidate
             suffix += 1
+
+    @staticmethod
+    def _name_from_display_name(display_name: str) -> str:
+        base = re.sub(r"[^a-z0-9]+", "-", display_name.strip().lower()).strip("-")
+        if not base:
+            base = _UNTITLED_SKILL_NAME_PREFIX
+        return validate_skill_name(base[:64].strip("-") or _UNTITLED_SKILL_NAME_PREFIX)
+
+    @staticmethod
+    def _ensure_skill_name_available(
+        session,
+        *,
+        tenant_id: str,
+        current_skill_id: str,
+        name: str,
+    ) -> None:
+        with session.no_autoflush:
+            existing_id = session.scalar(
+                select(Skill.id)
+                .where(
+                    Skill.tenant_id == tenant_id,
+                    Skill.id != current_skill_id,
+                    Skill.name == name,
+                )
+                .limit(1)
+            )
+        if existing_id is not None:
+            raise SkillManagementServiceError(
+                "skill_name_conflict",
+                f'Skill name "{name}" already exists. Please choose a different name.',
+                details={"name": name},
+            )
 
     @staticmethod
     def _parse_frontmatter(content: str) -> dict[str, Any]:
@@ -2424,7 +2490,6 @@ class SkillManagementService:
             )
         return payload
 
-    @staticmethod
     @staticmethod
     def _frontmatter_field_line(content: str, field: str) -> int:
         match = _FRONTMATTER_RE.match(content)
@@ -2507,7 +2572,7 @@ class SkillManagementService:
             skill.name_manually_edited = True
         skill.name = name
         skill.description = self._require_frontmatter_description(frontmatter, content=content)
-        display_name = self._display_name_override_from_frontmatter(frontmatter)
+        display_name = self._display_name_from_draft_skill_md(frontmatter=frontmatter, content=content)
         if display_name is not None:
             skill.display_name = display_name
 
@@ -2806,6 +2871,9 @@ class SkillManagementService:
         if skill_md is None or skill_md.kind != SkillFileKind.FILE or skill_md.storage != SkillFileStorage.TEXT:
             raise SkillManagementServiceError("missing_skill_md", "skill must contain text SKILL.md")
         skill_md_content = skill_md.content or ""
+        if not strict_frontmatter and sync_frontmatter_name:
+            skill_md_content = self._normalize_untitled_draft_skill_md_name(skill=skill, content=skill_md_content)
+            entries_by_path[_SKILL_MD] = skill_md.model_copy(update={"content": skill_md_content})
         if strict_frontmatter:
             frontmatter = self._parse_frontmatter(skill_md_content)
             frontmatter_name = self._require_frontmatter_name(frontmatter, content=skill_md_content)
@@ -2894,21 +2962,138 @@ class SkillManagementService:
         except SkillManagementServiceError:
             return
         name = frontmatter.get("name")
+        display_name = self._display_name_override_from_frontmatter(frontmatter)
         if isinstance(name, str) and name.strip():
             try:
                 validated_name = validate_skill_name(name)
             except ValueError:
                 validated_name = None
             if validated_name is not None:
-                if validated_name != skill.name:
+                session = object_session(skill)
+                auto_generated_name = False
+                if (
+                    self._should_auto_sync_name(skill)
+                    and display_name is not None
+                    and display_name != _UNTITLED_DISPLAY_NAME
+                    and session is not None
+                ):
+                    generated_name = self._name_from_display_name(display_name)
+                    validated_name = generated_name
+                    auto_generated_name = True
+                if validated_name != skill.name and session is not None:
+                    self._ensure_skill_name_available(
+                        session,
+                        tenant_id=skill.tenant_id,
+                        current_skill_id=skill.id,
+                        name=validated_name,
+                    )
+                if validated_name != skill.name and not auto_generated_name:
                     skill.name_manually_edited = True
                 skill.name = validated_name
         description = frontmatter.get("description")
         if isinstance(description, str) and description.strip():
             skill.description = description.strip()[:1024]
-        display_name = self._display_name_override_from_frontmatter(frontmatter)
         if display_name is not None:
             skill.display_name = display_name
+
+    def _normalize_untitled_draft_skill_md_name(self, *, skill: Skill, content: str) -> str:
+        """Replace placeholder builder names with the generated display-name slug.
+
+        Skill Builder starts from an untitled draft. Some models preserve the
+        placeholder ``name: untitled-skill-*`` while correctly generating a
+        meaningful ``metadata.display-name``. Normalize the file before it is
+        saved so the editor, detail payload, and future export all show the same
+        generated kebab-case name.
+        """
+        if not self._should_auto_sync_name(skill):
+            return content
+
+        try:
+            frontmatter = self._parse_frontmatter(content)
+        except SkillManagementServiceError:
+            return content
+
+        name = frontmatter.get("name")
+        if not isinstance(name, str) or not name.strip():
+            return content
+        try:
+            validated_name = validate_skill_name(name)
+        except ValueError:
+            return content
+        display_name = self._display_name_from_draft_skill_md(frontmatter=frontmatter, content=content)
+        if display_name is None:
+            return content
+
+        session = object_session(skill)
+        if session is None:
+            return content
+        generated_name = self._name_from_display_name(display_name)
+        next_content = content
+        if display_name != self._display_name_override_from_frontmatter(frontmatter):
+            next_content = self._replace_or_insert_frontmatter_display_name(next_content, display_name)
+        if generated_name == validated_name:
+            return next_content
+        self._ensure_skill_name_available(
+            session,
+            tenant_id=skill.tenant_id,
+            current_skill_id=skill.id,
+            name=generated_name,
+        )
+
+        return re.sub(r"(?m)^name:\s*.*$", f"name: {generated_name}", next_content, count=1)
+
+    def _display_name_from_draft_skill_md(self, *, frontmatter: dict[str, Any], content: str) -> str | None:
+        display_name = self._display_name_override_from_frontmatter(frontmatter)
+        if display_name is not None and display_name != _UNTITLED_DISPLAY_NAME:
+            return display_name
+        if display_name is None:
+            return None
+
+        heading = self._first_markdown_heading(content)
+        if heading is None or heading == _UNTITLED_DISPLAY_NAME:
+            return None
+        return heading[:128]
+
+    @staticmethod
+    def _first_markdown_heading(content: str) -> str | None:
+        body = _FRONTMATTER_RE.sub("", content, count=1)
+        match = re.search(r"(?m)^#\s+(.+?)\s*$", body)
+        if match is None:
+            return None
+        heading = match.group(1).strip()
+        return heading or None
+
+    @staticmethod
+    def _replace_or_insert_frontmatter_display_name(content: str, display_name: str) -> str:
+        match = _FRONTMATTER_RE.match(content)
+        if match is None:
+            return content
+
+        frontmatter = match.group(1)
+        escaped_display_name = yaml.safe_dump(
+            display_name,
+            allow_unicode=True,
+            default_flow_style=True,
+            sort_keys=False,
+        ).splitlines()[0]
+        if re.search(r"(?m)^\s*(display-name|display_name)\s*:", frontmatter):
+            next_frontmatter = re.sub(
+                r"(?m)^(\s*)(display-name|display_name)\s*:.*$",
+                lambda match: f"{match.group(1)}display-name: {escaped_display_name}",
+                frontmatter,
+                count=1,
+            )
+        elif re.search(r"(?m)^metadata\s*:\s*$", frontmatter):
+            next_frontmatter = re.sub(
+                r"(?m)^metadata\s*:\s*$",
+                f"metadata:\n  display-name: {escaped_display_name}",
+                frontmatter,
+                count=1,
+            )
+        else:
+            next_frontmatter = f"{frontmatter}\nmetadata:\n  display-name: {escaped_display_name}"
+
+        return f"---\n{next_frontmatter}\n---\n{content[match.end():]}"
 
     def _sync_skill_md_text(self, skill: Skill, content: str) -> str:
         body = _FRONTMATTER_RE.sub("", content, count=1)
