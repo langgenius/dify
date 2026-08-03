@@ -500,15 +500,30 @@ export function AgentSkills() {
     ],
   )
 
-  const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
+  const handlePromptAdd = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
-    setIsUploadOpen(true)
+    if (options?.skillSource === 'library') {
+      setAddMenuView('workspace-selector')
+      setAddMenuOpen(true)
+      return
+    }
+
+    if (options?.skillSource === 'upload') {
+      setIsUploadOpen(true)
+      return
+    }
+
+    setAddMenuView('menu')
+    setAddMenuOpen(true)
   }, [])
-  useRegisterAgentOrchestrateAddAction('skills', handleOpenUpload)
+  useRegisterAgentOrchestrateAddAction('skills', handlePromptAdd)
 
   const handleAddMenuOpenChange = useCallback((open: boolean) => {
     setAddMenuOpen(open)
-    if (!open) setAddMenuView('menu')
+    if (!open) {
+      setAddMenuView('menu')
+      promptAddCallbackRef.current = undefined
+    }
   }, [])
 
   const handleOpenWorkspaceSelector = useCallback(() => {
@@ -517,8 +532,8 @@ export function AgentSkills() {
 
   const handleOpenUploadFromMenu = useCallback(() => {
     setAddMenuOpen(false)
-    handleOpenUpload()
-  }, [handleOpenUpload])
+    setIsUploadOpen(true)
+  }, [])
 
   const handleUploaded = useCallback(
     (skill: AgentSkill) => {
@@ -535,6 +550,12 @@ export function AgentSkills() {
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
         toast.success(t(($) => $['agentDetail.configure.skills.workspaceSelector.addSuccess']))
+        promptAddCallbackRef.current?.({
+          description: skill.description,
+          id: skill.name,
+          name: skill.display_name,
+        })
+        promptAddCallbackRef.current = undefined
         setAddMenuOpen(false)
         setAddMenuView('menu')
       })

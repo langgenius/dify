@@ -17,6 +17,7 @@ from controllers.console.workspace.skills import (
     WorkspaceSkillFileContentApi,
     WorkspaceSkillFilePreviewApi,
     WorkspaceSkillFilesApi,
+    WorkspaceSkillFilesCheckApi,
     WorkspaceSkillFileUploadApi,
     WorkspaceSkillImportApi,
     WorkspaceSkillPublishApi,
@@ -647,6 +648,44 @@ def test_patch_skill_file_operation_returns_error_details(app: Flask, current_us
         "message": "SKILL.md frontmatter name is required",
         "details": {"path": "SKILL.md", "field": "name", "line": 2},
     }
+
+
+def test_check_skill_files_validates_payload_and_returns_results(app: Flask) -> None:
+    api = WorkspaceSkillFilesCheckApi()
+    method = unwrap(api.post)
+    service = MagicMock()
+    service.check_draft_files.return_value = {
+        "data": {
+            "policy.md": {
+                "path": "references/policy.md",
+                "filename": "policy.md",
+                "extension": ".md",
+                "mime_type": "text/markdown",
+                "size": 12,
+                "errors": [],
+            }
+        },
+    }
+
+    with (
+        app.test_request_context("/", method="POST"),
+        patch.object(
+            type(console_ns),
+            "payload",
+            new_callable=PropertyMock,
+            return_value={"files": [{"filename": "policy.md", "path": "references/policy.md", "size": 12}]},
+        ),
+        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+    ):
+        payload = method(api, "tenant-1", "skill-1")
+
+    assert payload["data"]["policy.md"]["path"] == "references/policy.md"
+    assert payload["data"]["policy.md"]["errors"] == []
+    service.check_draft_files.assert_called_once()
+    call = service.check_draft_files.call_args.kwargs
+    assert call["tenant_id"] == "tenant-1"
+    assert call["skill_id"] == "skill-1"
+    assert call["payload"].files[0].filename == "policy.md"
 
 
 def test_replace_skill_draft_tree_validates_payload_and_returns_detail(app: Flask, current_user: Account) -> None:

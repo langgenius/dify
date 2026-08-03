@@ -1562,6 +1562,23 @@ export const zSkillDraftFileOperationPayload = z.object({
 })
 
 /**
+ * SkillDraftFileCheckItemPayload
+ */
+export const zSkillDraftFileCheckItemPayload = z.object({
+  filename: z.string().min(1).max(255),
+  mime_type: z.string().max(255).nullish(),
+  path: z.string().nullish(),
+  size: z.int().gte(0),
+})
+
+/**
+ * SkillDraftFileCheckPayload
+ */
+export const zSkillDraftFileCheckPayload = z.object({
+  files: z.array(zSkillDraftFileCheckItemPayload).max(100).optional(),
+})
+
+/**
  * SkillReferenceResponse
  */
 export const zSkillReferenceResponse = z.object({
@@ -2476,6 +2493,33 @@ export const zSkillDraftTreeItemPayload = z.object({
 export const zSkillDraftTreePayload = z.object({
   expected_updated_at: z.int().nullish(),
   files: z.array(zSkillDraftTreeItemPayload).optional(),
+})
+
+/**
+ * SkillFileCheckErrorResponse
+ */
+export const zSkillFileCheckErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+})
+
+/**
+ * SkillFileCheckItemResponse
+ */
+export const zSkillFileCheckItemResponse = z.object({
+  errors: z.array(zSkillFileCheckErrorResponse).optional(),
+  extension: z.string(),
+  filename: z.string(),
+  mime_type: z.string(),
+  path: z.string(),
+  size: z.int(),
+})
+
+/**
+ * SkillFileCheckResponse
+ */
+export const zSkillFileCheckResponse = z.object({
+  data: z.record(z.string(), zSkillFileCheckItemResponse).optional(),
 })
 
 /**
@@ -5218,6 +5262,17 @@ export const zPutWorkspacesCurrentSkillsBySkillIdFilesPath = z.object({
  * Draft files replaced
  */
 export const zPutWorkspacesCurrentSkillsBySkillIdFilesResponse = zSkillDetailResponse
+
+export const zPostWorkspacesCurrentSkillsBySkillIdFilesCheckBody = zSkillDraftFileCheckPayload
+
+export const zPostWorkspacesCurrentSkillsBySkillIdFilesCheckPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Draft files checked
+ */
+export const zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse = zSkillFileCheckResponse
 
 export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentPath = z.object({
   skill_id: z.string(),
