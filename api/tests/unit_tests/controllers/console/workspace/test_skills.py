@@ -662,7 +662,7 @@ def test_check_skill_files_validates_payload_and_returns_results(app: Flask) -> 
                 "extension": ".md",
                 "mime_type": "text/markdown",
                 "size": 12,
-                "errors": [],
+                "errors": list[dict[str, str]](),
             }
         },
     }

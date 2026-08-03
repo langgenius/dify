@@ -1,38 +1,6 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-
-export function SkillDetailRightPanelRail({
-  onOpenBuilder,
-  onOpenVersions,
-}: {
-  onOpenBuilder: () => void
-  onOpenVersions: () => void
-}) {
-  const { t } = useTranslation('skill')
-
-  return (
-    <aside className="flex w-12 shrink-0 flex-col items-center gap-2 border-l border-divider-subtle bg-background-section py-3">
-      <button
-        type="button"
-        aria-label={t(($) => $['skillManagement.detail.builder.open'])}
-        className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        onClick={onOpenBuilder}
-      >
-        <span aria-hidden className="i-ri-box-3-line size-4" />
-      </button>
-      <button
-        type="button"
-        aria-label={t(($) => $['skillManagement.detail.versionHistory'])}
-        className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        onClick={onOpenVersions}
-      >
-        <span aria-hidden className="i-ri-history-line size-4" />
-      </button>
-    </aside>
-  )
-}
 
 export function DetailSkeleton() {
   return (
