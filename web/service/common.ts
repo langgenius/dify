@@ -105,16 +105,6 @@ export const ownershipTransfer = (
 export const fetchFilePreview = ({ fileID }: { fileID: string }): Promise<{ content: string }> => {
   return get<{ content: string }>(`/files/${fileID}/preview`)
 }
-export const updateCurrentWorkspace = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<ICurrentWorkspace> => {
-  return post<ICurrentWorkspace>(url, { body })
-}
-
 export const updateWorkspaceInfo = ({
   url,
   body,
