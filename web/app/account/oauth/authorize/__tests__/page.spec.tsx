@@ -2,10 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import OAuthAuthorize from '../page'
 
 const mocks = vi.hoisted(() => ({
-  isCloudEdition: true,
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
   marketplaceOAuthClientId: 'marketplace-client',
   marketplaceUrlPrefix: 'https://marketplace.example.com',
   parent: null as null | { postMessage: ReturnType<typeof vi.fn> },
@@ -25,9 +26,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() {
-      return mocks.isCloudEdition
-    },
     get MARKETPLACE_OAUTH_CLIENT_ID() {
       return mocks.marketplaceOAuthClientId
     },
@@ -61,6 +59,9 @@ function renderPage() {
       queries: { retry: false },
     },
   })
+  seedSystemFeatures(queryClient, {
+    deployment_edition: mocks.deploymentEdition,
+  })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -83,7 +84,7 @@ function findRequest(path: string) {
 describe('OAuthAuthorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.isCloudEdition = true
+    mocks.deploymentEdition = 'CLOUD'
     mocks.marketplaceOAuthClientId = 'marketplace-client'
     mocks.marketplaceUrlPrefix = 'https://marketplace.example.com'
     mocks.parent = null
@@ -157,6 +158,22 @@ describe('OAuthAuthorize', () => {
         'https://api.marketplace.example.com/api/v1/auth/callback/dify?code=oauth-code&state=marketplace-state',
       ),
     )
+  })
+
+  it('keeps the normal confirmation flow outside Cloud', async () => {
+    mocks.deploymentEdition = 'COMMUNITY'
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+      redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
+      response_type: 'code',
+      state: 'marketplace-state',
+      flow: 'marketplace',
+    })
+
+    renderPage()
+
+    expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
+    expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
   })
 
   it('notifies the Marketplace parent when a framed Dify user is anonymous', async () => {

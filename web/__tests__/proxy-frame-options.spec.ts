@@ -97,7 +97,6 @@ describe('proxy frame options', () => {
 
     expect(
       getMarketplaceOAuthFrameOrigin(url, {
-        edition: 'CLOUD',
         marketplaceClientId: 'marketplace-client',
         marketplaceUrlPrefix: 'https://marketplace.dify.ai',
       }),
@@ -106,23 +105,21 @@ describe('proxy frame options', () => {
     url.searchParams.set('client_id', 'another-client')
     expect(
       getMarketplaceOAuthFrameOrigin(url, {
-        edition: 'CLOUD',
         marketplaceClientId: 'marketplace-client',
         marketplaceUrlPrefix: 'https://marketplace.dify.ai',
       }),
     ).toBe('')
   })
 
-  it('does not allow the Marketplace OAuth flow outside Cloud', () => {
+  it('allows only HTTP(S) Marketplace origins', () => {
     const url = new URL(
-      'https://self-hosted.example.com/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+      'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
     )
 
     expect(
       getMarketplaceOAuthFrameOrigin(url, {
-        edition: 'SELF_HOSTED',
         marketplaceClientId: 'marketplace-client',
-        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
+        marketplaceUrlPrefix: 'javascript:alert(1)',
       }),
     ).toBe('')
   })

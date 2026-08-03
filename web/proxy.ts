@@ -22,32 +22,34 @@ const FRAME_ANCESTORS_NONE = "'none'"
 const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
 
 type MarketplaceOAuthFrameConfig = {
-  edition: 'CLOUD' | 'SELF_HOSTED'
   marketplaceClientId: string
   marketplaceUrlPrefix: string
 }
 
 const marketplaceOAuthFrameConfig: MarketplaceOAuthFrameConfig = {
-  edition: env.NEXT_PUBLIC_EDITION,
   marketplaceClientId: env.NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID || '',
   marketplaceUrlPrefix: env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX || '',
 }
-const MARKETPLACE_FRAME_ORIGIN = (() => {
+
+const getHTTPOrigin = (urlPrefix: string) => {
   try {
-    return marketplaceOAuthFrameConfig.marketplaceUrlPrefix
-      ? new URL(marketplaceOAuthFrameConfig.marketplaceUrlPrefix).origin
-      : ''
-  } catch {
+    const url = new URL(urlPrefix)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : ''
+  }
+  catch {
     return ''
   }
-})()
+}
+
+const MARKETPLACE_FRAME_ORIGIN = getHTTPOrigin(
+  marketplaceOAuthFrameConfig.marketplaceUrlPrefix,
+)
 
 export const getMarketplaceOAuthFrameOrigin = (
   url: Pick<URL, 'pathname' | 'searchParams'>,
   frameConfig = marketplaceOAuthFrameConfig,
 ) => {
   if (
-    frameConfig.edition !== 'CLOUD' ||
     url.pathname !== '/account/oauth/authorize' ||
     url.searchParams.get('flow') !== 'marketplace' ||
     !frameConfig.marketplaceClientId ||
@@ -56,11 +58,7 @@ export const getMarketplaceOAuthFrameOrigin = (
   )
     return ''
 
-  try {
-    return new URL(frameConfig.marketplaceUrlPrefix).origin
-  } catch {
-    return ''
-  }
+  return getHTTPOrigin(frameConfig.marketplaceUrlPrefix)
 }
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>

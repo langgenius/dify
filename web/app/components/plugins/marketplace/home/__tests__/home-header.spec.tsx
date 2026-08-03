@@ -66,15 +66,26 @@ describe('HomeHeader', () => {
     expect(mocks.useDocLink).toHaveBeenCalledOnce()
   })
 
-  it('shows Templates as the active compact tab on the Templates catalog', () => {
-    render(<HomeHeader activeTab="templates" isMarketplacePlatform />)
+  it('shows Templates with only the active background on the Templates catalog', () => {
+    render(
+      <HomeHeader
+        activeTab="templates"
+        catalogLabels={{
+          plugins: '插件',
+          templates: '模板',
+        }}
+        isMarketplacePlatform
+        language="zh-Hans"
+      />,
+    )
 
-    expect(screen.getByRole('link', { name: 'marketplace.home.plugins' })).not.toHaveAttribute(
-      'aria-current',
-    )
-    expect(screen.getByRole('link', { name: 'marketplace.home.templates' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    expect(screen.getByRole('link', { name: '插件' })).not.toHaveAttribute('aria-current')
+    const templatesTab = screen.getByRole('link', { name: '模板' })
+    expect(templatesTab).toHaveAttribute('aria-current', 'page')
+    expect(templatesTab).toHaveAttribute('href', '/templates?language=zh-Hans')
+    expect(templatesTab).toHaveClass('bg-state-base-active')
+    expect(templatesTab).not.toHaveClass('text-text-accent')
+    expect(templatesTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
+    expect(screen.queryByText('marketplace.home.new')).not.toBeInTheDocument()
   })
 })
