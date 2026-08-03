@@ -1396,11 +1396,11 @@ export function WebsiteCrawlPreview({
       )}
       <AlertDialog open={cancelConfirmationOpen} onOpenChange={handleCancelConfirmationOpenChange}>
         <AlertDialogContent>
-          <div>
+          <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['newKnowledge.discardSourceChanges'])}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
               {t(($) => $['newKnowledge.discardSourceChangesDescription'])}
             </AlertDialogDescription>
             {discardError && (
