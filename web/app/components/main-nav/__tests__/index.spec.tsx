@@ -977,6 +977,7 @@ describe('MainNav', () => {
     await waitFor(() => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
     })
+    expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 
@@ -1020,7 +1021,7 @@ describe('MainNav', () => {
     ).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('lets existing accounts enable Step-by-step Tour from the help menu', async () => {
+  it('closes the help menu and opens Step-by-step Tour when enabling it', async () => {
     const user = userEvent.setup()
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
     mockStepByStepTour.setState({
@@ -1046,6 +1047,10 @@ describe('MainNav', () => {
       expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
     })
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
     expect(
