@@ -5,6 +5,7 @@ import type {
   KnowledgeFsResearchTaskResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
 import type {
   RetrievalEvidence,
   RetrievalTestMode,
@@ -12,15 +13,17 @@ import type {
 } from './retrieval-test-model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import type { ResearchTaskProgressEvent } from './services/research-task-events'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { parseAsString, useQueryStates } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
+import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import {
@@ -317,11 +320,15 @@ async function queryFailure(error: unknown) {
 }
 
 function EvidenceCard({
+  citationTargetId,
+  citationTargeted,
   documentReference,
   evidence,
   index,
   knowledgeSpaceId,
 }: {
+  citationTargetId?: string
+  citationTargeted?: boolean
   documentReference?: {
     id: string
     title: string
@@ -336,7 +343,14 @@ function EvidenceCard({
     : undefined
 
   return (
-    <article className="overflow-hidden rounded-xl bg-components-panel-bg">
+    <article
+      id={citationTargetId}
+      tabIndex={citationTargetId ? -1 : undefined}
+      className={cn(
+        'overflow-hidden rounded-xl bg-components-panel-bg outline-hidden',
+        citationTargeted && 'ring-2 ring-state-accent-solid ring-inset',
+      )}
+    >
       <div className="flex items-center gap-2 px-3 pt-3">
         <h3 className="flex min-w-0 flex-1 items-center gap-0.5 truncate system-xs-medium text-text-tertiary">
           <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
@@ -463,8 +477,81 @@ function FailedResult({ description, onRetry }: { description: string; onRetry: 
   )
 }
 
-function ResearchAnswer({ answer, streaming }: { answer: string; streaming: boolean }) {
+const researchCitationPattern = /(?<!\\)\[(\d+)\](?!\s*(?:\(|:))/g
+const researchCodePattern = /(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]*(?:`|$))/g
+
+function linkResearchCitations(answer: string, citationCount: number) {
+  return answer
+    .split(researchCodePattern)
+    .map((segment, index) => {
+      if (index % 2 === 1) return segment
+      return segment.replace(researchCitationPattern, (citation, rawCitationNumber: string) => {
+        const citationNumber = Number(rawCitationNumber)
+        if (citationNumber < 1 || citationNumber > citationCount) return citation
+        return `[${citation}](#research-evidence-${citationNumber})`
+      })
+    })
+    .join('')
+}
+
+type ResearchAnswerLinkProps = PropsWithChildren<AnchorHTMLAttributes<HTMLAnchorElement>> & {
+  node?: unknown
+  onCitationClick: (citationIndex: number) => void
+}
+
+function ResearchAnswerLink({
+  children,
+  href,
+  node,
+  onCitationClick,
+  ...props
+}: ResearchAnswerLinkProps) {
+  const citationMatch = href?.match(/^#research-evidence-(\d+)$/)
+  if (!citationMatch)
+    return (
+      <MarkdownLink {...props} href={href} node={node}>
+        {children}
+      </MarkdownLink>
+    )
+
+  const citationIndex = Number(citationMatch[1]) - 1
+  return (
+    <a
+      {...props}
+      href={href}
+      className="rounded-sm px-0.5 font-medium text-text-accent outline-hidden hover:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      onClick={(event) => {
+        event.preventDefault()
+        onCitationClick(citationIndex)
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+
+function ResearchAnswer({
+  answer,
+  citationCount,
+  onCitationClick,
+  streaming,
+}: {
+  answer: string
+  citationCount: number
+  onCitationClick: (citationIndex: number) => void
+  streaming: boolean
+}) {
   const { t } = useTranslation('dataset')
+  const linkedAnswer = useMemo(
+    () => linkResearchCitations(answer, citationCount),
+    [answer, citationCount],
+  )
+  const citationComponents = useMemo<NonNullable<MarkdownProps['customComponents']>>(
+    () => ({
+      a: (props) => <ResearchAnswerLink {...props} onCitationClick={onCitationClick} />,
+    }),
+    [onCitationClick],
+  )
   return (
     <section className="mt-3 rounded-xl border border-components-panel-border bg-components-panel-bg px-4 py-3.5 shadow-xs">
       <header className="mb-3 flex items-center gap-2">
@@ -486,7 +573,8 @@ function ResearchAnswer({ answer, streaming }: { answer: string; streaming: bool
       <div aria-live="polite" aria-atomic="false">
         <Markdown
           className="text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
-          content={answer}
+          content={linkedAnswer}
+          customComponents={citationComponents}
           isAnimating={streaming}
           mode={streaming ? 'streaming' : undefined}
         />
@@ -847,6 +935,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [showAll, setShowAll] = useState(false)
+  const [selectedCitation, setSelectedCitation] = useState<{
+    citationIndex: number
+    requestId: number
+    taskId: string
+  }>()
   const queryAbortControllerRef = useRef<AbortController>(undefined)
 
   useEffect(
@@ -1085,6 +1178,31 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
   const initialEvidenceCount = selectedMode === 'research' ? 5 : 3
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
+  const selectedCitationIndex =
+    selectedCitation && selectedCitation.taskId === selectedResearchTaskId
+      ? selectedCitation.citationIndex
+      : undefined
+  const jumpToResearchCitation = useCallback(
+    (citationIndex: number) => {
+      if (!selectedResearchTaskId || citationIndex < 0 || citationIndex >= currentEvidence.length)
+        return
+      setShowAll(true)
+      setSelectedCitation((current) => ({
+        citationIndex,
+        requestId: (current?.requestId ?? 0) + 1,
+        taskId: selectedResearchTaskId,
+      }))
+    },
+    [currentEvidence.length, selectedResearchTaskId],
+  )
+
+  useEffect(() => {
+    if (selectedCitationIndex === undefined || !selectedCitation) return
+    const target = document.getElementById(`research-evidence-${selectedCitationIndex + 1}`)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.focus({ preventScroll: true })
+  }, [selectedCitation, selectedCitationIndex, visibleEvidence.length])
 
   const selectRecord = (record: RetrievalTestRecord) => {
     if (record.kind === 'local') {
@@ -1475,6 +1593,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 {selectedResearchTask && researchAnswer && (
                   <ResearchAnswer
                     answer={researchAnswer}
+                    citationCount={currentEvidence.length}
+                    onCitationClick={jumpToResearchCitation}
                     streaming={selectedResearchActive && !persistedResearchAnswer}
                   />
                 )}
@@ -1515,6 +1635,10 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                       {visibleEvidence.map((evidence, index) => (
                         <EvidenceCard
                           key={evidence.id}
+                          citationTargetId={
+                            selectedResearchTask ? `research-evidence-${index + 1}` : undefined
+                          }
+                          citationTargeted={selectedCitationIndex === index}
                           documentReference={
                             evidence.documentId
                               ? evidenceDocumentReferencesQuery.data?.[evidence.documentId]

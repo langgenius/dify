@@ -464,6 +464,52 @@ describe('RetrievalTestPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('expands hidden evidence and jumps to a generated answer citation', async () => {
+    apiMock.researchTasks = [
+      {
+        completed_at: 1_800_000_025,
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-completed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'What is the warranty?',
+        stage: 'completed',
+        updated_at: 1_800_000_025,
+      },
+    ]
+    apiMock.partials = [
+      {
+        answer: 'The seventh source contains the relevant detail. [7]',
+        evidence_bundle: {
+          items: Array.from({ length: 10 }, (_, index) => ({
+            id: `chunk-${index + 1}`,
+            score: 1,
+            text: `Evidence ${index + 1}`,
+            title: `Chunk ${index + 1}`,
+          })),
+        },
+        knowledge_space_id: 'space-1',
+        research_task_job_id: 'research-completed',
+        sequence: 1,
+      },
+    ]
+    const scrollIntoView = vi
+      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(() => undefined)
+    const user = userEvent.setup()
+
+    renderPage({ searchParams: '?research=research-completed' })
+
+    expect(screen.queryByRole('heading', { name: 'Chunk 7' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('link', { name: '[7]' }))
+
+    const citedEvidence = screen.getByRole('heading', { name: 'Chunk 7' }).closest('article')
+    expect(citedEvidence).toHaveFocus()
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+  })
+
   it('keeps the selected research record in the URL', async () => {
     apiMock.researchTasks = [
       {
