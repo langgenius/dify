@@ -189,7 +189,9 @@ def test_remote_download_rejects_relative_uri_for_frontend_audience(monkeypatch:
             await _file_handler().create_download_request(
                 principal=_principal(),
                 request=AgentStubFileDownloadRequest(
-                    file=AgentStubFileMapping(transfer_method="remote_url", url="https://remote.example.com/report.pdf"),
+                    file=AgentStubFileMapping(
+                        transfer_method="remote_url", url="https://remote.example.com/report.pdf"
+                    ),
                     for_external=True,
                 ),
             )
