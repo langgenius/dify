@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Simpan perubahan",
   "newKnowledge.settings.saveFailed": "Perubahan tidak dapat disimpan. Periksa koneksi Anda dan coba lagi — perubahan Anda masih tersimpan di sini.",
   "newKnowledge.settings.scoreRange": "rentang 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Pengaturan ini telah diubah di tempat lain. Batalkan perubahan Anda untuk memuat versi terbaru sebelum menyimpan lagi.",
   "newKnowledge.settings.systemReasoningModelLabel": "Model Penalaran Sistem",
   "newKnowledge.settings.topKLabel": "K Teratas",
   "newKnowledge.settings.topKMinimum": "min. = 1",

@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Zapisz zmiany",
   "newKnowledge.settings.saveFailed": "Nie udało się zapisać zmian. Sprawdź połączenie i spróbuj ponownie — Twoje zmiany nadal są zachowane.",
   "newKnowledge.settings.scoreRange": "zakres 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Te ustawienia zostały zmienione w innym miejscu. Anuluj swoje zmiany, aby wczytać najnowszą wersję przed ponownym zapisaniem.",
   "newKnowledge.settings.systemReasoningModelLabel": "Model wnioskowania systemowego",
   "newKnowledge.settings.topKLabel": "Najlepsze K",
   "newKnowledge.settings.topKMinimum": "min. = 1",

@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "ذخیره تغییرات",
   "newKnowledge.settings.saveFailed": "تغییرات ذخیره نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید — ویرایش‌های شما همچنان حفظ شده‌اند.",
   "newKnowledge.settings.scoreRange": "محدوده ۰٫۰۰ تا ۱٫۰۰",
+  "newKnowledge.settings.serverConflict": "این تنظیمات در جای دیگری تغییر کرده‌اند. پیش از ذخیره دوباره، ویرایش‌های خود را لغو کنید تا آخرین نسخه بارگیری شود.",
   "newKnowledge.settings.systemReasoningModelLabel": "مدل استدلال سیستم",
   "newKnowledge.settings.topKLabel": "K بالا",
   "newKnowledge.settings.topKMinimum": "حداقل = ۱",

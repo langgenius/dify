@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "حفظ التغييرات",
   "newKnowledge.settings.saveFailed": "تعذّر حفظ التغييرات. تحقق من اتصالك وحاول مرة أخرى — لا تزال تعديلاتك موجودة.",
   "newKnowledge.settings.scoreRange": "النطاق 0.00–1.00",
+  "newKnowledge.settings.serverConflict": "تم تغيير هذه الإعدادات في مكان آخر. ألغِ تعديلاتك لتحميل أحدث إصدار قبل الحفظ مرة أخرى.",
   "newKnowledge.settings.systemReasoningModelLabel": "نموذج التفكير النظامي",
   "newKnowledge.settings.topKLabel": "أفضل K",
   "newKnowledge.settings.topKMinimum": "الحد الأدنى = 1",

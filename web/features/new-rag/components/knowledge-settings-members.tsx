@@ -13,7 +13,6 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
-  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useState } from 'react'
@@ -52,7 +51,6 @@ export function KnowledgeSettingsMembers({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
-  const owner = members.find((member) => member.id === ownerAccountId)
   const selectedMembers = members.filter(
     (member) => member.id !== ownerAccountId && selectedMemberIds.includes(member.id),
   )
@@ -86,8 +84,11 @@ export function KnowledgeSettingsMembers({
           if (value) onVisibilityChange(value as KnowledgeFsControlSpaceVisibility)
         }}
       >
-        <SelectLabel>{tSettings(($) => $['form.permissions'])}</SelectLabel>
-        <SelectTrigger className="h-9 w-full" disabled={disabled}>
+        <SelectTrigger
+          aria-label={tSettings(($) => $['form.permissions'])}
+          className="h-9 w-full"
+          disabled={disabled}
+        >
           {visibilityLabel(visibility)}
         </SelectTrigger>
         <SelectContent>
@@ -107,12 +108,6 @@ export function KnowledgeSettingsMembers({
             hasError && 'ring-1 ring-text-destructive',
           )}
         >
-          {owner && (
-            <span className="inline-flex h-6 items-center gap-1 rounded-md bg-components-badge-bg-dimm px-1.5 system-xs-medium text-text-secondary">
-              <Avatar avatar={owner.avatar_url} name={owner.name} size="xxs" />
-              <span className="max-w-28 truncate">{owner.name}</span>
-            </span>
-          )}
           {selectedMembers.map((member) => (
             <span
               key={member.id}
@@ -178,7 +173,7 @@ export function KnowledgeSettingsMembers({
               <div className="max-h-72 overflow-y-auto p-1">
                 {filteredMembers.map((member) => {
                   const isOwner = member.id === ownerAccountId
-                  const isSelected = isOwner || selectedMemberIds.includes(member.id)
+                  const isSelected = selectedMemberIds.includes(member.id)
                   return (
                     <button
                       key={member.id}

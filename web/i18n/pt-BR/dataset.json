@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Salvar alterações",
   "newKnowledge.settings.saveFailed": "Não foi possível salvar as alterações. Verifique sua conexão e tente novamente — suas edições continuam aqui.",
   "newKnowledge.settings.scoreRange": "intervalo 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Estas configurações foram alteradas em outro lugar. Cancele suas edições para carregar a versão mais recente antes de salvar novamente.",
   "newKnowledge.settings.systemReasoningModelLabel": "Modelo de Raciocínio do Sistema",
   "newKnowledge.settings.topKLabel": "Top K",
   "newKnowledge.settings.topKMinimum": "mín. = 1",

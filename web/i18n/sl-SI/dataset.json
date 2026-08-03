@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Shrani spremembe",
   "newKnowledge.settings.saveFailed": "Sprememb ni bilo mogoče shraniti. Preverite povezavo in poskusite znova — vaše spremembe so še vedno ohranjene.",
   "newKnowledge.settings.scoreRange": "razpon 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Te nastavitve so bile spremenjene drugje. Prekličite svoje spremembe, da pred ponovnim shranjevanjem naložite najnovejšo različico.",
   "newKnowledge.settings.systemReasoningModelLabel": "Sistemski model za sklepanja",
   "newKnowledge.settings.topKLabel": "Vrh K",
   "newKnowledge.settings.topKMinimum": "najm. = 1",

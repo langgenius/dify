@@ -400,7 +400,10 @@ export function CreateKnowledgePage() {
                     <FieldError match="customError" />
                   </Field>
                   <Field name="description" className="gap-1.5">
-                    <FieldLabel>{t(($) => $['newKnowledge.description'])}</FieldLabel>
+                    <FieldLabel>
+                      {t(($) => $['newKnowledge.description'])}{' '}
+                      {tCommon(($) => $['label.optional'])}
+                    </FieldLabel>
                     <Textarea
                       autoComplete="off"
                       className="min-h-20"

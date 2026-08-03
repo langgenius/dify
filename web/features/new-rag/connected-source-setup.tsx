@@ -1983,12 +1983,14 @@ export function ConnectedSourceSetup({
       onDraftChange({
         ...draft,
         provider: nextProvider as NewKnowledgeOnlineDocumentsProvider,
+        sourceName: '',
       })
       return
     }
     onDraftChange({
       ...draft,
       provider: nextProvider as NewKnowledgeOnlineDriveProvider,
+      sourceName: '',
       syncPolicy:
         nextProvider === 'Amazon S3' && draft.syncPolicy === 'provider'
           ? 'daily'

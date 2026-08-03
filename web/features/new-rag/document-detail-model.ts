@@ -132,7 +132,7 @@ export function initialDocumentRevision(
 }
 
 export function chunkTreeLabel(text: string, ordinal: number) {
-  const firstLine = text.split(/\r?\n/, 1)[0]?.trim()
+  const firstLine = cleanMarkdownHeading(text.split(/\r?\n/, 1)[0] ?? '')
   if (!firstLine) return `#${ordinal}`
   const graphemes: string[] = []
   for (const { segment } of new Intl.Segmenter(undefined, {
@@ -146,11 +146,15 @@ export function chunkTreeLabel(text: string, ordinal: number) {
 
 export function chunkContentParts(text: string) {
   const lineBreak = text.search(/\r?\n/)
-  if (lineBreak < 0) return { body: '', heading: text }
+  if (lineBreak < 0) return { body: '', heading: cleanMarkdownHeading(text) }
   return {
     body: text.slice(lineBreak).trimStart(),
-    heading: text.slice(0, lineBreak).trim(),
+    heading: cleanMarkdownHeading(text.slice(0, lineBreak)),
   }
+}
+
+function cleanMarkdownHeading(text: string) {
+  return text.replace(/^\s{0,3}#{1,6}(?:\s+|$)/, '').trim()
 }
 
 export function chunkCharacterCount(text: string) {

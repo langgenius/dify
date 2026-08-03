@@ -562,7 +562,7 @@ describe('CreateKnowledgePage', () => {
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl']) {
+    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl', 'FakeCrawler']) {
       await user.click(screen.getByRole('radio', { name: unavailableProvider }))
       expect(screen.getByRole('radio', { name: unavailableProvider })).toBeChecked()
     }
@@ -598,6 +598,12 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByText('Notion')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' })).toBeEnabled()
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }))
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.sourceSetupBackendDependency',
@@ -784,6 +790,7 @@ describe('CreateKnowledgePage', () => {
     )
 
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
@@ -836,7 +843,7 @@ describe('CreateKnowledgePage', () => {
 
     expect(screen.getByText('oversized.pdf')).toBeInTheDocument()
     expect(
-      screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize'),
+      screen.getByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize/),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
@@ -1002,6 +1009,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
     await user.type(
       screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
       'Release notes',

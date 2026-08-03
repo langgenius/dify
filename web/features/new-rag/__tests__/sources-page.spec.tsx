@@ -488,7 +488,8 @@ describe('SourcesPage', () => {
     expect(openSource).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('hides the row action menu when a read-only source has no openable URI', () => {
+  it('opens an Amazon S3 source in the AWS console for read-only users', async () => {
+    const user = userEvent.setup()
     permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
     sourcesQuery.data = {
       pages: [
@@ -496,7 +497,7 @@ describe('SourcesPage', () => {
           items: [
             source({
               type: 'object-storage',
-              uri: 's3://private-bucket/product-documentation',
+              uri: 's3://private-bucket/Product%20documentation/文档',
             }),
           ],
         },
@@ -505,11 +506,17 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(
-      screen.queryByRole('button', {
+    await user.click(
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
       }),
-    ).not.toBeInTheDocument()
+    )
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.editSource' }),
+    ).toHaveAttribute(
+      'href',
+      'https://s3.console.aws.amazon.com/s3/buckets/private-bucket?prefix=Product+documentation%2F%E6%96%87%E6%A1%A3',
+    )
   })
 
   it('uses dataset.external.connect for every source mutation action', async () => {

@@ -1159,7 +1159,7 @@ export function AddSourcePage({
 
   return (
     <>
-      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-8">
+      <main className="min-h-full w-full min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
         <header>
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
@@ -1168,7 +1168,7 @@ export function AddSourcePage({
             {t(($) => $['newKnowledge.addSourceDescription'])}
           </p>
         </header>
-        <div className="mt-4.5 flex w-full max-w-152 flex-col gap-4">
+        <div className="mt-4.5 flex w-full max-w-160 flex-col gap-4">
           <SourceTypeSelector
             value={sourceType}
             onChange={(value) => {

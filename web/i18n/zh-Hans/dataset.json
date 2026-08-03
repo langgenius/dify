@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "保存更改",
   "newKnowledge.settings.saveFailed": "无法保存更改。请检查网络后重试——你的编辑仍然保留。",
   "newKnowledge.settings.scoreRange": "范围 0.00–1.00",
+  "newKnowledge.settings.serverConflict": "这些设置已在其他位置更改。请取消当前编辑并加载最新版本，然后再保存。",
   "newKnowledge.settings.systemReasoningModelLabel": "系统推理模型",
   "newKnowledge.settings.topKLabel": "Top K",
   "newKnowledge.settings.topKMinimum": "最小值 = 1",

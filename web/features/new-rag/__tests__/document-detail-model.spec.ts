@@ -169,6 +169,7 @@ describe('document detail model', () => {
 
   it('bounds tree labels to a single readable summary', () => {
     expect(chunkTreeLabel('First line\nfull body', 3)).toBe('First line')
+    expect(chunkTreeLabel('## Markdown heading\nfull body', 3)).toBe('Markdown heading')
     expect(chunkTreeLabel('  ', 3)).toBe('#3')
     expect(chunkTreeLabel('x'.repeat(121), 3)).toBe(`${'x'.repeat(119)}…`)
     expect(chunkTreeLabel(`${'x'.repeat(118)}👨‍👩‍👧‍👦yz`, 3)).toBe(`${'x'.repeat(118)}👨‍👩‍👧‍👦…`)
@@ -182,6 +183,10 @@ describe('document detail model', () => {
     expect(chunkContentParts('Standalone content')).toEqual({
       body: '',
       heading: 'Standalone content',
+    })
+    expect(chunkContentParts('### Setup requirements\nWorkspace contract details')).toEqual({
+      body: 'Workspace contract details',
+      heading: 'Setup requirements',
     })
   })
 })

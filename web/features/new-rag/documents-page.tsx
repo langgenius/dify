@@ -204,6 +204,18 @@ function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessin
   }
 }
 
+function mergeTaskOverride(
+  task: DocumentProcessingTask,
+  override: Partial<DocumentProcessingTask>,
+): DocumentProcessingTask {
+  const stateChanged = override.state !== undefined && override.state !== task.state
+  return {
+    ...task,
+    ...(stateChanged ? { canCancel: undefined, canRetry: undefined } : {}),
+    ...override,
+  }
+}
+
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -523,10 +535,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           taskIsActive(task) &&
           !taskVersionIsAfter(task.updatedAt, terminalTaskPin.observedAt)
         )
-          return { ...task, ...override }
-        if (!override?.updatedAt) return override ? { ...task, ...override } : task
+          return mergeTaskOverride(task, override)
+        if (!override?.updatedAt) return override ? mergeTaskOverride(task, override) : task
         if (taskVersionIsAfter(task.updatedAt, override.updatedAt)) return task
-        const mergedTask = { ...task, ...override }
+        const mergedTask = mergeTaskOverride(task, override)
         if (
           !taskIsActive(task) &&
           taskIsActive(mergedTask) &&
@@ -1258,7 +1270,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const trustedOverride = trustedActiveOverrideVersionsRef.current.get(task.id)
       if (
         !override?.updatedAt ||
-        !taskIsActive({ ...task, ...override }) ||
+        !taskIsActive(mergeTaskOverride(task, override)) ||
         taskVersionIsAfter(override.updatedAt, task.updatedAt) ||
         trustedOverride?.updatedAt !== override.updatedAt ||
         taskListGeneration <= trustedOverride.taskListGeneration ||

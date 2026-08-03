@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Сохранить изменения",
   "newKnowledge.settings.saveFailed": "Не удалось сохранить изменения. Проверьте подключение и повторите попытку — внесённые изменения сохранены.",
   "newKnowledge.settings.scoreRange": "диапазон 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Эти настройки были изменены в другом месте. Отмените свои правки, чтобы загрузить последнюю версию перед повторным сохранением.",
   "newKnowledge.settings.systemReasoningModelLabel": "Модель системного мышления",
   "newKnowledge.settings.topKLabel": "Top K",
   "newKnowledge.settings.topKMinimum": "мин. = 1",

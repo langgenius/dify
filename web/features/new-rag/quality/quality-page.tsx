@@ -21,8 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -544,12 +544,26 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     </span>
                   ))}
                 </div>
-                <Tooltip>
-                  <TooltipTrigger className="block min-w-0 truncate text-left system-xs-regular text-text-secondary">
-                    {item.annotation}
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-67">{item.annotation}</TooltipContent>
-                </Tooltip>
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    delay={300}
+                    closeDelay={200}
+                    render={
+                      <button
+                        type="button"
+                        className="block min-w-0 truncate text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      >
+                        {item.annotation}
+                      </button>
+                    }
+                  />
+                  <PopoverContent placement="top" popupClassName="max-w-67 px-3 py-2">
+                    <p className="system-xs-regular wrap-break-word text-text-tertiary">
+                      {item.annotation}
+                    </p>
+                  </PopoverContent>
+                </Popover>
                 <span className="system-xs-regular text-text-secondary">
                   {updated(item.updated_at)}
                 </span>
@@ -611,12 +625,12 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[calc(100vh-15rem)] flex-col items-center justify-center text-center">
+          <div className="flex min-h-[calc(100vh-22rem)] flex-col items-center justify-center text-center">
             <span aria-hidden className="i-ri-thumb-up-line size-8 text-text-tertiary" />
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
             </h2>
-            <p className="mt-1 max-w-105 system-xs-regular text-text-tertiary">
+            <p className="mt-1 max-w-128 system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
             </p>
             <div className="mt-4 flex gap-2">
@@ -709,7 +723,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       disabled={pendingBadCaseId === item.id}
                       onClick={() => void openTrace(item.id)}
                     >
-                      <span aria-hidden className="i-ri-node-tree size-4" />
+                      <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
                       {t(($) => $['newKnowledge.qualityPage.openTrace'])}
                     </DropdownMenuItem>
                     {item.status !== 'fixed' && (
@@ -753,12 +767,12 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ) : (
-          <div className="flex min-h-[calc(100vh-15rem)] flex-col items-center justify-center text-center">
+          <div className="flex min-h-[calc(100vh-22rem)] flex-col items-center justify-center text-center">
             <span aria-hidden className="i-ri-check-line size-8 text-text-tertiary" />
             <h2 className="mt-4 system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
             </h2>
-            <p className="mt-1 max-w-120 system-xs-regular text-text-tertiary">
+            <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.badCasesEmptyDescription'])}
             </p>
             {badCaseQuery.hasNextPage && (
@@ -775,7 +789,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         ))}
 
       {activeTab === 'golden' && selected.size > 0 && (
-        <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-3 rounded-xl border border-components-panel-border bg-components-panel-bg px-4 shadow-xl">
+        <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
           <span className="system-sm-medium text-text-primary">
             {t(
               ($) =>
@@ -788,8 +802,11 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </span>
           <span aria-hidden className="h-5 w-px bg-divider-regular" />
-          <Button variant="ghost" onClick={() => setDeleteIds(new Set(selected))}>
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          <Button
+            variant="secondary"
+            tone="destructive"
+            onClick={() => setDeleteIds(new Set(selected))}
+          >
             {t(($) => $['newKnowledge.qualityPage.deleteEllipsis'])}
           </Button>
           <button

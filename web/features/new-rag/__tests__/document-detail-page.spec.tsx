@@ -1304,7 +1304,12 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentReindexFailed',
     )
-    expect(screen.getByText('dataset.newKnowledge.lastReadyRevisionHint')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.viewTask' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Parent content' })).toBeInTheDocument()
   })
 
@@ -1373,7 +1378,9 @@ describe('DocumentDetailPage', () => {
         }),
     )
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
+    const button = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.reindexDocument',
+    })
 
     await user.dblClick(button)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
@@ -1490,7 +1497,9 @@ describe('DocumentDetailPage', () => {
       pages: [{ items: [task({ documentRevision: 4, id: 'old-failed', state: 'failed' })] }],
     }
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
+    const button = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.retryReindexDocument',
+    })
 
     await user.click(button)
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
@@ -1551,7 +1560,7 @@ describe('DocumentDetailPage', () => {
     try {
       render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
       const reindexButton = screen.getByRole('button', {
-        name: 'dataset.newKnowledge.reindexDocument',
+        name: 'dataset.newKnowledge.retryReindexDocument',
       })
       await act(async () => {
         fireEvent.click(reindexButton)

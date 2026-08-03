@@ -273,6 +273,7 @@ export function DocumentDetailPage({
           Boolean(tasksError)
         }
         reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
+        reindexFailed={latestTask?.state === 'failed'}
         reindexInProgress={reindexInProgress}
         reindexing={reindexBusy || submissionPending}
         revisions={availableRevisions}

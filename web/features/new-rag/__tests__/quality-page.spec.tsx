@@ -349,6 +349,52 @@ describe('QualityPage', () => {
     expect(serviceMock.createGolden).not.toHaveBeenCalled()
   })
 
+  it('reveals the full annotation and submits edits through the update contract', async () => {
+    const user = userEvent.setup()
+    serviceMock.updateGolden.mockResolvedValue({})
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    const annotation = screen.getByRole('button', { name: 'Must cite the refund clause.' })
+    await user.hover(annotation)
+    await waitFor(() => expect(screen.getAllByText('Must cite the refund clause.')).toHaveLength(2))
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.qualityPage.edit' }),
+    )
+    const annotationInput = screen.getByPlaceholderText(
+      'dataset.newKnowledge.qualityPage.annotationPlaceholder',
+    )
+    await user.clear(annotationInput)
+    await user.type(annotationInput, 'Updated expected answer')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.updateGolden).toHaveBeenCalledWith(
+        {
+          body: {
+            annotation: 'Updated expected answer',
+            evidence_text: '',
+            expected_evidence_ids: [],
+            match_policy: 'all',
+            question: 'What is the refund policy?',
+            tags: ['billing'],
+          },
+          params: { control_space_id: 'space-1', question_id: 'golden-1' },
+        },
+        expect.anything(),
+      ),
+    )
+    expect(
+      screen.queryByRole('dialog', { name: 'dataset.newKnowledge.qualityPage.editTitle' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('resolves the protected trace reference before navigating', async () => {
     const user = userEvent.setup()
     navigationMock.tab = 'bad-cases'

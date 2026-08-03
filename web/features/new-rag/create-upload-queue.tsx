@@ -144,7 +144,8 @@ export function CreateUploadQueue({
               key={upload.id}
               className={cn(
                 'flex min-w-0 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-3 py-2',
-                upload.issue && 'border-components-option-card-option-border',
+                upload.issue &&
+                  'border-components-input-border-destructive bg-state-destructive-hover',
               )}
             >
               <span
@@ -173,7 +174,7 @@ export function CreateUploadQueue({
                   {uploading && !upload.issue
                     ? t(($) => $['newKnowledge.uploadingFiles'])
                     : upload.issue === 'fileSize'
-                      ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])
+                      ? `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])}`
                       : upload.issue === 'fileType'
                         ? t(($) => $['newKnowledge.documentUploadExclusion.fileType'])
                         : `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.uploadCharactersUnavailable'])}`}
@@ -199,7 +200,7 @@ export function CreateUploadQueue({
                 className="size-7 shrink-0 px-0"
                 onClick={() => onChange(uploads.filter((candidate) => candidate.id !== upload.id))}
               >
-                <span aria-hidden className="i-ri-close-line size-4" />
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
               </Button>
             </li>
           ))}

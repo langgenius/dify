@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "変更を保存",
   "newKnowledge.settings.saveFailed": "変更を保存できませんでした。接続を確認してもう一度お試しください。編集内容は保持されています。",
   "newKnowledge.settings.scoreRange": "範囲 0.00～1.00",
+  "newKnowledge.settings.serverConflict": "これらの設定は別の場所で変更されました。もう一度保存する前に編集をキャンセルして最新バージョンを読み込んでください。",
   "newKnowledge.settings.systemReasoningModelLabel": "システム推論モデル",
   "newKnowledge.settings.topKLabel": "トップ K",
   "newKnowledge.settings.topKMinimum": "最小値 = 1",

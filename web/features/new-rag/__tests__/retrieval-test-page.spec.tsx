@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { RetrievalTestPage } from '../retrieval-test-page'
@@ -294,7 +294,21 @@ describe('RetrievalTestPage', () => {
           onEvent({
             createdAt: new Date(1_800_000_000_000 + seconds * 1000).toISOString(),
             id: `event-${index + 1}`,
-            payload: {},
+            payload:
+              stage === 'retrieving'
+                ? {
+                    results: [
+                      {
+                        chunkCount: 3,
+                        createdAt: '2027-01-15T08:00:02.000Z',
+                        question: 'Refund policy',
+                        sourceId: 'internal-source-id',
+                      },
+                    ],
+                    sourceCount: 2,
+                    unknownTotal: 9,
+                  }
+                : {},
             researchTaskJobId: 'research-completed',
             sequence: index + 1,
             stage,
@@ -308,11 +322,11 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.click(screen.getByText('Compare the refund policies'))
-    expect(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.retrievalTest.processLog',
-      }),
-    ).toHaveAttribute('aria-pressed', 'true')
+    const processLog = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.processLog',
+    })
+    expect(processLog).toHaveAttribute('aria-pressed', 'false')
+    await user.click(processLog)
 
     await waitFor(() =>
       expect(apiMock.streamCapability).toHaveBeenCalledWith({
@@ -329,8 +343,46 @@ describe('RetrievalTestPage', () => {
     expect(screen.getByText('5s')).toBeInTheDocument()
     expect(screen.getByText('7s')).toBeInTheDocument()
     expect(screen.getByText('11s')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.sources: 2')).toBeInTheDocument()
+    expect(
+      screen.getByText('Refund policy · 3 dataset.newKnowledge.chunkCount'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('internal-source-id')).not.toBeInTheDocument()
+    expect(screen.queryByText('2027-01-15T08:00:02.000Z')).not.toBeInTheDocument()
+    expect(screen.queryByText(/unknown.*9/i)).not.toBeInTheDocument()
     expect(apiMock.refetchTasks).not.toHaveBeenCalled()
     expect(apiMock.refetchPartials).not.toHaveBeenCalled()
+  })
+
+  it('replaces the just-now label after the first minute', () => {
+    vi.useFakeTimers()
+    try {
+      const now = Date.parse('2026-07-29T09:04:30Z')
+      vi.setSystemTime(now)
+      apiMock.traces = [
+        {
+          completed: true,
+          created_at: new Date(now - 30_000).toISOString(),
+          id: 'trace-recent',
+          mode: 'fast',
+          profile: {},
+          query: 'A recent retrieval run',
+          scores: {},
+          stages: [],
+        },
+      ]
+
+      renderPage()
+
+      expect(screen.getByText('dataset.newKnowledge.retrievalTest.justNow')).toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(30_001))
+      expect(
+        screen.queryByText('dataset.newKnowledge.retrievalTest.justNow'),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('A recent retrieval run')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders generated Research answer deltas while the task is still active', async () => {
@@ -729,6 +781,39 @@ describe('RetrievalTestPage', () => {
     expect(screen.getByText('provider timed out')).toBeInTheDocument()
   })
 
+  it('cancels a stalled fast run and restores the composer', async () => {
+    let streamSignal: AbortSignal | undefined
+    apiMock.streamQuery.mockImplementationOnce(
+      ({ signal }: { signal?: AbortSignal }) =>
+        new Promise<void>((_resolve, reject) => {
+          streamSignal = signal
+          signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    const queryInput = screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder')
+    await user.type(queryInput, 'A query that never completes')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    expect(queryInput).toBeDisabled()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.cancel',
+      }),
+    )
+
+    expect(streamSignal?.aborted).toBe(true)
+    expect(queryInput).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }),
+    ).toBeEnabled()
+    expect(screen.getByText('dataset.newKnowledge.retrievalTest.emptyTitle')).toBeInTheDocument()
+  })
+
   it('maps an empty unpublished knowledge space to the designed no-results state', async () => {
     apiMock.streamQuery.mockRejectedValueOnce(
       new Response('Published runtime snapshot unavailable', { status: 503 }),
@@ -749,5 +834,40 @@ describe('RetrievalTestPage', () => {
       screen.queryByText('dataset.newKnowledge.retrievalTest.failedTitle'),
     ).not.toBeInTheDocument()
     expect(screen.getAllByText('Anything here?')).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not guess a trace id for a trace-less local run', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: new Date().toISOString(),
+        id: 'different-trace',
+        mode: 'fast',
+        profile: {},
+        query: 'Repeated question',
+        scores: {},
+        stages: [],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Repeated question',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
+      }),
+    ).not.toBeInTheDocument()
+    expect(apiMock.createBadCase).not.toHaveBeenCalled()
   })
 })

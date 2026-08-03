@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Зберегти зміни",
   "newKnowledge.settings.saveFailed": "Не вдалося зберегти зміни. Перевірте з’єднання та повторіть спробу — ваші зміни залишилися.",
   "newKnowledge.settings.scoreRange": "діапазон 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Ці налаштування було змінено в іншому місці. Скасуйте свої правки, щоб завантажити останню версію перед повторним збереженням.",
   "newKnowledge.settings.systemReasoningModelLabel": "Системна модель міркування",
   "newKnowledge.settings.topKLabel": "Найкращих K",
   "newKnowledge.settings.topKMinimum": "мін. = 1",

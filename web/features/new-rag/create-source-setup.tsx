@@ -62,6 +62,7 @@ const providers = {
     { icon: 'i-ri-fire-fill text-orange-500', label: 'Firecrawl', available: true },
     { icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
     { icon: 'i-ri-water-flash-line', label: 'WaterCrawl' },
+    { icon: 'i-ri-bug-line', label: 'FakeCrawler' },
   ],
 } as const
 
@@ -148,7 +149,6 @@ export function CreateSourceSetup({
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
   const { t } = useTranslation('dataset')
-  const { t: tCreation } = useTranslation('datasetCreation')
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const sourceType = draft.sourceType
@@ -208,11 +208,11 @@ export function CreateSourceSetup({
 
       <Fieldset disabled={disabled}>
         <FieldsetLegend className="sr-only">
-          {tCreation(($) => $['stepOne.website.chooseProvider'])}
+          {t(($) => $['newKnowledge.providerLabel'])}
         </FieldsetLegend>
         <div className="mb-1.5 flex items-center justify-between gap-3">
           <span className="system-xs-medium text-text-secondary">
-            {tCreation(($) => $['stepOne.website.chooseProvider'])}
+            {t(($) => $['newKnowledge.providerLabel'])}
           </span>
           <Button
             variant="ghost-accent"
@@ -227,7 +227,10 @@ export function CreateSourceSetup({
         <RadioGroup<string>
           value={activeProvider}
           disabled={disabled}
-          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          className={cn(
+            'grid grid-cols-2 gap-2',
+            sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
+          )}
           onValueChange={selectProvider}
         >
           {providers[sourceType].map((provider) => {
@@ -254,7 +257,12 @@ export function CreateSourceSetup({
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="rootUrl" className="gap-1.5">
-              <FieldLabel>{t(($) => $['newKnowledge.rootUrl'])}</FieldLabel>
+              <FieldLabel>
+                {t(($) => $['newKnowledge.rootUrl'])}
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
+                </span>
+              </FieldLabel>
               <FieldControl
                 type="url"
                 inputMode="url"
@@ -273,7 +281,12 @@ export function CreateSourceSetup({
               />
             </Field>
             <Field name="sourceName" className="gap-1.5">
-              <FieldLabel>{t(($) => $['newKnowledge.sourceName'])}</FieldLabel>
+              <FieldLabel>
+                {t(($) => $['newKnowledge.sourceName'])}
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
+                </span>
+              </FieldLabel>
               <FieldControl
                 type="text"
                 autoComplete="off"
@@ -393,11 +406,11 @@ export function CreateSourceSetup({
         <div className="space-y-3">
           {draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' && (
             <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col items-start gap-3">
                 <span
                   aria-hidden
                   className={cn(
-                    'mt-0.5 size-5 shrink-0',
+                    'flex size-10 shrink-0 items-center justify-center rounded-lg bg-background-section text-xl',
                     availableProviders.find((provider) => provider.label === activeProvider)?.icon,
                   )}
                 />
@@ -409,22 +422,24 @@ export function CreateSourceSetup({
                     {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
                   </p>
                 </div>
-                <Button
-                  variant="primary"
-                  disabled={disabled}
-                  className="shrink-0"
-                  onClick={showBackendBoundary}
-                >
-                  {t(($) => $['newKnowledge.connectNotion'])}
-                </Button>
               </div>
+              <Button
+                variant="primary"
+                disabled={disabled}
+                className="mt-4"
+                onClick={showBackendBoundary}
+              >
+                {t(($) => $['newKnowledge.connectNotion'])}
+              </Button>
             </section>
           )}
-          <ConnectedSourceConfiguration
-            disabled={disabled}
-            draft={draft}
-            onDraftChange={updateDraft}
-          />
+          {!(draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion') && (
+            <ConnectedSourceConfiguration
+              disabled={disabled}
+              draft={draft}
+              onDraftChange={updateDraft}
+            />
+          )}
         </div>
       )}
 

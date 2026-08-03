@@ -800,7 +800,7 @@ describe('WebsiteCrawlPreview', () => {
     expect(status).toHaveAttribute('role', 'status')
     expect(status.querySelector('button')).not.toBeInTheDocument()
     const skeletons = screen.getAllByTestId('crawl-page-skeleton')
-    expect(skeletons).toHaveLength(2)
+    expect(skeletons).toHaveLength(4)
     expect(skeletons[0]?.closest('ul')).toBe(screen.getByRole('list'))
     await act(async () => vi.advanceTimersByTime(1500))
     expect(await screen.findByText('Three')).toBeInTheDocument()
