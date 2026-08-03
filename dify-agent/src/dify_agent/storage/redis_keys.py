@@ -11,4 +11,9 @@ def run_events_key(prefix: str, run_id: str) -> str:
     return f"{prefix}:runs:{run_id}:events"
 
 
-__all__ = ["run_events_key", "run_record_key"]
+def run_idempotency_key(prefix: str, key_digest: str) -> str:
+    """Return the Redis string key claiming one create-run idempotency key digest."""
+    return f"{prefix}:idempotency:{key_digest}"
+
+
+__all__ = ["run_events_key", "run_idempotency_key", "run_record_key"]
