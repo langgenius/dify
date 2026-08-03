@@ -175,9 +175,7 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
                 dify_api_http_client=http_client,
             )
             try:
-                record = await owner_scheduler.create_run(
-                    CreateRunRequest(composition=RunComposition(layers=[]))
-                )
+                record = await owner_scheduler.create_run(CreateRunRequest(composition=RunComposition(layers=[])))
                 owner_task = owner_scheduler.active_tasks[record.run_id]
                 await asyncio.wait_for(runner_started.wait(), timeout=1)
 
