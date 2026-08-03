@@ -27,29 +27,154 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import copy from 'copy-to-clipboard'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
+type VersionFilterValue = 'all' | 'onlyNamed'
+
+function VersionTimelineDot({
+  isActive,
+  isFirst,
+  isLast,
+}: {
+  isActive: boolean
+  isFirst: boolean
+  isLast: boolean
+}) {
+  return (
+    <div className="relative flex w-4.5 shrink-0 justify-center pt-1.5">
+      {!isFirst && <div className="absolute top-0 h-2 w-0.5 bg-divider-subtle" />}
+      <span
+        aria-hidden
+        className={cn(
+          'relative z-1 size-2 rounded-full border-2 bg-components-panel-bg',
+          isActive ? 'border-text-accent' : 'border-text-quaternary',
+        )}
+      />
+      {!isLast && <div className="absolute top-3 -bottom-4.5 w-0.5 bg-divider-subtle" />}
+    </div>
+  )
+}
+
+function CurrentDraftItem({
+  isActive,
+  isLast,
+  onSelect,
+}: {
+  isActive: boolean
+  isLast: boolean
+  onSelect: () => void
+}) {
+  const { t } = useTranslation('skill')
+
+  return (
+    <button
+      type="button"
+      aria-current={isActive ? 'true' : undefined}
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-start gap-1 rounded-lg py-1 pr-[5px] pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
+      )}
+    >
+      <VersionTimelineDot isActive={isActive} isFirst isLast={isLast} />
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate py-1 system-sm-semibold',
+          isActive ? 'text-text-accent' : 'text-text-secondary',
+        )}
+      >
+        {t(($) => $['skillManagement.detail.currentDraft'])}
+      </span>
+    </button>
+  )
+}
+
+function VersionFilter({
+  value,
+  onChange,
+}: {
+  value: VersionFilterValue
+  onChange: (value: VersionFilterValue) => void
+}) {
+  const { t } = useTranslation('skill')
+  const { t: tWorkflow } = useTranslation('workflow')
+  const [open, setOpen] = useState(false)
+  const isFiltering = value !== 'all'
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={
+          <button
+            type="button"
+            aria-label={`${t(($) => $['skillManagement.detail.versions'])}: ${
+              value === 'all'
+                ? tWorkflow(($) => $['versionHistory.filter.all'])
+                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])
+            }`}
+            className={cn(
+              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              isFiltering
+                ? 'bg-state-accent-active-alt text-text-accent'
+                : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+            )}
+          >
+            <span aria-hidden className="i-ri-filter-3-line size-4" />
+          </button>
+        }
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={55}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
+        <div className="flex w-62 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+          {(['all', 'onlyNamed'] as const).map((filterValue) => (
+            <button
+              key={filterValue}
+              type="button"
+              className="flex h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-lg px-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={() => {
+                onChange(filterValue)
+                setOpen(false)
+              }}
+            >
+              <span className="min-w-0 flex-1 truncate system-md-regular text-text-primary">
+                {filterValue === 'all'
+                  ? tWorkflow(($) => $['versionHistory.filter.all'])
+                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])}
+              </span>
+              {value === filterValue && (
+                <span aria-hidden className="i-ri-check-line size-4 shrink-0 text-text-accent" />
+              )}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function VersionRow({
+  isFirst,
+  isLast,
   onSelect,
   selected,
   skillId,
   version,
 }: {
+  isFirst: boolean
+  isLast: boolean
   onSelect: (versionId: string | null) => void
   selected: boolean
   skillId: string
@@ -131,11 +256,6 @@ function VersionRow({
     )
   }
 
-  const handleCopyId = () => {
-    copy(version.id)
-    toast.success(t(($) => $['skillManagement.detail.copyVersionIdSuccess']))
-  }
-
   const handleDelete = () => {
     deleteMutation.mutate(
       {
@@ -160,27 +280,25 @@ function VersionRow({
 
   return (
     <>
-      <li>
+      <li className="group relative">
         <div
           className={cn(
-            'flex w-full items-start gap-2 rounded-lg p-2 text-left hover:bg-state-base-hover',
-            selected && 'bg-state-base-hover',
+            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-[5px] pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
+            selected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
           )}
         >
-          <span
-            aria-hidden
-            className="mt-0.5 i-ri-git-commit-line size-4 shrink-0 text-text-tertiary"
-          />
+          <VersionTimelineDot isActive={selected} isFirst={isFirst} isLast={isLast} />
           <button
             type="button"
-            className="min-w-0 flex-1 cursor-pointer text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            aria-current={selected ? 'true' : undefined}
+            className="min-w-0 flex-1 cursor-pointer py-0.5 text-left outline-hidden"
             onClick={() => onSelect(version.id)}
           >
-            <span className="block min-w-0">
-              <span className="flex min-w-0 items-center gap-1">
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="flex min-w-0 items-center gap-1 py-px pr-6">
                 <span
                   className={cn(
-                    'truncate system-xs-semibold',
+                    'min-w-0 flex-1 truncate system-sm-semibold',
                     selected ? 'text-text-accent' : 'text-text-secondary',
                   )}
                 >
@@ -193,11 +311,11 @@ function VersionRow({
                 )}
               </span>
               {version.publish_note && (
-                <span className="mt-0.5 block system-xs-regular break-words text-text-secondary">
+                <span className="block system-xs-regular break-words text-text-secondary">
                   {version.publish_note}
                 </span>
               )}
-              <span className="mt-0.5 block truncate system-xs-regular text-text-tertiary">
+              <span className="block truncate pt-0.5 system-xs-regular text-text-tertiary">
                 {t(($) => $['skillManagement.detail.versionPublishedMeta'], {
                   name: publishedBy,
                   time: formatTime(
@@ -209,39 +327,30 @@ function VersionRow({
             </span>
           </button>
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover">
+            <DropdownMenuTrigger
+              aria-label={tCommon(($) => $['operation.more'])}
+              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs outline-hidden group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100"
+            >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" popupClassName="w-40">
-              <DropdownMenuItem className="gap-2" onClick={handleRestore}>
-                <span aria-hidden className="i-ri-history-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.restoreVersion'])}</span>
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[184px]">
+              <DropdownMenuItem onClick={handleRestore}>
+                {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="gap-2"
                 onClick={() => {
                   setVersionName(version.version_name)
                   setPublishNote(version.publish_note)
                   setRenameOpen(true)
                 }}
               >
-                <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
-                <span>{versionInfoLabel}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" onClick={handleCopyId}>
-                <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
-                <span>{t(($) => $['skillManagement.detail.copyVersionId'])}</span>
+                {versionInfoLabel}
               </DropdownMenuItem>
               {!version.is_latest && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2"
-                    onClick={() => setDeleteOpen(true)}
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                    <span>{tCommon(($) => $['operation.delete'])}</span>
+                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                    {tCommon(($) => $['operation.delete'])}
                   </DropdownMenuItem>
                 </>
               )}
@@ -334,41 +443,65 @@ export function VersionPanel({
   versions: SkillVersionResponse[]
 }) {
   const { t } = useTranslation('skill')
+  const { t: tWorkflow } = useTranslation('workflow')
+  const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
+  const filteredVersions = versions.filter((version) => {
+    if (filterValue === 'onlyNamed') return !!version.version_name
+
+    return true
+  })
 
   return (
-    <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden bg-background-default">
-      <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-divider-subtle px-5">
-        <h2 className="system-sm-semibold text-text-secondary">
-          {t(($) => $['skillManagement.detail.versions'])}
-        </h2>
-        <div className="flex items-center gap-1">
-          {selectedVersionId && (
-            <Button className="h-7 px-2" onClick={() => onSelect(null)}>
-              {t(($) => $['skillManagement.detail.currentDraft'])}
-            </Button>
-          )}
+    <aside className="flex w-67 shrink-0 flex-col py-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-lg bg-components-panel-bg">
+        <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
+          <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
+            {t(($) => $['skillManagement.detail.versions'])}
+          </h2>
+          <VersionFilter value={filterValue} onChange={setFilterValue} />
+          <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
           <button
             type="button"
             aria-label={t(($) => $['skillManagement.detail.closeVersions'])}
-            className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={onClose}
           >
             <span aria-hidden className="i-ri-close-line size-4" />
           </button>
         </div>
-      </div>
-      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
-        <ScrollAreaViewport tabIndex={-1}>
-          <ScrollAreaContent className="p-2">
-            {versions.length === 0 ? (
-              <p className="px-2 py-3 system-xs-regular text-text-tertiary">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-2">
+          <div className="flex min-w-0 flex-col gap-px">
+            <CurrentDraftItem
+              isActive={selectedVersionId === null}
+              isLast={filteredVersions.length === 0}
+              onSelect={() => onSelect(null)}
+            />
+            {versions.length === 0 && (
+              <p className="rounded-lg px-3 py-6 text-center system-sm-regular text-text-tertiary">
                 {t(($) => $['skillManagement.detail.noVersions'])}
               </p>
-            ) : (
-              <ul className="space-y-1">
-                {versions.map((version) => (
+            )}
+            {versions.length > 0 && filteredVersions.length === 0 && (
+              <div className="rounded-lg px-3 py-6 text-center">
+                <p className="system-sm-regular text-text-tertiary">
+                  {tWorkflow(($) => $['versionHistory.filter.empty'])}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-md px-2 py-1 system-xs-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={() => setFilterValue('all')}
+                >
+                  {tWorkflow(($) => $['versionHistory.filter.reset'])}
+                </button>
+              </div>
+            )}
+            {filteredVersions.length > 0 && (
+              <ul className="flex flex-col gap-px">
+                {filteredVersions.map((version, index) => (
                   <VersionRow
                     key={version.id}
+                    isFirst={false}
+                    isLast={index === filteredVersions.length - 1}
                     version={version}
                     skillId={skillId}
                     selected={selectedVersionId === version.id}
@@ -377,12 +510,9 @@ export function VersionPanel({
                 ))}
               </ul>
             )}
-          </ScrollAreaContent>
-        </ScrollAreaViewport>
-        <ScrollAreaScrollbar>
-          <ScrollAreaThumb />
-        </ScrollAreaScrollbar>
-      </ScrollArea>
+          </div>
+        </div>
+      </div>
     </aside>
   )
 }

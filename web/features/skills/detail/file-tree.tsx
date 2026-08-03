@@ -54,6 +54,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import AccountSection from '@/app/components/main-nav/components/account-section'
+import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
@@ -93,6 +95,39 @@ import { SkillReferencesPanel, SkillTagsEditor } from './skill-metadata'
 const skillSidebarMinWidth = 240
 const skillSidebarMaxWidth = 420
 const skillSidebarKeyboardStep = 8
+
+const skillSidebarHelpTriggerIcon = (
+  <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
+)
+
+function SkillSidebarAccountFooter({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'shrink-0 border-t border-divider-subtle',
+        compact
+          ? 'flex w-full flex-col items-center gap-0.5 px-2 pt-1 pb-3'
+          : 'flex h-14 w-full items-center justify-between p-3',
+      )}
+    >
+      <div
+        className={cn(
+          'flex min-w-0 items-center gap-1 overflow-hidden',
+          compact && 'w-full justify-center',
+        )}
+      >
+        <AccountSection compact={compact} />
+      </div>
+      <HelpMenu
+        triggerIcon={skillSidebarHelpTriggerIcon}
+        triggerClassName={cn(
+          'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
+          compact && 'mt-2',
+        )}
+      />
+    </div>
+  )
+}
 
 const clampSkillSidebarWidth = (width: number) =>
   Math.min(skillSidebarMaxWidth, Math.max(skillSidebarMinWidth, width))
@@ -990,8 +1025,6 @@ export function FileTree({
   }
 
   const creatorName = detail?.created_by_name ?? detail?.created_by ?? '-'
-  const creatorInitial = creatorName.trim().charAt(0).toUpperCase() || 'E'
-
   if (collapsed && !sidebarFloating) {
     return (
       <aside
@@ -1014,10 +1047,8 @@ export function FileTree({
           <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default text-text-secondary">
             <span aria-hidden className="i-custom-vender-main-nav-skill size-5" />
           </div>
-          <div className="mt-auto pb-3">
-            <div className="flex size-8 items-center justify-center rounded-full bg-text-accent system-sm-medium text-text-primary-on-surface">
-              {creatorInitial}
-            </div>
+          <div className="mt-auto w-full">
+            <SkillSidebarAccountFooter compact />
           </div>
         </div>
       </aside>
@@ -1401,15 +1432,7 @@ export function FileTree({
               </span>
             </div>
           </div>
-          <div className="flex h-14 shrink-0 items-center gap-2 border-t border-divider-subtle px-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-text-accent system-sm-medium text-text-primary-on-surface">
-              {creatorInitial}
-            </div>
-            <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
-              {creatorName}
-            </span>
-            <span aria-hidden className="i-ri-question-line size-4 shrink-0 text-text-tertiary" />
-          </div>
+          <SkillSidebarAccountFooter />
         </div>
       </aside>
       <FileSearchDialog

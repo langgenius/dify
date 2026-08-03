@@ -62,6 +62,22 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
 }))
 
+vi.mock('@/app/components/main-nav/components/account-section', () => ({
+  default: ({ compact = false }: { compact?: boolean }) => (
+    <button type="button" aria-label={compact ? 'compact-account-section' : 'account-section'}>
+      Current account
+    </button>
+  ),
+}))
+
+vi.mock('@/app/components/main-nav/components/help-menu', () => ({
+  default: () => (
+    <button type="button" aria-label="help-menu">
+      Help
+    </button>
+  ),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: mocks.defaultTextGenerationModel,
@@ -711,6 +727,8 @@ describe('SkillDetailPage', () => {
       }),
     ).toHaveClass('size-8', 'rounded-[10px]')
     expect(document.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'account-section' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'help-menu' })).toBeInTheDocument()
   })
 
   it('opens the inline tag selector with workspace tag options', async () => {
@@ -2753,6 +2771,58 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('matches the versions timeline interactions and omits the unused copy id action', async () => {
+    const user = userEvent.setup()
+    const namedVersion = createSkillVersion({
+      id: 'version-1',
+      is_latest: true,
+      version_name: 'Named version',
+    })
+    const unnamedVersion = createSkillVersion({
+      id: 'version-2',
+      version_number: 2,
+      version_name: '',
+    })
+    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-versions', options],
+      queryFn: async () => ({
+        data: [namedVersion, unnamedVersion],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+    )
+
+    const panelTitle = await screen.findByText('skill.skillManagement.detail.versions')
+    expect(panelTitle.closest('aside')).toHaveClass('w-67', 'py-1')
+    expect(screen.getAllByRole('button', { current: true })).toHaveLength(1)
+
+    await openVersionRowActions(user, '#2')
+    expect(screen.queryByText('skill.skillManagement.detail.copyVersionId')).not.toBeInTheDocument()
+    expect(await screen.findByRole('menu')).toHaveClass('w-[184px]')
+
+    await user.keyboard('{Escape}')
+    await user.click(
+      screen.getByRole('button', {
+        name: /workflow\.versionHistory\.filter\.all/,
+      }),
+    )
+    await user.click(
+      await screen.findByText('workflow.versionHistory.filter.onlyShowNamedVersions'),
+    )
+
+    expect(screen.queryByText('#2')).not.toBeInTheDocument()
+
+    const currentDraft = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.currentDraft',
+    })
+    await user.click(currentDraft)
+    expect(currentDraft).toHaveAttribute('aria-current', 'true')
   })
 
   it('inserts a reference file from source editor slash picker', async () => {
