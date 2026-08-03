@@ -38,3 +38,10 @@ class RSAKeyProvider(BaseKeyProvider):
     def decrypt_with_decoding(self, encrypted_text: bytes, decoding: tuple[RSA.RsaKey, object]) -> str:
         rsa_key, cipher_rsa = decoding
         return rsa.decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa)
+
+    @override
+    def decrypt(self, tenant_id: str, encrypted_text: bytes) -> str:
+        # Overrides BaseKeyProvider's generic get_decrypt_decoding()+decrypt_with_decoding()
+        # composition to call libs.rsa.decrypt() directly (a single-shot equivalent), matching
+        # this provider's one supported decrypt path in libs/rsa.py.
+        return rsa.decrypt(encrypted_text, tenant_id)

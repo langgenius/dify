@@ -12,12 +12,21 @@ logger = logging.getLogger(__name__)
 
 
 class KeyProviderManager:
-    provider: BaseKeyProvider
+    _provider: BaseKeyProvider | None = None
 
     def init_app(self, app: Flask):
-        provider_factory = self.get_provider_factory(dify_config.KEY_PROVIDER_TYPE)
         with app.app_context():
-            self.provider = provider_factory()
+            self._provider = self._build_provider()
+
+    @property
+    def provider(self) -> BaseKeyProvider:
+        if self._provider is None:
+            self._provider = self._build_provider()
+        return self._provider
+
+    def _build_provider(self) -> BaseKeyProvider:
+        provider_factory = self.get_provider_factory(dify_config.KEY_PROVIDER_TYPE)
+        return provider_factory()
 
     @staticmethod
     def get_provider_factory(provider_type: str) -> Callable[[], BaseKeyProvider]:

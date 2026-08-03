@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -28,3 +28,11 @@ class AzureKeyVaultConfig(BaseSettings):
         default=None,
         ge=7,
     )
+
+    @field_validator("AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS", mode="before")
+    @classmethod
+    def _empty_string_to_none_for_rotation_interval(cls, v):
+        """Allow empty string in env/.env (e.g. an unfilled template value) to mean 'unset'."""
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v

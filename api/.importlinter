@@ -35,5 +35,3 @@ source_modules =
 forbidden_modules =
     libs.rsa
 allow_indirect_imports = True
-ignore_imports =
-    core.helper.encrypter -> libs.rsa
