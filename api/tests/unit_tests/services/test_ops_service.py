@@ -7,7 +7,7 @@ from models.model import TraceAppConfig
 from services.ops_service import OpsService
 
 
-def _trace_config(config_id: str, provider: str) -> TraceAppConfig:
+def _trace_config(config_id: str, provider: str) -> MagicMock:
     config = MagicMock(spec=TraceAppConfig)
     config.id = config_id
     config.app_id = "app-1"
@@ -26,14 +26,14 @@ def test_get_tracing_app_configs_deduplicates_and_isolates_invalid_config() -> N
     session.scalars.return_value.all.return_value = [first, duplicate, invalid, unsupported]
     session.get.return_value = SimpleNamespace(tenant_id="tenant-1")
 
-    serialized = {
+    serialized: dict[str, object] = {
         "id": first.id,
         "app_id": first.app_id,
         "tracing_provider": first.tracing_provider,
         "tracing_config": {"secret": "********"},
     }
 
-    def serialize(config: TraceAppConfig, _tenant_id: str):
+    def serialize(config: TraceAppConfig, _tenant_id: str) -> dict[str, object]:
         if config is invalid:
             raise ValueError("broken encrypted value")
         return serialized
