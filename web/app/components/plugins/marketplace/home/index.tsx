@@ -1,4 +1,5 @@
 import type { PluginBanner } from './banners'
+import type { HomeCatalogTabLabels } from './home-catalog-tabs'
 import ListWrapper from '../list/list-wrapper'
 import HomeCatalogNavigation from './home-catalog-navigation'
 import HomeCatalogTabs from './home-catalog-tabs'
@@ -12,7 +13,9 @@ import HomeTrending from './home-trending'
 type MarketplaceHomeProps = {
   actions?: React.ReactNode
   banners: PluginBanner[]
+  catalogLabels?: HomeCatalogTabLabels
   isMarketplacePlatform: boolean
+  language?: string
   linkToMarketplaceDetail: boolean
   showInstallButton: boolean
 }
@@ -20,14 +23,21 @@ type MarketplaceHomeProps = {
 const MarketplaceHome = ({
   actions,
   banners,
+  catalogLabels,
   isMarketplacePlatform,
+  language,
   linkToMarketplaceDetail,
   showInstallButton,
 }: MarketplaceHomeProps) => {
   return (
     <HomeStickyStateProvider>
       <div className="flex min-h-full w-full flex-col bg-background-default">
-        <HomeHeader actions={actions} isMarketplacePlatform={isMarketplacePlatform} />
+        <HomeHeader
+          actions={actions}
+          catalogLabels={catalogLabels}
+          isMarketplacePlatform={isMarketplacePlatform}
+          language={language}
+        />
         <div className="relative flex w-full flex-col">
           <HomeHero isMarketplacePlatform={isMarketplacePlatform} />
           <HomeSearch />
@@ -38,7 +48,13 @@ const MarketplaceHome = ({
             </>
           )}
           <HomeCatalogNavigation
-            catalogTabs={<HomeCatalogTabs isMarketplacePlatform={isMarketplacePlatform} />}
+            catalogTabs={
+              <HomeCatalogTabs
+                isMarketplacePlatform={isMarketplacePlatform}
+                labels={catalogLabels}
+                language={language}
+              />
+            }
           />
           <div className="contents [&>div]:bg-background-default!">
             <ListWrapper

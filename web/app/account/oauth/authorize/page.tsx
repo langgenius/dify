@@ -10,14 +10,15 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { IS_CLOUD_EDITION, MARKETPLACE_OAUTH_CLIENT_ID, MARKETPLACE_URL_PREFIX } from '@/config'
+import { MARKETPLACE_OAUTH_CLIENT_ID, MARKETPLACE_URL_PREFIX } from '@/config'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
@@ -46,6 +47,7 @@ const getServerFrameContext = () => 'checking' as const
 
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -82,7 +84,7 @@ export default function OAuthAuthorize() {
   const hasOAuthParams = Boolean(client_id && redirect_uri)
   const marketplaceOrigin = getMarketplaceOrigin()
   const isMarketplaceFlow =
-    IS_CLOUD_EDITION &&
+    systemFeatures.deployment_edition === 'CLOUD' &&
     searchParams.get('flow') === 'marketplace' &&
     Boolean(MARKETPLACE_OAUTH_CLIENT_ID) &&
     client_id === MARKETPLACE_OAUTH_CLIENT_ID &&

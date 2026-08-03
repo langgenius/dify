@@ -1,4 +1,5 @@
 import type { PluginBanner } from './home/banners'
+import type { HomeCatalogTabLabels } from './home/home-catalog-tabs'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import Description from './description'
 import MarketplaceHome from './home'
@@ -16,6 +17,8 @@ export type MarketplaceViewProps = {
   marketplaceNav?: React.ReactNode
   variant?: MarketplaceVariant
   homeHeaderActions?: React.ReactNode
+  homeCatalogLabels?: HomeCatalogTabLabels
+  language?: string
 }
 
 export function MarketplaceView({
@@ -27,6 +30,8 @@ export function MarketplaceView({
   marketplaceNav,
   variant = 'default',
   homeHeaderActions,
+  homeCatalogLabels,
+  language,
 }: MarketplaceViewProps) {
   return (
     <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
@@ -34,7 +39,9 @@ export function MarketplaceView({
         <MarketplaceHome
           actions={homeHeaderActions}
           banners={banners}
+          catalogLabels={homeCatalogLabels}
           isMarketplacePlatform={isMarketplacePlatform}
+          language={language}
           linkToMarketplaceDetail={linkToMarketplaceDetail}
           showInstallButton={showInstallButton}
         />
