@@ -123,9 +123,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             })
             setIsShowUpdateModal(true)
           }}
-          trigger={
+          trigger={(open) => (
             <Badge
-              className={cn('mx-1 flex hover:bg-state-base-hover', isShow && 'bg-state-base-hover')}
+              className={cn('mx-1 flex hover:bg-state-base-hover', open && 'bg-state-base-hover')}
               uppercase={true}
               text={
                 <>
@@ -135,7 +135,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               }
               hasRedCornerMark={true}
             />
-          }
+          )}
         />
       )}
     </div>

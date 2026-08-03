@@ -28,8 +28,8 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -357,7 +357,7 @@ export function VersionPanel({
           </button>
         </div>
       </div>
-      <ScrollAreaRoot className="min-h-0 flex-1 overflow-hidden">
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport tabIndex={-1}>
           <ScrollAreaContent className="p-2">
             {versions.length === 0 ? (
@@ -382,7 +382,7 @@ export function VersionPanel({
         <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </aside>
   )
 }

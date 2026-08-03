@@ -51,10 +51,7 @@ const ColorPicker = ({ theme, onThemeChange }: ColorPickerProps) => {
         render={
           <button
             type="button"
-            className={cn(
-              'flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
-              open && 'bg-black/5',
-            )}
+            className="flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 data-popup-open:bg-black/5"
           >
             <div
               className={cn('size-4 rounded-full border border-black/5', THEME_MAP[theme]!.title)}

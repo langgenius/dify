@@ -158,6 +158,8 @@ export function FileEditor({
   const fileRef = useRef(file)
   const pendingPublishAfterSaveRef = useRef(false)
   const metadataKeyInputRef = useRef<HTMLInputElement>(null)
+  const metadataKeyDraftRef = useRef('')
+  const metadataValueDraftRef = useRef('')
   const pendingDisplayNameRenameRef = useRef(false)
   const displayNameDraftRef = useRef(displayNameDraft)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1094,7 +1096,10 @@ export function FileEditor({
                             value={metadataKey}
                             placeholder={t(($) => $['skillManagement.detail.metadataKey'])}
                             className={metadataKeyInputClassName}
-                            onChange={(event) => setMetadataKey(event.target.value)}
+                            onChange={(event) => {
+                              metadataKeyDraftRef.current = event.target.value
+                              setMetadataKey(event.target.value)
+                            }}
                             onKeyDown={(event) => {
                               if (event.key === 'Escape') handleCancelAddMetadata()
                             }}
@@ -1112,7 +1117,10 @@ export function FileEditor({
                           value={metadataValue}
                           placeholder={t(($) => $['skillManagement.detail.metadataValue'])}
                           className={metadataValueInputClassName}
-                          onChange={(event) => setMetadataValue(event.target.value)}
+                          onChange={(event) => {
+                            metadataValueDraftRef.current = event.target.value
+                            setMetadataValue(event.target.value)
+                          }}
                           onKeyDown={(event) => {
                             if (event.key === 'Escape') {
                               handleCancelAddMetadata()

@@ -22,8 +22,8 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -43,7 +43,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from './client'
-import { SkillReferencesPanel } from './detail/skill-metadata'
+import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 
 const placeholderCardIds = Array.from(
@@ -228,7 +228,19 @@ function DeleteSkillDialog({
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
   )
-  const referenceCount = skill.reference_count ?? 0
+  const referencesQuery = useQuery({
+    ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+      input: {
+        params: {
+          skill_id: skill.id,
+        },
+      },
+      enabled: open,
+    }),
+    refetchOnMount: 'always',
+  })
+  const references = referencesQuery.data?.data ?? []
+  const referenceCount = Math.max(skill.reference_count ?? 0, references.length)
   const description =
     referenceCount > 0
       ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
@@ -272,13 +284,17 @@ function DeleteSkillDialog({
         </AlertDialogDescription>
         {referenceCount > 0 && (
           <div className="mt-4">
-            <SkillReferencesPanel
-              compact
-              maxHeight="max-h-[240px]"
-              skillId={skill.id}
-              testId="skill-delete-reference-list"
-              visibleLimit={5}
-            />
+            {referencesQuery.isPending ? (
+              <SkillReferencesListSkeleton compact />
+            ) : (
+              <SkillReferencesList
+                compact
+                maxHeight="max-h-[240px]"
+                references={references}
+                testId="skill-delete-reference-list"
+                visibleLimit={5}
+              />
+            )}
           </div>
         )}
         <AlertDialogActions className="p-0 pt-6">
@@ -740,7 +756,7 @@ export default function SkillsPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
             tabIndex={-1}
             className="overscroll-contain"
@@ -764,7 +780,7 @@ export default function SkillsPage() {
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       </div>
     </div>
   )
