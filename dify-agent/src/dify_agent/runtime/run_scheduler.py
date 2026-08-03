@@ -131,15 +131,18 @@ class RunScheduler:
             task = self.active_tasks.get(run_id)
             if task is None:
                 raise RunCancellationConflictError("run is not active in this scheduler process")
-            self.cancelled_run_ids.add(run_id)
-            _ = task.cancel(request.message or request.reason)
-            _ = await emit_run_cancelled(
+            finalization = await emit_run_cancelled(
                 self.store,
                 run_id=run_id,
                 reason=request.reason,
                 message=request.message,
             )
-            await self.store.update_status(run_id, "cancelled", request.message or request.reason)
+            if not finalization.applied:
+                if finalization.status == "cancelled":
+                    return CancelRunResponse(run_id=run_id, status="cancelled")
+                raise RunCancellationConflictError(f"run already finished with status {finalization.status!r}")
+            self.cancelled_run_ids.add(run_id)
+            _ = task.cancel(request.message or request.reason)
 
         # Some model/tool stacks can consume one CancelledError. Re-inject it
         # after the terminal state is durable without making the HTTP request
@@ -206,7 +209,6 @@ class RunScheduler:
         message = "run cancelled during server shutdown"
         try:
             _ = await emit_run_failed(self.store, run_id=run_id, error=message, reason="shutdown")
-            await self.store.update_status(run_id, "failed", message)
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
 

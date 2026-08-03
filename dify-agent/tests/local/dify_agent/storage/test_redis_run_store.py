@@ -1,13 +1,25 @@
 import asyncio
 from collections.abc import Mapping
+import json
 from typing import cast
 
+import pytest
 from pydantic import JsonValue
 
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import LifecycleState
-from dify_agent.protocol.schemas import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
-from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore
+from dify_agent.protocol.schemas import (
+    RunCancelledEvent,
+    RunCancelledEventData,
+    RunFailedEvent,
+    RunFailedEventData,
+    RunStartedEvent,
+    RunStatus,
+    RunSucceededEvent,
+    RunSucceededEventData,
+)
+from dify_agent.runtime.event_sink import RunFinalizationResult
+from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore, RunNotFoundError
 
 
 class FakeRedis:
@@ -54,6 +66,30 @@ class FakeRedis:
     async def expire(self, key: str, seconds: int) -> bool:
         self.commands.append(("expire", key, seconds))
         return True
+
+    async def eval(self, script: str, numkeys: int, *keys_and_args: object) -> list[object]:
+        self.commands.append(("eval", script, numkeys, *keys_and_args))
+        assert numkeys == 2
+        record_key = str(keys_and_args[0])
+        events_key = str(keys_and_args[1])
+        status = str(keys_and_args[2])
+        updated_at = str(keys_and_args[3])
+        has_error = str(keys_and_args[4]) == "1"
+        error = str(keys_and_args[5]) if has_error else None
+        payload = str(keys_and_args[6])
+        record_json = self.values.get(record_key)
+        if record_json is None:
+            return [-1, "", ""]
+        if isinstance(record_json, bytes):
+            record_json = record_json.decode()
+        record = json.loads(cast(str, record_json))
+        if record["status"] != "running":
+            return [0, record["status"], ""]
+
+        record.update({"status": status, "updated_at": updated_at, "error": error})
+        event_id = self._append_stream_entry(events_key, {"payload": payload})
+        self.values[record_key] = json.dumps(record, separators=(",", ":"))
+        return [1, status, event_id]
 
     @staticmethod
     def _is_after_min(event_id: str, min_id: str) -> bool:
@@ -113,17 +149,166 @@ def test_create_run_writes_running_record_without_job_queue_and_with_retention()
     assert "request" not in str(redis.commands[0][2])
 
 
-def test_update_status_refreshes_record_retention() -> None:
+def test_finalize_run_atomically_writes_terminal_event_and_status() -> None:
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
     record = asyncio.run(store.create_run())
     redis.commands.clear()
+    event = RunCancelledEvent(
+        run_id=record.run_id,
+        data=RunCancelledEventData(reason="workflow_aborted", message="workflow stopped"),
+    )
 
-    asyncio.run(store.update_status(record.run_id, "succeeded"))
+    result = asyncio.run(store.finalize_run(event))
+    updated = asyncio.run(store.get_run(record.run_id))
 
-    assert [command[0] for command in redis.commands] == ["get", "set"]
-    assert redis.commands[1][1] == f"test:runs:{record.run_id}:record"
-    assert redis.commands[1][3] == 60
+    assert result.applied is True
+    assert result.status == "cancelled"
+    assert result.event_id == "1-0"
+    assert updated.status == "cancelled"
+    assert updated.error == "workflow stopped"
+    assert updated.updated_at == event.created_at
+    stream_entry_id, stream_fields = redis.streams[f"test:runs:{record.run_id}:events"][0]
+    assert stream_entry_id == result.event_id
+    payload = json.loads(cast(str, stream_fields["payload"]))
+    assert "id" not in payload
+    assert payload["type"] == "run_cancelled"
+    assert payload["data"] == {"reason": "workflow_aborted", "message": "workflow stopped"}
+    assert payload["created_at"] == event.created_at.isoformat().replace("+00:00", "Z")
+    eval_command = redis.commands[0]
+    assert eval_command[0] == "eval"
+    assert eval_command[2] == 2
+    assert eval_command[-1] == "60"
+
+
+def test_finalize_run_rejects_a_second_terminal_without_appending_event() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
+    record = asyncio.run(store.create_run())
+    snapshot = CompositorSessionSnapshot(layers=[])
+
+    first = asyncio.run(
+        store.finalize_run(
+            RunSucceededEvent(
+                run_id=record.run_id,
+                data=RunSucceededEventData(output="done", session_snapshot=snapshot),
+            )
+        )
+    )
+    second = asyncio.run(
+        store.finalize_run(
+            RunCancelledEvent(
+                run_id=record.run_id,
+                data=RunCancelledEventData(reason="late_cancel"),
+            )
+        )
+    )
+
+    assert first.applied is True
+    assert second.applied is False
+    assert second.status == "succeeded"
+    assert second.event_id is None
+    assert len(redis.streams[f"test:runs:{record.run_id}:events"]) == 1
+
+
+def test_finalize_failed_run_derives_error_and_timestamp_from_event() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+    record = asyncio.run(store.create_run())
+    event = RunFailedEvent(
+        run_id=record.run_id,
+        data=RunFailedEventData(error="model failed", reason="model_error"),
+    )
+
+    result = asyncio.run(store.finalize_run(event))
+    updated = asyncio.run(store.get_run(record.run_id))
+
+    assert result.applied is True
+    assert result.status == "failed"
+    assert updated.status == "failed"
+    assert updated.error == "model failed"
+    assert updated.updated_at == event.created_at
+
+
+def test_two_store_instances_choose_exactly_one_terminal_winner() -> None:
+    redis = FakeRedis()
+    first_store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+    second_store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> tuple[list[RunFinalizationResult], RunStatus, list[str]]:
+        record = await first_store.create_run()
+        snapshot = CompositorSessionSnapshot(layers=[])
+        results = await asyncio.gather(
+            first_store.finalize_run(
+                RunSucceededEvent(
+                    run_id=record.run_id,
+                    data=RunSucceededEventData(output="done", session_snapshot=snapshot),
+                )
+            ),
+            second_store.finalize_run(
+                RunCancelledEvent(
+                    run_id=record.run_id,
+                    data=RunCancelledEventData(reason="concurrent_cancel"),
+                )
+            ),
+        )
+        persisted = await first_store.get_run(record.run_id)
+        page = await second_store.get_events(record.run_id)
+        return list(results), persisted.status, [event.type for event in page.events]
+
+    results, status, event_types = asyncio.run(scenario())
+
+    assert sum(result.applied for result in results) == 1
+    assert len(event_types) == 1
+    assert (status, event_types[0]) in {
+        ("succeeded", "run_succeeded"),
+        ("cancelled", "run_cancelled"),
+    }
+
+
+def test_failure_and_cancellation_compete_for_one_terminal() -> None:
+    redis = FakeRedis()
+    failure_store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+    cancellation_store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> tuple[list[RunFinalizationResult], RunStatus, list[str]]:
+        record = await failure_store.create_run()
+        results = await asyncio.gather(
+            failure_store.finalize_run(
+                RunFailedEvent(
+                    run_id=record.run_id,
+                    data=RunFailedEventData(error="model failed", reason="model_error"),
+                )
+            ),
+            cancellation_store.finalize_run(
+                RunCancelledEvent(
+                    run_id=record.run_id,
+                    data=RunCancelledEventData(reason="concurrent_cancel"),
+                )
+            ),
+        )
+        persisted = await failure_store.get_run(record.run_id)
+        page = await cancellation_store.get_events(record.run_id)
+        return list(results), persisted.status, [event.type for event in page.events]
+
+    results, status, event_types = asyncio.run(scenario())
+
+    assert sum(result.applied for result in results) == 1
+    assert len(event_types) == 1
+    assert (status, event_types[0]) in {
+        ("failed", "run_failed"),
+        ("cancelled", "run_cancelled"),
+    }
+
+
+def test_finalize_run_raises_when_record_is_missing() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    with pytest.raises(RunNotFoundError):
+        asyncio.run(
+            store.finalize_run(RunCancelledEvent(run_id="missing", data=RunCancelledEventData(reason="cancelled")))
+        )
 
 
 def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -> None:
@@ -166,18 +351,19 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
 
     async def scenario() -> tuple[str, RunSucceededEvent]:
         record = await store.create_run()
-        event_id = await store.append_event(
+        result = await store.finalize_run(
             RunSucceededEvent(
                 id="local-only",
                 run_id=record.run_id,
                 data=RunSucceededEventData(output=output, session_snapshot=session_snapshot),
             )
         )
+        assert result.event_id is not None
         page = await store.get_events(record.run_id, after="0-0", limit=10)
         decoded = page.events[0]
         assert isinstance(decoded, RunSucceededEvent)
-        assert page.next_cursor == event_id
-        return event_id, decoded
+        assert page.next_cursor == result.event_id
+        return result.event_id, decoded
 
     event_id, decoded = asyncio.run(scenario())
 

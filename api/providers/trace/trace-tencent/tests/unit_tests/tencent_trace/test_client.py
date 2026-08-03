@@ -331,6 +331,7 @@ def test_create_and_export_span_exception_logs_error(
     client = _build_client()
     span = patch_core_components["span"]
     span.get_span_context.return_value = _make_span_context(span_id=2)
+    # pyrefly: ignore [missing-attribute]
     client.tracer.start_span.side_effect = RuntimeError("boom")
 
     caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
@@ -430,6 +431,7 @@ def test_shutdown_logs_when_meter_provider_fails(caplog: pytest.LogCaptureFixtur
     meter_provider = meter_provider_instances[-1]
     meter_provider.shutdown.side_effect = RuntimeError("boom")
     assert client.metric_reader is not None
+    # pyrefly: ignore [missing-attribute]
     client.metric_reader.shutdown.side_effect = RuntimeError("boom")
 
     caplog.set_level(logging.DEBUG, logger=client_module.logger.name)

@@ -723,6 +723,151 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(true)
     })
 
+    it('should only allow submission after the continuation stream observes the pause', async () => {
+      let postCallbacks: HookCallbacks
+      let continuationCallbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        postCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        continuationCallbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+      act(() => {
+        result.current.handleSend('test-url', { query: 'human input test' }, {})
+        postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        postCallbacks.onHumanInputRequired({
+          workflow_run_id: 'wr-1',
+          data: { node_id: 'human-1' },
+        })
+      })
+      expect(sseGet).not.toHaveBeenCalled()
+
+      let isReady: boolean | undefined
+      const readyPromise = result.current
+        .prepareHumanInputSubmission()
+        .then((ready) => (isReady = ready))
+      await act(async () => Promise.resolve())
+      expect(isReady).toBeUndefined()
+
+      act(() => {
+        postCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      expect(sseGet).toHaveBeenCalledWith(
+        '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
+        expect.any(Object),
+        expect.any(Object),
+      )
+      await act(async () => Promise.resolve())
+      expect(isReady).toBeUndefined()
+
+      act(() => {
+        continuationCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => readyPromise)
+      expect(isReady).toBe(true)
+    })
+
+    it('should register a new paused conversation without running final completion twice', async () => {
+      let postCallbacks: HookCallbacks
+      let continuationCallbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        postCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        continuationCallbacks = options as HookCallbacks
+      })
+      const onConversationComplete = vi.fn()
+      const onGetConversationMessages = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'm-1',
+            answer: 'completed answer',
+            message: [],
+            workflow_run_id: 'wr-1',
+            inputs: {},
+            query: 'human input test',
+          },
+        ],
+      })
+      const onGetSuggestedQuestions = vi.fn().mockResolvedValue({ data: ['Next question'] })
+      const config = { suggested_questions_after_answer: { enabled: true } }
+
+      const { result } = renderHook(() => useChat(config as ChatConfig))
+      act(() => {
+        result.current.handleSend(
+          'test-url',
+          { query: 'human input test' },
+          {
+            onConversationComplete,
+            onGetConversationMessages,
+            onGetSuggestedQuestions,
+          },
+        )
+        postCallbacks.onWorkflowStarted({
+          workflow_run_id: 'wr-1',
+          task_id: 't-1',
+          conversation_id: 'c-1',
+          message_id: 'm-1',
+        })
+        postCallbacks.onHumanInputRequired({
+          workflow_run_id: 'wr-1',
+          data: { node_id: 'human-1' },
+        })
+        postCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+
+      await act(async () => {
+        await postCallbacks.onCompleted()
+      })
+
+      expect(onConversationComplete).toHaveBeenCalledOnce()
+      expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'wr-1')
+      expect(onGetConversationMessages).not.toHaveBeenCalled()
+      expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+
+      await act(async () => {
+        continuationCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        continuationCallbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
+        await continuationCallbacks.onCompleted()
+      })
+
+      expect(onConversationComplete).toHaveBeenCalledOnce()
+      expect(onGetConversationMessages).toHaveBeenCalledOnce()
+      expect(onGetSuggestedQuestions).toHaveBeenCalledOnce()
+    })
+
+    it('should reject a pending form submission if the initial stream fails before pausing', async () => {
+      let postCallbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        postCallbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+      act(() => {
+        result.current.handleSend('test-url', { query: 'human input test' }, {})
+        postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        postCallbacks.onNodeStarted({ data: { node_id: 'human-1', id: 'human-1' } })
+        postCallbacks.onHumanInputRequired({
+          workflow_run_id: 'wr-1',
+          data: { node_id: 'human-1' },
+        })
+      })
+
+      const readyPromise = result.current.prepareHumanInputSubmission()
+      await act(async () => Promise.resolve())
+      expect(result.current.chatList[1]!.humanInputFormDataList).toHaveLength(1)
+
+      act(() => {
+        postCallbacks.onError('stream failed')
+      })
+
+      await expect(readyPromise).resolves.toBe(false)
+      expect(result.current.chatList[1]!.humanInputFormDataList).toHaveLength(0)
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should handle file uploads in onFile', () => {
       let callbacks: HookCallbacks
 
@@ -1344,7 +1489,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-1/events?include_state_snapshot=true',
+        '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1398,6 +1543,7 @@ describe('useChat', () => {
         callbacks.onMessageReplace({ answer: 'replaced resume' })
 
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
 
         callbacks.onError()
 
@@ -1414,6 +1560,164 @@ describe('useChat', () => {
       expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
       expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
       expect(lastResponse!.content).toBe('replaced resume')
+      expect(sseGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('should wait for the resumed event stream before allowing a restored form submission', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              humanInputFormDataList: [{ node_id: 'human-1' }],
+              workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as unknown as ChatItemInTree[]),
+      )
+
+      let isReady: boolean | undefined
+      const readyPromise = result.current
+        .prepareHumanInputSubmission()
+        .then((ready) => (isReady = ready))
+
+      await act(async () => Promise.resolve())
+      expect(isReady).toBeUndefined()
+
+      act(() => {
+        result.current.handleSwitchSibling('m-1', { isPublicAPI: true })
+      })
+      expect(sseGet).toHaveBeenCalledWith(
+        '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
+        expect.any(Object),
+        expect.any(Object),
+      )
+
+      act(() => {
+        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => readyPromise)
+
+      expect(isReady).toBe(true)
+      expect(sseGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('should reconnect an idle paused event stream before the next submission', async () => {
+      const callbacksList: HookCallbacks[] = []
+      const onConversationComplete = vi.fn()
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              humanInputFormDataList: [{ node_id: 'human-1' }],
+              workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as unknown as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', {
+          isPublicAPI: true,
+          onConversationComplete,
+        })
+        callbacksList[0]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => {
+        await callbacksList[0]!.onCompleted()
+      })
+      expect(onConversationComplete).not.toHaveBeenCalled()
+
+      let isReady: boolean | undefined
+      const readyPromise = result.current
+        .prepareHumanInputSubmission()
+        .then((ready) => (isReady = ready))
+      expect(sseGet).toHaveBeenCalledTimes(2)
+      await act(async () => Promise.resolve())
+      expect(isReady).toBeUndefined()
+
+      act(() => {
+        callbacksList[1]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => readyPromise)
+
+      expect(isReady).toBe(true)
+      expect(onConversationComplete).not.toHaveBeenCalled()
+    })
+
+    it('should reconnect immediately if the event stream idles after submission resumes the run', async () => {
+      const callbacksList: HookCallbacks[] = []
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              humanInputFormDataList: [{ node_id: 'human-1' }],
+              workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as unknown as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        callbacksList[0]!.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => {
+        await result.current.prepareHumanInputSubmission()
+        await callbacksList[0]!.onCompleted()
+      })
+
+      expect(sseGet).toHaveBeenCalledTimes(2)
+      expect(sseGet).toHaveBeenLastCalledWith(
+        '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
+        expect.any(Object),
+        expect.any(Object),
+      )
     })
 
     it('should handle non-agent mode resume', async () => {
@@ -1674,6 +1978,7 @@ describe('useChat', () => {
           conversationId: 'c-resume',
           taskId: 't-resume',
         })
+        callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
         await callbacks.onCompleted()
       })
 
@@ -1874,7 +2179,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-tts-app/events?include_state_snapshot=true',
+        '/workflow/wr-tts-app/events?include_state_snapshot=true&continue_on_pause=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -2004,6 +2309,38 @@ describe('useChat', () => {
       expect(suggestedAbort.abort).toHaveBeenCalledTimes(1)
     })
 
+    it('should mark an unmounted continuation stream as an intentional abort', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const workflowAbort = createAbortControllerMock()
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [{ id: 'm-1', content: '', isAnswer: true, siblingIndex: 0 }],
+        },
+      ]
+      const { result, unmount } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        callbacks.getAbortController(workflowAbort)
+      })
+      unmount()
+
+      expect(workflowAbort.abort).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'AbortError',
+          message: 'The user aborted a request.',
+        }),
+      )
+    })
+
     it('should clear chat list when clearChatList flag is true and reset flag via callback', () => {
       const clearChatListCallback = vi.fn()
 
@@ -2108,7 +2445,7 @@ describe('useChat', () => {
 
       // Should automatically call handleResume -> sseGet for human input
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-1/events?include_state_snapshot=true',
+        '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -3141,6 +3478,7 @@ describe('useChat', () => {
     })
 
     await act(async () => {
+      resumeCallbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
       await resumeCallbacks.onCompleted()
     })
     expect(result.current.suggestedQuestions).toEqual(['Suggested 1', 'Suggested 2'])
