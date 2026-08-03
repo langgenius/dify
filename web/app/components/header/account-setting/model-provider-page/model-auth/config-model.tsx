@@ -30,7 +30,6 @@ const ConfigModel = ({
         size="small"
         loading={loading}
         disabled={disabled}
-        aria-busy={loading || undefined}
         className="relative h-4.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning shadow-none hover:bg-components-badge-bg-dimm"
         onClick={onClick}
       >
@@ -47,7 +46,6 @@ const ConfigModel = ({
       size="small"
       loading={loading}
       disabled={disabled}
-      aria-busy={loading || undefined}
       className={cn('hidden shrink-0 group-hover:flex', credentialRemoved && 'flex')}
       onClick={onClick}
     >
