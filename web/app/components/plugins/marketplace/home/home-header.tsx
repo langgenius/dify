@@ -1,4 +1,4 @@
-import type { HomeCatalogTab } from './home-catalog-tabs'
+import type { HomeCatalogTab, HomeCatalogTabLabels } from './home-catalog-tabs'
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
 import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
@@ -11,10 +11,18 @@ import styles from './home-sticky.module.css'
 type HomeHeaderProps = {
   activeTab?: HomeCatalogTab
   actions?: React.ReactNode
+  catalogLabels?: HomeCatalogTabLabels
   isMarketplacePlatform: boolean
+  language?: string
 }
 
-const HomeHeader = ({ activeTab = 'plugins', actions, isMarketplacePlatform }: HomeHeaderProps) => {
+const HomeHeader = ({
+  activeTab = 'plugins',
+  actions,
+  catalogLabels,
+  isMarketplacePlatform,
+  language,
+}: HomeHeaderProps) => {
   return (
     <header
       className={cn(
@@ -56,6 +64,8 @@ const HomeHeader = ({ activeTab = 'plugins', actions, isMarketplacePlatform }: H
             activeTab={activeTab}
             className={styles.headerCatalogTabs}
             isMarketplacePlatform={isMarketplacePlatform}
+            labels={catalogLabels}
+            language={language}
           />
         </HomeStickyCatalogTabs>
       </div>
