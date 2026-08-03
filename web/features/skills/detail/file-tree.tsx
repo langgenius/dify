@@ -1132,9 +1132,12 @@ export function FileTree({
                 <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
               </Link>
               <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
-              <h1 className="min-w-0 flex-1 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary">
+              <Link
+                href="/skills"
+                className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
                 SKILLS
-              </h1>
+              </Link>
             </div>
             <button
               type="button"

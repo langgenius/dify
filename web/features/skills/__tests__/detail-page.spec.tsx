@@ -726,6 +726,10 @@ describe('SkillDetailPage', () => {
     expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
     expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
     expect(header).toHaveTextContent('SKILLS')
+    const skillsLink = screen.getByRole('link', { name: 'SKILLS' })
+    expect(skillsLink).toHaveAttribute('href', '/skills')
+    expect(skillsLink).toHaveClass('shrink-0')
+    expect(skillsLink).not.toHaveClass('flex-1')
     expect(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.searchFiles',
@@ -779,7 +783,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
@@ -807,7 +811,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
@@ -865,7 +869,7 @@ describe('SkillDetailPage', () => {
         name: "common.tag.create 'BrandNew'",
       }),
     )
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
@@ -901,7 +905,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     expect(screen.queryByText('Search')).not.toBeInTheDocument()
 
@@ -3528,7 +3532,7 @@ describe('SkillDetailPage', () => {
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     await user.type(fileNameInput, 'notes.md')
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3556,7 +3560,7 @@ describe('SkillDetailPage', () => {
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     await user.type(fileNameInput, 'tool.schema.json')
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3636,7 +3640,7 @@ describe('SkillDetailPage', () => {
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(fileNameInput).not.toBeInTheDocument()
