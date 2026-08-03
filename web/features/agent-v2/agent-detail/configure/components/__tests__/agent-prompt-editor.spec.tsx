@@ -868,7 +868,11 @@ describe('AgentPromptEditor', () => {
           onInsertToken={onInsertToken}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+        }),
+      )
       expect(onInsertToken).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
 
       rerender(

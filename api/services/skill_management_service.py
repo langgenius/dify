@@ -966,7 +966,7 @@ class SkillManagementService:
 
     @staticmethod
     def _skill_name_conflict_from_integrity_error(exc: IntegrityError) -> tuple[str, dict[str, str]]:
-        text = str(getattr(exc, "orig", exc))
+        text = str(exc.orig)
         match = re.search(r"Key \(tenant_id, name\)=\([^,]+,\s*([^)]+)\) already exists", text)
         if match:
             name = match.group(1)
