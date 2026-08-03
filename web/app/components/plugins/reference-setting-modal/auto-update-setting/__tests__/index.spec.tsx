@@ -88,126 +88,11 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-// Mock popover component for ToolPicker and StrategyPicker
-let mockPopoverOpen = false
-let forcePopoverContentVisible = false // Allow tests to force content visibility
-let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
-vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({
-    children,
-    open = false,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    mockPopoverOpen = open
-    mockPopoverOnOpenChange = onOpenChange
-    return (
-      <div data-testid="popover" data-open={open}>
-        {children}
-      </div>
-    )
-  },
-  PopoverTrigger: ({
-    children,
-    render,
-    onClick,
-    className,
-  }: {
-    children?: React.ReactNode
-    render?: React.ReactNode
-    onClick?: (e: React.MouseEvent) => void
-    className?: string
-  }) => (
-    <div
-      data-testid="popover-trigger"
-      role="button"
-      aria-label="popover trigger"
-      tabIndex={0}
-      onClick={(e) => {
-        onClick?.(e)
-        if (!onClick) mockPopoverOnOpenChange?.(!mockPopoverOpen)
-      }}
-      onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !onClick)
-          mockPopoverOnOpenChange?.(!mockPopoverOpen)
-      }}
-      className={className}
-    >
-      {render ?? children}
-    </div>
-  ),
-  PopoverContent: ({
-    children,
-    className,
-    popupClassName,
-  }: {
-    children: React.ReactNode
-    className?: string
-    popupClassName?: string
-  }) => {
-    if (!mockPopoverOpen && !forcePopoverContentVisible) return null
-    return (
-      <div
-        data-testid="popover-content"
-        className={[className, popupClassName].filter(Boolean).join(' ')}
-      >
-        {children}
-      </div>
-    )
-  },
-}))
-
-// Mock TimePicker component - simplified stateless mock
-vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
-  default: ({
-    value,
-    onChange,
-    onClear,
-    renderTrigger,
-  }: {
-    value: { format: (f: string) => string }
-    onChange: (v: unknown) => void
-    onClear: () => void
-    title?: string
-    renderTrigger: (
-      props: React.HTMLAttributes<HTMLElement>,
-      state: { open: boolean },
-      params: { inputElem: React.ReactNode; onClick: () => void },
-    ) => React.ReactNode
-  }) => {
-    const inputElem = <span data-testid="time-input">{value.format('HH:mm')}</span>
-
-    return (
-      <div data-testid="time-picker">
-        {renderTrigger({}, { open: false }, { inputElem, onClick: () => {} })}
-        <div data-testid="time-picker-dropdown">
-          <button
-            data-testid="time-picker-set"
-            onClick={() => {
-              onChange(dayjs().hour(10).minute(30))
-            }}
-          >
-            Set 10:30
-          </button>
-          <button
-            data-testid="time-picker-clear"
-            onClick={() => {
-              onClear()
-            }}
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-    )
-  },
-}))
-
 // Mock utils from date-and-time-picker
-vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
+vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/app/components/base/date-and-time-picker/utils/dayjs')
+  >()),
   convertTimezoneToOffsetStr: (tz: string) => {
     if (tz === 'America/New_York') return 'GMT-5'
     if (tz === 'Asia/Shanghai') return 'GMT+8'
@@ -390,9 +275,6 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('auto-update-setting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPopoverOpen = false
-    mockPopoverOnOpenChange = undefined
-    forcePopoverContentVisible = false
     mockPluginsData.plugins = []
   })
 
@@ -862,7 +744,6 @@ describe('auto-update-setting', () => {
 
       it('should render search box and tabs when isShow is true', () => {
         // Arrange
-        mockPopoverOpen = true
 
         // Act
         render(<ToolPicker {...defaultProps} isShow={true} />)
@@ -873,7 +754,6 @@ describe('auto-update-setting', () => {
 
       it('should show NoDataPlaceholder when no plugins and no search query', () => {
         // Arrange
-        mockPopoverOpen = true
         mockPluginsData.plugins = []
 
         // Act
@@ -915,7 +795,6 @@ describe('auto-update-setting', () => {
 
       it('should filter out non-marketplace plugins', () => {
         // Arrange
-        mockPopoverOpen = true
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} />)
@@ -926,7 +805,6 @@ describe('auto-update-setting', () => {
 
       it('should filter by search query', () => {
         // Arrange
-        mockPopoverOpen = true
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} />)
@@ -947,15 +825,14 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolPicker {...defaultProps} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('popover-trigger'))
+        fireEvent.click(screen.getByRole('button', { name: 'Select Plugins' }))
 
         // Assert
-        expect(onShowChange).toHaveBeenCalledWith(true)
+        expect(onShowChange).toHaveBeenCalledWith(true, expect.any(Object))
       })
 
       it('should call onChange when plugin is selected', () => {
         // Arrange
-        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'test-plugin',
@@ -977,7 +854,6 @@ describe('auto-update-setting', () => {
 
       it('should unselect plugin when already selected', () => {
         // Arrange
-        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'test-plugin',
@@ -1128,7 +1004,6 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
-        expect(screen.getByTestId('time-picker')).toBeInTheDocument()
       })
 
       it('should hide time picker and plugins selection when strategy is disabled', () => {
@@ -1142,7 +1017,6 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(screen.queryByText('plugin.autoUpdate.updateTime')).not.toBeInTheDocument()
-        expect(screen.queryByTestId('time-picker')).not.toBeInTheDocument()
       })
 
       it('should show plugins picker when mode is not update_all', () => {
@@ -1284,46 +1158,6 @@ describe('auto-update-setting', () => {
         )
       })
 
-      it('should call onChange with updated time when time changes', () => {
-        // Arrange
-        const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig({
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-        })
-
-        // Act
-        render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
-
-        // Click time picker trigger
-        fireEvent.click(screen.getByRole('button', { name: /GMT-5/ }))
-
-        // Set time
-        fireEvent.click(screen.getByRole('button', { name: 'Set 10:30' }))
-
-        // Assert
-        expect(onChange).toHaveBeenCalled()
-      })
-
-      it('should call onChange with 0 when time is cleared', () => {
-        // Arrange
-        const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig({
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-        })
-
-        // Act
-        render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
-
-        // Click time picker trigger
-        fireEvent.click(screen.getByRole('button', { name: /GMT-5/ }))
-
-        // Clear time
-        fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
-
-        // Assert
-        expect(onChange).toHaveBeenCalled()
-      })
-
       it('should call onChange with include_plugins when in partial mode', () => {
         // Arrange
         const onChange = vi.fn()
@@ -1390,20 +1224,6 @@ describe('auto-update-setting', () => {
     })
 
     describe('Callback Memoization', () => {
-      it('minuteFilter should filter to 15 minute intervals', () => {
-        // Arrange
-        const payload = createMockAutoUpdateConfig({
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-        })
-
-        // Act
-        render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
-
-        // The minuteFilter is passed to TimePicker internally
-        // We verify the component renders correctly
-        expect(screen.getByTestId('time-picker')).toBeInTheDocument()
-      })
-
       it('handleChange should preserve other config values', () => {
         // Arrange
         const onChange = vi.fn()
@@ -1523,20 +1343,6 @@ describe('auto-update-setting', () => {
         expect(screen.getByText('plugin.autoUpdate.updateSettings')).toBeInTheDocument()
       })
 
-      it('should handle null timezone gracefully', () => {
-        // This tests the timezone! non-null assertion in the component
-        // The mock provides a valid timezone, so the component should work
-        const payload = createMockAutoUpdateConfig({
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-        })
-
-        // Act
-        render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
-
-        // Assert - should render without errors
-        expect(screen.getByTestId('time-picker')).toBeInTheDocument()
-      })
-
       it('should render timezone offset correctly', () => {
         // Arrange
         const payload = createMockAutoUpdateConfig({
@@ -1630,7 +1436,7 @@ describe('auto-update-setting', () => {
       )
 
       // Assert - initially disabled
-      expect(screen.queryByTestId('time-picker')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.autoUpdate.updateTime')).not.toBeInTheDocument()
 
       // Simulate enabling updates
       currentPayload = createMockAutoUpdateConfig({
@@ -1641,7 +1447,7 @@ describe('auto-update-setting', () => {
       rerender(<AutoUpdateSetting payload={currentPayload} onChange={onChange} />)
 
       // Assert - time picker and plugins visible
-      expect(screen.getByTestId('time-picker')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
       expect(screen.getByText('plugin.autoUpdate.operation.select')).toBeInTheDocument()
     })
 

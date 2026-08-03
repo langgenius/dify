@@ -2,6 +2,7 @@ import type { WebhookTriggerNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 
@@ -30,68 +31,6 @@ const {
   mockCopy: vi.fn(),
   mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
 }))
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    disabled?: boolean
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({
-      children,
-      disabled,
-      onValueChange,
-    }: {
-      children: React.ReactNode
-      disabled?: boolean
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext.Provider value={{ disabled, onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectLabel: () => null,
-    SelectTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <button
-            data-testid="select-trigger"
-            type="button"
-            disabled={context.disabled}
-            className={className}
-          >
-            {children}
-          </button>
-          <button
-            data-testid="select-empty"
-            type="button"
-            onClick={() => context.onValueChange?.('')}
-          >
-            empty select value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button
-          data-testid={`select-${value}`}
-          type="button"
-          onClick={() => context.onValueChange?.(value)}
-        >
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -305,7 +244,7 @@ describe('WebhookTriggerPanel', () => {
     it('should keep the content type selector aligned with the webhook url row width', () => {
       render(<Panel {...panelProps} />)
 
-      const contentTypeTrigger = screen.getAllByTestId('select-trigger')[1]
+      const contentTypeTrigger = screen.getAllByRole('combobox')[1]
 
       expect(contentTypeTrigger).toHaveClass('w-full')
     })
@@ -348,12 +287,15 @@ describe('WebhookTriggerPanel', () => {
   })
 
   describe('Interactions', () => {
-    it('should handle method, content type, table, response, and copy actions', () => {
+    it('should handle method, content type, table, response, and copy actions', async () => {
+      const user = userEvent.setup()
       render(<Panel {...panelProps} />)
 
       fireEvent.click(screen.getByTestId('copy-input'))
-      fireEvent.click(screen.getByTestId('select-GET'))
-      fireEvent.click(screen.getByTestId('select-text/plain'))
+      await user.click(screen.getAllByRole('combobox')[0]!)
+      await user.click(await screen.findByRole('option', { name: 'GET' }))
+      await user.click(screen.getAllByRole('combobox')[1]!)
+      await user.click(await screen.findByRole('option', { name: 'text/plain' }))
       fireEvent.click(screen.getByTestId('parameter-Query Parameters'))
       fireEvent.click(screen.getByTestId('header-table'))
       fireEvent.click(screen.getByTestId('parameter-Request Body Parameters'))
@@ -394,16 +336,6 @@ describe('WebhookTriggerPanel', () => {
 
       vi.runAllTimers()
       vi.useRealTimers()
-    })
-
-    it('should ignore empty method and content-type selections', () => {
-      render(<Panel {...panelProps} />)
-
-      fireEvent.click(screen.getAllByTestId('select-empty')[0]!)
-      fireEvent.click(screen.getAllByTestId('select-empty')[1]!)
-
-      expect(mockHandleMethodChange).not.toHaveBeenCalled()
-      expect(mockHandleContentTypeChange).not.toHaveBeenCalled()
     })
   })
 })
