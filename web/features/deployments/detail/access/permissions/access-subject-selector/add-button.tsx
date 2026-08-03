@@ -182,7 +182,6 @@ export function AccessSubjectAddButton({
                         key={getSubjectValue(subject)}
                         subject={subject}
                         selectedGroups={selectedGroups}
-                        selectedMembers={selectedMembers}
                         onExpandGroup={(group) => setBreadcrumbGroups([...breadcrumbGroups, group])}
                       />
                     )}

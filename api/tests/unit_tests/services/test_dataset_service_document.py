@@ -1022,6 +1022,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch.object(DocumentService, "build_document", return_value=created_document) as build_document,
             patch("services.dataset_service.clean_notion_document_task") as clean_task,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
+            patch("services.dataset_service.uuid.uuid4", return_value="doc-new"),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             session.scalars.return_value.all.return_value = [existing_keep, existing_remove]

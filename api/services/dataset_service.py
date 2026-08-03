@@ -2402,13 +2402,14 @@ class DocumentService:
                                         truncated_page_name,
                                         batch,
                                     )
+                                    document.id = str(uuid.uuid4())
                                     session.add(document)
-                                    session.flush()
                                     document_ids.append(document.id)
                                     documents.append(document)
                                     position += 1
                                 else:
                                     exist_document.pop(page.page_id)
+                        session.flush()
                         # delete not selected documents
                         if len(exist_document) > 0:
                             clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
@@ -3900,7 +3901,14 @@ class SegmentService:
         session.add(document)
 
         # Delete database records
-        session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)))
+        session.execute(
+            delete(DocumentSegment).where(
+                DocumentSegment.id.in_(segment_db_ids),
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.tenant_id == current_user.current_tenant_id,
+            )
+        )
         session.commit()
 
     @classmethod

@@ -9,29 +9,6 @@ import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
-vi.mock('@langgenius/dify-ui/pagination', () => ({
-  Pagination: ({
-    page,
-    totalPages,
-    onPageChange,
-    labels,
-  }: {
-    page: number
-    totalPages: number
-    onPageChange: (page: number) => void
-    labels: { next: string }
-  }) => (
-    <button
-      type="button"
-      aria-label={labels.next}
-      disabled={page >= totalPages}
-      onClick={() => onPageChange(page + 1)}
-    >
-      {page}/{totalPages}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
   default: ({
     value,
