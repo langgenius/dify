@@ -7,10 +7,7 @@ import type {
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
-import type {
-  FormValue,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -26,8 +23,9 @@ import {
   useDefaultModel,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
+import { SkillBuilderGridTexture } from './builder-grid-texture'
 import {
   findFileByPath,
   isAllowedSkillBuilderAttachment,
@@ -50,32 +48,25 @@ function BuilderModelSelector({
   onSelect: (model: SkillBuilderModel) => void
 }) {
   return (
-    <div className="max-w-full min-w-0">
+    <div className="w-fit max-w-full min-w-0">
       {isLoading ? (
         <div className="h-6 w-20 rounded-md bg-state-base-hover" />
       ) : (
-        <ModelParameterModal
-          isAdvancedMode
-          modelId={selectedModel?.model ?? ''}
-          provider={selectedModel?.provider ?? ''}
-          completionParams={(selectedModel?.model_settings ?? {}) as FormValue}
-          hideDebugWithMultipleModel
+        <ModelSelector
+          defaultModel={
+            selectedModel
+              ? { provider: selectedModel.provider, model: selectedModel.model }
+              : undefined
+          }
           modelList={modelList}
-          popupClassName="w-[400px]"
-          triggerContainerClassName="max-w-full min-w-0"
-          setModel={({ modelId, provider }) => {
+          popupClassName="h-[480px]! max-h-[480px]! w-80! max-w-80!"
+          showModelMeta={false}
+          triggerClassName="h-8! w-fit! max-w-full bg-transparent! p-1! hover:bg-state-base-hover! [&>div:first-child]:hidden [&>div:nth-child(2)]:px-0"
+          onSelect={({ model, provider }) => {
             onSelect({
               ...selectedModel,
               provider,
-              model: modelId,
-            })
-          }}
-          onCompletionParamsChange={(modelSettings) => {
-            if (!selectedModel) return
-
-            onSelect({
-              ...selectedModel,
-              model_settings: modelSettings,
+              model,
             })
           }}
         />
@@ -86,23 +77,60 @@ function BuilderModelSelector({
 
 function SkillBuilderThinkingMessage({ seconds }: { seconds: number }) {
   const { t } = useTranslation('skill')
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  const duration = minutes > 0 ? `${minutes}m${remainingSeconds}s` : `${remainingSeconds}s`
 
   return (
     <div
       aria-live="polite"
-      className="flex items-center gap-2 system-xs-regular text-text-tertiary"
+      className="flex h-6 items-center gap-1 px-1 system-xs-medium text-text-tertiary"
     >
-      <span aria-hidden className="i-ri-sparkling-2-line size-3.5 animate-pulse" />
-      <span>{t(($) => $['skillManagement.detail.builder.thinking'], { seconds })}</span>
-      <span aria-hidden className="flex items-center gap-0.5">
-        {[0, 1, 2].map((index) => (
+      <span>{t(($) => $['skillManagement.detail.builder.thinking'])}</span>
+      <span aria-hidden className="font-normal text-text-quaternary">
+        ·
+      </span>
+      <span>{duration}</span>
+      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+    </div>
+  )
+}
+
+const skillBuilderEmptyIconCellOpacities = [
+  '0 0 0.093 0.166 0 0 0.155 0',
+  '0 0.159 0.145 0.159 0.135 0.179 0.128 0.105',
+  '0.091 0 0.161 0.187 0.102 0 0.111 0',
+  '0.148 0.159 0 0 0.195 0.158 0.342 0.128',
+  '0.169 0.132 0 0.115 0.112 0.319 0.218 0.199',
+  '0.241 0.206 0.124 0.181 0.212 0.211 0.315 0.127',
+  '0.133 0.21 0.166 0.476 0.167 0.22 0.136 0.246',
+  '0 0.132 0.151 0.146 0.276 0.256 0.269 0',
+].flatMap((row) => row.split(' ').map(Number))
+
+const skillBuilderEmptyIconCells = skillBuilderEmptyIconCellOpacities.map((opacity, index) => ({
+  id: `skill-builder-icon-cell-${Math.floor(index / 8)}-${index % 8}`,
+  opacity,
+}))
+
+function SkillBuilderEmptyIcon() {
+  return (
+    <div className="dify-blue-glass-surface relative flex size-12 items-center justify-center rounded-xl p-2">
+      <div
+        aria-hidden
+        className="absolute inset-x-px inset-y-0.5 grid grid-cols-[repeat(8,4px)] grid-rows-[repeat(8,4px)] gap-0.5 opacity-25"
+      >
+        {skillBuilderEmptyIconCells.map((cell) => (
           <span
-            key={index}
-            className="size-1 animate-bounce rounded-full bg-text-quaternary"
-            style={{ animationDelay: `${index * 120}ms` }}
+            key={cell.id}
+            className={cell.opacity > 0 ? 'rounded-[1px] bg-[#98A2B2]' : 'invisible'}
+            style={{ opacity: cell.opacity }}
           />
         ))}
-      </span>
+      </div>
+      <span
+        aria-hidden
+        className="relative i-custom-public-agent-building-blocks size-4 text-[#0033FF] drop-shadow-[0_0_4px_rgba(49,70,255,0.18)]"
+      />
     </div>
   )
 }
@@ -155,6 +183,7 @@ export function SkillBuilderPanel({
   const attachmentInputRef = useRef<HTMLInputElement>(null)
   const [isSending, setIsSending] = useState(false)
   const [thinkingElapsedSeconds, setThinkingElapsedSeconds] = useState(0)
+  const thinkingElapsedSecondsRef = useRef(0)
   const isSendingRef = useRef(false)
   const isComposingRef = useRef(false)
   const detailRef = useRef(detail)
@@ -201,6 +230,7 @@ export function SkillBuilderPanel({
     messages.length > 0
       ? t(($) => $['skillManagement.detail.builder.modifyPlaceholder'])
       : t(($) => $['skillManagement.detail.builder.placeholder'])
+  const hasBuilderConversation = messages.some((message) => message.role === 'user')
 
   const updateMessages = (
     updater: (currentMessages: BuilderChatMessage[]) => BuilderChatMessage[],
@@ -240,7 +270,11 @@ export function SkillBuilderPanel({
     if (!isSending) return
 
     const timer = window.setInterval(() => {
-      setThinkingElapsedSeconds((currentSeconds) => currentSeconds + 1)
+      setThinkingElapsedSeconds((currentSeconds) => {
+        const nextSeconds = currentSeconds + 1
+        thinkingElapsedSecondsRef.current = nextSeconds
+        return nextSeconds
+      })
     }, 1000)
 
     return () => window.clearInterval(timer)
@@ -257,6 +291,7 @@ export function SkillBuilderPanel({
     setIsUploadingAttachment(false)
     setIsSending(false)
     setThinkingElapsedSeconds(0)
+    thinkingElapsedSecondsRef.current = 0
     isSendingRef.current = false
   }
 
@@ -266,6 +301,7 @@ export function SkillBuilderPanel({
     isSendingRef.current = false
     setIsSending(false)
     setThinkingElapsedSeconds(0)
+    thinkingElapsedSecondsRef.current = 0
     onClose()
   }
 
@@ -355,13 +391,23 @@ export function SkillBuilderPanel({
       id: assistantMessageId,
       role: 'assistant',
       content: '',
+      thinkingDurationSeconds: 0,
     }
 
-    updateMessages((currentMessages) => [...currentMessages, userMessage, assistantMessage])
+    updateMessages((currentMessages) => [
+      ...currentMessages.filter(
+        (message) =>
+          message.id !== `assistant-${skillId}-intro` ||
+          currentMessages.some((currentMessage) => currentMessage.role === 'user'),
+      ),
+      userMessage,
+      assistantMessage,
+    ])
     setPrompt('')
     setAttachments([])
     setIsSending(true)
     setThinkingElapsedSeconds(0)
+    thinkingElapsedSecondsRef.current = 0
 
     void sendSkillAssistMessage({
       skillId,
@@ -406,22 +452,43 @@ export function SkillBuilderPanel({
         onDraftDetailChange(nextDetail)
       },
       onCompleted: (hasError, errorMessage) => {
+        const thinkingDurationSeconds = thinkingElapsedSecondsRef.current
+        updateMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.id === assistantMessageId ? { ...message, thinkingDurationSeconds } : message,
+          ),
+        )
         setIsSending(false)
         setThinkingElapsedSeconds(0)
+        thinkingElapsedSecondsRef.current = 0
         isSendingRef.current = false
         assistAbortControllerRef.current = null
         if (hasError && errorMessage) toast.error(errorMessage)
       },
       onError: (errorMessage) => {
+        const thinkingDurationSeconds = thinkingElapsedSecondsRef.current
+        updateMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.id === assistantMessageId ? { ...message, thinkingDurationSeconds } : message,
+          ),
+        )
         setIsSending(false)
         setThinkingElapsedSeconds(0)
+        thinkingElapsedSecondsRef.current = 0
         isSendingRef.current = false
         assistAbortControllerRef.current = null
         if (errorMessage) toast.error(errorMessage)
       },
     }).catch((error: unknown) => {
+      const thinkingDurationSeconds = thinkingElapsedSecondsRef.current
+      updateMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === assistantMessageId ? { ...message, thinkingDurationSeconds } : message,
+        ),
+      )
       setIsSending(false)
       setThinkingElapsedSeconds(0)
+      thinkingElapsedSecondsRef.current = 0
       isSendingRef.current = false
       assistAbortControllerRef.current = null
       toast.error(
@@ -432,68 +499,148 @@ export function SkillBuilderPanel({
     })
   }
 
+  const handleCopyMessage = async (content: string) => {
+    await navigator.clipboard.writeText(content)
+    toast.success(t(($) => $['skillManagement.detail.builder.copySuccess']))
+  }
+
+  const handleReadMessage = (content: string) => {
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(content))
+  }
+
+  const handleRetryMessage = (messageIndex: number) => {
+    const previousUserMessage = messages
+      .slice(0, messageIndex)
+      .reverse()
+      .find((message) => message.role === 'user')
+    if (previousUserMessage) handleSend(previousUserMessage.content)
+  }
+
   return (
-    <aside className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg bg-background-section inset-ring-[0.5px] inset-ring-divider-subtle">
+    <aside className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg bg-[#e9ebf0] inset-ring-[0.5px] inset-ring-divider-subtle">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.32]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 1px 1px, rgb(99 102 241 / 0.18) 1px, transparent 0)',
-          backgroundSize: '12px 12px',
-        }}
+        className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 opacity-90"
       />
-      <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 px-4">
+      <SkillBuilderGridTexture
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 z-[2]"
+      />
+      <SkillBuilderGridTexture
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 left-0 z-[1] origin-center scale-y-[-1]"
+      />
+      <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 pr-3 pl-4">
         <h2 className="system-xs-semibold-uppercase text-text-secondary">
           {t(($) => $['skillManagement.detail.builder.title'])}
         </h2>
-        <div className="flex items-center gap-1">
+        <div className="flex h-8 items-center gap-1">
           <button
             type="button"
             aria-label={t(($) => $['skillManagement.detail.builder.restart'])}
-            className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={handleRestart}
           >
             <span aria-hidden className="i-ri-restart-line size-4" />
           </button>
+          <span aria-hidden className="flex h-8 w-[9px] items-center justify-center">
+            <span className="h-3.5 w-px bg-divider-subtle" />
+          </span>
           <button
             type="button"
             aria-label={t(($) => $['skillManagement.detail.builder.close'])}
-            className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={handleClose}
           >
             <span aria-hidden className="i-ri-close-line size-4" />
           </button>
         </div>
       </div>
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pb-6">
-        <div className="min-h-0 flex-1 overflow-y-auto py-4">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 scrollbar-thin overflow-y-auto px-4 pt-4 pb-[11px]">
           {messages.length > 0 ? (
-            <div className="space-y-3">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    'max-w-[94%] overflow-x-auto rounded-xl px-3 py-2 shadow-xs',
-                    message.role === 'user'
-                      ? 'ml-auto bg-state-accent-hover text-text-secondary'
-                      : 'mr-auto bg-background-default text-text-secondary',
-                  )}
-                >
-                  {message.content ? (
-                    <Markdown content={message.content} className="text-[13px]! leading-5!" />
-                  ) : (
-                    <SkillBuilderThinkingMessage seconds={thinkingElapsedSeconds} />
-                  )}
-                </div>
-              ))}
-              {messages.length > initialMessages.length && (
-                <div className="flex flex-col items-end gap-2 pt-2">
+            <div className="flex flex-col gap-3">
+              {messages.map((message, messageIndex) =>
+                message.role === 'user' ? (
+                  <div
+                    key={message.id}
+                    className="flex w-full max-w-[720px] flex-col items-end gap-1 self-end pl-8"
+                  >
+                    <div className="flex max-w-72 flex-col items-end rounded-2xl bg-background-default-dimmed px-2 py-2">
+                      <Markdown
+                        content={message.content}
+                        className="px-2 py-1 text-[14px]! leading-[20px]! tracking-[-0.07px] [&_p]:my-0 [&_p]:text-[14px]! [&_p]:leading-[20px]!"
+                      />
+                    </div>
+                    <div aria-hidden className="h-4 w-full" />
+                  </div>
+                ) : (
+                  <div
+                    key={message.id}
+                    className="flex w-full max-w-[720px] flex-col items-start gap-1 text-text-secondary"
+                  >
+                    {message.thinkingDurationSeconds !== undefined && (
+                      <SkillBuilderThinkingMessage
+                        seconds={
+                          isSending && messageIndex === messages.length - 1
+                            ? thinkingElapsedSeconds
+                            : message.thinkingDurationSeconds
+                        }
+                      />
+                    )}
+                    {message.content ? (
+                      <>
+                        <Markdown
+                          content={message.content}
+                          className="px-1 text-[14px]! leading-[20px]! tracking-[-0.07px] [&_p]:my-0 [&_p]:text-[14px]! [&_p]:leading-[20px]! [&_p+p]:mt-2"
+                        />
+                        <div className="mt-1 flex h-7 items-center gap-0.5 px-0.5 text-text-tertiary">
+                          <button
+                            type="button"
+                            aria-label={t(($) => $['skillManagement.detail.builder.readAloud'])}
+                            className="flex size-7 cursor-pointer items-center justify-center rounded-md outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                            onClick={() => handleReadMessage(message.content)}
+                          >
+                            <span aria-hidden className="i-ri-volume-up-line size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={t(($) => $['skillManagement.detail.builder.copyResponse'])}
+                            className="flex size-7 cursor-pointer items-center justify-center rounded-md outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                            onClick={() => void handleCopyMessage(message.content)}
+                          >
+                            <span aria-hidden className="i-ri-clipboard-line size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={t(($) => $['skillManagement.detail.builder.retryResponse'])}
+                            className="flex size-7 cursor-pointer items-center justify-center rounded-md outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-30"
+                            disabled={
+                              isSending ||
+                              !messages
+                                .slice(0, messageIndex)
+                                .some((currentMessage) => currentMessage.role === 'user')
+                            }
+                            onClick={() => handleRetryMessage(messageIndex)}
+                          >
+                            <span aria-hidden className="i-ri-restart-line size-4" />
+                          </button>
+                        </div>
+                      </>
+                    ) : message.thinkingDurationSeconds === undefined ? (
+                      <SkillBuilderThinkingMessage seconds={thinkingElapsedSeconds} />
+                    ) : null}
+                  </div>
+                ),
+              )}
+              {hasBuilderConversation && (
+                <div className="flex w-full flex-wrap items-end justify-end gap-1 py-2">
                   {followUpSuggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
-                      className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                      className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
@@ -505,27 +652,30 @@ export function SkillBuilderPanel({
             </div>
           ) : (
             <div className="flex min-h-full flex-col justify-end">
-              <div className="mb-5 flex flex-col items-center text-center">
-                <div className="mb-4 flex size-10 items-center justify-center rounded-xl border border-state-accent-hover bg-state-accent-hover text-text-accent shadow-xs">
-                  <span aria-hidden className="i-ri-box-3-line size-5" />
+              <div className="mb-[27px] flex flex-col items-start px-3 text-left">
+                <div className="mb-4">
+                  <SkillBuilderEmptyIcon />
                 </div>
                 <h3 className="system-sm-semibold text-text-secondary">
                   {t(($) => $['skillManagement.detail.builder.promptTitle'])}
                 </h3>
-                <p className="mt-1 max-w-56 system-xs-regular text-text-tertiary">
+                <p className="mt-1 max-w-64 system-xs-regular text-text-tertiary">
                   {t(($) => $['skillManagement.detail.builder.promptDescription'])}
                 </p>
               </div>
-              <div className="mb-4 space-y-2">
-                <p className="system-2xs-semibold-uppercase text-text-quaternary">
-                  {t(($) => $['skillManagement.detail.builder.tryExample'])}
-                </p>
-                <div className="flex flex-col items-end gap-2">
+              <div className="space-y-1.5 px-3">
+                <div className="flex items-center gap-2">
+                  <p className="shrink-0 system-2xs-semibold-uppercase text-text-quaternary">
+                    {t(($) => $['skillManagement.detail.builder.tryExample'])}
+                  </p>
+                  <span aria-hidden className="h-px flex-1 bg-divider-subtle" />
+                </div>
+                <div className="flex flex-col items-start gap-1">
                   {suggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
-                      className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                      className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-left system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
@@ -537,119 +687,128 @@ export function SkillBuilderPanel({
             </div>
           )}
         </div>
-        <div className="shrink-0 rounded-xl border border-divider-subtle bg-background-default px-3 py-2 shadow-lg">
-          <input
-            ref={attachmentInputRef}
-            type="file"
-            accept={skillBuilderAttachmentAccept}
-            className="hidden"
-            onChange={(event) => {
-              void handleAttachmentChange(event.currentTarget.files?.[0])
-            }}
-          />
-          {attachments.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {attachments.map((attachment) => (
-                <span
-                  key={attachment.id}
-                  className="flex max-w-full min-w-0 items-center gap-1 rounded-md border border-divider-subtle bg-background-section px-2 py-1 system-xs-regular text-text-secondary"
-                >
-                  <span
-                    aria-hidden
-                    className="i-ri-attachment-2 size-3.5 shrink-0 text-text-tertiary"
+        <div className="relative flex shrink-0 items-end justify-end bg-gradient-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-4 py-2">
+          <div className="flex w-full flex-col items-end justify-end gap-2">
+            <div className="relative flex w-full flex-col items-start overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-lg backdrop-blur-[5px]">
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                accept={skillBuilderAttachmentAccept}
+                className="hidden"
+                onChange={(event) => {
+                  void handleAttachmentChange(event.currentTarget.files?.[0])
+                }}
+              />
+              {attachments.length > 0 && (
+                <div className="mb-1.5 flex flex-wrap gap-1.5 px-2 pt-1">
+                  {attachments.map((attachment) => (
+                    <span
+                      key={attachment.id}
+                      className="flex max-w-full min-w-0 items-center gap-1 rounded-md border border-divider-subtle bg-background-section px-2 py-1 system-xs-regular text-text-secondary"
+                    >
+                      <span
+                        aria-hidden
+                        className="i-ri-attachment-2 size-3.5 shrink-0 text-text-tertiary"
+                      />
+                      <span className="min-w-0 truncate">{attachment.name}</span>
+                      <button
+                        type="button"
+                        aria-label={t(($) => $['skillManagement.detail.builder.removeAttachment'], {
+                          name: attachment.name,
+                        })}
+                        className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        disabled={isSending}
+                        onClick={() => removeAttachment(attachment.id)}
+                      >
+                        <span aria-hidden className="i-ri-close-line size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <textarea
+                value={prompt}
+                rows={1}
+                className="[field-sizing:content] max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-1 body-md-regular text-text-secondary outline-hidden placeholder:text-text-quaternary"
+                placeholder={inputPlaceholder}
+                disabled={isSending}
+                onChange={(event) => setPrompt(event.target.value)}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey)
+                    return
+                  if (event.nativeEvent.isComposing || isComposingRef.current) return
+
+                  event.preventDefault()
+                  handleSend()
+                }}
+              />
+              <div className="flex min-h-8 min-w-0 items-center justify-between pl-1">
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <BuilderModelSelector
+                    isLoading={isTextGenerationModelListLoading}
+                    modelList={textGenerationModelList}
+                    selectedModel={activeSelectedModel}
+                    onSelect={setSelectedModel}
                   />
-                  <span className="min-w-0 truncate">{attachment.name}</span>
+                </div>
+                <div className="ml-auto flex shrink-0 items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={t(($) => $['skillManagement.detail.builder.attach'])}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isSending || isUploadingAttachment}
+                      onClick={() => attachmentInputRef.current?.click()}
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          isUploadingAttachment
+                            ? 'i-ri-loader-4-line animate-spin'
+                            : 'i-ri-attachment-2',
+                          'size-4',
+                        )}
+                      />
+                    </button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        aria-label={t(($) => $['skillManagement.detail.builder.voice'])}
+                        onClick={() => {
+                          toast.info(t(($) => $['skillManagement.detail.builder.voiceUnavailable']))
+                        }}
+                      >
+                        <span aria-hidden className="i-ri-mic-line size-4" />
+                      </TooltipTrigger>
+                      <TooltipContent placement="top">
+                        {t(($) => $['skillManagement.detail.builder.voiceUnavailable'])}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <button
                     type="button"
-                    aria-label={t(($) => $['skillManagement.detail.builder.removeAttachment'], {
-                      name: attachment.name,
-                    })}
-                    className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded text-text-quaternary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                    disabled={isSending}
-                    onClick={() => removeAttachment(attachment.id)}
+                    aria-label={t(($) => $['skillManagement.detail.builder.send'])}
+                    className="hover:bg-state-accent-solid-hover flex size-8 cursor-pointer items-center justify-center rounded-lg border-[0.5px] border-transparent bg-state-accent-solid text-text-primary-on-surface outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:border-components-button-primary-border-disabled disabled:bg-components-button-primary-bg-disabled disabled:text-components-button-primary-text-disabled"
+                    disabled={
+                      !canSendBuilderMessage ||
+                      (!prompt.trim() && attachments.length === 0) ||
+                      isSending ||
+                      isUploadingAttachment
+                    }
+                    onClick={() => handleSend()}
                   >
-                    <span aria-hidden className="i-ri-close-line size-3" />
+                    <span
+                      aria-hidden
+                      className={cn(
+                        isSending ? 'i-ri-loader-4-line animate-spin' : 'i-ri-arrow-up-line',
+                        'size-4',
+                      )}
+                    />
                   </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <textarea
-            value={prompt}
-            rows={2}
-            className="h-10 w-full resize-none bg-transparent system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary"
-            placeholder={inputPlaceholder}
-            disabled={isSending}
-            onChange={(event) => setPrompt(event.target.value)}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return
-              if (event.nativeEvent.isComposing || isComposingRef.current) return
-
-              event.preventDefault()
-              handleSend()
-            }}
-          />
-          <div className="mt-1 flex h-7 min-w-0 items-center gap-2">
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <BuilderModelSelector
-                isLoading={isTextGenerationModelListLoading}
-                modelList={textGenerationModelList}
-                selectedModel={activeSelectedModel}
-                onSelect={setSelectedModel}
-              />
-            </div>
-            <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-divider-subtle pl-1">
-              <button
-                type="button"
-                aria-label={t(($) => $['skillManagement.detail.builder.attach'])}
-                className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isSending || isUploadingAttachment}
-                onClick={() => attachmentInputRef.current?.click()}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    isUploadingAttachment ? 'i-ri-loader-4-line animate-spin' : 'i-ri-attachment-2',
-                    'size-4',
-                  )}
-                />
-              </button>
-              <Tooltip>
-                <TooltipTrigger
-                  className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  aria-label={t(($) => $['skillManagement.detail.builder.voice'])}
-                  onClick={() => {
-                    toast.info(t(($) => $['skillManagement.detail.builder.voiceUnavailable']))
-                  }}
-                >
-                  <span aria-hidden className="i-ri-mic-line size-4" />
-                </TooltipTrigger>
-                <TooltipContent placement="top">
-                  {t(($) => $['skillManagement.detail.builder.voiceUnavailable'])}
-                </TooltipContent>
-              </Tooltip>
-              <button
-                type="button"
-                aria-label={t(($) => $['skillManagement.detail.builder.send'])}
-                className="hover:bg-state-accent-solid-hover flex size-7 cursor-pointer items-center justify-center rounded-lg bg-state-accent-solid text-text-primary-on-surface outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={
-                  !canSendBuilderMessage ||
-                  (!prompt.trim() && attachments.length === 0) ||
-                  isSending ||
-                  isUploadingAttachment
-                }
-                onClick={() => handleSend()}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    isSending ? 'i-ri-loader-4-line animate-spin' : 'i-ri-arrow-up-line',
-                    'size-4',
-                  )}
-                />
-              </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

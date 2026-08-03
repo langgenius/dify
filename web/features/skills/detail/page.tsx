@@ -21,7 +21,7 @@ import {
   isDirectory,
   setSkillDetailCache,
 } from './shared'
-import { DetailSkeleton, SkillDetailRightPanelRail } from './shell'
+import { DetailSkeleton } from './shell'
 import { VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
@@ -359,6 +359,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           onDraftDetailChange={handleDraftDetailChange}
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onPromoteFile={handlePromoteFile}
+          onOpenBuilder={
+            rightPanelMode === 'hidden' ? () => setRightPanelMode('builder') : undefined
+          }
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
           onRestoreVersion={handleRestoreSelectedVersion}
@@ -380,12 +383,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             skillId={skillId}
             onDraftDetailChange={handleDraftDetailChange}
             onClose={() => setRightPanelMode('hidden')}
-          />
-        )}
-        {rightPanelMode === 'hidden' && (
-          <SkillDetailRightPanelRail
-            onOpenBuilder={() => setRightPanelMode('builder')}
-            onOpenVersions={handleOpenVersions}
           />
         )}
         {rightPanelMode === 'versions' && (

@@ -72,12 +72,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <button type="button">model-settings</button>,
-  }),
-)
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  default: () => <button type="button">model-settings</button>,
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ onChange, value }: { onChange?: (value: string) => void; value: string }) => (
@@ -1084,6 +1081,30 @@ describe('SkillDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('moves the collapsed Skill Builder entry into the file tab header', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.close',
+      }),
+    )
+
+    const openBuilderButton = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.open',
+    })
+    expect(openBuilderButton).toHaveClass('h-8', 'w-[133px]')
+    expect(openBuilderButton.closest('main')).toBeInTheDocument()
+
+    await user.click(openBuilderButton)
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.close',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('does not render the code editor when external file content fails to load', async () => {
     mocks.fetchSkillFileBlob.mockRejectedValue(new Error('content unavailable'))
     mocks.skillDetail = createSkillDetail({
@@ -1949,6 +1970,9 @@ describe('SkillDetailPage', () => {
         name: 'skill.skillManagement.detail.builder.send',
       }),
     )
+    expect(
+      screen.queryByText('skill.skillManagement.detail.builder.editIntro'),
+    ).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
@@ -3022,8 +3046,9 @@ describe('SkillDetailPage', () => {
       )
     })
     expect(
-      await screen.findByText('skill.skillManagement.detail.builder.thinking:{"seconds":0}'),
+      await screen.findByText('skill.skillManagement.detail.builder.thinking'),
     ).toBeInTheDocument()
+    expect(screen.getByText('0s')).toBeInTheDocument()
     expect(
       await screen.findByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeDisabled()
@@ -3127,6 +3152,8 @@ describe('SkillDetailPage', () => {
     )
 
     expect(await screen.findByText('I can create that reference file.')).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.detail.builder.thinking')).toBeInTheDocument()
+    expect(screen.getByText('0s')).toBeInTheDocument()
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 

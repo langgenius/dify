@@ -141,6 +141,7 @@ export type BuilderChatMessage = {
   id: string
   rawContent?: string
   role: 'assistant' | 'user'
+  thinkingDurationSeconds?: number
 }
 
 export type SkillBuilderAttachment = {
