@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview führt den fertigen Agenten so aus, wie deine Benutzer ihn sehen, mit klaren Antworten und Chat-Funktionen.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Agenten vorschauen",
   "agentDetail.configure.skills.add": "Skill hinzufügen",
-  "agentDetail.configure.skills.detail.contentRegion": "Skill-Detailinhalt",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} DATEIEN",
   "agentDetail.configure.skills.detail.files": "Dateien",
   "agentDetail.configure.skills.empty.description": "Skills geben dem Agenten wiederverwendbare Fachkenntnisse, die er bei der Arbeit nutzen kann",

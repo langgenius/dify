@@ -46,10 +46,6 @@ vi.mock('../store', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="mention-avatar">{name}</div>,
-}))
-
 const mentionUsers: UserProfile[] = [
   {
     id: 'user-2',

@@ -45,7 +45,7 @@ dependencies = [
     "zstandard==0.25.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
-    "graphon==0.6.0",
+    "graphon==0.7.0",
     "httpx-sse==0.4.3",
     "json-repair==0.60.1",
 ]

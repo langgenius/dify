@@ -15,8 +15,8 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -193,7 +193,7 @@ const SideBar = () => {
           )}
           {!isFold ? (
             <div className="min-h-0 flex-1">
-              <ScrollAreaRoot className="h-full">
+              <ScrollArea className="h-full">
                 <ScrollAreaViewport
                   ref={scrollRef}
                   aria-busy={installedAppsQuery.isFetchingNextPage}
@@ -219,7 +219,7 @@ const SideBar = () => {
                 <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
                 </ScrollAreaScrollbar>
-              </ScrollAreaRoot>
+              </ScrollArea>
             </div>
           ) : (
             <div

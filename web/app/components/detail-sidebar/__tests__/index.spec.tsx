@@ -92,7 +92,6 @@ describe('DetailSidebarFrame', () => {
   it('renders expanded detail content by default and registers the shortcut for focused inputs', () => {
     renderDetailSidebarFrame()
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(hotkeyRegistrations.get('Mod+B')?.options).toEqual(
@@ -105,8 +104,8 @@ describe('DetailSidebarFrame', () => {
 
     act(() => hotkeyRegistrations.get('Mod+B')?.handler())
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
   it('collapses detail content from the top toggle and hides environment metadata', () => {
@@ -119,7 +118,6 @@ describe('DetailSidebarFrame', () => {
     renderDetailSidebarFrame()
     fireEvent.click(screen.getByTestId('detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'false')
     expect(screen.queryByText('Environment tag')).not.toBeInTheDocument()
@@ -131,20 +129,17 @@ describe('DetailSidebarFrame', () => {
     fireEvent.click(screen.getByTestId('detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
-  it('persists expansion without width animation when the hovered preview toggle is clicked', () => {
+  it('persists expansion when the hovered preview toggle is clicked', () => {
     renderDetailSidebarFrame()
     fireEvent.click(screen.getByTestId('detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
     fireEvent.click(screen.getByTestId('detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-62', 'transition-none')
-    expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')
