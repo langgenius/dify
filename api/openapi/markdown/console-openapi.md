@@ -12225,6 +12225,25 @@ Import a Skill zip package from multipart form field `file`.
 | ---- | ----------- | ------ |
 | 200 | Draft files replaced | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
 
+### [POST] /workspaces/current/skills/{skill_id}/files/check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftFileCheckPayload](#skilldraftfilecheckpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft files checked | **application/json**: [SkillFileCheckResponse](#skillfilecheckresponse)<br> |
+
 ### [GET] /workspaces/current/skills/{skill_id}/files/content
 #### Parameters
 
@@ -22158,6 +22177,21 @@ One user message and optional uploaded context for the Skill Authoring assistant
 | updated_by_name | string |  | No |
 | visibility | string |  | Yes |
 
+#### SkillDraftFileCheckItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| filename | string |  | Yes |
+| mime_type | string |  | No |
+| path | string | Target draft path. Defaults to filename. | No |
+| size | integer |  | Yes |
+
+#### SkillDraftFileCheckPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ [SkillDraftFileCheckItemPayload](#skilldraftfilecheckitempayload) ] |  | No |
+
 #### SkillDraftFileOperation
 
 | Name | Type | Description | Required |
@@ -22197,6 +22231,30 @@ One user message and optional uploaded context for the Skill Authoring assistant
 | ---- | ---- | ----------- | -------- |
 | expected_updated_at | integer |  | No |
 | files | [ [SkillDraftTreeItemPayload](#skilldrafttreeitempayload) ] |  | No |
+
+#### SkillFileCheckErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+
+#### SkillFileCheckItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| errors | [ [SkillFileCheckErrorResponse](#skillfilecheckerrorresponse) ] |  | No |
+| extension | string |  | Yes |
+| filename | string |  | Yes |
+| mime_type | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | Yes |
+
+#### SkillFileCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | object |  | No |
 
 #### SkillFileKind
 
