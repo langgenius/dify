@@ -1,0 +1,79 @@
+# DiFly NAS 部署（适配 Nextcloud 同款目录结构）
+#
+# 用法：
+#   cd deploy/nas
+#   cp .env.example .env
+#   # 编辑 .env，把 NAS_HOST 改成你的 NAS IP
+#   docker compose up -d
+#
+# 访问：http://<NAS_IP>:8090/install
+#
+# 说明：DiFly 需要 PostgreSQL（不是 MariaDB）及多个服务，此文件在官方
+# docker-compose 基础上做了 NAS 端口/网络/数据目录适配。
+
+include:
+  - path: ../../docker/docker-compose.yaml
+
+services:
+  nginx:
+    container_name: difly_nginx
+
+  db_postgres:
+    container_name: difly_db
+    volumes:
+      - ./dev/difly_docker/db:/var/lib/postgresql/data
+
+  redis:
+    container_name: difly_redis
+    volumes:
+      - ./dev/difly_docker/redis:/data
+
+  weaviate:
+    container_name: difly_weaviate
+    volumes:
+      - ./dev/difly_docker/weaviate:/var/lib/weaviate
+
+  api:
+    container_name: difly_api
+    volumes:
+      - ./dev/difly_docker/storage:/app/api/storage
+
+  worker:
+    container_name: difly_worker
+    volumes:
+      - ./dev/difly_docker/storage:/app/api/storage
+
+  worker_beat:
+    container_name: difly_worker_beat
+    volumes:
+      - ./dev/difly_docker/storage:/app/api/storage
+
+  web:
+    container_name: difly_web
+
+  sandbox:
+    container_name: difly_sandbox
+
+  plugin_daemon:
+    container_name: difly_plugin_daemon
+
+  agent_backend:
+    container_name: difly_agent_backend
+
+  ssrf_proxy:
+    container_name: difly_ssrf_proxy
+
+  agent_ssrf_proxy:
+    container_name: difly_agent_ssrf_proxy
+
+  local_sandbox:
+    container_name: difly_local_sandbox
+
+  init_permissions:
+    volumes:
+      - ./dev/difly_docker/storage:/app/api/storage
+
+networks:
+  default:
+    name: difly_netbridge
+    driver: bridge
