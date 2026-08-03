@@ -3616,6 +3616,22 @@ Create a new tracing configuration for an application
 | 400 | Invalid request parameters or configuration already exists |  |
 | 403 | Insufficient permissions |  |
 
+### [GET] /apps/{app_id}/trace-configs
+List tracing configurations for an application
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| include_config | query | Include obfuscated provider configurations | No | boolean |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tracing configurations retrieved successfully | **application/json**: [TraceAppConfigListResponse](#traceappconfiglistresponse)<br> |
+
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
 
@@ -22553,6 +22569,15 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | ToolSelectorScope | string |  |  |
 
+#### TraceAppConfigListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configs | [ [TraceAppConfigResponse](#traceappconfigresponse) ] |  | No |
+| configured_providers | [ string ] |  | No |
+| enabled | boolean |  | No |
+| tracing_provider | string |  | No |
+
 #### TraceAppConfigResponse
 
 | Name | Type | Description | Required |
@@ -22567,6 +22592,12 @@ Enum class for tool provider
 | tracing_config | object |  | No |
 | tracing_provider | string |  | No |
 | updated_at | string |  | No |
+
+#### TraceConfigListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_config | boolean | Include obfuscated provider configurations | No |
 
 #### TraceConfigPayload
 

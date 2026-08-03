@@ -92,9 +92,7 @@ class OpsService:
     def _canonical_provider_names(providers: Sequence[str | None]) -> list[str]:
         return list(
             dict.fromkeys(
-                provider
-                for provider in providers
-                if provider is not None and provider in _SUPPORTED_TRACING_PROVIDERS
+                provider for provider in providers if provider is not None and provider in _SUPPORTED_TRACING_PROVIDERS
             )
         )
 
