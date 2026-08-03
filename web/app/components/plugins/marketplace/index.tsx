@@ -34,7 +34,12 @@ const Marketplace = async ({
 
   return (
     <HydrateQueryClient searchParams={searchParams}>
-      <MarketplaceView {...viewProps} banners={trendingBanners} variant={variant} />
+      <MarketplaceView
+        {...viewProps}
+        banners={trendingBanners}
+        language={language}
+        variant={variant}
+      />
     </HydrateQueryClient>
   )
 }
