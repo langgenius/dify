@@ -378,6 +378,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             match content:
                 case TextPromptMessageContent():
                     delta_text += content.data
+                # pyrefly: ignore [unreachable-match-case]
                 case str():
                     delta_text += content
                 case _:

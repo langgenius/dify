@@ -229,9 +229,9 @@ class BaseSession[
             self._write_stream.put(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
             timeout = DEFAULT_RESPONSE_READ_TIMEOUT
             if request_read_timeout_seconds is not None:
-                timeout = float(request_read_timeout_seconds.total_seconds())
+                timeout = request_read_timeout_seconds.total_seconds()
             elif self._session_read_timeout_seconds is not None:
-                timeout = float(self._session_read_timeout_seconds.total_seconds())
+                timeout = self._session_read_timeout_seconds.total_seconds()
             while True:
                 try:
                     response_or_error = response_queue.get(timeout=timeout)
@@ -241,6 +241,7 @@ class BaseSession[
                     continue
 
             match response_or_error:
+                # pyrefly: ignore [unreachable-match-case]
                 case None:
                     raise MCPConnectionError(
                         ErrorData(

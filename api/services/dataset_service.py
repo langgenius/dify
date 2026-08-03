@@ -3314,6 +3314,7 @@ class DocumentService:
 
         # Only set async task and cache if document is currently enabled
         if document.enabled:
+            # pyrefly: ignore [bad-assignment]
             update_info["async_task"] = {"function": remove_document_from_index_task, "args": [document.id]}
             update_info["set_cache"] = True
 
@@ -3334,6 +3335,7 @@ class DocumentService:
 
         # Only re-index if the document is currently enabled
         if document.enabled:
+            # pyrefly: ignore [bad-assignment]
             update_info["async_task"] = {"function": add_document_to_index_task, "args": [document.id]}
             update_info["set_cache"] = True
 
