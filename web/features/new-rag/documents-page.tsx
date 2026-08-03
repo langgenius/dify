@@ -245,7 +245,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
-  const [uploadFormOpenedLocally, setUploadFormOpenedLocally] = useState(false)
   const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
   const [isFileDragActive, setIsFileDragActive] = useState(false)
   const fileDragDepthRef = useRef(0)
@@ -374,17 +373,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const canWrite = hasWorkspaceWritePermission && !permissionDenied && !writePermissionRevoked
   const canUpload = canWrite && uploadAvailable
-  const uploadFormOpen = canUpload && (uploadRequest === '1' || uploadFormOpenedLocally)
-  const openUploadForm = useCallback((files: File[] = []) => {
-    writePermissionFocusRecoveryRequestedRef.current = true
-    writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-    fileDragDepthRef.current = 0
-    setIsFileDragActive(false)
-    setUploadFormInitialFiles(files)
-    setUploadFormOpenedLocally(true)
-  }, [])
+  const uploadFormOpen = canUpload && uploadRequest === '1'
+  const openUploadForm = useCallback(
+    (files: File[] = []) => {
+      writePermissionFocusRecoveryRequestedRef.current = true
+      writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
+      fileDragDepthRef.current = 0
+      setIsFileDragActive(false)
+      setUploadFormInitialFiles(files)
+      void setUploadRequest('1')
+    },
+    [setUploadRequest],
+  )
   const closeUploadForm = useCallback(() => {
-    setUploadFormOpenedLocally(false)
     setUploadFormInitialFiles([])
     void setUploadRequest(null)
   }, [setUploadRequest])
