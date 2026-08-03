@@ -5,13 +5,13 @@ import type { PublishWorkflowParams, VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { AppModeEnum } from '@/types/app'
-import ActionTooltip from './action-tooltip'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
@@ -416,32 +416,44 @@ export const PublisherActionsSection = ({
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
       {showOpenWebApp && (
-        <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
-          <SuggestedAction
-            className="flex-1"
-            disabled={disabledFunctionButton}
-            description={
-              disabledFunctionButton && disabledFunctionTooltip
-                ? disabledFunctionTooltip
-                : t(($) => $['common.openWebAppDescription'], { ns: 'workflow' })
-            }
-            external
-            focusableWhenDisabled={Boolean(disabledFunctionTooltip)}
-            link={appURL}
-            icon={<span className="i-ri-planet-line size-4" />}
-            actionButton={
-              showRunConfig && handleOpenRunConfig
-                ? {
-                    ariaLabel: t(($) => $['operation.config'], { ns: 'common' }),
-                    icon: <span className="i-ri-settings-2-line size-4" />,
-                    onClick: () => handleOpenRunConfig(appURL),
-                  }
-                : undefined
+        <Tooltip disabled={!disabledFunctionTooltip}>
+          <TooltipTrigger
+            render={
+              <div
+                className={cn(
+                  'flex w-full',
+                  disabledFunctionButton && 'cursor-not-allowed *:pointer-events-none',
+                )}
+              />
             }
           >
-            {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
-          </SuggestedAction>
-        </ActionTooltip>
+            <SuggestedAction
+              className="flex-1"
+              disabled={disabledFunctionButton}
+              description={
+                disabledFunctionButton && disabledFunctionTooltip
+                  ? disabledFunctionTooltip
+                  : t(($) => $['common.openWebAppDescription'], { ns: 'workflow' })
+              }
+              external
+              focusableWhenDisabled={Boolean(disabledFunctionTooltip)}
+              link={appURL}
+              icon={<span className="i-ri-planet-line size-4" />}
+              actionButton={
+                showRunConfig && handleOpenRunConfig
+                  ? {
+                      ariaLabel: t(($) => $['operation.config'], { ns: 'common' }),
+                      icon: <span className="i-ri-settings-2-line size-4" />,
+                      onClick: () => handleOpenRunConfig(appURL),
+                    }
+                  : undefined
+              }
+            >
+              {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
+            </SuggestedAction>
+          </TooltipTrigger>
+          <TooltipContent role="tooltip">{disabledFunctionTooltip}</TooltipContent>
+        </Tooltip>
       )}
       <SuggestedAction
         disabled={navigationDisabled}
