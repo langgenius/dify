@@ -519,6 +519,44 @@ describe('SkillsPage', () => {
     expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
   })
 
+  it('loads references in the delete confirmation when the list reference count is stale', async () => {
+    const user = userEvent.setup()
+    mocks.skills = [createSkill({ reference_count: 0 })]
+    mocks.skillPages = [mocks.skills]
+    mocks.skillReferences = [
+      createAgentReference({
+        agent_id: 'agent-stale-reference',
+        display_name: 'Support Agent From References API',
+        name: 'support-agent-from-references-api',
+      }),
+    ]
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.delete'))
+    const dialog = await screen.findByRole('alertdialog')
+
+    expect(await within(dialog).findByText('Support Agent From References API')).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(
+        'skill.skillManagement.deleteDialog.referencedDescription:{"count":1}',
+      ),
+    ).toBeInTheDocument()
+    expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          params: {
+            skill_id: 'skill-1',
+          },
+        },
+      }),
+    )
+  })
+
   it('collapses long reference lists in the delete confirmation', async () => {
     const user = userEvent.setup()
     mocks.skillReferences = Array.from({ length: 7 }, (_, index) =>
@@ -540,6 +578,10 @@ describe('SkillsPage', () => {
 
     expect(await within(dialog).findByText('Support Agent 5')).toBeInTheDocument()
     expect(within(dialog).queryByText('Support Agent 6')).not.toBeInTheDocument()
+    expect(within(dialog).getByTestId('skill-delete-reference-list')).not.toHaveAttribute(
+      'data-scrollable',
+      'true',
+    )
 
     await user.click(
       within(dialog).getByRole('button', {
@@ -549,6 +591,14 @@ describe('SkillsPage', () => {
 
     expect(within(dialog).getByText('Support Agent 6')).toBeInTheDocument()
     expect(within(dialog).getByText('Support Agent 7')).toBeInTheDocument()
+    expect(within(dialog).getByTestId('skill-delete-reference-list')).toHaveAttribute(
+      'data-scrollable',
+      'true',
+    )
+    expect(within(dialog).getByTestId('skill-delete-reference-list')).toHaveClass(
+      'max-h-[240px]',
+      'overflow-y-auto',
+    )
   })
 
   it('shows the empty-search state without create or import actions', async () => {

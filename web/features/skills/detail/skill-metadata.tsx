@@ -341,7 +341,6 @@ export function SkillReferencesPanel({
   visibleLimit?: number
 }) {
   const { t } = useTranslation('skill')
-  const [expanded, setExpanded] = useState(false)
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
       input: {
@@ -354,25 +353,9 @@ export function SkillReferencesPanel({
     refetchOnMount: 'always',
   })
   const references = referencesQuery.data?.data ?? []
-  const hasMoreReferences = visibleLimit != null && references.length > visibleLimit
-  const visibleReferences =
-    hasMoreReferences && !expanded ? references.slice(0, visibleLimit) : references
-  const isScrollable = Boolean(maxHeight && (expanded || visibleLimit == null))
 
   if (referencesQuery.isPending) {
-    return (
-      <div
-        className={cn(
-          compact
-            ? 'space-y-px rounded-xl border border-divider-subtle p-1'
-            : 'w-52 space-y-1 py-1',
-        )}
-      >
-        <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
-        <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
-        {compact && <SkeletonRectangle className="h-7 rounded-md" />}
-      </div>
-    )
+    return <SkillReferencesListSkeleton compact={compact} />
   }
 
   if (references.length === 0) {
@@ -382,6 +365,51 @@ export function SkillReferencesPanel({
       </div>
     )
   }
+
+  return (
+    <SkillReferencesList
+      compact={compact}
+      maxHeight={maxHeight}
+      references={references}
+      testId={testId}
+      visibleLimit={visibleLimit}
+    />
+  )
+}
+
+export function SkillReferencesListSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={cn(
+        compact ? 'space-y-px rounded-xl border border-divider-subtle p-1' : 'w-52 space-y-1 py-1',
+      )}
+    >
+      <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
+      <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
+      {compact && <SkeletonRectangle className="h-7 rounded-md" />}
+    </div>
+  )
+}
+
+export function SkillReferencesList({
+  compact = false,
+  maxHeight,
+  references,
+  testId,
+  visibleLimit,
+}: {
+  compact?: boolean
+  maxHeight?: string
+  references: SkillReferenceResponse[]
+  testId?: string
+  visibleLimit?: number
+}) {
+  const { t } = useTranslation('skill')
+  const [expanded, setExpanded] = useState(false)
+  const hasMoreReferences = visibleLimit != null && references.length > visibleLimit
+  const visibleReferences =
+    hasMoreReferences && !expanded ? references.slice(0, visibleLimit) : references
+  const isScrollable = Boolean(maxHeight && (expanded || visibleLimit == null))
 
   return (
     <div
