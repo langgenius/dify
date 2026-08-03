@@ -238,13 +238,29 @@ rejected synchronously once the request DTO itself is accepted.
 
 During FastAPI shutdown the scheduler rejects new runs, waits up to
 `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` for active tasks, then cancels remaining tasks
-and best-effort appends a `run_failed` event plus failed status. A hard process
-crash can still leave active runs stuck as `running`; there is no in-service
-recovery or worker handoff.
+and attempts to finalize them as failed. Success, failure, cancellation, and this
+shutdown path all use one atomic Redis transition: only the first transition from
+`running` appends a terminal event and updates the run record. A later terminal
+attempt leaves both the record and event stream unchanged. A hard process crash
+can still leave active runs stuck as `running`; there is no in-service recovery
+or worker handoff.
 
 Horizontal scaling is possible by running multiple API processes against the same
 Redis prefix, but each process executes only the runs it accepted. Redis provides
-shared status/event visibility, not load balancing or queued-job recovery.
+shared status/event visibility, not load balancing or queued-job recovery. The
+cancel endpoint can only signal a task owned by the process that receives the
+request; a request routed to a different process returns `409` while the run is
+still running. Retrying a cancellation after the run is already `cancelled` is
+idempotent.
+
+Atomic terminal finalization currently assumes the configured Redis URL targets
+one Redis deployment that can execute both run keys in a Lua script. The existing
+record and event key names are unchanged and do not contain a shared Redis
+Cluster hash tag, so Redis Cluster is not supported for this transition. During
+a rolling upgrade, older processes can still use the former split event/status
+writes; treat the single-terminal invariant as active only after those processes
+have exited. Operators should then alert on more than one terminal event per run
+and on disagreement between the run record status and terminal event type.
 
 ## Run inputs and session snapshots
 
@@ -284,7 +300,10 @@ Use the HTTP status endpoint for coarse state and the event endpoints for detail
 progress:
 
 - `POST /runs` creates a running run and schedules it locally.
-- `GET /runs/{run_id}` returns `running`, `succeeded`, or `failed`.
+- `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
+- `POST /runs/{run_id}/cancel` atomically accepts cancellation for a locally
+  owned running task and emits `run_cancelled`; it returns `409` for a non-local
+  running task or a run whose success/failure terminal already won.
 - `GET /runs/{run_id}/events` polls the Redis Stream event log with `after` and
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE
@@ -292,8 +311,10 @@ progress:
   `Last-Event-ID` headers.
 
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
-`run_succeeded`. Failed runs end with `run_failed`. Event envelopes retain `id`,
-`run_id`, `type`, `data`, and `created_at`; `data` is typed per event type,
+`run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
+end with `run_cancelled`. Each run can append at most one of these terminal
+events. Event envelopes retain `id`, `run_id`, `type`, `data`, and `created_at`;
+`data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
 terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` for
 resumption. A successful run has exactly one active result branch: JSON-safe
