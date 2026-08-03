@@ -1,6 +1,5 @@
 import json
 import threading
-import time
 from typing import Any, override
 
 from azure.identity import DefaultAzureCredential
@@ -26,8 +25,6 @@ _PREFIX = b"HYBRID:"
 _ENVELOPE_VERSION = 1
 
 _DEFAULT_WRAP_ALGORITHM = KeyWrapAlgorithm.rsa_oaep_256
-
-_CRYPTO_CLIENT_CACHE_TTL_SECONDS = 300
 
 
 class AzureKeyVaultKeyProvider(BaseKeyProvider):
@@ -65,9 +62,10 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
 
         self._credential = DefaultAzureCredential()
         self._key_client = KeyClient(vault_url=vault_url, credential=self._credential)
-        # Cached per (tenant_id, version). `version=None` means "whatever is current", which is
-        # only ever used by encrypt() -- decrypt always pins the exact version from the envelope.
-        self._crypto_clients: dict[tuple[str, str | None], tuple[CryptographyClient, str, float]] = {}
+        # Cached per (tenant_id, *concrete* version). A version's key material is immutable
+        # once created, so entries never need to expire -- there's deliberately no cache entry
+        # keyed by "current" (version=None): see _get_crypto_client().
+        self._crypto_clients: dict[tuple[str, str], CryptographyClient] = {}
         self._lock = threading.Lock()
 
     @staticmethod
@@ -76,24 +74,36 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
 
     def _get_crypto_client(self, tenant_id: str, version: str | None = None) -> tuple[CryptographyClient, str]:
         """
-        Return a CryptographyClient bound to `version` (or the current version if None),
-        along with the resolved version string that was actually used.
+        Return a CryptographyClient bound to `version`, along with the resolved version string
+        that was actually used.
+
+        When `version` is None (encrypt() asking for "whatever is current"), Key Vault is
+        always queried fresh for the key's current version -- this call is cheap (metadata
+        only, no crypto operation) and is what lets a rotation be picked up by the very next
+        encrypt(), instead of being masked behind a TTL that could keep wrapping under a
+        stale version for minutes after rotation. Once resolved to a concrete version, the
+        CryptographyClient itself is cached forever, since that version's key material can't
+        change.
         """
         key_name = self._key_name(tenant_id)
-        cache_key = (key_name, version)
 
+        if version is not None:
+            with self._lock:
+                cached = self._crypto_clients.get((key_name, version))
+            if cached is not None:
+                return cached, version
+            key = self._key_client.get_key(key_name, version=version)
+        else:
+            key = self._key_client.get_key(key_name)
+
+        resolved_version = key.properties.version or ""
+        cache_key = (key_name, resolved_version)
         with self._lock:
             cached = self._crypto_clients.get(cache_key)
-            if cached and cached[2] > time.monotonic():
-                return cached[0], cached[1]
-
-        key = self._key_client.get_key(key_name, version=version)
-        resolved_version = key.properties.version or ""
-        client = CryptographyClient(key, credential=self._credential)
-
-        expires_at = time.monotonic() + _CRYPTO_CLIENT_CACHE_TTL_SECONDS
-        with self._lock:
-            self._crypto_clients[cache_key] = (client, resolved_version, expires_at)
+            if cached is not None:
+                return cached, resolved_version
+            client = CryptographyClient(key, credential=self._credential)
+            self._crypto_clients[cache_key] = client
         return client, resolved_version
 
     @override
@@ -159,26 +169,46 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         if not encrypted_text.startswith(_PREFIX):
             raise ValueError("Unsupported ciphertext format for Azure Key Vault key provider")
 
-        body = encrypted_text[len(_PREFIX) :]
-        envelope_version = body[0]
-        if envelope_version != _ENVELOPE_VERSION:
-            raise ValueError(f"Unsupported Azure Key Vault envelope version: {envelope_version}")
-        offset = 1
+        # Bytes slicing never raises on out-of-range indices in Python (it just returns a
+        # shorter/empty slice), so a truncated envelope wouldn't otherwise surface as an error
+        # until (maybe) AES decryption fails much later, or not at all. Validate lengths
+        # explicitly and turn any parsing failure into ValueError, matching what callers
+        # (e.g. core/provider_manager.py) already expect and suppress for malformed credentials.
+        try:
+            body = encrypted_text[len(_PREFIX) :]
+            if len(body) < 1:
+                raise ValueError("Malformed Azure Key Vault envelope: missing envelope version")
+            envelope_version = body[0]
+            if envelope_version != _ENVELOPE_VERSION:
+                raise ValueError(f"Unsupported Azure Key Vault envelope version: {envelope_version}")
+            offset = 1
 
-        metadata_len = int.from_bytes(body[offset : offset + 2], "big")
-        offset += 2
-        metadata: dict[str, Any] = json.loads(body[offset : offset + metadata_len])
-        offset += metadata_len
+            if len(body) < offset + 2:
+                raise ValueError("Malformed Azure Key Vault envelope: truncated metadata length")
+            metadata_len = int.from_bytes(body[offset : offset + 2], "big")
+            offset += 2
+            if len(body) < offset + metadata_len:
+                raise ValueError("Malformed Azure Key Vault envelope: truncated metadata")
+            metadata: Any = json.loads(body[offset : offset + metadata_len])
+            if not isinstance(metadata, dict):
+                raise ValueError("Malformed Azure Key Vault envelope: metadata is not a JSON object")
+            offset += metadata_len
 
-        key_len = int.from_bytes(body[offset : offset + 2], "big")
-        offset += 2
-        wrapped_key = body[offset : offset + key_len]
-        offset += key_len
-        nonce = body[offset : offset + 16]
-        offset += 16
-        tag = body[offset : offset + 16]
-        offset += 16
-        ciphertext = body[offset:]
+            if len(body) < offset + 2:
+                raise ValueError("Malformed Azure Key Vault envelope: truncated wrapped key length")
+            key_len = int.from_bytes(body[offset : offset + 2], "big")
+            offset += 2
+            if len(body) < offset + key_len + 16 + 16:
+                raise ValueError("Malformed Azure Key Vault envelope: truncated wrapped key/nonce/tag")
+            wrapped_key = body[offset : offset + key_len]
+            offset += key_len
+            nonce = body[offset : offset + 16]
+            offset += 16
+            tag = body[offset : offset + 16]
+            offset += 16
+            ciphertext = body[offset:]
+        except (IndexError, TypeError) as exc:
+            raise ValueError("Malformed Azure Key Vault envelope") from exc
 
         wrap_alg = KeyWrapAlgorithm(metadata["wrap_alg"]) if metadata.get("wrap_alg") else _DEFAULT_WRAP_ALGORITHM
         crypto_client, _ = self._get_crypto_client(tenant_id, version=metadata.get("key_version"))

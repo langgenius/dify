@@ -6,6 +6,7 @@ so that Key Vault's native key rotation (a new "current" version appearing) does
 decryption of tokens encrypted before the rotation.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -105,23 +106,32 @@ def test_encrypt_decrypt_roundtrip() -> None:
     assert provider.decrypt_with_decoding(encrypted, decoding) == "super-secret"
 
 
+def _embedded_key_version(envelope: bytes) -> str:
+    """Peel out the {"key_version": ...} metadata Dify embeds in each ciphertext, for assertions."""
+    body = envelope[len(b"HYBRID:") :]
+    metadata_len = int.from_bytes(body[1:3], "big")
+    metadata = json.loads(body[3 : 3 + metadata_len])
+    return metadata["key_version"]
+
+
 def test_rotation_does_not_break_decryption_of_old_ciphertext(fake_key_client: FakeKeyClient) -> None:
     """
     The core guarantee: a token encrypted before rotation must still decrypt correctly after
-    Key Vault promotes a new "current" version, and new tokens use the new version.
+    Key Vault promotes a new "current" version, and new tokens must promptly pick up the new
+    version rather than keep using a stale cached "current" client.
     """
     provider = AzureKeyVaultKeyProvider()
     provider.generate_key_pair("tenant-1")
 
     encrypted_v1 = provider.encrypt("tenant-1", "secret-before-rotation")
+    assert _embedded_key_version(encrypted_v1) == "v1"
 
     # Simulate Key Vault's rotation policy promoting a new version in the background.
     fake_key_client.current_version = "v2"
 
     encrypted_v2 = provider.encrypt("tenant-1", "secret-after-rotation")
-
-    # Sanity check the fakes actually recorded different versions.
-    assert encrypted_v1 != encrypted_v2
+    # The new version must be picked up immediately, not after some cache TTL elapses.
+    assert _embedded_key_version(encrypted_v2) == "v2"
 
     decoding = provider.get_decrypt_decoding("tenant-1")
     assert provider.decrypt_with_decoding(encrypted_v1, decoding) == "secret-before-rotation"
@@ -167,3 +177,29 @@ def test_decrypt_rejects_unrecognized_prefix() -> None:
     provider = AzureKeyVaultKeyProvider()
     with pytest.raises(ValueError, match="Unsupported ciphertext format"):
         provider.decrypt_with_decoding(b"not-a-valid-envelope", "tenant-1")
+
+
+@pytest.mark.usefixtures("fake_key_client")
+def test_decrypt_rejects_truncated_envelope_missing_version_byte() -> None:
+    provider = AzureKeyVaultKeyProvider()
+    with pytest.raises(ValueError, match="Malformed Azure Key Vault envelope"):
+        provider.decrypt_with_decoding(b"HYBRID:", "tenant-1")
+
+
+@pytest.mark.usefixtures("fake_key_client")
+@pytest.mark.parametrize(
+    "truncate_at",
+    [
+        len(b"HYBRID:") + 2,  # cut inside the metadata-length prefix
+        len(b"HYBRID:") + 3,  # cut inside the metadata JSON blob
+    ],
+)
+def test_decrypt_rejects_truncated_envelope_raises_value_error(truncate_at: int) -> None:
+    provider = AzureKeyVaultKeyProvider()
+    provider.generate_key_pair("tenant-1")
+
+    encrypted = provider.encrypt("tenant-1", "secret")
+    truncated = encrypted[:truncate_at]
+
+    with pytest.raises(ValueError):
+        provider.decrypt_with_decoding(truncated, "tenant-1")

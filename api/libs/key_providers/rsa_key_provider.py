@@ -26,7 +26,8 @@ class RSAKeyProvider(BaseKeyProvider):
 
         if not (tenant := db.session.get(Tenant, tenant_id)):
             raise ValueError(f"Tenant with id {tenant_id} not found")
-        assert tenant.encrypt_public_key is not None
+        if tenant.encrypt_public_key is None:
+            raise ValueError(f"Tenant with id {tenant_id} has no encrypt_public_key")
         return rsa.encrypt(text, tenant.encrypt_public_key)
 
     @override
