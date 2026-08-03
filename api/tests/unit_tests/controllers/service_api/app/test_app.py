@@ -83,6 +83,30 @@ class AppDatabase:
         with self.session_maker.begin() as session:
             session.execute(table.delete().where(table.c.id == object_id))
 
+    def replace_tags(self, *names: str) -> None:
+        """Replace the visible app's tenant-owned tag bindings with persisted tags."""
+        with self.session_maker.begin() as session:
+            session.execute(
+                TagBinding.__table__.delete().where(
+                    TagBinding.tenant_id == self.tenant_id,
+                    TagBinding.target_id == self.app_id,
+                )
+            )
+            tags = [
+                Tag(tenant_id=self.tenant_id, type=TagType.APP, name=name, created_by=self.owner_id) for name in names
+            ]
+            session.add_all(tags)
+            session.flush()
+            session.add_all(
+                TagBinding(
+                    tenant_id=self.tenant_id,
+                    tag_id=tag.id,
+                    target_id=self.app_id,
+                    created_by=self.owner_id,
+                )
+                for tag in tags
+            )
+
 
 @pytest.fixture
 def flask_app() -> Flask:
@@ -268,10 +292,11 @@ def test_get_parameters_for_agent_uses_persisted_app(
     flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     authenticated_controller.update_app(mode=AppMode.AGENT, app_model_config_id=None, workflow_id=None)
+    user_input_form = [{"text-input": {"label": "Topic", "variable": "topic", "required": True}}]
     agent_parameters = Mock(
         return_value=(
             {"opening_statement": "Hi from Agent"},
-            [{"text-input": {"label": "Topic", "variable": "topic", "required": True}}],
+            user_input_form,
         )
     )
     monkeypatch.setattr(app_controller, "_get_agent_app_feature_dict_and_user_input_form", agent_parameters)
@@ -280,8 +305,11 @@ def test_get_parameters_for_agent_uses_persisted_app(
         response = AppParameterApi().get()
 
     assert response["opening_statement"] == "Hi from Agent"
-    assert response["user_input_form"][0]["text-input"]["variable"] == "topic"
-    assert agent_parameters.call_args.args[0].id == authenticated_controller.app_id
+    assert response["user_input_form"] == user_input_form
+    agent_parameters.assert_called_once()
+    (app_model,) = agent_parameters.call_args.args
+    assert app_model.id == authenticated_controller.app_id
+    assert agent_parameters.call_args.kwargs["session"] is authenticated_controller.registry()
 
 
 def test_unpublished_agent_raises_friendly_error(
@@ -326,9 +354,10 @@ def test_get_meta_passes_real_session_and_app(
     with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
         response = AppMetaApi().get()
 
+    service.get_app_meta.assert_called_once()
     (app_model,) = service.get_app_meta.call_args.args
     assert app_model.id == authenticated_controller.app_id
-    assert isinstance(service.get_app_meta.call_args.kwargs["session"], Session)
+    assert service.get_app_meta.call_args.kwargs["session"] is authenticated_controller.registry()
     assert response == {"tool_icons": {}}
 
 
@@ -350,6 +379,25 @@ def test_get_info_reads_author_and_tenant_scoped_tags(
         "mode": mode,
         "author_name": "Test Author",
     }
+
+
+@pytest.mark.parametrize(
+    "tag_names",
+    [(), ("tag-one", "tag-two", "tag-three")],
+    ids=["zero-tags", "multiple-tags"],
+)
+def test_get_info_handles_zero_or_multiple_tags(
+    flask_app: Flask,
+    authenticated_controller: AppDatabase,
+    tag_names: tuple[str, ...],
+) -> None:
+    authenticated_controller.replace_tags(*tag_names)
+
+    with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
+        response = AppInfoApi().get()
+
+    assert len(response["tags"]) == len(tag_names)
+    assert set(response["tags"]) == set(tag_names)
 
 
 @pytest.mark.parametrize("state", ["missing", "disabled", "archived", "ownerless"])
