@@ -9,6 +9,7 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import copy from 'copy-to-clipboard'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillDetailPage from '../detail-page'
 
@@ -52,6 +53,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     info: vi.fn(),
     success: vi.fn(),
   },
+}))
+
+vi.mock('copy-to-clipboard', () => ({
+  default: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
@@ -2290,6 +2295,46 @@ describe('SkillDetailPage', () => {
     ).toBeEnabled()
   })
 
+  it('replaces optimistic Skill Builder replies when the assistant stream returns an error', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onData, onError }) => {
+      onData?.('已创建用于客户问题分级处理的 skill 草案', true, {
+        messageId: 'assistant-message',
+      })
+      onError?.(
+        'the Skill Authoring assistant could not apply its response',
+        'skill_assistant_failed',
+      )
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'the Skill Authoring assistant could not apply its response',
+      )
+    })
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    const errorMessage = screen.getByText(
+      'the Skill Authoring assistant could not apply its response',
+    )
+    expect(errorMessage).toBeInTheDocument()
+    expect(errorMessage.closest('.rounded-xl')).toHaveClass(
+      'border-state-destructive-border',
+      'bg-state-destructive-hover',
+      'text-text-destructive',
+    )
+    expect(screen.queryByText('已创建用于客户问题分级处理的 skill 草案')).not.toBeInTheDocument()
+  })
+
   it('shows a publish confirmation for referenced skills before publishing updates', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
@@ -3870,7 +3915,7 @@ describe('SkillDetailPage', () => {
       ...primaryModifier,
     })
 
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
+    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.copyContentSuccess')
   })
 
   it('cuts the context-menu file with the displayed keyboard shortcut', async () => {
@@ -3919,7 +3964,7 @@ describe('SkillDetailPage', () => {
     await user.click(getFileTreeButton('SKILL.md'))
     fireEvent.copy(getFileTreeButton('SKILL.md'))
     await user.click(screen.getByRole('button', { name: 'scripts' }))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3932,6 +3977,58 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('lets editable fields handle native copy even when page selection contains an empty draft marker', async () => {
+    const user = userEvent.setup()
+    const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => '<!-- dify-skill-empty-draft -->',
+    } as Selection)
+    try {
+      renderSkillDetailPage()
+
+      await waitFor(() => {
+        expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+      })
+      await user.click(getFileTreeButton('SKILL.md'))
+      const builderInput = screen.getByPlaceholderText(
+        'skill.skillManagement.detail.builder.modifyPlaceholder',
+      )
+      fireEvent.copy(builderInput)
+
+      expect(copy).not.toHaveBeenCalledWith('<!-- dify-skill-empty-draft -->')
+      expect(toast.success).not.toHaveBeenCalledWith(
+        'skill.skillManagement.detail.copyContentSuccess',
+      )
+      expect(toast.success).not.toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
+    } finally {
+      getSelectionSpy.mockRestore()
+    }
+  })
+
+  it('does not let file-tree copy hotkeys override copying from the builder panel', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeButton('SKILL.md')).toBeInTheDocument()
+    })
+    await user.click(getFileTreeButton('SKILL.md'))
+
+    const builderControl = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.close',
+    })
+    fireEvent.keyDown(builderControl, {
+      code: 'KeyC',
+      key: 'c',
+      ...primaryModifier,
+    })
+
+    expect(copy).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalledWith(
+      'skill.skillManagement.detail.copyContentSuccess',
+    )
+    expect(toast.success).not.toHaveBeenCalledWith('skill.skillManagement.detail.copyFileSuccess')
   })
 
   it('opens only the copied file after pasting it beside the source file', async () => {
@@ -3962,7 +4059,7 @@ describe('SkillDetailPage', () => {
     })
     await user.click(getFileTreeButton('SKILL.md'))
     fireEvent.copy(getFileTreeButton('SKILL.md'))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -4036,7 +4133,7 @@ describe('SkillDetailPage', () => {
     })
     await user.click(getFileTreeButton('SKILL.md'))
     fireEvent.copy(getFileTreeButton('SKILL.md'))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
@@ -4116,7 +4213,7 @@ describe('SkillDetailPage', () => {
     await user.click(getFileTreeButton('alpha.md'))
     fireEvent.click(getFileTreeButton('beta.md'), primaryModifier)
     fireEvent.copy(getFileTreeButton('beta.md'))
-    fireEvent.paste(document)
+    fireEvent.paste(screen.getByTestId('skill-detail-sidebar'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(3)

@@ -142,6 +142,7 @@ export type BuilderChatMessage = {
   rawContent?: string
   role: 'assistant' | 'user'
   thinkingDurationSeconds?: number
+  tone?: 'error'
 }
 
 export type SkillBuilderAttachment = {

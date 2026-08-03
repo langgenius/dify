@@ -241,6 +241,21 @@ export function SkillBuilderPanel({
       return nextMessages
     })
   }
+  const replaceAssistantMessageWithError = (assistantMessageId: string, errorMessage: string) => {
+    rawAssistantMessagesRef.current.set(assistantMessageId, errorMessage)
+    updateMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.id === assistantMessageId
+          ? {
+              ...message,
+              content: errorMessage,
+              rawContent: errorMessage,
+              tone: 'error',
+            }
+          : message,
+      ),
+    )
+  }
 
   useEffect(() => {
     detailRef.current = detail
@@ -463,7 +478,10 @@ export function SkillBuilderPanel({
         thinkingElapsedSecondsRef.current = 0
         isSendingRef.current = false
         assistAbortControllerRef.current = null
-        if (hasError && errorMessage) toast.error(errorMessage)
+        if (hasError && errorMessage) {
+          replaceAssistantMessageWithError(assistantMessageId, errorMessage)
+          toast.error(errorMessage)
+        }
       },
       onError: (errorMessage) => {
         const thinkingDurationSeconds = thinkingElapsedSecondsRef.current
@@ -477,7 +495,10 @@ export function SkillBuilderPanel({
         thinkingElapsedSecondsRef.current = 0
         isSendingRef.current = false
         assistAbortControllerRef.current = null
-        if (errorMessage) toast.error(errorMessage)
+        if (errorMessage) {
+          replaceAssistantMessageWithError(assistantMessageId, errorMessage)
+          toast.error(errorMessage)
+        }
       },
     }).catch((error: unknown) => {
       const thinkingDurationSeconds = thinkingElapsedSecondsRef.current
@@ -578,7 +599,11 @@ export function SkillBuilderPanel({
                 ) : (
                   <div
                     key={message.id}
-                    className="flex w-full max-w-[720px] flex-col items-start gap-1 text-text-secondary"
+                    className={cn(
+                      'flex w-full max-w-[720px] flex-col items-start gap-1 text-text-secondary',
+                      message.tone === 'error' &&
+                        'rounded-xl border border-state-destructive-border bg-state-destructive-hover px-3 py-2 text-text-destructive',
+                    )}
                   >
                     {message.thinkingDurationSeconds !== undefined && (
                       <SkillBuilderThinkingMessage

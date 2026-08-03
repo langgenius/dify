@@ -51,6 +51,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
@@ -250,6 +251,7 @@ export function FileTree({
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
+  const sidebarRef = useRef<HTMLElement>(null)
   const referencesRegionRef = useRef<HTMLDivElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
@@ -687,6 +689,13 @@ export function FileTree({
     if (filePaths.length === 0) return
 
     setClipboard({ mode: 'copy', paths: filePaths })
+    const copiedFile = filePaths.length === 1 ? findFileByPath(files, filePaths[0]) : undefined
+    if (copiedFile && typeof copiedFile.content === 'string') {
+      copy(copiedFile.content)
+      toast.success(t(($) => $['skillManagement.detail.copyContentSuccess']))
+      return
+    }
+
     toast.success(t(($) => $['skillManagement.detail.copyFileSuccess']))
   }
 
@@ -873,6 +882,8 @@ export function FileTree({
   const shortcutTargetPath = selectedPaths[0] ?? selectedPath
   const fileShortcutEnabled =
     !readonly && !!shortcutTargetPath && !fileMutation.isPending && !inlineAction
+  const isInSidebar = (target: EventTarget | null) =>
+    target instanceof Node && !!sidebarRef.current?.contains(target)
   const handleOpenMenuHotkey = useEffectEvent((event: globalThis.KeyboardEvent) => {
     if (readonly || fileMutation.isPending || inlineAction) return
     if (!(event.target instanceof Element) || !event.target.closest('[role="menu"]')) return
@@ -916,35 +927,40 @@ export function FileTree({
     skillFileHotkeys.cut.command,
     (event) => {
       if (!shortcutTargetPath) return
+      if (!isInSidebar(event.target)) return
 
       event.preventDefault()
+      event.stopPropagation()
       handleCut(shortcutTargetPath)
     },
     {
       enabled: fileShortcutEnabled,
       ignoreInputs: true,
-      preventDefault: true,
-      stopPropagation: true,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
   useHotkey(
     skillFileHotkeys.copy.command,
     (event) => {
       if (!shortcutTargetPath) return
+      if (!isInSidebar(event.target)) return
 
       event.preventDefault()
+      event.stopPropagation()
       handleCopy(shortcutTargetPath)
     },
     {
       enabled: fileShortcutEnabled,
       ignoreInputs: true,
-      preventDefault: true,
-      stopPropagation: true,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
 
   const handleNativeCopy = useEffectEvent((event: ClipboardEvent) => {
     if (!fileShortcutEnabled || !shortcutTargetPath) return
+    if (!isInSidebar(event.target)) return
     if (isEditableKeyboardTarget(event.target)) return
 
     event.preventDefault()
@@ -952,6 +968,7 @@ export function FileTree({
   })
   const handleNativeCut = useEffectEvent((event: ClipboardEvent) => {
     if (!fileShortcutEnabled || !shortcutTargetPath) return
+    if (!isInSidebar(event.target)) return
     if (isEditableKeyboardTarget(event.target)) return
 
     event.preventDefault()
@@ -970,6 +987,7 @@ export function FileTree({
   useEffect(() => {
     const handlePasteEvent = (event: ClipboardEvent) => {
       if (readonly || !clipboard || fileMutation.isPending) return
+      if (!isInSidebar(event.target)) return
       if (isEditableKeyboardTarget(event.target)) return
 
       event.preventDefault()
@@ -1058,6 +1076,7 @@ export function FileTree({
   return (
     <>
       <aside
+        ref={sidebarRef}
         data-testid="skill-detail-sidebar-shell"
         className={cn(
           'relative flex h-full shrink-0 bg-background-body p-1',
