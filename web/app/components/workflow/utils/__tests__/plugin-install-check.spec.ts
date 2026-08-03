@@ -9,28 +9,32 @@ import {
   matchTriggerProvider,
 } from '../plugin-install-check'
 
-const createTool = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  id: 'langgenius/search/search',
-  name: 'search',
-  plugin_id: 'plugin-search',
-  provider: 'search-provider',
-  plugin_unique_identifier: 'plugin-search@1.0.0',
-  ...overrides,
-} as ToolWithProvider)
+const createTool = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
+  ({
+    id: 'langgenius/search/search',
+    name: 'search',
+    plugin_id: 'plugin-search',
+    provider: 'search-provider',
+    plugin_unique_identifier: 'plugin-search@1.0.0',
+    ...overrides,
+  }) as ToolWithProvider
 
-const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): TriggerWithProvider => ({
-  id: 'trigger-provider-id',
-  name: 'trigger-provider',
-  plugin_id: 'trigger-plugin',
-  ...overrides,
-} as TriggerWithProvider)
+const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): TriggerWithProvider =>
+  ({
+    id: 'trigger-provider-id',
+    name: 'trigger-provider',
+    plugin_id: 'trigger-plugin',
+    ...overrides,
+  }) as TriggerWithProvider
 
 describe('plugin install check', () => {
   describe('matchToolInCollection', () => {
     const collection = [createTool()]
 
     it('should match a tool by plugin id', () => {
-      expect(matchToolInCollection(collection, { plugin_id: 'plugin-search' })).toEqual(collection[0])
+      expect(matchToolInCollection(collection, { plugin_id: 'plugin-search' })).toEqual(
+        collection[0],
+      )
     })
 
     it('should match a tool by legacy provider id', () => {
@@ -50,11 +54,15 @@ describe('plugin install check', () => {
     const providers = [createTriggerProvider()]
 
     it('should match a trigger provider by name', () => {
-      expect(matchTriggerProvider(providers, { provider_name: 'trigger-provider' })).toEqual(providers[0])
+      expect(matchTriggerProvider(providers, { provider_name: 'trigger-provider' })).toEqual(
+        providers[0],
+      )
     })
 
     it('should match a trigger provider by id', () => {
-      expect(matchTriggerProvider(providers, { provider_id: 'trigger-provider-id' })).toEqual(providers[0])
+      expect(matchTriggerProvider(providers, { provider_id: 'trigger-provider-id' })).toEqual(
+        providers[0],
+      )
     })
 
     it('should match a trigger provider by plugin id', () => {
@@ -63,22 +71,30 @@ describe('plugin install check', () => {
   })
 
   describe('matchDataSource', () => {
-    const dataSources = [createTool({
-      provider: 'knowledge-provider',
-      plugin_id: 'knowledge-plugin',
-      plugin_unique_identifier: 'knowledge-plugin@1.0.0',
-    })]
+    const dataSources = [
+      createTool({
+        provider: 'knowledge-provider',
+        plugin_id: 'knowledge-plugin',
+        plugin_unique_identifier: 'knowledge-plugin@1.0.0',
+      }),
+    ]
 
     it('should match a data source by unique identifier', () => {
-      expect(matchDataSource(dataSources, { plugin_unique_identifier: 'knowledge-plugin@1.0.0' })).toEqual(dataSources[0])
+      expect(
+        matchDataSource(dataSources, { plugin_unique_identifier: 'knowledge-plugin@1.0.0' }),
+      ).toEqual(dataSources[0])
     })
 
     it('should match a data source by plugin id', () => {
-      expect(matchDataSource(dataSources, { plugin_id: 'knowledge-plugin' })).toEqual(dataSources[0])
+      expect(matchDataSource(dataSources, { plugin_id: 'knowledge-plugin' })).toEqual(
+        dataSources[0],
+      )
     })
 
     it('should match a data source by provider name', () => {
-      expect(matchDataSource(dataSources, { provider_name: 'knowledge-provider' })).toEqual(dataSources[0])
+      expect(matchDataSource(dataSources, { provider_name: 'knowledge-provider' })).toEqual(
+        dataSources[0],
+      )
     })
   })
 

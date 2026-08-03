@@ -19,6 +19,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage, Promp
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
@@ -27,10 +28,12 @@ _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 
 class PluginModelClient(BasePluginClient):
     @staticmethod
-    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any]) -> dict[str, Any]:
+    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}
         if user_id is not None:
             payload["user_id"] = user_id
+        if app_id is not None:
+            payload["app_id"] = app_id
         return payload
 
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
@@ -166,6 +169,7 @@ class PluginModelClient(BasePluginClient):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
+        app_id: str | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke llm
@@ -188,6 +192,7 @@ class PluginModelClient(BasePluginClient):
                         "stop": stop,
                         "stream": stream,
                     },
+                    app_id=app_id,
                 )
             ),
             headers={
@@ -610,7 +615,7 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         language: str | None = None,
-    ):
+    ) -> list[TTSModelVoice]:
         """
         Get tts model voices
         """
@@ -637,7 +642,7 @@ class PluginModelClient(BasePluginClient):
         )
 
         for resp in response:
-            voices = []
+            voices: list[TTSModelVoice] = []
             for voice in resp.voices:
                 voices.append({"name": voice.name, "value": voice.value})
 

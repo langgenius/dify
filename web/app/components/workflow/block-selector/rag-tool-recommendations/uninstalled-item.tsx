@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,43 +15,35 @@ type UninstalledItemProps = {
   payload: Plugin
 }
 
-const UninstalledItem = ({
-  payload,
-}: UninstalledItemProps) => {
+function UninstalledItem({ payload }: UninstalledItemProps) {
   const { t } = useTranslation()
   const locale = useLocale()
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
-  const [isShowInstallModal, {
-    setTrue: showInstallModal,
-    setFalse: hideInstallModal,
-  }] = useBoolean(false)
+  const [isShowInstallModal, { setTrue: showInstallModal, setFalse: hideInstallModal }] =
+    useBoolean(false)
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   return (
     <div className="flex h-8 items-center rounded-lg pr-2 pl-3 hover:bg-state-base-hover">
-      <BlockIcon
-        className="shrink-0"
-        type={BlockEnum.Tool}
-        toolIcon={payload.icon}
-      />
+      <BlockIcon className="shrink-0" type={BlockEnum.Tool} toolIcon={payload.icon} />
       <div className="ml-2 flex w-0 grow items-center">
         <div className="flex w-0 grow items-center gap-x-2">
           <span className="truncate system-sm-regular text-text-primary">
             {getLocalizedText(payload.label)}
           </span>
-          <span className="system-xs-regular text-text-quaternary">
-            {payload.org}
-          </span>
+          <span className="system-xs-regular text-text-quaternary">{payload.org}</span>
         </div>
         {canInstallPlugin && (
-          <div
-            className="cursor-pointer pl-1.5 system-xs-medium text-components-button-secondary-accent-text"
+          <Button
+            variant="ghost"
+            size="small"
+            className="h-6 px-1.5 text-components-button-secondary-accent-text focus-visible:ring-inset"
             onClick={showInstallModal}
           >
-            {t('installAction', { ns: 'plugin' })}
-          </div>
+            {t(($) => $.installAction, { ns: 'plugin' })}
+          </Button>
         )}
         {isShowInstallModal && canInstallPlugin && (
           <PluginInstallPermissionProvider

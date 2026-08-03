@@ -8,11 +8,12 @@ upload-file documents, and rejects unsupported or missing file cases.
 from __future__ import annotations
 
 import importlib
-import inspect
 import sys
 from collections import UserDict
+from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 from zipfile import ZipFile
 
 import pytest
@@ -107,7 +108,7 @@ def _wire_common_success_mocks(
     import services.dataset_service as dataset_service_module
 
     # Return a dataset object and allow permission checks to pass.
-    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1"))
+    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1"))
     monkeypatch.setattr(module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None)
 
     # Return a document that will be validated inside DocumentResource.get_document.
@@ -150,7 +151,7 @@ def test_batch_download_zip_returns_send_file(
     """Ensure batch ZIP download returns a zip attachment via `send_file`."""
 
     monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+        datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1")
     )
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
@@ -198,8 +199,8 @@ def test_batch_download_zip_returns_send_file(
         json={"document_ids": ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
-        method = inspect.unwrap(api.post)
-        result = method(api, "tenant-123", _mock_user(), dataset_id="ds-1")
+        method = unwrap(api.post)
+        result = method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1")
 
     # Assert: we returned via send_file with correct mime type and attachment.
     assert result["_send_file_kwargs"]["mimetype"] == "application/zip"
@@ -218,7 +219,7 @@ def test_batch_download_zip_response_is_openable_zip(
 
     # Arrange: same controller mocks as the lightweight send_file test, but we keep the real `send_file`.
     monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+        datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1")
     )
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
@@ -264,8 +265,8 @@ def test_batch_download_zip_response_is_openable_zip(
         json={"document_ids": ["33333333-3333-3333-3333-333333333333", "44444444-4444-4444-4444-444444444444"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
-        method = inspect.unwrap(api.post)
-        response = method(api, "tenant-123", _mock_user(), dataset_id="ds-1")
+        method = unwrap(api.post)
+        response = method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1")
 
     # Assert: response body is a valid ZIP and contains the expected entries.
     response.direct_passthrough = False
@@ -284,7 +285,7 @@ def test_batch_download_zip_rejects_non_upload_file_document(
     """Ensure batch ZIP download rejects non upload-file documents."""
 
     monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+        datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1")
     )
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
@@ -308,9 +309,9 @@ def test_batch_download_zip_rejects_non_upload_file_document(
         json={"document_ids": ["55555555-5555-5555-5555-555555555555"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
-        method = inspect.unwrap(api.post)
+        method = unwrap(api.post)
         with pytest.raises(NotFound):
-            method(api, "tenant-123", _mock_user(), dataset_id="ds-1")
+            method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1")
 
 
 def test_document_download_returns_url_for_upload_file_document(
@@ -331,8 +332,8 @@ def test_document_download_returns_url_for_upload_file_document(
     # Build a request context then call the resource method directly.
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        method = inspect.unwrap(api.get)
-        result = method(api, "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
+        method = unwrap(api.get)
+        result = method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
 
     assert result == {"url": "https://example.com/signed"}
 
@@ -354,9 +355,9 @@ def test_document_download_rejects_non_upload_file_document(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        method = inspect.unwrap(api.get)
+        method = unwrap(api.get)
         with pytest.raises(NotFound):
-            method(api, "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
+            method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
 
 
 def test_document_download_rejects_missing_upload_file_id(
@@ -376,9 +377,9 @@ def test_document_download_rejects_missing_upload_file_id(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        method = inspect.unwrap(api.get)
+        method = unwrap(api.get)
         with pytest.raises(NotFound):
-            method(api, "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
+            method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
 
 
 def test_document_download_rejects_when_upload_file_record_missing(
@@ -398,9 +399,9 @@ def test_document_download_rejects_when_upload_file_record_missing(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        method = inspect.unwrap(api.get)
+        method = unwrap(api.get)
         with pytest.raises(NotFound):
-            method(api, "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
+            method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
 
 
 def test_document_download_rejects_tenant_mismatch(
@@ -420,6 +421,6 @@ def test_document_download_rejects_tenant_mismatch(
 
     with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
         api = datasets_document_module.DocumentDownloadApi()
-        method = inspect.unwrap(api.get)
+        method = unwrap(api.get)
         with pytest.raises(Forbidden):
-            method(api, "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")
+            method(api, MagicMock(), "tenant-123", _mock_user(), dataset_id="ds-1", document_id="doc-1")

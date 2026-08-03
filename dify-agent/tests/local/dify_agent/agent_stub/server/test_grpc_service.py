@@ -130,6 +130,7 @@ def test_agent_stub_grpc_transport_delegates_file_download_requests() -> None:
         async def create_download_request(self, *, principal, request):
             assert principal.execution_context.user_id == "user-1"
             assert request.file.reference == _reference("tool-file-1")
+            assert request.for_external is False
             return type(
                 "Response",
                 (),
@@ -158,7 +159,8 @@ def test_agent_stub_grpc_transport_delegates_file_download_requests() -> None:
                 file=agent_stub_pb2.FileMapping(
                     transfer_method="tool_file",
                     reference=_reference("tool-file-1"),
-                )
+                ),
+                for_external=False,
             ),
             metadata=(("authorization", f"Bearer {token}"),),
         )

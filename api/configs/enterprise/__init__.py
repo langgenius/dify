@@ -14,9 +14,15 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
+    WEBAPP_PUBLIC_ACCESS_ENABLED: bool = Field(
+        description="Whether admins are allowed to set a webapp's access mode to public (anyone with the link, "
+        "no auth). Disable in security-sensitive on-prem deployments.",
+        default=True,
+    )
+
     CAN_REPLACE_LOGO: bool = Field(
         description="Allow customization of the enterprise logo.",
-        default=True,
+        default=False,
     )
 
     ENTERPRISE_REQUEST_TIMEOUT: int = Field(
@@ -32,6 +38,12 @@ class EnterpriseFeatureConfig(BaseSettings):
     RBAC_ENABLED: bool = Field(
         description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
         default=False,
+    )
+
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
     )
 
 

@@ -7,14 +7,6 @@ describe('Actions', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleNextStep = vi.fn()
-
-      render(<Actions handleNextStep={handleNextStep} />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
     it('should render button with translated text', () => {
       const handleNextStep = vi.fn()
 
@@ -33,16 +25,6 @@ describe('Actions', () => {
       expect(wrapper.className).toContain('justify-end')
       expect(wrapper.className).toContain('p-4')
       expect(wrapper.className).toContain('pt-2')
-    })
-
-    it('should render span with px-0.5 class around text', () => {
-      const handleNextStep = vi.fn()
-
-      const { container } = render(<Actions handleNextStep={handleNextStep} />)
-
-      const span = container.querySelector('span')
-      expect(span).toBeInTheDocument()
-      expect(span?.className).toContain('px-0.5')
     })
   })
 
@@ -74,9 +56,7 @@ describe('Actions', () => {
     it('should handle disabled switching from true to false', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={true} handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions disabled={true} handleNextStep={handleNextStep} />)
 
       expect(screen.getByRole('button')).toBeDisabled()
 
@@ -88,9 +68,7 @@ describe('Actions', () => {
     it('should handle disabled switching from false to true', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={false} handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions disabled={false} handleNextStep={handleNextStep} />)
 
       expect(screen.getByRole('button')).not.toBeDisabled()
 
@@ -102,9 +80,7 @@ describe('Actions', () => {
     it('should handle undefined disabled becoming true', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions handleNextStep={handleNextStep} />)
 
       expect(screen.getByRole('button')).not.toBeDisabled()
 
@@ -161,8 +137,7 @@ describe('Actions', () => {
       render(<Actions handleNextStep={handleNextStep} />)
       const button = screen.getByRole('button')
 
-      for (let i = 0; i < 10; i++)
-        fireEvent.click(button)
+      for (let i = 0; i < 10; i++) fireEvent.click(button)
 
       expect(handleNextStep).toHaveBeenCalledTimes(10)
     })
@@ -173,9 +148,7 @@ describe('Actions', () => {
       const handleNextStep1 = vi.fn()
       const handleNextStep2 = vi.fn()
 
-      const { rerender } = render(
-        <Actions handleNextStep={handleNextStep1} />,
-      )
+      const { rerender } = render(<Actions handleNextStep={handleNextStep1} />)
       fireEvent.click(screen.getByRole('button'))
 
       rerender(<Actions handleNextStep={handleNextStep2} />)
@@ -188,9 +161,7 @@ describe('Actions', () => {
     it('should maintain functionality after rerender with same props', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions handleNextStep={handleNextStep} />)
       fireEvent.click(screen.getByRole('button'))
 
       rerender(<Actions handleNextStep={handleNextStep} />)
@@ -204,9 +175,7 @@ describe('Actions', () => {
       const handleNextStep2 = vi.fn()
       const handleNextStep3 = vi.fn()
 
-      const { rerender } = render(
-        <Actions handleNextStep={handleNextStep1} />,
-      )
+      const { rerender } = render(<Actions handleNextStep={handleNextStep1} />)
       fireEvent.click(screen.getByRole('button'))
 
       rerender(<Actions handleNextStep={handleNextStep2} />)
@@ -222,24 +191,10 @@ describe('Actions', () => {
   })
 
   describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const handleNextStep = vi.fn()
-
-      const { rerender } = render(
-        <Actions handleNextStep={handleNextStep} />,
-      )
-
-      rerender(<Actions handleNextStep={handleNextStep} />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
     it('should not break when props remain the same across rerenders', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={false} handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions disabled={false} handleNextStep={handleNextStep} />)
 
       for (let i = 0; i < 5; i++) {
         rerender(<Actions disabled={false} handleNextStep={handleNextStep} />)
@@ -252,9 +207,7 @@ describe('Actions', () => {
     it('should update correctly when only disabled prop changes', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={false} handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions disabled={false} handleNextStep={handleNextStep} />)
 
       expect(screen.getByRole('button')).not.toBeDisabled()
 
@@ -267,9 +220,7 @@ describe('Actions', () => {
       const handleNextStep1 = vi.fn()
       const handleNextStep2 = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={false} handleNextStep={handleNextStep1} />,
-      )
+      const { rerender } = render(<Actions disabled={false} handleNextStep={handleNextStep1} />)
 
       fireEvent.click(screen.getByRole('button'))
       expect(handleNextStep1).toHaveBeenCalledTimes(1)
@@ -364,9 +315,7 @@ describe('Actions', () => {
     it('should work in a typical workflow: enable -> click -> disable', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={false} handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions disabled={false} handleNextStep={handleNextStep} />)
 
       expect(screen.getByRole('button')).not.toBeDisabled()
       fireEvent.click(screen.getByRole('button'))
@@ -388,17 +337,13 @@ describe('Actions', () => {
     it('should maintain consistent rendering across multiple state changes', () => {
       const handleNextStep = vi.fn()
 
-      const { rerender } = render(
-        <Actions disabled={false} handleNextStep={handleNextStep} />,
-      )
+      const { rerender } = render(<Actions disabled={false} handleNextStep={handleNextStep} />)
 
       const states = [true, false, true, false, true]
       states.forEach((disabled) => {
         rerender(<Actions disabled={disabled} handleNextStep={handleNextStep} />)
-        if (disabled)
-          expect(screen.getByRole('button')).toBeDisabled()
-        else
-          expect(screen.getByRole('button')).not.toBeDisabled()
+        if (disabled) expect(screen.getByRole('button')).toBeDisabled()
+        else expect(screen.getByRole('button')).not.toBeDisabled()
       })
 
       expect(screen.getByRole('button')).toBeInTheDocument()

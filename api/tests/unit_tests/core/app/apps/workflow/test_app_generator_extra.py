@@ -15,6 +15,70 @@ from models.model import AppMode
 
 
 class TestWorkflowAppGeneratorValidation:
+    def test_generate_stream_joins_worker_after_response_exhaustion(self, monkeypatch: pytest.MonkeyPatch):
+        generator = WorkflowAppGenerator()
+        worker_thread = Mock()
+        worker_thread.is_alive.return_value = False
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+            task_id="task",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user",
+            stream=True,
+            invoke_from=InvokeFrom.WEB_APP,
+            extras={},
+        )
+
+        def response_stream():
+            yield {"event": "workflow_finished"}
+
+        monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **kwargs: contextlib.nullcontext())
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowAppQueueManager",
+            lambda **kwargs: SimpleNamespace(**kwargs),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.current_app",
+            SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask")),
+        )
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.contextvars.copy_context", lambda: "ctx")
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", lambda **kwargs: worker_thread)
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.db",
+            SimpleNamespace(session=SimpleNamespace(close=Mock())),
+        )
+        monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *args, **kwargs: "draft-factory")
+        monkeypatch.setattr(generator, "_handle_response", lambda **kwargs: response_stream())
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowAppGenerateResponseConverter.convert",
+            lambda response, invoke_from: response,
+        )
+
+        managed_stream = generator._generate(
+            app_model=SimpleNamespace(mode=AppMode.WORKFLOW, tenant_id="tenant"),
+            workflow=SimpleNamespace(id="workflow-id"),
+            user=SimpleNamespace(id="user"),
+            application_generate_entity=application_generate_entity,
+            invoke_from=InvokeFrom.WEB_APP,
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            streaming=True,
+        )
+
+        worker_thread.start.assert_called_once_with()
+        worker_thread.join.assert_not_called()
+        assert list(managed_stream) == [{"event": "workflow_finished"}]
+        worker_thread.join.assert_called_once_with(timeout=300)
+
     def test_ensure_snippet_start_node_returns_original_for_non_snippet_workflow(self):
         workflow = SimpleNamespace(kind_or_standard="workflow")
         session = SimpleNamespace(scalar=Mock())
@@ -66,6 +130,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args={"inputs": {}},
                 streaming=False,
+                session=Mock(),
             )
 
         with pytest.raises(ValueError, match="inputs is required"):
@@ -76,6 +141,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args={},
                 streaming=False,
+                session=Mock(),
             )
 
     def test_single_loop_generate_validates_args(self):
@@ -89,6 +155,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args=SimpleNamespace(inputs={}),
                 streaming=False,
+                session=Mock(),
             )
 
     def test_single_iteration_generate_includes_trace_session_id_in_extras(self, monkeypatch: pytest.MonkeyPatch):
@@ -134,6 +201,7 @@ class TestWorkflowAppGeneratorValidation:
             user=SimpleNamespace(id="user-id"),
             args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
             streaming=False,
+            session=Mock(),
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
@@ -181,6 +249,7 @@ class TestWorkflowAppGeneratorValidation:
             user=SimpleNamespace(id="user-id"),
             args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
             streaming=False,
+            session=Mock(),
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
@@ -193,6 +262,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args=SimpleNamespace(inputs=None),
                 streaming=False,
+                session=Mock(),
             )
 
 
@@ -473,6 +543,8 @@ class TestWorkflowAppGeneratorWorker:
             lambda self, *, session, workflow: workflow,
         )
         monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppRunner", _Runner)
+        restore_workflow_run_graph = Mock()
+        monkeypatch.setattr(generator, "_restore_workflow_run_graph", restore_workflow_run_graph)
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -504,6 +576,12 @@ class TestWorkflowAppGeneratorWorker:
             variable_loader=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
         )
 
         assert runner_kwargs["system_user_id"] == "session-id"
+        restore_workflow_run_graph.assert_called_once_with(
+            session=session,
+            workflow=workflow,
+            workflow_run_id="run-id",
+        )

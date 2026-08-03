@@ -20,8 +20,18 @@ def make_saved_message():
     msg.query = "hello"
     msg.answer = "world"
     msg.user_feedback = MagicMock(rating="like")
+    msg.inputs_with_session.return_value = msg.inputs
+    msg.user_feedback_with_session.return_value = msg.user_feedback
     msg.created_at = None
     return msg
+
+
+def make_installed_app(mode: str):
+    app_model = MagicMock(mode=mode)
+    installed_app = MagicMock()
+    installed_app.app = app_model
+    installed_app.app_with_session.return_value = app_model
+    return installed_app
 
 
 @pytest.fixture
@@ -42,8 +52,7 @@ class TestSavedMessageListApi:
         api = module.SavedMessageListApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         pagination = MagicMock(
             limit=20,
@@ -63,7 +72,7 @@ class TestSavedMessageListApi:
             result = method(api, current_user, installed_app)
 
         pagination_mock.assert_called_once()
-        assert pagination_mock.call_args.args[2] is current_user
+        assert pagination_mock.call_args.args[1] is current_user
         assert result["limit"] == 20
         assert result["has_more"] is False
         assert len(result["data"]) == 2
@@ -72,8 +81,7 @@ class TestSavedMessageListApi:
         api = module.SavedMessageListApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with pytest.raises(NotCompletionAppError):
             method(api, MagicMock(), installed_app)
@@ -82,8 +90,7 @@ class TestSavedMessageListApi:
         api = module.SavedMessageListApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         payload = {"message_id": str(uuid4())}
         current_user = MagicMock()
@@ -96,15 +103,14 @@ class TestSavedMessageListApi:
             result = method(api, current_user, installed_app)
 
         save_mock.assert_called_once()
-        assert save_mock.call_args.args[2] is current_user
+        assert save_mock.call_args.args[1] is current_user
         assert result == {"result": "success"}
 
     def test_post_message_not_exists(self, app: Flask, payload_patch):
         api = module.SavedMessageListApi()
         method = unwrap(api.post)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
 
         payload = {"message_id": str(uuid4())}
 
@@ -126,8 +132,7 @@ class TestSavedMessageApi:
         api = module.SavedMessageApi()
         method = unwrap(api.delete)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="completion")
+        installed_app = make_installed_app(mode="completion")
         current_user = MagicMock()
 
         with (
@@ -136,7 +141,7 @@ class TestSavedMessageApi:
             result, status = method(api, current_user, installed_app, str(uuid4()))
 
         delete_mock.assert_called_once()
-        assert delete_mock.call_args.args[2] is current_user
+        assert delete_mock.call_args.args[1] is current_user
         assert status == 204
         assert result == ""
 
@@ -144,8 +149,7 @@ class TestSavedMessageApi:
         api = module.SavedMessageApi()
         method = unwrap(api.delete)
 
-        installed_app = MagicMock()
-        installed_app.app = MagicMock(mode="chat")
+        installed_app = make_installed_app(mode="chat")
 
         with pytest.raises(NotCompletionAppError):
             method(api, MagicMock(), installed_app, str(uuid4()))

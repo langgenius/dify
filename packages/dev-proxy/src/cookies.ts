@@ -8,15 +8,14 @@ const COOKIE_DOMAIN_PATTERN = /^domain=/i
 const COOKIE_SECURE_PATTERN = /^secure$/i
 const COOKIE_PARTITIONED_PATTERN = /^partitioned$/i
 
-const stripSecureCookiePrefix = (cookieName: string) => cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
+const stripSecureCookiePrefix = (cookieName: string) =>
+  cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
 
 const matchesCookieName = (cookieName: string, matcher: string | RegExp) =>
-  typeof matcher === 'string'
-    ? matcher === cookieName
-    : matcher.test(cookieName)
+  typeof matcher === 'string' ? matcher === cookieName : matcher.test(cookieName)
 
 const hashScope = (scope: string) => {
-  let hash = 0x811C9DC5
+  let hash = 0x811c9dc5
 
   for (let index = 0; index < scope.length; index += 1) {
     hash ^= scope.charCodeAt(index)
@@ -29,27 +28,30 @@ const hashScope = (scope: string) => {
 const shouldUseHostPrefix = (cookieName: string, options: CookieRewriteOptions) => {
   const normalizedCookieName = stripSecureCookiePrefix(cookieName)
 
-  return options.hostPrefixCookies?.some(matcher => matchesCookieName(normalizedCookieName, matcher)) || false
+  return (
+    options.hostPrefixCookies?.some((matcher) =>
+      matchesCookieName(normalizedCookieName, matcher),
+    ) || false
+  )
 }
 
 const toUpstreamCookieName = (cookieName: string, options: CookieRewriteOptions) => {
-  if (cookieName.startsWith('__Host-'))
-    return cookieName
+  if (cookieName.startsWith('__Host-')) return cookieName
 
-  if (cookieName.startsWith('__Secure-'))
-    return `__Host-${stripSecureCookiePrefix(cookieName)}`
+  if (cookieName.startsWith('__Secure-')) return `__Host-${stripSecureCookiePrefix(cookieName)}`
 
-  if (!shouldUseHostPrefix(cookieName, options))
-    return cookieName
+  if (!shouldUseHostPrefix(cookieName, options)) return cookieName
 
   return `__Host-${cookieName}`
 }
 
 export const toLocalCookieName = (cookieName: string) => stripSecureCookiePrefix(cookieName)
 
-export const resolveCookieRewriteLocalScopeKey = (options: CookieRewriteOptions, targetUrl: URL) => {
-  if (options.localCookieScope === 'target-origin')
-    return hashScope(targetUrl.origin)
+export const resolveCookieRewriteLocalScopeKey = (
+  options: CookieRewriteOptions,
+  targetUrl: URL,
+) => {
+  if (options.localCookieScope === 'target-origin') return hashScope(targetUrl.origin)
 
   return undefined
 }
@@ -59,25 +61,23 @@ export const toScopedLocalCookieName = (cookieName: string, localScopeKey: strin
 
 const fromScopedLocalCookieName = (cookieName: string, localScopeKey: string) => {
   const scopedPrefix = `${LOCAL_SCOPED_COOKIE_PREFIX}_${localScopeKey}_`
-  if (!cookieName.startsWith(scopedPrefix))
-    return undefined
+  if (!cookieName.startsWith(scopedPrefix)) return undefined
 
   return cookieName.slice(scopedPrefix.length)
 }
 
-const isScopedLocalCookieName = (cookieName: string) => cookieName.startsWith(`${LOCAL_SCOPED_COOKIE_PREFIX}_`)
+const isScopedLocalCookieName = (cookieName: string) =>
+  cookieName.startsWith(`${LOCAL_SCOPED_COOKIE_PREFIX}_`)
 
 const parseCookieHeader = (cookieHeader: string | undefined) => {
-  if (!cookieHeader)
-    return []
+  if (!cookieHeader) return []
 
   return cookieHeader
     .split(/;\s*/)
     .filter(Boolean)
     .map((cookie) => {
       const separatorIndex = cookie.indexOf('=')
-      if (separatorIndex === -1)
-        return { name: cookie, value: undefined }
+      if (separatorIndex === -1) return { name: cookie, value: undefined }
 
       return {
         name: cookie.slice(0, separatorIndex).trim(),
@@ -87,23 +87,21 @@ const parseCookieHeader = (cookieHeader: string | undefined) => {
 }
 
 export const getCookieHeaderValue = (cookieHeader: string | undefined, cookieName: string) => {
-  const cookie = parseCookieHeader(cookieHeader).find(cookie => cookie.name === cookieName)
+  const cookie = parseCookieHeader(cookieHeader).find((cookie) => cookie.name === cookieName)
   return cookie?.value
 }
 
 export const rewriteCookieHeaderForUpstream = (
   cookieHeader: string | undefined,
-  options: CookieRewriteOptions & { useHostPrefix?: boolean, localScopeKey?: string },
+  options: CookieRewriteOptions & { useHostPrefix?: boolean; localScopeKey?: string },
 ) => {
-  if (!cookieHeader)
-    return cookieHeader
+  if (!cookieHeader) return cookieHeader
 
   const { useHostPrefix = true } = options
 
   return parseCookieHeader(cookieHeader)
     .map((cookie) => {
-      if (cookie.value === undefined)
-        return cookie.name
+      if (cookie.value === undefined) return cookie.name
 
       const scopedCookieName = options.localScopeKey
         ? fromScopedLocalCookieName(cookie.name, options.localScopeKey)
@@ -116,7 +114,10 @@ export const rewriteCookieHeaderForUpstream = (
         return `${upstreamCookieName}=${cookie.value}`
       }
 
-      if (options.localScopeKey && (isScopedLocalCookieName(cookie.name) || shouldUseHostPrefix(cookie.name, options)))
+      if (
+        options.localScopeKey &&
+        (isScopedLocalCookieName(cookie.name) || shouldUseHostPrefix(cookie.name, options))
+      )
         return undefined
 
       const upstreamCookieName = useHostPrefix
@@ -136,8 +137,7 @@ const rewriteSetCookieValueForLocal = (
   const [rawCookiePair, ...rawAttributes] = setCookieValue.split(';')
   const separatorIndex = rawCookiePair!.indexOf('=')
 
-  if (separatorIndex === -1)
-    return setCookieValue
+  if (separatorIndex === -1) return setCookieValue
 
   const cookieName = rawCookiePair!.slice(0, separatorIndex).trim()
   const cookieValue = rawCookiePair!.slice(separatorIndex + 1)
@@ -149,18 +149,17 @@ const rewriteSetCookieValueForLocal = (
     ? toScopedLocalCookieName(cookieName, options!.localScopeKey!)
     : localCookieName
   const rewrittenAttributes = rawAttributes
-    .map(attribute => attribute.trim())
-    .filter(attribute =>
-      !COOKIE_DOMAIN_PATTERN.test(attribute)
-      && !COOKIE_SECURE_PATTERN.test(attribute)
-      && !COOKIE_PARTITIONED_PATTERN.test(attribute),
+    .map((attribute) => attribute.trim())
+    .filter(
+      (attribute) =>
+        !COOKIE_DOMAIN_PATTERN.test(attribute) &&
+        !COOKIE_SECURE_PATTERN.test(attribute) &&
+        !COOKIE_PARTITIONED_PATTERN.test(attribute),
     )
     .map((attribute) => {
-      if (SAME_SITE_NONE_PATTERN.test(attribute))
-        return 'SameSite=Lax'
+      if (SAME_SITE_NONE_PATTERN.test(attribute)) return 'SameSite=Lax'
 
-      if (COOKIE_PATH_PATTERN.test(attribute))
-        return 'Path=/'
+      if (COOKIE_PATH_PATTERN.test(attribute)) return 'Path=/'
 
       return attribute
     })
@@ -171,4 +170,4 @@ const rewriteSetCookieValueForLocal = (
 export const rewriteSetCookieHeadersForLocal = (
   setCookieHeaders: readonly string[],
   options?: CookieRewriteOptions & { localScopeKey?: string },
-) => setCookieHeaders.map(cookie => rewriteSetCookieValueForLocal(cookie, options))
+) => setCookieHeaders.map((cookie) => rewriteSetCookieValueForLocal(cookie, options))

@@ -11,7 +11,11 @@ import httpx
 from common import Logger, config_helper
 
 
-def install_openai_plugin() -> None:
+def is_non_blocking_install_response(response_data: dict[str, object]) -> bool:
+    return not response_data.get("code")
+
+
+def install_openai_plugin() -> bool:
     """Install OpenAI plugin using saved access token."""
 
     log = Logger("InstallPlugin")
@@ -22,7 +26,7 @@ def install_openai_plugin() -> None:
     if not access_token:
         log.error("No access token found in config")
         log.info("Please run login_admin.py first to get access token")
-        return
+        return False
 
     log.step("Installing OpenAI plugin...")
 
@@ -50,14 +54,14 @@ def install_openai_plugin() -> None:
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-        "authorization": f"Bearer {access_token}",
+        **config_helper.console_auth_headers(),
         "content-type": "application/json",
         "sec-ch-ua": '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
     }
 
-    cookies = {"locale": "en-US"}
+    cookies = config_helper.console_auth_cookies()
 
     try:
         # Make the installation request
@@ -74,8 +78,13 @@ def install_openai_plugin() -> None:
                 task_id = response_data.get("task_id")
 
                 if not task_id:
+                    if is_non_blocking_install_response(response_data):
+                        log.warning("No installation task returned; plugin may already be installed")
+                        log.debug(f"Response: {response.text}")
+                        return True
                     log.error("No task ID received from installation request")
-                    return
+                    log.debug(f"Response: {response.text}")
+                    return False
 
                 log.progress(f"Installation task created: {task_id}")
                 log.info("Polling for task completion...")
@@ -103,7 +112,7 @@ def install_openai_plugin() -> None:
                             success=False,
                             message=f"Failed to get task status: {task_response.status_code}",
                         )
-                        return
+                        return False
 
                     task_data = task_response.json()
                     task_info = task_data.get("task", {})
@@ -119,7 +128,7 @@ def install_openai_plugin() -> None:
                             plugin_info = plugins[0]
                             log.key_value("Plugin ID", plugin_info.get("plugin_id"))
                             log.key_value("Message", plugin_info.get("message"))
-                        break
+                        return True
 
                     elif status == "failed":
                         log.spinner_stop(success=False, message="Installation failed")
@@ -128,30 +137,37 @@ def install_openai_plugin() -> None:
                         if plugins:
                             for plugin in plugins:
                                 log.list_item(f"{plugin.get('plugin_id')}: {plugin.get('message')}")
-                        break
+                        return False
 
                     # Continue polling if status is "pending" or other
 
                 else:
                     log.spinner_stop(success=False, message="Installation timed out")
                     log.error("Installation timed out after 60 seconds")
+                    return False
 
             elif response.status_code == 401:
                 log.error("Installation failed: Unauthorized")
                 log.info("Token may have expired. Please run login_admin.py again")
+                return False
             elif response.status_code == 409:
                 log.warning("Plugin may already be installed")
                 log.debug(f"Response: {response.text}")
+                return True
             else:
                 log.error(f"Installation failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
+                return False
 
     except httpx.ConnectError:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
+        return False
     except Exception as e:
         log.error(f"An error occurred: {e}")
+        return False
 
 
 if __name__ == "__main__":
-    install_openai_plugin()
+    if not install_openai_plugin():
+        sys.exit(1)

@@ -58,7 +58,9 @@ import VariableAssignerNode from './variable-assigner/node'
 import VariableAssignerPanel from './variable-assigner/panel'
 
 type WorkflowAgentNodeProps = ComponentProps<typeof AgentNode> | ComponentProps<typeof AgentV2Node>
-type WorkflowAgentPanelProps = ComponentProps<typeof AgentPanel> | ComponentProps<typeof AgentV2Panel>
+type WorkflowAgentPanelProps =
+  | ComponentProps<typeof AgentPanel>
+  | ComponentProps<typeof AgentV2Panel>
 type WorkflowComponentMap = Record<string, ComponentType<Record<string, never>>>
 
 function WorkflowAgentNode(props: WorkflowAgentNodeProps) {

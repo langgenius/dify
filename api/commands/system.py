@@ -6,6 +6,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from enums.deployment_edition import DeploymentEdition
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -42,7 +43,7 @@ def reset_encrypt_key_pair():
     After the reset, all LLM credentials will become invalid, requiring re-entry.
     Only support SELF_HOSTED mode.
     """
-    if dify_config.EDITION != "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
@@ -188,23 +189,26 @@ where sites.id is null limit 1000"""
                 if app_id in failed_app_ids:
                     continue
 
+                session = db.session()
                 try:
-                    app = db.session.scalar(select(App).where(App.id == app_id))
+                    app = session.scalar(select(App).where(App.id == app_id))
                     if not app:
                         logger.info("App %s not found", app_id)
                         continue
 
-                    tenant = app.tenant
+                    tenant = session.get(Tenant, app.tenant_id)
                     if tenant:
-                        accounts = tenant.get_accounts()
+                        accounts = tenant.get_accounts(session=session)
                         if not accounts:
                             logger.info("Fix failed for app %s", app.id)
                             continue
 
                         account = accounts[0]
                         logger.info("Fixing missing site for app %s", app.id)
-                        app_was_created.send(app, account=account)
+                        app_was_created.send(app, account=account, session=session)
+                        session.commit()
                 except Exception:
+                    session.rollback()
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
                     logger.exception("Failed to fix app related site missing issue, app_id: %s", app_id)

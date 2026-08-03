@@ -2,10 +2,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiLoader2Line,
-  RiPlayLargeLine,
-} from '@remixicon/react'
+import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -18,11 +15,7 @@ type IRunBatchProps = {
   isAllFinished: boolean
 }
 
-const RunBatch: FC<IRunBatchProps> = ({
-  vars,
-  onSend,
-  isAllFinished,
-}) => {
+const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
@@ -50,8 +43,13 @@ const RunBatch: FC<IRunBatchProps> = ({
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >
-          <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 size-4 shrink-0')} aria-hidden="true" />
-          <span className="text-[13px] uppercase">{t('generation.run', { ns: 'share' })}</span>
+          <Icon
+            className={cn(!isAllFinished && 'animate-spin', 'mr-1 size-4 shrink-0')}
+            aria-hidden="true"
+          />
+          <span className="text-[13px] uppercase">
+            {t(($) => $['generation.run'], { ns: 'share' })}
+          </span>
         </Button>
       </div>
     </div>

@@ -22,9 +22,12 @@ vi.mock('../use-config', () => ({
   default: (...args: unknown[]) => mockUseConfig(...args),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  default: () => <div data-testid="model-parameter-modal" />,
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: () => <div data-testid="model-parameter-modal" />,
+  }),
+)
 
 vi.mock('../_base/components/config-vision', () => ({
   default: () => null,
@@ -143,16 +146,13 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
 
 const renderPanel = (data?: Partial<LLMNodeType>) => {
   return renderWorkflowFlowComponent(
-    <ProviderContext.Provider value={createMockProviderContextValue({
-      modelProviders: [createMockModelProvider('openai')],
-      isFetchedPlan: true,
-    })}
+    <ProviderContext.Provider
+      value={createMockProviderContextValue({
+        modelProviders: [createMockModelProvider('openai')],
+        isFetchedPlan: true,
+      })}
     >
-      <Panel
-        id="llm-node"
-        data={{ ...baseNodeData, ...data }}
-        panelProps={panelProps}
-      />
+      <Panel id="llm-node" data={{ ...baseNodeData, ...data }} panelProps={panelProps} />
     </ProviderContext.Provider>,
     {
       hooksStoreProps: {},
@@ -175,16 +175,18 @@ describe('LLM Panel', () => {
     })
 
     it('should show the model warning dot when the model is not configured', () => {
-      mockUseConfig.mockReturnValue(buildUseConfigResult({
-        inputs: {
-          ...baseNodeData,
-          model: {
-            ...baseNodeData.model,
-            provider: '',
-            name: '',
+      mockUseConfig.mockReturnValue(
+        buildUseConfigResult({
+          inputs: {
+            ...baseNodeData,
+            model: {
+              ...baseNodeData.model,
+              provider: '',
+              name: '',
+            },
           },
-        },
-      }))
+        }),
+      )
 
       renderPanel({
         model: {

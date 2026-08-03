@@ -12,8 +12,7 @@ const unregisterCommand = (name: string) => {
 
 export const executeCommand = async (name: string, args?: Record<string, any>) => {
   const handler = handlers.get(name)
-  if (!handler)
-    return
+  if (!handler) return
   await handler(args)
 }
 

@@ -46,6 +46,20 @@ def _get_operations(payload):
             yield operation
 
 
+def _response_schema(operation, status="200"):
+    return operation["responses"][status]["content"]["application/json"]["schema"]
+
+
+def _request_schema(operation, content_type="application/json"):
+    return operation["requestBody"]["content"][content_type]["schema"]
+
+
+def _nullable_schema_ref(schema):
+    if "$ref" in schema:
+        return schema["$ref"]
+    return next(item["$ref"] for item in schema["anyOf"] if "$ref" in item)
+
+
 def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
     module = _load_generate_swagger_specs_module()
 
@@ -94,6 +108,27 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path):
         operation_ids = list(_operation_ids(payload))
 
         assert len(operation_ids) == len(set(operation_ids))
+
+
+def test_system_features_specs_exclude_backend_only_fields(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    excluded_fields = {
+        "enable_trial_app",
+        "is_allow_create_workspace",
+        "max_plugin_package_size",
+        "plugin_manager",
+    }
+
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in written_paths if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        system_features_schema = schemas["SystemFeatureModel"]
+
+        assert excluded_fields.isdisjoint(system_features_schema["properties"])
+        assert "PluginManagerModel" not in schemas
 
 
 def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
@@ -164,6 +199,107 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tm
         "#/components/schemas/AgentKnowledgeSetConfig"
     )
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
+
+
+def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_path.read_text(encoding="utf-8"))
+    schemas = payload["components"]["schemas"]
+    paths = payload["paths"]
+
+    file_upload_schema = _request_schema(paths["/files/upload"]["post"], "multipart/form-data")
+    assert file_upload_schema["required"] == ["file"]
+    assert file_upload_schema["properties"]["file"]["format"] == "binary"
+    assert file_upload_schema["properties"]["file"]["type"] == "string"
+    assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
+
+    invoices_schema_ref = _response_schema(paths["/billing/invoices"]["get"])["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    assert schemas[invoices_schema_ref]["properties"]["url"]["type"] == "string"
+
+    app_detail_schema = schemas["RecommendedAppDetailResponse"]
+    assert app_detail_schema["properties"]["id"]["type"] == "string"
+    assert app_detail_schema["properties"]["export_data"]["type"] == "string"
+    assert app_detail_schema["properties"]["can_trial"]["type"] == "boolean"
+    assert "anyOf" not in app_detail_schema["properties"]["can_trial"]
+    assert "can_trial" in app_detail_schema["required"]
+    app_list_item_schema = schemas["RecommendedAppResponse"]
+    assert app_list_item_schema["properties"]["can_trial"]["type"] == "boolean"
+    assert "anyOf" not in app_list_item_schema["properties"]["can_trial"]
+    assert "can_trial" in app_list_item_schema["required"]
+    app_detail_nullable_schema = schemas["RecommendedAppDetailNullableResponse"]
+    assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
+        "#/components/schemas/RecommendedAppDetailNullableResponse"
+    )
+    assert {"$ref": "#/components/schemas/RecommendedAppDetailResponse"} in app_detail_nullable_schema["anyOf"]
+    assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
+    assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"
+    app_model_config = schemas["AppDetailWithSite"]["properties"]["model_config"]
+    assert {"$ref": "#/components/schemas/AppModelConfigResponse"} in app_model_config["anyOf"]
+    app_detail = schemas["AppDetail"]
+    assert "mode" in app_detail["properties"]
+    assert "mode_compatible_with_agent" not in app_detail["properties"]
+    sync_draft_workflow = schemas["SyncDraftWorkflowResponse"]
+    assert _response_schema(paths["/apps/{app_id}/workflows/draft"]["post"])["$ref"] == (
+        "#/components/schemas/SyncDraftWorkflowResponse"
+    )
+    assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
+    tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
+    assert {"type": "string"} in tool_icon_schema["anyOf"]
+    assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
+    assert "ToolIconResponse" not in schemas
+
+    plugin_versions = schemas["PluginVersionsResponse"]["properties"]["versions"]
+    assert plugin_versions["additionalProperties"]["anyOf"][0]["$ref"] == "#/components/schemas/LatestPluginCache"
+    assert plugin_versions["additionalProperties"]["anyOf"][1]["type"] == "null"
+    plugin_installations = schemas["PluginInstallationsResponse"]["properties"]["plugins"]
+    assert plugin_installations["items"]["$ref"] == "#/components/schemas/PluginInstallationItemResponse"
+
+    rbac_whitelist_request = _request_schema(paths["/workspaces/current/rbac/apps/{app_id}/whitelist"]["put"])
+    assert rbac_whitelist_request["$ref"] == "#/components/schemas/_ResourceAccessScopeRequest"
+    app_access_policy_params = paths["/workspaces/current/rbac/apps/{app_id}/access-policy"]["get"]["parameters"]
+    language_param = next(param for param in app_access_policy_params if param["name"] == "language")
+    assert language_param["schema"]["enum"] == ["en", "ja", "zh"]
+
+    trigger_list_schema = _response_schema(paths["/workspaces/current/triggers"]["get"])
+    assert trigger_list_schema["$ref"] == "#/components/schemas/TriggerProviderListResponse"
+    trigger_builder_create_schema = _response_schema(
+        paths["/workspaces/current/trigger-provider/{provider}/subscriptions/builder/create"]["post"]
+    )
+    assert trigger_builder_create_schema["$ref"] == "#/components/schemas/TriggerSubscriptionBuilderCreateResponse"
+    assert (
+        schemas["TriggerSubscriptionBuilderCreateResponse"]["properties"]["subscription_builder"]["$ref"]
+        == "#/components/schemas/SubscriptionBuilderApiEntity"
+    )
+
+    conversation_variables = schemas["ConversationVariableUpdatePayload"]["properties"]["conversation_variables"]
+    assert conversation_variables["items"]["$ref"] == "#/components/schemas/ConversationVariableItemPayload"
+    workflow_features = schemas["WorkflowFeaturesPayload"]["properties"]["features"]
+    assert workflow_features["$ref"] == "#/components/schemas/WorkflowFeaturesConfigPayload"
+    workflow_feature_properties = schemas["WorkflowFeaturesConfigPayload"]["properties"]
+    assert _nullable_schema_ref(workflow_feature_properties["suggested_questions_after_answer"]) == (
+        "#/components/schemas/WorkflowSuggestedQuestionsAfterAnswerPayload"
+    )
+    assert _nullable_schema_ref(workflow_feature_properties["text_to_speech"]) == (
+        "#/components/schemas/WorkflowTextToSpeechPayload"
+    )
+    assert _nullable_schema_ref(workflow_feature_properties["sensitive_word_avoidance"]) == (
+        "#/components/schemas/WorkflowSensitiveWordAvoidancePayload"
+    )
+    assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
+    assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
+    assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
+    file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
+    assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)
+    assert "detail" in schemas["WorkflowFileUploadImagePayload"]["properties"]
+    assert {"mode", "file_type_list"} <= set(schemas["WorkflowFileUploadPreviewConfigPayload"]["properties"])
+    assert schemas["AccountWithRoleResponse"]["properties"]["avatar_url"]["readOnly"] is True
 
 
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():

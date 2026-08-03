@@ -13,24 +13,21 @@ const ParamsConfig: FC = () => {
   const [open, setOpen] = useState(false)
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <Button variant="ghost" size="small" className={cn('')}>
             <RiSettings2Line className="size-3.5" />
-            <div className="ml-1">{t('voice.settings', { ns: 'appDebug' })}</div>
+            <div className="ml-1">{t(($) => $['voice.settings'], { ns: 'appDebug' })}</div>
           </Button>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-80 space-y-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg sm:w-[412px]">
+        <div className="w-80 space-y-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg sm:w-103">
           <ParamConfigContent />
         </div>
       </PopoverContent>

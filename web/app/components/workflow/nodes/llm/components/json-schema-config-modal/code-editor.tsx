@@ -46,61 +46,62 @@ const CodeEditor: FC<CodeEditorProps> = ({
 
   useEffect(() => {
     if (monacoRef.current) {
-      if (theme === Theme.light)
-        monacoRef.current.editor.setTheme('light-theme')
-      else
-        monacoRef.current.editor.setTheme('dark-theme')
+      if (theme === Theme.light) monacoRef.current.editor.setTheme('light-theme')
+      else monacoRef.current.editor.setTheme('dark-theme')
     }
   }, [theme])
 
-  const handleEditorDidMount = useCallback<EditorOnMount>((editor, monaco) => {
-    editorRef.current = editor
-    monacoRef.current = monaco
+  const handleEditorDidMount = useCallback<EditorOnMount>(
+    (editor, monaco) => {
+      editorRef.current = editor
+      monacoRef.current = monaco
 
-    editor.onDidFocusEditorText(() => {
-      onFocus?.()
-    })
-    editor.onDidBlurEditorText(() => {
-      onBlur?.()
-    })
+      editor.onDidFocusEditorText(() => {
+        onFocus?.()
+      })
+      editor.onDidBlurEditorText(() => {
+        onBlur?.()
+      })
 
-    monaco.editor.defineTheme('light-theme', {
-      base: 'vs',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#00000000',
-        'editor.lineHighlightBackground': '#00000000',
-        'focusBorder': '#00000000',
-      },
-    })
-    monaco.editor.defineTheme('dark-theme', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#00000000',
-        'editor.lineHighlightBackground': '#00000000',
-        'focusBorder': '#00000000',
-      },
-    })
-    monaco.editor.setTheme('light-theme')
-    setIsMounted(true)
-  }, [onBlur, onFocus])
+      monaco.editor.defineTheme('light-theme', {
+        base: 'vs',
+        inherit: true,
+        rules: [],
+        colors: {
+          'editor.background': '#00000000',
+          'editor.lineHighlightBackground': '#00000000',
+          focusBorder: '#00000000',
+        },
+      })
+      monaco.editor.defineTheme('dark-theme', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [],
+        colors: {
+          'editor.background': '#00000000',
+          'editor.lineHighlightBackground': '#00000000',
+          focusBorder: '#00000000',
+        },
+      })
+      monaco.editor.setTheme('light-theme')
+      setIsMounted(true)
+    },
+    [onBlur, onFocus],
+  )
 
   const formatJsonContent = useCallback(() => {
-    if (editorRef.current)
-      editorRef.current.getAction('editor.action.formatDocument')?.run()
+    if (editorRef.current) editorRef.current.getAction('editor.action.formatDocument')?.run()
   }, [])
 
-  const handleEditorChange = useCallback((value: string | undefined) => {
-    if (value !== undefined)
-      onUpdate?.(value)
-  }, [onUpdate])
+  const handleEditorChange = useCallback(
+    (value: string | undefined) => {
+      if (value !== undefined) onUpdate?.(value)
+    },
+    [onUpdate],
+  )
 
   const editorTheme = useMemo(() => {
-    if (theme === Theme.light)
-      return 'light-theme'
+    if (theme === Theme.light) return 'light-theme'
     return 'dark-theme'
   }, [theme])
   useEffect(() => {
@@ -108,8 +109,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
       editorRef.current?.layout()
     })
 
-    if (containerRef.current)
-      resizeObserver.observe(containerRef.current)
+    if (containerRef.current) resizeObserver.observe(containerRef.current)
 
     return () => {
       resizeObserver.disconnect()
@@ -117,7 +117,13 @@ const CodeEditor: FC<CodeEditorProps> = ({
   }, [])
 
   return (
-    <div className={cn('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
+    <div
+      className={cn(
+        'flex h-full flex-col overflow-hidden bg-components-input-bg-normal',
+        hideTopMenu && 'pt-2',
+        className,
+      )}
+    >
       {!hideTopMenu && (
         <div className="flex items-center justify-between pt-1 pr-1 pl-2">
           <div className="py-0.5 system-xs-semibold-uppercase text-text-secondary">
@@ -127,34 +133,37 @@ const CodeEditor: FC<CodeEditorProps> = ({
             {showFormatButton && (
               <Tooltip>
                 <TooltipTrigger
-                  render={(
+                  render={
                     <button
                       type="button"
-                      aria-label={t('operation.format', { ns: 'common' })}
+                      aria-label={t(($) => $['operation.format'], { ns: 'common' })}
                       className="flex size-6 items-center justify-center"
                       onClick={formatJsonContent}
                     >
-                      <span aria-hidden className="i-ri-indent-increase size-4 text-text-tertiary" />
+                      <span
+                        aria-hidden
+                        className="i-ri-indent-increase size-4 text-text-tertiary"
+                      />
                     </button>
-                  )}
+                  }
                 />
-                <TooltipContent>{t('operation.format', { ns: 'common' })}</TooltipContent>
+                <TooltipContent>{t(($) => $['operation.format'], { ns: 'common' })}</TooltipContent>
               </Tooltip>
             )}
             <Tooltip>
               <TooltipTrigger
-                render={(
+                render={
                   <button
                     type="button"
-                    aria-label={t('operation.copy', { ns: 'common' })}
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     className="flex size-6 items-center justify-center"
                     onClick={() => copy(value)}
                   >
                     <span aria-hidden className="i-ri-clipboard-line size-4 text-text-tertiary" />
                   </button>
-                )}
+                }
               />
-              <TooltipContent>{t('operation.copy', { ns: 'common' })}</TooltipContent>
+              <TooltipContent>{t(($) => $['operation.copy'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
           </div>
         </div>

@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import PluginItem from './plugin-item'
 
 type PluginSectionProps = {
@@ -31,44 +37,41 @@ function PluginSection({
   renderItemAction,
   onClearSingle,
 }: PluginSectionProps) {
-  if (plugins.length === 0)
-    return null
+  if (plugins.length === 0) return null
 
   return (
     <>
       <div className="sticky top-0 flex items-start justify-between pt-1 pr-1 pl-2 system-sm-semibold-uppercase text-text-secondary">
-        <span className="flex h-6 items-center">
-          {title}
-          {' '}
-          (
-          {count}
-          )
-        </span>
+        <h3 className="flex h-6 items-center">
+          {title} ({count})
+        </h3>
         {headerAction}
       </div>
-      <ScrollArea
-        className="overflow-hidden"
-        label={title}
-        slotClassNames={{
-          viewport: 'overscroll-contain',
-          content: 'min-w-0',
-        }}
-      >
-        {plugins.map(plugin => (
-          <PluginItem
-            key={plugin.plugin_unique_identifier}
-            plugin={plugin}
-            getIconUrl={getIconUrl}
-            language={language}
-            statusIcon={statusIcon}
-            statusText={plugin.message || defaultStatusText}
-            statusClassName={statusClassName}
-            action={renderItemAction?.(plugin)}
-            onClear={onClearSingle
-              ? () => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)
-              : undefined}
-          />
-        ))}
+      <ScrollArea className="overflow-hidden">
+        <ScrollAreaViewport className="overscroll-contain">
+          <ScrollAreaContent style={{ minWidth: 0 }}>
+            {plugins.map((plugin) => (
+              <PluginItem
+                key={plugin.plugin_unique_identifier}
+                plugin={plugin}
+                getIconUrl={getIconUrl}
+                language={language}
+                statusIcon={statusIcon}
+                statusText={plugin.message || defaultStatusText}
+                statusClassName={statusClassName}
+                action={renderItemAction?.(plugin)}
+                onClear={
+                  onClearSingle
+                    ? () => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)
+                    : undefined
+                }
+              />
+            ))}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </>
   )

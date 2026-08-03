@@ -25,6 +25,25 @@ describe('AccessSurfaceCard', () => {
   })
 
   describe('Copy feedback', () => {
+    it('should expose the surface card by its title', () => {
+      render(
+        <AccessSurfaceCard
+          title="Web app"
+          icon="i-ri-window-line"
+          iconClassName="bg-state-accent-solid"
+          endpointLabel="Access URL"
+          endpoint="https://chat.example.test/agent/token"
+          enabled
+          onEnabledChange={vi.fn()}
+          copyLabel="Copy access URL"
+        >
+          <button type="button">Action</button>
+        </AccessSurfaceCard>,
+      )
+
+      expect(screen.getByRole('article', { name: 'Web app' })).toBeInTheDocument()
+    })
+
     it('should copy the endpoint and render copied state from the clipboard hook', async () => {
       const user = userEvent.setup()
       const { rerender } = render(

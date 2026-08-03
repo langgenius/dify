@@ -41,7 +41,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.file_access.controller import DatabaseFileAccessController
-from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from factories import file_factory
 from libs.uuid_utils import uuidv7
@@ -195,38 +194,38 @@ class AgentDriveService:
         *,
         tenant_id: str,
         agent_id: str,
+        session: Session,
         prefix: str = "",
         include_download_url: bool = False,
     ) -> list[dict[str, Any]]:
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            stmt = (
-                select(AgentDriveFile)
-                .where(AgentDriveFile.tenant_id == tenant_id, AgentDriveFile.agent_id == agent_id)
-                .order_by(AgentDriveFile.key)
-            )
-            if prefix:
-                stmt = stmt.where(AgentDriveFile.key.startswith(prefix))
-            rows = list(session.scalars(stmt))
-            items: list[dict[str, Any]] = []
-            for row in rows:
-                item: dict[str, Any] = {
-                    "key": row.key,
-                    "size": row.size,
-                    "hash": row.hash,
-                    "mime_type": row.mime_type,
-                    "file_kind": row.file_kind.value,
-                    "file_id": row.file_id,
-                    "is_skill": row.is_skill,
-                    "skill_metadata": row.skill_metadata,
-                    "created_at": int(row.created_at.timestamp()) if row.created_at else None,
-                }
-                if include_download_url:
-                    item["download_url"] = self._resolve_download_url(
-                        tenant_id=tenant_id, file_kind=row.file_kind, file_id=row.file_id
-                    )
-                items.append(item)
-            return items
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        stmt = (
+            select(AgentDriveFile)
+            .where(AgentDriveFile.tenant_id == tenant_id, AgentDriveFile.agent_id == agent_id)
+            .order_by(AgentDriveFile.key)
+        )
+        if prefix:
+            stmt = stmt.where(AgentDriveFile.key.startswith(prefix))
+        rows = list(session.scalars(stmt))
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            item: dict[str, Any] = {
+                "key": row.key,
+                "size": row.size,
+                "hash": row.hash,
+                "mime_type": row.mime_type,
+                "file_kind": row.file_kind.value,
+                "file_id": row.file_id,
+                "is_skill": row.is_skill,
+                "skill_metadata": row.skill_metadata,
+                "created_at": int(row.created_at.timestamp()) if row.created_at else None,
+            }
+            if include_download_url:
+                item["download_url"] = self._resolve_download_url(
+                    tenant_id=tenant_id, file_kind=row.file_kind, file_id=row.file_id
+                )
+            items.append(item)
+        return items
 
     def commit(
         self,
@@ -235,25 +234,25 @@ class AgentDriveService:
         user_id: str,
         agent_id: str,
         items: list[DriveCommitItem],
+        session: Session,
     ) -> list[dict[str, Any]]:
         if not items:
             raise AgentDriveError("empty_commit", "commit requires at least one item", status_code=400)
         committed: list[dict[str, Any]] = []
         pending_storage_deletes: list[str] = []
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            for item in items:
-                committed.append(
-                    self._commit_one(
-                        session,
-                        tenant_id=tenant_id,
-                        user_id=user_id,
-                        agent_id=agent_id,
-                        item=item,
-                        pending_storage_deletes=pending_storage_deletes,
-                    )
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        for item in items:
+            committed.append(
+                self._commit_one(
+                    session,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    agent_id=agent_id,
+                    item=item,
+                    pending_storage_deletes=pending_storage_deletes,
                 )
-            session.commit()
+            )
+        session.commit()
         for storage_key in pending_storage_deletes:
             self._delete_storage(storage_key)
         return committed
@@ -263,6 +262,7 @@ class AgentDriveService:
         *,
         tenant_id: str,
         agent_id: str,
+        session: Session,
         prefix: str | None = None,
         key: str | None = None,
     ) -> list[str]:
@@ -276,59 +276,57 @@ class AgentDriveService:
             raise AgentDriveError("invalid_delete_scope", "delete requires exactly one of prefix or key")
         removed_keys: list[str] = []
         pending_storage_deletes: list[str] = []
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            stmt = select(AgentDriveFile).where(
-                AgentDriveFile.tenant_id == tenant_id,
-                AgentDriveFile.agent_id == agent_id,
-            )
-            if key is not None:
-                stmt = stmt.where(AgentDriveFile.key == normalize_drive_key(key))
-            else:
-                stmt = stmt.where(AgentDriveFile.key.startswith(normalize_drive_key(prefix or "")))
-            rows = list(session.scalars(stmt))
-            for row in rows:
-                if row.value_owned_by_drive:
-                    self._cleanup_value(
-                        session,
-                        tenant_id=tenant_id,
-                        file_kind=row.file_kind,
-                        file_id=row.file_id,
-                        exclude_row_id=row.id,
-                        pending_storage_deletes=pending_storage_deletes,
-                    )
-                removed_keys.append(row.key)
-                session.delete(row)
-            session.commit()
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        stmt = select(AgentDriveFile).where(
+            AgentDriveFile.tenant_id == tenant_id,
+            AgentDriveFile.agent_id == agent_id,
+        )
+        if key is not None:
+            stmt = stmt.where(AgentDriveFile.key == normalize_drive_key(key))
+        else:
+            stmt = stmt.where(AgentDriveFile.key.startswith(normalize_drive_key(prefix or "")))
+        rows = list(session.scalars(stmt))
+        for row in rows:
+            if row.value_owned_by_drive:
+                self._cleanup_value(
+                    session,
+                    tenant_id=tenant_id,
+                    file_kind=row.file_kind,
+                    file_id=row.file_id,
+                    exclude_row_id=row.id,
+                    pending_storage_deletes=pending_storage_deletes,
+                )
+            removed_keys.append(row.key)
+            session.delete(row)
+        session.commit()
         for storage_key in pending_storage_deletes:
             self._delete_storage(storage_key)
         return removed_keys
 
-    def list_skills(self, *, tenant_id: str, agent_id: str) -> list[AgentDriveSkillInfo]:
+    def list_skills(self, *, tenant_id: str, agent_id: str, session: Session) -> list[AgentDriveSkillInfo]:
         """Return the drive-backed skill catalog derived from canonical ``SKILL.md`` rows."""
 
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            skill_rows = list(
-                session.scalars(
-                    select(AgentDriveFile)
-                    .where(
-                        AgentDriveFile.tenant_id == tenant_id,
-                        AgentDriveFile.agent_id == agent_id,
-                        AgentDriveFile.is_skill.is_(True),
-                    )
-                    .order_by(AgentDriveFile.key)
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        skill_rows = list(
+            session.scalars(
+                select(AgentDriveFile)
+                .where(
+                    AgentDriveFile.tenant_id == tenant_id,
+                    AgentDriveFile.agent_id == agent_id,
+                    AgentDriveFile.is_skill.is_(True),
+                )
+                .order_by(AgentDriveFile.key)
+            )
+        )
+        archive_keys = set(
+            session.scalars(
+                select(AgentDriveFile.key).where(
+                    AgentDriveFile.tenant_id == tenant_id,
+                    AgentDriveFile.agent_id == agent_id,
+                    AgentDriveFile.key.in_([self._skill_archive_key(row.key) for row in skill_rows]),
                 )
             )
-            archive_keys = set(
-                session.scalars(
-                    select(AgentDriveFile.key).where(
-                        AgentDriveFile.tenant_id == tenant_id,
-                        AgentDriveFile.agent_id == agent_id,
-                        AgentDriveFile.key.in_([self._skill_archive_key(row.key) for row in skill_rows]),
-                    )
-                )
-            )
+        )
 
         skills: list[AgentDriveSkillInfo] = []
         for row in skill_rows:
@@ -349,14 +347,20 @@ class AgentDriveService:
             )
         return skills
 
-    def inspect_skill(self, *, tenant_id: str, agent_id: str, skill_path: str) -> AgentDriveSkillInspectInfo:
+    def inspect_skill(
+        self, *, tenant_id: str, agent_id: str, skill_path: str, session: Session
+    ) -> AgentDriveSkillInspectInfo:
         """Return the UI-facing skill inspect view for slash-menu hover/detail."""
 
         skill_path = normalize_drive_key(skill_path)
         skill_md_key = skill_path if skill_path.endswith(_SKILL_MD_SUFFIX) else f"{skill_path}{_SKILL_MD_SUFFIX}"
         skill_path = self._skill_path_from_key(skill_md_key)
         catalog = next(
-            (item for item in self.list_skills(tenant_id=tenant_id, agent_id=agent_id) if item["path"] == skill_path),
+            (
+                item
+                for item in self.list_skills(tenant_id=tenant_id, agent_id=agent_id, session=session)
+                if item["path"] == skill_path
+            ),
             None,
         )
         if catalog is None:
@@ -366,10 +370,11 @@ class AgentDriveService:
             tenant_id=tenant_id,
             agent_id=agent_id,
             skill_md_key=skill_md_key,
+            session=session,
         )
-        drive_items = self.manifest(tenant_id=tenant_id, agent_id=agent_id, prefix=f"{skill_path}/")
+        drive_items = self.manifest(tenant_id=tenant_id, agent_id=agent_id, prefix=f"{skill_path}/", session=session)
         drive_keys = {item["key"] for item in drive_items}
-        preview = self.preview(tenant_id=tenant_id, agent_id=agent_id, key=skill_md_key)
+        preview = self.preview(tenant_id=tenant_id, agent_id=agent_id, key=skill_md_key, session=session)
         files, warnings = self._skill_file_entries(
             skill_path=skill_path,
             skill_md_key=skill_md_key,
@@ -582,23 +587,24 @@ class AgentDriveService:
             ) from exc
 
     @staticmethod
-    def _manifest_files_from_skill_metadata(*, tenant_id: str, agent_id: str, skill_md_key: str) -> list[str] | None:
-        with session_factory.create_session() as session:
-            row = session.scalar(
-                select(AgentDriveFile).where(
-                    AgentDriveFile.tenant_id == tenant_id,
-                    AgentDriveFile.agent_id == agent_id,
-                    AgentDriveFile.key == skill_md_key,
-                    AgentDriveFile.is_skill.is_(True),
-                )
+    def _manifest_files_from_skill_metadata(
+        *, tenant_id: str, agent_id: str, skill_md_key: str, session: Session
+    ) -> list[str] | None:
+        row = session.scalar(
+            select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+                AgentDriveFile.key == skill_md_key,
+                AgentDriveFile.is_skill.is_(True),
             )
-            if row is None:
-                return None
-            try:
-                metadata = AgentDriveService._parse_skill_metadata(row.key, row.skill_metadata)
-            except Exception:
-                logger.warning("drive skill inspect: malformed skill metadata for %s", skill_md_key, exc_info=True)
-                return None
+        )
+        if row is None:
+            return None
+        try:
+            metadata = AgentDriveService._parse_skill_metadata(row.key, row.skill_metadata)
+        except Exception:
+            logger.warning("drive skill inspect: malformed skill metadata for %s", skill_md_key, exc_info=True)
+            return None
         return [str(item) for item in (metadata.manifest_files or []) if str(item).strip()] or None
 
     @classmethod
@@ -932,15 +938,15 @@ class AgentDriveService:
         archive_file_kind: AgentDriveFileKind,
         archive_file_id: str,
         member_path: str,
+        session: Session,
     ) -> bytes:
         member_path = normalize_drive_key(member_path)
-        with session_factory.create_session() as session:
-            storage_key = self._storage_key_for_ref(
-                session,
-                tenant_id=tenant_id,
-                file_kind=archive_file_kind,
-                file_id=archive_file_id,
-            )
+        storage_key = self._storage_key_for_ref(
+            session,
+            tenant_id=tenant_id,
+            file_kind=archive_file_kind,
+            file_id=archive_file_id,
+        )
         archive_bytes = b"".join(storage.load_stream(storage_key))
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
@@ -978,26 +984,25 @@ class AgentDriveService:
                 return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
         return {"key": key, "size": size, "truncated": truncated, "binary": False, "text": text}
 
-    def preview(self, *, tenant_id: str, agent_id: str, key: str) -> dict[str, Any]:
+    def preview(self, *, tenant_id: str, agent_id: str, key: str, session: Session) -> dict[str, Any]:
         """Truncated text preview of one drive value (binary-safe, never 500s on size)."""
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            try:
-                row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
-                storage_key = self._storage_key_for_row(session, tenant_id=tenant_id, row=row)
-                size = row.size
-                response_key = row.key
-                archive_ref: tuple[AgentDriveFile, str] | None = None
-            except AgentDriveError:
-                archive_ref = self._archive_member_for_key(
-                    session,
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    key=key,
-                )
-                storage_key = None
-                size = None
-                response_key = normalize_drive_key(key)
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        try:
+            row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+            storage_key = self._storage_key_for_row(session, tenant_id=tenant_id, row=row)
+            size = row.size
+            response_key = row.key
+            archive_ref: tuple[AgentDriveFile, str] | None = None
+        except AgentDriveError:
+            archive_ref = self._archive_member_for_key(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                key=key,
+            )
+            storage_key = None
+            size = None
+            response_key = normalize_drive_key(key)
 
         if archive_ref is not None:
             archive_row, member_path = archive_ref
@@ -1006,6 +1011,7 @@ class AgentDriveService:
                 archive_file_kind=archive_row.file_kind,
                 archive_file_id=archive_row.file_id,
                 member_path=member_path,
+                session=session,
             )
             return self._preview_bytes(key=response_key, size=len(payload), payload=payload)
 
@@ -1026,47 +1032,47 @@ class AgentDriveService:
         archive_file_kind: AgentDriveFileKind,
         archive_file_id: str,
         member_path: str,
+        session: Session,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
         payload = self._load_archive_member_bytes(
             tenant_id=tenant_id,
             archive_file_kind=archive_file_kind,
             archive_file_id=archive_file_id,
             member_path=member_path,
+            session=session,
         )
         return self._preview_bytes(key=normalize_drive_key(key), size=len(payload), payload=payload)
 
-    def download_url(self, *, tenant_id: str, agent_id: str, key: str) -> str:
+    def download_url(self, *, tenant_id: str, agent_id: str, key: str, session: Session) -> str:
         """External signed URL for a browser download of one drive value."""
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            try:
-                row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
-            except AgentDriveError:
-                archive_row, member_path = self._archive_member_for_key(
-                    session,
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    key=key,
-                )
-                return self.sign_archive_member_url(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    key=key,
-                    archive_file_kind=archive_row.file_kind,
-                    archive_file_id=archive_row.file_id,
-                    member_path=member_path,
-                    for_external=True,
-                    as_attachment=True,
-                )
-            url = self._resolve_download_url(
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        try:
+            row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+        except AgentDriveError:
+            archive_row, member_path = self._archive_member_for_key(
+                session,
                 tenant_id=tenant_id,
-                file_kind=row.file_kind,
-                file_id=row.file_id,
+                agent_id=agent_id,
+                key=key,
+            )
+            return self.sign_archive_member_url(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                key=key,
+                archive_file_kind=archive_row.file_kind,
+                archive_file_id=archive_row.file_id,
+                member_path=member_path,
                 for_external=True,
                 as_attachment=True,
             )
+        url = self._resolve_download_url(
+            tenant_id=tenant_id,
+            file_kind=row.file_kind,
+            file_id=row.file_id,
+            for_external=True,
+            as_attachment=True,
+        )
         if url is None:
             raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)
         return url
@@ -1080,10 +1086,10 @@ class AgentDriveService:
         archive_file_kind: AgentDriveFileKind,
         archive_file_id: str,
         member_path: str,
+        session: Session,
         for_external: bool = True,
     ) -> str:
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
         return self.sign_archive_member_url(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -1211,14 +1217,15 @@ class AgentDriveService:
         archive_file_kind: AgentDriveFileKind,
         archive_file_id: str,
         member_path: str,
+        session: Session,
     ) -> tuple[bytes, str, str]:
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
         payload = self._load_archive_member_bytes(
             tenant_id=tenant_id,
             archive_file_kind=archive_file_kind,
             archive_file_id=archive_file_id,
             member_path=member_path,
+            session=session,
         )
         mime_type = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
         filename = normalize_drive_key(key).rsplit("/", 1)[-1]

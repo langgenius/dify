@@ -25,6 +25,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
     SystemConfigurationStatus,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -1155,6 +1156,41 @@ def test_get_custom_model_record_supports_plugin_id_alias() -> None:
     assert result is custom_model_record
 
 
+def test_model_type_db_values_includes_pre_1_15_aliases() -> None:
+    from core.entities.provider_configuration import _model_type_db_values
+
+    assert _model_type_db_values(ModelType.LLM) == ("llm", "text-generation")
+    assert _model_type_db_values(ModelType.TEXT_EMBEDDING) == ("text-embedding", "embeddings")
+    assert _model_type_db_values(ModelType.RERANK) == ("rerank", "reranking")
+    assert _model_type_db_values(ModelType.TTS) == ("tts",)
+
+
+def test_get_custom_model_record_uses_legacy_aware_model_type_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression for #39559: lookups must include pre-1.15 model_type aliases."""
+    import core.entities.provider_configuration as provider_configuration_module
+
+    captured: dict[str, tuple[str, ...]] = {}
+    original = provider_configuration_module._model_type_db_values
+
+    def _capture(model_type: ModelType) -> tuple[str, ...]:
+        values = original(model_type)
+        captured["values"] = values
+        return values
+
+    monkeypatch.setattr(provider_configuration_module, "_model_type_db_values", _capture)
+
+    configuration = _build_provider_configuration(provider_name="langgenius/ollama/ollama")
+    session = Mock()
+    session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(id="legacy-model")
+
+    result = configuration._get_custom_model_record(ModelType.LLM, "llama3", session)
+
+    assert result.id == "legacy-model"
+    assert captured["values"] == ("llm", "text-generation")
+
+
 def test_get_specific_custom_model_credential_success_and_not_found() -> None:
     configuration = _build_provider_configuration()
     configuration.provider.model_credential_schema = _build_secret_model_schema()
@@ -1336,6 +1372,31 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
                 configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert provider_model_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
+    assert mock_cache.call_args_list[0].kwargs["cache_type"] == ProviderCredentialsCacheType.LOAD_BALANCING_MODEL
+    assert mock_cache.call_args_list[1].kwargs["cache_type"] == ProviderCredentialsCacheType.MODEL
+
+    session = Mock()
+    mismatched_credential_record = SimpleNamespace(
+        id="cred-2",
+        model_name="stored-model",
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    provider_model_record = SimpleNamespace(id="model-2", credential_id="cred-2", updated_at=None)
+    session.execute.side_effect = [
+        _exec_result(scalar_one_or_none=None),
+        _exec_result(scalar_one_or_none=mismatched_credential_record),
+        _exec_result(scalars_all=[]),
+        _exec_result(scalar=1),
+    ]
+    with _patched_session(session):
+        with patch.object(
+            ProviderConfiguration,
+            "_get_custom_model_record",
+            return_value=provider_model_record,
+        ) as mock_get_model:
+            configuration.delete_custom_model_credential(ModelType.LLM, "request-model", "cred-2")
+    mock_get_model.assert_called_once_with(ModelType.TEXT_EMBEDDING, "stored-model", session=session)
+    session.delete.assert_any_call(mismatched_credential_record)
 
 
 def test_add_model_credential_to_model_and_switch_custom_model_credential() -> None:
@@ -2009,9 +2070,16 @@ def test_delete_custom_model_credential_removes_custom_model_record_when_last_cr
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
+                configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert any(call.args and call.args[0] is provider_model_record for call in session.delete.call_args_list)
+    mock_cache.assert_called_once_with(
+        tenant_id="tenant-1",
+        identity_id="model-1",
+        cache_type=ProviderCredentialsCacheType.MODEL,
+    )
+    mock_cache.return_value.delete.assert_called_once()
 
 
 def test_delete_custom_model_credential_rolls_back_on_error() -> None:

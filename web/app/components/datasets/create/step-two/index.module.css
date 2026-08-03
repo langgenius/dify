@@ -1,7 +1,7 @@
 @reference "../../../../styles/globals.css";
 
 .pageHeader {
-  @apply px-16 flex justify-between items-center;
+  @apply flex items-center justify-between px-16;
   position: sticky;
   top: 0;
   left: 0;
@@ -40,8 +40,8 @@
   left: 0;
   width: 100%;
   padding: 8px 20px 8px 40px;
-  background: #FFFAEB;
-  border-top: 0.5px solid #FEF0C7;
+  background: #fffaeb;
+  border-top: 0.5px solid #fef0c7;
   border-radius: 12px;
   font-size: 12px;
   line-height: 18px;
@@ -61,7 +61,7 @@
 }
 
 .indexItem .warningTip .click {
-  color: #155EEF;
+  color: #155eef;
   cursor: pointer;
 }
 
@@ -77,11 +77,11 @@
 }
 
 .indexItem.disabled:hover .radio {
-  @apply w-4 h-4 border-[2px] border-gray-200 rounded-full;
+  @apply h-4 w-4 rounded-full border-[2px] border-gray-200;
 }
 
 .radioItem {
-  @apply relative mb-2 rounded-xl border border-components-option-card-option-border cursor-pointer bg-components-option-card-option-bg;
+  @apply relative mb-2 cursor-pointer rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg;
 }
 
 .radioItem.segmentationItem.custom {
@@ -120,12 +120,12 @@
   left: 20px;
   width: 32px;
   height: 32px;
-  background: #EEF4FF center no-repeat;
+  background: #eef4ff center no-repeat;
   border-radius: 8px;
 }
 
 .typeIcon.auto {
-  background-color: #F5F3FF;
+  background-color: #f5f3ff;
   background-image: url(../assets/zap-fast.svg);
 }
 
@@ -134,7 +134,7 @@
 }
 
 .typeIcon.qualified {
-  background-color: #FFF6ED;
+  background-color: #fff6ed;
   background-image: url(../assets/star-07.svg);
 }
 
@@ -143,7 +143,7 @@
 }
 
 .radioItem .radio {
-  @apply w-4 h-4 border-[2px] border-gray-200 rounded-full;
+  @apply h-4 w-4 rounded-full border-[2px] border-gray-200;
   position: absolute;
   top: 26px;
   right: 20px;
@@ -151,8 +151,10 @@
 
 .radioItem:hover {
   background-color: #ffffff;
-  border-color: #B2CCFF;
-  box-shadow: 0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03);
+  border-color: #b2ccff;
+  box-shadow:
+    0px 12px 16px -4px rgba(16, 24, 40, 0.08),
+    0px 4px 6px -2px rgba(16, 24, 40, 0.03);
 }
 
 .radioItem:hover .radio {
@@ -161,21 +163,25 @@
 
 .radioItem.active {
   border-width: 1.5px;
-  border-color: #528BFF;
-  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1), 0px 1px 2px rgba(16, 24, 40, 0.06);
+  border-color: #528bff;
+  box-shadow:
+    0px 1px 3px rgba(16, 24, 40, 0.1),
+    0px 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 .radioItem.active .radio {
   top: 25.5px;
   right: 19.5px;
   border-width: 5px;
-  border-color: #155EEF;
+  border-color: #155eef;
 }
 
 .radioItem.active:hover {
   border-width: 1.5px;
-  border-color: #528BFF;
-  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1), 0px 1px 2px rgba(16, 24, 40, 0.06);
+  border-color: #528bff;
+  box-shadow:
+    0px 1px 3px rgba(16, 24, 40, 0.1),
+    0px 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 .radioItem.active .typeIcon {
@@ -188,7 +194,7 @@
 }
 
 .typeHeader {
-  @apply flex flex-col px-16 py-3 justify-center;
+  @apply flex flex-col justify-center px-16 py-3;
 }
 
 .typeHeader .title {
@@ -214,21 +220,21 @@
   align-items: center;
   padding: 0 6px;
   margin-left: 4px;
-  border: 1px solid #E0EAFF;
+  border: 1px solid #e0eaff;
   border-radius: 6px;
   font-weight: 500;
   font-size: 12px;
   line-height: 20px;
-  color: #444CE7;
+  color: #444ce7;
 }
 
 .typeFormBody {
   @apply px-16;
-  border-top: 1px solid #F2F4F7;
+  border-top: 1px solid #f2f4f7;
 }
 
 .formRow {
-  @apply flex justify-between mt-6;
+  @apply mt-6 flex justify-between;
 }
 
 .formRow .label {
@@ -253,21 +259,21 @@
 }
 
 .input {
-  @apply inline-flex h-9 w-full py-1 px-2 pr-14 rounded-lg text-xs leading-normal;
-  @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus:bg-white focus-visible:outline-hidden placeholder:text-gray-400;
+  @apply inline-flex h-9 w-full rounded-lg px-2 py-1 pr-14 text-xs leading-normal;
+  @apply bg-gray-100 caret-primary-600 placeholder:text-gray-400 hover:bg-gray-100 focus:bg-white focus:inset-ring-1 focus:inset-ring-gray-200 focus-visible:outline-hidden;
 }
 
 .source {
-  @apply flex justify-between items-center mt-8 px-6 py-4 rounded-xl bg-gray-50 border border-gray-100;
+  @apply mt-8 flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-6 py-4;
 }
 
 .source .divider {
-  @apply shrink-0 mx-4 w-px bg-gray-200;
+  @apply mx-4 w-px shrink-0 bg-gray-200;
   height: 42px;
 }
 
 .fileIcon {
-  @apply inline-flex mr-1 w-6 h-6 bg-center bg-no-repeat;
+  @apply mr-1 inline-flex h-6 w-6 bg-center bg-no-repeat;
   background-image: url(../assets/pdf.svg);
   background-size: 24px;
 }
@@ -317,7 +323,7 @@
 }
 
 .sourceCount {
-  @apply shrink-0 ml-1;
+  @apply ml-1 shrink-0;
   font-weight: 500;
   font-size: 13px;
   line-height: 18px;
@@ -330,26 +336,26 @@
 }
 
 .divider {
-  @apply mx-3 w-px h-4 bg-gray-200;
+  @apply mx-3 h-4 w-px bg-gray-200;
 }
 
 .calculating {
-  color: #98A2B3;
+  color: #98a2b3;
   font-size: 12px;
   line-height: 18px;
 }
 
 .sideTip {
-  @apply flex flex-col items-center shrink-0;
+  @apply flex shrink-0 flex-col items-center;
   padding-top: 108px;
   width: 524px;
-  border-left: 0.5px solid #F2F4F7;
+  border-left: 0.5px solid #f2f4f7;
 }
 
 .tipCard {
   @apply flex flex-col items-start p-6;
   width: 320px;
-  background-color: #F9FAFB;
+  background-color: #f9fafb;
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
   border-radius: 12px;
 }
@@ -357,7 +363,7 @@
 .tipCard .icon {
   width: 32px;
   height: 32px;
-  border: 1px solid #EAECF0;
+  border: 1px solid #eaecf0;
   border-radius: 6px;
   background: center no-repeat url(../assets/book-open-01.svg);
   background-size: 16px;
@@ -395,7 +401,7 @@
   font-size: 12px;
   line-height: 18px;
   background: rgba(255, 255, 255, 0.9);
-  border-bottom: 0.5px solid #EAECF0;
+  border-bottom: 0.5px solid #eaecf0;
   backdrop-filter: blur(4px);
   animation: fix 0.5s;
 }

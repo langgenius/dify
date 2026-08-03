@@ -8,13 +8,14 @@ from core.entities.execution_extra_content import (
     HumanInputContent,
     HumanInputFormDefinition,
 )
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     FormInputConfig,
     HumanInputNodeData,
 )
-from graphon.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
+from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import SessionBinding
 
 
 def _legacy_form_input_payloads() -> list[dict[str, Any]]:
@@ -336,3 +337,10 @@ def test_human_input_required_response_accepts_current_serialized_payload() -> N
     assert restored.data.inputs[1].output_variable_name == "decision"
     assert restored.data.actions[0].id == "approve"
     assert restored.event == "human_input_required"
+
+
+def test_session_binding_identity_mapping() -> None:
+    binding = SessionBinding()
+
+    assert binding.issue_session_id_for_form(form_id="form-1") == "form-1"
+    assert binding.resolve_form_id_from_session_id(session_id="form-1") == "form-1"

@@ -7,19 +7,14 @@ type AudioPreviewProps = {
   title: string
   onCancel: () => void
 }
-const AudioPreview: FC<AudioPreviewProps> = ({
-  url,
-  title,
-  onCancel,
-}) => {
+const AudioPreview: FC<AudioPreviewProps> = ({ url, title, onCancel }) => {
   const { t } = useTranslation()
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
       disablePointerDismissal
     >
@@ -27,22 +22,14 @@ const AudioPreview: FC<AudioPreviewProps> = ({
         className="inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
         backdropClassName="bg-transparent!"
       >
-        <div
-          aria-label={title}
-          tabIndex={-1}
-          onClick={e => e.stopPropagation()}
-        >
+        <div aria-label={title} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
           <audio controls title={title} autoPlay={false} preload="metadata">
-            <source
-              type="audio/mpeg"
-              src={url}
-              className="max-h-full max-w-full"
-            />
+            <source type="audio/mpeg" src={url} className="max-h-full max-w-full" />
           </audio>
         </div>
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-white/8 p-0 backdrop-blur-[2px]"
           onClick={onCancel}
         >

@@ -19,7 +19,7 @@ describe('useAddDocumentsSteps', () => {
 
   it('should have correct step labels', () => {
     const { result } = renderHook(() => useAddDocumentsSteps())
-    const labels = result.current.steps.map(s => s.label)
+    const labels = result.current.steps.map((s) => s.label)
     expect(labels[0]).toContain('chooseDatasource')
     expect(labels[1]).toContain('processDocuments')
     expect(labels[2]).toContain('processingDocuments')

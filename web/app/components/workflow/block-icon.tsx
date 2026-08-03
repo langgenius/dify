@@ -31,16 +31,23 @@ import {
 import { API_PREFIX } from '@/config'
 import { BlockEnum } from './types'
 
+type BlockIconSize = 'xs' | 'sm' | 'md'
+
 type BlockIconProps = {
   type: BlockEnum
-  size?: string
+  size?: BlockIconSize
   className?: string
-  toolIcon?: string | { content: string, background: string }
+  toolIcon?: string | { content: string; background: string }
 }
-const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
+const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<BlockIconSize, string> = {
   xs: 'w-4 h-4 rounded-[5px] shadow-xs',
   sm: 'w-5 h-5 rounded-md shadow-xs',
   md: 'w-6 h-6 rounded-lg shadow-md',
+}
+const ICON_CLASSNAME_SIZE_MAP: Record<BlockIconSize, string> = {
+  xs: 'size-3',
+  sm: 'size-3.5',
+  md: 'size-4',
 }
 
 const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: string }>> = {
@@ -80,8 +87,7 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
 
 const getIcon = (type: BlockEnum, className: string) => {
   const DefaultIcon = DEFAULT_ICON_MAP[type]
-  if (!DefaultIcon)
-    return null
+  if (!DefaultIcon) return null
 
   return <DefaultIcon className={className} />
 }
@@ -90,8 +96,7 @@ const normalizeToolIconUrl = (toolIcon: string) => {
   const protectedPluginIconPath = '/workspaces/current/plugin/icon'
   const pathIndex = toolIcon.indexOf(protectedPluginIconPath)
 
-  if (pathIndex < 0)
-    return toolIcon
+  if (pathIndex < 0) return toolIcon
 
   return `${API_PREFIX}${toolIcon.slice(pathIndex)}`
 }
@@ -127,31 +132,26 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.TriggerWebhook]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.TriggerPlugin]: 'bg-util-colors-blue-blue-500',
 }
-const BlockIcon: FC<BlockIconProps> = ({
-  type,
-  size = 'sm',
-  className,
-  toolIcon,
-}) => {
+const BlockIcon: FC<BlockIconProps> = ({ type, size = 'sm', className, toolIcon }) => {
   const isStart = type === BlockEnum.Start
   const isStartPlaceholder = type === BlockEnum.StartPlaceholder
-  const isToolOrDataSourceOrTriggerPlugin = type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
+  const isToolOrDataSourceOrTriggerPlugin =
+    type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
   const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
-  const resolvedToolIcon = typeof toolIcon === 'string'
-    ? normalizeToolIconUrl(toolIcon)
-    : toolIcon
+  const resolvedToolIcon = typeof toolIcon === 'string' ? normalizeToolIconUrl(toolIcon) : toolIcon
 
   if (isStart) {
     return (
-      <div className={cn(
-        'flex items-center justify-center border-[0.5px] border-white/2 bg-util-colors-blue-brand-blue-brand-500 text-white',
-        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        className,
-      )}
+      <div
+        className={cn(
+          'flex items-center justify-center border-[0.5px] border-white/2 bg-util-colors-blue-brand-blue-brand-500 text-white',
+          ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+          className,
+        )}
       >
         <span
           aria-hidden
-          className={cn('i-custom-vender-workflow-user-input', size === 'xs' ? 'size-4' : 'size-4')}
+          className={cn('i-custom-vender-workflow-user-input', ICON_CLASSNAME_SIZE_MAP[size])}
         />
       </div>
     )
@@ -159,77 +159,60 @@ const BlockIcon: FC<BlockIconProps> = ({
 
   if (isStartPlaceholder) {
     return (
-      <div className={cn(
-        'flex items-center justify-center border border-dashed border-components-panel-border bg-state-base-hover text-text-tertiary shadow-none',
-        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        className,
-      )}
+      <div
+        className={cn(
+          'flex items-center justify-center border border-dashed border-components-panel-border bg-state-base-hover text-text-tertiary shadow-none',
+          ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+          className,
+        )}
       >
         <span
           aria-hidden
-          className={cn('i-custom-vender-workflow-start-placeholder text-text-primary opacity-30', size === 'xs' ? 'size-3' : 'size-3.5')}
+          className={cn(
+            'i-custom-vender-workflow-start-placeholder text-text-primary opacity-30',
+            ICON_CLASSNAME_SIZE_MAP[size],
+          )}
         />
       </div>
     )
   }
 
   return (
-    <div className={
-      cn(
+    <div
+      className={cn(
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
         toolIcon && 'shadow-none!',
         className,
-      )
-    }
+      )}
     >
-      {
-        showDefaultIcon && (
-          getIcon(type, (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
-            ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
-            : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'))
-        )
-      }
-      {
-        !showDefaultIcon && (
-          <>
-            {
-              typeof resolvedToolIcon === 'string'
-                ? (
-                    <div
-                      className="size-full shrink-0 rounded-md bg-cover bg-center"
-                      style={{
-                        backgroundImage: `url(${resolvedToolIcon})`,
-                      }}
-                    >
-                    </div>
-                  )
-                : (
-                    <AppIcon
-                      className="size-full! shrink-0"
-                      size="tiny"
-                      icon={resolvedToolIcon?.content}
-                      background={resolvedToolIcon?.background}
-                    />
-                  )
-            }
-          </>
-        )
-      }
+      {showDefaultIcon && getIcon(type, ICON_CLASSNAME_SIZE_MAP[size])}
+      {!showDefaultIcon && (
+        <>
+          {typeof resolvedToolIcon === 'string' ? (
+            <div
+              className="size-full shrink-0 rounded-md bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${resolvedToolIcon})`,
+              }}
+            ></div>
+          ) : (
+            <AppIcon
+              className="size-full! shrink-0"
+              size="tiny"
+              icon={resolvedToolIcon?.content}
+              background={resolvedToolIcon?.background}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }
 
-export const VarBlockIcon: FC<BlockIconProps> = ({
-  type,
-  className,
-}) => {
-  return (
-    <>
-      {getIcon(type, `w-3 h-3 ${className}`)}
-    </>
-  )
+export const VarBlockIcon: FC<BlockIconProps> = ({ type, className }) => {
+  return <>{getIcon(type, `w-3 h-3 ${className}`)}</>
 }
 
 export default memo(BlockIcon)

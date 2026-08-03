@@ -27,8 +27,9 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
+from libs.helper import dump_response
 from libs.login import login_required
-from models import Account
+from models import Account, UploadFile
 from services.file_service import FileService
 
 from . import console_ns
@@ -37,6 +38,59 @@ register_schema_models(console_ns, UploadConfig, FileResponse)
 register_response_schema_models(console_ns, AllowedExtensionsResponse, TextContentResponse)
 
 PREVIEW_WORDS_LIMIT = 3000
+
+FILE_UPLOAD_PARAMS = {
+    "file": {
+        "description": "File to upload",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    },
+    "source": {
+        "description": "Optional upload source",
+        "in": "formData",
+        "type": "string",
+        "enum": ["datasets"],
+        "required": False,
+    },
+}
+
+
+def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
+    """Validate the multipart request and persist the file under the requested resource tenant."""
+    source_str = request.form.get("source")
+    source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
+
+    if "file" not in request.files:
+        raise NoFileUploadedError()
+
+    if len(request.files) > 1:
+        raise TooManyFilesError()
+    file = request.files["file"]
+
+    if not file.filename:
+        raise FilenameNotExistsError
+    if source == "datasets" and not current_user.is_dataset_editor:
+        raise Forbidden()
+
+    if source not in ("datasets", None):
+        source = None
+
+    try:
+        return FileService(db.engine).upload_file(
+            filename=file.filename,
+            content=file.stream.read(),
+            mimetype=file.mimetype,
+            user=current_user,
+            tenant_id=resource_tenant_id,
+            source=source,
+        )
+    except services.errors.file.FileTooLargeError as file_too_large_error:
+        raise FileTooLargeError(file_too_large_error.description)
+    except services.errors.file.UnsupportedFileTypeError:
+        raise UnsupportedFileTypeError()
+    except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
+        raise BlockedFileExtensionError(blocked_extension_error.description)
 
 
 @console_ns.route("/files/upload")
@@ -53,6 +107,7 @@ class FileApi(Resource):
             image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
             video_file_size_limit=dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
             audio_file_size_limit=dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+            skill_file_size_limit=dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT,
             workflow_file_upload_limit=dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
             image_file_batch_limit=dify_config.IMAGE_FILE_BATCH_LIMIT,
             single_chunk_attachment_limit=dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT,
@@ -64,44 +119,13 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("documents")
+    @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
-        source_str = request.form.get("source")
-        source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
+        upload_file = upload_file_from_request(current_user=current_user)
 
-        if "file" not in request.files:
-            raise NoFileUploadedError()
-
-        if len(request.files) > 1:
-            raise TooManyFilesError()
-        file = request.files["file"]
-
-        if not file.filename:
-            raise FilenameNotExistsError
-        if source == "datasets" and not current_user.is_dataset_editor:
-            raise Forbidden()
-
-        if source not in ("datasets", None):
-            source = None
-
-        try:
-            upload_file = FileService(db.engine).upload_file(
-                filename=file.filename,
-                content=file.stream.read(),
-                mimetype=file.mimetype,
-                user=current_user,
-                source=source,
-            )
-        except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
-        except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
-            raise BlockedFileExtensionError(blocked_extension_error.description)
-
-        response = FileResponse.model_validate(upload_file, from_attributes=True)
-        return response.model_dump(mode="json"), 201
+        return dump_response(FileResponse, upload_file), 201
 
 
 @console_ns.route("/files/<uuid:file_id>/preview")
@@ -114,7 +138,7 @@ class FilePreviewApi(Resource):
     def get(self, current_tenant_id: str, file_id: UUID):
         file_id_str = str(file_id)
         text = FileService(db.engine).get_file_preview(file_id_str, current_tenant_id)
-        return {"content": text}
+        return TextContentResponse(content=text).model_dump(mode="json")
 
 
 @console_ns.route("/files/support-type")
@@ -124,4 +148,4 @@ class FileSupportTypeApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AllowedExtensionsResponse.__name__])
     def get(self):
-        return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}
+        return AllowedExtensionsResponse(allowed_extensions=list(DOCUMENT_EXTENSIONS)).model_dump(mode="json")

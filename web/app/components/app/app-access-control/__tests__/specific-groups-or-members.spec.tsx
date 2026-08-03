@@ -14,21 +14,23 @@ vi.mock('../add-member-or-group-pop', () => ({
   default: () => <div data-testid="add-member-or-group-dialog" />,
 }))
 
-const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
-  id: 'group-1',
-  name: 'Group One',
-  groupSize: 5,
-  ...overrides,
-} as AccessControlGroup)
+const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup =>
+  ({
+    id: 'group-1',
+    name: 'Group One',
+    groupSize: 5,
+    ...overrides,
+  }) as AccessControlGroup
 
-const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount => ({
-  id: 'member-1',
-  name: 'Member One',
-  email: 'member@example.com',
-  avatar: '',
-  avatarUrl: '',
-  ...overrides,
-} as AccessControlAccount)
+const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount =>
+  ({
+    id: 'member-1',
+    name: 'Member One',
+    email: 'member@example.com',
+    avatar: '',
+    avatarUrl: '',
+    ...overrides,
+  }) as AccessControlAccount
 
 describe('SpecificGroupsOrMembers', () => {
   const baseGroup = createGroup()

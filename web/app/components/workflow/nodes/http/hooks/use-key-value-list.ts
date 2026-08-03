@@ -1,5 +1,4 @@
 import type { KeyValue } from '../types'
-import { useBoolean } from 'ahooks'
 import { uniqueId } from 'es-toolkit/compat'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -16,29 +15,30 @@ const strToKeyValueList = (value: string) => {
 }
 
 const normalizeList = (items: KeyValue[]) => {
-  return items.map(item => ({
+  return items.map((item) => ({
     ...item,
     id: item.id || uniqueId(UNIQUE_ID_PREFIX),
   }))
 }
 
 const stringifyList = (items: KeyValue[], noFilter?: boolean) => {
-  const source = noFilter ? items : items.filter(item => item.key && item.value)
-  return source.map(item => `${item.key}:${item.value}`).join('\n')
+  const source = noFilter ? items : items.filter((item) => item.key && item.value)
+  return source.map((item) => `${item.key}:${item.value}`).join('\n')
 }
 
 const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
-  const [list, doSetList] = useState<KeyValue[]>(() => value ? strToKeyValueList(value) : [])
-  const setList = useCallback((nextList: KeyValue[]) => {
-    const normalized = normalizeList(nextList)
-    doSetList(normalized)
-    if (noFilter)
-      return
+  const [list, doSetList] = useState<KeyValue[]>(() => (value ? strToKeyValueList(value) : []))
+  const setList = useCallback(
+    (nextList: KeyValue[]) => {
+      const normalized = normalizeList(nextList)
+      doSetList(normalized)
+      if (noFilter) return
 
-    const newValue = stringifyList(normalized, noFilter)
-    if (newValue !== value)
-      onChange(newValue)
-  }, [noFilter, onChange, value])
+      const newValue = stringifyList(normalized, noFilter)
+      if (newValue !== value) onChange(newValue)
+    },
+    [noFilter, onChange, value],
+  )
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -46,30 +46,30 @@ const useKeyValueList = (value: string, onChange: (value: string) => void, noFil
         const targetItems = value ? strToKeyValueList(value) : []
         const currentValue = stringifyList(prev, noFilter)
         const targetValue = stringifyList(targetItems, noFilter)
-        if (currentValue === targetValue)
-          return prev
+        if (currentValue === targetValue) return prev
         return normalizeList(targetItems)
       })
     })
   }, [value, noFilter])
   const addItem = useCallback(() => {
-    setList([...list, {
-      id: uniqueId(UNIQUE_ID_PREFIX),
-      key: '',
-      value: '',
-    }])
+    setList([
+      ...list,
+      {
+        id: uniqueId(UNIQUE_ID_PREFIX),
+        key: '',
+        value: '',
+      },
+    ])
   }, [list, setList])
 
-  const [isKeyValueEdit, {
-    toggle: toggleIsKeyValueEdit,
-  }] = useBoolean(true)
+  const [isKeyValueEdit, setIsKeyValueEdit] = useState(true)
 
   return {
     list: list.length === 0 ? [{ id: uniqueId(UNIQUE_ID_PREFIX), key: '', value: '' }] : list, // no item can not add new item
     setList,
     addItem,
     isKeyValueEdit,
-    toggleIsKeyValueEdit,
+    toggleIsKeyValueEdit: () => setIsKeyValueEdit((isEditing) => !isEditing),
   }
 }
 

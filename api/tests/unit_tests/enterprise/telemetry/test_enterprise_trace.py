@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -475,13 +476,24 @@ class TestWorkflowTrace:
         assert span_call[1]["start_time"] == _T0
         assert span_call[1]["end_time"] == _T1
 
-    def test_emits_companion_log_with_event_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+    def test_emits_companion_log_with_event_name(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._workflow_trace(make_workflow_info())
 
-        mock_log.assert_called_once()
-        assert mock_log.call_args[1]["event_name"] == EnterpriseTelemetryEvent.WORKFLOW_RUN
-        assert mock_log.call_args[1]["tenant_id"] == "tenant-abc"
+        records = [record for record in caplog.records if record.name == "dify.telemetry"]
+
+        assert len(records) == 1
+        record = records[0]
+
+        attrs = cast(dict[str, Any], record.__dict__["attributes"])
+
+        assert attrs["dify.event.name"] == EnterpriseTelemetryEvent.WORKFLOW_RUN
+        assert attrs["dify.event.signal"] == "span_detail"
+        assert record.__dict__["tenant_id"] == "tenant-abc"
 
     def test_companion_log_includes_content_when_enabled(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True

@@ -40,5 +40,5 @@ export type PostRuleCodeGenerateResponses = {
   200: GeneratorResponse
 }
 
-export type PostRuleCodeGenerateResponse
-  = PostRuleCodeGenerateResponses[keyof PostRuleCodeGenerateResponses]
+export type PostRuleCodeGenerateResponse =
+  PostRuleCodeGenerateResponses[keyof PostRuleCodeGenerateResponses]
