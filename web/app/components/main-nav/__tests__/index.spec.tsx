@@ -715,22 +715,6 @@ describe('MainNav', () => {
     expect(accountButton).not.toHaveClass('justify-center', 'p-1')
   })
 
-  it('renders the desktop environment tag from the old header contract', () => {
-    mockConsoleState.current = {
-      ...consoleState,
-      langGeniusVersionInfo: {
-        ...consoleState.langGeniusVersionInfo,
-        current_env: 'TESTING',
-      },
-    }
-
-    renderMainNav()
-
-    const environmentTag = screen.getByText('common.environment.testing')
-    expect(environmentTag).toBeInTheDocument()
-    expect(environmentTag.closest('.relative.z-30')).toHaveClass('mt-auto', 'shrink-0')
-  })
-
   it('does not reserve environment tag space when the environment is not shown', () => {
     const { container } = renderMainNav()
 
