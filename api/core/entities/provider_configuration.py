@@ -9,7 +9,7 @@ from json import JSONDecodeError
 from typing import Any, override
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
@@ -859,7 +859,7 @@ class ProviderConfiguration(BaseModel):
             ProviderModel.tenant_id == self.tenant_id,
             ProviderModel.provider_name.in_(provider_names),
             ProviderModel.model_name == model,
-            ProviderModel.model_type.in_(_model_type_db_values(model_type)),
+            cast(ProviderModel.model_type, String).in_(_model_type_db_values(model_type)),
         )
 
         return session.execute(stmt).scalar_one_or_none()
@@ -884,7 +884,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type.in_(_model_type_db_values(model_type)),
+                cast(ProviderModelCredential.model_type, String).in_(_model_type_db_values(model_type)),
             )
 
             credential_record = session.execute(stmt).scalar_one_or_none()
@@ -1197,7 +1197,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type.in_(_model_type_db_values(model_type)),
+                cast(ProviderModelCredential.model_type, String).in_(_model_type_db_values(model_type)),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1241,7 +1241,7 @@ class ProviderConfiguration(BaseModel):
                     ProviderModelCredential.tenant_id == self.tenant_id,
                     ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                     ProviderModelCredential.model_name == model,
-                    ProviderModelCredential.model_type.in_(_model_type_db_values(model_type)),
+                    cast(ProviderModelCredential.model_type, String).in_(_model_type_db_values(model_type)),
                 )
                 available_credentials_count = session.execute(count_stmt).scalar() or 0
                 session.delete(credential_record)
@@ -1407,7 +1407,7 @@ class ProviderConfiguration(BaseModel):
         stmt = select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == self.tenant_id,
             ProviderModelSetting.provider_name.in_(self._get_provider_names()),
-            ProviderModelSetting.model_type.in_(_model_type_db_values(model_type)),
+            cast(ProviderModelSetting.model_type, String).in_(_model_type_db_values(model_type)),
             ProviderModelSetting.model_name == model,
         )
         return session.execute(stmt).scalars().first()
