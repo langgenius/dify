@@ -268,7 +268,7 @@ class ModelProviderService:
         return dict(states)
 
     @staticmethod
-    def _is_system_provider_enabled(provider: str) -> bool:
+    def _has_system_provider_hosting_configuration(provider: str) -> bool:
         configuration = ext_hosting_provider.hosting_configuration.provider_map.get(provider)
         return bool(configuration and configuration.enabled and configuration.quotas)
 
@@ -348,7 +348,13 @@ class ModelProviderService:
                 state.has_custom_provider and bool(state.available_credentials)
             ) or state.has_custom_models
             custom_present = state.has_custom_provider or state.has_custom_models
-            system_enabled = self._is_system_provider_enabled(provider_name)
+            provider_binding = bindings_by_provider.get(provider_name)
+            system_enabled = bool(
+                provider_binding
+                and self._has_system_provider_hosting_configuration(provider_name)
+                and provider_binding.source != PluginInstallationSource.Package
+                and provider_binding.verified
+            )
             preferred_provider_type = self._get_preferred_provider_type(
                 state,
                 custom_present=custom_present,
