@@ -77,8 +77,15 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { usedCredits, totalCredits, isExhausted, isLoading, exhaustedAt, nextCreditResetDate } =
-    useTrialCredits()
+  const {
+    usedCredits,
+    totalCredits,
+    isUnlimited,
+    isExhausted,
+    isLoading,
+    exhaustedAt,
+    nextCreditResetDate,
+  } = useTrialCredits()
   const { data: trialModels = [] } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD',
@@ -166,16 +173,24 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
         <div className="flex h-6 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="flex shrink-0 items-baseline gap-1">
-              <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
-                {formatNumber(usedCredits)}
-              </span>
-              <span className="text-base leading-6 font-normal text-text-tertiary">/</span>
-              <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
-                {formatNumber(totalCredits)}
-              </span>
-              <span className={cn('system-md-medium', creditUsageTextClassName)}>
-                {t(($) => $['modelProvider.used'], { ns: 'common' })}
-              </span>
+              {isUnlimited ? (
+                <span className="system-xl-semibold text-text-secondary">
+                  {t(($) => $['license.unlimited'], { ns: 'common' })}
+                </span>
+              ) : (
+                <>
+                  <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
+                    {formatNumber(usedCredits)}
+                  </span>
+                  <span className="text-base leading-6 font-normal text-text-tertiary">/</span>
+                  <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
+                    {formatNumber(totalCredits)}
+                  </span>
+                  <span className={cn('system-md-medium', creditUsageTextClassName)}>
+                    {t(($) => $['modelProvider.used'], { ns: 'common' })}
+                  </span>
+                </>
+              )}
             </div>
             {isExhausted && exhaustedAt ? (
               <>
