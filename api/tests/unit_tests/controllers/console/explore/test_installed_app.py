@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
 from datetime import datetime
 from inspect import unwrap
@@ -7,13 +7,12 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
 import services.installed_app_service as service_module
-from models.base import TypeBase
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, RecommendedApp
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 
@@ -137,7 +136,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.execute.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = list[tuple[InstalledApp, App]]()
 
         with (
             app.test_request_context("/?app_id=a1"),
@@ -157,7 +156,7 @@ class TestInstalledAppsListApi:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
         session = MagicMock()
-        session.execute.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = list[tuple[InstalledApp, App]]()
 
         with (
             app.test_request_context("/?name=Sales%25_Q3"),
@@ -444,7 +443,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.execute.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = list[tuple[InstalledApp, App]]()
 
         with (
             app.test_request_context("/"),
@@ -467,7 +466,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.execute.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = list[tuple[InstalledApp, App]]()
 
         with (
             app.test_request_context("/"),
@@ -490,7 +489,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.execute.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = list[tuple[InstalledApp, App]]()
 
         with (
             app.test_request_context("/"),
@@ -681,20 +680,8 @@ class TestInstalledAppApi:
         assert result["result"] == "success"
 
 
-@pytest.fixture
-def sqlite_installed_app_database(sqlite_engine: Engine) -> Iterator[scoped_session[Session]]:
-    """Provide the controller and service with the same isolated SQLite database."""
-    tables = [model.__table__ for model in (App, AppModelConfig, Workflow, InstalledApp, RecommendedApp)]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    try:
-        yield session
-    finally:
-        session.remove()
-
-
 def _persist_app(
-    session: scoped_session[Session],
+    session: Session,
     *,
     app_id: str = "app-1",
     tenant_id: str = "owner-tenant",
@@ -745,7 +732,7 @@ def _persist_app(
 
 
 def _persist_installed_app(
-    session: scoped_session[Session],
+    session: Session,
     app: App,
     *,
     tenant_id: str,
@@ -765,10 +752,12 @@ def _persist_installed_app(
 
 @contextmanager
 def _sqlite_controller_context(
-    database: scoped_session[Session], *, role: str = "owner", auth_enabled: bool = False
-) -> Iterator[None]:
+    database: Session, *, role: str = "owner", auth_enabled: bool = False
+) -> Generator[None]:
+    session_proxy = MagicMock(wraps=database)
+    session_proxy.return_value = database
     with (
-        patch.object(module.db, "session", database),
+        patch.object(module.db, "session", session_proxy),
         patch.object(module.TenantService, "get_user_role", return_value=role),
         patch.object(
             service_module.FeatureService,
@@ -783,9 +772,9 @@ def test_sqlite_get_installed_apps_filters_tenant_publication_mode_and_app_id(
     app: Flask,
     current_user: MagicMock,
     tenant_id: str,
-    sqlite_installed_app_database: scoped_session[Session],
+    sqlite_session: Session,
 ) -> None:
-    database = sqlite_installed_app_database
+    database = sqlite_session
     chat = _persist_app(database, app_id="chat")
     workflow = _persist_app(database, app_id="workflow", mode=AppMode.WORKFLOW)
     unpublished = _persist_app(database, app_id="unpublished", published=False)
@@ -819,9 +808,9 @@ def test_sqlite_get_installed_apps_applies_web_auth_permission_state(
     app: Flask,
     current_user: MagicMock,
     tenant_id: str,
-    sqlite_installed_app_database: scoped_session[Session],
+    sqlite_session: Session,
 ) -> None:
-    database = sqlite_installed_app_database
+    database = sqlite_session
     allowed = _persist_app(database, app_id="allowed")
     denied = _persist_app(database, app_id="denied")
     sso = _persist_app(database, app_id="sso")
@@ -856,9 +845,9 @@ def test_sqlite_post_installs_public_recommended_app_and_is_idempotent(
     app: Flask,
     tenant_id: str,
     payload_patch: PayloadPatch,
-    sqlite_installed_app_database: scoped_session[Session],
+    sqlite_session: Session,
 ) -> None:
-    database = sqlite_installed_app_database
+    database = sqlite_session
     app_model = _persist_app(database, public=True)
     recommended = RecommendedApp(
         app_id=app_model.id,
@@ -869,6 +858,8 @@ def test_sqlite_post_installs_public_recommended_app_and_is_idempotent(
     )
     database.add(recommended)
     database.commit()
+    recommended_id = recommended.id
+    app_owner_tenant_id = app_model.tenant_id
     api = module.InstalledAppsListApi()
     method = unwrap(api.post)
 
@@ -880,23 +871,26 @@ def test_sqlite_post_installs_public_recommended_app_and_is_idempotent(
         ):
             assert method(api, tenant_id) == {"message": "App installed successfully"}
 
-    database.expire_all()
-    installed = database.scalars(select(InstalledApp)).all()
-    assert len(installed) == 1
-    assert installed[0].tenant_id == tenant_id
-    assert installed[0].app_owner_tenant_id == app_model.tenant_id
-    persisted_recommendation = database.get(RecommendedApp, recommended.id)
-    assert persisted_recommendation is not None
-    assert persisted_recommendation.install_count == 1
+    # End the request-scoped session so this assertion only observes committed data.
+    bind = database.get_bind()
+    database.close()
+    with Session(bind) as verification_session:
+        installed = verification_session.scalars(select(InstalledApp)).all()
+        assert len(installed) == 1
+        assert installed[0].tenant_id == tenant_id
+        assert installed[0].app_owner_tenant_id == app_owner_tenant_id
+        persisted_recommendation = verification_session.get(RecommendedApp, recommended_id)
+        assert persisted_recommendation is not None
+        assert persisted_recommendation.install_count == 1
 
 
 def test_sqlite_post_enforces_recommendation_and_public_state(
     app: Flask,
     tenant_id: str,
     payload_patch: PayloadPatch,
-    sqlite_installed_app_database: scoped_session[Session],
+    sqlite_session: Session,
 ) -> None:
-    database = sqlite_installed_app_database
+    database = sqlite_session
     api = module.InstalledAppsListApi()
     method = unwrap(api.post)
     with (
@@ -929,9 +923,9 @@ def test_sqlite_post_enforces_recommendation_and_public_state(
 
 def test_sqlite_delete_removes_foreign_installed_app_and_rejects_owned_app(
     tenant_id: str,
-    sqlite_installed_app_database: scoped_session[Session],
+    sqlite_session: Session,
 ) -> None:
-    database = sqlite_installed_app_database
+    database = sqlite_session
     foreign_app = _persist_app(database, app_id="foreign")
     installed = _persist_installed_app(database, foreign_app, tenant_id=tenant_id)
     installed_id = installed.id
@@ -952,9 +946,9 @@ def test_sqlite_patch_persists_pin_and_noop_payload(
     app: Flask,
     tenant_id: str,
     payload_patch: PayloadPatch,
-    sqlite_installed_app_database: scoped_session[Session],
+    sqlite_session: Session,
 ) -> None:
-    database = sqlite_installed_app_database
+    database = sqlite_session
     app_model = _persist_app(database)
     installed = _persist_installed_app(database, app_model, tenant_id=tenant_id)
     api = module.InstalledAppApi()
