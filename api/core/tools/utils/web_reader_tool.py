@@ -2,7 +2,7 @@ import mimetypes
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 from urllib.parse import unquote
 
 import charset_normalizer

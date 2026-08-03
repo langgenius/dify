@@ -204,7 +204,7 @@ def main():
     # Re-query doc_id from one of the rows we inserted
     with client.engine.connect() as conn:
         res = conn.execute(text(f"SELECT metadata->>'$.document_id' FROM `{tbl_meta}` LIMIT 1"))
-        res1 =  res.fetchone()
+        res1 = res.fetchone()
         assert res1 is not None
         doc_id_1000 = res1[0]
 

@@ -13,7 +13,6 @@ import logging
 import re
 import zipfile
 from collections.abc import Sequence
-from typing import cast
 
 import pyarrow as pa
 import pyarrow.compute as pc

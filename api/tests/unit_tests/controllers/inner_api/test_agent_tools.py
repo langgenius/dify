@@ -1,7 +1,6 @@
 """Unit tests for the Agent tool inner API controller."""
 
 from collections.abc import Generator
-from collections.abc import Iterator
 from contextlib import contextmanager
 from unittest.mock import patch
 

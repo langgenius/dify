@@ -14,10 +14,9 @@ current, so the API reconciles those counts before serving workspace plugin
 metadata.
 """
 
-from collections.abc import Generator
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from mimetypes import guess_type
 from typing import Literal, Protocol

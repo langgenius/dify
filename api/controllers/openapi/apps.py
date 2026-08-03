@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Any, cast
+from typing import Any
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
