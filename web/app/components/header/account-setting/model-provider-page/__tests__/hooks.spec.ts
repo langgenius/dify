@@ -983,7 +983,7 @@ describe('hooks', () => {
       expect(result.current.plugins).toEqual([{ plugin_id: 'langgenius/other', type: 'plugin' }])
     })
 
-    it('should skip marketplace queries when disabled', () => {
+    it('should preserve marketplace cache when disabled', () => {
       const queryPlugins = vi.fn()
       const queryPluginsWithDebounced = vi.fn()
       const cancelQueryPluginsWithDebounced = vi.fn()
@@ -1007,7 +1007,8 @@ describe('hooks', () => {
       expect(queryPlugins).not.toHaveBeenCalled()
       expect(queryPluginsWithDebounced).not.toHaveBeenCalled()
       expect(cancelQueryPluginsWithDebounced).toHaveBeenCalled()
-      expect(resetPlugins).toHaveBeenCalled()
+      expect(resetPlugins).not.toHaveBeenCalled()
+      expect(useMarketplacePlugins).toHaveBeenCalledWith(false)
       expect(result.current.plugins).toEqual([])
       expect(result.current.isLoading).toBe(false)
     })
