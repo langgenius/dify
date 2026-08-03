@@ -3093,7 +3093,7 @@ class SkillManagementService:
         else:
             next_frontmatter = f"{frontmatter}\nmetadata:\n  display-name: {escaped_display_name}"
 
-        return f"---\n{next_frontmatter}\n---\n{content[match.end():]}"
+        return f"---\n{next_frontmatter}\n---\n{content[match.end() :]}"
 
     def _sync_skill_md_text(self, skill: Skill, content: str) -> str:
         body = _FRONTMATTER_RE.sub("", content, count=1)
