@@ -1010,13 +1010,13 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('completes Knowledge directly when the workspace has no Knowledge walkthrough permissions', async () => {
+  it('focuses Dismiss after completing Knowledge as the final task without permission', async () => {
     mockWorkspacePermissionKeys.value = ['app.create_and_management']
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
-      completedTaskIds: ['home', 'studio'],
+      completedTaskIds: ['home', 'studio', 'integration'],
       skipped: false,
     })
 
@@ -1041,6 +1041,10 @@ describe('StepByStepTourMount', () => {
     await user.click(screen.getByRole('button', { name: 'Got it' }))
 
     await expectStepByStepTourPatch({ action: 'complete_task', task_id: 'knowledge' })
+    const dismissButton = await screen.findByRole('button', { name: 'Dismiss' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
     expect(mockRouterPush).not.toHaveBeenCalled()
   })
 

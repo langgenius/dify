@@ -1,10 +1,11 @@
 'use client'
 
-import type { ComponentProps, Ref } from 'react'
+import type { ComponentProps, RefObject } from 'react'
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
+import { useEffect } from 'react'
 
 export type FloatingChecklistProps = {
   className?: string
@@ -23,7 +24,7 @@ export type FloatingChecklistProps = {
     title: string
   }
   tasks: StepByStepTourTaskView[]
-  initialFocusRef: Ref<HTMLButtonElement>
+  initialFocusRef: RefObject<HTMLButtonElement | null>
   skipLabel: string
   minimizeLabel: string
   getTaskCompleteLabel: (taskTitle: string) => string
@@ -126,8 +127,12 @@ function TourCompletionPrompt({
   title,
   initialFocusRef,
 }: NonNullable<FloatingChecklistProps['completionPrompt']> & {
-  initialFocusRef: Ref<HTMLButtonElement>
+  initialFocusRef: RefObject<HTMLButtonElement | null>
 }) {
+  useEffect(() => {
+    initialFocusRef.current?.focus({ preventScroll: true })
+  }, [initialFocusRef])
+
   return (
     <section
       aria-label={label}
@@ -230,7 +235,7 @@ function TourTaskRow({
   onUncompleteTask,
 }: {
   task: StepByStepTourTaskView
-  initialFocusRef: Ref<HTMLButtonElement>
+  initialFocusRef: RefObject<HTMLButtonElement | null>
   onCompleteTask: (taskId: StepByStepTourTaskId) => void
   getTaskCompleteLabel: (taskTitle: string) => string
   getTaskIncompleteLabel: (taskTitle: string) => string
