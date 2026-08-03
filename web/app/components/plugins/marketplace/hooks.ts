@@ -41,7 +41,7 @@ export const useMarketplaceCollectionsAndPlugins = () => {
     },
     [],
   )
-  const isLoading = !!queryParams && (isFetching || isPending)
+  const isLoading = !!queryParams && (isPending || (isFetching && !data))
 
   return {
     marketplaceCollections: marketplaceCollectionsOverride ?? data?.marketplaceCollections,

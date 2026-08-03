@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 
 const getMarketplacePluginsByCollectionId = vi.hoisted(() => vi.fn())
+const getMarketplaceCollectionsAndPlugins = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/base', () => ({
   postMarketplace: vi.fn(),
@@ -10,7 +11,7 @@ vi.mock('@/service/base', () => ({
 
 vi.mock('../utils', () => ({
   getFormattedPlugin: (plugin: unknown) => plugin,
-  getMarketplaceCollectionsAndPlugins: vi.fn(),
+  getMarketplaceCollectionsAndPlugins,
   getMarketplacePluginsByCollectionId,
 }))
 
@@ -87,6 +88,64 @@ describe('useMarketplacePluginsByCollectionId', () => {
 
     await waitFor(() => {
       expect(result.current.plugins).toEqual([{ plugin_id: 'refreshed-plugin', type: 'plugin' }])
+    })
+  })
+})
+
+describe('useMarketplaceCollectionsAndPlugins', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should retain collection results while refreshing cached data', async () => {
+    let resolveRefresh: (() => void) | undefined
+    getMarketplaceCollectionsAndPlugins
+      .mockResolvedValueOnce({
+        marketplaceCollections: [{ id: 'cached-collection' }],
+        marketplaceCollectionPluginsMap: {},
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = () =>
+              resolve({
+                marketplaceCollections: [{ id: 'refreshed-collection' }],
+                marketplaceCollectionPluginsMap: {},
+              })
+          }),
+      )
+
+    const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
+    const { Wrapper, queryClient } = createWrapper()
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins(), {
+      wrapper: Wrapper,
+    })
+
+    act(() => {
+      result.current.queryMarketplaceCollectionsAndPlugins()
+    })
+
+    await waitFor(() => {
+      expect(result.current.marketplaceCollections).toEqual([{ id: 'cached-collection' }])
+    })
+
+    act(() => {
+      void queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionsAndPlugins'] })
+    })
+
+    await waitFor(() => {
+      expect(getMarketplaceCollectionsAndPlugins).toHaveBeenCalledTimes(2)
+    })
+
+    expect(result.current.marketplaceCollections).toEqual([{ id: 'cached-collection' }])
+    expect(result.current.isLoading).toBe(false)
+
+    await act(async () => {
+      resolveRefresh?.()
+    })
+
+    await waitFor(() => {
+      expect(result.current.marketplaceCollections).toEqual([{ id: 'refreshed-collection' }])
     })
   })
 })
