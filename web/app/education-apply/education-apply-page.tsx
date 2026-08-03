@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
-import type { ICurrentWorkspace } from '@/models/common'
+import type { ICurrentWorkspaceSummary } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -292,7 +292,7 @@ const EducationApplyAgeContent = () => {
 }
 
 type AppliedEducationWorkspaceBlockProps = {
-  currentWorkspace: ICurrentWorkspace
+  currentWorkspace: ICurrentWorkspaceSummary
   plan: PlanType
   action: ReactNode
   isSwitchingWorkspace: boolean

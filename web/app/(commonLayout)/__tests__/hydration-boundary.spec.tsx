@@ -57,8 +57,10 @@ vi.mock('@/service/server', () => ({
   serverConsoleQuery: {
     workspaces: {
       current: {
-        post: {
-          queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+        summary: {
+          get: {
+            queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+          },
         },
         rbac: {
           myPermissions: {
@@ -100,7 +102,13 @@ describe('CommonLayoutHydrationBoundary', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
+    mocks.workspaceQueryFn.mockResolvedValue({
+      id: 'workspace-id',
+      name: 'Workspace',
+      role: 'owner',
+      plan: 'sandbox',
+      credits: 200,
+    })
     mocks.permissionQueryFn.mockResolvedValue({
       workspace: { permission_keys: ['agent.manage'] },
       app: { default_permission_keys: [], overrides: [] },
@@ -111,7 +119,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       csrfToken: 'csrf-token',
     })
     mocks.workspaceQueryOptions.mockReturnValue({
-      queryKey: ['console', 'workspaces', 'current', 'post'],
+      queryKey: ['console', 'workspaces', 'current', 'summary', 'get'],
       queryFn: mocks.workspaceQueryFn,
       retry: false,
     })
@@ -172,7 +180,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
-        ['console', 'workspaces', 'current', 'post'],
+        ['console', 'workspaces', 'current', 'summary', 'get'],
         [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
       ]),
     )
