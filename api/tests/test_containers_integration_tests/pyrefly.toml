@@ -143,3 +143,5 @@ redundant-cast = true
 unannotated-return = true
 unnecessary-type-conversion = true
 unused-ignore = true
+implicit-any-lambda = "ignore"
+unnecessary-type-conversion = "ignore"

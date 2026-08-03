@@ -58,7 +58,7 @@ def get_url(url: str, user_agent: str | None = None) -> str:
             return f"Unsupported content-type [{main_content_type}] of URL."
 
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
-            return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
+            return ExtractProcessor.load_from_url(url, return_text=True)
 
         response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:

@@ -247,8 +247,8 @@ class AppListApi(Resource):
         env = AppListResponse(
             page=query.page,
             limit=query.limit,
-            total=cast(int, pagination.total),
-            has_more=query.page * query.limit < cast(int, pagination.total),
+            total=pagination.total,
+            has_more=query.page * query.limit < pagination.total,
             data=items,
         )
         return env

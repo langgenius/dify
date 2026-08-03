@@ -1,5 +1,6 @@
 """Unit tests for the Agent tool inner API controller."""
 
+from collections.abc import Generator
 from collections.abc import Iterator
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -46,7 +47,7 @@ def _payload() -> dict[str, object]:
 
 
 @contextmanager
-def _agent_inner_auth() -> Iterator[None]:
+def _agent_inner_auth() -> Generator[None]:
     with (
         patch("configs.dify_config.PLUGIN_DAEMON_KEY", "plugin-daemon-key"),
         patch("configs.dify_config.INNER_API_KEY_FOR_PLUGIN", "inner-key"),
