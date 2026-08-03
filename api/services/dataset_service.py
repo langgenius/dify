@@ -2402,13 +2402,14 @@ class DocumentService:
                                         truncated_page_name,
                                         batch,
                                     )
+                                    document.id = str(uuid.uuid4())
                                     session.add(document)
-                                    session.flush()
                                     document_ids.append(document.id)
                                     documents.append(document)
                                     position += 1
                                 else:
                                     exist_document.pop(page.page_id)
+                        session.flush()
                         # delete not selected documents
                         if len(exist_document) > 0:
                             clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
