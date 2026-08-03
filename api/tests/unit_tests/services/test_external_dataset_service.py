@@ -1614,6 +1614,33 @@ class TestExternalDatasetServiceCreateDataset:
         mock_db.session.flush.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
+    @patch("services.external_knowledge_service.enterprise_rbac_service")
+    @patch("services.external_knowledge_service.db")
+    def test_create_external_dataset_syncs_creator_access_policy_binding(
+        self, mock_db, mock_rbac, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """The creator must be bound to the new dataset's access policy, as in create_empty_dataset."""
+        # Arrange
+        args = {
+            "name": "Bound External Dataset",
+            "external_knowledge_api_id": "api-456",
+            "external_knowledge_id": "knowledge-456",
+        }
+        mock_db.session.scalar.side_effect = [None, factory.create_external_knowledge_api_mock(api_id="api-456")]
+
+        # Act
+        dataset = ExternalDatasetService.create_external_dataset(
+            "tenant-456", "user-456", args, session=mock_db.session
+        )
+
+        # Assert
+        mock_rbac.try_sync_creator_access_policy_member_bindings.assert_called_once_with(
+            "tenant-456",
+            "user-456",
+            mock_rbac.RBACResourceType.DATASET,
+            dataset.id,
+        )
+
     @patch("services.external_knowledge_service.db")
     def test_create_external_dataset_duplicate_name_error(
         self, mock_db, factory: ExternalDatasetServiceTestDataFactory
