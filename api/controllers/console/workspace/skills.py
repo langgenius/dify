@@ -26,6 +26,7 @@ from models.account import Account
 from services.skill_management_service import (
     SkillAssistMessagePayload,
     SkillCreatePayload,
+    SkillDraftFileCheckPayload,
     SkillDraftFileOperationPayload,
     SkillDraftTreePayload,
     SkillImportPayload,
@@ -124,6 +125,24 @@ class SkillFileUploadResponse(ResponseModel):
     mime_type: str
     size: int
     hash: str
+
+
+class SkillFileCheckErrorResponse(ResponseModel):
+    code: str
+    message: str
+
+
+class SkillFileCheckItemResponse(ResponseModel):
+    path: str
+    filename: str
+    extension: str
+    mime_type: str
+    size: int
+    errors: list[SkillFileCheckErrorResponse] = Field(default_factory=list)
+
+
+class SkillFileCheckResponse(ResponseModel):
+    data: dict[str, SkillFileCheckItemResponse] = Field(default_factory=dict)
 
 
 class SkillDetailResponse(SkillResponse):
@@ -230,6 +249,7 @@ register_schema_models(
     SkillCreatePayload,
     SkillAssistMessagePayload,
     SkillMetadataPayload,
+    SkillDraftFileCheckPayload,
     SkillDraftFileOperationPayload,
     SkillDraftTreePayload,
     SkillPublishPayload,
@@ -246,6 +266,9 @@ register_response_schema_models(
     SkillFileResponse,
     SkillFilePreviewResponse,
     SkillFileUploadResponse,
+    SkillFileCheckErrorResponse,
+    SkillFileCheckItemResponse,
+    SkillFileCheckResponse,
     SkillDetailResponse,
     SkillListResponse,
     SkillTagResponse,
@@ -520,6 +543,32 @@ class WorkspaceSkillAssistMessageApi(Resource):
         except SkillManagementServiceError as exc:
             return _error_response(exc)
         return helper.compact_generate_response(response)
+
+
+@console_ns.route("/workspaces/current/skills/<string:skill_id>/files/check")
+class WorkspaceSkillFilesCheckApi(Resource):
+    @console_ns.expect(console_ns.models[SkillDraftFileCheckPayload.__name__])
+    @console_ns.response(200, "Draft files checked", console_ns.models[SkillFileCheckResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, skill_id: str):
+        try:
+            payload = SkillDraftFileCheckPayload.model_validate(console_ns.payload or {})
+            result = SkillManagementService().check_draft_files(
+                tenant_id=current_tenant_id,
+                skill_id=skill_id,
+                payload=payload,
+            )
+            return dump_response(SkillFileCheckResponse, result)
+        except ValidationError as exc:
+            return {"code": "invalid_request", "message": str(exc)}, 400
+        except ValueError as exc:
+            return {"code": "invalid_request", "message": str(exc)}, 400
+        except SkillManagementServiceError as exc:
+            return _error_response(exc)
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files")

@@ -44,6 +44,7 @@ from services.skill_management_service import (
     SkillAssistAttachmentPayload,
     SkillAssistDraftOperationPayload,
     SkillCreatePayload,
+    SkillDraftFileCheckPayload,
     SkillDraftFileOperation,
     SkillDraftFileOperationPayload,
     SkillDraftTreeItemPayload,
@@ -2003,6 +2004,48 @@ def test_apply_draft_file_operation_rejects_duplicate_folder_name() -> None:
         )
 
     assert exc_info.value.code == "file_path_conflict"
+
+
+def test_check_draft_files_reports_batch_validation_results() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="references/policy.md",
+            content="Policy text.",
+        ),
+    )
+
+    result = service.check_draft_files(
+        tenant_id=TENANT,
+        skill_id=created["id"],
+        payload=SkillDraftFileCheckPayload(
+            files=[
+                {"filename": "guide.md", "path": "references/guide.md", "size": 10},
+                {"filename": "policy.md", "path": "references/policy.md", "size": 10},
+                {"filename": "guide-copy.md", "path": "references/guide.md", "size": 10},
+                {"filename": "README", "path": "references/README", "size": 10},
+                {"filename": "big.md", "path": "references/big.md", "size": 512 * 1024 + 1},
+                {"filename": "escape.md", "path": "../escape.md", "size": 10},
+            ]
+        ),
+    )
+
+    assert set(result) == {"data"}
+    first_guide = result["data"]["guide.md"]
+    second_guide = result["data"]["guide-copy.md"]
+    assert first_guide["path"] == "references/guide.md"
+    assert first_guide["errors"] == []
+    assert second_guide["path"] == "references/guide.md"
+    assert [error["code"] for error in second_guide["errors"]] == ["duplicate_file_path"]
+    assert [error["code"] for error in result["data"]["policy.md"]["errors"]] == ["file_already_exists"]
+    assert [error["code"] for error in result["data"]["README"]["errors"]] == ["missing_file_extension"]
+    assert [error["code"] for error in result["data"]["big.md"]["errors"]] == ["file_too_large"]
+    assert [error["code"] for error in result["data"]["escape.md"]["errors"]] == ["invalid_file_path"]
 
 
 def test_apply_draft_file_operation_updates_skill_md_frontmatter() -> None:

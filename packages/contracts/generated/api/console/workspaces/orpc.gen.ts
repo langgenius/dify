@@ -357,6 +357,9 @@ import {
   zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse,
   zPostWorkspacesCurrentSkillsBySkillIdDuplicatePath,
   zPostWorkspacesCurrentSkillsBySkillIdDuplicateResponse,
+  zPostWorkspacesCurrentSkillsBySkillIdFilesCheckBody,
+  zPostWorkspacesCurrentSkillsBySkillIdFilesCheckPath,
+  zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse,
   zPostWorkspacesCurrentSkillsBySkillIdPublishBody,
   zPostWorkspacesCurrentSkillsBySkillIdPublishPath,
   zPostWorkspacesCurrentSkillsBySkillIdPublishResponse,
@@ -3191,6 +3194,26 @@ export const export2 = {
   get: get61,
 }
 
+export const post52 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentSkillsBySkillIdFilesCheck',
+    path: '/workspaces/current/skills/{skill_id}/files/check',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentSkillsBySkillIdFilesCheckBody,
+      params: zPostWorkspacesCurrentSkillsBySkillIdFilesCheckPath,
+    }),
+  )
+  .output(zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse)
+
+export const check = {
+  post: post52,
+}
+
 export const get62 = oc
   .route({
     inputStructure: 'detailed',
@@ -3266,11 +3289,12 @@ export const put16 = oc
 export const files2 = {
   patch: patch5,
   put: put16,
+  check,
   content,
   preview,
 }
 
-export const post52 = oc
+export const post53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3287,7 +3311,7 @@ export const post52 = oc
   .output(zPostWorkspacesCurrentSkillsBySkillIdPublishResponse)
 
 export const publish = {
-  post: post52,
+  post: post53,
 }
 
 export const get64 = oc
@@ -3305,7 +3329,7 @@ export const references = {
   get: get64,
 }
 
-export const post53 = oc
+export const post54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3322,7 +3346,7 @@ export const post53 = oc
   .output(zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse)
 
 export const restore = {
-  post: post53,
+  post: post54,
 }
 
 export const delete13 = oc
@@ -3453,7 +3477,7 @@ export const get68 = oc
   .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
   .output(zGetWorkspacesCurrentSkillsResponse)
 
-export const post54 = oc
+export const post55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3467,7 +3491,7 @@ export const post54 = oc
 
 export const skills2 = {
   get: get68,
-  post: post54,
+  post: post55,
   files,
   import: import_,
   tags,
@@ -3488,7 +3512,7 @@ export const toolLabels = {
   get: get69,
 }
 
-export const post55 = oc
+export const post56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3500,10 +3524,10 @@ export const post55 = oc
   .output(zPostWorkspacesCurrentToolProviderApiAddResponse)
 
 export const add = {
-  post: post55,
+  post: post56,
 }
 
-export const post56 = oc
+export const post57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3515,7 +3539,7 @@ export const post56 = oc
   .output(zPostWorkspacesCurrentToolProviderApiDeleteResponse)
 
 export const delete15 = {
-  post: post56,
+  post: post57,
 }
 
 export const get70 = oc
@@ -3548,7 +3572,7 @@ export const remote = {
   get: get72,
 }
 
-export const post57 = oc
+export const post58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3560,10 +3584,10 @@ export const post57 = oc
   .output(zPostWorkspacesCurrentToolProviderApiSchemaResponse)
 
 export const schema = {
-  post: post57,
+  post: post58,
 }
 
-export const post58 = oc
+export const post59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3575,7 +3599,7 @@ export const post58 = oc
   .output(zPostWorkspacesCurrentToolProviderApiTestPreResponse)
 
 export const pre = {
-  post: post58,
+  post: post59,
 }
 
 export const test = {
@@ -3597,7 +3621,7 @@ export const tools = {
   get: get73,
 }
 
-export const post59 = oc
+export const post60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3609,7 +3633,7 @@ export const post59 = oc
   .output(zPostWorkspacesCurrentToolProviderApiUpdateResponse)
 
 export const update2 = {
-  post: post59,
+  post: post60,
 }
 
 export const api = {
@@ -3623,7 +3647,7 @@ export const api = {
   update: update2,
 }
 
-export const post60 = oc
+export const post61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3640,7 +3664,7 @@ export const post60 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse)
 
 export const add2 = {
-  post: post60,
+  post: post61,
 }
 
 export const get74 = oc
@@ -3715,7 +3739,7 @@ export const credentials3 = {
   get: get76,
 }
 
-export const post61 = oc
+export const post62 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3732,10 +3756,10 @@ export const post61 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse)
 
 export const defaultCredential = {
-  post: post61,
+  post: post62,
 }
 
-export const post62 = oc
+export const post63 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3752,7 +3776,7 @@ export const post62 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse)
 
 export const delete16 = {
-  post: post62,
+  post: post63,
 }
 
 export const get77 = oc
@@ -3830,7 +3854,7 @@ export const get80 = oc
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
 
-export const post63 = oc
+export const post64 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3849,7 +3873,7 @@ export const post63 = oc
 export const customClient = {
   delete: delete17,
   get: get80,
-  post: post63,
+  post: post64,
 }
 
 export const oauth = {
@@ -3872,7 +3896,7 @@ export const tools2 = {
   get: get81,
 }
 
-export const post64 = oc
+export const post65 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3889,7 +3913,7 @@ export const post64 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse)
 
 export const update3 = {
-  post: post64,
+  post: post65,
 }
 
 export const byProvider2 = {
@@ -3909,7 +3933,7 @@ export const builtin = {
   byProvider: byProvider2,
 }
 
-export const post65 = oc
+export const post66 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3921,7 +3945,7 @@ export const post65 = oc
   .output(zPostWorkspacesCurrentToolProviderMcpAuthResponse)
 
 export const auth = {
-  post: post65,
+  post: post66,
 }
 
 export const get82 = oc
@@ -3973,7 +3997,7 @@ export const delete18 = oc
   .input(z.object({ body: zDeleteWorkspacesCurrentToolProviderMcpBody }))
   .output(zDeleteWorkspacesCurrentToolProviderMcpResponse)
 
-export const post66 = oc
+export const post67 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3997,14 +4021,14 @@ export const put17 = oc
 
 export const mcp = {
   delete: delete18,
-  post: post66,
+  post: post67,
   put: put17,
   auth,
   tools: tools3,
   update: update4,
 }
 
-export const post67 = oc
+export const post68 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4016,10 +4040,10 @@ export const post67 = oc
   .output(zPostWorkspacesCurrentToolProviderWorkflowCreateResponse)
 
 export const create2 = {
-  post: post67,
+  post: post68,
 }
 
-export const post68 = oc
+export const post69 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4031,7 +4055,7 @@ export const post68 = oc
   .output(zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse)
 
 export const delete19 = {
-  post: post68,
+  post: post69,
 }
 
 export const get84 = oc
@@ -4064,7 +4088,7 @@ export const tools4 = {
   get: get86,
 }
 
-export const post69 = oc
+export const post70 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4076,7 +4100,7 @@ export const post69 = oc
   .output(zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse)
 
 export const update5 = {
-  post: post69,
+  post: post70,
 }
 
 export const workflow = {
@@ -4239,7 +4263,7 @@ export const get94 = oc
 /**
  * Configure custom OAuth client for a provider
  */
-export const post70 = oc
+export const post71 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4259,7 +4283,7 @@ export const post70 = oc
 export const client = {
   delete: delete20,
   get: get94,
-  post: post70,
+  post: post71,
 }
 
 export const oauth2 = {
@@ -4269,7 +4293,7 @@ export const oauth2 = {
 /**
  * Build a subscription instance for a trigger provider
  */
-export const post71 = oc
+export const post72 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4291,7 +4315,7 @@ export const post71 = oc
   )
 
 export const bySubscriptionBuilderId = {
-  post: post71,
+  post: post72,
 }
 
 export const build = {
@@ -4301,7 +4325,7 @@ export const build = {
 /**
  * Add a new subscription instance for a trigger provider
  */
-export const post72 = oc
+export const post73 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4319,7 +4343,7 @@ export const post72 = oc
   .output(zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse)
 
 export const create3 = {
-  post: post72,
+  post: post73,
 }
 
 /**
@@ -4356,7 +4380,7 @@ export const logs = {
 /**
  * Update a subscription instance for a trigger provider
  */
-export const post73 = oc
+export const post74 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4378,7 +4402,7 @@ export const post73 = oc
   )
 
 export const bySubscriptionBuilderId3 = {
-  post: post73,
+  post: post74,
 }
 
 export const update6 = {
@@ -4388,7 +4412,7 @@ export const update6 = {
 /**
  * Verify and update a subscription instance for a trigger provider
  */
-export const post74 = oc
+export const post75 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4410,7 +4434,7 @@ export const post74 = oc
   )
 
 export const bySubscriptionBuilderId4 = {
-  post: post74,
+  post: post75,
 }
 
 export const verifyAndUpdate = {
@@ -4502,7 +4526,7 @@ export const oauth3 = {
 /**
  * Verify credentials for an existing subscription (edit mode only)
  */
-export const post75 = oc
+export const post76 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4524,7 +4548,7 @@ export const post75 = oc
   )
 
 export const bySubscriptionId = {
-  post: post75,
+  post: post76,
 }
 
 export const verify = {
@@ -4548,7 +4572,7 @@ export const byProvider3 = {
 /**
  * Delete a subscription instance
  */
-export const post76 = oc
+export const post77 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4565,13 +4589,13 @@ export const post76 = oc
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
 
 export const delete21 = {
-  post: post76,
+  post: post77,
 }
 
 /**
  * Update a subscription instance
  */
-export const post77 = oc
+export const post78 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4589,7 +4613,7 @@ export const post77 = oc
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
 
 export const update7 = {
-  post: post77,
+  post: post78,
 }
 
 export const subscriptions2 = {
@@ -4624,7 +4648,7 @@ export const triggers = {
   get: get99,
 }
 
-export const post78 = oc
+export const post79 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4635,7 +4659,7 @@ export const post78 = oc
   .output(zPostWorkspacesCurrentResponse)
 
 export const current = {
-  post: post78,
+  post: post79,
   agentProvider,
   agentProviders,
   agents,
@@ -4658,7 +4682,7 @@ export const current = {
   triggers,
 }
 
-export const post79 = oc
+export const post80 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4671,14 +4695,14 @@ export const post79 = oc
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
 
 export const upload3 = {
-  post: post79,
+  post: post80,
 }
 
 export const webappLogo = {
   upload: upload3,
 }
 
-export const post80 = oc
+export const post81 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4690,11 +4714,11 @@ export const post80 = oc
   .output(zPostWorkspacesCustomConfigResponse)
 
 export const customConfig = {
-  post: post80,
+  post: post81,
   webappLogo,
 }
 
-export const post81 = oc
+export const post82 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4706,10 +4730,10 @@ export const post81 = oc
   .output(zPostWorkspacesInfoResponse)
 
 export const info4 = {
-  post: post81,
+  post: post82,
 }
 
-export const post82 = oc
+export const post83 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4721,7 +4745,7 @@ export const post82 = oc
   .output(zPostWorkspacesSwitchResponse)
 
 export const switch3 = {
-  post: post82,
+  post: post83,
 }
 
 export const get100 = oc

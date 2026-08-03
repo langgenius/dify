@@ -84,6 +84,7 @@ _SKILL_MD = "SKILL.md"
 _MAX_FILE_BYTES = 512 * 1024
 _MAX_SKILL_BYTES = 5 * 1024 * 1024
 _MAX_FILES_PER_SKILL = 50
+_MAX_FILE_CHECK_ITEMS = 100
 _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
 _MAX_TAGS = 5
@@ -98,6 +99,7 @@ _UNTITLED_SKILL_MD_BODY = """# Untitled skill
 Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.
 """
 _FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
+_FILE_EXTENSION_RE = re.compile(r"\.[A-Za-z0-9][A-Za-z0-9._+-]*\Z")
 _SKILL_ASSISTANT_SYSTEM_PROMPT = """You are Dify's Skill Authoring assistant.
 
 Help the user create or revise the draft files of a reusable Skill. The supplied
@@ -288,6 +290,21 @@ class SkillDraftFileOperationPayload(BaseModel):
             if self.path == self.target_path:
                 raise ValueError("target_path must be different from path")
         return self
+
+
+class SkillDraftFileCheckItemPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    filename: str = Field(min_length=1, max_length=255)
+    path: str | None = Field(default=None, description="Target draft path. Defaults to filename.")
+    size: int = Field(ge=0)
+    mime_type: str | None = Field(default=None, max_length=255)
+
+
+class SkillDraftFileCheckPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    files: list[SkillDraftFileCheckItemPayload] = Field(default_factory=list, max_length=_MAX_FILE_CHECK_ITEMS)
 
 
 class SkillPublishPayload(BaseModel):
@@ -526,6 +543,39 @@ class SkillManagementService:
             "mime_type": tool_file.mimetype,
             "size": tool_file.size,
             "hash": hashlib.sha256(content).hexdigest(),
+        }
+
+    def check_draft_files(
+        self,
+        *,
+        tenant_id: str,
+        skill_id: str,
+        payload: SkillDraftFileCheckPayload,
+    ) -> dict[str, Any]:
+        """Validate candidate draft file uploads without persisting files."""
+        with session_factory.create_session() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            existing_files = list(
+                session.scalars(
+                    select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id).order_by(SkillDraftFile.path)
+                )
+            )
+
+        existing_file_paths = {file.path for file in existing_files if file.kind == SkillFileKind.FILE}
+        batch_paths: set[str] = set()
+        data: dict[str, dict[str, Any]] = {}
+
+        for item in payload.files:
+            item_result = self._check_draft_file_candidate(
+                item=item,
+                existing_file_paths=existing_file_paths,
+                batch_paths=batch_paths,
+            )
+            batch_paths.add(item_result["path"])
+            data[item.filename] = item_result
+
+        return {
+            "data": data,
         }
 
     def list_skills(
@@ -1976,6 +2026,111 @@ class SkillManagementService:
                 )
             references.sort(key=lambda item: (0 if item["type"] == "agent" else 1, str(item["display_name"])))
             return {"data": references}
+
+    @classmethod
+    def _check_draft_file_candidate(
+        cls,
+        *,
+        item: SkillDraftFileCheckItemPayload,
+        existing_file_paths: set[str],
+        batch_paths: set[str],
+    ) -> dict[str, Any]:
+        raw_path = item.path or item.filename
+        try:
+            path = normalize_skill_file_path(raw_path)
+        except ValueError:
+            path = raw_path.strip().replace("\\", "/") or item.filename
+            path = path.lstrip("/")
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "invalid_file_path", "message": "skill file path is invalid"},
+            )
+
+        filename = posixpath.basename(path)
+        extension = cls._file_extension(filename)
+
+        if not filename or filename in {".", ".."}:
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "invalid_filename", "message": "filename is invalid"},
+            )
+        elif filename != item.filename and "/" in item.filename.replace("\\", "/"):
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "invalid_filename", "message": "filename must not include path separators"},
+            )
+
+        if extension is None:
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "missing_file_extension", "message": "file extension is required"},
+            )
+        elif not _FILE_EXTENSION_RE.fullmatch(extension):
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "invalid_file_extension", "message": "file extension is invalid"},
+            )
+
+        if item.size > _MAX_FILE_BYTES:
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={
+                    "code": "file_too_large",
+                    "message": f"file exceeds {_MAX_FILE_BYTES} byte limit",
+                },
+            )
+
+        duplicate_in_draft = path in existing_file_paths
+        duplicate_in_batch = path in batch_paths
+        if duplicate_in_draft:
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "file_already_exists", "message": "file already exists in the draft"},
+            )
+        if duplicate_in_batch:
+            return cls._build_file_check_result(
+                item=item,
+                path=path,
+                error={"code": "duplicate_file_path", "message": "file path is duplicated in this batch"},
+            )
+
+        return cls._build_file_check_result(
+            item=item,
+            path=path,
+        )
+
+    @classmethod
+    def _build_file_check_result(
+        cls,
+        *,
+        item: SkillDraftFileCheckItemPayload,
+        path: str,
+        error: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        filename = posixpath.basename(path)
+        extension = cls._file_extension(filename)
+        return {
+            "errors": [error] if error else [],
+            "extension": extension or "",
+            "filename": filename,
+            "mime_type": item.mime_type or cls._guess_mime_type(path),
+            "path": path,
+            "size": item.size,
+        }
+
+    @staticmethod
+    def _file_extension(filename: str) -> str | None:
+        if filename in {"", ".", ".."}:
+            return None
+        suffix = posixpath.splitext(filename)[1]
+        return suffix or None
 
     @staticmethod
     def _serialize_skill(

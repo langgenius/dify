@@ -757,6 +757,16 @@ export type SkillDraftTreePayload = {
   files?: Array<SkillDraftTreeItemPayload>
 }
 
+export type SkillDraftFileCheckPayload = {
+  files?: Array<SkillDraftFileCheckItemPayload>
+}
+
+export type SkillFileCheckResponse = {
+  data?: {
+    [key: string]: SkillFileCheckItemResponse
+  }
+}
+
 export type SkillFilePreviewResponse = {
   content: string
   hash: string
@@ -1757,6 +1767,22 @@ export type SkillDraftTreeItemPayload = {
   tool_file_id?: string | null
 }
 
+export type SkillDraftFileCheckItemPayload = {
+  filename: string
+  mime_type?: string | null
+  path?: string | null
+  size: number
+}
+
+export type SkillFileCheckItemResponse = {
+  errors?: Array<SkillFileCheckErrorResponse>
+  extension: string
+  filename: string
+  mime_type: string
+  path: string
+  size: number
+}
+
 export type SkillReferenceResponse = {
   agent_icon?: string | null
   agent_icon_background?: string | null
@@ -2255,6 +2281,11 @@ export type PermissionCatalogItem = {
 export type SkillFileKind = 'directory' | 'file'
 
 export type SkillFileStorage = 'text' | 'tool_file'
+
+export type SkillFileCheckErrorResponse = {
+  code: string
+  message: string
+}
 
 export type ToolParameter = {
   auto_generate?: PluginParameterAutoGenerate | null
@@ -5143,6 +5174,22 @@ export type PutWorkspacesCurrentSkillsBySkillIdFilesResponses = {
 
 export type PutWorkspacesCurrentSkillsBySkillIdFilesResponse =
   PutWorkspacesCurrentSkillsBySkillIdFilesResponses[keyof PutWorkspacesCurrentSkillsBySkillIdFilesResponses]
+
+export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckData = {
+  body: SkillDraftFileCheckPayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/files/check'
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckResponses = {
+  200: SkillFileCheckResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse =
+  PostWorkspacesCurrentSkillsBySkillIdFilesCheckResponses[keyof PostWorkspacesCurrentSkillsBySkillIdFilesCheckResponses]
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentData = {
   body?: never
