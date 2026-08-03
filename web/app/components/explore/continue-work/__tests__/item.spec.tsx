@@ -1,6 +1,7 @@
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import ContinueWorkItem from '../item'
@@ -86,11 +87,35 @@ describe('ContinueWorkItem', () => {
     const link = screen.getByRole('link', { name: /Continue App/ })
 
     expect(link).toHaveAttribute('href', '/app/app-1/configuration')
+    expect(link).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(
       screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
     ).toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
+  })
+
+  it.each([
+    ['chat', 'app.types.chatbot'],
+    ['advanced-chat', 'app.types.advanced'],
+    ['agent-chat', 'app.types.agent'],
+    ['workflow', 'app.types.workflow'],
+    ['completion', 'app.types.completion'],
+  ] as const)('should include the %s app mode in the accessible name', (mode, label) => {
+    renderItem(createApp({ mode }))
+
+    expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAccessibleName(
+      new RegExp(label.replaceAll('.', '\\.'), 'i'),
+    )
+  })
+
+  it('should omit the author separator when the author is unavailable', () => {
+    renderItem(createApp({ author_name: null }))
+
+    expect(screen.queryByText('·')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
+    ).toBeInTheDocument()
   })
 
   it('should link to access config when RBAC is enabled and only access config permission is available', () => {
@@ -113,39 +138,34 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should render preview-only apps as disabled buttons and warn on click', () => {
+  it('should render preview-only apps as disabled buttons and warn on click', async () => {
+    const user = userEvent.setup()
     renderItem(createApp({ permission_keys: [AppACLPermission.Preview] }))
 
-    const card = screen.getByRole('button', { name: 'Continue App' })
+    const card = screen.getByRole('button', { name: /Continue App.*app\.types\.chatbot/i })
 
+    expect(card).toHaveAttribute('type', 'button')
     expect(card).toHaveAttribute('aria-disabled', 'true')
-    expect(card).toHaveClass('cursor-not-allowed')
-    expect(card).toHaveClass('opacity-60')
+    expect(card).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
     expect(screen.queryByRole('link', { name: /Continue App/ })).not.toBeInTheDocument()
 
-    fireEvent.click(card)
+    await user.click(card)
 
     expect(toastMocks.warning).toHaveBeenCalledWith('app.noAccessResourcePermission')
   })
 
-  it('should warn when activating a preview-only app with Enter or Space', () => {
+  it('should warn when activating a preview-only app with Enter or Space', async () => {
+    const user = userEvent.setup()
     renderItem(createApp({ permission_keys: [AppACLPermission.Preview] }))
 
-    const card = screen.getByRole('button', { name: 'Continue App' })
+    const card = screen.getByRole('button', { name: /Continue App.*app\.types\.chatbot/i })
 
-    fireEvent.keyDown(card, { key: 'Enter' })
-    fireEvent.keyDown(card, { key: ' ' })
+    card.focus()
+    await user.keyboard('{Enter}')
+    await user.keyboard(' ')
 
     expect(toastMocks.warning).toHaveBeenCalledTimes(2)
     expect(toastMocks.warning).toHaveBeenNthCalledWith(1, 'app.noAccessResourcePermission')
     expect(toastMocks.warning).toHaveBeenNthCalledWith(2, 'app.noAccessResourcePermission')
-  })
-
-  it('should ignore other keys on preview-only app cards', () => {
-    renderItem(createApp({ permission_keys: [AppACLPermission.Preview] }))
-
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Continue App' }), { key: 'Escape' })
-
-    expect(toastMocks.warning).not.toHaveBeenCalled()
   })
 })

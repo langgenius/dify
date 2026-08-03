@@ -1335,15 +1335,14 @@ describe('MainNav', () => {
     ).toHaveAttribute('href', '/installed/installed-2')
   })
 
-  it('renders web app skeleton rows while installed apps are loading', () => {
+  it('hides the installed web apps section while installed apps are loading', () => {
     mockInstalledAppsPending = true
 
     renderMainNav()
 
-    expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute(
-      'aria-busy',
-      'true',
-    )
+    expect(
+      screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
     ).not.toBeInTheDocument()
