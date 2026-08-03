@@ -140,9 +140,7 @@ class RunScheduler:
             if not finalization.applied:
                 if finalization.status == "cancelled":
                     return CancelRunResponse(run_id=run_id, status="cancelled")
-                raise RunCancellationConflictError(
-                    f"run already finished with status {finalization.status!r}"
-                )
+                raise RunCancellationConflictError(f"run already finished with status {finalization.status!r}")
             self.cancelled_run_ids.add(run_id)
             _ = task.cancel(request.message or request.reason)
 

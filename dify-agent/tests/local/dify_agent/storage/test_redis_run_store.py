@@ -307,9 +307,7 @@ def test_finalize_run_raises_when_record_is_missing() -> None:
 
     with pytest.raises(RunNotFoundError):
         asyncio.run(
-            store.finalize_run(
-                RunCancelledEvent(run_id="missing", data=RunCancelledEventData(reason="cancelled"))
-            )
+            store.finalize_run(RunCancelledEvent(run_id="missing", data=RunCancelledEventData(reason="cancelled")))
         )
 
 
