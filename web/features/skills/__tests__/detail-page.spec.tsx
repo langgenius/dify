@@ -695,18 +695,22 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const sidebar = await screen.findByTestId('skill-detail-sidebar')
+    const sidebarShell = screen.getByTestId('skill-detail-sidebar-shell')
     const header = screen.getByTestId('skill-detail-sidebar-header')
 
-    expect(sidebar).toHaveClass('m-1', 'w-60', 'rounded-lg', 'bg-background-default')
-    expect(header).toHaveClass('h-12', 'gap-2', 'px-3')
-    expect(header.querySelector('.i-ri-arrow-left-line')).toBeInTheDocument()
-    expect(header.querySelector('.i-ri-box-3-line')).toBeInTheDocument()
+    expect(sidebarShell).toHaveClass('bg-background-body', 'p-1')
+    expect(sidebar).toHaveClass('rounded-lg', 'bg-components-panel-bg')
+    expect(sidebar).toHaveStyle({ width: '240px' })
+    expect(header).toHaveClass('h-12', 'py-2', 'pr-2', 'pl-1')
+    expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
+    expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
     expect(header).toHaveTextContent('SKILLS')
     expect(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.searchFiles',
       }),
-    ).toHaveClass('size-6', 'rounded-md')
+    ).toHaveClass('size-8', 'rounded-[10px]')
+    expect(document.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
   })
 
   it('opens the inline tag selector with workspace tag options', async () => {
@@ -725,7 +729,11 @@ describe('SkillDetailPage', () => {
     ).toHaveFocus()
     expect(screen.getByRole('option', { name: 'Search' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Productivity' })).toBeInTheDocument()
-    expect(screen.getByRole('separator')).toHaveClass('my-0')
+    expect(
+      screen
+        .getAllByRole('separator')
+        .find((separator) => separator.getAttribute('aria-orientation') === 'horizontal'),
+    ).toHaveClass('my-0')
     expect(
       screen
         .getByRole('button', { name: 'common.tag.manageTags' })
@@ -2517,6 +2525,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+    expect(screen.getByTestId('skill-detail-sidebar-shell')).toHaveClass('w-16')
 
     await user.click(
       screen.getByRole('button', {
@@ -2524,6 +2533,68 @@ describe('SkillDetailPage', () => {
       }),
     )
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+  })
+
+  it('shows the Figma floating sidebar when the collapsed rail is hovered', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.collapseSidebar',
+      }),
+    )
+    expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+
+    fireEvent.mouseEnter(screen.getByTestId('skill-detail-sidebar-shell'))
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(screen.getByTestId('skill-detail-sidebar')).toHaveClass(
+      'absolute',
+      'w-60',
+      'border',
+      'shadow-lg',
+    )
+    expect(screen.getByTestId('skill-detail-sidebar')).toHaveStyle({ width: '240px' })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.collapseSidebar',
+      }),
+    )
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+  })
+
+  it('resizes the file tree sidebar between the Figma minimum and maximum widths', async () => {
+    renderSkillDetailPage()
+
+    const resizeHandle = await screen.findByRole('separator', {
+      name: 'skill.skillManagement.detail.resizeSidebar',
+    })
+    const sidebar = screen.getByTestId('skill-detail-sidebar')
+
+    expect(resizeHandle).toHaveAttribute('aria-valuemin', '240')
+    expect(resizeHandle).toHaveAttribute('aria-valuemax', '420')
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
+    expect(sidebar).toHaveStyle({ width: '240px' })
+
+    fireEvent.pointerDown(resizeHandle, { button: 0, clientX: 244 })
+    fireEvent.pointerMove(document, { clientX: 600 })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
+    expect(sidebar).toHaveStyle({ width: '420px' })
+
+    fireEvent.pointerMove(document, { clientX: 0 })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
+    expect(sidebar).toHaveStyle({ width: '240px' })
+    fireEvent.pointerUp(document)
+
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '248')
+    fireEvent.keyDown(resizeHandle, { key: 'End' })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
+    fireEvent.keyDown(resizeHandle, { key: 'Home' })
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
   })
 
   it('scrolls the publish reference list after ten items', async () => {

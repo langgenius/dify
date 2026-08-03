@@ -4,7 +4,13 @@ import type {
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { DragEvent, FocusEvent, MouseEvent } from 'react'
+import type {
+  DragEvent,
+  FocusEvent,
+  MouseEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import type { SkillDropOperation, SkillDropTarget } from './file-tree-dnd'
 import type {
   FileTreeInlineAction,
@@ -47,6 +53,7 @@ import { matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
@@ -82,6 +89,13 @@ import {
 } from './shared'
 import { SkillDisplayNameEditor } from './skill-display-name-editor'
 import { SkillReferencesPanel, SkillTagsEditor } from './skill-metadata'
+
+const skillSidebarMinWidth = 240
+const skillSidebarMaxWidth = 420
+const skillSidebarKeyboardStep = 8
+
+const clampSkillSidebarWidth = (width: number) =>
+  Math.min(skillSidebarMaxWidth, Math.max(skillSidebarMinWidth, width))
 
 function FileSearchDialog({
   files,
@@ -214,8 +228,13 @@ export function FileTree({
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
   const [uploadItems, setUploadItems] = useState<SkillUploadQueueItem[]>([])
   const [deleteNode, setDeleteNode] = useState<FileTreeNode>()
+  const [sidebarWidth, setSidebarWidth] = useState(skillSidebarMinWidth)
+  const [sidebarFloating, setSidebarFloating] = useState(false)
+  const [sidebarResizing, setSidebarResizing] = useState(false)
   const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
   const cancelUploadRef = useRef(false)
+  const stopSidebarResizeRef = useRef<() => void>(() => undefined)
+  const closeSidebarFloatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const uploadBatchRef = useRef<
     | {
         files: File[]
@@ -244,6 +263,74 @@ export function FileTree({
     document.addEventListener('pointerdown', handlePointerDown, true)
     return () => document.removeEventListener('pointerdown', handlePointerDown, true)
   }, [referencesOpen])
+
+  useEffect(
+    () => () => {
+      stopSidebarResizeRef.current()
+      if (closeSidebarFloatingTimerRef.current) clearTimeout(closeSidebarFloatingTimerRef.current)
+    },
+    [],
+  )
+
+  const openSidebarFloatingPreview = () => {
+    if (!collapsed) return
+    if (closeSidebarFloatingTimerRef.current) clearTimeout(closeSidebarFloatingTimerRef.current)
+    setSidebarFloating(true)
+  }
+
+  const closeSidebarFloatingPreview = () => {
+    if (closeSidebarFloatingTimerRef.current) clearTimeout(closeSidebarFloatingTimerRef.current)
+    closeSidebarFloatingTimerRef.current = setTimeout(() => setSidebarFloating(false), 120)
+  }
+
+  const handleSidebarResizePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return
+
+      event.preventDefault()
+      stopSidebarResizeRef.current()
+
+      const startX = event.clientX
+      const startWidth = sidebarWidth
+      const previousUserSelect = document.body.style.userSelect
+      const previousCursor = document.body.style.cursor
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        setSidebarWidth(clampSkillSidebarWidth(startWidth + moveEvent.clientX - startX))
+      }
+      const stopResize = () => {
+        document.removeEventListener('pointermove', handlePointerMove)
+        document.removeEventListener('pointerup', stopResize)
+        document.removeEventListener('pointercancel', stopResize)
+        window.removeEventListener('blur', stopResize)
+        document.body.style.userSelect = previousUserSelect
+        document.body.style.cursor = previousCursor
+        setSidebarResizing(false)
+        stopSidebarResizeRef.current = () => undefined
+      }
+
+      setSidebarResizing(true)
+      document.body.style.userSelect = 'none'
+      document.body.style.cursor = 'col-resize'
+      document.addEventListener('pointermove', handlePointerMove)
+      document.addEventListener('pointerup', stopResize)
+      document.addEventListener('pointercancel', stopResize)
+      window.addEventListener('blur', stopResize)
+      stopSidebarResizeRef.current = stopResize
+    },
+    [sidebarWidth],
+  )
+
+  const handleSidebarResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    let nextWidth: number | undefined
+    if (event.key === 'ArrowLeft') nextWidth = sidebarWidth - skillSidebarKeyboardStep
+    if (event.key === 'ArrowRight') nextWidth = sidebarWidth + skillSidebarKeyboardStep
+    if (event.key === 'Home') nextWidth = skillSidebarMinWidth
+    if (event.key === 'End') nextWidth = skillSidebarMaxWidth
+    if (nextWidth === undefined) return
+
+    event.preventDefault()
+    setSidebarWidth(clampSkillSidebarWidth(nextWidth))
+  }
 
   const fileMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
@@ -902,18 +989,37 @@ export function FileTree({
     setSelectionAnchorPath(undefined)
   }
 
-  if (collapsed) {
+  const creatorName = detail?.created_by_name ?? detail?.created_by ?? '-'
+  const creatorInitial = creatorName.trim().charAt(0).toUpperCase() || 'E'
+
+  if (collapsed && !sidebarFloating) {
     return (
-      <aside className="m-1 flex w-10 shrink-0 flex-col items-center overflow-hidden rounded-lg bg-background-default py-3 inset-ring-[0.5px] inset-ring-divider-subtle">
-        <button
-          type="button"
-          aria-label={t(($) => $['skillManagement.detail.expandSidebar'])}
-          title={t(($) => $['skillManagement.detail.expandSidebar'])}
-          className="flex size-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={() => onCollapsedChange(false)}
-        >
-          <span aria-hidden className="i-ri-sidebar-unfold-line size-4" />
-        </button>
+      <aside
+        data-testid="skill-detail-sidebar-shell"
+        className="relative flex h-full w-16 shrink-0 bg-background-body p-1"
+        onMouseEnter={openSidebarFloatingPreview}
+        onMouseLeave={closeSidebarFloatingPreview}
+      >
+        <div className="flex min-h-0 w-14 flex-1 flex-col items-center overflow-hidden rounded-lg bg-components-panel-bg">
+          <button
+            type="button"
+            aria-label={t(($) => $['skillManagement.detail.expandSidebar'])}
+            title={t(($) => $['skillManagement.detail.expandSidebar'])}
+            className="mt-2 flex size-8 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={() => onCollapsedChange(false)}
+          >
+            <SidebarLeftArrowIcon aria-hidden className="size-4" />
+          </button>
+          <div aria-hidden className="my-1 h-px w-7 bg-divider-subtle" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default text-text-secondary">
+            <span aria-hidden className="i-custom-vender-main-nav-skill size-5" />
+          </div>
+          <div className="mt-auto pb-3">
+            <div className="flex size-8 items-center justify-center rounded-full bg-text-accent system-sm-medium text-text-primary-on-surface">
+              {creatorInitial}
+            </div>
+          </div>
+        </div>
       </aside>
     )
   }
@@ -921,236 +1027,145 @@ export function FileTree({
   return (
     <>
       <aside
-        data-testid="skill-detail-sidebar"
-        className="m-1 flex w-60 shrink-0 flex-col overflow-visible rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle"
+        data-testid="skill-detail-sidebar-shell"
+        className={cn(
+          'relative flex h-full shrink-0 bg-background-body p-1',
+          collapsed ? 'w-16' : 'overflow-visible',
+        )}
+        style={collapsed ? undefined : { width: sidebarWidth + 8 }}
+        onMouseEnter={collapsed ? openSidebarFloatingPreview : undefined}
+        onMouseLeave={collapsed ? closeSidebarFloatingPreview : undefined}
       >
         <div
-          data-testid="skill-detail-sidebar-header"
-          className="flex h-12 shrink-0 items-center gap-2 px-3"
-        >
-          <Link
-            href="/skills"
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t(($) => $['skillManagement.detail.back'])}
-          >
-            <span aria-hidden className="i-ri-arrow-left-line size-4" />
-          </Link>
-          <span aria-hidden className="i-ri-box-3-line size-5 shrink-0 text-text-secondary" />
-          <h1 className="min-w-0 flex-1 truncate system-sm-semibold text-text-primary">SKILLS</h1>
-          <button
-            type="button"
-            aria-label={t(($) => $['skillManagement.detail.searchFiles'])}
-            title={t(($) => $['skillManagement.detail.searchFiles'])}
-            className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={() => setSearchDialogOpen(true)}
-          >
-            <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label={t(($) => $['skillManagement.detail.collapseSidebar'])}
-            title={t(($) => $['skillManagement.detail.collapseSidebar'])}
-            className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={() => onCollapsedChange(true)}
-          >
-            <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
-          </button>
-        </div>
-        <div className="p-3">
-          <div className="flex min-h-10 items-start gap-1 pt-0.5">
-            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default">
-              {detail?.icon ? (
-                <span className="system-md-medium text-text-secondary">{detail.icon}</span>
-              ) : (
-                <span aria-hidden className="i-ri-box-3-line size-5 text-text-secondary" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              {detail ? (
-                <SkillDisplayNameEditor
-                  detail={detail}
-                  fileMutationCoordinator={fileMutationCoordinator}
-                  readonly={readonly}
-                  skillId={skillId}
-                />
-              ) : (
-                <div className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary">
-                  {skillId}
-                </div>
-              )}
-              <p className="truncate px-1 system-xs-regular text-text-tertiary">
-                {detail?.name ?? skillId}
-              </p>
-            </div>
-          </div>
-          <SkillTagsEditor
-            detail={detail}
-            fileMutationCoordinator={fileMutationCoordinator}
-            readonly={readonly}
-            skillId={skillId}
-          />
-        </div>
-        <div className="flex h-[17px] shrink-0 items-center px-3">
-          <div className="h-px w-full bg-gradient-to-r from-divider-subtle to-transparent" />
-        </div>
-        <div className="flex h-8 shrink-0 items-center gap-1 px-3">
-          <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
-          </h2>
-          {!readonly && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-                disabled={!detail || isMutating}
-              >
-                <span aria-hidden className="i-ri-add-line size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                placement="bottom-end"
-                popupClassName={skillFileMenuPopupClassName}
-              >
-                <RootFileActionMenuItems
-                  kind="dropdown"
-                  onCreateFile={() =>
-                    setInlineAction({
-                      kind: 'create',
-                      nodeType: 'file',
-                    })
-                  }
-                  onCreateFolder={() =>
-                    setInlineAction({
-                      kind: 'create',
-                      nodeType: 'directory',
-                    })
-                  }
-                  onUploadFiles={() => uploadInputRef.current?.click()}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+          data-testid="skill-detail-sidebar"
+          className={cn(
+            'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
+            collapsed && sidebarFloating
+              ? 'absolute top-1 bottom-1 left-1 z-40 w-60 overflow-hidden border border-divider-subtle shadow-lg'
+              : 'flex-1 overflow-visible',
           )}
-          <input
-            ref={uploadInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(event) => {
-              void handleUploadFiles(Array.from(event.target.files ?? []), undefined)
-              event.target.value = ''
-            }}
-          />
-        </div>
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
-          <ScrollAreaViewport tabIndex={-1}>
-            <ScrollAreaContent
-              className={cn(
-                'relative flex min-h-full min-w-0 flex-col rounded-lg px-1 pt-1 pb-3',
-                dropTarget?.path === '' &&
-                  'bg-components-dropzone-bg-accent before:pointer-events-none before:absolute before:inset-0.5 before:z-10 before:rounded-lg before:border-[1.5px] before:border-dashed before:border-components-dropzone-border-accent',
-              )}
-              onDragLeave={handleRootDragLeave}
-              onDragOver={handleRootDragOver}
-              onDrop={handleRootDrop}
-              onClick={handleRootClick}
+          style={{ width: collapsed ? skillSidebarMinWidth : sidebarWidth }}
+        >
+          {!collapsed && (
+            <div
+              role="separator"
+              aria-label={t(($) => $['skillManagement.detail.resizeSidebar'])}
+              aria-orientation="vertical"
+              aria-valuemax={skillSidebarMaxWidth}
+              aria-valuemin={skillSidebarMinWidth}
+              aria-valuenow={sidebarWidth}
+              tabIndex={0}
+              className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
+              onKeyDown={handleSidebarResizeKeyDown}
+              onPointerDown={handleSidebarResizePointerDown}
             >
-              <ContextMenu>
-                <ContextMenuTrigger
-                  data-skill-file-tree-context-region
-                  className="block w-full flex-1"
-                  onContextMenuCapture={(event) => {
-                    const target = event.target
-                    if (
-                      !(target instanceof Element) ||
-                      !target.closest('[data-skill-file-tree-item]')
-                    ) {
-                      setSelectedPaths([])
-                      setSelectionAnchorPath(undefined)
-                    }
-                    if (readonly || !detail || isMutating) {
-                      event.preventDefault()
-                      event.stopPropagation()
-                    }
-                  }}
+              <span
+                aria-hidden
+                className={cn(
+                  'absolute right-[5px] h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
+                  sidebarResizing && 'h-full bg-state-accent-solid opacity-100',
+                )}
+              />
+            </div>
+          )}
+          <div
+            data-testid="skill-detail-sidebar-header"
+            className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-px">
+              <Link
+                href="/skills"
+                className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden hover:bg-background-default-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                aria-label={t(($) => $['skillManagement.detail.back'])}
+              >
+                <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+              </Link>
+              <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
+              <h1 className="min-w-0 flex-1 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary">
+                SKILLS
+              </h1>
+            </div>
+            <button
+              type="button"
+              aria-label={t(($) => $['skillManagement.detail.searchFiles'])}
+              title={t(($) => $['skillManagement.detail.searchFiles'])}
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[10px] text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={() => setSearchDialogOpen(true)}
+            >
+              <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label={t(($) => $['skillManagement.detail.collapseSidebar'])}
+              title={t(($) => $['skillManagement.detail.collapseSidebar'])}
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={() => {
+                if (collapsed) {
+                  setSidebarFloating(false)
+                  onCollapsedChange(false)
+                } else {
+                  onCollapsedChange(true)
+                }
+              }}
+            >
+              <SidebarLeftArrowIcon aria-hidden className="size-4" />
+            </button>
+          </div>
+          <div className="p-3">
+            <div className="flex min-h-10 items-start gap-2">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default">
+                <span
+                  aria-hidden
+                  className="i-custom-vender-main-nav-skill size-5 text-text-secondary"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                {detail ? (
+                  <SkillDisplayNameEditor
+                    detail={detail}
+                    fileMutationCoordinator={fileMutationCoordinator}
+                    readonly={readonly}
+                    skillId={skillId}
+                  />
+                ) : (
+                  <div className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary">
+                    {skillId}
+                  </div>
+                )}
+                <p className="truncate px-1 system-xs-regular text-text-tertiary">
+                  {detail?.name ?? skillId}
+                </p>
+              </div>
+            </div>
+            <SkillTagsEditor
+              detail={detail}
+              fileMutationCoordinator={fileMutationCoordinator}
+              readonly={readonly}
+              skillId={skillId}
+            />
+          </div>
+          <div className="flex h-[17px] shrink-0 items-center px-3">
+            <div className="h-px w-full bg-gradient-to-r from-divider-subtle to-transparent" />
+          </div>
+          <div className="flex h-8 shrink-0 items-center gap-1 px-3">
+            <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
+            </h2>
+            {!readonly && (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+                  disabled={!detail || isMutating}
                 >
-                  {tree.length === 0 && inlineAction?.kind !== 'create' ? (
-                    <p className="px-2 py-3 system-xs-regular text-text-tertiary">
-                      {t(($) => $['skillManagement.detail.noFiles'])}
-                    </p>
-                  ) : (
-                    <ul className="min-w-0 space-y-px">
-                      {inlineAction?.kind === 'create' && inlineAction.parentPath === undefined && (
-                        <FileTreeNameInput
-                          loading={fileMutation.isPending}
-                          nodeType={inlineAction.nodeType}
-                          onCancel={() => setInlineAction(undefined)}
-                          onSubmit={handleSubmitInlineAction}
-                          placeholder={
-                            inlineAction.nodeType === 'file' ? 'File name' : 'Folder name'
-                          }
-                        />
-                      )}
-                      {tree.map((node) => (
-                        <FileTreeItem
-                          collapsedFolderPaths={collapsedFolderPaths}
-                          detail={detail}
-                          draggingPaths={draggingPaths}
-                          dropTarget={dropTarget}
-                          inlineAction={inlineAction}
-                          inlineActionLoading={fileMutation.isPending}
-                          key={node.id}
-                          node={node}
-                          onCancelInlineAction={() => setInlineAction(undefined)}
-                          onCopy={handleCopy}
-                          onCreate={(nodeType, parentPath) =>
-                            setInlineAction({
-                              kind: 'create',
-                              nodeType,
-                              parentPath,
-                            })
-                          }
-                          onCut={handleCut}
-                          onDelete={setDeleteNode}
-                          onDropFiles={(filesToUpload, targetDirectory) => {
-                            void handleUploadFiles(filesToUpload, targetDirectory)
-                          }}
-                          onItemSelect={handleItemSelect}
-                          onMove={handleMove}
-                          onRename={(nodeToRename) =>
-                            setInlineAction({
-                              kind: 'rename',
-                              nodeType: nodeToRename.type,
-                              path: nodeToRename.path,
-                            })
-                          }
-                          onSelect={(path, mode) => onSelect(path, undefined, mode)}
-                          onExpandFolder={(path) =>
-                            setCollapsedFolderPaths((paths) =>
-                              paths.filter((folderPath) => folderPath !== path),
-                            )
-                          }
-                          onSetDraggingPaths={setDraggingPaths}
-                          onSetDropTarget={setDropTarget}
-                          onSubmitInlineAction={handleSubmitInlineAction}
-                          onToggleFolder={(path) =>
-                            setCollapsedFolderPaths((paths) =>
-                              paths.includes(path)
-                                ? paths.filter((folderPath) => folderPath !== path)
-                                : [...paths, path],
-                            )
-                          }
-                          onUploadFiles={(filesToUpload, targetDirectory) => {
-                            void handleUploadFiles(filesToUpload, targetDirectory)
-                          }}
-                          readonly={readonly}
-                          selectedPaths={selectedPaths}
-                          selectedPath={selectedPath}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </ContextMenuTrigger>
-                <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+                  <span aria-hidden className="i-ri-add-line size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  placement="bottom-end"
+                  popupClassName={skillFileMenuPopupClassName}
+                >
                   <RootFileActionMenuItems
-                    kind="context"
+                    kind="dropdown"
                     onCreateFile={() =>
                       setInlineAction({
                         kind: 'create',
@@ -1165,81 +1180,235 @@ export function FileTree({
                     }
                     onUploadFiles={() => uploadInputRef.current?.click()}
                   />
-                </ContextMenuContent>
-              </ContextMenu>
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-          {dropTarget ? (
-            <SkillDropDestinationHint target={dropTarget} />
-          ) : (
-            <SkillUploadStatusPanel
-              items={uploadItems}
-              onCancel={handleCancelUpload}
-              onDismiss={() => setUploadItems([])}
-              onRetry={handleRetryUpload}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                void handleUploadFiles(Array.from(event.target.files ?? []), undefined)
+                event.target.value = ''
+              }}
             />
-          )}
-        </ScrollArea>
-        <AlertDialog open={!!deleteNode} onOpenChange={(open) => !open && setDeleteNode(undefined)}>
-          <AlertDialogContent className="p-6">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-              {deleteNode?.path}
-            </AlertDialogDescription>
-            <AlertDialogActions className="p-0 pt-6">
-              <AlertDialogCancelButton disabled={fileMutation.isPending}>
-                {tCommon(($) => $['operation.cancel'])}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                tone="destructive"
-                loading={fileMutation.isPending}
-                onClick={handleDelete}
+          </div>
+          <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+            <ScrollAreaViewport tabIndex={-1}>
+              <ScrollAreaContent
+                className={cn(
+                  'relative flex min-h-full min-w-0 flex-col rounded-lg px-1 pt-1 pb-3',
+                  dropTarget?.path === '' &&
+                    'bg-components-dropzone-bg-accent before:pointer-events-none before:absolute before:inset-0.5 before:z-10 before:rounded-lg before:border-[1.5px] before:border-dashed before:border-components-dropzone-border-accent',
+                )}
+                onDragLeave={handleRootDragLeave}
+                onDragOver={handleRootDragOver}
+                onDrop={handleRootDrop}
+                onClick={handleRootClick}
               >
-                {tCommon(($) => $['operation.delete'])}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-        <div className="mx-4 border-t border-divider-subtle py-3">
-          <div ref={referencesRegionRef} onBlur={handleReferencesRegionBlur}>
-            <button
-              type="button"
-              className="flex h-7 w-full cursor-pointer items-center gap-2 rounded-md text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-expanded={referencesOpen}
-              onClick={() => setReferencesOpen((open) => !open)}
-            >
-              <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">
-                {t(($) => $['skillManagement.detail.referencedBy'], {
-                  count: detail?.reference_count ?? 0,
+                <ContextMenu>
+                  <ContextMenuTrigger
+                    data-skill-file-tree-context-region
+                    className="block w-full flex-1"
+                    onContextMenuCapture={(event) => {
+                      const target = event.target
+                      if (
+                        !(target instanceof Element) ||
+                        !target.closest('[data-skill-file-tree-item]')
+                      ) {
+                        setSelectedPaths([])
+                        setSelectionAnchorPath(undefined)
+                      }
+                      if (readonly || !detail || isMutating) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }
+                    }}
+                  >
+                    {tree.length === 0 && inlineAction?.kind !== 'create' ? (
+                      <p className="px-2 py-3 system-xs-regular text-text-tertiary">
+                        {t(($) => $['skillManagement.detail.noFiles'])}
+                      </p>
+                    ) : (
+                      <ul className="min-w-0 space-y-px">
+                        {inlineAction?.kind === 'create' &&
+                          inlineAction.parentPath === undefined && (
+                            <FileTreeNameInput
+                              loading={fileMutation.isPending}
+                              nodeType={inlineAction.nodeType}
+                              onCancel={() => setInlineAction(undefined)}
+                              onSubmit={handleSubmitInlineAction}
+                              placeholder={
+                                inlineAction.nodeType === 'file' ? 'File name' : 'Folder name'
+                              }
+                            />
+                          )}
+                        {tree.map((node) => (
+                          <FileTreeItem
+                            collapsedFolderPaths={collapsedFolderPaths}
+                            detail={detail}
+                            draggingPaths={draggingPaths}
+                            dropTarget={dropTarget}
+                            inlineAction={inlineAction}
+                            inlineActionLoading={fileMutation.isPending}
+                            key={node.id}
+                            node={node}
+                            onCancelInlineAction={() => setInlineAction(undefined)}
+                            onCopy={handleCopy}
+                            onCreate={(nodeType, parentPath) =>
+                              setInlineAction({
+                                kind: 'create',
+                                nodeType,
+                                parentPath,
+                              })
+                            }
+                            onCut={handleCut}
+                            onDelete={setDeleteNode}
+                            onDropFiles={(filesToUpload, targetDirectory) => {
+                              void handleUploadFiles(filesToUpload, targetDirectory)
+                            }}
+                            onItemSelect={handleItemSelect}
+                            onMove={handleMove}
+                            onRename={(nodeToRename) =>
+                              setInlineAction({
+                                kind: 'rename',
+                                nodeType: nodeToRename.type,
+                                path: nodeToRename.path,
+                              })
+                            }
+                            onSelect={(path, mode) => onSelect(path, undefined, mode)}
+                            onExpandFolder={(path) =>
+                              setCollapsedFolderPaths((paths) =>
+                                paths.filter((folderPath) => folderPath !== path),
+                              )
+                            }
+                            onSetDraggingPaths={setDraggingPaths}
+                            onSetDropTarget={setDropTarget}
+                            onSubmitInlineAction={handleSubmitInlineAction}
+                            onToggleFolder={(path) =>
+                              setCollapsedFolderPaths((paths) =>
+                                paths.includes(path)
+                                  ? paths.filter((folderPath) => folderPath !== path)
+                                  : [...paths, path],
+                              )
+                            }
+                            onUploadFiles={(filesToUpload, targetDirectory) => {
+                              void handleUploadFiles(filesToUpload, targetDirectory)
+                            }}
+                            readonly={readonly}
+                            selectedPaths={selectedPaths}
+                            selectedPath={selectedPath}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </ContextMenuTrigger>
+                  <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+                    <RootFileActionMenuItems
+                      kind="context"
+                      onCreateFile={() =>
+                        setInlineAction({
+                          kind: 'create',
+                          nodeType: 'file',
+                        })
+                      }
+                      onCreateFolder={() =>
+                        setInlineAction({
+                          kind: 'create',
+                          nodeType: 'directory',
+                        })
+                      }
+                      onUploadFiles={() => uploadInputRef.current?.click()}
+                    />
+                  </ContextMenuContent>
+                </ContextMenu>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+            {dropTarget ? (
+              <SkillDropDestinationHint target={dropTarget} />
+            ) : (
+              <SkillUploadStatusPanel
+                items={uploadItems}
+                onCancel={handleCancelUpload}
+                onDismiss={() => setUploadItems([])}
+                onRetry={handleRetryUpload}
+              />
+            )}
+          </ScrollArea>
+          <AlertDialog
+            open={!!deleteNode}
+            onOpenChange={(open) => !open && setDeleteNode(undefined)}
+          >
+            <AlertDialogContent className="p-6">
+              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
+                {deleteNode?.path}
+              </AlertDialogDescription>
+              <AlertDialogActions className="p-0 pt-6">
+                <AlertDialogCancelButton disabled={fileMutation.isPending}>
+                  {tCommon(($) => $['operation.cancel'])}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  tone="destructive"
+                  loading={fileMutation.isPending}
+                  onClick={handleDelete}
+                >
+                  {tCommon(($) => $['operation.delete'])}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
+          <div className="mx-4 border-t border-divider-subtle py-3">
+            <div ref={referencesRegionRef} onBlur={handleReferencesRegionBlur}>
+              <button
+                type="button"
+                className="flex h-7 w-full cursor-pointer items-center gap-2 rounded-md text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                aria-expanded={referencesOpen}
+                onClick={() => setReferencesOpen((open) => !open)}
+              >
+                <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">
+                  {t(($) => $['skillManagement.detail.referencedBy'], {
+                    count: detail?.reference_count ?? 0,
+                  })}
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    'i-ri-arrow-right-s-line size-4 text-text-quaternary transition-transform',
+                    referencesOpen && 'rotate-90',
+                  )}
+                />
+              </button>
+              {referencesOpen && (
+                <div className="relative z-20 mt-1">
+                  <SkillReferencesPanel skillId={skillId} />
+                </div>
+              )}
+            </div>
+            <div className="flex h-7 items-center gap-2 system-xs-regular text-text-tertiary">
+              <span aria-hidden className="i-ri-account-circle-line size-4 shrink-0" />
+              <span className="min-w-0 truncate">
+                {t(($) => $['skillManagement.detail.createdBy'], {
+                  name: creatorName,
                 })}
               </span>
-              <span
-                aria-hidden
-                className={cn(
-                  'i-ri-arrow-right-s-line size-4 text-text-quaternary transition-transform',
-                  referencesOpen && 'rotate-90',
-                )}
-              />
-            </button>
-            {referencesOpen && (
-              <div className="relative z-20 mt-1">
-                <SkillReferencesPanel skillId={skillId} />
-              </div>
-            )}
+            </div>
           </div>
-          <div className="flex h-7 items-center gap-2 system-xs-regular text-text-tertiary">
-            <span aria-hidden className="i-ri-account-circle-line size-4 shrink-0" />
-            <span className="min-w-0 truncate">
-              {t(($) => $['skillManagement.detail.createdBy'], {
-                name: detail?.created_by_name ?? detail?.created_by ?? '-',
-              })}
+          <div className="flex h-14 shrink-0 items-center gap-2 border-t border-divider-subtle px-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-text-accent system-sm-medium text-text-primary-on-surface">
+              {creatorInitial}
+            </div>
+            <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+              {creatorName}
             </span>
+            <span aria-hidden className="i-ri-question-line size-4 shrink-0 text-text-tertiary" />
           </div>
         </div>
       </aside>

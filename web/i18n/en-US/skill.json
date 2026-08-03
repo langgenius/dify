@@ -134,6 +134,7 @@
   "skillManagement.detail.renameVersionFailed": "Failed to rename version.",
   "skillManagement.detail.renameVersionPrompt": "Version name",
   "skillManagement.detail.renameVersionSuccess": "Version renamed.",
+  "skillManagement.detail.resizeSidebar": "Resize file sidebar",
   "skillManagement.detail.restoreVersion": "Restore",
   "skillManagement.detail.restoreVersionFailed": "Failed to restore version.",
   "skillManagement.detail.restoreVersionSuccess": "Version restored to draft.",

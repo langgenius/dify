@@ -134,6 +134,7 @@
   "skillManagement.detail.renameVersionFailed": "版本重命名失败。",
   "skillManagement.detail.renameVersionPrompt": "版本名称",
   "skillManagement.detail.renameVersionSuccess": "版本已重命名。",
+  "skillManagement.detail.resizeSidebar": "调整文件侧边栏宽度",
   "skillManagement.detail.restoreVersion": "恢复",
   "skillManagement.detail.restoreVersionFailed": "版本恢复失败。",
   "skillManagement.detail.restoreVersionSuccess": "版本已恢复到草稿。",
