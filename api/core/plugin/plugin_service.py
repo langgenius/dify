@@ -16,7 +16,7 @@ metadata.
 
 import logging
 import time
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from mimetypes import guess_type
 from typing import Literal, Protocol
@@ -373,7 +373,7 @@ class PluginService:
     @contextmanager
     def _plugin_model_providers_refresh_lock(
         cls, tenant_id: str, generation: int, *, wait_timeout: float
-    ) -> Iterator[bool]:
+    ) -> Generator[bool]:
         lock_key = cls._get_plugin_model_providers_lock_key(tenant_id, generation)
         try:
             refresh_lock: _RedisLock = redis_client.lock(

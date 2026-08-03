@@ -36,6 +36,8 @@ from opentelemetry.context import Context
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace import ReadableSpan, Tracer
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
+
+# pyrefly: ignore [deprecated]
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
 from opentelemetry.trace import NonRecordingSpan, SpanContext, StatusCode, TraceFlags, TraceState, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
