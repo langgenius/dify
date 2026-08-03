@@ -1717,7 +1717,7 @@ in form definition, or a variable while the workflow is running.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| icon_url | string |  | Yes |
+| icon_url | string |  | No |
 | input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |

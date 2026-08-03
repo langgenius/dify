@@ -12,7 +12,8 @@ WORKFLOW
 
 PAGINATION
   ls, tree, grep, and find default to --limit 20. If a response contains
-  next_cursor, repeat the same command with --cursor <value>.
+  next_page_token, repeat the same command with --cursor <value>. The token is
+  opaque: do not inspect or modify it.
 
 OUTPUT
   cat prints file text by default. Other commands print their structured
@@ -22,5 +23,5 @@ ERROR RECOVERY
   not logged in          difyctl auth login
   workspace required     pass -w <workspace-id> or run difyctl use workspace <id>
   invalid path           use /knowledge, /workspaces, /sources, or /evidence
-  path not visible       verify the control-space id and your workspace access
+  path not visible       verify the knowledge-space id and your workspace access
 `

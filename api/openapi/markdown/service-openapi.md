@@ -4545,6 +4545,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | evidence_bundle | object |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | research_task_job_id | string |  | Yes |

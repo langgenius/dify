@@ -8017,6 +8017,44 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 201 | KnowledgeFS golden question created | **application/json**: [KnowledgeFSGoldenQuestionResponse](#knowledgefsgoldenquestionresponse)<br> |
 
+### [POST] /knowledge-fs/spaces/{control_space_id}/golden-questions/bulk-import
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSGoldenQuestionBulkImportPayload](#knowledgefsgoldenquestionbulkimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS golden questions imported | **application/json**: [KnowledgeFSGoldenQuestionBulkImportResponse](#knowledgefsgoldenquestionbulkimportresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/golden-questions/evidence-matches
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSGoldenQuestionEvidenceMatchPayload](#knowledgefsgoldenquestionevidencematchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS golden question evidence matches | **application/json**: [KnowledgeFSGoldenQuestionEvidenceMatchResponse](#knowledgefsgoldenquestionevidencematchresponse)<br> |
+
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}
 #### Parameters
 
@@ -8107,6 +8145,27 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS logical documents | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
 
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSLogicalDocumentDeletePayload](#knowledgefslogicaldocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS logical document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
 
@@ -8139,6 +8198,43 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS space members replaced | **application/json**: [KnowledgeFSPermissionListResponse](#knowledgefspermissionlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/overview/activity
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| action | query |  | No | string, <br>**Available values:** "document.failed", "document.published", "permission.updated", "profile.published", "query.completed", "query.failed", "query.requested", "settings.updated", "source.failed", "source.synced", "worker.failed" |
+| actor_id | query |  | No | string |
+| actor_type | query |  | No | string, <br>**Available values:** "member", "system" |
+| cursor | query |  | No | string |
+| from_at | query |  | No | dateTime |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| resource_type | query |  | No | string, <br>**Available values:** "document", "knowledge-space", "permission", "profile", "publication", "query", "source", "worker" |
+| result | query |  | No | string, <br>**Available values:** "canceled", "failure", "pending", "success" |
+| to_at | query |  | No | dateTime |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS activity | **application/json**: [KnowledgeFSOverviewActivityListResponse](#knowledgefsoverviewactivitylistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/overview/attention
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| include_dismissed | query |  | No | boolean |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS attention findings | **application/json**: [KnowledgeFSOverviewAttentionListResponse](#knowledgefsoverviewattentionlistresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/health
 #### Parameters
@@ -20982,6 +21078,68 @@ Input field definition for snippet parameters.
 | service_api_enabled | boolean |  | Yes |
 | workflow_enabled | boolean |  | Yes |
 
+#### KnowledgeFSGoldenQuestionBulkImportItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_evidence_id | string |  | No |
+| question_id | string |  | Yes |
+| row_index | integer |  | Yes |
+| similarity | number |  | No |
+| status | string, <br>**Available values:** "active", "draft" | *Enum:* `"active"`, `"draft"` | Yes |
+
+#### KnowledgeFSGoldenQuestionBulkImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| match_policy | string, <br>**Available values:** "all", "any", <br>**Default:** all | *Enum:* `"all"`, `"any"` | No |
+| minimum_similarity | number, <br>**Default:** 0.7 |  | No |
+| rows | [ [KnowledgeFSGoldenQuestionBulkImportRowPayload](#knowledgefsgoldenquestionbulkimportrowpayload) ] |  | Yes |
+
+#### KnowledgeFSGoldenQuestionBulkImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_count | integer |  | Yes |
+| draft_count | integer |  | Yes |
+| items | [ [KnowledgeFSGoldenQuestionBulkImportItemResponse](#knowledgefsgoldenquestionbulkimportitemresponse) ] |  | Yes |
+
+#### KnowledgeFSGoldenQuestionBulkImportRowPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evidence | string |  | Yes |
+| question | string |  | Yes |
+| tags | [ string ] |  | No |
+
+#### KnowledgeFSGoldenQuestionEvidenceCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| node_id | string |  | Yes |
+| page_number | integer |  | No |
+| projection_id | string |  | Yes |
+| score | number |  | Yes |
+| section_path | [ string ] |  | Yes |
+| text | string |  | Yes |
+
+#### KnowledgeFSGoldenQuestionEvidenceMatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evidence | string |  | Yes |
+| minimum_similarity | number, <br>**Default:** 0.7 |  | No |
+| top_k | integer, <br>**Default:** 5 |  | No |
+
+#### KnowledgeFSGoldenQuestionEvidenceMatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidates | [ [KnowledgeFSGoldenQuestionEvidenceCandidateResponse](#knowledgefsgoldenquestionevidencecandidateresponse) ] |  | Yes |
+| evidence | string |  | Yes |
+| matched | boolean |  | Yes |
+
 #### KnowledgeFSGoldenQuestionListResponse
 
 | Name | Type | Description | Required |
@@ -20994,6 +21152,9 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | annotation | string |  | Yes |
+| evidence_text | string |  | No |
+| expected_evidence_ids | [ string ] |  | No |
+| match_policy | string, <br>**Available values:** "all", "any", <br>**Default:** all | *Enum:* `"all"`, `"any"` | No |
 | question | string |  | Yes |
 | source_bad_case_id | string |  | No |
 | tags | [ string ] |  | No |
@@ -21004,8 +21165,12 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | annotation | string |  | Yes |
 | created_at | dateTime |  | Yes |
+| evidence_text | string |  | No |
+| expected_evidence_ids | [ string ] |  | No |
 | id | string |  | Yes |
+| match_policy | string, <br>**Available values:** "all", "any", <br>**Default:** all | *Enum:* `"all"`, `"any"` | No |
 | question | string |  | Yes |
+| status | string, <br>**Available values:** "active", "draft", "stale" | *Enum:* `"active"`, `"draft"`, `"stale"` | Yes |
 | tags | [ string ] |  | Yes |
 | updated_at | dateTime |  | Yes |
 
@@ -21025,6 +21190,12 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keys | [ [KnowledgeFSJWKResponse](#knowledgefsjwkresponse) ] |  | Yes |
+
+#### KnowledgeFSLogicalDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
 
 #### KnowledgeFSLogicalDocumentListResponse
 
@@ -21107,6 +21278,85 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
 | kind | string |  | Yes |
+
+#### KnowledgeFSOverviewActivityActorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| type | string, <br>**Available values:** "member", "system" | *Enum:* `"member"`, `"system"` | Yes |
+
+#### KnowledgeFSOverviewActivityListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSOverviewActivityResponse](#knowledgefsoverviewactivityresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSOverviewActivityResourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| type | string, <br>**Available values:** "document", "knowledge-space", "permission", "profile", "publication", "query", "source", "worker" | *Enum:* `"document"`, `"knowledge-space"`, `"permission"`, `"profile"`, `"publication"`, `"query"`, `"source"`, `"worker"` | Yes |
+
+#### KnowledgeFSOverviewActivityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "document.failed", "document.published", "permission.updated", "profile.published", "query.completed", "query.failed", "query.requested", "settings.updated", "source.failed", "source.synced", "worker.failed" | *Enum:* `"document.failed"`, `"document.published"`, `"permission.updated"`, `"profile.published"`, `"query.completed"`, `"query.failed"`, `"query.requested"`, `"settings.updated"`, `"source.failed"`, `"source.synced"`, `"worker.failed"` | Yes |
+| actor | [KnowledgeFSOverviewActivityActorResponse](#knowledgefsoverviewactivityactorresponse) |  | Yes |
+| details | object |  | Yes |
+| id | string |  | Yes |
+| occurred_at | dateTime |  | Yes |
+| resource | [KnowledgeFSOverviewActivityResourceResponse](#knowledgefsoverviewactivityresourceresponse) |  | Yes |
+| result | string, <br>**Available values:** "canceled", "failure", "pending", "success" | *Enum:* `"canceled"`, `"failure"`, `"pending"`, `"success"` | Yes |
+
+#### KnowledgeFSOverviewAttentionActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "open-resource", "review-models", "review-permissions" | *Enum:* `"open-resource"`, `"review-models"`, `"review-permissions"` | Yes |
+| resource_id | string |  | No |
+| resource_type | string, <br>**Available values:** "document", "failed-query", "knowledge-space", "source" | *Enum:* `"document"`, `"failed-query"`, `"knowledge-space"`, `"source"` | Yes |
+
+#### KnowledgeFSOverviewAttentionEvidenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| observed_at | dateTime |  | Yes |
+| value | number<br>string |  | No |
+
+#### KnowledgeFSOverviewAttentionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSOverviewAttentionResponse](#knowledgefsoverviewattentionresponse) ] |  | Yes |
+
+#### KnowledgeFSOverviewAttentionResourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| type | string, <br>**Available values:** "document", "failed-query", "knowledge-space", "source" | *Enum:* `"document"`, `"failed-query"`, `"knowledge-space"`, `"source"` | Yes |
+
+#### KnowledgeFSOverviewAttentionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | [KnowledgeFSOverviewAttentionActionResponse](#knowledgefsoverviewattentionactionresponse) |  | Yes |
+| dismissed_until | string |  | No |
+| evidence | [ [KnowledgeFSOverviewAttentionEvidenceResponse](#knowledgefsoverviewattentionevidenceresponse) ] |  | Yes |
+| issue_key | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| resource | [KnowledgeFSOverviewAttentionResourceResponse](#knowledgefsoverviewattentionresourceresponse) |  | Yes |
+| revision | integer |  | Yes |
+| rule_id | string, <br>**Available values:** "failed-document", "low-quality-query", "model-readiness", "permission-readiness", "stale-source" | *Enum:* `"failed-document"`, `"low-quality-query"`, `"model-readiness"`, `"permission-readiness"`, `"stale-source"` | Yes |
+| severity | string, <br>**Available values:** "critical", "info", "warning" | *Enum:* `"critical"`, `"info"`, `"warning"` | Yes |
+| status | string, <br>**Available values:** "active", "dismissed", "resolved" | *Enum:* `"active"`, `"dismissed"`, `"resolved"` | Yes |
+| title | string |  | Yes |
+| updated_at | dateTime |  | Yes |
 
 #### KnowledgeFSOverviewCountComparisonResponse
 
@@ -21428,6 +21678,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | evidence_bundle | object |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | research_task_job_id | string |  | Yes |

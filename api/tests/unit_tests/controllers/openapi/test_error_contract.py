@@ -27,6 +27,13 @@ from controllers.openapi._errors import (
     ErrorDetail,
     FilenameNotExists,
     HumanInputFormNotFound,
+    KnowledgeFsAccessDeniedError,
+    KnowledgeFsConflictError,
+    KnowledgeFsInvalidRequestError,
+    KnowledgeFsRequestRejectedError,
+    KnowledgeFsRequestTooLargeError,
+    KnowledgeFsResourceNotFoundError,
+    KnowledgeFsUnavailableError,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     OpenApiError,
@@ -325,6 +332,13 @@ ERROR_MATRIX = [
     (MemberLicenseExceeded(), 403, "member_license_exceeded"),
     (HumanInputFormNotFound(), 404, "form_not_found"),
     (RecipientSurfaceMismatch(), 403, "recipient_surface_mismatch"),
+    (KnowledgeFsInvalidRequestError(), 400, "knowledge_fs_invalid_request"),
+    (KnowledgeFsAccessDeniedError(), 403, "knowledge_fs_access_denied"),
+    (KnowledgeFsResourceNotFoundError(), 404, "knowledge_fs_resource_not_found"),
+    (KnowledgeFsConflictError(), 409, "knowledge_fs_conflict"),
+    (KnowledgeFsRequestTooLargeError(), 413, "knowledge_fs_request_too_large"),
+    (KnowledgeFsRequestRejectedError(), 422, "knowledge_fs_request_rejected"),
+    (KnowledgeFsUnavailableError(), 503, "knowledge_fs_unavailable"),
 ]
 
 

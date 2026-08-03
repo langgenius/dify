@@ -39,7 +39,7 @@ export function knowledgeFsFlags() {
 export function paginatedKnowledgeFsFlags() {
   return {
     ...knowledgeFsFlags(),
-    cursor: Flags.string({ description: 'pagination cursor from the previous response' }),
+    cursor: Flags.string({ description: 'opaque next_page_token from the previous response' }),
     limit: Flags.integer({ description: 'maximum results [1..100]', default: 20 }),
   }
 }

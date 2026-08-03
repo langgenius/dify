@@ -75,14 +75,6 @@ from controllers.openapi._models import (
 from fields.file_fields import FileResponse
 from services.app_dsl_service import Import
 from services.entities.dsl_entities import CheckDependenciesResult
-from services.knowledge_fs.product_dto import (
-    KnowledgeFSCatResponse,
-    KnowledgeFSDiffResponse,
-    KnowledgeFSGrepResponse,
-    KnowledgeFSListResponse,
-    KnowledgeFSStatResponse,
-    KnowledgeFSTreeResponse,
-)
 
 register_schema_models(
     openapi_ns,
@@ -141,12 +133,6 @@ register_response_schema_models(
     FileResponse,
     ServerVersionResponse,
     HealthResponse,
-    KnowledgeFSCatResponse,
-    KnowledgeFSDiffResponse,
-    KnowledgeFSGrepResponse,
-    KnowledgeFSListResponse,
-    KnowledgeFSStatResponse,
-    KnowledgeFSTreeResponse,
 )
 # Standalone definition for contract codegen; ErrorBody.code stays an open
 # string on the wire so old clients keep parsing future codes.

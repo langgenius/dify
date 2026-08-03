@@ -67,6 +67,13 @@ class OpenApiErrorCode(StrEnum):
     MEMBER_LICENSE_EXCEEDED = "member_license_exceeded"
     HUMAN_INPUT_FORM_NOT_FOUND = "form_not_found"
     RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
+    KNOWLEDGE_FS_ACCESS_DENIED = "knowledge_fs_access_denied"
+    KNOWLEDGE_FS_CONFLICT = "knowledge_fs_conflict"
+    KNOWLEDGE_FS_INVALID_REQUEST = "knowledge_fs_invalid_request"
+    KNOWLEDGE_FS_REQUEST_REJECTED = "knowledge_fs_request_rejected"
+    KNOWLEDGE_FS_REQUEST_TOO_LARGE = "knowledge_fs_request_too_large"
+    KNOWLEDGE_FS_RESOURCE_NOT_FOUND = "knowledge_fs_resource_not_found"
+    KNOWLEDGE_FS_UNAVAILABLE = "knowledge_fs_unavailable"
 
 
 class ErrorDetail(BaseModel):
@@ -256,3 +263,45 @@ class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.RECIPIENT_SURFACE_MISMATCH
     description = "This form's recipient can't be submitted via the OpenAPI surface."
     hint = "Action it through its channel (web app or console)."
+
+
+class KnowledgeFsInvalidRequestError(OpenApiError):
+    code = 400
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_INVALID_REQUEST
+    description = "The KnowledgeFS request is invalid."
+
+
+class KnowledgeFsAccessDeniedError(OpenApiError):
+    code = 403
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_ACCESS_DENIED
+    description = "Access to this knowledge space is denied."
+
+
+class KnowledgeFsResourceNotFoundError(OpenApiError):
+    code = 404
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_RESOURCE_NOT_FOUND
+    description = "The knowledge space or entry was not found."
+
+
+class KnowledgeFsConflictError(OpenApiError):
+    code = 409
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_CONFLICT
+    description = "The KnowledgeFS request conflicts with the current state."
+
+
+class KnowledgeFsRequestTooLargeError(OpenApiError):
+    code = 413
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_TOO_LARGE
+    description = "The KnowledgeFS request exceeds the allowed size."
+
+
+class KnowledgeFsRequestRejectedError(OpenApiError):
+    code = 422
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_REJECTED
+    description = "The KnowledgeFS request could not be processed."
+
+
+class KnowledgeFsUnavailableError(OpenApiError):
+    code = 503
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_UNAVAILABLE
+    description = "KnowledgeFS is temporarily unavailable."

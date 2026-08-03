@@ -35,27 +35,24 @@ import {
   zGetPermittedExternalAppsQuery,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatPath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffPath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindPath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepPath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsPath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatPath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreePath,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeQuery,
-  zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreePath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
   zGetWorkspacesByWorkspaceIdMembersQuery,
   zGetWorkspacesByWorkspaceIdMembersResponse,
@@ -88,6 +85,9 @@ import {
   zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse,
   zPostWorkspacesByWorkspaceIdAppsImportsPath,
   zPostWorkspacesByWorkspaceIdAppsImportsResponse,
+  zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffBody,
+  zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffPath,
+  zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse,
   zPostWorkspacesByWorkspaceIdMembersBody,
   zPostWorkspacesByWorkspaceIdMembersPath,
   zPostWorkspacesByWorkspaceIdMembersResponse,
@@ -541,144 +541,200 @@ export const apps2 = {
   imports,
 }
 
+/**
+ * Read KnowledgeFS entry content (cat)
+ *
+ * Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
 export const get14 = oc
   .route({
+    description:
+      'Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCat',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/cat',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCat',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat',
+    summary: 'Read KnowledgeFS entry content (cat)',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatPath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatQuery,
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatQuery,
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse)
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse)
 
 export const cat = {
   get: get14,
 }
 
-export const get15 = oc
+/**
+ * Compare two KnowledgeFS entries (diff)
+ *
+ * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const post11 = oc
   .route({
+    description:
+      'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiff',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/diff',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiff',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff',
+    summary: 'Compare two KnowledgeFS entries (diff)',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffPath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffQuery,
+      body: zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffBody,
+      params: zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffPath,
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse)
+  .output(zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse)
 
 export const diff = {
+  post: post11,
+}
+
+/**
+ * Find KnowledgeFS entries (find)
+ *
+ * Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const get15 = oc
+  .route({
+    description:
+      'Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFind',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find',
+    summary: 'Find KnowledgeFS entries (find)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse)
+
+export const find = {
   get: get15,
 }
 
+/**
+ * Search KnowledgeFS content (grep)
+ *
+ * Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
 export const get16 = oc
   .route({
+    description:
+      'Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFind',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/find',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrep',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep',
+    summary: 'Search KnowledgeFS content (grep)',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindPath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindQuery,
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepQuery,
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse)
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse)
 
-export const find = {
+export const grep = {
   get: get16,
 }
 
+/**
+ * List a KnowledgeFS directory (ls)
+ *
+ * Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
 export const get17 = oc
   .route({
+    description:
+      'Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrep',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/grep',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLs',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls',
+    summary: 'List a KnowledgeFS directory (ls)',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepPath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepQuery,
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsQuery,
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse)
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse)
 
-export const grep = {
+export const ls = {
   get: get17,
 }
 
+/**
+ * Inspect a KnowledgeFS entry (stat)
+ *
+ * Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
 export const get18 = oc
   .route({
+    description:
+      'Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLs',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/ls',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStat',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat',
+    summary: 'Inspect a KnowledgeFS entry (stat)',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsPath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsQuery,
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatQuery,
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse)
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse)
 
-export const ls = {
+export const stat = {
   get: get18,
 }
 
+/**
+ * Traverse a KnowledgeFS directory (tree)
+ *
+ * Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
 export const get19 = oc
   .route({
+    description:
+      'Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStat',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/stat',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTree',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree',
+    summary: 'Traverse a KnowledgeFS directory (tree)',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatPath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatQuery,
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreePath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeQuery,
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse)
-
-export const stat = {
-  get: get19,
-}
-
-export const get20 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTree',
-    path: '/workspaces/{workspace_id}/knowledge-fs/spaces/{control_space_id}/fs/tree',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      params: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreePath,
-      query: zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeQuery,
-    }),
-  )
-  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse)
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse)
 
 export const tree = {
-  get: get20,
+  get: get19,
 }
 
 export const fs = {
@@ -691,16 +747,16 @@ export const fs = {
   tree,
 }
 
-export const byControlSpaceId = {
+export const byKnowledgeSpaceId = {
   fs,
 }
 
-export const spaces = {
-  byControlSpaceId,
+export const knowledgeSpaces = {
+  byKnowledgeSpaceId,
 }
 
 export const knowledgeFs = {
-  spaces,
+  knowledgeSpaces,
 }
 
 export const delete3 = oc
@@ -735,7 +791,7 @@ export const byMemberId = {
   patch,
 }
 
-export const get21 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -751,7 +807,7 @@ export const get21 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post11 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -769,12 +825,12 @@ export const post11 = oc
   .output(zPostWorkspacesByWorkspaceIdMembersResponse)
 
 export const members = {
-  get: get21,
-  post: post11,
+  get: get20,
+  post: post12,
   byMemberId,
 }
 
-export const post12 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -786,10 +842,10 @@ export const post12 = oc
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
 export const switch_ = {
-  post: post12,
+  post: post13,
 }
 
-export const get22 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -801,14 +857,14 @@ export const get22 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get22,
+  get: get21,
   apps: apps2,
   knowledgeFs,
   members,
   switch: switch_,
 }
 
-export const get23 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -819,7 +875,7 @@ export const get23 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get23,
+  get: get22,
   byWorkspaceId,
 }
 

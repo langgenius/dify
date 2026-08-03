@@ -20,10 +20,10 @@ function active(): ActiveContext {
 
 describe('runKnowledgeFsCommand', () => {
   it('resolves the active workspace and invokes one command request', async () => {
-    const execute = vi.fn(() => Promise.resolve({ path: '/knowledge', items: [] }))
+    const execute = vi.fn(() => Promise.resolve({ path: '/knowledge', data: [] }))
 
     const result = await runKnowledgeFsCommand(
-      { controlSpaceId: 'control-1' },
+      { knowledgeSpaceId: 'space-1' },
       {
         active: active(),
         http: {} as HttpClient,
@@ -33,9 +33,9 @@ describe('runKnowledgeFsCommand', () => {
       { label: 'Listing KnowledgeFS', execute },
     )
 
-    expect(execute).toHaveBeenCalledExactlyOnceWith({}, WORKSPACE_ID, 'control-1')
+    expect(execute).toHaveBeenCalledExactlyOnceWith({}, WORKSPACE_ID, 'space-1')
     expect(result.workspaceId).toBe(WORKSPACE_ID)
-    expect(result.data).toEqual({ path: '/knowledge', items: [] })
+    expect(result.data).toEqual({ path: '/knowledge', data: [] })
   })
 
   it('fails before the command request when no workspace can be resolved', async () => {
@@ -48,7 +48,7 @@ describe('runKnowledgeFsCommand', () => {
 
     await expect(
       runKnowledgeFsCommand(
-        { controlSpaceId: 'control-1' },
+        { knowledgeSpaceId: 'space-1' },
         {
           active: noWorkspace,
           envLookup: () => undefined,
@@ -78,10 +78,15 @@ describe('KnowledgeFsOutput', () => {
   })
 
   it('pretty-prints non-cat responses in text mode', () => {
-    const output = new KnowledgeFsOutput({ path: '/knowledge', items: [], truncated: false })
+    const output = new KnowledgeFsOutput({
+      path: '/knowledge',
+      data: [],
+      has_more: false,
+      truncated: false,
+    })
 
     expect(output.text()).toBe(
-      '{\n  "path": "/knowledge",\n  "items": [],\n  "truncated": false\n}\n',
+      '{\n  "path": "/knowledge",\n  "data": [],\n  "has_more": false,\n  "truncated": false\n}\n',
     )
   })
 })

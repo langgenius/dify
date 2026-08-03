@@ -17,12 +17,12 @@ export default class KnowledgeFsFind extends DifyCommand {
   static override effect: CommandEffect = 'read'
 
   static override examples = [
-    '<%= config.bin %> knowledge fs find control-space-1 /knowledge --name-contains readme',
-    '<%= config.bin %> knowledge fs find control-space-1 /knowledge --resource-type document -o json',
+    '<%= config.bin %> knowledge fs find knowledge-space-1 /knowledge --name-contains readme',
+    '<%= config.bin %> knowledge fs find knowledge-space-1 /knowledge --resource-type document -o json',
   ]
 
   static override args = {
-    controlSpaceId: Args.string({ description: 'KnowledgeFS control-space id', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
     path: Args.string({ description: 'KnowledgeFS path to search', required: true }),
   }
 
@@ -42,15 +42,15 @@ export default class KnowledgeFsFind extends DifyCommand {
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runKnowledgeFsCommand(
-      { workspace: flags.workspace, controlSpaceId: args.controlSpaceId },
+      { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
         label: 'Finding KnowledgeFS paths',
-        execute: (client, workspaceId, controlSpaceId) =>
-          client.find(workspaceId, controlSpaceId, {
+        execute: (client, workspaceId, knowledgeSpaceId) =>
+          client.find(workspaceId, knowledgeSpaceId, {
             path: args.path,
-            limit: flags.limit,
-            cursor: flags.cursor,
+            page_size: flags.limit,
+            page_token: flags.cursor,
             metadata_key: flags['metadata-key'],
             metadata_value: flags['metadata-value'],
             name_contains: flags['name-contains'],

@@ -142,6 +142,67 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
+def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    openapi_path = next(path for path in written_paths if path.name == "openapi-openapi.json")
+    payload = json.loads(openapi_path.read_text(encoding="utf-8"))
+    paths = payload["paths"]
+    prefix = "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs"
+
+    assert {
+        f"{prefix}:cat": "get",
+        f"{prefix}:diff": "post",
+        f"{prefix}:find": "get",
+        f"{prefix}:grep": "get",
+        f"{prefix}:ls": "get",
+        f"{prefix}:stat": "get",
+        f"{prefix}:tree": "get",
+    } == {
+        path: next(method for method in item if method != "parameters")
+        for path, item in paths.items()
+        if path.startswith(prefix)
+    }
+    assert not any("/knowledge-fs/spaces/" in path or "/entries" in path for path in paths)
+
+    list_operation = paths[f"{prefix}:ls"]["get"]
+    query_names = {parameter["name"] for parameter in list_operation["parameters"] if parameter["in"] == "query"}
+    assert query_names == {"consistency_class", "page_size", "page_token", "path"}
+    path_names = {parameter["name"] for parameter in list_operation["parameters"] if parameter["in"] == "path"}
+    assert path_names == {"knowledge_space_id", "workspace_id"}
+    assert "requestBody" not in list_operation
+    assert list_operation["operationId"] == "ls_knowledge_fs"
+    assert list_operation["summary"] == "List a KnowledgeFS directory (ls)"
+    assert "stable KnowledgeFS traversal order" in list_operation["description"]
+    assert "total is intentionally omitted" in list_operation["description"]
+    assert "WORKSPACE_READ" in list_operation["description"]
+    assert _response_schema(list_operation)["$ref"] == "#/components/schemas/KnowledgeFSEntryListResponse"
+    for status in ("400", "401", "403", "404", "409", "413", "422", "503"):
+        assert _response_schema(list_operation, status)["$ref"] == "#/components/schemas/ErrorBody"
+
+    list_schema = payload["components"]["schemas"]["KnowledgeFSEntryListResponse"]
+    assert {"data", "has_more", "next_page_token", "path", "truncated"} <= set(list_schema["properties"])
+    entry_schema = payload["components"]["schemas"]["KnowledgeFSEntryResponse"]
+    assert {item.get("type") for item in entry_schema["properties"]["resource_type"]["anyOf"]} == {
+        "null",
+        "string",
+    }
+    metadata_schema = payload["components"]["schemas"]["KnowledgeFSEntryMetadataResponse"]
+    assert metadata_schema["properties"]["resource_type"]["type"] == "string"
+    assert "enum" not in metadata_schema["properties"]["resource_type"]
+
+    diff_operation = paths[f"{prefix}:diff"]["post"]
+    assert diff_operation["operationId"] == "diff_knowledge_fs"
+    assert "consume model quota" in diff_operation["description"]
+    assert "Automatic retries are not safe" in diff_operation["description"]
+    assert _request_schema(diff_operation)["$ref"] == "#/components/schemas/KnowledgeFSEntryComparePayload"
+    assert _response_schema(diff_operation)["$ref"] == ("#/components/schemas/KnowledgeFSEntryComparisonResponse")
+
+    tree_operation = paths[f"{prefix}:tree"]["get"]
+    assert tree_operation["operationId"] == "tree_knowledge_fs"
+
+
 def test_generate_specs_writes_service_api_reference_descriptions(tmp_path):
     module = _load_generate_swagger_specs_module()
 

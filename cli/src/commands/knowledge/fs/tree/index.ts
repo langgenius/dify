@@ -14,12 +14,12 @@ export default class KnowledgeFsTree extends DifyCommand {
   static override effect: CommandEffect = 'read'
 
   static override examples = [
-    '<%= config.bin %> knowledge fs tree control-space-1 /knowledge --depth 2',
-    '<%= config.bin %> knowledge fs tree control-space-1 /knowledge --limit 50 -o json',
+    '<%= config.bin %> knowledge fs tree knowledge-space-1 /knowledge --depth 2',
+    '<%= config.bin %> knowledge fs tree knowledge-space-1 /knowledge --limit 50 -o json',
   ]
 
   static override args = {
-    controlSpaceId: Args.string({ description: 'KnowledgeFS control-space id', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
     path: Args.string({ description: 'KnowledgeFS directory path', required: true }),
   }
 
@@ -33,15 +33,15 @@ export default class KnowledgeFsTree extends DifyCommand {
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runKnowledgeFsCommand(
-      { workspace: flags.workspace, controlSpaceId: args.controlSpaceId },
+      { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
         label: 'Reading KnowledgeFS tree',
-        execute: (client, workspaceId, controlSpaceId) =>
-          client.tree(workspaceId, controlSpaceId, {
+        execute: (client, workspaceId, knowledgeSpaceId) =>
+          client.tree(workspaceId, knowledgeSpaceId, {
             path: args.path,
-            limit: flags.limit,
-            cursor: flags.cursor,
+            page_size: flags.limit,
+            page_token: flags.cursor,
             depth: flags.depth,
             consistency_class: flags['consistency-class'] as
               | KnowledgeFsConsistencyClass

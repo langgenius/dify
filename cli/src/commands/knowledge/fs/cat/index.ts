@@ -14,18 +14,18 @@ export default class KnowledgeFsCat extends DifyCommand {
   static override effect: CommandEffect = 'read'
 
   static override examples = [
-    '<%= config.bin %> knowledge fs cat control-space-1 /knowledge/docs/readme.md',
-    '<%= config.bin %> knowledge fs cat control-space-1 /knowledge/docs/readme.md -o json',
+    '<%= config.bin %> knowledge fs cat knowledge-space-1 /knowledge/docs/readme.md',
+    '<%= config.bin %> knowledge fs cat knowledge-space-1 /knowledge/docs/readme.md -o json',
   ]
 
   static override args = {
-    controlSpaceId: Args.string({ description: 'KnowledgeFS control-space id', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
     path: Args.string({ description: 'KnowledgeFS file path', required: true }),
   }
 
   static override flags = {
     ...knowledgeFsFlags(),
-    cursor: Flags.string({ description: 'continuation cursor for truncated content' }),
+    cursor: Flags.string({ description: 'opaque next_page_token for continued content' }),
     limit: Flags.integer({ description: 'bounded read limit [1..100]' }),
   }
 
@@ -34,15 +34,15 @@ export default class KnowledgeFsCat extends DifyCommand {
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runKnowledgeFsCommand(
-      { workspace: flags.workspace, controlSpaceId: args.controlSpaceId },
+      { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
         label: 'Reading KnowledgeFS file',
-        execute: (client, workspaceId, controlSpaceId) =>
-          client.cat(workspaceId, controlSpaceId, {
+        execute: (client, workspaceId, knowledgeSpaceId) =>
+          client.cat(workspaceId, knowledgeSpaceId, {
             path: args.path,
-            limit: flags.limit,
-            cursor: flags.cursor,
+            page_size: flags.limit,
+            page_token: flags.cursor,
             consistency_class: flags['consistency-class'] as
               | KnowledgeFsConsistencyClass
               | undefined,

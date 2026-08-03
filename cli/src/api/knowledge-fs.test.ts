@@ -4,7 +4,7 @@ import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
 import { KnowledgeFsClient } from './knowledge-fs'
 
-describe('KnowledgeFsClient command endpoints', () => {
+describe('KnowledgeFsClient command-oriented endpoints', () => {
   let stub: StubServer
 
   afterEach(async () => {
@@ -13,22 +13,23 @@ describe('KnowledgeFsClient command endpoints', () => {
 
   it.each([
     {
-      command: 'cat',
       body: {
         content_type: 'text/markdown',
+        has_more: false,
         path: '/knowledge/read me.md',
         text: 'hello',
         truncated: false,
       },
+      endpoint: 'fs:cat',
       invoke: (client: KnowledgeFsClient) =>
         client.cat('workspace with space', 'control/space', {
           path: '/knowledge/read me.md',
-          limit: 10,
+          page_size: 10,
         }),
-      query: { path: '/knowledge/read me.md', limit: '10' },
+      method: 'GET',
+      query: { path: '/knowledge/read me.md', page_size: '10' },
     },
     {
-      command: 'diff',
       body: {
         mode: 'line',
         new_path: '/knowledge/new.md',
@@ -36,93 +37,129 @@ describe('KnowledgeFsClient command endpoints', () => {
         operations: [],
         stats: { delete: 0, equal: 0, insert: 0 },
       },
+      endpoint: 'fs:diff',
       invoke: (client: KnowledgeFsClient) =>
         client.diff('workspace with space', 'control/space', {
           old_path: '/knowledge/old.md',
           new_path: '/knowledge/new.md',
           mode: 'line',
-          semantic: true,
+          include_semantic_summary: true,
         }),
-      query: {
-        old_path: '/knowledge/old.md',
-        new_path: '/knowledge/new.md',
+      method: 'POST',
+      requestBody: {
+        include_semantic_summary: true,
         mode: 'line',
-        semantic: 'true',
+        new_path: '/knowledge/new.md',
+        old_path: '/knowledge/old.md',
       },
+      query: {},
     },
     {
-      command: 'find',
-      body: { items: [], path: '/knowledge', truncated: false },
+      body: { data: [], has_more: false, path: '/knowledge', truncated: false },
+      endpoint: 'fs:find',
       invoke: (client: KnowledgeFsClient) =>
         client.find('workspace with space', 'control/space', {
           path: '/knowledge',
-          limit: 20,
+          page_size: 20,
           name_contains: 'readme',
         }),
-      query: { path: '/knowledge', limit: '20', name_contains: 'readme' },
+      method: 'GET',
+      query: { path: '/knowledge', page_size: '20', name_contains: 'readme' },
     },
     {
-      command: 'grep',
-      body: { matches: [], path: '/knowledge', truncated: false },
+      body: { data: [], has_more: false, path: '/knowledge', truncated: false },
+      endpoint: 'fs:grep',
       invoke: (client: KnowledgeFsClient) =>
         client.grep('workspace with space', 'control/space', {
           path: '/knowledge',
-          query: 'TODO',
-          limit: 20,
+          text: 'TODO',
+          page_size: 20,
         }),
-      query: { path: '/knowledge', query: 'TODO', limit: '20' },
+      method: 'GET',
+      query: { path: '/knowledge', text: 'TODO', page_size: '20' },
     },
     {
-      command: 'ls',
-      body: { items: [], path: '/knowledge', truncated: false },
+      body: { data: [], has_more: false, path: '/knowledge', truncated: false },
+      endpoint: 'fs:ls',
       invoke: (client: KnowledgeFsClient) =>
         client.list('workspace with space', 'control/space', {
           path: '/knowledge',
-          limit: 20,
+          page_size: 20,
         }),
-      query: { path: '/knowledge', limit: '20' },
+      method: 'GET',
+      query: { path: '/knowledge', page_size: '20' },
     },
     {
-      command: 'stat',
       body: {
         metadata: {},
         path: '/knowledge/readme.md',
         resource_type: 'document',
         target_id: 'document-1',
       },
+      endpoint: 'fs:stat',
       invoke: (client: KnowledgeFsClient) =>
         client.stat('workspace with space', 'control/space', {
           path: '/knowledge/readme.md',
         }),
+      method: 'GET',
       query: { path: '/knowledge/readme.md' },
     },
     {
-      command: 'tree',
       body: {
+        has_more: false,
         path: '/knowledge',
         root: { kind: 'directory', metadata: {}, name: 'knowledge', path: '/knowledge' },
         truncated: false,
       },
+      endpoint: 'fs:tree',
       invoke: (client: KnowledgeFsClient) =>
         client.tree('workspace with space', 'control/space', {
           path: '/knowledge',
-          limit: 20,
+          page_size: 20,
           depth: 3,
         }),
-      query: { path: '/knowledge', limit: '20', depth: '3' },
+      method: 'GET',
+      query: { path: '/knowledge', page_size: '20', depth: '3' },
     },
-  ])('GETs the independent $command endpoint', async ({ command, body, invoke, query }) => {
+  ])(
+    '$method $endpoint uses the command-specific resource contract',
+    async ({ body, endpoint, invoke, method, query, requestBody }) => {
+      stub = await startStubServer((cap) => jsonResponder(200, body, cap))
+      const client = new KnowledgeFsClient(testHttpClient(stub.url, 'dfoa_test'))
+
+      await invoke(client)
+
+      const url = new URL(stub.captured.url ?? '', 'http://dify.test')
+      expect(stub.captured.method).toBe(method)
+      expect(url.pathname).toBe(
+        `/openapi/v1/workspaces/workspace%20with%20space/knowledge-fs/knowledge-spaces/control%2Fspace/${endpoint}`,
+      )
+      expect(Object.fromEntries(url.searchParams)).toEqual(query)
+      if (requestBody) expect(JSON.parse(stub.captured.body ?? '{}')).toEqual(requestBody)
+      else expect(stub.captured.body).toBe('')
+    },
+  )
+
+  it('tolerates future response resource types', async () => {
+    const body = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {},
+          name: 'future entry',
+          path: '/knowledge/future-entry',
+          resource_type: 'future-resource-type',
+        },
+      ],
+      has_more: false,
+      path: '/knowledge',
+      truncated: false,
+    }
     stub = await startStubServer((cap) => jsonResponder(200, body, cap))
     const client = new KnowledgeFsClient(testHttpClient(stub.url, 'dfoa_test'))
 
-    await invoke(client)
-
-    const url = new URL(stub.captured.url ?? '', 'http://dify.test')
-    expect(stub.captured.method).toBe('GET')
-    expect(url.pathname).toBe(
-      `/openapi/v1/workspaces/workspace%20with%20space/knowledge-fs/spaces/control%2Fspace/fs/${command}`,
-    )
-    expect(Object.fromEntries(url.searchParams)).toEqual(query)
-    expect(stub.captured.body).toBe('')
+    await expect(
+      client.list('workspace-1', 'knowledge-space-1', { path: '/knowledge' }),
+    ).resolves.toMatchObject(body)
   })
 })

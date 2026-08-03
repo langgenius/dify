@@ -1,30 +1,37 @@
 import type {
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeData,
-  GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatData,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindData,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepData,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsData,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatData,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeData,
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse,
+  PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffData,
+  PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse,
 } from '@dify/contracts/api/openapi/types.gen'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
 import { createOpenApiClient } from '@/http/orpc'
 
-type CatQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatData['query']
-type DiffQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffData['query']
-type FindQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindData['query']
-type GrepQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepData['query']
-type ListQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsData['query']
-type StatQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatData['query']
-type TreeQuery = GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeData['query']
+type CatQuery =
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatData['query']
+type DiffPayload =
+  PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffData['body']
+type FindQuery =
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindData['query']
+type GrepQuery =
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepData['query']
+type ListQuery =
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsData['query']
+type StatQuery =
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatData['query']
+type TreeQuery =
+  GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeData['query']
 
 export type KnowledgeFsConsistencyClass = NonNullable<ListQuery['consistency_class']>
 export type KnowledgeFsResourceType = NonNullable<FindQuery['resource_type']>
@@ -38,85 +45,99 @@ export class KnowledgeFsClient {
 
   async cat(
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
     query: CatQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.cat.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.cat.get(
+      {
+        params: pathParams(workspaceId, knowledgeSpaceId),
+        query,
+      },
+    )
   }
 
   async diff(
     workspaceId: string,
-    controlSpaceId: string,
-    query: DiffQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.diff.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+    knowledgeSpaceId: string,
+    body: DiffPayload,
+  ): Promise<PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.diff.post(
+      {
+        body,
+        params: pathParams(workspaceId, knowledgeSpaceId),
+      },
+    )
   }
 
   async find(
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
     query: FindQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.find.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.find.get(
+      {
+        params: pathParams(workspaceId, knowledgeSpaceId),
+        query,
+      },
+    )
   }
 
   async grep(
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
     query: GrepQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.grep.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.grep.get(
+      {
+        params: pathParams(workspaceId, knowledgeSpaceId),
+        query,
+      },
+    )
   }
 
   async list(
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
     query: ListQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.ls.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.ls.get(
+      {
+        params: pathParams(workspaceId, knowledgeSpaceId),
+        query,
+      },
+    )
   }
 
   async stat(
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
     query: StatQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.stat.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.stat.get(
+      {
+        params: pathParams(workspaceId, knowledgeSpaceId),
+        query,
+      },
+    )
   }
 
   async tree(
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
     query: TreeQuery,
-  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.spaces.byControlSpaceId.fs.tree.get({
-      params: pathParams(workspaceId, controlSpaceId),
-      query,
-    })
+  ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse> {
+    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.tree.get(
+      {
+        params: pathParams(workspaceId, knowledgeSpaceId),
+        query,
+      },
+    )
   }
 }
 
-function pathParams(workspaceId: string, controlSpaceId: string) {
+function pathParams(workspaceId: string, knowledgeSpaceId: string) {
   return {
-    control_space_id: controlSpaceId,
+    knowledge_space_id: knowledgeSpaceId,
     workspace_id: workspaceId,
   }
 }

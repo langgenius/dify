@@ -14,12 +14,12 @@ export default class KnowledgeFsStat extends DifyCommand {
   static override effect: CommandEffect = 'read'
 
   static override examples = [
-    '<%= config.bin %> knowledge fs stat control-space-1 /knowledge/docs/readme.md',
-    '<%= config.bin %> knowledge fs stat control-space-1 /knowledge/docs/readme.md -o json',
+    '<%= config.bin %> knowledge fs stat knowledge-space-1 /knowledge/docs/readme.md',
+    '<%= config.bin %> knowledge fs stat knowledge-space-1 /knowledge/docs/readme.md -o json',
   ]
 
   static override args = {
-    controlSpaceId: Args.string({ description: 'KnowledgeFS control-space id', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
     path: Args.string({ description: 'KnowledgeFS path', required: true }),
   }
 
@@ -30,12 +30,12 @@ export default class KnowledgeFsStat extends DifyCommand {
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runKnowledgeFsCommand(
-      { workspace: flags.workspace, controlSpaceId: args.controlSpaceId },
+      { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
         label: 'Reading KnowledgeFS metadata',
-        execute: (client, workspaceId, controlSpaceId) =>
-          client.stat(workspaceId, controlSpaceId, {
+        execute: (client, workspaceId, knowledgeSpaceId) =>
+          client.stat(workspaceId, knowledgeSpaceId, {
             path: args.path,
             consistency_class: flags['consistency-class'] as
               | KnowledgeFsConsistencyClass

@@ -8,7 +8,7 @@ import { resolveWorkspaceId } from '@/workspace/resolver'
 
 export type KnowledgeFsCommandOptions = {
   readonly workspace?: string
-  readonly controlSpaceId: string
+  readonly knowledgeSpaceId: string
 }
 
 export type KnowledgeFsCommandDeps = {
@@ -24,7 +24,7 @@ export type KnowledgeFsCommandRequest<T> = {
   readonly execute: (
     client: KnowledgeFsClient,
     workspaceId: string,
-    controlSpaceId: string,
+    knowledgeSpaceId: string,
   ) => Promise<T>
 }
 
@@ -43,7 +43,7 @@ export async function runKnowledgeFsCommand<T>(
   })
 
   const data = await runWithSpinner({ io, label: request.label }, () =>
-    request.execute(factory(deps.http), workspaceId, opts.controlSpaceId),
+    request.execute(factory(deps.http), workspaceId, opts.knowledgeSpaceId),
   )
 
   return { data, workspaceId }

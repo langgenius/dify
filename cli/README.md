@@ -76,7 +76,18 @@ Errors emit JSON envelope to stderr in `-o json` mode; else human message. Exit 
 
 ## KnowledgeFS filesystem commands
 
-Each `difyctl knowledge fs` leaf maps to its own read-only OpenAPI endpoint:
+Each `difyctl knowledge fs` leaf maps directly to its own command-oriented OpenAPI operation under
+`/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:<command>`:
+
+| Command | HTTP operation  |
+| ------- | --------------- |
+| `ls`    | `GET /fs:ls`    |
+| `tree`  | `GET /fs:tree`  |
+| `grep`  | `GET /fs:grep`  |
+| `find`  | `GET /fs:find`  |
+| `cat`   | `GET /fs:cat`   |
+| `stat`  | `GET /fs:stat`  |
+| `diff`  | `POST /fs:diff` |
 
 ```sh
 difyctl knowledge fs ls <space-id> /knowledge --limit 20
@@ -89,8 +100,10 @@ difyctl knowledge fs diff <space-id> /knowledge/old.md /knowledge/new.md
 ```
 
 Use `-o json` or `-o yaml` for structured output. `ls`, `tree`, `grep`, and
-`find` support `--limit` and `--cursor`; run a leaf command with `--help` for
-its exact argument, flag, and agent-guide contract.
+`find` support `--limit` and `--cursor`; pass the opaque `next_page_token` response value to
+`--cursor`. Run a leaf command with `--help` for its exact argument, flag, and agent-guide contract.
+Structured-output consumers must ignore unknown response fields and treat unknown response enum
+values (for example a future `resource_type`) as opaque values with generic display behavior.
 
 ## Configuration
 

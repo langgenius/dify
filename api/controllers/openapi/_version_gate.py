@@ -1,7 +1,7 @@
 """Version gate: reject outdated difyctl clients on /openapi/v1 with HTTP 426.
 
 difyctl and the ``/openapi/v1`` surface ship in lockstep. A breaking path change
-(resource-oriented paths) means an outdated difyctl would call removed paths and
+(such as command-oriented KnowledgeFS paths) means an outdated difyctl would call removed paths and
 get a bare 404; this gate returns ``426 Upgrade Required`` with an upgrade hint
 instead.
 """

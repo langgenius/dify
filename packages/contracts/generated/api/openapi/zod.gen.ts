@@ -332,17 +332,6 @@ export const zHumanInputFormSubmitPayload = z.object({
   inputs: z.record(z.string(), zJsonValue),
 })
 
-/**
- * KnowledgeFSCatResponse
- */
-export const zKnowledgeFsCatResponse = z.object({
-  content_type: z.string(),
-  next_cursor: z.string().nullish(),
-  path: z.string(),
-  text: z.string(),
-  truncated: z.boolean(),
-})
-
 export const zKnowledgeFsConsistencyClass = z.enum([
   'cache-consistent',
   'eventual-preview',
@@ -351,9 +340,28 @@ export const zKnowledgeFsConsistencyClass = z.enum([
 ])
 
 /**
- * KnowledgeFSDiffOperationResponse
+ * KnowledgeFSEntryComparePayload
  */
-export const zKnowledgeFsDiffOperationResponse = z.object({
+export const zKnowledgeFsEntryComparePayload = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  include_semantic_summary: z.boolean().optional().default(false),
+  mode: z.enum(['line', 'word']).nullish(),
+  new_path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  old_path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFSEntryComparisonOperationResponse
+ */
+export const zKnowledgeFsEntryComparisonOperationResponse = z.object({
   kind: z.enum(['delete', 'equal', 'insert']),
   new_end: z.int().gte(1).nullish(),
   new_start: z.int().gte(1).nullish(),
@@ -363,18 +371,18 @@ export const zKnowledgeFsDiffOperationResponse = z.object({
 })
 
 /**
- * KnowledgeFSDiffStatsResponse
+ * KnowledgeFSEntryComparisonStatsResponse
  */
-export const zKnowledgeFsDiffStatsResponse = z.object({
+export const zKnowledgeFsEntryComparisonStatsResponse = z.object({
   delete: z.int().gte(0),
   equal: z.int().gte(0),
   insert: z.int().gte(0),
 })
 
 /**
- * KnowledgeFSGrepMatchResponse
+ * KnowledgeFSEntryContentMatchResponse
  */
-export const zKnowledgeFsGrepMatchResponse = z.object({
+export const zKnowledgeFsEntryContentMatchResponse = z.object({
   end_offset: z.int().gte(0),
   kind: z.enum(['node', 'segment']),
   metadata: z.record(z.string(), zJsonValue),
@@ -386,12 +394,199 @@ export const zKnowledgeFsGrepMatchResponse = z.object({
 })
 
 /**
- * KnowledgeFSGrepResponse
+ * KnowledgeFSEntryContentSearchQuery
  */
-export const zKnowledgeFsGrepResponse = z.object({
-  matches: z.array(zKnowledgeFsGrepMatchResponse),
-  next_cursor: z.string().nullish(),
+export const zKnowledgeFsEntryContentSearchQuery = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  page_size: z.int().gte(1).lte(100).optional().default(20),
+  page_token: z.string().min(1).max(8192).nullish(),
+  path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  text: z.string().min(1).max(4000),
+  timeout_ms: z.int().gte(1).lte(10000).nullish(),
+})
+
+/**
+ * KnowledgeFSEntryContentSearchResponse
+ */
+export const zKnowledgeFsEntryContentSearchResponse = z.object({
+  data: z.array(zKnowledgeFsEntryContentMatchResponse),
+  has_more: z.boolean(),
+  next_page_token: z.string().nullish(),
   path: z.string(),
+  truncated: z.boolean(),
+})
+
+/**
+ * KnowledgeFSEntryInspectQuery
+ */
+export const zKnowledgeFsEntryInspectQuery = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFSEntryListQuery
+ *
+ * List direct children in stable KnowledgeFS traversal order.
+ */
+export const zKnowledgeFsEntryListQuery = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  page_size: z.int().gte(1).lte(100).optional().default(20),
+  page_token: z.string().min(1).max(8192).nullish(),
+  path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFSEntryMetadataResponse
+ */
+export const zKnowledgeFsEntryMetadataResponse = z.object({
+  consistency_class: z.string().nullish(),
+  content_type: z.string().nullish(),
+  metadata: z.record(z.string(), zJsonValue),
+  parser_status: z.string().nullish(),
+  path: z.string(),
+  preview: z.boolean().nullish(),
+  resource_type: z.string(),
+  sha256: z.string().nullish(),
+  size_bytes: z.int().gte(0).nullish(),
+  target_id: z.string(),
+  version: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSEntryReadContentQuery
+ */
+export const zKnowledgeFsEntryReadContentQuery = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  page_size: z.int().gte(1).lte(100).optional().default(100),
+  page_token: z.string().min(1).max(8192).nullish(),
+  path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFSEntryReadContentResponse
+ */
+export const zKnowledgeFsEntryReadContentResponse = z.object({
+  content_type: z.string(),
+  has_more: z.boolean(),
+  next_page_token: z.string().nullish(),
+  path: z.string(),
+  text: z.string(),
+  truncated: z.boolean(),
+})
+
+/**
+ * KnowledgeFSEntryResponse
+ */
+export const zKnowledgeFsEntryResponse = z.object({
+  kind: z.enum(['directory', 'resource']),
+  metadata: z.record(z.string(), zJsonValue),
+  name: z.string(),
+  path: z.string(),
+  resource_type: z.string().nullish(),
+  target_id: z.string().nullish(),
+  version: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSEntryListResponse
+ */
+export const zKnowledgeFsEntryListResponse = z.object({
+  consistency_class: z.string().nullish(),
+  data: z.array(zKnowledgeFsEntryResponse),
+  has_more: z.boolean(),
+  next_page_token: z.string().nullish(),
+  path: z.string(),
+  preview: z.boolean().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * KnowledgeFSEntrySemanticChangeResponse
+ */
+export const zKnowledgeFsEntrySemanticChangeResponse = z.object({
+  category: z.string(),
+  evidence: z.array(z.string()),
+  summary: z.string(),
+})
+
+/**
+ * KnowledgeFSEntrySemanticSummaryResponse
+ */
+export const zKnowledgeFsEntrySemanticSummaryResponse = z.object({
+  changes: z.array(zKnowledgeFsEntrySemanticChangeResponse),
+  metadata: z.record(z.string(), zJsonValue),
+  model: z.string().nullish(),
+  summary: z.string(),
+})
+
+/**
+ * KnowledgeFSEntryComparisonResponse
+ */
+export const zKnowledgeFsEntryComparisonResponse = z.object({
+  mode: z.enum(['line', 'word']),
+  new_path: z.string(),
+  old_path: z.string(),
+  operations: z.array(zKnowledgeFsEntryComparisonOperationResponse),
+  semantic: zKnowledgeFsEntrySemanticSummaryResponse.nullish(),
+  stats: zKnowledgeFsEntryComparisonStatsResponse,
+})
+
+/**
+ * KnowledgeFSEntryTreeNodeResponse
+ */
+export const zKnowledgeFsEntryTreeNodeResponse = z.object({
+  children: z.array(z.lazy((): any => zKnowledgeFsEntryTreeNodeResponse)).nullish(),
+  kind: z.enum(['directory', 'resource']),
+  metadata: z.record(z.string(), zJsonValue),
+  name: z.string(),
+  path: z.string(),
+  resource_type: z.string().nullish(),
+  target_id: z.string().nullish(),
+  version: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSEntryTreeQuery
+ */
+export const zKnowledgeFsEntryTreeQuery = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  depth: z.int().gte(1).lte(8).nullish(),
+  page_size: z.int().gte(1).lte(100).optional().default(20),
+  page_token: z.string().min(1).max(8192).nullish(),
+  path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+})
+
+/**
+ * KnowledgeFSEntryTreeResponse
+ */
+export const zKnowledgeFsEntryTreeResponse = z.object({
+  consistency_class: z.string().nullish(),
+  has_more: z.boolean(),
+  next_page_token: z.string().nullish(),
+  path: z.string(),
+  preview: z.boolean().nullish(),
+  root: zKnowledgeFsEntryTreeNodeResponse,
   truncated: z.boolean(),
 })
 
@@ -405,102 +600,21 @@ export const zKnowledgeFsResourceType = z.enum([
 ])
 
 /**
- * KnowledgeFSEntryResponse
+ * KnowledgeFSEntrySearchQuery
  */
-export const zKnowledgeFsEntryResponse = z.object({
-  kind: z.enum(['directory', 'resource']),
-  metadata: z.record(z.string(), zJsonValue),
-  name: z.string(),
-  path: z.string(),
+export const zKnowledgeFsEntrySearchQuery = z.object({
+  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
+  metadata_key: z.string().min(1).max(120).nullish(),
+  metadata_value: z.string().min(1).max(4000).nullish(),
+  name_contains: z.string().min(1).max(240).nullish(),
+  page_size: z.int().gte(1).lte(100).optional().default(20),
+  page_token: z.string().min(1).max(8192).nullish(),
+  path: z
+    .string()
+    .min(1)
+    .max(4096)
+    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
   resource_type: zKnowledgeFsResourceType.nullish(),
-  target_id: z.string().nullish(),
-  version: z.int().gte(1).nullish(),
-})
-
-/**
- * KnowledgeFSListResponse
- */
-export const zKnowledgeFsListResponse = z.object({
-  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
-  items: z.array(zKnowledgeFsEntryResponse),
-  next_cursor: z.string().nullish(),
-  path: z.string(),
-  preview: z.boolean().nullish(),
-  truncated: z.boolean(),
-})
-
-/**
- * KnowledgeFSSemanticDiffChangeResponse
- */
-export const zKnowledgeFsSemanticDiffChangeResponse = z.object({
-  category: z.string(),
-  evidence: z.array(z.string()),
-  summary: z.string(),
-})
-
-/**
- * KnowledgeFSSemanticDiffResponse
- */
-export const zKnowledgeFsSemanticDiffResponse = z.object({
-  changes: z.array(zKnowledgeFsSemanticDiffChangeResponse),
-  metadata: z.record(z.string(), zJsonValue),
-  model: z.string().nullish(),
-  summary: z.string(),
-})
-
-/**
- * KnowledgeFSDiffResponse
- */
-export const zKnowledgeFsDiffResponse = z.object({
-  mode: z.enum(['line', 'word']),
-  new_path: z.string(),
-  old_path: z.string(),
-  operations: z.array(zKnowledgeFsDiffOperationResponse),
-  semantic: zKnowledgeFsSemanticDiffResponse.nullish(),
-  stats: zKnowledgeFsDiffStatsResponse,
-})
-
-/**
- * KnowledgeFSStatResponse
- */
-export const zKnowledgeFsStatResponse = z.object({
-  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
-  content_type: z.string().nullish(),
-  metadata: z.record(z.string(), zJsonValue),
-  parser_status: z.enum(['failed', 'parsed', 'pending']).nullish(),
-  path: z.string(),
-  preview: z.boolean().nullish(),
-  resource_type: zKnowledgeFsResourceType,
-  sha256: z.string().nullish(),
-  size_bytes: z.int().gte(0).nullish(),
-  target_id: z.string(),
-  version: z.int().gte(1).nullish(),
-})
-
-/**
- * KnowledgeFSTreeNodeResponse
- */
-export const zKnowledgeFsTreeNodeResponse = z.object({
-  children: z.array(z.lazy((): any => zKnowledgeFsTreeNodeResponse)).nullish(),
-  kind: z.enum(['directory', 'resource']),
-  metadata: z.record(z.string(), zJsonValue),
-  name: z.string(),
-  path: z.string(),
-  resource_type: zKnowledgeFsResourceType.nullish(),
-  target_id: z.string().nullish(),
-  version: z.int().gte(1).nullish(),
-})
-
-/**
- * KnowledgeFSTreeResponse
- */
-export const zKnowledgeFsTreeResponse = z.object({
-  consistency_class: zKnowledgeFsConsistencyClass.nullish(),
-  next_cursor: z.string().nullish(),
-  path: z.string(),
-  preview: z.boolean().nullish(),
-  root: zKnowledgeFsTreeNodeResponse,
-  truncated: z.boolean(),
 })
 
 /**
@@ -596,6 +710,13 @@ export const zOpenApiErrorCode = z.enum([
   'form_not_found',
   'internal_server_error',
   'invalid_param',
+  'knowledge_fs_access_denied',
+  'knowledge_fs_conflict',
+  'knowledge_fs_invalid_request',
+  'knowledge_fs_request_rejected',
+  'knowledge_fs_request_too_large',
+  'knowledge_fs_resource_not_found',
+  'knowledge_fs_unavailable',
   'member_license_exceeded',
   'member_limit_exceeded',
   'method_not_allowed',
@@ -1125,185 +1246,183 @@ export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath = z.ob
  */
 export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse = zImport
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatPath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatPath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  cursor: z.string().min(1).max(8192).optional(),
-  limit: z.int().gte(1).lte(100).optional(),
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-})
-
-/**
- * KnowledgeFS file content
- */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsCatResponse =
-  zKnowledgeFsCatResponse
-
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffPath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
-
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  mode: z.enum(['line', 'word']).optional(),
-  new_path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-  old_path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-  semantic: z.boolean().optional(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatQuery =
+  z.object({
+    consistency_class: z
+      .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
+      .optional(),
+    page_size: z.int().gte(1).lte(100).optional().default(100),
+    page_token: z.string().min(1).max(8192).optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  })
 
 /**
- * KnowledgeFS text diff
+ * Knowledge-space entry content
  */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsDiffResponse =
-  zKnowledgeFsDiffResponse
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse =
+  zKnowledgeFsEntryReadContentResponse
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindPath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
+export const zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffBody =
+  zKnowledgeFsEntryComparePayload
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  cursor: z.string().min(1).max(8192).optional(),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  metadata_key: z.string().min(1).max(120).optional(),
-  metadata_value: z.string().min(1).max(4000).optional(),
-  name_contains: z.string().min(1).max(240).optional(),
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-  resource_type: z
-    .enum(['artifact', 'document', 'evidence', 'node', 'source', 'workspace'])
-    .optional(),
-})
+export const zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffPath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
 
 /**
- * KnowledgeFS path matches
+ * Knowledge-space entry comparison
  */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsFindResponse =
-  zKnowledgeFsListResponse
+export const zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse =
+  zKnowledgeFsEntryComparisonResponse
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepPath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindPath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  cursor: z.string().min(1).max(8192).optional(),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-  query: z.string().min(1).max(4000),
-  timeout_ms: z.int().gte(1).lte(10000).optional(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindQuery =
+  z.object({
+    consistency_class: z
+      .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
+      .optional(),
+    metadata_key: z.string().min(1).max(120).optional(),
+    metadata_value: z.string().min(1).max(4000).optional(),
+    name_contains: z.string().min(1).max(240).optional(),
+    page_size: z.int().gte(1).lte(100).optional().default(20),
+    page_token: z.string().min(1).max(8192).optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+    resource_type: z
+      .enum(['artifact', 'document', 'evidence', 'node', 'source', 'workspace'])
+      .optional(),
+  })
 
 /**
- * KnowledgeFS text matches
+ * Knowledge-space entry search results
  */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsGrepResponse =
-  zKnowledgeFsGrepResponse
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse =
+  zKnowledgeFsEntryListResponse
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsPath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepPath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  cursor: z.string().min(1).max(8192).optional(),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepQuery =
+  z.object({
+    consistency_class: z
+      .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
+      .optional(),
+    page_size: z.int().gte(1).lte(100).optional().default(20),
+    page_token: z.string().min(1).max(8192).optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+    text: z.string().min(1).max(4000),
+    timeout_ms: z.int().gte(1).lte(10000).optional(),
+  })
 
 /**
- * KnowledgeFS directory listing
+ * Knowledge-space content matches
  */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsLsResponse =
-  zKnowledgeFsListResponse
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse =
+  zKnowledgeFsEntryContentSearchResponse
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatPath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsPath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsQuery =
+  z.object({
+    consistency_class: z
+      .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
+      .optional(),
+    page_size: z.int().gte(1).lte(100).optional().default(20),
+    page_token: z.string().min(1).max(8192).optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  })
 
 /**
- * KnowledgeFS path metadata
+ * Knowledge-space entry page
  */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsStatResponse =
-  zKnowledgeFsStatResponse
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse =
+  zKnowledgeFsEntryListResponse
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreePath = z.object({
-  control_space_id: z.string(),
-  workspace_id: z.string(),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatPath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
 
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeQuery = z.object({
-  consistency_class: z
-    .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
-    .optional(),
-  cursor: z.string().min(1).max(8192).optional(),
-  depth: z.int().gte(1).lte(8).optional(),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
-})
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatQuery =
+  z.object({
+    consistency_class: z
+      .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
+      .optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  })
 
 /**
- * KnowledgeFS directory tree
+ * Knowledge-space entry metadata
  */
-export const zGetWorkspacesByWorkspaceIdKnowledgeFsSpacesByControlSpaceIdFsTreeResponse =
-  zKnowledgeFsTreeResponse
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse =
+  zKnowledgeFsEntryMetadataResponse
+
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreePath =
+  z.object({
+    knowledge_space_id: z.string(),
+    workspace_id: z.string(),
+  })
+
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeQuery =
+  z.object({
+    consistency_class: z
+      .enum(['cache-consistent', 'eventual-preview', 'path-consistent', 'snapshot-consistent'])
+      .optional(),
+    depth: z.int().gte(1).lte(8).optional(),
+    page_size: z.int().gte(1).lte(100).optional().default(20),
+    page_token: z.string().min(1).max(8192).optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .regex(/^\/(?:sources|knowledge|evidence|workspaces)(?:\/[^\/\s]+)*$/),
+  })
+
+/**
+ * Knowledge-space entry tree
+ */
+export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse =
+  zKnowledgeFsEntryTreeResponse
 
 export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
   workspace_id: z.string(),
