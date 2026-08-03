@@ -6,7 +6,6 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -129,7 +128,7 @@ const RetrievalConfig: FC<Props> = ({
             variant="ghost"
             size="small"
             disabled={readonly}
-            className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
+            className="data-popup-open:bg-components-button-ghost-bg-hover"
           >
             <RiEqualizer2Line className="mr-1 size-3.5" />
             {t(($) => $.retrievalSettings, { ns: 'dataset' })}

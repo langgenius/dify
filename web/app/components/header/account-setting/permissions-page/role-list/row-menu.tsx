@@ -9,7 +9,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,7 +113,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
           render={
             <ActionButton
               size="m"
-              className={cn('shrink-0', open && 'bg-state-base-hover')}
+              className="shrink-0 data-popup-open:bg-state-base-hover"
               aria-label={t(($) => $['operation.moreActions'], { ns: 'common' })}
             />
           }

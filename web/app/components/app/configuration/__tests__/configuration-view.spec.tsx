@@ -1,9 +1,14 @@
 import type { ComponentProps } from 'react'
 import type { ConfigurationViewModel } from '../hooks/use-configuration'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
+import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
+import type { Plugin } from '@/app/components/plugins/types'
 import type ConfigContext from '@/context/debug-configuration'
+import type { AgentTool } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { CollectionType } from '@/app/components/tools/types'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import ConfigurationView from '../configuration-view'
 
@@ -48,9 +53,48 @@ vi.mock('@/app/components/base/features/new-feature-panel', () => ({
   default: () => <div data-testid="feature-panel" />,
 }))
 
+let pluginDependencyOnInstallComplete: InstallBundleCompleteCallback | undefined
 vi.mock('@/app/components/workflow/plugin-dependency', () => ({
-  default: () => <div data-testid="plugin-dependency" />,
+  default: ({ onInstallComplete }: { onInstallComplete?: InstallBundleCompleteCallback }) => {
+    pluginDependencyOnInstallComplete = onInstallComplete
+    return <div data-testid="plugin-dependency" />
+  },
 }))
+
+const createPlugin = (name: string): Plugin => ({
+  type: 'plugin',
+  org: 'vendor',
+  name,
+  plugin_id: 'vendor',
+  version: '1.0.0',
+  latest_version: '1.0.0',
+  latest_package_identifier: `vendor/${name}:1.0.0`,
+  icon: 'icon.svg',
+  verified: true,
+  label: { 'en-US': name },
+  brief: { 'en-US': name },
+  description: { 'en-US': name },
+  introduction: '',
+  repository: `https://example.com/vendor/${name}`,
+  category: PluginCategoryEnum.tool,
+  install_count: 0,
+  endpoint: { settings: [] },
+  tags: [],
+  badges: [],
+  verification: { authorized_category: 'community' },
+  from: 'marketplace',
+})
+
+const createDeletedAgentTool = (providerId: string): AgentTool => ({
+  provider_id: providerId,
+  provider_type: CollectionType.builtIn,
+  provider_name: providerId,
+  tool_name: 'search',
+  tool_label: 'Search',
+  tool_parameters: {},
+  enabled: true,
+  isDeleted: true,
+})
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
@@ -269,6 +313,7 @@ describe('ConfigurationView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(false)
+    pluginDependencyOnInstallComplete = undefined
   })
 
   it('should render a loading state before configuration data is ready', () => {
@@ -331,5 +376,64 @@ describe('ConfigurationView', () => {
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 
     expect(screen.queryByText('appDebug.legacyAgentBadge.label')).not.toBeInTheDocument()
+  })
+
+  it('should reinstate selected plugin tools when at least one installation succeeds', () => {
+    const contextValue = createContextValue()
+    contextValue.isAgent = true
+    const tools = [
+      createDeletedAgentTool('vendor/successful-plugin'),
+      createDeletedAgentTool('vendor/failed-plugin'),
+      createDeletedAgentTool('vendor/unselected-plugin'),
+    ]
+    contextValue.modelConfig.agentConfig.tools = tools
+
+    render(<ConfigurationView {...createViewModel({ contextValue, isAgent: true })} />)
+    if (!pluginDependencyOnInstallComplete)
+      throw new Error('Plugin completion callback not registered')
+
+    pluginDependencyOnInstallComplete(
+      [createPlugin('successful-plugin'), createPlugin('failed-plugin')],
+      [
+        { success: true, isFromMarketPlace: true },
+        { success: false, isFromMarketPlace: true },
+      ],
+      [
+        { hasInstalled: false, toInstallVersion: '1.0.0' },
+        { hasInstalled: false, toInstallVersion: '1.0.0' },
+      ],
+    )
+
+    expect(contextValue.setModelConfig).toHaveBeenCalledOnce()
+    const nextModelConfig = vi.mocked(contextValue.setModelConfig).mock.calls[0]![0]
+    expect(nextModelConfig.agentConfig.tools).toEqual([
+      expect.objectContaining({ provider_id: 'vendor/successful-plugin', isDeleted: false }),
+      expect.objectContaining({ provider_id: 'vendor/failed-plugin', isDeleted: false }),
+      expect.objectContaining({ provider_id: 'vendor/unselected-plugin', isDeleted: true }),
+    ])
+  })
+
+  it('should keep deleted tools unchanged when every installation fails', () => {
+    const contextValue = createContextValue()
+    contextValue.isAgent = true
+    contextValue.modelConfig.agentConfig.tools = [createDeletedAgentTool('vendor/failed-plugin')]
+
+    render(<ConfigurationView {...createViewModel({ contextValue, isAgent: true })} />)
+    if (!pluginDependencyOnInstallComplete)
+      throw new Error('Plugin completion callback not registered')
+
+    pluginDependencyOnInstallComplete(
+      [createPlugin('failed-plugin')],
+      [{ success: false, isFromMarketPlace: true }],
+      [{ hasInstalled: false, toInstallVersion: '1.0.0' }],
+    )
+
+    expect(contextValue.setModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should not attach the agent tool completion handler to non-agent configurations', () => {
+    render(<ConfigurationView {...createViewModel()} />)
+
+    expect(pluginDependencyOnInstallComplete).toBeUndefined()
   })
 })

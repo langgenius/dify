@@ -33,7 +33,6 @@ vi.mock('@/context/modal-context', () => ({
     setShowExternalKnowledgeAPIModal: vi.fn(),
     setShowOpeningModal: vi.fn(),
     setShowUpdatePluginModal: vi.fn(),
-    setShowTriggerEventsLimitModal: vi.fn(),
   }),
 }))
 
