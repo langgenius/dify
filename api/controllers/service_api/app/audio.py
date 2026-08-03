@@ -55,6 +55,7 @@ class AudioApi(Resource):
         responses={
             200: "Successfully converted audio to text.",
             400: (
+                "- `no_audio_uploaded` : No audio file was provided in the request.\n"
                 "- `speech_to_text_disabled` : Speech-to-text is disabled for this app.\n"
                 "- `provider_not_support_speech_to_text` : Model provider does not support speech-to-text.\n"
                 "- `provider_not_initialize` : No valid model provider credentials found.\n"
