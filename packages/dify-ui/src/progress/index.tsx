@@ -46,10 +46,8 @@ const progressCircleColorClasses = {
   },
 } as const
 
-export type ProgressCircleSize = NonNullable<
-  VariantProps<typeof progressCircleRootVariants>['size']
->
-export type ProgressCircleColor = keyof typeof progressCircleColorClasses
+type ProgressCircleSize = NonNullable<VariantProps<typeof progressCircleRootVariants>['size']>
+type ProgressCircleColor = keyof typeof progressCircleColorClasses
 
 const progressCircleSizeValues = {
   small: 12,
@@ -67,7 +65,7 @@ type ProgressCircleAccessibleNameProps =
       'aria-labelledby': string
     }
 
-export type ProgressCircleProps = Omit<
+type ProgressCircleProps = Omit<
   BaseProgress.Root.Props,
   'children' | 'className' | 'aria-label' | 'aria-labelledby'
 > &
@@ -113,7 +111,7 @@ function getSectorPath(size: number, percentage: number | null) {
   `
 }
 
-export function ProgressCircle({
+function ProgressCircle({
   className,
   color = 'blue',
   size = 'small',
@@ -163,3 +161,6 @@ export function ProgressCircle({
     </BaseProgress.Root>
   )
 }
+
+export { ProgressCircle }
+export type { ProgressCircleProps }

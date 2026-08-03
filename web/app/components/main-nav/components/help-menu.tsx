@@ -144,7 +144,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
           className={cn(
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             triggerClassName,
-            open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
+            'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
             skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
           )}
         >

@@ -122,9 +122,9 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   const handleGenCode = useCallback(async () => {
     if (!canManageMCP) return
 
-    await refreshMCPServerCode(detail?.id || '')
+    await refreshMCPServerCode(appId)
     invalidateMCPServerDetail(appId)
-  }, [canManageMCP, refreshMCPServerCode, detail?.id, invalidateMCPServerDetail, appId])
+  }, [canManageMCP, refreshMCPServerCode, invalidateMCPServerDetail, appId])
 
   const handleStatusChange = useCallback(
     async (state: boolean) => {

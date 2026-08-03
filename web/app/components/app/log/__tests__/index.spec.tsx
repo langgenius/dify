@@ -87,14 +87,6 @@ vi.mock('@/app/components/base/loading', () => ({
   default: () => <div>loading-logs</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/pagination', () => ({
-  Pagination: ({ onPageChange }: { onPageChange: (page: number) => void }) => (
-    <div>
-      <button onClick={() => onPageChange(2)}>go-to-page-2</button>
-    </div>
-  ),
-}))
-
 describe('Logs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -179,7 +171,7 @@ describe('Logs', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('go-to-page-2'))
+    fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
   })
