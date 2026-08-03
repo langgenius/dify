@@ -672,6 +672,9 @@ describe('StepByStepTourMount', () => {
     ).toBeInTheDocument()
 
     const dismissButton = screen.getByRole('button', { name: 'Dismiss' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
     await user.click(dismissButton)
 
     await waitFor(() => {
@@ -789,6 +792,23 @@ describe('StepByStepTourMount', () => {
       expect(restoreButton).toHaveFocus()
     })
     expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
+  })
+
+  it('focuses the current task primary action when the checklist opens', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: ['home'],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const currentTaskAction = (await screen.findAllByRole('button', { name: 'Take a look' }))[0]!
+    await waitFor(() => {
+      expect(currentTaskAction).toHaveFocus()
+    })
   })
 
   it('keeps the expanded checklist open after an outside pointer interaction', async () => {

@@ -1,11 +1,10 @@
 'use client'
 
-import type { ComponentProps } from 'react'
+import type { ComponentProps, Ref } from 'react'
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
-import { useEffect, useRef } from 'react'
 
 export type FloatingChecklistProps = {
   className?: string
@@ -24,6 +23,7 @@ export type FloatingChecklistProps = {
     title: string
   }
   tasks: StepByStepTourTaskView[]
+  initialFocusRef: Ref<HTMLButtonElement>
   skipLabel: string
   minimizeLabel: string
   getTaskCompleteLabel: (taskTitle: string) => string
@@ -42,6 +42,7 @@ export function FloatingChecklist({
   progress,
   completionPrompt,
   tasks,
+  initialFocusRef,
   skipLabel,
   minimizeLabel,
   getTaskCompleteLabel,
@@ -101,6 +102,7 @@ export function FloatingChecklist({
           <TourTaskRow
             key={task.id}
             task={task}
+            initialFocusRef={initialFocusRef}
             onCompleteTask={onCompleteTask}
             getTaskCompleteLabel={getTaskCompleteLabel}
             getTaskIncompleteLabel={getTaskIncompleteLabel}
@@ -108,7 +110,9 @@ export function FloatingChecklist({
             onUncompleteTask={onUncompleteTask}
           />
         ))}
-        {completionPrompt && <TourCompletionPrompt {...completionPrompt} />}
+        {completionPrompt && (
+          <TourCompletionPrompt {...completionPrompt} initialFocusRef={initialFocusRef} />
+        )}
       </div>
     </section>
   )
@@ -120,13 +124,10 @@ function TourCompletionPrompt({
   label,
   onDismiss,
   title,
-}: NonNullable<FloatingChecklistProps['completionPrompt']>) {
-  const dismissRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    dismissRef.current?.focus({ preventScroll: true })
-  }, [])
-
+  initialFocusRef,
+}: NonNullable<FloatingChecklistProps['completionPrompt']> & {
+  initialFocusRef: Ref<HTMLButtonElement>
+}) {
   return (
     <section
       aria-label={label}
@@ -142,7 +143,7 @@ function TourCompletionPrompt({
       <h3 className="system-md-semibold text-text-primary">{title}</h3>
       <p className="mt-1 system-sm-regular text-text-tertiary">{description}</p>
       <Button
-        ref={dismissRef}
+        ref={initialFocusRef}
         variant="secondary"
         size="medium"
         className="mt-4 min-w-20"
@@ -221,6 +222,7 @@ function TourProgress({
 
 function TourTaskRow({
   task,
+  initialFocusRef,
   onCompleteTask,
   getTaskCompleteLabel,
   getTaskIncompleteLabel,
@@ -228,6 +230,7 @@ function TourTaskRow({
   onUncompleteTask,
 }: {
   task: StepByStepTourTaskView
+  initialFocusRef: Ref<HTMLButtonElement>
   onCompleteTask: (taskId: StepByStepTourTaskId) => void
   getTaskCompleteLabel: (taskTitle: string) => string
   getTaskIncompleteLabel: (taskTitle: string) => string
@@ -271,6 +274,7 @@ function TourTaskRow({
               </p>
               <div className="mt-2 flex items-center gap-1 pb-1">
                 <Button
+                  ref={current ? initialFocusRef : undefined}
                   variant="secondary"
                   size="small"
                   className="min-w-20.75"
