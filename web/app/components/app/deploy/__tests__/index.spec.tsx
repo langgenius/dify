@@ -352,8 +352,8 @@ const ACTION_MATRIX_CASES: Array<{
   },
   {
     actions: [
-      { disabled: false, kind: 'redeploy' },
       { disabled: false, kind: 'changeVersion' },
+      { disabled: false, kind: 'redeploy' },
       { disabled: false, kind: 'undeploy' },
     ],
     name: 'running the latest version',
@@ -1385,9 +1385,14 @@ describe('AppDeploy', () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
 
-    const qaRow = screen.getByRole('row', { name: /QA/ })
+    const qaRow = within(screen.getByRole('row', { name: /QA/ }))
     await user.click(
-      within(qaRow).getByRole('button', {
+      qaRow.getByRole('button', {
+        name: 'QA · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(
+      within(await screen.findByRole('menu')).getByRole('menuitem', {
         name: 'deployments.deployTab.redeploy',
       }),
     )
@@ -1406,19 +1411,9 @@ describe('AppDeploy', () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
 
-    const canaryRow = screen.getByRole('row', { name: /Canary/ })
-    expect(
-      within(canaryRow).getByRole('button', {
-        name: 'deployments.deployTab.redeploy',
-      }),
-    ).toBeInTheDocument()
+    const canaryRow = within(screen.getByRole('row', { name: /Canary/ }))
     await user.click(
-      within(canaryRow).getByRole('button', {
-        name: 'Canary · deployments.deployTab.moreActions',
-      }),
-    )
-    await user.click(
-      within(screen.getByRole('menu')).getByRole('menuitem', {
+      canaryRow.getByRole('button', {
         name: 'deployments.studio.changeVersion',
       }),
     )
@@ -1472,14 +1467,14 @@ describe('AppDeploy', () => {
       name: 'Canary · deployments.deployTab.moreActions',
     })
     expect(
-      within(menu).getByRole('menuitem', { name: 'deployments.studio.changeVersion' }),
+      within(menu).getByRole('menuitem', { name: 'deployments.deployTab.redeploy' }),
     ).toBeInTheDocument()
     expect(
       within(menu).getByRole('menuitem', { name: 'deployments.deployTab.undeploy' }),
     ).toBeInTheDocument()
     expect(
       within(menu).queryByRole('menuitem', {
-        name: 'deployments.deployTab.redeploy',
+        name: 'deployments.studio.changeVersion',
       }),
     ).not.toBeInTheDocument()
   })

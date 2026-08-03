@@ -260,6 +260,7 @@ export function getEnvironmentDeploymentActions(
   row: EnvironmentDeployment,
 ): EnvironmentDeploymentAction[] {
   const deployment = row.deployment
+  // Currently, this case may not be possible, but we still handle it to avoid potential errors in the future.
   if (!deployment || deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED) {
     return deploymentActions(['deployLatest', 'changeVersion'])
   }
@@ -288,7 +289,7 @@ export function getEnvironmentDeploymentActions(
       return deploymentActions(['deployLatest', 'changeVersion', 'redeploy', 'undeploy'])
     }
 
-    return deploymentActions(['redeploy', 'changeVersion', 'undeploy'])
+    return deploymentActions(['changeVersion', 'redeploy', 'undeploy'])
   }
 
   return deploymentActions(['redeploy', 'undeploy'])
