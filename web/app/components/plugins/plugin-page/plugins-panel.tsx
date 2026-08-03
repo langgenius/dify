@@ -19,7 +19,7 @@ import {
   normalizePluginCategoryListLanguage,
   useInstalledPluginList,
   useInvalidateInstalledPluginList,
-  useRetainFirstInstalledPluginPageOnUnmount,
+  useRemoveFilteredInstalledPluginPageOnUnmount,
 } from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginCategoryEnum } from '../types'
@@ -32,6 +32,8 @@ import PluginsPanelResults from './plugins-panel-results'
 import { EMPTY_BUILTIN_TOOLS, filterBuiltinTools } from './plugins-panel-utils'
 
 const INTEGRATION_PLUGIN_PAGE_SIZE = 30
+const INTEGRATION_PLUGIN_STALE_TIME = 5 * 60 * 1000
+const INTEGRATION_PLUGIN_GC_TIME = 10 * 60 * 1000
 
 const matchesSearchQuery = (
   plugin: PluginDetail & { latest_version: string },
@@ -115,12 +117,13 @@ const PluginsPanel = ({
   } = useInstalledPluginList({
     category: fixedCategory,
     filters: installedPluginFilters,
+    gcTime: isIntegrationCategoryPage ? INTEGRATION_PLUGIN_GC_TIME : undefined,
     pageSize: isIntegrationCategoryPage ? INTEGRATION_PLUGIN_PAGE_SIZE : 100,
-    refetchOnMount: isIntegrationCategoryPage ? 'always' : undefined,
+    staleTime: isIntegrationCategoryPage ? INTEGRATION_PLUGIN_STALE_TIME : undefined,
   })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(pluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  useRetainFirstInstalledPluginPageOnUnmount(
+  useRemoveFilteredInstalledPluginPageOnUnmount(
     isIntegrationCategoryPage ? fixedCategory : undefined,
     INTEGRATION_PLUGIN_PAGE_SIZE,
     installedPluginFilters,

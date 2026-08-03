@@ -613,8 +613,9 @@ type UseInstalledPluginListOptions = {
   category?: PluginCategoryEnum
   enabled?: boolean
   filters?: InstalledPluginListFilters
+  gcTime?: number
   pageSize?: number
-  refetchOnMount?: boolean | 'always'
+  staleTime?: number
 }
 
 type PluginCategoryListLanguage = NonNullable<
@@ -643,12 +644,10 @@ const getInstalledPluginCategoryListInfiniteOptions = ({
   category,
   filters,
   pageSize,
-  refetchOnMount,
 }: {
   category: PluginCategoryEnum
   filters?: InstalledPluginListFilters
   pageSize: number
-  refetchOnMount?: boolean | 'always'
 }) => {
   return consoleQuery.workspaces.current.plugin.byCategory.list.get.infiniteOptions({
     input: (pageParam) => ({
@@ -663,7 +662,6 @@ const getInstalledPluginCategoryListInfiniteOptions = ({
     }),
     getNextPageParam: (lastPage, pages) => (lastPage.has_more ? pages.length + 1 : undefined),
     initialPageParam: 1,
-    refetchOnMount,
   })
 }
 
@@ -680,15 +678,16 @@ const getInstalledPluginCategoryListQueryKey = (
 }
 
 export const useInstalledPluginList = (options: UseInstalledPluginListOptions = {}) => {
-  const { category, enabled = true, filters, pageSize = 100, refetchOnMount } = options
+  const { category, enabled = true, filters, gcTime, pageSize = 100, staleTime } = options
   const categoryQuery = useInfiniteQuery({
     ...getInstalledPluginCategoryListInfiniteOptions({
       category: category ?? PluginCategoryEnum.tool,
       filters,
       pageSize,
-      refetchOnMount,
     }),
     enabled: enabled && !!category,
+    gcTime,
+    staleTime,
   })
   const legacyQuery = useInfiniteQuery({
     ...consoleQuery.workspaces.current.plugin.list.get.infiniteOptions({
@@ -701,9 +700,10 @@ export const useInstalledPluginList = (options: UseInstalledPluginListOptions = 
       getNextPageParam: (lastPage, pages) =>
         pages.length * pageSize < lastPage.total ? pages.length + 1 : undefined,
       initialPageParam: 1,
-      refetchOnMount,
     }),
     enabled: enabled && !category,
+    gcTime,
+    staleTime,
   })
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
     category ? categoryQuery : legacyQuery
@@ -741,49 +741,21 @@ export const useInstalledPluginList = (options: UseInstalledPluginListOptions = 
   }
 }
 
-const retainFirstInstalledPluginPage = (
-  queryClient: QueryClient,
-  category: PluginCategoryEnum | undefined,
-  pageSize: number,
-  filters?: InstalledPluginListFilters,
-) => {
-  if (!category) return
-
-  const queryKey = getInstalledPluginCategoryListQueryKey(category, pageSize, filters)
-  const hasActiveFilters = !!filters?.query || !!filters?.tags?.length
-
-  if (hasActiveFilters) {
-    queryClient.removeQueries({ queryKey, exact: true })
-    return
-  }
-
-  void queryClient.cancelQueries({ queryKey }, { revert: false })
-  queryClient.setQueryData<InfiniteData<PluginCategoryListResponse, number>>(
-    queryKey,
-    (cachedData) => {
-      if (!cachedData || cachedData.pages.length <= 1) return cachedData
-
-      return {
-        ...cachedData,
-        pages: cachedData.pages.slice(0, 1),
-        pageParams: cachedData.pageParams.slice(0, 1),
-      }
-    },
-  )
-}
-
-export const useRetainFirstInstalledPluginPageOnUnmount = (
+export const useRemoveFilteredInstalledPluginPageOnUnmount = (
   category: PluginCategoryEnum | undefined,
   pageSize: number,
   filters?: InstalledPluginListFilters,
 ) => {
   const queryClient = useQueryClient()
+  const hasActiveFilters = !!filters?.query || !!filters?.tags?.length
 
   useEffect(() => {
-    if (!category) return
+    if (!category || !hasActiveFilters) return
 
-    return () => retainFirstInstalledPluginPage(queryClient, category, pageSize, filters)
-  }, [category, filters, pageSize, queryClient])
+    const queryKey = getInstalledPluginCategoryListQueryKey(category, pageSize, filters)
+
+    return () => queryClient.removeQueries({ queryKey, exact: true })
+  }, [category, filters, hasActiveFilters, pageSize, queryClient])
 }
 
 export const useInvalidateInstalledPluginList = () => {

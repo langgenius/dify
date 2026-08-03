@@ -22,7 +22,7 @@ const mockSetFilters = vi.fn()
 const mockSetCurrentPluginID = vi.fn()
 const mockLoadNextPage = vi.fn()
 const mockInvalidateInstalledPluginList = vi.fn()
-const mockRetainFirstInstalledPluginPageOnUnmount = vi.fn()
+const mockRemoveFilteredInstalledPluginPageOnUnmount = vi.fn()
 const mockUseInstalledPluginList = vi.fn()
 const mockPluginListWithLatestVersion = vi.fn<() => PluginDetail[]>(() => [])
 const intersectionObserverCallbacks: IntersectionObserverCallback[] = []
@@ -41,8 +41,8 @@ vi.mock('@/service/use-plugins', () => ({
   normalizePluginCategoryListLanguage: (locale: string) => locale,
   useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
-  useRetainFirstInstalledPluginPageOnUnmount: (...args: unknown[]) =>
-    mockRetainFirstInstalledPluginPageOnUnmount(...args),
+  useRemoveFilteredInstalledPluginPageOnUnmount: (...args: unknown[]) =>
+    mockRemoveFilteredInstalledPluginPageOnUnmount(...args),
 }))
 
 vi.mock('../../hooks', () => ({
@@ -382,26 +382,28 @@ describe('PluginsPanel', () => {
     expect(mockUseInstalledPluginList).toHaveBeenCalledWith(
       expect.objectContaining({
         category,
+        gcTime: 10 * 60 * 1000,
         pageSize: 30,
-        refetchOnMount: 'always',
+        staleTime: 5 * 60 * 1000,
       }),
     )
+    expect(mockUseInstalledPluginList.mock.calls.at(-1)?.[0]).not.toHaveProperty('refetchOnMount')
   })
 
-  it('configures first-page cache retention for an Integration category panel', () => {
+  it('configures filtered cache cleanup for an Integration category panel', () => {
     render(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
 
-    expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
+    expect(mockRemoveFilteredInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
       PluginCategoryEnum.tool,
       30,
       expect.any(Object),
     )
   })
 
-  it('does not configure first-page cache retention for the standalone Plugin page', () => {
+  it('does not configure filtered cache cleanup for the standalone Plugin page', () => {
     render(<PluginsPanel />)
 
-    expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
+    expect(mockRemoveFilteredInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
       undefined,
       30,
       undefined,

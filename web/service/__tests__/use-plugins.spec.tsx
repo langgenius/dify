@@ -27,7 +27,7 @@ import {
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
-  useRetainFirstInstalledPluginPageOnUnmount,
+  useRemoveFilteredInstalledPluginPageOnUnmount,
   useVersionListOfPlugin,
 } from '../use-plugins'
 
@@ -826,8 +826,8 @@ describe('useInstalledPluginList', () => {
   })
 })
 
-describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
-  it('retains only the first cached category page for the matching page size', async () => {
+describe('useRemoveFilteredInstalledPluginPageOnUnmount', () => {
+  it('retains every unfiltered category page when leaving the page', async () => {
     const queryClient = createQueryClient()
     mockGet
       .mockResolvedValueOnce({
@@ -839,12 +839,19 @@ describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
         has_more: false,
       })
     const wrapper = createWrapper(queryClient)
-    const { result } = renderHook(
-      () => useInstalledPluginList({ category: PluginCategoryEnum.tool, pageSize: 30 }),
-      {
-        wrapper,
-      },
-    )
+    const useToolPluginList = () => {
+      const pluginList = useInstalledPluginList({
+        category: PluginCategoryEnum.tool,
+        gcTime: 10 * 60 * 1000,
+        pageSize: 30,
+        staleTime: 5 * 60 * 1000,
+      })
+      useRemoveFilteredInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30)
+      return pluginList
+    }
+    const { result, unmount } = renderHook(useToolPluginList, {
+      wrapper,
+    })
 
     await waitFor(() => expect(result.current.isLastPage).toBe(false))
     act(() => result.current.loadNextPage())
@@ -854,15 +861,16 @@ describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
       .getAll()
       .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
     if (!cachedQuery) throw new Error('Expected cached second page')
-
-    const { unmount } = renderHook(
-      () => useRetainFirstInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30),
-      { wrapper: createWrapper(queryClient) },
-    )
+    expect(cachedQuery.options.gcTime).toBe(10 * 60 * 1000)
+    expect(cachedQuery.observers[0]?.options.staleTime).toBe(5 * 60 * 1000)
 
     unmount()
 
-    expect((cachedQuery.state.data as { pages: unknown[] }).pages).toHaveLength(1)
+    expect((cachedQuery.state.data as { pages: unknown[] }).pages).toHaveLength(2)
+    const requestCount = mockGet.mock.calls.length
+    const { result: remountedResult } = renderHook(useToolPluginList, { wrapper })
+    expect(remountedResult.current.data?.plugins).toHaveLength(2)
+    expect(mockGet).toHaveBeenCalledTimes(requestCount)
   })
 
   it('removes filtered category pages when leaving the page', async () => {
@@ -878,8 +886,16 @@ describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
         has_more: false,
       })
     const wrapper = createWrapper(queryClient)
-    const { result } = renderHook(
-      () => useInstalledPluginList({ category: PluginCategoryEnum.tool, pageSize: 30, filters }),
+    const { result, unmount } = renderHook(
+      () => {
+        const pluginList = useInstalledPluginList({
+          category: PluginCategoryEnum.tool,
+          filters,
+          pageSize: 30,
+        })
+        useRemoveFilteredInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30, filters)
+        return pluginList
+      },
       { wrapper },
     )
     await waitFor(() => expect(result.current.isLastPage).toBe(false))
@@ -890,11 +906,6 @@ describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
       .getAll()
       .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
     if (!cachedQuery) throw new Error('Expected cached filtered pages')
-
-    const { unmount } = renderHook(
-      () => useRetainFirstInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30, filters),
-      { wrapper: createWrapper(queryClient) },
-    )
 
     unmount()
 
