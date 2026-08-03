@@ -100,7 +100,9 @@ function RecordTime({ value }: { value: number }) {
 type ResearchPayloadLabels = {
   chunks: string
   documents: string
+  retrievals: string
   sources: string
+  topK: string
 }
 
 const researchPayloadContainers = new Set([
@@ -155,7 +157,9 @@ function payloadCountLabel(key: string, labels: ResearchPayloadLabels) {
   const normalizedKey = normalizedPayloadKey(key)
   if (normalizedKey === 'chunkcount' || normalizedKey === 'chunks') return labels.chunks
   if (normalizedKey === 'documentcount' || normalizedKey === 'documents') return labels.documents
+  if (normalizedKey === 'retrievalcount') return labels.retrievals
   if (normalizedKey === 'sourcecount' || normalizedKey === 'sources') return labels.sources
+  if (normalizedKey === 'topk') return labels.topK
 }
 
 function researchPayloadLines(payload: Record<string, unknown>, labels: ResearchPayloadLabels) {
@@ -203,6 +207,65 @@ function researchPayloadLines(payload: Record<string, unknown>, labels: Research
   }
   Object.entries(payload).forEach(([key, value]) => visit(value, key))
   return [...new Set(lines)].slice(0, 12)
+}
+
+function researchStagePayloads(events: ResearchTaskProgressEvent[], stage: ResearchStage) {
+  const payloads: Record<string, unknown>[] = []
+  for (const event of [...events].reverse()) {
+    const details = event.payload.details
+    if (
+      event.payload.previousStage === stage &&
+      details &&
+      typeof details === 'object' &&
+      !Array.isArray(details)
+    ) {
+      payloads.push(details as Record<string, unknown>)
+      continue
+    }
+    const nested = event.payload[stage]
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      payloads.push(nested as Record<string, unknown>)
+      continue
+    }
+    if (
+      event.stage === stage &&
+      event.type !== 'research_task.answer_delta' &&
+      event.payload.previousStage === undefined
+    )
+      payloads.push(event.payload)
+  }
+  return payloads
+}
+
+function fallbackResearchStagePayload({
+  documentCount,
+  evidenceCount,
+  stage,
+  task,
+}: {
+  documentCount: number
+  evidenceCount: number
+  stage: ResearchStage
+  task: KnowledgeFsResearchTaskResponse
+}): Record<string, unknown> {
+  if (stage === 'planning') {
+    return {
+      questions: [task.query],
+      ...(typeof task.top_k === 'number' ? { topK: task.top_k } : {}),
+    }
+  }
+  if (stage === 'retrieving') {
+    return {
+      documents: documentCount,
+      results: [{ chunkCount: evidenceCount, question: task.query }],
+    }
+  }
+  if (stage === 'analyzing') return { chunks: evidenceCount, documents: documentCount }
+  return {
+    chunks: evidenceCount,
+    documents: documentCount,
+    sources: documentCount || evidenceCount,
+  }
 }
 
 function useClock(enabled: boolean) {
@@ -653,6 +716,7 @@ function QualityActions({
 }
 
 function ResearchProcess({
+  documentCount,
   evidenceCount,
   events,
   expanded,
@@ -661,6 +725,7 @@ function ResearchProcess({
   plan,
   task,
 }: {
+  documentCount: number
   evidenceCount: number
   events: ResearchTaskProgressEvent[]
   expanded: boolean
@@ -714,7 +779,9 @@ function ResearchProcess({
   const payloadLabels: ResearchPayloadLabels = {
     chunks: t(($) => $['newKnowledge.chunkCount']),
     documents: t(($) => $['newKnowledge.documents']),
+    retrievals: t(($) => $['newKnowledge.retrievalCount']),
     sources: t(($) => $['newKnowledge.sources']),
+    topK: t(($) => $['newKnowledge.settings.topKLabel']),
   }
 
   return (
@@ -777,12 +844,16 @@ function ResearchProcess({
               const current = index === currentIndex && active
               const stageDuration =
                 actualStageDuration(events, stage, task, now) ?? estimatedStageDuration(plan, stage)
-              const stagePayload = [...events]
-                .reverse()
-                .find((event) => event.stage === stage)?.payload
-              const payloadLines = stagePayload
-                ? researchPayloadLines(stagePayload, payloadLabels)
-                : []
+              const fallbackPayload = fallbackResearchStagePayload({
+                documentCount,
+                evidenceCount,
+                stage,
+                task,
+              })
+              const payloadLines = [...researchStagePayloads(events, stage), fallbackPayload]
+                .flatMap((payload) => researchPayloadLines(payload, payloadLabels))
+                .filter((line, lineIndex, lines) => lines.indexOf(line) === lineIndex)
+                .slice(0, 12)
               return (
                 <li key={stage} className="flex items-stretch gap-2.5 overflow-hidden">
                   <span
@@ -834,7 +905,7 @@ function ResearchProcess({
                     {payloadLines.length > 0 && (completed || current) && (
                       <ul className="mt-1.5 space-y-1 system-xs-regular text-text-tertiary">
                         {payloadLines.map((line) => (
-                          <li key={line} className="truncate">
+                          <li key={line} className="break-words">
                             {line}
                           </li>
                         ))}
@@ -1127,6 +1198,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       : selected?.kind === 'research'
         ? researchEvidence
         : historicalEvidence
+  const currentEvidenceDocumentCount = new Set(
+    currentEvidence
+      .map((evidence) => evidence.documentId ?? evidence.documentName)
+      .filter((document): document is string => Boolean(document)),
+  ).size
   const evidenceDocumentReferencesQuery = useQuery({
     queryKey: ['retrieval-document-references', knowledgeSpaceId],
     enabled: currentEvidence.some((evidence) => evidence.documentId),
@@ -1573,6 +1649,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     plan={researchPlans[selectedResearchTask.id]}
                     events={selectedResearchEvents}
                     evidenceCount={currentEvidence.length}
+                    documentCount={currentEvidenceDocumentCount}
                     expanded={selectedResearchExpanded}
                     onToggle={() =>
                       setResearchExpanded((current) => ({

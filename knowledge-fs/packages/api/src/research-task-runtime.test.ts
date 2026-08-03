@@ -274,8 +274,21 @@ describe("research task production runtime", () => {
       generator: {
         stream: async function* (input) {
           generationInputs.push(input);
-          yield traceStep("query.retrieve");
-          yield traceStep("query.answer");
+          yield traceStep("query.retrieve", {
+            durationMs: 240,
+            itemCount: 4,
+            metrics: {
+              denseCandidates: 9,
+              ftsCandidates: 5,
+              fusedCandidates: 6,
+              rerankCandidates: 4,
+            },
+          });
+          yield traceStep("query.answer", {
+            answerChars: 26,
+            durationMs: 320,
+            synthesis: "llm-provider",
+          });
           for (const delta of "The warranty is two years.") {
             yield { delta, type: "delta" as const };
           }
@@ -337,9 +350,33 @@ describe("research task production runtime", () => {
       items: [
         { stage: "queued", type: "research_task.stage_changed" },
         { stage: "planning", type: "research_task.stage_changed" },
-        { stage: "retrieving", type: "research_task.stage_changed" },
-        { stage: "analyzing", type: "research_task.stage_changed" },
-        { stage: "generating", type: "research_task.stage_changed" },
+        {
+          payload: {
+            details: { questions: ["Compare reliability findings"], topK: 7 },
+            previousStage: "planning",
+          },
+          stage: "retrieving",
+          type: "research_task.stage_changed",
+        },
+        {
+          payload: {
+            details: {
+              results: [{ chunkCount: 4, question: "Compare reliability findings" }],
+              retrievalCount: 6,
+            },
+            previousStage: "retrieving",
+          },
+          stage: "analyzing",
+          type: "research_task.stage_changed",
+        },
+        {
+          payload: {
+            details: { chunks: 4, retrievalCount: 6 },
+            previousStage: "analyzing",
+          },
+          stage: "generating",
+          type: "research_task.stage_changed",
+        },
         {
           payload: { delta: "T", executionAttempt: 1, offset: 0 },
           stage: "generating",
@@ -350,7 +387,14 @@ describe("research task production runtime", () => {
           stage: "generating",
           type: "research_task.answer_delta",
         },
-        { stage: "completed", type: "research_task.stage_changed" },
+        {
+          payload: {
+            details: { chunks: 0, documents: 0, sources: 0 },
+            previousStage: "generating",
+          },
+          stage: "completed",
+          type: "research_task.stage_changed",
+        },
       ],
     });
   });
@@ -1504,11 +1548,11 @@ function runtimeOptions(
   };
 }
 
-function traceStep(name: string) {
+function traceStep(name: string, metadata: Record<string, unknown> = {}) {
   return {
     step: {
       endedAt: "2026-07-14T00:00:01.000Z",
-      metadata: {},
+      metadata,
       name,
       startedAt: "2026-07-14T00:00:00.000Z",
       status: "ok" as const,

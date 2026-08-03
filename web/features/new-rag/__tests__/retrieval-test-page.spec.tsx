@@ -288,21 +288,44 @@ describe('RetrievalTestPage', () => {
           onEvent({
             createdAt: new Date(1_800_000_000_000 + seconds * 1000).toISOString(),
             id: `event-${index + 1}`,
-            payload:
-              stage === 'retrieving'
+            payload: {
+              ...(stage === 'retrieving'
                 ? {
-                    results: [
-                      {
-                        chunkCount: 3,
-                        createdAt: '2027-01-15T08:00:02.000Z',
-                        question: 'Refund policy',
-                        sourceId: 'internal-source-id',
-                      },
-                    ],
-                    sourceCount: 2,
-                    unknownTotal: 9,
+                    details: { questions: ['Compare the refund policies'], topK: 8 },
+                    previousStage: 'planning',
                   }
-                : {},
+                : {}),
+              ...(stage === 'analyzing'
+                ? {
+                    details: {
+                      results: [
+                        {
+                          chunkCount: 3,
+                          createdAt: '2027-01-15T08:00:02.000Z',
+                          question: 'Refund policy',
+                          sourceId: 'internal-source-id',
+                        },
+                      ],
+                      retrievalCount: 9,
+                      sourceCount: 2,
+                      unknownTotal: 9,
+                    },
+                    previousStage: 'retrieving',
+                  }
+                : {}),
+              ...(stage === 'generating'
+                ? {
+                    details: { chunks: 3, retrievalCount: 9 },
+                    previousStage: 'analyzing',
+                  }
+                : {}),
+              ...(stage === 'completed'
+                ? {
+                    details: { chunks: 3, documents: 2, sources: 2 },
+                    previousStage: 'generating',
+                  }
+                : {}),
+            },
             researchTaskJobId: 'research-completed',
             sequence: index + 1,
             stage,
@@ -336,7 +359,14 @@ describe('RetrievalTestPage', () => {
     expect(screen.getByText('5s')).toBeInTheDocument()
     expect(screen.getByText('7s')).toBeInTheDocument()
     expect(screen.getByText('11s')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sources: 2')).toBeInTheDocument()
+    expect(screen.getAllByText('dataset.newKnowledge.sources: 2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('dataset.newKnowledge.documents: 2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('dataset.newKnowledge.chunkCount: 3').length).toBeGreaterThan(1)
+    expect(screen.getAllByText('Compare the refund policies').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText('dataset.newKnowledge.settings.topKLabel: 8').length,
+    ).toBeGreaterThan(0)
+    expect(screen.getAllByText('dataset.newKnowledge.retrievalCount: 9').length).toBeGreaterThan(1)
     expect(
       screen.getByText('Refund policy · 3 dataset.newKnowledge.chunkCount'),
     ).toBeInTheDocument()
@@ -345,6 +375,53 @@ describe('RetrievalTestPage', () => {
     expect(screen.queryByText(/unknown.*9/i)).not.toBeInTheDocument()
     expect(apiMock.refetchTasks).not.toHaveBeenCalled()
     expect(apiMock.refetchPartials).not.toHaveBeenCalled()
+  })
+
+  it('fills historical research stages from persisted task and evidence data', async () => {
+    apiMock.researchTasks = [
+      {
+        completed_at: 1_800_000_025,
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-legacy',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'Where is the warranty policy?',
+        stage: 'completed',
+        updated_at: 1_800_000_025,
+      },
+    ]
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        const stages = ['planning', 'retrieving', 'analyzing', 'generating', 'completed']
+        stages.forEach((stage, index) =>
+          onEvent({
+            createdAt: new Date(1_800_000_000_000 + index * 1000).toISOString(),
+            id: `legacy-event-${index + 1}`,
+            payload: {},
+            researchTaskJobId: 'research-legacy',
+            sequence: index + 1,
+            stage,
+            type: index ? 'research_task.stage_changed' : 'research_task.started',
+          }),
+        )
+        return { cursor: '5', reconnect: false, terminal: true }
+      },
+    )
+    const user = userEvent.setup()
+    renderPage({ searchParams: '?research=research-legacy' })
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.processLog' }),
+    )
+
+    expect(
+      await screen.findByText('Where is the warranty policy? · 0 dataset.newKnowledge.chunkCount'),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('dataset.newKnowledge.chunkCount: 0').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('dataset.newKnowledge.documents: 0').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('dataset.newKnowledge.sources: 0').length).toBeGreaterThan(0)
   })
 
   it('replaces the just-now label after the first minute', () => {

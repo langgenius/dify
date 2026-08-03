@@ -263,7 +263,7 @@ export function createResearchTaskRuntime({
         capabilityGrants,
         current,
       );
-      current = await runResearchTask({
+      const result = await runResearchTask({
         access,
         allowLegacyProfileFallback,
         authorizationContext,
@@ -284,6 +284,7 @@ export function createResearchTaskRuntime({
           current = updated;
         },
       });
+      current = result.job;
       await assertWritable();
       const completed = await serialize(() => repository.completeExecution(fence(current, now())));
       if (!completed) {
@@ -297,6 +298,7 @@ export function createResearchTaskRuntime({
       });
       await assertWritable();
       await publishProgress(completed, "research_task.stage_changed", {
+        details: result.generationDetails,
         previousStage: "generating",
       });
       return "succeeded";
@@ -524,7 +526,10 @@ async function runResearchTask({
   readonly repository: ResearchTaskDurableRepository;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
   readonly updateCurrent: (current: ResearchTaskJob) => void;
-}): Promise<ResearchTaskJob> {
+}): Promise<{
+  readonly generationDetails: Record<string, unknown>;
+  readonly job: ResearchTaskJob;
+}> {
   let current = getCurrent();
   let authorizationContext = initialAuthorizationContext;
   const assertWritable = async (): Promise<void> => {
@@ -543,7 +548,7 @@ async function runResearchTask({
       current,
     );
   };
-  const advance = async (nextStage: ResearchTaskJobStage) => {
+  const advance = async (nextStage: ResearchTaskJobStage, details?: Record<string, unknown>) => {
     await assertWritable();
     const transition = await serialize(async () => {
       current = getCurrent();
@@ -558,7 +563,10 @@ async function runResearchTask({
     current = updated;
     updateCurrent(updated);
     await assertWritable();
-    await publishProgress(updated, "research_task.stage_changed", { previousStage });
+    await publishProgress(updated, "research_task.stage_changed", {
+      ...(details ? { details } : {}),
+      previousStage,
+    });
   };
 
   await revalidate();
@@ -604,7 +612,7 @@ async function runResearchTask({
   }
   await revalidate();
   if (current.stage === "planning") {
-    await advance("retrieving");
+    await advance("retrieving", { questions: [current.query], topK: plan.topK });
   }
 
   const projectionSnapshot =
@@ -622,6 +630,8 @@ async function runResearchTask({
   let pendingAnswerOffset = 0;
   let publishedAnswerDelta = false;
   let evidenceBundle: EvidenceBundle | undefined;
+  let retrievalCandidateCount: number | undefined;
+  let retrievedChunkCount: number | undefined;
   const flushAnswerDelta = async (): Promise<void> => {
     if (!pendingAnswerDelta) return;
     current = getCurrent();
@@ -700,24 +710,67 @@ async function runResearchTask({
       event.step.name === "query.retrieve" &&
       current.stage === "retrieving"
     ) {
-      await advance("analyzing");
+      retrievedChunkCount = nonNegativeInteger(event.step.metadata.itemCount);
+      retrievalCandidateCount = retrievalCandidateCountFromMetadata(event.step.metadata);
+      await advance(
+        "analyzing",
+        retrievedChunkCount === undefined
+          ? undefined
+          : {
+              results: [{ chunkCount: retrievedChunkCount, question: current.query }],
+              ...(retrievalCandidateCount === undefined
+                ? {}
+                : { retrievalCount: retrievalCandidateCount }),
+            },
+      );
     }
     if (
       event.type === "trace-step" &&
       event.step.name === "query.answer" &&
       current.stage === "analyzing"
     ) {
-      await advance("generating");
+      await advance(
+        "generating",
+        retrievedChunkCount === undefined
+          ? undefined
+          : {
+              chunks: retrievedChunkCount,
+              ...(retrievalCandidateCount === undefined
+                ? {}
+                : { retrievalCount: retrievalCandidateCount }),
+            },
+      );
     }
   }
 
   await flushAnswerDelta();
 
   if (current.stage === "retrieving") {
-    await advance("analyzing");
+    retrievedChunkCount ??= evidenceBundle?.items.length;
+    await advance(
+      "analyzing",
+      retrievedChunkCount === undefined
+        ? undefined
+        : {
+            results: [{ chunkCount: retrievedChunkCount, question: current.query }],
+            ...(retrievalCandidateCount === undefined
+              ? {}
+              : { retrievalCount: retrievalCandidateCount }),
+          },
+    );
   }
   if (current.stage === "analyzing") {
-    await advance("generating");
+    await advance(
+      "generating",
+      retrievedChunkCount === undefined
+        ? undefined
+        : {
+            chunks: retrievedChunkCount,
+            ...(retrievalCandidateCount === undefined
+              ? {}
+              : { retrievalCount: retrievalCandidateCount }),
+          },
+    );
   }
   await revalidate();
   const normalizedAnswer = answer.trim();
@@ -735,7 +788,32 @@ async function runResearchTask({
       tenantId: current.tenantId,
     });
   }
-  return getCurrent();
+  const evidenceItems = evidenceBundle?.items ?? [];
+  const documentIds = new Set(
+    evidenceItems.flatMap((item) => item.citations.map((citation) => citation.documentAssetId)),
+  );
+  return {
+    generationDetails: {
+      chunks: evidenceItems.length,
+      documents: documentIds.size,
+      sources: documentIds.size,
+    },
+    job: getCurrent(),
+  };
+}
+
+function nonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function retrievalCandidateCountFromMetadata(metadata: Record<string, unknown>) {
+  if (!isPlainObject(metadata.metrics)) return undefined;
+  return (
+    nonNegativeInteger(metadata.metrics.fusedCandidates) ??
+    nonNegativeInteger(metadata.metrics.rerankCandidates) ??
+    nonNegativeInteger(metadata.metrics.denseCandidates) ??
+    nonNegativeInteger(metadata.metrics.ftsCandidates)
+  );
 }
 
 function durableRequestedMode(
