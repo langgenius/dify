@@ -1317,8 +1317,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <Properties>
       <Property name='file' type='file' key='file'>
         オーディオファイル。
-        サポートされている形式：`['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`
-        ファイルサイズ制限：15MB
+        サポートされている形式：`['mp3', 'm4a', 'wav', 'amr', 'mpga']`
+        ファイルサイズ制限：30MB
       </Property>
       <Property name='user' type='string' key='user'>
       ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
@@ -1337,7 +1337,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       label="/audio-to-text"
       targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\
 --header 'Authorization: Bearer {api_key}' \\
---form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}
+--form 'file=@localfile;type=audio/[mp3|m4a|wav|amr|mpga]'`}
     />
 
     <CodeGroup title="応答">
