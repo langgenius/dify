@@ -29,8 +29,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
 from libs.helper import timezone as validate_timezone
 from libs.passport import PassportService
+from libs.key_providers import generate_key_pair
 from libs.password import compare_password, hash_password, valid_password
-from libs.rsa import generate_key_pair
 from libs.token import generate_csrf_token
 from models.account import (
     Account,

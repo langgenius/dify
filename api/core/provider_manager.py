@@ -572,14 +572,12 @@ class ProviderManager:
     instance scope.
     """
 
-    decoding_rsa_key: Any | None
-    decoding_cipher_rsa: Any | None
+    decoding_context: Any | None
     _model_runtime: ModelRuntime
     _configurations_cache: dict[str, ProviderConfigurations]
 
     def __init__(self, model_runtime: ModelRuntime):
-        self.decoding_rsa_key = None
-        self.decoding_cipher_rsa = None
+        self.decoding_context = None
         self._model_runtime = model_runtime
         self._configurations_cache = {}
 
@@ -1495,16 +1493,15 @@ class ProviderManager:
             return {}
 
         # Decrypt secret variables
-        if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-            self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+        if self.decoding_context is None:
+            self.decoding_context = encrypter.get_decrypt_decoding(tenant_id)
 
         for variable in secret_variables:
             if variable in credentials:
                 with contextlib.suppress(ValueError):
                     credentials[variable] = encrypter.decrypt_token_with_decoding(
                         credentials.get(variable) or "",
-                        self.decoding_rsa_key,
-                        self.decoding_cipher_rsa,
+                        self.decoding_context,
                     )
 
         # Cache the decrypted credentials
@@ -1642,17 +1639,16 @@ class ProviderManager:
                         else []
                     )
 
-                    # Get decoding rsa key and cipher for decrypting credentials
-                    if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                        self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+                    # Get decoding context for decrypting credentials
+                    if self.decoding_context is None:
+                        self.decoding_context = encrypter.get_decrypt_decoding(tenant_id)
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
                             try:
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
-                                    self.decoding_rsa_key,
-                                    self.decoding_cipher_rsa,
+                                    self.decoding_context,
                                 )
                             except ValueError:
                                 pass
@@ -1786,9 +1782,9 @@ class ProviderManager:
                             except (ValueError, JSONDecodeError):
                                 continue
 
-                            # Get decoding rsa key and cipher for decrypting credentials
-                            if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                                self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(
+                            # Get decoding context for decrypting credentials
+                            if self.decoding_context is None:
+                                self.decoding_context = encrypter.get_decrypt_decoding(
                                     load_balancing_model_config.tenant_id
                                 )
 
@@ -1797,8 +1793,7 @@ class ProviderManager:
                                     try:
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
-                                            self.decoding_rsa_key,
-                                            self.decoding_cipher_rsa,
+                                            self.decoding_context,
                                         )
                                     except ValueError:
                                         pass
