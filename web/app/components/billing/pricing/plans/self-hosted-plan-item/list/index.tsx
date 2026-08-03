@@ -16,7 +16,7 @@ const List = ({ plan }: ListProps) => {
   }) as string[]
 
   return (
-    <div className="flex flex-col gap-y-[10px] p-6">
+    <div className="flex flex-col gap-y-2.5 p-6">
       <div className="system-md-semibold text-text-secondary">
         <Trans
           i18nKey={($) => $[`${i18nPrefix}.includesTitle`]}

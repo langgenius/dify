@@ -177,7 +177,7 @@ export function AgentWorkingDirectoryBreadcrumb({
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger
                       aria-label="..."
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-[popup-open]:bg-state-base-hover data-[popup-open]:text-text-secondary"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
                     >
                       <span aria-hidden className="i-ri-more-fill size-4" />
                     </DropdownMenuTrigger>

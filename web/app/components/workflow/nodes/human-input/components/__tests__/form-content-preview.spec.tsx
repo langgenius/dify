@@ -36,14 +36,6 @@ vi.mock('@/app/components/base/badge', () => ({
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, variant }: { children?: ReactNode; variant?: string }) => (
-    <button type="button" data-testid={`action-${variant}`}>
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/utils', () => ({
   getButtonStyle: (...args: unknown[]) => mockGetButtonStyle(...args),
 }))
@@ -139,7 +131,7 @@ describe('FormContentPreview', () => {
     expect(screen.getByTestId('variable-path'))!.toHaveTextContent('#Classifier.answer#')
     expect(screen.getByTestId('note'))!.toHaveTextContent('Classifier')
     expect(screen.getByText(/Can't find note:/))!.toHaveTextContent('missing_field')
-    expect(screen.getByTestId('action-primary'))!.toHaveTextContent('Approve')
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(screen.getByText('nodes.humanInput.editor.previewTip'))!.toBeInTheDocument()
   })
 

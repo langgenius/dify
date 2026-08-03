@@ -1,42 +1,22 @@
 'use client'
 
-import type { ReactNode, SetStateAction } from 'react'
+import type { ReactNode } from 'react'
 import type { ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { SettingsTab } from '@/app/components/header/account-setting/constants'
-import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  DEFAULT_ACCOUNT_SETTING_TAB,
-  isIntegrationSettingTab,
-  isUserSettingTab,
-  isValidSettingsTab,
-  isWorkspaceSettingTab,
-} from '@/app/components/header/account-setting/constants'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
+import { useCallback, useState } from 'react'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import { useAccountSettingModal, usePricingModal } from '@/hooks/use-query-params'
+import { usePricingModal } from '@/hooks/use-query-params'
 import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import { ModalContext } from './modal-context'
 
-const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
-  ssr: false,
-})
-const IntegrationsSettingModal = dynamic(
-  () => import('@/app/components/tools/integrations-setting-modal'),
-  {
-    ssr: false,
-  },
-)
 const ModerationSettingModal = dynamic(
   () =>
     import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'),
@@ -71,13 +51,6 @@ const ExternalAPIModal = dynamic(
     ssr: false,
   },
 )
-const ModelLoadBalancingModal = dynamic(
-  () =>
-    import('@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'),
-  {
-    ssr: false,
-  },
-)
 const OpeningSettingModal = dynamic(
   () => import('@/app/components/base/features/new-feature-panel/conversation-opener/modal'),
   {
@@ -88,9 +61,6 @@ const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugi
   ssr: false,
 })
 
-const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
-  ssr: false,
-})
 const TriggerEventsLimitModal = dynamic(
   () => import('@/app/components/billing/trigger-events-limit-modal'),
   {
@@ -102,19 +72,7 @@ type ModalContextProviderProps = {
   children: ReactNode
 }
 export const ModalContextProvider = ({ children }: ModalContextProviderProps) => {
-  // Use nuqs hooks for URL-based modal state management
   const [showPricingModal, setPricingModalOpen] = usePricingModal()
-  const [urlAccountModalState, setUrlAccountModalState] = useAccountSettingModal()
-
-  const accountSettingCallbacksRef = useRef<Omit<ModalState<SettingsTab>, 'payload'> | null>(null)
-  const settingsTab = urlAccountModalState.isOpen
-    ? isValidSettingsTab(urlAccountModalState.payload)
-      ? urlAccountModalState.payload
-      : DEFAULT_ACCOUNT_SETTING_TAB
-    : null
-  const accountSettingModalTab =
-    isWorkspaceSettingTab(settingsTab) || isUserSettingTab(settingsTab) ? settingsTab : null
-  const integrationSettingModalSection = isIntegrationSettingTab(settingsTab) ? settingsTab : null
   const [showModerationSettingModal, setShowModerationSettingModal] =
     useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] =
@@ -122,8 +80,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] =
     useState<ModalState<CreateExternalAPIReq> | null>(null)
-  const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] =
-    useState<ModelLoadBalancingModalProps | null>(null)
   const [showOpeningModal, setShowOpeningModal] = useState<ModalState<
     OpeningStatement & {
       promptVariables?: PromptVariable[]
@@ -133,56 +89,11 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   > | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] =
     useState<ModalState<UpdatePluginPayload> | null>(null)
-  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] =
-    useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const setEducationVerifying = useSetEducationVerifying()
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
-  const handleCancelAccountSettingModal = () => {
-    setEducationVerifying((educationVerifying) =>
-      educationVerifying === 'yes' ? null : educationVerifying,
-    )
-    accountSettingCallbacksRef.current?.onCancelCallback?.()
-    accountSettingCallbacksRef.current = null
-    setUrlAccountModalState(null)
-  }
-
-  const handleAccountSettingTabChange = useCallback(
-    (tab: SettingsTab) => {
-      setUrlAccountModalState({ payload: tab })
-    },
-    [setUrlAccountModalState],
-  )
-
-  const setShowAccountSettingModal = useCallback(
-    (next: SetStateAction<ModalState<SettingsTab> | null>) => {
-      const currentState = settingsTab
-        ? { payload: settingsTab, ...accountSettingCallbacksRef.current }
-        : null
-      const resolvedState = typeof next === 'function' ? next(currentState) : next
-      if (!resolvedState) {
-        accountSettingCallbacksRef.current = null
-        setUrlAccountModalState(null)
-        return
-      }
-      const { payload, ...callbacks } = resolvedState
-      accountSettingCallbacksRef.current = callbacks
-      setUrlAccountModalState({ payload })
-    },
-    [settingsTab, setUrlAccountModalState],
-  )
-
-  useEffect(() => {
-    if (!urlAccountModalState.isOpen) accountSettingCallbacksRef.current = null
-  }, [urlAccountModalState.isOpen])
-
   const { plan, isFetchedPlan } = useProviderContext()
-  const {
-    showTriggerEventsLimitModal,
-    setShowTriggerEventsLimitModal,
-    persistTriggerEventsLimitModalDismiss,
-  } = useTriggerEventsLimitModal({
+  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal({
     plan,
     isFetchedPlan,
     currentWorkspaceId,
@@ -281,57 +192,33 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     setPricingModalOpen(false)
   }, [setPricingModalOpen])
   const hasBlockingModalOpen = Boolean(
-    accountSettingModalTab ||
-    integrationSettingModalSection ||
     showModerationSettingModal ||
     showExternalDataToolModal ||
     showPricingModal ||
     showAnnotationFullModal ||
     showModelModal ||
     showExternalKnowledgeAPIModal ||
-    showModelLoadBalancingModal ||
     showOpeningModal ||
     showUpdatePluginModal ||
-    showEducationExpireNoticeModal ||
-    showTriggerEventsLimitModal,
+    triggerEventsLimitModal,
   )
 
   return (
     <ModalContext.Provider
       value={{
         hasBlockingModalOpen,
-        setShowAccountSettingModal,
         setShowModerationSettingModal,
         setShowExternalDataToolModal,
         setShowPricingModal: handleShowPricingModal,
         setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
         setShowModelModal,
         setShowExternalKnowledgeAPIModal,
-        setShowModelLoadBalancingModal,
         setShowOpeningModal,
         setShowUpdatePluginModal,
-        setShowEducationExpireNoticeModal,
-        setShowTriggerEventsLimitModal,
       }}
     >
       <>
         {children}
-        {accountSettingModalTab && (
-          <AccountSetting
-            activeTab={accountSettingModalTab}
-            onCancelAction={handleCancelAccountSettingModal}
-            onTabChangeAction={handleAccountSettingTabChange}
-          />
-        )}
-        {integrationSettingModalSection && (
-          <IntegrationsSettingModal
-            section={integrationSettingModalSection}
-            source={accountSettingCallbacksRef.current?.source}
-            onCancel={handleCancelAccountSettingModal}
-            onSectionChange={(section) => setUrlAccountModalState({ payload: section })}
-          />
-        )}
-
         {!!showModerationSettingModal && (
           <ModerationSettingModal
             data={showModerationSettingModal.payload}
@@ -382,9 +269,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             isEditMode={showExternalKnowledgeAPIModal.isEditMode ?? false}
           />
         )}
-        {Boolean(showModelLoadBalancingModal) && (
-          <ModelLoadBalancingModal {...showModelLoadBalancingModal!} />
-        )}
         {showOpeningModal && (
           <OpeningSettingModal
             data={showOpeningModal.payload}
@@ -409,25 +293,15 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             }}
           />
         )}
-        {!!showEducationExpireNoticeModal && (
-          <ExpireNoticeModal
-            {...showEducationExpireNoticeModal.payload}
-            onClose={() => setShowEducationExpireNoticeModal(null)}
-          />
-        )}
-        {!!showTriggerEventsLimitModal && (
+        {!!triggerEventsLimitModal && (
           <TriggerEventsLimitModal
             show
-            usage={showTriggerEventsLimitModal.payload.usage}
-            total={showTriggerEventsLimitModal.payload.total}
-            resetInDays={showTriggerEventsLimitModal.payload.resetInDays}
-            onClose={() => {
-              persistTriggerEventsLimitModalDismiss()
-              setShowTriggerEventsLimitModal(null)
-            }}
+            usage={triggerEventsLimitModal.usage}
+            total={triggerEventsLimitModal.total}
+            resetInDays={triggerEventsLimitModal.resetInDays}
+            onClose={dismissTriggerEventsLimitModal}
             onUpgrade={() => {
-              persistTriggerEventsLimitModalDismiss()
-              setShowTriggerEventsLimitModal(null)
+              dismissTriggerEventsLimitModal()
               handleShowPricingModal()
             }}
           />

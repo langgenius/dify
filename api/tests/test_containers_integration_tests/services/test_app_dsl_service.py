@@ -142,7 +142,6 @@ class TestAppDslService:
             mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
-
             yield {
                 "workflow_service": mock_workflow_service,
                 "dependencies_service": mock_dependencies_service,
@@ -1034,7 +1033,9 @@ class TestAppDslService:
             )
         )
 
-        imported_graph, warnings = AgentDslService(db_session_with_containers).import_workflow_packages(
+        imported_graph, warnings, retirement_candidates = AgentDslService(
+            db_session_with_containers
+        ).import_workflow_packages(
             workflow=workflow,
             portable_graph=graph,
             raw_packages={"agent_1": package.model_dump(mode="json")},
@@ -1043,6 +1044,7 @@ class TestAppDslService:
         db_session_with_containers.commit()
 
         assert warnings == []
+        assert retirement_candidates == set()
         graph_bindings = [node["data"]["agent_binding"] for node in imported_graph["nodes"]]
         assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in graph_bindings)
         assert len({binding["agent_id"] for binding in graph_bindings}) == 2

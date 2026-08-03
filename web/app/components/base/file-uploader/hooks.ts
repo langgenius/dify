@@ -13,6 +13,7 @@ import {
   FILE_SIZE_LIMIT,
   IMG_SIZE_LIMIT,
   MAX_FILE_UPLOAD_LIMIT,
+  SKILL_FILE_SIZE_LIMIT,
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -38,6 +39,8 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
     Number(fileUploadConfig?.audio_file_size_limit) * 1024 * 1024 || AUDIO_SIZE_LIMIT
   const videoSizeLimit =
     Number(fileUploadConfig?.video_file_size_limit) * 1024 * 1024 || VIDEO_SIZE_LIMIT
+  const skillSizeLimit =
+    Number(fileUploadConfig?.skill_file_size_limit) * 1024 * 1024 || SKILL_FILE_SIZE_LIMIT
   const maxFileUploadLimit =
     Number(fileUploadConfig?.workflow_file_upload_limit) || MAX_FILE_UPLOAD_LIMIT
 
@@ -46,6 +49,7 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
     docSizeLimit,
     audioSizeLimit,
     videoSizeLimit,
+    skillSizeLimit,
     maxFileUploadLimit,
   }
 }

@@ -1,4 +1,9 @@
 'use client'
+import type {
+  InstalledAppListResponse,
+  InstalledAppResponse,
+} from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { InfiniteData } from '@tanstack/react-query'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -9,81 +14,112 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useBoolean } from 'ahooks'
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
+import { InfiniteScrollSentinel } from '@/app/components/explore/installed-app-navigation/infinite-scroll-sentinel'
+import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import Link from '@/next/link'
 import { usePathname, useSelectedLayoutSegments } from '@/next/navigation'
-import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
-import Item from './app-nav-item'
+import { consoleQuery } from '@/service/client'
 import NoApps from './no-apps'
+
+const emptyInstalledApps: InstalledAppResponse[] = []
+
+const selectInstalledApps = (data: InfiniteData<InstalledAppListResponse, string | undefined>) =>
+  data.pages.flatMap((page) => page.installed_apps)
 
 const SideBar = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
+  const scrollRef = React.useRef<HTMLDivElement>(null)
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = pathname === '/' || lastSegment === 'apps'
-  const { data, isPending } = useGetInstalledApps()
-  const installedApps = data?.installed_apps ?? []
-  const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
-  const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
+  const installedAppsQuery = useInfiniteQuery(
+    consoleQuery.installedApps.get.infiniteOptions({
+      input: (pageParam: string | undefined) => ({
+        query: {
+          limit: 20,
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+        },
+      }),
+      getNextPageParam: (lastPage) =>
+        lastPage.has_more && lastPage.next_cursor ? lastPage.next_cursor : undefined,
+      initialPageParam: undefined,
+      select: selectInstalledApps,
+    }),
+  )
+  const installedApps = installedAppsQuery.data ?? emptyInstalledApps
+  const uninstallAppMutation = useMutation(
+    consoleQuery.installedApps.byInstalledAppId.delete.mutationOptions(),
+  )
+  const updatePinStatusMutation = useMutation(
+    consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
+  )
 
-  const [isFold, { toggle: toggleIsFold }] = useBoolean(false)
+  const [isFold, setIsFold] = useState(false)
 
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [currId, setCurrId] = useState('')
-  const handleDelete = async () => {
-    const id = currId
-    await uninstallApp(id)
-    setShowConfirm(false)
-    toast.success(t(($) => $['api.remove'], { ns: 'common' }))
+  const [uninstallDialogAppId, setUninstallDialogAppId] = useState<string | null>(null)
+  const handleDelete = () => {
+    if (!uninstallDialogAppId) return
+
+    uninstallAppMutation.mutate(
+      {
+        params: { installed_app_id: uninstallDialogAppId },
+      },
+      {
+        onSuccess: () => {
+          setUninstallDialogAppId(null)
+          toast.success(t(($) => $['api.remove'], { ns: 'common' }))
+        },
+      },
+    )
   }
 
-  const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
-    await updatePinStatus({ appId: id, isPinned })
-    toast.success(t(($) => $['api.success'], { ns: 'common' }))
+  const handleUpdatePinStatus = (id: string, isPinned: boolean) => {
+    updatePinStatusMutation.mutate(
+      {
+        params: { installed_app_id: id },
+        body: { is_pinned: isPinned },
+      },
+      {
+        onSuccess: () => toast.success(t(($) => $['api.success'], { ns: 'common' })),
+      },
+    )
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   const webAppsLabelId = React.useId()
-  const installedAppItems = installedApps.map(
-    (
-      { id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } },
-      index,
-    ) => (
-      <React.Fragment key={id}>
-        <Item
-          name={name}
-          icon_type={icon_type}
-          icon={icon}
-          icon_background={icon_background}
-          icon_url={icon_url}
-          id={id}
-          isSelected={lastSegment?.toLowerCase() === id}
-          isPinned={is_pinned}
-          togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
-          uninstallable={uninstallable}
-          onDelete={(id) => {
-            setCurrId(id)
-            setShowConfirm(true)
-          }}
-        />
-        {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
-      </React.Fragment>
-    ),
-  )
+  const installedAppItems = installedApps.map((installedApp, index) => (
+    <React.Fragment key={installedApp.id}>
+      <AppNavItem
+        app={installedApp}
+        isSelected={lastSegment?.toLowerCase() === installedApp.id}
+        onTogglePin={handleUpdatePinStatus}
+        onDelete={setUninstallDialogAppId}
+      />
+      {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
+    </React.Fragment>
+  ))
 
   return (
     <div
       data-folded={isFold ? 'true' : undefined}
       className={cn(
-        'group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]',
-        isFold && 'sm:w-[56px]',
+        'group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-60',
+        isFold && 'sm:w-14',
       )}
     >
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
@@ -116,9 +152,32 @@ const SideBar = () => {
         </Link>
       </div>
 
-      {!isPending && installedApps.length === 0 && !isFold && (
-        <div className="mt-5">
-          <NoApps />
+      {!installedAppsQuery.isPending &&
+        !installedAppsQuery.isError &&
+        installedApps.length === 0 &&
+        !isFold && (
+          <div className="mt-5">
+            <NoApps />
+          </div>
+        )}
+
+      {!installedAppsQuery.isPending && installedAppsQuery.isError && !isFold && (
+        <div
+          className="mt-5 flex flex-col items-start gap-1 px-2 system-xs-regular text-text-tertiary"
+          role="alert"
+        >
+          <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+          <button
+            type="button"
+            className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+            onClick={() => {
+              if (installedAppsQuery.isFetchNextPageError)
+                void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
+              else void installedAppsQuery.refetch()
+            }}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </button>
         </div>
       )}
 
@@ -134,20 +193,52 @@ const SideBar = () => {
           )}
           {!isFold ? (
             <div className="min-h-0 flex-1">
-              <ScrollArea
-                className="h-full"
-                slotClassNames={{
-                  viewport: 'overscroll-contain',
-                  content: 'space-y-0.5 pr-3',
-                }}
-                labelledBy={webAppsLabelId}
-              >
-                {installedAppItems}
+              <ScrollArea className="h-full">
+                <ScrollAreaViewport
+                  ref={scrollRef}
+                  aria-busy={installedAppsQuery.isFetchingNextPage}
+                  aria-labelledby={webAppsLabelId}
+                  className="overscroll-contain"
+                  role="region"
+                >
+                  <ScrollAreaContent className="space-y-0.5 pr-3">
+                    {installedAppItems}
+                    {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
+                    <InfiniteScrollSentinel
+                      canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
+                      fetchNextPage={() =>
+                        installedAppsQuery.fetchNextPage({
+                          cancelRefetch: false,
+                        })
+                      }
+                      isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
+                      scrollRootRef={scrollRef}
+                    />
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
               </ScrollArea>
             </div>
           ) : (
-            <div className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto">
+            <div
+              ref={scrollRef}
+              aria-busy={installedAppsQuery.isFetchingNextPage}
+              className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto"
+            >
               {installedAppItems}
+              {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
+              <InfiniteScrollSentinel
+                canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
+                fetchNextPage={() =>
+                  installedAppsQuery.fetchNextPage({
+                    cancelRefetch: false,
+                  })
+                }
+                isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
+                scrollRootRef={scrollRef}
+              />
             </div>
           )}
         </div>
@@ -162,7 +253,7 @@ const SideBar = () => {
               : t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })
           }
           className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden"
-          onClick={toggleIsFold}
+          onClick={() => setIsFold((value) => !value)}
         >
           {isFold ? (
             <span aria-hidden="true" className="i-ri-expand-right-line" />
@@ -172,7 +263,12 @@ const SideBar = () => {
         </button>
       </div>
 
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+      <AlertDialog
+        open={uninstallDialogAppId !== null}
+        onOpenChange={(open) => {
+          if (!open) setUninstallDialogAppId(null)
+        }}
+      >
         <AlertDialogContent>
           <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
@@ -183,12 +279,12 @@ const SideBar = () => {
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton disabled={isUninstalling}>
+            <AlertDialogCancelButton disabled={uninstallAppMutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              loading={isUninstalling}
-              disabled={isUninstalling}
+              loading={uninstallAppMutation.isPending}
+              disabled={uninstallAppMutation.isPending}
               onClick={handleDelete}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

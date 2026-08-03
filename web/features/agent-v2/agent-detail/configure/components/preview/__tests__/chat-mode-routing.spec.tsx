@@ -9,6 +9,10 @@ import { sendPreviewChatMessage } from '../preview-chat-request'
 
 const runtimePropsMock = vi.hoisted(() => vi.fn())
 
+vi.mock('../../community-edition-tip', () => ({
+  CommunityEditionTip: () => null,
+}))
+
 vi.mock('../chat-runtime', () => ({
   AgentChatRuntime: (
     props: Pick<AgentChatRuntimeProps, 'draftType'> & { sendMessage: AgentChatMessageSender },
@@ -51,18 +55,73 @@ describe('Agent chat mode request routing', () => {
     expect(runtimePropsMock.mock.calls.at(-1)?.[0]).not.toHaveProperty('draftType')
   })
 
-  it('should show only the agent name in the Preview empty-state title', () => {
+  it('should show the unconfigured notice below the Preview description', () => {
     render(<AgentPreviewChat {...commonProps} agentName="Research Agent" />)
 
     const renderEmptyState = runtimePropsMock.mock.calls.at(-1)?.[0].renderEmptyState
-    render(
+    const emptyStateView = render(
       renderEmptyState({
         agentName: 'Research Agent',
-        hasInstructions: true,
+        showUnconfiguredNotice: true,
       }),
+    )
+
+    const description = screen.getByText('agentV2.agentDetail.configure.preview.empty.description')
+    const unconfiguredNotice = screen.getByText(
+      'agentV2.agentDetail.configure.preview.unconfiguredNotice',
     )
 
     expect(screen.getByText('Research Agent')).toBeInTheDocument()
     expect(screen.queryByText('Preview Research Agent')).not.toBeInTheDocument()
+    expect(
+      description.compareDocumentPosition(unconfiguredNotice) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    emptyStateView.rerender(
+      renderEmptyState({
+        agentName: 'Research Agent',
+        showUnconfiguredNotice: false,
+      }),
+    )
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.unconfiguredNotice'),
+    ).not.toBeVisible()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.unconfiguredNotice').closest('p'),
+    ).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('should show the unconfigured notice below the Build description', () => {
+    render(<AgentBuildChat {...commonProps} />)
+
+    const renderEmptyState = runtimePropsMock.mock.calls.at(-1)?.[0].renderEmptyState
+    const emptyStateView = render(
+      renderEmptyState({
+        showUnconfiguredNotice: true,
+      }),
+    )
+
+    const description = screen.getByText('agentV2.agentDetail.configure.build.empty.description')
+    const unconfiguredNotice = screen.getByText(
+      'agentV2.agentDetail.configure.preview.unconfiguredNotice',
+    )
+
+    expect(
+      description.compareDocumentPosition(unconfiguredNotice) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    emptyStateView.rerender(
+      renderEmptyState({
+        showUnconfiguredNotice: false,
+      }),
+    )
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.unconfiguredNotice'),
+    ).not.toBeVisible()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.unconfiguredNotice').closest('p'),
+    ).toHaveAttribute('aria-hidden', 'true')
   })
 })

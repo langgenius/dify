@@ -367,9 +367,13 @@ describe('ModelParameterModal', () => {
       />,
     )
 
+    const trigger = screen.getByText('Custom Closed').closest('button')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
     fireEvent.click(screen.getByText('Custom Closed'))
 
     expect(screen.getByText('Custom Open')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('hide'))

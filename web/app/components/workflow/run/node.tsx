@@ -198,7 +198,7 @@ const NodePanel: FC<Props> = ({
             />
           )}
           {nodeInfo.status === 'running' && (
-            <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
+            <div className="flex shrink-0 items-center text-[13px] leading-4 font-medium text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
               <RiLoader2Line className="size-3.5 animate-spin" />
             </div>

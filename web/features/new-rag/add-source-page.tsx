@@ -452,7 +452,7 @@ function UnconfiguredProvider({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span aria-hidden className="i-ri-fire-line size-[18px] text-text-tertiary" />
+        <span aria-hidden className="i-ri-fire-line size-4.5 text-text-tertiary" />
       </span>
       <h3 className="mt-3 system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {

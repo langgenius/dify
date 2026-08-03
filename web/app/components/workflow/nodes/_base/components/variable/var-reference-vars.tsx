@@ -214,7 +214,7 @@ const Item: FC<ItemProps> = ({
     <div
       ref={itemRef}
       className={cn(
-        isObj || isStructureOutput ? 'pr-1' : 'pr-[18px]',
+        isObj || isStructureOutput ? 'pr-1' : 'pr-4.5',
         (isHovering || isSelected) &&
           (isObj || isStructureOutput
             ? 'bg-components-panel-on-panel-item-bg-hover'
@@ -490,7 +490,7 @@ const VarReferenceVars: FC<Props> = ({
             />
           </div>
           <div
-            className="relative left-[-4px] h-[0.5px] bg-black/5"
+            className="relative -left-1 h-[0.5px] bg-black/5"
             style={{
               width: 'calc(100% + 8px)',
             }}
@@ -510,7 +510,7 @@ const VarReferenceVars: FC<Props> = ({
             >
               {!item.isFlat && (
                 <div
-                  className="truncate px-3 system-xs-medium-uppercase leading-[22px] text-text-tertiary"
+                  className="truncate px-3 system-xs-medium-uppercase leading-5.5 text-text-tertiary"
                   title={item.title}
                 >
                   {item.title}
@@ -538,7 +538,7 @@ const VarReferenceVars: FC<Props> = ({
               {item.isFlat &&
                 !indexedFilteredVars[i + 1]?.isFlat &&
                 !!indexedFilteredVars.find((item) => !item.isFlat) && (
-                  <div className="relative mt-[14px] flex items-center space-x-1">
+                  <div className="relative mt-3.5 flex items-center space-x-1">
                     <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                     <div className="system-2xs-semibold-uppercase text-text-tertiary">
                       {t(($) => $['debug.lastOutput'], { ns: 'workflow' })}
@@ -550,7 +550,7 @@ const VarReferenceVars: FC<Props> = ({
           ))}
         </div>
       ) : (
-        <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">
+        <div className="mt-2 pl-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
           {t(($) => $['common.noVar'], { ns: 'workflow' })}
         </div>
       )}

@@ -42,7 +42,6 @@ class TestAppService:
             mock_model_instance = mock_model_manager.return_value
             mock_model_instance.get_default_model_instance.return_value = None
             mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")
-
             yield {
                 "feature_service": mock_feature_service,
                 "enterprise_service": mock_enterprise_service,

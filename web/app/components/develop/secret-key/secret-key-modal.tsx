@@ -111,7 +111,7 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
       >
         <DialogContent
           className={cn(
-            'max-h-[calc(100vh-80px)]! w-full max-w-[800px]! overflow-hidden! border-none text-left align-middle',
+            'max-h-[calc(100vh-80px)]! w-full max-w-200! overflow-hidden! border-none text-left align-middle',
             `${s.customModal} flex flex-col px-8`,
           )}
         >
@@ -146,10 +146,10 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
                 <div className="w-64 shrink-0 px-3">
                   {t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
                 </div>
-                <div className="w-[200px] shrink-0 px-3">
+                <div className="w-50 shrink-0 px-3">
                   {t(($) => $['apiKeyModal.created'], { ns: 'appApi' })}
                 </div>
-                <div className="w-[200px] shrink-0 px-3">
+                <div className="w-50 shrink-0 px-3">
                   {t(($) => $['apiKeyModal.lastUsed'], { ns: 'appApi' })}
                 </div>
                 <div className="grow px-3"></div>
@@ -163,13 +163,13 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
                     <div className="w-64 shrink-0 truncate px-3 font-mono">
                       {generateToken(api.token)}
                     </div>
-                    <div className="w-[200px] shrink-0 truncate px-3">
+                    <div className="w-50 shrink-0 truncate px-3">
                       {formatTime(
                         Number(api.created_at),
                         t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
                       )}
                     </div>
-                    <div className="w-[200px] shrink-0 truncate px-3">
+                    <div className="w-50 shrink-0 truncate px-3">
                       {api.last_used_at
                         ? formatTime(
                             Number(api.last_used_at),

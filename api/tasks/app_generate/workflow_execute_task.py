@@ -311,32 +311,43 @@ def _publish_failed_workflow_terminal_events(exc: Exception, exec_params: AppExe
     topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
 
 
-def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+def _get_event_data(event: str | Mapping[str, Any] | BaseModel) -> Mapping[str, Any] | None:
     if isinstance(event, BaseModel):
         # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
         # str / Mapping responses.
-        event_name = getattr(event, "event", None)
-    elif isinstance(event, Mapping):
-        event_name = event.get("event")
-    else:
+        return event.model_dump()
+    if isinstance(event, Mapping):
+        return event
+    return None
+
+
+def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
         return None
 
+    event_name = event_data.get("event")
     if event_name is None:
         return None
     return str(event_name)
 
 
 def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
-    if isinstance(event, BaseModel):
-        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
-        # str / Mapping responses.
-        task_id = getattr(event, "task_id", None)
-    elif isinstance(event, Mapping):
-        task_id = event.get("task_id")
-    else:
+    event_data = _get_event_data(event)
+    if event_data is None:
         return None
 
+    task_id = event_data.get("task_id")
     return task_id if isinstance(task_id, str) and task_id else None
+
+
+def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
+        return None
+
+    message = event_data.get("message")
+    return message if isinstance(message, str) and message else None
 
 
 def _publish_streaming_response(
@@ -406,6 +417,7 @@ def _publish_streaming_response(
     started_published = False
     terminal_published = False
     last_task_id = normalized_workflow_run_id
+    stream_error_message: str | None = None
 
     try:
         for event in response_stream:
@@ -429,6 +441,8 @@ def _publish_streaming_response(
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
+            elif event_name == "error":
+                stream_error_message = _get_error_message(event) or stream_error_message
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -448,7 +462,7 @@ def _publish_streaming_response(
             normalized_workflow_run_id,
         )
         _publish_failed_terminal_event(
-            error_message=unexpected_stream_end_message,
+            error_message=stream_error_message or unexpected_stream_end_message,
             task_id=last_task_id,
             publish_started=not started_published,
         )
