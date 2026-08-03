@@ -177,11 +177,14 @@ const Authorized = ({
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
           nativeButton={false}
-          render={
-            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
-              {renderTrigger(mergedIsOpen)}
+          render={(props, state) => (
+            <div
+              {...props}
+              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
+            >
+              {renderTrigger(state.open)}
             </div>
-          }
+          )}
           onClick={handleTriggerClick}
         />
         <PopoverContent

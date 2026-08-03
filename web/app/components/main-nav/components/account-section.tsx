@@ -18,7 +18,7 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
 
   return (
     <AccountDropdown
-      trigger={({ isOpen, ariaLabel }) => (
+      trigger={({ ariaLabel }) => (
         <button
           type="button"
           aria-label={ariaLabel}
@@ -26,7 +26,7 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
           className={cn(
             'flex min-w-0 shrink items-center rounded-full text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default disabled:hover:bg-transparent',
             compact ? 'justify-center p-1' : 'max-w-45 gap-3 py-1 pr-4 pl-1',
-            isOpen && 'bg-state-base-hover',
+            'data-popup-open:bg-state-base-hover',
           )}
         >
           <Avatar

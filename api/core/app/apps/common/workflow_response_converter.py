@@ -871,6 +871,7 @@ class WorkflowResponseConverter:
                 files.append(value.value.to_dict())
             case ArrayFileSegment():
                 files.extend([i.to_dict() for i in value.value])
+            # pyrefly: ignore [unreachable-match-case]
             case File():
                 files.append(value.to_dict())
             case list():

@@ -69,6 +69,7 @@ from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRun
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.start.entities import StartNodeData
@@ -1617,7 +1618,10 @@ class WorkflowService:
 
     def _handle_single_step_result(
         self,
-        invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
+        invoke_node_fn: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
         start_at: float,
         node_id: str,
     ) -> WorkflowNodeExecution:
@@ -1653,7 +1657,11 @@ class WorkflowService:
         return node_execution
 
     def _execute_node_safely(
-        self, invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]]
+        self,
+        invoke_node_fn: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
     ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
         """
         Execute node safely and handle errors according to error strategy.

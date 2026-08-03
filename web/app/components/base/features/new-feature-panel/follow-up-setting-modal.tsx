@@ -2,7 +2,6 @@ import type { SuggestedQuestionsAfterAnswer } from '@/app/components/base/featur
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -158,12 +157,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
                   value={PROMPT_MODE.default}
                   nativeButton
                   render={<button type="button" />}
-                  className={cn(
-                    'w-full rounded-xl border p-4 text-left transition-colors',
-                    promptMode === PROMPT_MODE.default
-                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                  )}
+                  className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -200,12 +194,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
                   value={PROMPT_MODE.custom}
                   nativeButton
                   render={<button type="button" />}
-                  className={cn(
-                    'w-full rounded-xl border p-4 text-left transition-colors',
-                    promptMode === PROMPT_MODE.custom
-                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                  )}
+                  className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
