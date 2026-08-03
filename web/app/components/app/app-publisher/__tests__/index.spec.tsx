@@ -204,23 +204,6 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
-  const dropdownMenuMock = await import('@/__mocks__/base-ui-dropdown-menu')
-  return {
-    ...dropdownMenuMock,
-    DropdownMenuGroup: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-    DropdownMenuLabel: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-    DropdownMenuSeparator: (props: React.HTMLAttributes<HTMLDivElement>) => (
-      <div role="separator" {...props} />
-    ),
-  }
-})
-
 vi.mock('../sections', () => ({
   PublisherTimelineMarker: () => <span data-testid="publisher-timeline-marker" />,
   PublisherSummarySection: (props: Record<string, any>) => {

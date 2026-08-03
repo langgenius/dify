@@ -48,24 +48,26 @@ const Operation: FC<Props> = ({
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={
+        render={(props, state) => (
           <ActionButton
+            {...props}
             className={cn(
-              isItemHovering || open
+              isItemHovering || state.open
                 ? 'pointer-events-auto opacity-100'
                 : 'pointer-events-none opacity-0',
+              props.className,
             )}
             state={
               isActive
                 ? ActionButtonState.Active
-                : open
+                : state.open
                   ? ActionButtonState.Hover
                   : ActionButtonState.Default
             }
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </ActionButton>
-        }
+        )}
         onClick={(e) => e.stopPropagation()}
       />
       <DropdownMenuContent

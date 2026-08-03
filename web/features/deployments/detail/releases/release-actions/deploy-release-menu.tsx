@@ -1,7 +1,6 @@
 'use client'
 
 import type { Release } from '@dify/contracts/enterprise/types.gen'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -161,7 +160,7 @@ function DeployReleaseMenuContent({ onDeleted }: { onDeleted?: () => void }) {
             <DropdownMenuItem
               disabled={isExportingDsl}
               aria-disabled={isExportingDsl}
-              className={cn('gap-2 px-3', isExportingDsl && 'cursor-not-allowed opacity-60')}
+              className="gap-2 px-3 data-disabled:cursor-not-allowed data-disabled:opacity-60"
               onClick={handleExportDsl}
             >
               <span
@@ -195,7 +194,7 @@ function DeployReleaseMenuContent({ onDeleted }: { onDeleted?: () => void }) {
                       <DropdownMenuItem
                         disabled={isDisabled}
                         aria-disabled={isDisabled}
-                        className={cn('gap-2 px-3', isDisabled && 'cursor-not-allowed opacity-60')}
+                        className="gap-2 px-3 data-disabled:cursor-not-allowed data-disabled:opacity-60"
                         onClick={() => {
                           if (isDisabled || !appInstanceId) return
                           setOpen(false)
@@ -219,10 +218,7 @@ function DeployReleaseMenuContent({ onDeleted }: { onDeleted?: () => void }) {
                 variant="destructive"
                 disabled={deleteActionDisabled}
                 aria-disabled={deleteActionDisabled}
-                className={cn(
-                  'gap-2 px-3',
-                  deleteActionDisabled && 'cursor-not-allowed opacity-60',
-                )}
+                className="gap-2 px-3 data-disabled:cursor-not-allowed data-disabled:opacity-60"
                 onClick={() => {
                   if (deleteActionDisabled) return
                   openDeleteReleaseDialog()

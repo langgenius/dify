@@ -7,7 +7,6 @@ import { useTranslation } from '#i18n'
 
 type MarketplaceTriggerProps = {
   selectedTagsLength: number
-  open: boolean
   tags: string[]
   tagsMap: Record<string, Tag>
   onTagsChange: (tags: string[]) => void
@@ -15,7 +14,6 @@ type MarketplaceTriggerProps = {
 
 function MarketplaceTrigger({
   selectedTagsLength,
-  open,
   tags,
   tagsMap,
   onTagsChange,
@@ -48,7 +46,7 @@ function MarketplaceTrigger({
               'h-8 justify-start px-2 py-1 text-text-tertiary focus-visible:ring-inset',
               !!selectedTagsLength &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg pr-8 shadow-xs shadow-shadow-shadow-3',
-              open && !selectedTagsLength && 'bg-state-base-hover',
+              !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
             <span className="p-0.5">

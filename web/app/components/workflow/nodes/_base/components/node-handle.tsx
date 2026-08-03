@@ -106,12 +106,12 @@ export const NodeTargetHandle = memo(
                 nextNodeTargetHandle: handleId,
               }}
               placement="left"
-              triggerClassName={(open) => `
+              triggerClassName={`
                 absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
                 group-hover:opacity-100
                 ${data.selected && 'opacity-100'}
-                ${open && 'opacity-100'}
+                data-popup-open:opacity-100
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
@@ -244,12 +244,12 @@ export const NodeSourceHandle = memo(
               prevNodeId: id,
               prevNodeSourceHandle: handleId,
             }}
-            triggerClassName={(open) => `
+            triggerClassName={`
               absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
               group-hover:opacity-100
               ${data.selected && 'opacity-100'}
-              ${open && 'opacity-100'}
+              data-popup-open:opacity-100
             `}
             availableBlocksTypes={availableNextBlocks}
           />

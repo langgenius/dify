@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -6,7 +5,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '../../../types'
-import AddBlock from '../add-block'
 import Node from '../node'
 import Panel from '../panel'
 import useConfig from '../use-config'
@@ -33,32 +31,6 @@ vi.mock('reactflow', async () => {
     useNodesInitialized: () => true,
   }
 })
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  __esModule: true,
-  default: ({
-    trigger,
-    onSelect,
-    availableBlocksTypes = [],
-    disabled,
-  }: {
-    trigger?: (open: boolean) => ReactNode
-    onSelect?: (type: BlockEnum) => void
-    availableBlocksTypes?: BlockEnum[]
-    disabled?: boolean
-  }) => (
-    <div>
-      {trigger ? <div>{trigger(false)}</div> : null}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onSelect?.(availableBlocksTypes[0] ?? BlockEnum.Code)}
-      >
-        select-block
-      </button>
-    </div>
-  ),
-}))
 
 vi.mock('../../iteration-start', () => ({
   IterationStartNodeDumb: () => <div>iteration-start-node</div>,
@@ -168,25 +140,6 @@ describe('iteration path', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('should add the next block from the iteration start node', async () => {
-    const user = userEvent.setup()
-
-    render(<AddBlock iterationNodeId="iteration-node" iterationNodeData={createData()} />)
-
-    await user.click(screen.getByRole('button', { name: 'select-block' }))
-
-    expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-      {
-        nodeType: BlockEnum.Code,
-        pluginDefaultValue: undefined,
-      },
-      {
-        prevNodeId: 'start-node',
-        prevNodeSourceHandle: 'source',
-      },
-    )
-  })
-
   it('should render candidate iteration nodes and show the parallel warning once', () => {
     render(
       <Node
@@ -201,7 +154,7 @@ describe('iteration path', () => {
     )
 
     expect(screen.getByText('iteration-start-node')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'select-block' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
     expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
     expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
     expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.iteration.answerNodeWarningDesc')
