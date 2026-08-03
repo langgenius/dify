@@ -125,9 +125,9 @@ export function AccessPointUrl({
       label={label}
       value={value}
       unavailableLabel={unavailableLabel}
-      unavailable={!loading && !unavailable && !enabled}
+      unavailable={unavailable}
       dimmed={!enabled}
-      loading={loading || unavailable}
+      loading={loading}
       actions={detailsAvailable ? availableActions : disabledActions}
     />
   )
