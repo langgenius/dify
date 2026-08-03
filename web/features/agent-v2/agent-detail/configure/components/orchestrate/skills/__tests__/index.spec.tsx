@@ -6,11 +6,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
+import { useAgentOrchestrateAddActions } from '../../add-actions-context'
 import { AgentConfigApiContextProvider } from '../../config-context'
 import {
   AgentOrchestrateReadOnlyContext,
@@ -228,6 +231,31 @@ function ConfigSnapshotProbe() {
   return <pre aria-label="config snapshot">{JSON.stringify(configSnapshot)}</pre>
 }
 
+function PromptSkillAddProbe() {
+  const actions = useAgentOrchestrateAddActions()
+  const [addedSkill, setAddedSkill] = useState('')
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() =>
+          actions.skills?.({
+            skillSource: 'library',
+            onAdded: (item) => setAddedSkill('name' in item ? (item.name ?? '') : ''),
+          })
+        }
+      >
+        prompt add from library
+      </button>
+      <button type="button" onClick={() => actions.skills?.({ skillSource: 'upload' })}>
+        prompt upload skill.zip
+      </button>
+      <output aria-label="prompt added skill">{addedSkill}</output>
+    </>
+  )
+}
+
 function createWorkspaceSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
   return {
     id: 'workspace-skill-1',
@@ -278,10 +306,13 @@ function renderAgentSkills({
       <AgentConfigApiContextProvider value={apiContext}>
         <AgentComposerProvider initialDraft={initialDraft}>
           <AgentOrchestrateViewingVersionContext value={viewingVersion}>
-            <AgentOrchestrateReadOnlyContext value={readOnly}>
-              <AgentSkills />
-              <ConfigSnapshotProbe />
-            </AgentOrchestrateReadOnlyContext>
+            <AgentOrchestrateAddActionsProvider>
+              <AgentOrchestrateReadOnlyContext value={readOnly}>
+                <AgentSkills />
+                <ConfigSnapshotProbe />
+                <PromptSkillAddProbe />
+              </AgentOrchestrateReadOnlyContext>
+            </AgentOrchestrateAddActionsProvider>
           </AgentOrchestrateViewingVersionContext>
         </AgentComposerProvider>
       </AgentConfigApiContextProvider>
@@ -573,6 +604,19 @@ describe('AgentSkills', () => {
     expect(toast.success).toHaveBeenCalled()
   })
 
+  it('should open the upload flow from the prompt skill.zip action', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(screen.getByRole('button', { name: 'prompt upload skill.zip' }))
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.skills.upload.title',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('should show the configured skill package size limit', async () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
@@ -693,6 +737,36 @@ describe('AgentSkills', () => {
 
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([])
+  })
+
+  it('should open the library flow from the prompt and return the selected skill', async () => {
+    const user = userEvent.setup()
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => { query?: { limit?: number } }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [createWorkspaceSkill()],
+          has_more: false,
+          limit: input(pageParam).query?.limit ?? 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(screen.getByRole('button', { name: 'prompt add from library' }))
+    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+
+    expect(await screen.findByLabelText('prompt added skill')).toHaveTextContent('Refund approval')
   })
 
   it('should allow workflow agent nodes to bind workspace skills', async () => {
