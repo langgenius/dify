@@ -254,7 +254,7 @@ class TiDBVector(BaseVector):
         tidb_dist_func = self._get_distance_func()
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
-        filter_params = {}
+        filter_params: dict[str, str] = {}
         if document_ids_filter:
             document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
             where_clause = f" WHERE {document_ids_filter_condition} "
@@ -300,7 +300,7 @@ class TiDBVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
 
         where_conditions = ["FTS_MATCH_WORD(text, :query)"]
-        filter_params = {}
+        filter_params: dict[str, str] = {}
         if document_ids_filter:
             document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
             where_conditions.append(document_ids_filter_condition)
