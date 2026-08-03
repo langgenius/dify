@@ -173,6 +173,8 @@ class NotionExtractor(BaseExtractor):
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
+        max_pages = 1000
+        pages_fetched = 0
         while True:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
             try:
@@ -224,6 +226,11 @@ class NotionExtractor(BaseExtractor):
                     else:
                         result_lines_arr.append(cur_result_text + "\n\n")
 
+            pages_fetched += 1
+            if pages_fetched >= max_pages:
+                logger.warning("Notion block fetch hit page limit for block %s", page_id)
+                break
+
             if data["next_cursor"] is None:
                 break
             else:
@@ -236,6 +243,8 @@ class NotionExtractor(BaseExtractor):
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
+        max_pages = 1000
+        pages_fetched = 0
         while True:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
 
@@ -281,6 +290,11 @@ class NotionExtractor(BaseExtractor):
                         result_lines_arr.append(f"{HEADING_SPLITTER[result_type]}{cur_result_text}")
                     else:
                         result_lines_arr.append(cur_result_text + "\n\n")
+
+            pages_fetched += 1
+            if pages_fetched >= max_pages:
+                logger.warning("Notion block read hit page limit for block %s", block_id)
+                break
 
             if data["next_cursor"] is None:
                 break
