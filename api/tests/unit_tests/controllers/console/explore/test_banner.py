@@ -143,6 +143,36 @@ class TestBannerApi:
 
         assert result == []
 
+    def test_get_banners_allows_empty_supporting_copy(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        banner_session: Session,
+    ):
+        api = banner_module.BannerApi()
+        banner = _banner(
+            title="title only",
+            language="en-US",
+            link="https://example.com",
+            created_at=datetime(2024, 1, 3),
+        )
+        banner.content["category"] = ""
+        banner.content["description"] = ""
+        banner_session.add(banner)
+        banner_session.commit()
+        monkeypatch.setattr(banner_module.db, "session", banner_session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: True)
+
+        with app.test_request_context("/?language=en-US"):
+            result = api.get()
+
+        assert result[0]["content"] == {
+            "category": "",
+            "title": "title only",
+            "description": "",
+            "img-src": "https://example.com/banner.png",
+        }
+
     def test_get_banners_returns_empty_without_querying_when_disabled(
         self,
         app: Flask,
@@ -170,7 +200,7 @@ class TestBannerApi:
             title="invalid",
             language="en-US",
             link="https://example.com",
-            created_at=datetime(2024, 1, 3),
+            created_at=datetime(2024, 1, 4),
         )
         banner.content = {"title": "invalid"}
         banner_session.add(banner)

@@ -68,8 +68,8 @@ export const zLearnDifyAppListResponse = z.object({
  * BannerContentResponse
  */
 export const zBannerContentResponse = z.object({
-  category: z.string().min(1),
-  description: z.string().min(1),
+  category: z.string(),
+  description: z.string(),
   'img-src': z.string().min(1),
   title: z.string().min(1),
 })
