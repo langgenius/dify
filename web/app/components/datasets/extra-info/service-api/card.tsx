@@ -19,7 +19,7 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   return (
-    <div className="flex w-[360px] flex-col rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-1">
+    <div className="flex w-90 flex-col rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-1">
       <div className="flex flex-col gap-y-3 p-4">
         <div className="flex items-center gap-x-3">
           <div className="flex grow items-center gap-x-2">
@@ -61,7 +61,7 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
               onClick={onOpenSecretKeyModal}
             >
               <span className="i-ri-key-2-line size-3.5 shrink-0" />
-              <span className="px-[3px] system-xs-medium">
+              <span className="px-0.75 system-xs-medium">
                 {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
               </span>
             </Button>
@@ -70,7 +70,7 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="small" className="gap-x-px text-text-tertiary">
             <span className="i-ri-book-open-line size-3.5 shrink-0" />
-            <span className="px-[3px] system-xs-medium">
+            <span className="px-0.75 system-xs-medium">
               {t(($) => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
             </span>
           </Button>

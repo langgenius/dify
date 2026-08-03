@@ -361,6 +361,12 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
+    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
+        return DifyNodeFactory(
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
         raw_ctx = run_context.get(DIFY_RUN_CONTEXT_KEY)
@@ -394,6 +400,7 @@ class DifyNodeFactory(NodeFactory):
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
+        node: Node | None = None
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
                 "code_executor": self._code_executor,
@@ -412,7 +419,8 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "hitl_callback": self._build_human_input_callback(
-                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"])
+                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
+                    execution_id_getter=lambda: node.execution_id if node is not None else None,
                 ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
@@ -457,13 +465,14 @@ class DifyNodeFactory(NodeFactory):
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
-        return node_class(
+        node = node_class(
             node_id=node_id,
             data=constructor_node_data,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
         )
+        return node
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
@@ -487,7 +496,7 @@ class DifyNodeFactory(NodeFactory):
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
-            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
+            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
@@ -497,6 +506,7 @@ class DifyNodeFactory(NodeFactory):
                 ),
                 "agent_backend_client": create_agent_backend_run_client(
                     base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                    api_token=dify_config.AGENT_BACKEND_API_TOKEN,
                     use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                     stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
@@ -511,7 +521,7 @@ class DifyNodeFactory(NodeFactory):
                 # tenant validator resolves ToolFile (canonical) + UploadFile refs.
                 "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
-                "session_store": WorkflowAgentRuntimeSessionStore(),
+                "session_store": WorkflowAgentWorkspaceStore(),
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,
@@ -524,6 +534,7 @@ class DifyNodeFactory(NodeFactory):
         self,
         *,
         node_data: DifyHumanInputNodeData,
+        execution_id_getter: Callable[[], str | None],
     ) -> DifyHITLCallback:
         return DifyHITLCallback(
             form_repository=self._human_input_runtime.build_form_repository(),
@@ -532,6 +543,7 @@ class DifyNodeFactory(NodeFactory):
             delivery_methods=self._human_input_runtime._resolve_delivery_methods(node_data=node_data),
             display_in_ui=self._human_input_runtime._display_in_ui(node_data=node_data),
             file_reference_factory=self._file_reference_factory,
+            execution_id_getter=execution_id_getter,
         )
 
     def _build_llm_compatible_node_init_kwargs(

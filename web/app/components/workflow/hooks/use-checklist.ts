@@ -44,7 +44,6 @@ import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
-import { useGetToolIcon, useNodesMetaData } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
@@ -68,6 +67,8 @@ import { getTriggerCheckParams } from '../utils/trigger'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
+import { useNodesMetaData } from './use-nodes-meta-data'
+import { useGetToolIcon } from './use-tool-icon'
 
 export type ChecklistItem = {
   id: string
@@ -80,6 +81,7 @@ export type ChecklistItem = {
   disableGoTo?: boolean
   isPluginMissing?: boolean
   pluginUniqueIdentifier?: string
+  openInlineAgentPanel?: boolean
 }
 
 type CheckValidExtraData = Record<string, unknown> | undefined
@@ -351,6 +353,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         })
 
         const errorMessages: string[] = []
+        const missingReferences = inlineAgentMissingReferences[node!.id]
 
         if (isPluginMissing) {
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
@@ -378,7 +381,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             if (validationError) errorMessages.push(validationError)
           }
 
-          const missingReferences = inlineAgentMissingReferences[node!.id]
           if (missingReferences?.hasMissingFiles)
             errorMessages.push(
               t(($) => $['agentDetail.configure.files.missing'], { ns: 'agentV2' }),
@@ -428,6 +430,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             pluginUniqueIdentifier: isPluginMissing
               ? (node!.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
               : undefined,
+            ...(missingReferences ? { openInlineAgentPanel: true } : {}),
           })
         }
       }

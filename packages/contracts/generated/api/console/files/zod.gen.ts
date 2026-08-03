@@ -21,6 +21,7 @@ export const zUploadConfig = z.object({
   image_file_batch_limit: z.int(),
   image_file_size_limit: z.int(),
   single_chunk_attachment_limit: z.int(),
+  skill_file_size_limit: z.int(),
   video_file_size_limit: z.int(),
   workflow_file_upload_limit: z.int(),
 })

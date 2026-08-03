@@ -39,10 +39,10 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
         )}
       </div>
       {!isCollapse && (
-        <div className="flex max-h-[500px] flex-col gap-2 overflow-y-auto p-3">
+        <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-3">
           {varList.map(({ label, value }, index) => (
             <div key={index} className="flex py-2 system-xs-medium">
-              <div className="flex w-[128px] shrink-0 text-text-accent">
+              <div className="flex w-32 shrink-0 text-text-accent">
                 <span className="shrink-0 opacity-60">{'{{'}</span>
                 <span className="truncate">{label}</span>
                 <span className="shrink-0 opacity-60">{'}}'}</span>
@@ -53,7 +53,7 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
 
           {message_files.length > 0 && (
             <div className="mt-1 flex py-2">
-              <div className="w-[128px] shrink-0 system-xs-medium text-text-tertiary">
+              <div className="w-32 shrink-0 system-xs-medium text-text-tertiary">
                 {t(($) => $['detail.uploadImages'], { ns: 'appLog' })}
               </div>
               <div className="flex space-x-2">

@@ -62,12 +62,12 @@ const StatusIndicators = ({
   ) => {
     return (
       <div
-        className="flex w-[240px] max-w-[240px] flex-col gap-1 px-1 py-1.5"
+        className="flex w-60 max-w-60 flex-col gap-1 px-1 py-1.5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="title-xs-semi-bold text-text-primary">{title}</div>
         {description && (
-          <div className="min-w-[200px] body-xs-regular text-text-secondary">{description}</div>
+          <div className="min-w-50 body-xs-regular text-text-secondary">{description}</div>
         )}
         {linkText && linkHref && (
           <div className="cursor-pointer body-xs-regular text-text-accent">

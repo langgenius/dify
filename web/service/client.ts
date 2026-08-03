@@ -1,4 +1,7 @@
-import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentAppComposerResponse,
+  AgentAppPagination,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { consoleRouterContract } from '@dify/contracts/console'
@@ -555,6 +558,51 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
+      installedApps: {
+        byInstalledAppId: {
+          get: {
+            queryOptions: {
+              retry: (failureCount, error) => {
+                if (error instanceof Response && error.status === 404) return false
+
+                return failureCount < 3
+              },
+            },
+          },
+          delete: {
+            mutationOptions: {
+              onSuccess: (_response, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
+                    input: {
+                      params: variables.params,
+                    },
+                  }),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.installedApps.get.key(),
+                })
+              },
+            },
+          },
+          patch: {
+            mutationOptions: {
+              onSuccess: (_response, variables, _onMutateResult, context) => {
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.installedApps.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
+                    input: {
+                      params: variables.params,
+                    },
+                  }),
+                })
+              },
+            },
+          },
+        },
+      },
       agent: {
         post: {
           mutationOptions: {
@@ -662,7 +710,17 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           composer: {
             put: {
               mutationOptions: {
-                onSuccess: (_composerState, variables, _onMutateResult, context) => {
+                onSuccess: (composerState, variables, _onMutateResult, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.agent.byAgentId.composer.get.queryKey({
+                      input: {
+                        params: {
+                          agent_id: variables.params.agent_id,
+                        },
+                      },
+                    }),
+                    composerState,
+                  )
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.agent.get.key(),
                   })
@@ -681,7 +739,33 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           publish: {
             post: {
               mutationOptions: {
-                onSuccess: (_publishResult, _variables, _onMutateResult, context) => {
+                onSuccess: (publishResult, variables, _onMutateResult, context) => {
+                  context.client.setQueryData<AgentAppComposerResponse>(
+                    consoleQuery.agent.byAgentId.composer.get.queryKey({
+                      input: {
+                        params: {
+                          agent_id: variables.params.agent_id,
+                        },
+                      },
+                    }),
+                    (composerState) => {
+                      if (!composerState) return composerState
+
+                      return {
+                        ...composerState,
+                        active_config_is_published: true,
+                        active_config_snapshot: publishResult.active_config_snapshot,
+                        agent: {
+                          ...composerState.agent,
+                          active_config_snapshot_id: publishResult.active_config_snapshot_id,
+                        },
+                        draft:
+                          publishResult.draft === undefined
+                            ? composerState.draft
+                            : publishResult.draft,
+                      }
+                    },
+                  )
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.agent.get.key(),
                   })

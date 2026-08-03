@@ -63,7 +63,7 @@ function Sort({ order, value, items, onSelect }: Props) {
                   key={item.value}
                   value={item.value}
                   closeOnClick
-                  className="mx-0 gap-2 rounded-lg px-2 py-[6px]"
+                  className="mx-0 gap-2 rounded-lg px-2 py-1.5"
                 >
                   <div
                     title={item.name}

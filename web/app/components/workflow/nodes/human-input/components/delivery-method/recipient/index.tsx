@@ -71,7 +71,7 @@ const Recipient = ({ data, onChange }: Props) => {
               })}
             </div>
           </div>
-          <div className="w-[86px]">
+          <div className="w-21.5">
             <MemberSelector
               value={data.items}
               email={userProfileEmail}

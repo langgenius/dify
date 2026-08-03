@@ -19,12 +19,10 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
   const safePlaceholderText = placeholderText || ''
 
   return (
-    <div
-      className={cn('flex h-8 w-[200px] items-center rounded-lg bg-components-input-bg-normal p-2')}
-    >
+    <div className={cn('flex h-8 w-50 items-center rounded-lg bg-components-input-bg-normal p-2')}>
       <div className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
       <input
-        className="min-w-0 grow appearance-none border-0 bg-transparent px-1 text-[13px] leading-[16px] text-components-input-text-filled outline-0 placeholder:text-components-input-text-placeholder"
+        className="min-w-0 grow appearance-none border-0 bg-transparent px-1 text-[13px] leading-4 text-components-input-text-filled outline-0 placeholder:text-components-input-text-placeholder"
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         placeholder={safePlaceholderText}

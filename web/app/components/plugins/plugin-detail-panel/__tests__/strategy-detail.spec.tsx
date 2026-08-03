@@ -76,7 +76,7 @@ describe('StrategyDetail', () => {
         'data-[swipe-direction=right]:top-2',
         'data-[swipe-direction=right]:bottom-2',
         'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:w-100',
         'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
       )
     })

@@ -964,12 +964,6 @@ Stop a running Agent App chat message generation
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  No | **application/json**: [AgentDebugConversationRefreshPayload](#agentdebugconversationrefreshpayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
@@ -1261,7 +1255,8 @@ Get basic information for an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 
 #### Responses
 
@@ -1277,7 +1272,8 @@ List a directory in an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
 #### Responses
@@ -1294,7 +1290,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
-| conversation_id | query | Agent App conversation ID | Yes | string |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
 #### Responses
@@ -1671,6 +1668,23 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+
+### [GET] /apps/recent
+**Return the lightweight app cards needed by the Explore home page**
+
+Get recently modified apps for the home Continue Work section
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query | Number of recently modified apps to return (1-8) | No | integer, <br>**Default:** 8 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RecentAppListResponse](#recentapplistresponse)<br> |
 
 ### [GET] /apps/starred
 Get applications starred by the current account
@@ -3190,6 +3204,23 @@ Update MCP server configuration for an application
 | 403 | Insufficient permissions |  |
 | 404 | Server not found |  |
 
+### [POST] /apps/{app_id}/server/refresh
+Refresh MCP server configuration and regenerate server code
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | App ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
+| 403 | Insufficient permissions |  |
+| 404 | Server not found |  |
+
 ### [POST] /apps/{app_id}/site
 Update application site configuration
 
@@ -3790,7 +3821,7 @@ List a directory in a workflow Agent node sandbox
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
 #### Responses
@@ -3809,7 +3840,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
 #### Responses
@@ -5125,23 +5156,6 @@ Restore a published workflow version into the draft workflow
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
-
-### [GET] /apps/{server_id}/server/refresh
-Refresh MCP server configuration and regenerate server code
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| server_id | path | Server ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
-| 403 | Insufficient permissions |  |
-| 404 | Server not found |  |
 
 ### [GET] /auth/plugin/datasource/default-list
 #### Responses
@@ -7036,6 +7050,9 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | query | App ID to filter by | No | string |
+| cursor | query | Opaque cursor returned by the previous page | No | string |
+| limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
+| name | query | App name to search for | No | string |
 
 #### Responses
 
@@ -7068,6 +7085,19 @@ Request body:
 | Code | Description |
 | ---- | ----------- |
 | 204 | App uninstalled successfully |
+
+### [GET] /installed-apps/{installed_app_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [InstalledAppResponse](#installedappresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}
 #### Parameters
@@ -9475,16 +9505,11 @@ Used for frontend component type mapping
 | 200 | Success | **application/json**: [SchemaDefinitionsResponse](#schemadefinitionsresponse)<br> |
 
 ### [GET] /system-features
-**Get system-wide feature configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system-wide feature configuration
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for dashboard initialization.
-
-Authentication would create circular dependency (can't login without dashboard loading).
-
-Only non-sensitive configuration data should be returned by this endpoint. Authenticated
-license detail is served separately by SystemFeatureLicenseApi.
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
+Authentication configuration must be available before the authentication flow can be selected.
+Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
 #### Responses
 
@@ -13248,6 +13273,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | Yes |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
@@ -13287,7 +13313,6 @@ Model class for AI model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
@@ -13930,12 +13955,6 @@ Stable Agent Soul reference to one normalized skill archive.
 | ---- | ---- | ----------- | -------- |
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
-
-#### AgentDebugConversationRefreshPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| draft_type | [AgentConfigDraftType](#agentconfigdrafttype) | Agent draft surface whose conversation should be refreshed | No |
 
 #### AgentDebugConversationRefreshResponse
 
@@ -14654,7 +14673,8 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Agent App conversation ID | Yes |
+| caller_id | string | Agent App caller ID | Yes |
+| caller_type | string, <br>**Available values:** "build_draft", "conversation" | *Enum:* `"build_draft"`, `"conversation"` | Yes |
 | path | string | File path relative to the sandbox workspace | Yes |
 
 #### AgentScope
@@ -15556,6 +15576,12 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
 
 #### AppModelConfigResponse
 
@@ -18659,21 +18685,23 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | [IconType](#icontype) |  | Yes |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
-| mode | string |  | No |
-| name | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
+| name | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### InstalledAppListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
 | installed_apps | [ [InstalledAppResponse](#installedappresponse) ] |  | Yes |
+| next_cursor | string |  | Yes |
 
 #### InstalledAppResponse
 
@@ -18684,7 +18712,7 @@ Input field definition for snippet parameters.
 | editable | boolean |  | Yes |
 | id | string |  | Yes |
 | is_pinned | boolean |  | Yes |
-| last_used_at | integer |  | No |
+| last_used_at | integer |  | Yes |
 | uninstallable | boolean |  | Yes |
 
 #### InstalledAppUpdatePayload
@@ -18698,6 +18726,9 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string | App ID to filter by | No |
+| cursor | string | Opaque cursor returned by the previous page | No |
+| limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
+| name | string | App name to search for | No |
 
 #### InstructionGeneratePayload
 
@@ -20052,6 +20083,7 @@ Enum class for parameter type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | plugin_installation_id | string |  | Yes |
+| preserve_credentials | boolean |  | No |
 
 #### ParserUpdateCredential
 
@@ -20520,12 +20552,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | plugins | [ [PluginEntity](#pluginentity) ] |  | Yes |
 | total | integer |  | Yes |
-
-#### PluginManagerModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
 
 #### PluginManifestResponse
 
@@ -21029,6 +21055,28 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
 
+#### RecentAppListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RecentAppResponse](#recentappresponse) ] |  | Yes |
+
+#### RecentAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| maintainer | string |  | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | *Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| updated_at | integer |  | Yes |
+
 #### RecommendedAppDetailNullableResponse
 
 | Name | Type | Description | Required |
@@ -21039,7 +21087,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| can_trial | boolean |  | No |
+| can_trial | boolean |  | Yes |
 | export_data | string |  | Yes |
 | icon | string |  | No |
 | icon_background | string |  | No |
@@ -21072,7 +21120,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | app | [RecommendedAppInfoResponse](#recommendedappinforesponse) |  | No |
 | app_id | string |  | Yes |
-| can_trial | boolean |  | No |
+| can_trial | boolean |  | Yes |
 | categories | [ string ] |  | No |
 | copyright | string |  | No |
 | custom_disclaimer | string |  | No |
@@ -21319,7 +21367,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| session_id | string |  | Yes |
 | workspace_cwd | string |  | Yes |
 
 #### SandboxListResponse
@@ -22052,6 +22099,8 @@ Model class for provider system configuration response.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
@@ -22067,15 +22116,11 @@ Model class for provider system configuration response.
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
@@ -22944,6 +22989,7 @@ Payload for updating a snippet.
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
+| skill_file_size_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
@@ -23005,11 +23051,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 
@@ -23141,7 +23187,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
+| node_execution_id | string | Workflow node execution ID | Yes |
 | path | string | File path relative to the sandbox workspace | Yes |
 
 #### WorkflowAppLogPaginationResponse

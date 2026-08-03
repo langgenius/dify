@@ -24,8 +24,8 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -397,7 +397,7 @@ function GotoAnythingDialog() {
           <DialogBackdrop />
           <DialogPopup
             initialFocus={inputRef}
-            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-[480px]! max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden p-0!"
+            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120! max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden p-0!"
           >
             <DialogTitle className="sr-only">
               {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
@@ -429,7 +429,7 @@ function GotoAnythingDialog() {
                     className="px-0"
                   />
                   {searchMode !== 'general' && (
-                    <div className="flex items-center gap-1 rounded-sm bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <div className="flex items-center gap-1 rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                       <span>{getSearchModeLabel(searchMode)}</span>
                     </div>
                   )}
@@ -443,11 +443,11 @@ function GotoAnythingDialog() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollAreaRoot
-                aria-busy={isLoading || undefined}
-                className="relative h-[240px] min-h-0 overflow-hidden"
-              >
-                <ScrollAreaViewport className="scroll-py-1 overscroll-contain">
+              <ScrollArea className="relative h-60 min-h-0 overflow-hidden">
+                <ScrollAreaViewport
+                  aria-busy={isLoading || undefined}
+                  className="scroll-py-1 overscroll-contain"
+                >
                   <ScrollAreaContent
                     className="min-h-full w-full max-w-full"
                     style={{ minWidth: '100%' }}
@@ -477,8 +477,8 @@ function GotoAnythingDialog() {
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <AutocompleteCollection>
-                            {(option: CommandOption) => (
+                          <AutocompleteCollection<CommandOption>>
+                            {(option) => (
                               <AutocompleteItem
                                 key={option.shortcut}
                                 value={option}
@@ -542,8 +542,8 @@ function GotoAnythingDialog() {
                                   { ns: 'app' },
                                 )}
                               </AutocompleteGroupLabel>
-                              <AutocompleteCollection>
-                                {(result: SearchResult) => (
+                              <AutocompleteCollection<SearchResult>>
+                                {(result) => (
                                   <AutocompleteItem
                                     key={`${result.type}-${result.id}`}
                                     value={result}
@@ -576,7 +576,7 @@ function GotoAnythingDialog() {
                 <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
                 </ScrollAreaScrollbar>
-              </ScrollAreaRoot>
+              </ScrollArea>
 
               <Footer
                 resultCount={autocompleteResultCount}

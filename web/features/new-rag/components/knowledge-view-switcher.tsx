@@ -43,13 +43,13 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         }}
       >
         <SegmentedControlItem
-          className="h-[22px] rounded-md px-1 py-px system-xs-medium"
+          className="h-5.5 rounded-md px-1 py-px system-xs-medium"
           value="legacy"
         >
           {t(($) => $['newKnowledge.legacy'])}
         </SegmentedControlItem>
         <SegmentedControlItem
-          className="h-[22px] rounded-md py-px pr-5 pl-1 system-xs-medium"
+          className="h-5.5 rounded-md py-px pr-5 pl-1 system-xs-medium"
           value="new"
         >
           {t(($) => $['newKnowledge.new'])}
@@ -61,7 +61,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           render={
             <button
               type="button"
-              className="absolute top-[5px] right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="absolute top-1.25 right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               <span aria-hidden className="i-ri-question-line size-3.5" />
             </button>
@@ -74,9 +74,9 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         >
           <span
             aria-hidden
-            className="absolute -top-[9.59px] left-1/2 flex size-[19.456px] -translate-x-1/2 items-center justify-center"
+            className="absolute top-[-9.59px] left-1/2 flex size-[19.456px] -translate-x-1/2 items-center justify-center"
           >
-            <span className="size-[13.757px] -rotate-45 rounded-tr-[2px] border-t border-r border-divider-subtle bg-components-panel-bg" />
+            <span className="size-[13.757px] -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
           </span>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">

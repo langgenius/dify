@@ -18,7 +18,7 @@ const switchRootVariants = cva(
         xs: 'h-2.5 w-3.5 rounded-xs p-0.5',
         sm: 'h-3 w-5 rounded-[3.5px] p-0.5',
         md: 'h-4 w-7 rounded-[5px] p-0.5',
-        lg: 'h-5 w-9 rounded-md p-[3px]',
+        lg: 'h-5 w-9 rounded-md p-0.75',
       },
     },
     defaultVariants: {
@@ -33,8 +33,8 @@ const switchThumbVariants = cva(
     variants: {
       size: {
         xs: 'h-1.5 w-1 rounded-[1px] data-checked:translate-x-1.5',
-        sm: 'h-2 w-[7px] rounded-xs data-checked:translate-x-[9px]',
-        md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-[14px]',
+        sm: 'h-2 w-1.75 rounded-xs data-checked:translate-x-2.25',
+        md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-3.5',
         lg: 'size-3.5 rounded-sm data-checked:translate-x-4',
       },
     },
@@ -43,8 +43,6 @@ const switchThumbVariants = cva(
     },
   },
 )
-
-export type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
 
 const switchSpinnerVariants = cva('absolute top-1/2 -translate-x-1/2 -translate-y-1/2', {
   variants: {
@@ -67,7 +65,7 @@ type UncontrolledSwitchProps = {
 
 type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
 
-export type SwitchProps = Omit<
+type SwitchProps = Omit<
   BaseSwitchNS.Root.Props,
   'checked' | 'defaultChecked' | 'className' | 'size' | 'onCheckedChange'
 > &
@@ -78,7 +76,7 @@ export type SwitchProps = Omit<
     className?: string
   }
 
-export function Switch({
+function Switch({
   checked,
   size = 'md',
   disabled,
@@ -122,9 +120,12 @@ const switchSkeletonVariants = cva('bg-text-quaternary opacity-20', {
   },
 })
 
-export type SwitchSkeletonProps = React.ComponentProps<'div'> &
-  VariantProps<typeof switchSkeletonVariants>
+type SwitchSkeletonProps = React.ComponentProps<'div'> & VariantProps<typeof switchSkeletonVariants>
 
-export function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProps) {
+function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProps) {
   return <div className={cn(switchSkeletonVariants({ size }), className)} {...props} />
 }
+
+export { Switch, SwitchSkeleton }
+
+export type { SwitchProps, SwitchSkeletonProps }

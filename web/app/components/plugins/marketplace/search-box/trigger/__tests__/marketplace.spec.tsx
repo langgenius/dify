@@ -18,7 +18,6 @@ describe('MarketplaceTrigger', () => {
       <Popover>
         <MarketplaceTrigger
           selectedTagsLength={0}
-          open={false}
           tags={[]}
           tagsMap={tagsMap}
           onTagsChange={vi.fn()}
@@ -37,7 +36,6 @@ describe('MarketplaceTrigger', () => {
       <Popover>
         <MarketplaceTrigger
           selectedTagsLength={3}
-          open
           tags={['agent', 'rag', 'search']}
           tagsMap={tagsMap}
           onTagsChange={vi.fn()}
@@ -58,7 +56,6 @@ describe('MarketplaceTrigger', () => {
         <Popover>
           <MarketplaceTrigger
             selectedTagsLength={tags.length}
-            open={false}
             tags={tags}
             tagsMap={tagsMap}
             onTagsChange={setTags}
@@ -79,5 +76,27 @@ describe('MarketplaceTrigger', () => {
       screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'pluginTags.allTags' })).toHaveFocus()
+  })
+
+  it('reflects the actual popover state on the trigger', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <Popover>
+        <MarketplaceTrigger
+          selectedTagsLength={0}
+          tags={[]}
+          tagsMap={tagsMap}
+          onTagsChange={vi.fn()}
+        />
+      </Popover>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'pluginTags.allTags' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 })

@@ -105,7 +105,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
   return (
     <div className="group flex border-t border-gray-200">
       {/* Key */}
-      <div className="w-[120px] border-r border-gray-200">
+      <div className="w-30 border-r border-gray-200">
         <input
           className="block h-7 w-full appearance-none px-2 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t(($) => $['chatVariable.modal.objectKey'], { ns: 'workflow' }) || ''}
@@ -114,7 +114,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
         />
       </div>
       {/* Type */}
-      <div className="w-[96px] border-r border-gray-200">
+      <div className="w-24 border-r border-gray-200">
         <VariableTypeSelector
           inCell
           value={list[index].type}
@@ -124,7 +124,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
         />
       </div>
       {/* Value */}
-      <div className="relative w-[230px]">
+      <div className="relative w-57.5">
         <input
           className="block h-7 w-full appearance-none px-2 pr-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t(($) => $['chatVariable.modal.objectValue'], { ns: 'workflow' }) || ''}

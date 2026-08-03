@@ -130,7 +130,7 @@ describe('CustomCreateCard', () => {
       const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
       expect(card).toBeInTheDocument()
       expect(card).toHaveClass(
-        'h-[120px]',
+        'h-30',
         'border-[0.5px]',
         'border-components-panel-border',
         'shadow-md',

@@ -16,20 +16,31 @@ import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-lim
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
+let mockProviderCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
+
 const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const queryClient = createConsoleQueryClient()
+  const plan = mockProviderCtx.plan as {
+    usage: { vectorSpace: number }
+    total: { vectorSpace: number }
+  }
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
+    size: plan.usage.vectorSpace,
+    limit: plan.total.vectorSpace,
+  })
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
+    queryClient,
   })
   return renderWithConsoleState(ui, { ...options, wrapper })
 }
 
-let mockProviderCtx: Record<string, unknown> = {}
-let mockConsoleState: Record<string, unknown> = {}
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -52,10 +63,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -72,9 +79,6 @@ vi.mock('@/service/use-billing', () => ({
     refetch: mockRefetch,
   }),
   useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
-  useCurrentPlanVectorSpace: () => ({
-    data: undefined,
-  }),
 }))
 
 vi.mock('@/service/use-education', () => ({

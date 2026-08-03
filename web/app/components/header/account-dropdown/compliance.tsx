@@ -10,10 +10,14 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
@@ -57,8 +61,8 @@ function ComplianceDocActionVisual({
         aria-hidden
         className="pointer-events-none flex items-center gap-px"
       >
-        <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
-        <span className="px-[3px] system-xs-medium text-components-button-secondary-text">
+        <span className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled" />
+        <span className="px-0.75 system-xs-medium text-components-button-secondary-text">
           {downloadText}
         </span>
       </Button>
@@ -75,7 +79,7 @@ function ComplianceDocActionVisual({
           <PremiumBadge color="blue" allowHover={true}>
             <SparklesSoft
               aria-hidden="true"
-              className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+              className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
             />
             <div className="px-1 system-xs-medium">{upgradeText}</div>
           </PremiumBadge>
@@ -95,7 +99,8 @@ type ComplianceDocRowItemProps = {
 function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
+  const { setShowPricingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isFreePlan = plan.type === Plan.sandbox
 
   const { isPending, mutate: downloadCompliance } = useMutation({
@@ -128,13 +133,13 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     }
 
     if (isFreePlan) setShowPricingModal()
-    else setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+    else setSettingsDestination('billing')
   }, [
     downloadCompliance,
     isCurrentPlanCanDownload,
     isFreePlan,
     isPending,
-    setShowAccountSettingModal,
+    setSettingsDestination,
     setShowPricingModal,
   ])
 

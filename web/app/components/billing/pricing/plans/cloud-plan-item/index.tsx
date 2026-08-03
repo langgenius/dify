@@ -192,7 +192,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
       </div>
       <List plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
-        <DialogContent backdropProps={{ forceRender: true }} className="w-[520px]">
+        <DialogContent backdropProps={{ forceRender: true }} className="w-130">
           <DialogCloseButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             className="top-6 right-6"

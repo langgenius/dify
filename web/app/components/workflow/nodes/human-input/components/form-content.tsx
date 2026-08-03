@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
-import { useWorkflowVariableType } from '../../../hooks'
+import { useWorkflowVariableType } from '../../../hooks/use-workflow-variables'
 import { BlockEnum } from '../../../types'
 import AddInputField from './add-input-field'
 
@@ -155,16 +155,16 @@ const FormContent: FC<FormContentProps> = ({
       className={cn(
         'flex grow flex-col rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal pt-1',
         isFocus && 'border-components-input-border-active bg-components-input-bg-active',
-        !isFocus && 'pb-[32px]',
+        !isFocus && 'pb-8',
         readonly && 'pointer-events-none',
       )}
     >
-      <div className={cn('max-h-[300px] overflow-y-auto px-3', isExpand && 'h-0 max-h-full grow')}>
+      <div className={cn('max-h-75 overflow-y-auto px-3', isExpand && 'h-0 max-h-full grow')}>
         <PromptEditor
           key={editorKey}
           value={value}
           onChange={onChange}
-          className={cn('min-h-[80px]', isExpand && 'h-full')}
+          className={cn('min-h-20', isExpand && 'h-full')}
           onFocus={setFocus}
           onBlur={setBlur}
           placeholder={t(($) => $['nodes.humanInput.formContent.placeholder'], { ns: 'workflow' })}

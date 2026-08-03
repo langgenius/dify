@@ -74,7 +74,7 @@ function WebSSOForm() {
       webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   ) {
     return (
-      <div className="w-full max-w-[400px]">
+      <div className="w-full max-w-100">
         <NormalForm />
       </div>
     )

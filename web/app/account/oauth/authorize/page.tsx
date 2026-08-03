@@ -190,7 +190,7 @@ export default function OAuthAuthorize() {
       )}
 
       {isLoggedIn && Boolean(authAppInfo?.scope) && (
-        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-[22px] py-5 text-text-secondary">
+        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-5.5 py-5 text-text-secondary">
           {authAppInfo!.scope
             .split(/\s+/)
             .filter(Boolean)

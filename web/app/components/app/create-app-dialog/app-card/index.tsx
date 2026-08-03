@@ -28,7 +28,7 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
   })
   const { app: appBasicInfo } = app
   const canViewApp = deploymentEdition === 'CLOUD'
-  const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
+  const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -37,12 +37,12 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
       template_categories: app.categories,
       page: 'studio',
     })
-    setShowTryAppPanel?.(true, { appId: app.app_id, app })
-  }, [setShowTryAppPanel, app, appBasicInfo])
+    openTryAppPanel({ appId: app.app_id, app })
+  }, [openTryAppPanel, app, appBasicInfo])
   return (
     <div
       className={cn(
-        'group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg',
+        'group relative flex h-33 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg',
       )}
     >
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">

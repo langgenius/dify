@@ -97,6 +97,7 @@ class TestAppSiteApi:
         assert result["end_user_id"] == end_user.id
         assert result["plan"] == "basic"
         assert result["enable_site"] is True
+        assert result["mode"] == AppMode.CHAT
 
     @patch("controllers.web.site.FileService.get_file_presigned_url")
     @patch("controllers.web.site.FeatureService.get_features")
@@ -178,6 +179,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=_site_model(app_id=app_model.id),
             end_user_id="eu-1",
             features=FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True),
@@ -185,6 +187,7 @@ class TestWebAppSiteResponse:
         )
 
         assert response.app_id == app_model.id
+        assert response.mode == AppMode.CHAT
         assert response.end_user_id == "eu-1"
         assert response.enable_site is True
         assert response.plan == "basic"
@@ -209,6 +212,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=site,
             end_user_id=None,
             features=FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True),
@@ -236,6 +240,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=_site_model(app_id=app_model.id),
             end_user_id="eu-1",
             features=FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
