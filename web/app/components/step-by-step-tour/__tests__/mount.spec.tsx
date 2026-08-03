@@ -761,6 +761,54 @@ describe('StepByStepTourMount', () => {
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
+  it('exposes dialog semantics and returns focus after minimizing with the keyboard', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Get to know Dify',
+        description: 'A quick tour — about 5 minutes',
+      }),
+    ).toBeInTheDocument()
+
+    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
+    minimizeButton.focus()
+    await user.keyboard('{Enter}')
+
+    const restoreButton = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+
+    await waitFor(() => {
+      expect(restoreButton).toHaveFocus()
+    })
+    expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
+  })
+
+  it('keeps the expanded checklist open after an outside pointer interaction', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Get to know Dify' })
+    await user.click(document.body)
+
+    expect(dialog).toBeInTheDocument()
+    expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
+  })
+
   it('shows the completion prompt expanded even when the saved shell mode is collapsed', async () => {
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
     setStepByStepTourTestState({

@@ -1,15 +1,16 @@
 'use client'
 
+import type { ComponentProps } from 'react'
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useEffect, useRef } from 'react'
 
 export type FloatingChecklistProps = {
   className?: string
   title: string
   duration: string
-  minimized: boolean
   progress: {
     ariaValueText: string
     completed: number
@@ -25,11 +26,9 @@ export type FloatingChecklistProps = {
   tasks: StepByStepTourTaskView[]
   skipLabel: string
   minimizeLabel: string
-  restoreLabel: string
   getTaskCompleteLabel: (taskTitle: string) => string
   getTaskIncompleteLabel: (taskTitle: string) => string
   onMinimize: () => void
-  onRestore: () => void
   onSkip: () => void
   onCompleteTask: (taskId: StepByStepTourTaskId) => void
   onStartTask: (taskId: StepByStepTourTaskId) => void
@@ -40,34 +39,19 @@ export function FloatingChecklist({
   className,
   title,
   duration,
-  minimized,
   progress,
   completionPrompt,
   tasks,
   skipLabel,
   minimizeLabel,
-  restoreLabel,
   getTaskCompleteLabel,
   getTaskIncompleteLabel,
   onMinimize,
-  onRestore,
   onSkip,
   onCompleteTask,
   onStartTask,
   onUncompleteTask,
 }: FloatingChecklistProps) {
-  if (minimized && !completionPrompt) {
-    return (
-      <MinimizedTourPill
-        title={title}
-        progress={progress}
-        restoreLabel={restoreLabel}
-        onRestore={onRestore}
-        className={className}
-      />
-    )
-  }
-
   return (
     <section
       aria-label={title}
@@ -79,8 +63,10 @@ export function FloatingChecklist({
       <div className="flex w-full shrink-0 flex-col gap-2 px-4 pt-4 pb-1">
         <div className="flex w-full items-start gap-1">
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 className="system-xl-semibold text-text-secondary">{title}</h2>
-            <p className="system-xs-regular text-text-tertiary">{duration}</p>
+            <PopoverTitle className="system-xl-semibold text-text-secondary">{title}</PopoverTitle>
+            <PopoverDescription className="system-xs-regular text-text-tertiary">
+              {duration}
+            </PopoverDescription>
           </div>
           {!completionPrompt && (
             <>
@@ -168,28 +154,23 @@ function TourCompletionPrompt({
   )
 }
 
-function MinimizedTourPill({
+export function MinimizedTourPill({
   title,
   progress,
-  restoreLabel,
-  onRestore,
   className,
+  ...props
 }: {
   title: string
   progress: FloatingChecklistProps['progress']
-  restoreLabel: string
-  onRestore: () => void
-  className?: string
-}) {
+} & ComponentProps<'button'>) {
   return (
     <button
+      {...props}
       type="button"
-      aria-label={restoreLabel}
       className={cn(
         'inline-flex h-8 w-45.75 max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         className,
       )}
-      onClick={onRestore}
     >
       <span aria-hidden className="i-custom-vender-line-education-lesson-open-01 size-4 shrink-0" />
       <span className="w-26 shrink-0 truncate system-sm-medium">{title}</span>
