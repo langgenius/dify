@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
@@ -347,7 +347,7 @@ def _node(
             }
         )
 
-    return DifyAgentNode(
+    node = DifyAgentNode(
         node_id="agent-node",
         data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
         graph_init_params=graph_init_params,
@@ -355,7 +355,7 @@ def _node(
             GraphRuntimeState,
             SimpleNamespace(
                 variable_pool=FakeVariablePool(),
-                graph_execution=SimpleNamespace(node_executions={}),
+                graph_execution=SimpleNamespace(aborted=False),
             ),
         ),
         binding_resolver=binding_resolver,
@@ -368,6 +368,8 @@ def _node(
         failure_orchestrator=OutputFailureOrchestrator(),
         session_store=cast(WorkflowAgentWorkspaceStore, session_store or FakeSessionStore()),
     )
+    node.bind_execution_id(str(uuid4()))
+    return node
 
 
 def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
@@ -465,7 +467,7 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     store = FakeSessionStore()
     request_builder = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider())
     node = _node(session_store=store, runtime_request_builder=request_builder)
-    execution_id = node.ensure_execution_id()
+    execution_id = node.execution_id
 
     with patch.object(request_builder, "build", wraps=request_builder.build) as build:
         list(node._run())

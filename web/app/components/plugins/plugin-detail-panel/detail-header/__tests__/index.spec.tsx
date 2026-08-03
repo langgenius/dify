@@ -36,6 +36,10 @@ vi.mock('@/service/use-tools', () => ({
   }),
 }))
 
+vi.mock('@/service/use-plugins', () => ({
+  useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),
+}))
+
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
 }))
@@ -48,22 +52,10 @@ vi.mock('@/app/components/base/action-button', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-    <button onClick={onClick}>{children}</button>
-  ),
-}))
-
 vi.mock('@/app/components/base/badge', () => ({
   default: ({ text, children }: { text?: React.ReactNode; children?: React.ReactNode }) => (
     <div data-testid="badge">{text ?? children}</div>
   ),
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
@@ -72,28 +64,6 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   },
   PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
     <div data-testid="plugin-auth">{pluginPayload.provider}</div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
-  default: ({
-    onSelect,
-    trigger,
-  }: {
-    onSelect: (value: { version: string; unique_identifier: string; isDowngrade?: boolean }) => void
-    trigger: React.ReactNode
-  }) => (
-    <div>
-      {trigger}
-      <button
-        data-testid="version-select"
-        onClick={() =>
-          onSelect({ version: '2.0.0', unique_identifier: 'uid-2', isDowngrade: true })
-        }
-      >
-        select version
-      </button>
-    </div>
   ),
 }))
 
@@ -244,21 +214,14 @@ describe('DetailHeader', () => {
     expect(screen.getByTestId('header-modals')).toBeInTheDocument()
   })
 
-  it('wires version selection, latest update, and hide actions', () => {
+  it('wires latest update and hide actions', () => {
     const onHide = vi.fn()
     render(<DetailHeader detail={createDetail()} onHide={onHide} onUpdate={vi.fn()} />)
 
-    fireEvent.click(screen.getByTestId('version-select'))
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
     fireEvent.click(screen.getByTestId('close-button'))
 
-    expect(mockSetTargetVersion).toHaveBeenCalledWith({
-      version: '2.0.0',
-      unique_identifier: 'uid-2',
-      isDowngrade: true,
-    })
-    expect(mockHandleUpdate).toHaveBeenCalledTimes(2)
-    expect(mockHandleUpdate).toHaveBeenNthCalledWith(1, true)
+    expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
     expect(onHide).toHaveBeenCalled()
   })
 })

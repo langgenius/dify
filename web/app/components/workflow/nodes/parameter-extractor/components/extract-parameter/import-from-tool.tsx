@@ -8,7 +8,6 @@ import type {
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -69,19 +68,14 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
     [buildInTools, customTools, language, onImport, workflowTools],
   )
 
-  const renderTrigger = useCallback(
-    (open: boolean) => {
-      return (
-        <Button
-          variant="ghost"
-          size="small"
-          className={cn('text-text-tertiary', open && 'bg-state-base-hover')}
-        >
-          {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
-        </Button>
-      )
-    },
-    [t],
+  const triggerElement = (
+    <Button
+      variant="ghost"
+      size="small"
+      className="text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:hover:bg-components-button-ghost-bg-hover"
+    >
+      {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
+    </Button>
   )
 
   return (
@@ -89,7 +83,7 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
       placement="bottom-end"
       sideOffset={4}
       alignOffset={52}
-      trigger={renderTrigger}
+      trigger={triggerElement}
       onSelect={handleSelectTool}
       standalonePanel={TabType.Tools}
     />
