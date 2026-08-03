@@ -1,27 +1,27 @@
-"""Resolve a download request for a workflow file ref to a signed URL (Agent Files §3.1.1/§4.5).
+"""Allocate signed file URIs for the Dify Agent CLI control plane.
 
-The dify-agent server calls this on behalf of a sandbox that needs to pull a
-``File`` / ``Array[File]`` workflow input. It binds the flattened file-access
-context as a ``FileAccessScope``, rebuilds the graphon ``File`` from the mapping
-(reusing tenant/user access checks), and returns an internal signed download URL
-plus metadata — never the file bytes. The dify-agent server / sandbox then GETs
-the URL directly from Dify API.
+The Agent endpoints authorize and sign file access but deliberately do not
+choose the Sandbox network origin. Dify-owned transfer requests return
+``/files/...`` URIs; dify-agent binds those URIs to the deployment-specific
+Sandbox file base URL before responding to the CLI.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access.controller import DatabaseFileAccessController
-from core.app.file_access.scope import FileAccessScope, bind_file_access_scope
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from factories import file_factory
+from core.tools.signature import get_signed_file_uri_for_plugin
+from factories.file_factory.builders import build_from_mapping
+from graphon.file import File
 
 
-class FileDownloadRequestError(Exception):
-    """A download-request failure mapped to an HTTP status by the controller."""
+class AgentFileRequestError(Exception):
+    """An Agent file request failure suitable for controller translation."""
 
     code: str
     message: str
@@ -34,60 +34,106 @@ class FileDownloadRequestError(Exception):
         self.status_code = status_code
 
 
-class AgentFileDownloadRequestService:
-    """Resolve a workflow file ref to a sandbox-accessible internal signed download URL."""
+@dataclass(frozen=True, slots=True)
+class AgentFileDownloadRequestResult:
+    """Metadata and URI allocated for one Agent CLI download request."""
 
-    @classmethod
-    def resolve(
-        cls,
+    filename: str
+    mime_type: str | None
+    size: int
+    download_uri: str
+
+
+class AgentFileRequestService:
+    """Authorize Agent CLI file requests and allocate signed URIs."""
+
+    _access_controller: DatabaseFileAccessController
+    _runtime: DifyWorkflowFileRuntime
+
+    def __init__(self, access_controller: DatabaseFileAccessController | None = None) -> None:
+        self._access_controller = access_controller or DatabaseFileAccessController()
+        self._runtime = DifyWorkflowFileRuntime(file_access_controller=self._access_controller)
+
+    def request_upload_uri(
+        self,
+        *,
+        filename: str,
+        mimetype: str,
+        tenant_id: str,
+        user_id: str,
+        conversation_id: str | None = None,
+    ) -> str:
+        """Allocate an origin-free signed URI for one ToolFile upload."""
+
+        return get_signed_file_uri_for_plugin(
+            filename=filename,
+            mimetype=mimetype,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+
+    def request_download_uri(
+        self,
         *,
         tenant_id: str,
         user_id: str,
-        user_from: str,
-        invoke_from: str,
+        user_from: UserFrom | str,
+        invoke_from: InvokeFrom | str,
         file_mapping: Mapping[str, Any],
-    ) -> dict[str, Any]:
+        for_external: bool,
+    ) -> AgentFileDownloadRequestResult:
+        """Allocate a Sandbox transfer URI or frontend presentation URL.
+
+        ``for_external=False`` returns an origin-free URI for Dify-owned files.
+        ``for_external=True`` preserves the established frontend URL behavior,
+        including a relative URI when ``FILES_URL`` is empty. Explicit remote
+        URLs remain absolute for either audience.
+        """
+
         try:
-            scope_user_from = UserFrom(user_from)
-            scope_invoke_from = InvokeFrom(invoke_from)
+            scope = FileAccessScope(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                user_from=user_from if isinstance(user_from, UserFrom) else UserFrom(user_from),
+                invoke_from=invoke_from if isinstance(invoke_from, InvokeFrom) else InvokeFrom(invoke_from),
+            )
         except ValueError as exc:
-            raise FileDownloadRequestError("invalid_access_context", str(exc), status_code=400) from exc
+            raise AgentFileRequestError("invalid_access_context", str(exc), status_code=400) from exc
 
-        if not isinstance(file_mapping, Mapping) or not file_mapping.get("transfer_method"):
-            raise FileDownloadRequestError("invalid_file_mapping", "file.transfer_method is required", status_code=400)
-
-        scope = FileAccessScope(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            user_from=scope_user_from,
-            invoke_from=scope_invoke_from,
-        )
-        controller = DatabaseFileAccessController()
-        runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
         try:
             with bind_file_access_scope(scope):
-                file = file_factory.build_from_mapping(
-                    mapping=file_mapping,
-                    tenant_id=tenant_id,
-                    access_controller=controller,
-                )
-                # Internal URL (for_external=False): the consumer is the agent backend /
-                # sandbox, not a browser. Resolves against INTERNAL_FILES_URL, falling
-                # back to FILES_URL when not configured.
-                download_url = runtime.resolve_file_url(file=file, for_external=False)
+                file = self._build_file(mapping=file_mapping, tenant_id=tenant_id)
+                if for_external:
+                    download_uri = self._runtime.resolve_file_url(file=file, for_external=True)
+                else:
+                    download_uri = self._runtime.resolve_file_uri(file=file)
         except ValueError as exc:
-            raise FileDownloadRequestError("file_not_accessible", str(exc), status_code=404) from exc
+            raise AgentFileRequestError("file_not_accessible", str(exc), status_code=404) from exc
 
-        if not download_url:
-            raise FileDownloadRequestError(
-                "download_url_unavailable", "could not resolve a download URL for the file", status_code=502
+        if not download_uri:
+            raise AgentFileRequestError(
+                "download_uri_unavailable",
+                "could not resolve a download URI for the file",
+                status_code=502,
             )
-        return {
-            "filename": file.filename,
-            "mime_type": file.mime_type,
-            "size": file.size,
-            "download_url": download_url,
-        }
+        return AgentFileDownloadRequestResult(
+            filename=file.filename or "download.bin",
+            mime_type=file.mime_type,
+            size=file.size,
+            download_uri=download_uri,
+        )
+
+    def _build_file(self, *, mapping: Mapping[str, Any], tenant_id: str) -> File:
+        return build_from_mapping(
+            mapping=mapping,
+            tenant_id=tenant_id,
+            access_controller=self._access_controller,
+        )
 
 
-__all__ = ["AgentFileDownloadRequestService", "FileDownloadRequestError"]
+__all__ = [
+    "AgentFileDownloadRequestResult",
+    "AgentFileRequestError",
+    "AgentFileRequestService",
+]

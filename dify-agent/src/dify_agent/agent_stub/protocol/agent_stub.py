@@ -246,7 +246,12 @@ class AgentStubFileMapping(BaseModel):
 
 
 class AgentStubFileDownloadRequest(BaseModel):
-    """Request body for one signed download URL allocation."""
+    """Request one file URL for a specific consumer audience.
+
+    ``for_external=True`` allocates a frontend-display URL that the CLI only
+    returns to its caller. ``False`` allocates a Sandbox byte-transfer URL that
+    the CLI immediately fetches. It does not mean Docker external/internal.
+    """
 
     file: AgentStubFileMapping
     for_external: bool = True

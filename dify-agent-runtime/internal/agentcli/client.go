@@ -2,13 +2,21 @@ package agentcli
 
 import "context"
 
+// FileURLAudience identifies who will consume an allocated file URL.
+type FileURLAudience bool
+
+const (
+	SandboxTransferFileURL FileURLAudience = false
+	FrontendDisplayFileURL FileURLAudience = true
+)
+
 // StubClient abstracts Agent Stub control-plane and data-plane operations.
 // Business logic depends only on this interface, never on HTTP/gRPC details.
 type StubClient interface {
 	// Control-plane: available via gRPC or HTTP
 	Connect(ctx context.Context, argv []string, metadataJSON string) (*ConnectResponse, error)
 	CreateFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
-	CreateFileDownloadURL(ctx context.Context, transferMethod string, reference, url *string, forExternal bool) (*FileDownloadResponse, error)
+	CreateFileDownloadURL(ctx context.Context, transferMethod string, reference, url *string, audience FileURLAudience) (*FileDownloadResponse, error)
 
 	// Drive operations (HTTP-only control-plane)
 	GetDriveManifest(ctx context.Context, prefix string, includeDownloadURL bool) (*DriveManifestResponse, error)

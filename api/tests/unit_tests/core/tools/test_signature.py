@@ -7,12 +7,28 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from core.tools.signature import (
+    get_signed_file_uri_for_plugin,
     get_signed_file_url_for_plugin,
     sign_tool_file,
+    sign_tool_file_uri,
     sign_upload_file_preview_url,
     verify_plugin_file_signature,
     verify_tool_file_signature,
 )
+
+
+def test_sign_tool_file_uri_has_no_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x08" * 16)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+
+    uri = sign_tool_file_uri("tool-file-id", ".png")
+    parsed = urlparse(uri)
+
+    assert parsed.scheme == ""
+    assert parsed.netloc == ""
+    assert parsed.path == "/files/tools/tool-file-id.png"
+    assert parse_qs(parsed.query)["timestamp"] == ["1700000000"]
 
 
 def test_sign_tool_file_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -161,6 +177,22 @@ def test_get_signed_file_url_for_plugin_and_verify_roundtrip(monkeypatch: pytest
         )
         is True
     )
+
+
+def test_get_signed_file_uri_for_plugin_has_no_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x09" * 16)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+
+    uri = get_signed_file_uri_for_plugin(
+        filename="report.pdf",
+        mimetype="application/pdf",
+        tenant_id="tenant-id",
+        user_id="user-id",
+    )
+
+    assert urlparse(uri).path == "/files/upload/for-plugin"
+    assert urlparse(uri).netloc == ""
 
 
 def test_verify_plugin_file_signature_rejects_invalid_signatures(monkeypatch: pytest.MonkeyPatch) -> None:
