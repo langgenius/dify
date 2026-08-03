@@ -86,7 +86,7 @@
   "table.header.status": "状态",
   "table.header.summary": "标题",
   "table.header.time": "创建时间",
-  "table.header.tokens": "TOKENS",
+  "table.header.tokens": "Token 数",
   "table.header.triggered_from": "触发方式",
   "table.header.updatedTime": "更新时间",
   "table.header.user": "用户或账户",

@@ -2116,7 +2116,7 @@ class RegisterService:
             )
 
         token = cls.generate_invite_token(tenant, account, role, requires_setup=requires_setup)
-        language = account.interface_language or "en-US"
+        language = get_valid_language(account.interface_language)
 
         # send email
         send_invite_member_mail_task.delay(

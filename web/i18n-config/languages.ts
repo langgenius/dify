@@ -1,24 +1,24 @@
 const data = {
   languages: [
     {
-      value: 'en-US',
-      name: 'English (United States)',
-      prompt_name: 'English',
-      example: 'Hello, Dify!',
-      supported: true,
-    },
-    {
       value: 'zh-Hans',
       name: '简体中文',
       prompt_name: 'Chinese Simplified',
-      example: '你好，Dify！',
+      example: '你好，DiFly！',
+      supported: true,
+    },
+    {
+      value: 'en-US',
+      name: 'English (United States)',
+      prompt_name: 'English',
+      example: 'Hello, DiFly!',
       supported: true,
     },
     {
       value: 'zh-Hant',
       name: '繁體中文',
       prompt_name: 'Chinese Traditional',
-      example: '你好，Dify！',
+      example: '你好，DiFly！',
       supported: true,
     },
     {

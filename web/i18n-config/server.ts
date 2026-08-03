@@ -49,6 +49,14 @@ export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
   }
 }
 
+const normalizeBrowserLanguages = (langs: string[]): string[] =>
+  langs.map((lang) => {
+    const lower = lang.toLowerCase()
+    if (lower === 'zh' || lower === 'zh-cn' || lower === 'zh_cn') return 'zh-Hans'
+    if (lower === 'zh-tw' || lower === 'zh-hk' || lower === 'zh-mo') return 'zh-Hant'
+    return lang
+  })
+
 export const getLocaleOnServer = async (): Promise<Locale> => {
   const cached = getLocaleCache()
   if (cached) return cached
@@ -65,7 +73,9 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
     const negotiatorHeaders: Record<string, string> = {}
     ;(await headers()).forEach((value, key) => (negotiatorHeaders[key] = value))
     // Use negotiator and intl-localematcher to get best locale
-    languages = new Negotiator({ headers: negotiatorHeaders }).languages()
+    languages = normalizeBrowserLanguages(new Negotiator({ headers: negotiatorHeaders }).languages())
+  } else {
+    languages = normalizeBrowserLanguages(languages)
   }
 
   // Validate languages
