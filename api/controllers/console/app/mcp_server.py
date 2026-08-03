@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -179,11 +178,11 @@ class AppMCPServerController(Resource):
         return dump_response(AppMCPServerResponse, server)
 
 
-@console_ns.route("/apps/<uuid:server_id>/server/refresh")
+@console_ns.route("/apps/<uuid:app_id>/server/refresh")
 class AppMCPServerRefreshController(Resource):
     @console_ns.doc("refresh_app_mcp_server")
     @console_ns.doc(description="Refresh MCP server configuration and regenerate server code")
-    @console_ns.doc(params={"server_id": "Server ID"})
+    @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.response(200, "MCP server refreshed successfully", console_ns.models[AppMCPServerResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
@@ -193,10 +192,11 @@ class AppMCPServerRefreshController(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, server_id: UUID):
+    @get_app_model
+    def post(self, current_tenant_id: str, app_model: App):
         server = db.session.scalar(
             select(AppMCPServer)
-            .where(AppMCPServer.id == server_id, AppMCPServer.tenant_id == current_tenant_id)
+            .where(AppMCPServer.app_id == app_model.id, AppMCPServer.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not server:

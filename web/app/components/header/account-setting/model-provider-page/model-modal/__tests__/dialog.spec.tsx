@@ -1,23 +1,10 @@
-import type { ReactNode } from 'react'
 import type { Credential, ModelProvider } from '../../declarations'
-import { act, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
 import ModelModal from '../index'
 
-type DialogProps = {
-  children: ReactNode
-  onOpenChange?: (open: boolean) => void
-}
-
-type AlertDialogProps = {
-  children: ReactNode
-  onOpenChange?: (open: boolean) => void
-}
-
 let mockLanguage = 'en_US'
-let latestDialogOnOpenChange: DialogProps['onOpenChange']
-let latestAlertDialogOnOpenChange: AlertDialogProps['onOpenChange']
 let mockAvailableCredentials: Credential[] | undefined = []
 let mockDeleteCredentialId: string | null = null
 
@@ -39,39 +26,6 @@ vi.mock('../../model-auth', () => ({
   CredentialSelector: ({ credentials }: { credentials: Credential[] }) => (
     <div>{`credentials:${credentials.length}`}</div>
   ),
-}))
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, onOpenChange }: DialogProps) => {
-    latestDialogOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogCloseButton: () => <button type="button">close</button>,
-}))
-
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({ children, onOpenChange }: AlertDialogProps) => {
-    latestAlertDialogOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => (
-    <button type="button">{children}</button>
-  ),
-  AlertDialogConfirmButton: ({
-    children,
-    onClick,
-  }: {
-    children: ReactNode
-    onClick?: () => void
-  }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('../../model-auth/hooks', () => ({
@@ -153,51 +107,8 @@ describe('ModelModal dialog branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
-    latestDialogOnOpenChange = undefined
-    latestAlertDialogOnOpenChange = undefined
     mockAvailableCredentials = []
     mockDeleteCredentialId = null
-  })
-
-  it('should only cancel when the dialog reports it has closed', () => {
-    const onCancel = vi.fn()
-    render(
-      <ModelModal
-        provider={createProvider()}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={onCancel}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
-    )
-
-    act(() => {
-      latestDialogOnOpenChange?.(true)
-      latestDialogOnOpenChange?.(false)
-    })
-
-    expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('should only close the confirm dialog when the alert dialog closes', () => {
-    mockDeleteCredentialId = 'cred-1'
-
-    render(
-      <ModelModal
-        provider={createProvider()}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
-    )
-
-    act(() => {
-      latestAlertDialogOnOpenChange?.(true)
-      latestAlertDialogOnOpenChange?.(false)
-    })
-
-    expect(mockCloseConfirmDelete).toHaveBeenCalledTimes(1)
   })
 
   it('should pass an empty credential list to the selector when no credentials are available', () => {

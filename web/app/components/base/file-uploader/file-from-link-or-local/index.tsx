@@ -1,3 +1,4 @@
+import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -13,7 +14,7 @@ import { useStore } from '../store'
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
   showFromLocal?: boolean
-  trigger: (open: boolean) => React.ReactElement
+  trigger: NonNullable<PopoverTriggerProps['render']>
   fileConfig: FileUpload
 }
 const FileFromLinkOrLocal = ({
@@ -24,7 +25,6 @@ const FileFromLinkOrLocal = ({
 }: FileFromLinkOrLocalProps) => {
   const { t } = useTranslation()
   const files = useStore((s) => s.files)
-  const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [showError, setShowError] = useState(false)
   const { handleLoadFileFromLink } = useFile(fileConfig)
@@ -48,8 +48,8 @@ const FileFromLinkOrLocal = ({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={trigger(open)} />
+    <Popover>
+      <PopoverTrigger render={trigger} />
       <PopoverContent
         placement="top"
         sideOffset={4}

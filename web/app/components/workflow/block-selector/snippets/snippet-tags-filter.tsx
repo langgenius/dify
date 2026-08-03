@@ -68,10 +68,11 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
                 value.length > 0 &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-1.5 pl-1 shadow-xs shadow-shadow-shadow-3',
               !embedded && 'hover:bg-components-input-bg-hover',
-              open &&
-                (embedded
-                  ? !value.length && 'bg-state-base-hover'
-                  : 'border-components-input-border-active bg-components-input-bg-active text-text-secondary'),
+              embedded &&
+                !value.length &&
+                'data-popup-open:bg-state-base-hover data-popup-open:hover:bg-components-button-ghost-bg-hover',
+              !embedded &&
+                'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active data-popup-open:text-text-secondary data-popup-open:hover:bg-components-input-bg-hover',
               value.length > 0 && 'text-text-secondary',
             )}
           >

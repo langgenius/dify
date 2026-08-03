@@ -3,10 +3,16 @@ from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
+import pytest
 from flask import Flask
 
 from controllers.console import console_ns
-from controllers.console.app.mcp_server import AppMCPServerController, AppMCPServerResponse
+from controllers.console.app.mcp_server import (
+    AppMCPServerController,
+    AppMCPServerRefreshController,
+    AppMCPServerResponse,
+)
+from controllers.console.wraps import RBACPermission, RBACResourceScope
 
 
 class _ValidatedResponse:
@@ -177,3 +183,75 @@ class TestAppMCPServerController:
         get_mock.assert_not_called()
         commit.assert_called_once()
         assert response == {"id": "server-1"}
+
+
+class TestAppMCPServerRefreshController:
+    def test_post_refreshes_server_bound_to_app_and_tenant(self):
+        api = AppMCPServerRefreshController()
+        method = unwrap(api.post)
+        server = SimpleNamespace(server_code="old-code")
+
+        with (
+            patch("controllers.console.app.mcp_server.db.session.scalar", return_value=server) as scalar,
+            patch("controllers.console.app.mcp_server.db.session.commit") as commit,
+            patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="new-code"),
+            patch(
+                "controllers.console.app.mcp_server.AppMCPServerResponse.model_validate",
+                return_value=_ValidatedResponse({"id": "server-1", "server_code": "new-code"}),
+            ),
+        ):
+            response = method(api, "tenant-1", app_model=SimpleNamespace(id="app-1"))
+
+        stmt = scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "app_mcp_servers.tenant_id" in statement
+        assert "app_mcp_servers.app_id" in statement
+        assert "tenant-1" in compiled.params.values()
+        assert "app-1" in compiled.params.values()
+        assert server.server_code == "new-code"
+        commit.assert_called_once()
+        assert response == {"id": "server-1", "server_code": "new-code"}
+
+    def test_route_is_app_scoped_post(self):
+        route_map = {
+            resource.__name__: urls
+            for resource, urls, _route_doc, _kwargs in console_ns.resources
+            if resource.__name__ == "AppMCPServerRefreshController"
+        }
+
+        assert route_map["AppMCPServerRefreshController"] == ("/apps/<uuid:app_id>/server/refresh",)
+        assert hasattr(AppMCPServerRefreshController, "post")
+        assert not hasattr(AppMCPServerRefreshController, "get")
+
+    def test_post_requires_app_view_layout_permission(self):
+        method = AppMCPServerRefreshController.post
+        while "rbac_permission_required" not in method.__code__.co_qualname:
+            method = method.__wrapped__
+
+        class PermissionCheckedError(Exception):
+            pass
+
+        current_user = SimpleNamespace(id="account-1")
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(current_user, "tenant-1"),
+            ),
+            patch(
+                "controllers.common.wraps.enforce_rbac_access",
+                side_effect=PermissionCheckedError,
+            ) as enforce_rbac_access,
+            pytest.raises(PermissionCheckedError),
+        ):
+            method(AppMCPServerRefreshController(), app_id="app-1")
+
+        enforce_rbac_access.assert_called_once_with(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            resource_type=RBACResourceScope.APP,
+            scene=RBACPermission.APP_VIEW_LAYOUT,
+            resource_required=True,
+            path_args={"app_id": "app-1"},
+        )
