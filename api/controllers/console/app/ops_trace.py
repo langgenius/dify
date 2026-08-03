@@ -3,12 +3,13 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -17,8 +18,10 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from core.ops.ops_trace_manager import OpsTraceManager
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
@@ -26,6 +29,10 @@ from services.ops_service import OpsService
 
 class TraceProviderQuery(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
+
+
+class TraceConfigListQuery(BaseModel):
+    include_config: bool = Field(default=False, description="Include obfuscated provider configurations")
 
 
 class TraceConfigPayload(BaseModel):
@@ -49,8 +56,48 @@ class TraceAppConfigResponse(ResponseModel):
     updated_at: str | None = None
 
 
-register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
-register_response_schema_models(console_ns, TraceAppConfigResponse)
+class TraceAppConfigListResponse(ResponseModel):
+    enabled: bool = False
+    tracing_provider: str | None = None
+    configured_providers: list[str] = Field(default_factory=list)
+    configs: list[TraceAppConfigResponse] | None = None
+
+
+register_schema_models(console_ns, TraceProviderQuery, TraceConfigListQuery, TraceConfigPayload)
+register_response_schema_models(console_ns, TraceAppConfigResponse, TraceAppConfigListResponse)
+
+
+@console_ns.route("/apps/<uuid:app_id>/trace-configs")
+class TraceAppConfigListApi(Resource):
+    """Read tracing status and configured providers in one request."""
+
+    @console_ns.doc("list_trace_app_configs")
+    @console_ns.doc(description="List tracing configurations for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(TraceConfigListQuery))
+    @console_ns.response(
+        200,
+        "Tracing configurations retrieved successfully",
+        console_ns.models[TraceAppConfigListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_session
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @get_app_model
+    def get(self, session: Session, app_model: App):
+        query = TraceConfigListQuery.model_validate(request.args.to_dict(flat=True))
+        trace_status = OpsTraceManager.get_app_tracing_config(app_model.id, session)
+        if isinstance(trace_status, BaseModel):
+            trace_status = trace_status.model_dump()
+        trace_configs = OpsService.get_tracing_app_configs(
+            app_id=app_model.id,
+            include_config=query.include_config,
+            session=session,
+        )
+
+        return dump_response(TraceAppConfigListResponse, {**trace_status, **trace_configs})
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")

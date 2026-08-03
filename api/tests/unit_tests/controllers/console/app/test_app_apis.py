@@ -53,7 +53,7 @@ from controllers.console.app import (
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
-from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
+from controllers.console.app.ops_trace import TraceConfigListQuery, TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
 from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
@@ -282,6 +282,40 @@ class TestOpsTraceEndpoints:
     def test_ops_trace_config_payload(self):
         payload = TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"})
         assert payload.tracing_config["api_key"] == "k"
+
+    @pytest.mark.parametrize(("raw_value", "expected"), [(None, False), ("true", True), ("false", False)])
+    def test_trace_config_list_query(self, raw_value: str | None, expected: bool):
+        query = TraceConfigListQuery.model_validate({} if raw_value is None else {"include_config": raw_value})
+        assert query.include_config is expected
+
+    def test_trace_app_config_list_get_summary(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        api = ops_trace_module.TraceAppConfigListApi()
+        method = unwrap(api.get)
+        session = MagicMock(spec=Session)
+        get_configs = MagicMock(
+            return_value={
+                "configured_providers": ["langfuse", "mlflow"],
+                "configs": None,
+            }
+        )
+
+        monkeypatch.setattr(ops_trace_module.OpsService, "get_tracing_app_configs", get_configs)
+        monkeypatch.setattr(
+            ops_trace_module.OpsTraceManager,
+            "get_app_tracing_config",
+            lambda *_args: {"enabled": False, "tracing_provider": "langfuse"},
+        )
+
+        with app.test_request_context("/?include_config=false"):
+            result = method(api, session, app_model=MagicMock(id="app-1"))
+
+        assert result == {
+            "enabled": False,
+            "tracing_provider": "langfuse",
+            "configured_providers": ["langfuse", "mlflow"],
+            "configs": None,
+        }
+        get_configs.assert_called_once_with(app_id="app-1", include_config=False, session=session)
 
     def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()

@@ -14,6 +14,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ConfigBtn from '../config-button'
 import ProviderConfigModal from '../provider-config-modal'
 import { TracingProvider } from '../type'
@@ -251,8 +253,26 @@ const invalidConfigCases: Array<{
   },
 ]
 
-const renderConfigButton = () => {
-  return render(
+const renderConfigButton = ({ seedConfigs = true }: { seedConfigs?: boolean } = {}) => {
+  const queryClient = createConsoleQueryClient()
+  if (seedConfigs) {
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.traceConfigs.get.queryKey({
+        input: {
+          params: { app_id: 'app-id' },
+          query: { include_config: true },
+        },
+      }),
+      {
+        enabled: false,
+        tracing_provider: null,
+        configured_providers: [],
+        configs: [],
+      },
+    )
+  }
+
+  return renderWithConsoleQuery(
     <ConfigBtn
       appId="app-id"
       readOnly={false}
@@ -261,21 +281,11 @@ const renderConfigButton = () => {
       onStatusChange={vi.fn()}
       chosenProvider={null}
       onChooseProvider={vi.fn()}
-      arizeConfig={null}
-      phoenixConfig={null}
-      langSmithConfig={null}
-      langFuseConfig={null}
-      opikConfig={null}
-      weaveConfig={null}
-      aliyunConfig={null}
-      mlflowConfig={null}
-      databricksConfig={null}
-      tencentConfig={null}
-      onConfigUpdated={vi.fn()}
       onConfigRemoved={vi.fn()}
     >
       <button type="button">Open tracing</button>
     </ConfigBtn>,
+    { queryClient },
   )
 }
 

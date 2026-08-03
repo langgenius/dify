@@ -11,6 +11,10 @@ export enum TracingProvider {
   tencent = 'tencent',
 }
 
+export const isTracingProvider = (
+  provider: string | null | undefined,
+): provider is TracingProvider => Object.values(TracingProvider).some((value) => value === provider)
+
 export type ArizeConfig = {
   api_key: string
   space_id: string

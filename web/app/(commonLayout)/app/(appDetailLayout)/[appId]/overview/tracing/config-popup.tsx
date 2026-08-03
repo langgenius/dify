@@ -12,21 +12,49 @@ import type {
   TencentConfig,
   WeaveConfig,
 } from './type'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import ProviderConfigModal from './provider-config-modal'
+import Loading from '@/app/components/base/loading'
+import { consoleQuery } from '@/service/client'
 import ProviderPanel from './provider-panel'
 import TracingIcon from './tracing-icon'
-import { TracingProvider } from './type'
+import { isTracingProvider, TracingProvider } from './type'
+
+const ProviderConfigModal = lazy(() => import('./provider-config-modal'))
 
 const I18N_PREFIX = 'tracing'
+
+type ConfigLoadErrorProps = {
+  loading: boolean
+  onRetry: () => void
+}
+
+const ConfigLoadError: FC<ConfigLoadErrorProps> = ({ loading, onRetry }) => {
+  const { t } = useTranslation()
+
+  return (
+    <div
+      role="alert"
+      className="flex items-center justify-between gap-3 rounded-xl bg-state-destructive-hover px-3 py-2"
+    >
+      <div className="system-xs-regular text-text-secondary">
+        {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+      </div>
+      <Button type="button" variant="secondary" size="small" loading={loading} onClick={onRetry}>
+        {t(($) => $['operation.retry'], { ns: 'common' })}
+      </Button>
+    </div>
+  )
+}
 
 export type PopupProps = {
   appId: string
@@ -35,30 +63,6 @@ export type PopupProps = {
   onStatusChange: (enabled: boolean) => void
   chosenProvider: TracingProvider | null
   onChooseProvider: (provider: TracingProvider) => void
-  arizeConfig: ArizeConfig | null
-  phoenixConfig: PhoenixConfig | null
-  langSmithConfig: LangSmithConfig | null
-  langFuseConfig: LangFuseConfig | null
-  opikConfig: OpikConfig | null
-  weaveConfig: WeaveConfig | null
-  aliyunConfig: AliyunConfig | null
-  mlflowConfig: MLflowConfig | null
-  databricksConfig: DatabricksConfig | null
-  tencentConfig: TencentConfig | null
-  onConfigUpdated: (
-    provider: TracingProvider,
-    payload:
-      | ArizeConfig
-      | PhoenixConfig
-      | LangSmithConfig
-      | LangFuseConfig
-      | OpikConfig
-      | WeaveConfig
-      | AliyunConfig
-      | TencentConfig
-      | MLflowConfig
-      | DatabricksConfig,
-  ) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -69,20 +73,61 @@ const ConfigPopup: FC<PopupProps> = ({
   onStatusChange,
   chosenProvider,
   onChooseProvider,
-  arizeConfig,
-  phoenixConfig,
-  langSmithConfig,
-  langFuseConfig,
-  opikConfig,
-  weaveConfig,
-  aliyunConfig,
-  mlflowConfig,
-  databricksConfig,
-  tencentConfig,
-  onConfigUpdated,
   onConfigRemoved,
 }) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const configsQueryOptions = consoleQuery.apps.byAppId.traceConfigs.get.queryOptions({
+    input: {
+      params: { app_id: appId },
+      query: { include_config: true },
+    },
+  })
+  const summaryQueryOptions = consoleQuery.apps.byAppId.traceConfigs.get.queryOptions({
+    input: {
+      params: { app_id: appId },
+      query: { include_config: false },
+    },
+  })
+  const {
+    data: tracingConfigs,
+    isPending,
+    isError,
+    isFetching,
+    refetch,
+  } = useQuery(configsQueryOptions)
+  const configuredProviders = new Set(
+    (tracingConfigs?.configured_providers ?? []).filter(isTracingProvider),
+  )
+  const failedProviders = new Set(
+    (tracingConfigs?.configs ?? []).flatMap((config) =>
+      config.error && isTracingProvider(config.tracing_provider) ? [config.tracing_provider] : [],
+    ),
+  )
+  const hasConfigLoadErrors = (tracingConfigs?.configs ?? []).some((config) => !!config.error)
+  const configsByProvider = Object.fromEntries(
+    (tracingConfigs?.configs ?? []).flatMap((config) => {
+      if (!isTracingProvider(config.tracing_provider) || !config.tracing_config) return []
+      return [[config.tracing_provider, config.tracing_config]]
+    }),
+  )
+  const arizeConfig = (configsByProvider[TracingProvider.arize] as ArizeConfig | undefined) ?? null
+  const phoenixConfig =
+    (configsByProvider[TracingProvider.phoenix] as PhoenixConfig | undefined) ?? null
+  const langSmithConfig =
+    (configsByProvider[TracingProvider.langSmith] as LangSmithConfig | undefined) ?? null
+  const langFuseConfig =
+    (configsByProvider[TracingProvider.langfuse] as LangFuseConfig | undefined) ?? null
+  const opikConfig = (configsByProvider[TracingProvider.opik] as OpikConfig | undefined) ?? null
+  const weaveConfig = (configsByProvider[TracingProvider.weave] as WeaveConfig | undefined) ?? null
+  const aliyunConfig =
+    (configsByProvider[TracingProvider.aliyun] as AliyunConfig | undefined) ?? null
+  const mlflowConfig =
+    (configsByProvider[TracingProvider.mlflow] as MLflowConfig | undefined) ?? null
+  const databricksConfig =
+    (configsByProvider[TracingProvider.databricks] as DatabricksConfig | undefined) ?? null
+  const tencentConfig =
+    (configsByProvider[TracingProvider.tencent] as TencentConfig | undefined) ?? null
 
   const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(
     TracingProvider.langfuse,
@@ -108,53 +153,74 @@ const ConfigPopup: FC<PopupProps> = ({
     [onChooseProvider],
   )
 
-  const handleConfigUpdated = useCallback(
-    (
-      payload:
-        | ArizeConfig
-        | PhoenixConfig
-        | LangSmithConfig
-        | LangFuseConfig
-        | OpikConfig
-        | WeaveConfig
-        | AliyunConfig
-        | MLflowConfig
-        | DatabricksConfig
-        | TencentConfig,
-    ) => {
-      onConfigUpdated(currentProvider!, payload)
-      hideConfigModal()
-    },
-    [currentProvider, hideConfigModal, onConfigUpdated],
-  )
+  const refreshDetailedConfigs = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: configsQueryOptions.queryKey,
+    })
+  }, [configsQueryOptions.queryKey, queryClient])
+
+  const handleConfigUpdated = useCallback(() => {
+    queryClient.setQueryData(summaryQueryOptions.queryKey, (current) => {
+      if (!current || !currentProvider) return current
+      const configuredProviders = current.configured_providers ?? []
+      if (configuredProviders.includes(currentProvider)) return current
+      return {
+        ...current,
+        configured_providers: [...configuredProviders, currentProvider],
+      }
+    })
+    refreshDetailedConfigs()
+    hideConfigModal()
+  }, [
+    currentProvider,
+    hideConfigModal,
+    queryClient,
+    refreshDetailedConfigs,
+    summaryQueryOptions.queryKey,
+  ])
 
   const handleConfigRemoved = useCallback(() => {
+    queryClient.setQueryData(summaryQueryOptions.queryKey, (current) =>
+      current
+        ? {
+            ...current,
+            configured_providers: (current.configured_providers ?? []).filter(
+              (provider) => provider !== currentProvider,
+            ),
+          }
+        : current,
+    )
+    refreshDetailedConfigs()
     onConfigRemoved(currentProvider!)
     hideConfigModal()
-  }, [currentProvider, hideConfigModal, onConfigRemoved])
+  }, [
+    currentProvider,
+    hideConfigModal,
+    onConfigRemoved,
+    queryClient,
+    refreshDetailedConfigs,
+    summaryQueryOptions.queryKey,
+  ])
 
-  const providerAllConfigured =
-    arizeConfig &&
-    phoenixConfig &&
-    langSmithConfig &&
-    langFuseConfig &&
-    opikConfig &&
-    weaveConfig &&
-    aliyunConfig &&
-    mlflowConfig &&
-    databricksConfig &&
-    tencentConfig
-  const providerAllNotConfigured =
-    !arizeConfig &&
-    !phoenixConfig &&
-    !langSmithConfig &&
-    !langFuseConfig &&
-    !opikConfig &&
-    !weaveConfig &&
-    !aliyunConfig &&
-    !mlflowConfig &&
-    !databricksConfig &&
-    !tencentConfig
+  if (isPending) {
+    return (
+      <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
+        <Loading />
+      </div>
+    )
+  }
+  if (isError && !tracingConfigs) {
+    return (
+      <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
+        <ConfigLoadError loading={isFetching} onRetry={() => void refetch()} />
+      </div>
+    )
+  }
+
+  const providerAllConfigured = Object.values(TracingProvider).every((provider) =>
+    configuredProviders.has(provider),
+  )
+  const providerAllNotConfigured = configuredProviders.size === 0
 
   const switchContent = (
     <Switch
@@ -167,9 +233,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const arizePanel = (
     <ProviderPanel
       type={TracingProvider.arize}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.arize)}
       config={arizeConfig}
-      hasConfigured={!!arizeConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.arize)}
       onConfig={handleOnConfig(TracingProvider.arize)}
       isChosen={chosenProvider === TracingProvider.arize}
       onChoose={handleOnChoose(TracingProvider.arize)}
@@ -180,9 +246,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const phoenixPanel = (
     <ProviderPanel
       type={TracingProvider.phoenix}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.phoenix)}
       config={phoenixConfig}
-      hasConfigured={!!phoenixConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.phoenix)}
       onConfig={handleOnConfig(TracingProvider.phoenix)}
       isChosen={chosenProvider === TracingProvider.phoenix}
       onChoose={handleOnChoose(TracingProvider.phoenix)}
@@ -193,9 +259,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const langSmithPanel = (
     <ProviderPanel
       type={TracingProvider.langSmith}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.langSmith)}
       config={langSmithConfig}
-      hasConfigured={!!langSmithConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.langSmith)}
       onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
       onChoose={handleOnChoose(TracingProvider.langSmith)}
@@ -206,9 +272,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const langfusePanel = (
     <ProviderPanel
       type={TracingProvider.langfuse}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.langfuse)}
       config={langFuseConfig}
-      hasConfigured={!!langFuseConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.langfuse)}
       onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}
       onChoose={handleOnChoose(TracingProvider.langfuse)}
@@ -219,9 +285,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const opikPanel = (
     <ProviderPanel
       type={TracingProvider.opik}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.opik)}
       config={opikConfig}
-      hasConfigured={!!opikConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.opik)}
       onConfig={handleOnConfig(TracingProvider.opik)}
       isChosen={chosenProvider === TracingProvider.opik}
       onChoose={handleOnChoose(TracingProvider.opik)}
@@ -232,9 +298,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const weavePanel = (
     <ProviderPanel
       type={TracingProvider.weave}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.weave)}
       config={weaveConfig}
-      hasConfigured={!!weaveConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.weave)}
       onConfig={handleOnConfig(TracingProvider.weave)}
       isChosen={chosenProvider === TracingProvider.weave}
       onChoose={handleOnChoose(TracingProvider.weave)}
@@ -245,9 +311,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const aliyunPanel = (
     <ProviderPanel
       type={TracingProvider.aliyun}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.aliyun)}
       config={aliyunConfig}
-      hasConfigured={!!aliyunConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.aliyun)}
       onConfig={handleOnConfig(TracingProvider.aliyun)}
       isChosen={chosenProvider === TracingProvider.aliyun}
       onChoose={handleOnChoose(TracingProvider.aliyun)}
@@ -258,9 +324,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const mlflowPanel = (
     <ProviderPanel
       type={TracingProvider.mlflow}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.mlflow)}
       config={mlflowConfig}
-      hasConfigured={!!mlflowConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.mlflow)}
       onConfig={handleOnConfig(TracingProvider.mlflow)}
       isChosen={chosenProvider === TracingProvider.mlflow}
       onChoose={handleOnChoose(TracingProvider.mlflow)}
@@ -271,9 +337,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const databricksPanel = (
     <ProviderPanel
       type={TracingProvider.databricks}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.databricks)}
       config={databricksConfig}
-      hasConfigured={!!databricksConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.databricks)}
       onConfig={handleOnConfig(TracingProvider.databricks)}
       isChosen={chosenProvider === TracingProvider.databricks}
       onChoose={handleOnChoose(TracingProvider.databricks)}
@@ -284,9 +350,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const tencentPanel = (
     <ProviderPanel
       type={TracingProvider.tencent}
-      readOnly={readOnly}
+      readOnly={readOnly || failedProviders.has(TracingProvider.tencent)}
       config={tencentConfig}
-      hasConfigured={!!tencentConfig}
+      hasConfigured={configuredProviders.has(TracingProvider.tencent)}
       onConfig={handleOnConfig(TracingProvider.tencent)}
       isChosen={chosenProvider === TracingProvider.tencent}
       onChoose={handleOnChoose(TracingProvider.tencent)}
@@ -296,25 +362,25 @@ const ConfigPopup: FC<PopupProps> = ({
   const configuredProviderPanel = () => {
     const configuredPanels: JSX.Element[] = []
 
-    if (langFuseConfig) configuredPanels.push(langfusePanel)
+    if (configuredProviders.has(TracingProvider.langfuse)) configuredPanels.push(langfusePanel)
 
-    if (langSmithConfig) configuredPanels.push(langSmithPanel)
+    if (configuredProviders.has(TracingProvider.langSmith)) configuredPanels.push(langSmithPanel)
 
-    if (opikConfig) configuredPanels.push(opikPanel)
+    if (configuredProviders.has(TracingProvider.opik)) configuredPanels.push(opikPanel)
 
-    if (weaveConfig) configuredPanels.push(weavePanel)
+    if (configuredProviders.has(TracingProvider.weave)) configuredPanels.push(weavePanel)
 
-    if (arizeConfig) configuredPanels.push(arizePanel)
+    if (configuredProviders.has(TracingProvider.arize)) configuredPanels.push(arizePanel)
 
-    if (phoenixConfig) configuredPanels.push(phoenixPanel)
+    if (configuredProviders.has(TracingProvider.phoenix)) configuredPanels.push(phoenixPanel)
 
-    if (aliyunConfig) configuredPanels.push(aliyunPanel)
+    if (configuredProviders.has(TracingProvider.aliyun)) configuredPanels.push(aliyunPanel)
 
-    if (mlflowConfig) configuredPanels.push(mlflowPanel)
+    if (configuredProviders.has(TracingProvider.mlflow)) configuredPanels.push(mlflowPanel)
 
-    if (databricksConfig) configuredPanels.push(databricksPanel)
+    if (configuredProviders.has(TracingProvider.databricks)) configuredPanels.push(databricksPanel)
 
-    if (tencentConfig) configuredPanels.push(tencentPanel)
+    if (configuredProviders.has(TracingProvider.tencent)) configuredPanels.push(tencentPanel)
 
     return configuredPanels
   }
@@ -322,25 +388,27 @@ const ConfigPopup: FC<PopupProps> = ({
   const moreProviderPanel = () => {
     const notConfiguredPanels: JSX.Element[] = []
 
-    if (!arizeConfig) notConfiguredPanels.push(arizePanel)
+    if (!configuredProviders.has(TracingProvider.arize)) notConfiguredPanels.push(arizePanel)
 
-    if (!phoenixConfig) notConfiguredPanels.push(phoenixPanel)
+    if (!configuredProviders.has(TracingProvider.phoenix)) notConfiguredPanels.push(phoenixPanel)
 
-    if (!langFuseConfig) notConfiguredPanels.push(langfusePanel)
+    if (!configuredProviders.has(TracingProvider.langfuse)) notConfiguredPanels.push(langfusePanel)
 
-    if (!langSmithConfig) notConfiguredPanels.push(langSmithPanel)
+    if (!configuredProviders.has(TracingProvider.langSmith))
+      notConfiguredPanels.push(langSmithPanel)
 
-    if (!opikConfig) notConfiguredPanels.push(opikPanel)
+    if (!configuredProviders.has(TracingProvider.opik)) notConfiguredPanels.push(opikPanel)
 
-    if (!weaveConfig) notConfiguredPanels.push(weavePanel)
+    if (!configuredProviders.has(TracingProvider.weave)) notConfiguredPanels.push(weavePanel)
 
-    if (!aliyunConfig) notConfiguredPanels.push(aliyunPanel)
+    if (!configuredProviders.has(TracingProvider.aliyun)) notConfiguredPanels.push(aliyunPanel)
 
-    if (!mlflowConfig) notConfiguredPanels.push(mlflowPanel)
+    if (!configuredProviders.has(TracingProvider.mlflow)) notConfiguredPanels.push(mlflowPanel)
 
-    if (!databricksConfig) notConfiguredPanels.push(databricksPanel)
+    if (!configuredProviders.has(TracingProvider.databricks))
+      notConfiguredPanels.push(databricksPanel)
 
-    if (!tencentConfig) notConfiguredPanels.push(tencentPanel)
+    if (!configuredProviders.has(TracingProvider.tencent)) notConfiguredPanels.push(tencentPanel)
 
     return notConfiguredPanels
   }
@@ -397,6 +465,11 @@ const ConfigPopup: FC<PopupProps> = ({
       <div className="mt-2 system-xs-regular text-text-tertiary">
         {t(($) => $[`${I18N_PREFIX}.tracingDescription`], { ns: 'app' })}
       </div>
+      {hasConfigLoadErrors && (
+        <div className="mt-3">
+          <ConfigLoadError loading={isFetching} onRetry={() => void refetch()} />
+        </div>
+      )}
       <Divider className="my-3" />
       <div className="relative">
         {providerAllConfigured || providerAllNotConfigured ? (
@@ -439,15 +512,17 @@ const ConfigPopup: FC<PopupProps> = ({
         )}
       </div>
       {isShowConfigModal && (
-        <ProviderConfigModal
-          appId={appId}
-          type={currentProvider!}
-          payload={configuredProviderConfig()}
-          onCancel={hideConfigModal}
-          onSaved={handleConfigUpdated}
-          onChosen={onChooseProvider}
-          onRemoved={handleConfigRemoved}
-        />
+        <Suspense fallback={null}>
+          <ProviderConfigModal
+            appId={appId}
+            type={currentProvider!}
+            payload={configuredProviderConfig()}
+            onCancel={hideConfigModal}
+            onSaved={handleConfigUpdated}
+            onChosen={onChooseProvider}
+            onRemoved={handleConfigRemoved}
+          />
+        </Suspense>
       )}
     </div>
   )

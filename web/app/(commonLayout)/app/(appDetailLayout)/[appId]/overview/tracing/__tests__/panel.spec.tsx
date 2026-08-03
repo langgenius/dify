@@ -1,6 +1,7 @@
+import type { TraceAppConfigListResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
-import { fetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import { updateTracingStatus } from '@/service/apps'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import Panel from '../panel'
@@ -12,6 +13,7 @@ const testState = vi.hoisted(() => ({
     readOnly: boolean
     hasConfigured: boolean
   }>,
+  fetchTraceConfigs: vi.fn(),
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -25,6 +27,11 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/app-1/overview',
 }))
 
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await import('jotai')
+  return { userProfileIdAtom: atom('user-1') }
+})
+
 vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) =>
     selector({
@@ -36,9 +43,24 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
-  fetchTracingStatus: vi.fn(),
-  fetchTracingConfig: vi.fn(),
   updateTracingStatus: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        traceConfigs: {
+          get: {
+            queryOptions: ({ input }: { input: unknown }) => ({
+              queryKey: ['trace-configs', input],
+              queryFn: () => testState.fetchTraceConfigs(input),
+            }),
+          },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -89,8 +111,6 @@ vi.mock('../config-button', () => ({
   },
 }))
 
-const mockedFetchTracingStatus = vi.mocked(fetchTracingStatus)
-const mockedFetchTracingConfig = vi.mocked(fetchTracingConfig)
 const mockedUpdateTracingStatus = vi.mocked(updateTracingStatus)
 
 const renderPanel = async () => {
@@ -112,15 +132,12 @@ describe('Tracing overview panel permissions', () => {
     testState.appPermissionKeys = []
     testState.workspacePermissionKeys = []
     testState.configButtonProps = []
-    mockedFetchTracingStatus.mockResolvedValue({
+    testState.fetchTraceConfigs.mockResolvedValue({
       enabled: false,
       tracing_provider: null,
-    })
-    mockedFetchTracingConfig.mockResolvedValue({
-      tracing_provider: 'langfuse',
-      tracing_config: {},
-      has_not_configured: true,
-    } as Awaited<ReturnType<typeof fetchTracingConfig>>)
+      configured_providers: [],
+      configs: null,
+    } satisfies TraceAppConfigListResponse)
     mockedUpdateTracingStatus.mockResolvedValue({
       result: 'success',
     })
@@ -165,5 +182,37 @@ describe('Tracing overview panel permissions', () => {
         hasConfigured: false,
       })
     })
+  })
+
+  it('loads only the tracing summary on the overview', async () => {
+    await renderPanel()
+
+    expect(testState.fetchTraceConfigs).toHaveBeenCalledTimes(1)
+    expect(testState.fetchTraceConfigs).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_config: false },
+    })
+  })
+
+  it('keeps the configuration action hidden until the summary resolves', async () => {
+    let resolveSummary: (value: TraceAppConfigListResponse) => void = () => {}
+    testState.fetchTraceConfigs.mockReturnValue(
+      new Promise<TraceAppConfigListResponse>((resolve) => {
+        resolveSummary = resolve
+      }),
+    )
+
+    render(<Panel />)
+
+    expect(screen.queryByTestId('config-button')).not.toBeInTheDocument()
+
+    resolveSummary({
+      enabled: false,
+      tracing_provider: null,
+      configured_providers: [],
+      configs: null,
+    })
+
+    expect(await screen.findByTestId('config-button')).toBeInTheDocument()
   })
 })

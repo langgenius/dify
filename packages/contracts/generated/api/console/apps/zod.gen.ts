@@ -507,6 +507,16 @@ export const zTraceConfigPayload = z.object({
 })
 
 /**
+ * TraceAppConfigListResponse
+ */
+export const zTraceAppConfigListResponse = z.object({
+  configs: z.array(zTraceAppConfigResponse).nullish(),
+  configured_providers: z.array(z.string()).optional(),
+  enabled: z.boolean().optional().default(false),
+  tracing_provider: z.string().nullish(),
+})
+
+/**
  * ParserEnable
  */
 export const zParserEnable = z.object({
@@ -5792,6 +5802,19 @@ export const zPostAppsByAppIdTraceConfigPath = z.object({
  * Tracing configuration created successfully
  */
 export const zPostAppsByAppIdTraceConfigResponse = zTraceAppConfigResponse
+
+export const zGetAppsByAppIdTraceConfigsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdTraceConfigsQuery = z.object({
+  include_config: z.boolean().optional().default(false),
+})
+
+/**
+ * Tracing configurations retrieved successfully
+ */
+export const zGetAppsByAppIdTraceConfigsResponse = zTraceAppConfigListResponse
 
 export const zPostAppsByAppIdTriggerEnableBody = zParserEnable
 
