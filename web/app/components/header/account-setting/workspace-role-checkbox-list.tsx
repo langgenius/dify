@@ -293,7 +293,6 @@ const WorkspaceRoleCheckboxList = ({
                     render={<ul />}
                   >
                     {filteredRoles.map((role) => {
-                      const checked = selectedRoleIdSet.has(role.id)
                       const disabled = disabledRoleIdSet.has(role.id)
 
                       return (
@@ -307,8 +306,8 @@ const WorkspaceRoleCheckboxList = ({
                                 type="button"
                                 className={cn(
                                   'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
-                                  checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
-                                  disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
+                                  'data-checked:bg-state-accent-hover data-checked:hover:bg-state-accent-hover',
+                                  'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent data-checked:data-disabled:hover:bg-transparent',
                                 )}
                               />
                             }

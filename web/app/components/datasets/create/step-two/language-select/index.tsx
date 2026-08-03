@@ -36,8 +36,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({ currentLanguage, onSelect, d
         aria-label="language"
         className={cn(
           'mx-1 w-auto shrink-0 bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-tertiary-bg',
-          disabled &&
-            'cursor-not-allowed bg-components-button-tertiary-bg-disabled text-components-button-tertiary-text-disabled hover:bg-components-button-tertiary-bg-disabled',
+          'data-disabled:cursor-not-allowed data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-components-button-tertiary-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled',
         )}
       >
         <SelectValue placeholder={<span>&nbsp;</span>} />
