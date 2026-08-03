@@ -152,7 +152,7 @@ export function DocumentActionsDropdown({
             onClick={() => setRemoveDialogOpen(true)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            {t(($) => $['newKnowledge.removeSource'])}
+            {tCommon(($) => $['operation.delete'])}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -237,7 +237,7 @@ export function DocumentActionsDropdown({
                 })
               }
             >
-              {t(($) => $['newKnowledge.removeSource'])}
+              {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -797,7 +797,7 @@ describe('DocumentsPage', () => {
       'dataset.newKnowledge.disableSource',
       'dataset.batchAction.archive',
       'dataset.newKnowledge.downloadDocuments',
-      'dataset.newKnowledge.removeSource',
+      'common.operation.delete',
     ])
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
@@ -885,11 +885,9 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
-    await user.click(
-      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
-    )
+    await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
     expect(removeDocumentMutation).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
     expect(removeDocumentMutation).toHaveBeenCalledWith({
       body: { expectedRevision: 1 },
