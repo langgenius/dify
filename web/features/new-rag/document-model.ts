@@ -96,6 +96,10 @@ export function taskIsActive(task: BackgroundTask) {
   return ACTIVE_TASK_STATES.has(task.state)
 }
 
+export function taskCanCancel(task: BackgroundTask) {
+  return taskIsActive(task) && task.canCancel !== false
+}
+
 export function taskCanRetry(task: BackgroundTask) {
-  return task.state === 'failed'
+  return task.canRetry ?? task.state === 'failed'
 }

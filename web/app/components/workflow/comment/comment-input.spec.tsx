@@ -40,11 +40,6 @@ vi.mock('@/context/account-state', async () => {
   return createAccountStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-  default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-}))
-
 vi.mock('./mention-input', () => ({
   MentionInput: ((props: MentionInputProps) => {
     mentionInputProps = props

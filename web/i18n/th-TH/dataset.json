@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "บันทึกการเปลี่ยนแปลง",
   "newKnowledge.settings.saveFailed": "ไม่สามารถบันทึกการเปลี่ยนแปลงได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง — การแก้ไขของคุณยังคงอยู่",
   "newKnowledge.settings.scoreRange": "ช่วง 0.00–1.00",
+  "newKnowledge.settings.serverConflict": "การตั้งค่าเหล่านี้ถูกเปลี่ยนจากที่อื่น โปรดยกเลิกการแก้ไขเพื่อโหลดเวอร์ชันล่าสุดก่อนบันทึกอีกครั้ง",
   "newKnowledge.settings.systemReasoningModelLabel": "แบบจําลองการให้เหตุผลของระบบ",
   "newKnowledge.settings.topKLabel": "ท็อป K",
   "newKnowledge.settings.topKMinimum": "ต่ำสุด = 1",

@@ -5,6 +5,7 @@ import type {
   KnowledgeFsResearchTaskResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
 import type {
   RetrievalEvidence,
   RetrievalTestMode,
@@ -12,16 +13,18 @@ import type {
 } from './retrieval-test-model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import type { ResearchTaskProgressEvent } from './services/research-task-events'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
+import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
 import Link from '@/next/link'
-import { useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import {
   extractRetrievalEvidence,
@@ -73,6 +76,133 @@ function formatRecordTime(value: number) {
     minute: '2-digit',
     month: 'short',
   }).format(value)
+}
+
+function RecordTime({ value }: { value: number }) {
+  const { t } = useTranslation('dataset')
+  const [showJustNow, setShowJustNow] = useState(() => {
+    const age = Date.now() - value
+    return age >= 0 && age < 60_000
+  })
+
+  useEffect(() => {
+    if (!showJustNow) return
+    const timeout = globalThis.setTimeout(
+      () => setShowJustNow(false),
+      Math.max(0, value + 60_000 - Date.now()),
+    )
+    return () => globalThis.clearTimeout(timeout)
+  }, [showJustNow, value])
+
+  return showJustNow ? t(($) => $['newKnowledge.retrievalTest.justNow']) : formatRecordTime(value)
+}
+
+type ResearchPayloadLabels = {
+  chunks: string
+  documents: string
+  sources: string
+}
+
+const researchPayloadContainers = new Set([
+  'analysis',
+  'analyzing',
+  'candidates',
+  'chunks',
+  'coverage',
+  'data',
+  'details',
+  'documents',
+  'findings',
+  'generating',
+  'generation',
+  'items',
+  'plan',
+  'planning',
+  'questions',
+  'results',
+  'retrieval',
+  'retrieving',
+  'sources',
+  'topics',
+  'warnings',
+])
+const researchPayloadLabels = new Set(['name', 'query', 'question', 'title', 'topic'])
+const researchPayloadText = new Set([
+  ...researchPayloadLabels,
+  'coverage',
+  'coveragegap',
+  'coveragegapwarning',
+  'coveragewarning',
+  'finding',
+  'findings',
+  'mergedcandidatesummary',
+  'mergedsummary',
+  'message',
+  'questions',
+  'result',
+  'results',
+  'summary',
+  'topics',
+  'warning',
+  'warnings',
+])
+
+function normalizedPayloadKey(key: string) {
+  return key.replaceAll(/[^a-z0-9]/gi, '').toLocaleLowerCase()
+}
+
+function payloadCountLabel(key: string, labels: ResearchPayloadLabels) {
+  const normalizedKey = normalizedPayloadKey(key)
+  if (normalizedKey === 'chunkcount' || normalizedKey === 'chunks') return labels.chunks
+  if (normalizedKey === 'documentcount' || normalizedKey === 'documents') return labels.documents
+  if (normalizedKey === 'sourcecount' || normalizedKey === 'sources') return labels.sources
+}
+
+function researchPayloadLines(payload: Record<string, unknown>, labels: ResearchPayloadLabels) {
+  const lines: string[] = []
+  const visit = (value: unknown, key = '', depth = 0) => {
+    if (depth > 3) return
+    const normalizedKey = normalizedPayloadKey(key)
+    if (typeof value === 'string') {
+      if (value.trim() && researchPayloadText.has(normalizedKey)) lines.push(value.trim())
+      return
+    }
+    if (typeof value === 'number') {
+      const countLabel = payloadCountLabel(key, labels)
+      if (countLabel) lines.push(`${countLabel}: ${value}`)
+      return
+    }
+    if (Array.isArray(value)) {
+      if (!researchPayloadContainers.has(normalizedKey)) return
+      value.forEach((item) => visit(item, key, depth + 1))
+      return
+    }
+    if (!value || typeof value !== 'object') return
+    if (key && !researchPayloadContainers.has(normalizedKey)) return
+    const record = value as Record<string, unknown>
+    const entries = Object.entries(record)
+    const labelEntry = entries.find(
+      ([candidate, nested]) =>
+        researchPayloadLabels.has(normalizedPayloadKey(candidate)) && typeof nested === 'string',
+    )
+    const countEntry = entries.find(
+      ([candidate, nested]) =>
+        ['chunkcount', 'chunks', 'count'].includes(normalizedPayloadKey(candidate)) &&
+        typeof nested === 'number',
+    )
+    if (labelEntry) {
+      const [, label] = labelEntry
+      lines.push(
+        `${String(label).trim()}${countEntry ? ` · ${countEntry[1]} ${labels.chunks}` : ''}`,
+      )
+    }
+    entries.forEach(([nestedKey, nested]) => {
+      if (nestedKey !== labelEntry?.[0] && nestedKey !== countEntry?.[0])
+        visit(nested, nestedKey, depth + 1)
+    })
+  }
+  Object.entries(payload).forEach(([key, value]) => visit(value, key))
+  return [...new Set(lines)].slice(0, 12)
 }
 
 function useClock(enabled: boolean) {
@@ -190,11 +320,15 @@ async function queryFailure(error: unknown) {
 }
 
 function EvidenceCard({
+  citationTargetId,
+  citationTargeted,
   documentReference,
   evidence,
   index,
   knowledgeSpaceId,
 }: {
+  citationTargetId?: string
+  citationTargeted?: boolean
   documentReference?: {
     id: string
     title: string
@@ -209,7 +343,14 @@ function EvidenceCard({
     : undefined
 
   return (
-    <article className="overflow-hidden rounded-xl bg-components-panel-bg">
+    <article
+      id={citationTargetId}
+      tabIndex={citationTargetId ? -1 : undefined}
+      className={cn(
+        'overflow-hidden rounded-xl bg-components-panel-bg outline-hidden',
+        citationTargeted && 'ring-2 ring-state-accent-solid ring-inset',
+      )}
+    >
       <div className="flex items-center gap-2 px-3 pt-3">
         <h3 className="flex min-w-0 flex-1 items-center gap-0.5 truncate system-xs-medium text-text-tertiary">
           <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
@@ -321,14 +462,13 @@ function FailedResult({ description, onRetry }: { description: string; onRetry: 
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-xl border border-components-panel-border bg-background-section px-4 py-3"
+      className="flex min-h-10 items-center gap-2 rounded-lg bg-util-colors-red-red-50 px-3 py-2"
     >
-      <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 text-text-destructive" />
-      <span className="min-w-0 flex-1">
-        <span className="block system-sm-semibold text-text-primary">
-          {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
-        </span>
-        <span className="mt-0.5 block body-xs-regular text-text-tertiary">{description}</span>
+      <span aria-hidden className="i-ri-alert-line size-4 text-text-destructive" />
+      <span className="min-w-0 flex-1 system-xs-regular break-words text-text-destructive">
+        {t(($) => $['newKnowledge.retrievalTest.failedTitle'])}
+        {' — '}
+        <span>{description}</span>
       </span>
       <Button size="small" variant="secondary" onClick={onRetry}>
         {t(($) => $['newKnowledge.retrievalTest.retry'])}
@@ -337,8 +477,81 @@ function FailedResult({ description, onRetry }: { description: string; onRetry: 
   )
 }
 
-function ResearchAnswer({ answer, streaming }: { answer: string; streaming: boolean }) {
+const researchCitationPattern = /(?<!\\)\[(\d+)\](?!\s*(?:\(|:))/g
+const researchCodePattern = /(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]*(?:`|$))/g
+
+function linkResearchCitations(answer: string, citationCount: number) {
+  return answer
+    .split(researchCodePattern)
+    .map((segment, index) => {
+      if (index % 2 === 1) return segment
+      return segment.replace(researchCitationPattern, (citation, rawCitationNumber: string) => {
+        const citationNumber = Number(rawCitationNumber)
+        if (citationNumber < 1 || citationNumber > citationCount) return citation
+        return `[${citation}](#research-evidence-${citationNumber})`
+      })
+    })
+    .join('')
+}
+
+type ResearchAnswerLinkProps = PropsWithChildren<AnchorHTMLAttributes<HTMLAnchorElement>> & {
+  node?: unknown
+  onCitationClick: (citationIndex: number) => void
+}
+
+function ResearchAnswerLink({
+  children,
+  href,
+  node,
+  onCitationClick,
+  ...props
+}: ResearchAnswerLinkProps) {
+  const citationMatch = href?.match(/^#research-evidence-(\d+)$/)
+  if (!citationMatch)
+    return (
+      <MarkdownLink {...props} href={href} node={node}>
+        {children}
+      </MarkdownLink>
+    )
+
+  const citationIndex = Number(citationMatch[1]) - 1
+  return (
+    <a
+      {...props}
+      href={href}
+      className="rounded-sm px-0.5 font-medium text-text-accent outline-hidden hover:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      onClick={(event) => {
+        event.preventDefault()
+        onCitationClick(citationIndex)
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+
+function ResearchAnswer({
+  answer,
+  citationCount,
+  onCitationClick,
+  streaming,
+}: {
+  answer: string
+  citationCount: number
+  onCitationClick: (citationIndex: number) => void
+  streaming: boolean
+}) {
   const { t } = useTranslation('dataset')
+  const linkedAnswer = useMemo(
+    () => linkResearchCitations(answer, citationCount),
+    [answer, citationCount],
+  )
+  const citationComponents = useMemo<NonNullable<MarkdownProps['customComponents']>>(
+    () => ({
+      a: (props) => <ResearchAnswerLink {...props} onCitationClick={onCitationClick} />,
+    }),
+    [onCitationClick],
+  )
   return (
     <section className="mt-3 rounded-xl border border-components-panel-border bg-components-panel-bg px-4 py-3.5 shadow-xs">
       <header className="mb-3 flex items-center gap-2">
@@ -360,7 +573,8 @@ function ResearchAnswer({ answer, streaming }: { answer: string; streaming: bool
       <div aria-live="polite" aria-atomic="false">
         <Markdown
           className="text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
-          content={answer}
+          content={linkedAnswer}
+          customComponents={citationComponents}
           isAnimating={streaming}
           mode={streaming ? 'streaming' : undefined}
         />
@@ -370,12 +584,14 @@ function ResearchAnswer({ answer, streaming }: { answer: string; streaming: bool
 }
 
 function QualityActions({
+  badCaseAvailable,
   decision,
   noResults,
   onDecision,
   pending,
   qualityHref,
 }: {
+  badCaseAvailable: boolean
   decision?: QualityDecision
   noResults?: boolean
   onDecision: (decision: QualityDecision) => Promise<void>
@@ -406,17 +622,21 @@ function QualityActions({
       </div>
     )
   }
+  if (!badCaseAvailable && noResults) return null
+
   return (
     <div className="flex shrink-0 items-center justify-end gap-3 border-t border-divider-regular pt-4 pb-1">
-      <Button
-        disabled={pending}
-        loading={pending}
-        variant={noResults ? 'primary' : 'secondary'}
-        onClick={() => void onDecision('bad-case')}
-      >
-        <span aria-hidden className="mr-1 i-ri-thumb-down-line size-4" />
-        {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
-      </Button>
+      {badCaseAvailable && (
+        <Button
+          disabled={pending}
+          loading={pending}
+          variant="secondary"
+          onClick={() => void onDecision('bad-case')}
+        >
+          <span aria-hidden className="mr-1 i-ri-thumb-down-line size-4" />
+          {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
+        </Button>
+      )}
       {!noResults && (
         <Button
           disabled={pending}
@@ -491,6 +711,11 @@ function ResearchProcess({
     planning: t(($) => $['newKnowledge.retrievalTest.planningActive']),
     retrieving: t(($) => $['newKnowledge.retrievalTest.retrievingActive']),
   }
+  const payloadLabels: ResearchPayloadLabels = {
+    chunks: t(($) => $['newKnowledge.chunkCount']),
+    documents: t(($) => $['newKnowledge.documents']),
+    sources: t(($) => $['newKnowledge.sources']),
+  }
 
   return (
     <section
@@ -526,6 +751,7 @@ function ResearchProcess({
           <Button
             size="small"
             variant="secondary"
+            className="ml-auto"
             onClick={(event) => {
               event.stopPropagation()
               onCancel()
@@ -551,6 +777,12 @@ function ResearchProcess({
               const current = index === currentIndex && active
               const stageDuration =
                 actualStageDuration(events, stage, task, now) ?? estimatedStageDuration(plan, stage)
+              const stagePayload = [...events]
+                .reverse()
+                .find((event) => event.stage === stage)?.payload
+              const payloadLines = stagePayload
+                ? researchPayloadLines(stagePayload, payloadLabels)
+                : []
               return (
                 <li key={stage} className="flex items-stretch gap-2.5 overflow-hidden">
                   <span
@@ -598,6 +830,15 @@ function ResearchProcess({
                           count: evidenceCount,
                         })}
                       </span>
+                    )}
+                    {payloadLines.length > 0 && (completed || current) && (
+                      <ul className="mt-1.5 space-y-1 system-xs-regular text-text-tertiary">
+                        {payloadLines.map((line) => (
+                          <li key={line} className="truncate">
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </span>
                 </li>
@@ -650,12 +891,16 @@ function RecordButton({
                 {' · '}
                 {researchStageOrder.indexOf(activeResearchStage) + 1}/{researchStageOrder.length}
               </>
+            ) : record.kind === 'local' && record.status === 'failed' && record.durationMs ? (
+              `${t(($) => $['newKnowledge.retrievalTest.failedTitle'])} · ${formatDuration(record.durationMs)}`
+            ) : record.kind === 'local' && record.resultCount !== undefined && record.durationMs ? (
+              `${record.resultCount} ${t(($) => $['newKnowledge.chunkCount']).toLocaleLowerCase()} · ${formatDuration(record.durationMs)}`
             ) : (
               t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])
             )}
           </span>
           <span className="shrink-0 text-[11px] leading-4 text-text-primary opacity-30">
-            {formatRecordTime(record.createdAt)}
+            <RecordTime value={record.createdAt} />
           </span>
         </span>
       </span>
@@ -665,15 +910,21 @@ function RecordButton({
 
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
-  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
-  const linkedTraceId = searchParams?.get('trace')
+  const [linkedSelection, setLinkedSelection] = useQueryStates({
+    research: parseAsString,
+    trace: parseAsString,
+  })
+  const { research: linkedResearchId, trace: linkedTraceId } = linkedSelection
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<RetrievalTestMode>('fast')
   const [localRun, setLocalRun] = useState<LocalQueryRun>()
-  const [selected, setSelected] = useState<SelectedRun | undefined>(() =>
-    linkedTraceId ? { id: linkedTraceId, kind: 'trace' } : undefined,
-  )
+  const [localSelected, setLocalSelected] = useState<SelectedRun>()
+  const selected: SelectedRun | undefined = linkedResearchId
+    ? { id: linkedResearchId, kind: 'research' }
+    : linkedTraceId
+      ? { id: linkedTraceId, kind: 'trace' }
+      : localSelected
   const [researchPlans, setResearchPlans] = useState<
     Record<string, KnowledgeFsResearchTaskPlanResponse>
   >({})
@@ -684,6 +935,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [showAll, setShowAll] = useState(false)
+  const [selectedCitation, setSelectedCitation] = useState<{
+    citationIndex: number
+    requestId: number
+    taskId: string
+  }>()
   const queryAbortControllerRef = useRef<AbortController>(undefined)
 
   useEffect(
@@ -714,7 +970,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     [researchTasksQuery.data?.data, tracesQuery.data?.data],
   )
   const displayRecords = useMemo<RetrievalTestRecord[]>(() => {
-    if (!localRun) return records
+    if (!localRun || localRun.status === 'running') return records
     const traceAlreadyListed =
       localRun.traceId &&
       records.some((record) => record.kind === 'trace' && record.id === localRun.traceId)
@@ -726,6 +982,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         kind: 'local',
         mode: localRun.mode,
         query: localRun.query,
+        durationMs: localRun.endedAt ? localRun.endedAt - localRun.startedAt : undefined,
+        resultCount: localRun.evidence.length,
         status: localRun.status === 'no-results' ? 'completed' : localRun.status,
       },
       ...records,
@@ -743,8 +1001,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   useEffect(() => {
     selectedResearchActiveRef.current = selectedResearchActive
   }, [selectedResearchActive])
+  const selectedResearchDefaultExpanded = researchTaskIsActive(selectedResearchTask)
   const selectedResearchExpanded = selectedResearchTask
-    ? (researchExpanded[selectedResearchTask.id] ?? true)
+    ? (researchExpanded[selectedResearchTask.id] ?? selectedResearchDefaultExpanded)
     : false
   const selectedTraceId =
     selected?.kind === 'trace'
@@ -917,10 +1176,48 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     (selected?.kind === 'trace' && traceEvidenceQuery.isPending)
   const selectedFailed = selected?.kind === 'local' && localRun?.status === 'failed'
   const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
-  const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, 5)
+  const initialEvidenceCount = selectedMode === 'research' ? 5 : 3
+  const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
+  const selectedCitationIndex =
+    selectedCitation && selectedCitation.taskId === selectedResearchTaskId
+      ? selectedCitation.citationIndex
+      : undefined
+  const jumpToResearchCitation = useCallback(
+    (citationIndex: number) => {
+      if (!selectedResearchTaskId || citationIndex < 0 || citationIndex >= currentEvidence.length)
+        return
+      setShowAll(true)
+      setSelectedCitation((current) => ({
+        citationIndex,
+        requestId: (current?.requestId ?? 0) + 1,
+        taskId: selectedResearchTaskId,
+      }))
+    },
+    [currentEvidence.length, selectedResearchTaskId],
+  )
+
+  useEffect(() => {
+    if (selectedCitationIndex === undefined || !selectedCitation) return
+    const target = document.getElementById(`research-evidence-${selectedCitationIndex + 1}`)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.focus({ preventScroll: true })
+  }, [selectedCitation, selectedCitationIndex, visibleEvidence.length])
 
   const selectRecord = (record: RetrievalTestRecord) => {
-    setSelected({ id: record.id, kind: record.kind })
+    if (record.kind === 'local') {
+      setLocalSelected({ id: record.id, kind: record.kind })
+      void setLinkedSelection({ research: null, trace: null }, { history: 'push' })
+    } else {
+      setLocalSelected(undefined)
+      void setLinkedSelection(
+        {
+          research: record.kind === 'research' ? record.id : null,
+          trace: record.kind === 'trace' ? record.id : null,
+        },
+        { history: 'push', shallow: false },
+      )
+    }
     setQuery(record.query)
     setMode(record.mode)
     setShowAll(false)
@@ -984,7 +1281,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       startedAt,
       status: 'running',
     })
-    setSelected({ id, kind: 'local' })
+    setLocalSelected({ id, kind: 'local' })
+    void setLinkedSelection({ research: null, trace: null }, { history: 'replace' })
     setShowAll(false)
     const events: KnowledgeQueryEvent[] = []
     try {
@@ -1046,7 +1344,19 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
             }
           : current,
       )
+    } finally {
+      if (queryAbortControllerRef.current === controller)
+        queryAbortControllerRef.current = undefined
     }
+  }
+
+  const cancelFastQuery = () => {
+    if (localRun?.status !== 'running') return
+    queryAbortControllerRef.current?.abort()
+    queryAbortControllerRef.current = undefined
+    setLocalRun(undefined)
+    setLocalSelected(undefined)
+    setShowAll(false)
   }
 
   const startResearch = async () => {
@@ -1068,7 +1378,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       })
       setResearchPlans((current) => ({ ...current, [task.id]: plan }))
       setResearchExpanded((current) => ({ ...current, [task.id]: true }))
-      setSelected({ id: task.id, kind: 'research' })
+      setLocalSelected(undefined)
+      void setLinkedSelection(
+        { research: task.id, trace: null },
+        { history: 'push', shallow: false },
+      )
       setShowAll(false)
       await researchTasksQuery.refetch()
     } catch {
@@ -1088,7 +1402,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   }
 
   const run = () => {
-    if (selectedResearchActive) return
+    if (selectedResearchActive || localRun?.status === 'running') return
     if (mode === 'research') void startResearch()
     else void runFastQuery()
   }
@@ -1115,6 +1429,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 id="retrieval-test-query"
                 value={query}
                 maxLength={2000}
+                disabled={selectedResearchActive || localRun?.status === 'running'}
                 placeholder={t(($) => $['newKnowledge.retrievalTest.queryPlaceholder'])}
                 className="block h-36 w-full resize-none bg-transparent p-3.5 body-md-regular text-text-primary outline-hidden placeholder:text-text-quaternary"
                 onChange={(event) => setQuery(event.target.value)}
@@ -1135,7 +1450,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     <button
                       key={item}
                       type="button"
-                      disabled={selectedResearchActive}
+                      disabled={selectedResearchActive || localRun?.status === 'running'}
                       aria-pressed={mode === item}
                       className={cn(
                         'rounded-md px-2.5 py-1 system-sm-regular text-text-tertiary capitalize outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
@@ -1148,18 +1463,24 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     </button>
                   ))}
                 </div>
-                <Button
-                  variant="primary"
-                  disabled={!query.trim() || selectedResearchActive}
-                  onClick={run}
-                >
-                  <span aria-hidden className="mr-1 i-ri-play-circle-line size-4" />
-                  {t(($) =>
-                    mode === 'research'
-                      ? $['newKnowledge.retrievalTest.startResearch']
-                      : $['newKnowledge.retrievalTest.run'],
-                  )}
-                </Button>
+                {localRun?.status === 'running' ? (
+                  <Button onClick={cancelFastQuery}>
+                    {t(($) => $['newKnowledge.retrievalTest.cancel'])}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    disabled={!query.trim() || selectedResearchActive}
+                    onClick={run}
+                  >
+                    <span aria-hidden className="mr-1 i-ri-play-circle-line size-4" />
+                    {t(($) =>
+                      mode === 'research'
+                        ? $['newKnowledge.retrievalTest.startResearch']
+                        : $['newKnowledge.retrievalTest.run'],
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -1214,7 +1535,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 </span>
                 {selectedCreatedAt && (
                   <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
-                    {formatRecordTime(selectedCreatedAt)}
+                    <RecordTime key={selectedCreatedAt} value={selectedCreatedAt} />
                   </span>
                 )}
                 <span className="min-w-0 flex-1" />
@@ -1226,7 +1547,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     onClick={() =>
                       setResearchExpanded((current) => ({
                         ...current,
-                        [selectedResearchTask.id]: !(current[selectedResearchTask.id] ?? true),
+                        [selectedResearchTask.id]: !(
+                          current[selectedResearchTask.id] ?? selectedResearchDefaultExpanded
+                        ),
                       }))
                     }
                   >
@@ -1254,7 +1577,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     onToggle={() =>
                       setResearchExpanded((current) => ({
                         ...current,
-                        [selectedResearchTask.id]: !(current[selectedResearchTask.id] ?? true),
+                        [selectedResearchTask.id]: !(
+                          current[selectedResearchTask.id] ?? selectedResearchDefaultExpanded
+                        ),
                       }))
                     }
                     onCancel={
@@ -1268,6 +1593,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 {selectedResearchTask && researchAnswer && (
                   <ResearchAnswer
                     answer={researchAnswer}
+                    citationCount={currentEvidence.length}
+                    onCitationClick={jumpToResearchCitation}
                     streaming={selectedResearchActive && !persistedResearchAnswer}
                   />
                 )}
@@ -1308,6 +1635,10 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                       {visibleEvidence.map((evidence, index) => (
                         <EvidenceCard
                           key={evidence.id}
+                          citationTargetId={
+                            selectedResearchTask ? `research-evidence-${index + 1}` : undefined
+                          }
+                          citationTargeted={selectedCitationIndex === index}
                           documentReference={
                             evidence.documentId
                               ? evidenceDocumentReferencesQuery.data?.[evidence.documentId]
@@ -1332,7 +1663,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 )}
               </div>
 
-              {!showAll && currentEvidence.length > 5 && (
+              {!showAll && currentEvidence.length > initialEvidenceCount && (
                 <div className="shrink-0 pl-1">
                   <button
                     type="button"
@@ -1352,6 +1683,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 !researchTaskIsActive(selectedResearchTask) &&
                 resultKey && (
                   <QualityActions
+                    badCaseAvailable={Boolean(selectedTraceId)}
                     noResults={currentEvidence.length === 0}
                     decision={qualityDecisions[resultKey]}
                     onDecision={saveQualityDecision}

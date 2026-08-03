@@ -748,11 +748,13 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
+        workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app")
+
         class _Session:
             def __init__(self, *args, **kwargs):
                 self.scalar = MagicMock(
                     side_effect=[
-                        SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
+                        workflow,
                         SimpleNamespace(id="app"),
                     ]
                 )
@@ -772,6 +774,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
+        restore_workflow_run_graph = MagicMock()
+        monkeypatch.setattr(generator, "_restore_workflow_run_graph", restore_workflow_run_graph)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
             SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
@@ -788,10 +792,12 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
-            graph_runtime_state=None,
+            graph_runtime_state=SimpleNamespace(),
         )
 
         queue_manager.publish_error.assert_not_called()
+        assert restore_workflow_run_graph.call_args.kwargs["workflow"] is workflow
+        assert restore_workflow_run_graph.call_args.kwargs["workflow_run_id"] == "run-id"
 
     def test_generate_worker_handles_validation_error(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()

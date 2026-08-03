@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "बदलाव सहेजें",
   "newKnowledge.settings.saveFailed": "बदलाव सहेजे नहीं जा सके। अपना कनेक्शन जाँचें और फिर कोशिश करें — आपके बदलाव अभी भी सुरक्षित हैं।",
   "newKnowledge.settings.scoreRange": "सीमा 0.00–1.00",
+  "newKnowledge.settings.serverConflict": "इन सेटिंग्स को कहीं और बदला गया है। दोबारा सहेजने से पहले नवीनतम संस्करण लोड करने के लिए अपने बदलाव रद्द करें।",
   "newKnowledge.settings.systemReasoningModelLabel": "सिस्टम तर्क मॉडल",
   "newKnowledge.settings.topKLabel": "शीर्ष K",
   "newKnowledge.settings.topKMinimum": "न्यूनतम = 1",

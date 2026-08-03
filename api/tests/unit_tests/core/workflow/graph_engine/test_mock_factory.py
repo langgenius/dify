@@ -5,7 +5,7 @@ The factory follows the same config adaptation path as production
 implementations before instantiation.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import DifyNodeFactory
@@ -75,6 +75,14 @@ class MockNodeFactory(DifyNodeFactory):
             BuiltinNodeTypes.TEMPLATE_TRANSFORM: MockTemplateTransformNode,
             BuiltinNodeTypes.CODE: MockCodeNode,
         }
+
+    @override
+    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "MockNodeFactory":
+        return MockNodeFactory(
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+            mock_config=self.mock_config,
+        )
 
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """

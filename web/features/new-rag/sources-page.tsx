@@ -107,6 +107,12 @@ function sourceWorkflowStatus(state: string): SourceStatus {
 function getOpenableSourceUri(uri: string) {
   try {
     const url = new URL(uri)
+    if (url.protocol === 's3:' && url.hostname) {
+      const prefix = decodeURIComponent(url.pathname.replace(/^\//, ''))
+      const consoleUrl = new URL(`https://s3.console.aws.amazon.com/s3/buckets/${url.hostname}`)
+      if (prefix) consoleUrl.searchParams.set('prefix', prefix)
+      return consoleUrl.toString()
+    }
     return url.protocol === 'http:' || url.protocol === 'https:' ? uri : undefined
   } catch {
     return undefined
@@ -309,7 +315,11 @@ function SourceRow({
   const providerName = metadataString(source.metadata, 'providerName')
   const syncPolicy = metadataString(source.metadata, 'syncPolicy')
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
-  const typeLabel = t(($) => $[`newKnowledge.sourceType.${source.type}`])
+  const typeLabel =
+    source.type === 'connector' &&
+    (providerName === 'Notion' || providerName === 'Google Docs' || providerName === 'Confluence')
+      ? t(($) => $['newKnowledge.onlineDocuments'])
+      : t(($) => $[`newKnowledge.sourceType.${source.type}`])
   const sourceIcon =
     source.type === 'web'
       ? 'i-ri-global-line'
@@ -433,7 +443,12 @@ function SourceRow({
         {providerName && <p className="system-2xs-regular text-text-tertiary">{typeLabel}</p>}
       </td>
       <td className="w-24 py-2 pr-3 sm:w-35">
-        <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-primary">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 system-xs-medium text-text-primary',
+            visibleSource.status === 'syncing' && 'text-text-accent',
+          )}
+        >
           <StatusDot
             status={statusDotStatus[visibleSource.status]}
             className={cn(
@@ -784,14 +799,15 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       className="h-auto gap-1 rounded px-0"
                     >
                       {t(($) => $['newKnowledge.sourceColumn'])}
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'size-3.5',
-                          sort === 'name-desc' ? 'i-ri-arrow-down-line' : 'i-ri-arrow-up-line',
-                          !sort && 'opacity-40',
-                        )}
-                      />
+                      {sort && (
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'size-3.5',
+                            sort === 'name-desc' ? 'i-ri-arrow-down-line' : 'i-ri-arrow-up-line',
+                          )}
+                        />
+                      )}
                     </Button>
                   </th>
                   <th className="hidden pb-2 font-medium sm:table-cell">

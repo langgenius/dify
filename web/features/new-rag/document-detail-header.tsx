@@ -29,6 +29,7 @@ export function DocumentDetailHeader({
   onRevisionChange,
   reindexDisabled,
   reindexDisabledReasonId,
+  reindexFailed,
   reindexInProgress,
   reindexing,
   revisions,
@@ -48,6 +49,7 @@ export function DocumentDetailHeader({
   onRevisionChange: (revision: number) => void
   reindexDisabled: boolean
   reindexDisabledReasonId?: string
+  reindexFailed: boolean
   reindexInProgress: boolean
   reindexing: boolean
   revisions: Array<Exclude<LogicalDocumentRevision, null>>
@@ -141,7 +143,9 @@ export function DocumentDetailHeader({
             {t(($) =>
               reindexInProgress
                 ? $['newKnowledge.cancelDocumentReindex']
-                : $['newKnowledge.reindexDocument'],
+                : reindexFailed
+                  ? $['newKnowledge.retryReindexDocument']
+                  : $['newKnowledge.reindexDocument'],
             )}
           </Button>
         </div>

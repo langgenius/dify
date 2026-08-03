@@ -201,11 +201,17 @@ const externalAccess = {
 function renderForm({
   externalAccess: externalAccessOverride = externalAccess,
   members = [],
+  onDraftFinish,
+  onDraftStart,
+  serverConflict,
   settings: settingsOverride = settings,
   space: spaceOverride = space,
 }: {
   externalAccess?: typeof externalAccess
   members?: Member[]
+  onDraftFinish?: () => void
+  onDraftStart?: () => void
+  serverConflict?: boolean
   settings?: KnowledgeFsSettingsResponse
   space?: KnowledgeFsSpaceDetailResponse
 } = {}) {
@@ -223,8 +229,11 @@ function renderForm({
       externalAccess={externalAccessOverride}
       members={members}
       permissions={[]}
+      serverConflict={serverConflict}
       settings={settingsOverride}
       space={spaceOverride}
+      onDraftFinish={onDraftFinish}
+      onDraftStart={onDraftStart}
     />,
     { wrapper: Wrapper },
   )
@@ -546,6 +555,52 @@ describe('KnowledgeSettingsForm', () => {
         name: 'dataset.newKnowledge.settings.embeddingModelLabel',
       }),
     ).toBeDisabled()
+  })
+
+  it('blocks a stale draft after the server baseline changes and restores the latest value', async () => {
+    const user = userEvent.setup()
+    const onDraftFinish = vi.fn()
+    const onDraftStart = vi.fn()
+    const renderWithName = (name: string, serverConflict = false) => (
+      <KnowledgeSettingsForm
+        externalAccess={externalAccess}
+        members={[]}
+        permissions={[]}
+        serverConflict={serverConflict}
+        settings={settings}
+        space={{
+          ...space,
+          technical_summary: {
+            ...space.technical_summary,
+            name,
+          },
+        }}
+        onDraftFinish={onDraftFinish}
+        onDraftStart={onDraftStart}
+      />
+    )
+    const view = renderForm({ onDraftFinish, onDraftStart })
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Version B')
+
+    expect(onDraftStart).toHaveBeenCalled()
+    view.rerender(renderWithName('Version C', true))
+    expect(nameInput).toHaveValue('Version B')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.settings.serverConflict',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    ).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(nameInput).toHaveValue('Version C')
+    expect(onDraftFinish).toHaveBeenCalledOnce()
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
   it('allows embedding and retrieval to be configured together during initial setup', async () => {

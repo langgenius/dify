@@ -485,10 +485,11 @@ function ReadyCrawlSelectionForm({
           )}
           <Button
             type="button"
-            variant="tertiary"
+            variant="ghost-accent"
             size="small"
             disabled={submissionLocked}
             loading={busy}
+            className="px-0"
             onClick={onRecrawl}
           >
             {t(($) => $['newKnowledge.reCrawl'])}
@@ -534,7 +535,7 @@ function ReadyCrawlSelectionForm({
                         id={urlId}
                         className="block truncate system-2xs-regular text-text-tertiary"
                       >
-                        {page.sourceUrl}
+                        {page.sourceUrl.replace(/^https?:\/\//, '')}
                       </span>
                     </span>
                     {(!selectable || selectionLimitReached) && (

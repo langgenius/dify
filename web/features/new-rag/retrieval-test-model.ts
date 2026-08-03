@@ -24,6 +24,8 @@ export type RetrievalTestRecord =
       kind: 'local'
       mode: Exclude<RetrievalTestMode, 'research'>
       query: string
+      durationMs?: number
+      resultCount?: number
       status: 'completed' | 'failed' | 'running'
     }
   | {

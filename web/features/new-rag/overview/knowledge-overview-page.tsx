@@ -832,7 +832,7 @@ function RecentActivity({
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['newKnowledge.overview.recentActivity'])}
         </h2>
-        <Button disabled={loading} size="small" variant="secondary" onClick={onOpenAll}>
+        <Button size="small" variant="secondary" onClick={onOpenAll}>
           {t(($) => $['newKnowledge.overview.allActivity'])}
         </Button>
       </header>
@@ -847,7 +847,9 @@ function RecentActivity({
               role="row"
               className="grid grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
             >
-              <span role="columnheader">{t(($) => $['newKnowledge.overview.when'])}</span>
+              <span role="columnheader">
+                <span className="sr-only">{t(($) => $['newKnowledge.overview.when'])}</span>
+              </span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.activity'])}</span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.operator'])}</span>
             </div>
@@ -1062,7 +1064,7 @@ function ActivityDrawer({
         : members.find((member) => `member:${member.id}` === operator)?.name || operator.slice(7)
   const clearFilters = () => {
     restoreFilterFocusRef.current = true
-    onRangeChange('7d')
+    onRangeChange('today')
     onOperatorChange('all')
   }
 
@@ -1489,7 +1491,8 @@ function Onboarding({
     }
   }
 
-  if (indexingTask)
+  if (indexingTask) {
+    const progressKnown = indexingTask.progress_total > 0
     return (
       <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
         <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
@@ -1503,7 +1506,14 @@ function Onboarding({
           {t(($) => $['newKnowledge.overview.indexingConnectedDescription'])}
         </p>
         <div className="mt-3">
-          <div className="h-2 overflow-hidden rounded-full bg-util-colors-gray-gray-200">
+          <div
+            role="progressbar"
+            aria-label={t(($) => $['newKnowledge.overview.indexing'])}
+            aria-valuemin={0}
+            aria-valuemax={progressKnown ? indexingTask.progress_total : undefined}
+            aria-valuenow={progressKnown ? indexingTask.progress_completed : undefined}
+            className="h-2 overflow-hidden rounded-full bg-util-colors-gray-gray-200"
+          >
             <div
               className="h-full rounded-full bg-components-progress-bar-progress-solid"
               style={{ width: `${indexingTask.progress_percent}%` }}
@@ -1518,6 +1528,7 @@ function Onboarding({
         </div>
       </section>
     )
+  }
 
   return (
     <section
@@ -1674,9 +1685,9 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     uploadAvailable && hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const [window, setWindow] = useQueryState('window', overviewWindowParser)
   const [activityOpen, setActivityOpen] = useState(false)
-  const [activityRange, setActivityRange] = useState<ActivityRange>('7d')
+  const [activityRange, setActivityRange] = useState<ActivityRange>('today')
   const [activityDates, setActivityDates] = useState<ActivityDateRange>(() =>
-    activityDatesForRange('7d'),
+    activityDatesForRange('today'),
   )
   const [activityOperator, setActivityOperator] = useState<ActivityOperator>('all')
   const activityFrom = activityRange === 'all' ? undefined : activityDates.start.toISOString()
@@ -1840,12 +1851,12 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       activityPreviewQuery.isError)
   const hasContent =
     (statsQuery.data?.source_count ?? 0) > 0 || (statsQuery.data?.documents ?? 0) > 0
-  const empty = !pageLoading && !statsQuery.isError && !hasContent
   const showIndexing =
     !pageLoading &&
     !inventoryQuery.isError &&
     (inventoryQuery.data?.index_coverage.indexed ?? 0) === 0 &&
     indexingTask !== undefined
+  const empty = !pageLoading && !statsQuery.isError && !hasContent && !showIndexing
   const showEmptyModules = empty || showIndexing
   const retry = () =>
     void Promise.all([
@@ -1860,7 +1871,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="mx-auto w-full max-w-332 px-5 py-6 sm:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-3">
+        <header className="flex flex-wrap items-center gap-3">
           <h1 className="text-[18px] leading-[1.2] font-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}
           </h1>
@@ -1889,6 +1900,12 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             </SegmentedControl>
           )}
         </header>
+
+        {pageLoading && (
+          <p className="sr-only" role="status">
+            {tCommon(($) => $.loading)}
+          </p>
+        )}
 
         {firstLoadFailed && (
           <div

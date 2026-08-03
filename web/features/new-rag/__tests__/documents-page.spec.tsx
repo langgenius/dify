@@ -918,6 +918,22 @@ describe('DocumentsPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps the upload form opened from the document page in the URL', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+
+    await waitFor(() => {
+      const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.get('upload')).toBe('1')
+      expect(urlUpdate?.options.history).toBe('replace')
+    })
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+    ).toBeInTheDocument()
+  })
+
   it('consumes an upload URL request without opening the form for a read-only user', async () => {
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
     const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />, {
@@ -6163,9 +6179,8 @@ describe('DocumentsPage', () => {
       error: null,
     })
     tasksQuery.data = { pages: [{ items: [task()] }] }
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     await user.upload(
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),

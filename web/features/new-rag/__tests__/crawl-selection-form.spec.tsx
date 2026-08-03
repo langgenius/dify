@@ -352,7 +352,7 @@ describe('CrawlSelectionForm', () => {
     const offDomainPage = screen.getByRole('checkbox', { name: 'Edit this page' })
     expect(offDomainPage).toHaveAttribute('aria-disabled', 'true')
     expect(offDomainPage).toHaveAccessibleDescription(
-      'https://github.com/langgenius/dify/edit/main/docs.md dataset.newKnowledge.skippedOffDomain',
+      'github.com/langgenius/dify/edit/main/docs.md dataset.newKnowledge.skippedOffDomain',
     )
     expect(screen.getByText('dataset.newKnowledge.skippedOffDomain')).toBeInTheDocument()
     expect(screen.getByText(/dataset\.newKnowledge\.skippedFailed/)).toBeInTheDocument()
@@ -429,7 +429,7 @@ describe('CrawlSelectionForm', () => {
     const overflowPage = screen.getByRole('checkbox', { name: 'Page 201' })
     expect(overflowPage).toHaveAttribute('aria-disabled', 'true')
     expect(overflowPage).toHaveAccessibleDescription(
-      'https://docs.dify.ai/page-201 dataset.newKnowledge.maxPages: 200',
+      'docs.dify.ai/page-201 dataset.newKnowledge.maxPages: 200',
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 

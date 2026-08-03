@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Wijzigingen opslaan",
   "newKnowledge.settings.saveFailed": "De wijzigingen konden niet worden opgeslagen. Controleer je verbinding en probeer het opnieuw — je wijzigingen zijn nog steeds aanwezig.",
   "newKnowledge.settings.scoreRange": "bereik 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Deze instellingen zijn elders gewijzigd. Annuleer je wijzigingen om de nieuwste versie te laden voordat je opnieuw opslaat.",
   "newKnowledge.settings.systemReasoningModelLabel": "System Reasoning Model",
   "newKnowledge.settings.topKLabel": "Top K",
   "newKnowledge.settings.topKMinimum": "min. = 1",

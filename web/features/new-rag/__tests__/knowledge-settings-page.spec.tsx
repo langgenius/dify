@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { KnowledgeSettingsPage } from '../knowledge-settings-page'
@@ -30,7 +30,26 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('../knowledge-settings-form', () => ({
-  KnowledgeSettingsForm: () => <div>settings-form</div>,
+  KnowledgeSettingsForm: ({
+    onDraftFinish,
+    onDraftStart,
+    serverConflict,
+  }: {
+    onDraftFinish: () => void
+    onDraftStart: () => void
+    serverConflict: boolean
+  }) => (
+    <div>
+      settings-form
+      <span>{serverConflict ? 'server-conflict' : 'no-conflict'}</span>
+      <button type="button" onClick={onDraftStart}>
+        start-draft
+      </button>
+      <button type="button" onClick={onDraftFinish}>
+        finish-draft
+      </button>
+    </div>
+  ),
 }))
 
 const queryData = vi.hoisted(() => ({
@@ -96,7 +115,10 @@ function renderPage() {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
-  return render(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper })
+  return {
+    queryClient,
+    ...render(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
+  }
 }
 
 describe('KnowledgeSettingsPage', () => {
@@ -113,7 +135,15 @@ describe('KnowledgeSettingsPage', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('settings-form')).not.toBeInTheDocument()
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+      expect(screen.getByRole('status')).not.toHaveTextContent(
+        'dataset.newKnowledge.settings.basicInfo',
+      )
+      expect(screen.getByRole('status')).not.toHaveTextContent(
+        'dataset.newKnowledge.settings.dangerZone',
+      )
+      expect(screen.getByText('dataset.newKnowledge.settings.basicInfo')).toBeInTheDocument()
+      expect(screen.getByText('dataset.newKnowledge.settings.dangerZone')).toBeInTheDocument()
     })
   })
 
@@ -155,5 +185,25 @@ describe('KnowledgeSettingsPage', () => {
         state: { data: { configuration_state: 'active' } },
       }),
     ).toBe(false)
+  })
+
+  it('keeps an active draft mounted and reports a conflict when the server version changes', async () => {
+    const user = userEvent.setup()
+    membersQueryMock.data = { accounts: [] }
+    membersQueryMock.isPending = false
+    const { queryClient } = renderPage()
+
+    expect(await screen.findByText('no-conflict')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'start-draft' }))
+    act(() => {
+      queryClient.setQueryData(['knowledge-fs', 'space'], {
+        ...queryData.space,
+        resource_version: 2,
+      })
+    })
+
+    expect(await screen.findByText('server-conflict')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'finish-draft' }))
+    expect(await screen.findByText('no-conflict')).toBeInTheDocument()
   })
 })

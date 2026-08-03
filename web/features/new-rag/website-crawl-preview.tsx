@@ -319,7 +319,7 @@ const CrawlPageList = memo(
           </li>
         ))}
         {loading &&
-          [0, 1].map((placeholder) => (
+          [0, 1, 2, 3].map((placeholder) => (
             <li
               key={`placeholder-${placeholder}`}
               data-testid="crawl-page-skeleton"
@@ -1114,7 +1114,7 @@ export function WebsiteCrawlPreview({
         {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
       <Form onFormSubmit={handleSubmit}>
-        <Fieldset disabled={locked} className="space-y-4 disabled:opacity-70">
+        <Fieldset disabled={locked} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="rootUrl" invalid={urlTouched && !normalizedURL} className="gap-1.5">
               <FieldLabel>
@@ -1260,9 +1260,9 @@ export function WebsiteCrawlPreview({
               </span>
               <Button
                 type="button"
-                variant="tertiary"
+                variant="ghost-accent"
                 size="small"
-                className="ml-auto shrink-0"
+                className="ml-auto shrink-0 px-0"
                 disabled={stopping}
                 onClick={() => void stop()}
               >
@@ -1396,11 +1396,11 @@ export function WebsiteCrawlPreview({
       )}
       <AlertDialog open={cancelConfirmationOpen} onOpenChange={handleCancelConfirmationOpenChange}>
         <AlertDialogContent>
-          <div>
+          <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['newKnowledge.discardSourceChanges'])}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
               {t(($) => $['newKnowledge.discardSourceChangesDescription'])}
             </AlertDialogDescription>
             {discardError && (

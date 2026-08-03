@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleClient } from '@/service/client'
-import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
+import { taskCanCancel, taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 import { backgroundTaskFromApi } from './document-models'
 
 type TaskAction = 'cancel' | 'retry'
@@ -229,14 +229,16 @@ export function ProcessingTasksDrawer({
     const progress = taskProgressStore.get(task.id)
     if (!progress || !taskIsActive(task) || taskVersionIsAfter(task.updatedAt, progress.updatedAt))
       return task
+    const stateChanged = progress.state !== task.state
     return {
       ...task,
+      ...(stateChanged ? { canCancel: undefined, canRetry: undefined } : {}),
       errorCode: undefined,
       errorMessage: undefined,
       ...progress,
     }
   })
-  const activeActionCount = orderedTasks.filter(taskIsActive).length
+  const activeActionCount = orderedTasks.filter(taskCanCancel).length
   const retryActionCount = orderedTasks.filter(taskCanRetry).length
   const taskLifecycles = useMemo(
     () => new Map(tasks.map((task) => [task.id, taskLifecycle(task)])),
@@ -529,11 +531,15 @@ export function ProcessingTasksDrawer({
                             className={
                               task.state === 'failed'
                                 ? 'i-ri-error-warning-fill size-4 shrink-0 text-text-destructive'
-                                : taskIsActive(task)
-                                  ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
-                                  : task.state === 'succeeded'
-                                    ? 'i-ri-check-line size-4 shrink-0 text-text-success'
-                                    : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
+                                : task.state === 'dispatch_pending' ||
+                                    task.state === 'queued' ||
+                                    task.state === 'retry_wait'
+                                  ? 'i-ri-time-line size-4 shrink-0 text-text-tertiary'
+                                  : taskIsActive(task)
+                                    ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin text-text-accent motion-reduce:animate-none'
+                                    : task.state === 'succeeded'
+                                      ? 'i-ri-check-line size-4 shrink-0 text-text-success'
+                                      : 'i-ri-indeterminate-circle-line size-4 shrink-0 text-text-tertiary'
                             }
                           />
                           <div className="min-w-0 flex-1">
@@ -567,7 +573,7 @@ export function ProcessingTasksDrawer({
                               </p>
                             )}
                           </div>
-                          {canEdit && taskIsActive(task) ? (
+                          {canEdit && taskCanCancel(task) ? (
                             <Button
                               aria-label={
                                 activeActionCount > 1

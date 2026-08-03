@@ -140,7 +140,7 @@ export function GoldenQuestionDialog({
               </FieldLabel>
               <Textarea
                 aria-invalid={annotationInvalid}
-                className="h-16 resize-y"
+                className={mode === 'edit' ? 'h-22 min-h-22 resize-y' : 'h-16 min-h-16 resize-y'}
                 placeholder={t(($) => $['newKnowledge.qualityPage.annotationPlaceholder'])}
                 value={annotation}
                 onValueChange={setAnnotation}

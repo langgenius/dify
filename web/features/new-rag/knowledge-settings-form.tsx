@@ -59,8 +59,11 @@ type KnowledgeSettingsFormProps = {
   externalAccess: KnowledgeFsExternalAccessResponse
   members: Member[]
   permissions: KnowledgeFsPermissionResponse[]
+  serverConflict?: boolean
   settings: KnowledgeFsSettingsResponse
   space: KnowledgeFsSpaceDetailResponse
+  onDraftFinish?: () => void
+  onDraftStart?: () => void
 }
 
 function pluginIdForModel(model: DefaultModel) {
@@ -190,8 +193,11 @@ export function KnowledgeSettingsForm({
   externalAccess,
   members,
   permissions,
+  serverConflict = false,
   settings,
   space,
+  onDraftFinish,
+  onDraftStart,
 }: KnowledgeSettingsFormProps) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -347,7 +353,9 @@ export function KnowledgeSettingsForm({
   const fieldsDisabled = !canEdit || isSaving
   const retrievalFieldsDisabled = fieldsDisabled || (!initialModelSetup && embeddingDirty)
   const scoreThresholdAvailable = retrievalMode === 'research' || rerankEnabled
-  const saveDisabled = !isDirty || nameInvalid || membersInvalid || settingsInvalid || isSaving
+  const saveDisabled =
+    !isDirty || nameInvalid || membersInvalid || settingsInvalid || isSaving || serverConflict
+  const startDraft = () => onDraftStart?.()
 
   const resetDraft = () => {
     setName(initialName)
@@ -378,6 +386,7 @@ export function KnowledgeSettingsForm({
     )
     setNameTouched(false)
     setSaveError(false)
+    onDraftFinish?.()
   }
 
   const invalidateSettingsQueries = useCallback(async () => {
@@ -411,6 +420,8 @@ export function KnowledgeSettingsForm({
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
       setPendingMigrationId(undefined)
       void invalidateSettingsQueries().then(() => {
+        completedSaveFingerprintsRef.current = {}
+        onDraftFinish?.()
         toast.success(tCommon(($) => $['api.saved']))
       })
       return
@@ -435,6 +446,7 @@ export function KnowledgeSettingsForm({
     invalidateSettingsQueries,
     migrationQuery.data,
     migrationQuery.isError,
+    onDraftFinish,
     pendingMigrationId,
     retrievalDirty,
     tCommon,
@@ -543,6 +555,8 @@ export function KnowledgeSettingsForm({
       }
       if (pendingMigrationId) return
       await invalidateSettingsQueries()
+      completedSaveFingerprintsRef.current = {}
+      onDraftFinish?.()
       toast.success(tCommon(($) => $['api.saved']))
     } catch {
       setSaveError(true)
@@ -681,6 +695,18 @@ export function KnowledgeSettingsForm({
         </div>
       )}
 
+      {serverConflict && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg border border-text-warning/20 bg-state-warning-hover px-3 py-2"
+          role="alert"
+        >
+          <span aria-hidden className="i-ri-error-warning-line size-4 text-text-warning" />
+          <span className="min-w-0 flex-1 system-xs-regular text-text-warning">
+            {t(($) => $['newKnowledge.settings.serverConflict'])}
+          </span>
+        </div>
+      )}
+
       {pendingMigrationId && (
         <div
           className="mb-3 flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary"
@@ -719,9 +745,10 @@ export function KnowledgeSettingsForm({
                 disabled={fieldsDisabled}
                 className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
                 onBlur={() => setNameTouched(true)}
-                onChange={(event) =>
+                onChange={(event) => {
+                  startDraft()
                   setName(event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH))
-                }
+                }}
               />
               {nameTouched && nameInvalid && (
                 <p
@@ -755,7 +782,10 @@ export function KnowledgeSettingsForm({
             disabled={fieldsDisabled}
             placeholder={t(($) => $['newKnowledge.settings.descriptionPlaceholder'])}
             className="min-h-20 resize-none"
-            onValueChange={setDescription}
+            onValueChange={(value) => {
+              startDraft()
+              setDescription(value)
+            }}
           />
         </SettingsRow>
 
@@ -767,14 +797,24 @@ export function KnowledgeSettingsForm({
             ownerAccountId={space.owner_account_id}
             selectedMemberIds={selectedMemberIds}
             visibility={visibility}
-            onSelectedMemberIdsChange={setSelectedMemberIds}
-            onVisibilityChange={setVisibility}
+            onSelectedMemberIdsChange={(memberIds) => {
+              startDraft()
+              setSelectedMemberIds(memberIds)
+            }}
+            onVisibilityChange={(nextVisibility) => {
+              startDraft()
+              setVisibility(nextVisibility)
+            }}
           />
         </SettingsRow>
 
         {canEdit && (
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" disabled={!isDirty || isSaving} onClick={resetDraft}>
+            <Button
+              type="button"
+              disabled={(!isDirty && !serverConflict) || isSaving}
+              onClick={resetDraft}
+            >
               {tCommon(($) => $['operation.cancel'])}
             </Button>
             <Button type="submit" variant="primary" disabled={saveDisabled} loading={isSaving}>
@@ -794,7 +834,10 @@ export function KnowledgeSettingsForm({
               aria-describedby={API_ACCESS_DESCRIPTION_ID}
               checked={apiEnabled}
               disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
-              onCheckedChange={setApiEnabled}
+              onCheckedChange={(checked) => {
+                startDraft()
+                setApiEnabled(checked)
+              }}
             />
             <p
               id={API_ACCESS_DESCRIPTION_ID}
@@ -831,6 +874,7 @@ export function KnowledgeSettingsForm({
                 readonly={retrievalFieldsDisabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
+                  startDraft()
                   setReasoningModel(model)
                 }}
               />
@@ -849,7 +893,10 @@ export function KnowledgeSettingsForm({
                 modelList={embeddingModelList}
                 readonly={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
                 triggerClassName="w-full"
-                onSelect={setEmbeddingModel}
+                onSelect={(model) => {
+                  startDraft()
+                  setEmbeddingModel(model)
+                }}
               />
               {embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0 && (
                 <p className="mt-1 flex items-start gap-1 system-xs-regular text-text-warning-secondary">
@@ -866,6 +913,7 @@ export function KnowledgeSettingsForm({
                   checked={rerankEnabled}
                   disabled={retrievalFieldsDisabled}
                   onCheckedChange={(checked) => {
+                    startDraft()
                     setRerankEnabled(checked)
                     if (!checked && retrievalMode !== 'research') setScoreThresholdEnabled(false)
                   }}
@@ -881,6 +929,7 @@ export function KnowledgeSettingsForm({
                 readonly={retrievalFieldsDisabled || !rerankEnabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
+                  startDraft()
                   setRerankModel(model)
                 }}
               />
@@ -904,6 +953,7 @@ export function KnowledgeSettingsForm({
                 onValueChange={(values) => {
                   const mode = values[0]
                   if (mode === 'fast' || mode === 'deep' || mode === 'research') {
+                    startDraft()
                     setRetrievalMode(mode)
                     if (mode !== 'research' && !rerankEnabled) setScoreThresholdEnabled(false)
                   }
@@ -937,6 +987,7 @@ export function KnowledgeSettingsForm({
                     disabled={retrievalFieldsDisabled}
                     className="w-18 shrink-0"
                     onChange={(event) => {
+                      startDraft()
                       setTopK(clamp(Number(event.target.value), TOP_K_MIN, TOP_K_MAX))
                     }}
                   />
@@ -947,6 +998,7 @@ export function KnowledgeSettingsForm({
                     value={topK}
                     disabled={retrievalFieldsDisabled}
                     onValueChange={(value) => {
+                      startDraft()
                       setTopK(value)
                     }}
                   />
@@ -963,6 +1015,7 @@ export function KnowledgeSettingsForm({
                     checked={scoreThresholdEnabled}
                     disabled={retrievalFieldsDisabled || !scoreThresholdAvailable}
                     onCheckedChange={(checked) => {
+                      startDraft()
                       setScoreThresholdEnabled(checked)
                     }}
                   />
@@ -985,12 +1038,13 @@ export function KnowledgeSettingsForm({
                     value={scoreThreshold}
                     disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
                     className="w-18 shrink-0"
-                    onBlur={() =>
+                    onBlur={() => {
                       setScoreThreshold(
                         clamp(scoreThreshold, SCORE_THRESHOLD_MIN, SCORE_THRESHOLD_MAX),
                       )
-                    }
+                    }}
                     onChange={(event) => {
+                      startDraft()
                       setScoreThreshold(Number(event.target.value))
                     }}
                   />
@@ -1002,6 +1056,7 @@ export function KnowledgeSettingsForm({
                     value={scoreThreshold}
                     disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
                     onValueChange={(value) => {
+                      startDraft()
                       setScoreThreshold(value)
                     }}
                   />
@@ -1050,7 +1105,10 @@ export function KnowledgeSettingsForm({
         initialEmoji={{ icon }}
         onOpenChange={setIconPickerOpen}
         onSelect={(selection) => {
-          if (selection.type === 'emoji') setIcon(selection.icon)
+          if (selection.type === 'emoji') {
+            startDraft()
+            setIcon(selection.icon)
+          }
         }}
       />
 

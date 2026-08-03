@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Enregistrer les modifications",
   "newKnowledge.settings.saveFailed": "Impossible d’enregistrer les modifications. Vérifiez votre connexion et réessayez — vos modifications sont toujours présentes.",
   "newKnowledge.settings.scoreRange": "plage 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Ces paramètres ont été modifiés ailleurs. Annulez vos modifications pour charger la dernière version avant d’enregistrer à nouveau.",
   "newKnowledge.settings.systemReasoningModelLabel": "Modèle de Raisonnement du Système",
   "newKnowledge.settings.topKLabel": "Top K",
   "newKnowledge.settings.topKMinimum": "min. = 1",

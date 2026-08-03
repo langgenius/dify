@@ -69,13 +69,16 @@ export function DocumentDetailStatus({
       )}
       {latestTask?.state === 'failed' && (
         <div
-          className="mt-4 rounded-lg bg-state-destructive-hover px-3 py-2 system-xs-regular text-text-destructive"
+          className="mt-4 flex items-center gap-2 rounded-lg bg-state-destructive-hover px-3 py-2 system-xs-regular text-text-destructive"
           role="alert"
         >
-          <p>{t(($) => $['newKnowledge.documentReindexFailed'])}</p>
-          <p className="mt-1 text-text-secondary">
-            {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
-          </p>
+          <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0" />
+          <span className="min-w-0 flex-1">
+            {t(($) => $['newKnowledge.documentReindexFailed'])}
+          </span>
+          <Button size="small" variant="ghost" onClick={onViewTasks}>
+            {t(($) => $['newKnowledge.viewTask'])}
+          </Button>
         </div>
       )}
 

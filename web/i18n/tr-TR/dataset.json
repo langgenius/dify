@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Değişiklikleri kaydet",
   "newKnowledge.settings.saveFailed": "Değişiklikler kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin — düzenlemeleriniz hâlâ burada.",
   "newKnowledge.settings.scoreRange": "aralık 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Bu ayarlar başka bir yerde değiştirildi. Yeniden kaydetmeden önce en son sürümü yüklemek için düzenlemelerinizi iptal edin.",
   "newKnowledge.settings.systemReasoningModelLabel": "Sistem Çıkarım Modeli",
   "newKnowledge.settings.topKLabel": "En İyi K",
   "newKnowledge.settings.topKMinimum": "min. = 1",

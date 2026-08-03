@@ -2,6 +2,7 @@ import type { DocumentProcessingTask, LogicalDocument } from '../document-models
 import {
   documentDisplayStatus,
   newestTaskByDocument,
+  taskCanCancel,
   taskCanRetry,
   taskIsActive,
   taskNeedsAttention,
@@ -108,8 +109,11 @@ describe('new Knowledge document model', () => {
 
   it('keeps task badge and actions aligned with the contract states', () => {
     expect(taskIsActive(task({ state: 'running' }))).toBe(true)
+    expect(taskCanCancel(task({ canCancel: false, state: 'running' }))).toBe(false)
+    expect(taskCanCancel(task({ canCancel: true, state: 'queued' }))).toBe(true)
     expect(taskNeedsAttention(task({ state: 'failed' }))).toBe(true)
     expect(taskCanRetry(task({ state: 'canceled' }))).toBe(false)
+    expect(taskCanRetry(task({ canRetry: true, state: 'canceled' }))).toBe(true)
     expect(taskNeedsAttention(task({ state: 'canceled' }))).toBe(false)
     expect(taskNeedsAttention(task({ state: 'succeeded' }))).toBe(false)
     expect(taskCanRetry(task({ state: 'superseded' }))).toBe(false)

@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "변경 사항 저장",
   "newKnowledge.settings.saveFailed": "변경 사항을 저장할 수 없습니다. 연결을 확인하고 다시 시도하세요. 편집 내용은 그대로 유지됩니다.",
   "newKnowledge.settings.scoreRange": "범위 0.00–1.00",
+  "newKnowledge.settings.serverConflict": "이 설정이 다른 곳에서 변경되었습니다. 다시 저장하기 전에 편집을 취소하고 최신 버전을 불러오세요.",
   "newKnowledge.settings.systemReasoningModelLabel": "시스템 추론 모델",
   "newKnowledge.settings.topKLabel": "상위 K",
   "newKnowledge.settings.topKMinimum": "최소 = 1",

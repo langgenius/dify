@@ -620,6 +620,7 @@
   "newKnowledge.settings.saveChanges": "Salvați modificările",
   "newKnowledge.settings.saveFailed": "Modificările nu au putut fi salvate. Verificați conexiunea și încercați din nou — editările sunt păstrate.",
   "newKnowledge.settings.scoreRange": "interval 0,00–1,00",
+  "newKnowledge.settings.serverConflict": "Aceste setări au fost modificate în altă parte. Anulați editările pentru a încărca cea mai recentă versiune înainte de a salva din nou.",
   "newKnowledge.settings.systemReasoningModelLabel": "Model de raționament de sistem",
   "newKnowledge.settings.topKLabel": "Top K",
   "newKnowledge.settings.topKMinimum": "min. = 1",

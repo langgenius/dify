@@ -555,7 +555,7 @@ describe('KnowledgeOverviewPage', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('combobox', { name: 'dataset.newKnowledge.overview.timeRange' }),
-    ).toBeInTheDocument()
+    ).toHaveTextContent('dataset.newKnowledge.overview.today')
     expect(
       screen.getByRole('combobox', { name: 'dataset.newKnowledge.overview.operator' }),
     ).toBeInTheDocument()
@@ -846,7 +846,7 @@ describe('KnowledgeOverviewPage', () => {
 
   it('shows first-indexing progress while the initial document task is running', () => {
     queryData.stats.source_count = 0
-    queryData.stats.documents = 1
+    queryData.stats.documents = 0
     queryData.inventory.index_coverage.indexed = 0
     queryData.tasks[0]!.operation = 'document_processing'
     queryData.tasks[0]!.progress_completed = 1
@@ -865,6 +865,31 @@ describe('KnowledgeOverviewPage', () => {
     expect(
       screen.getByText('dataset.newKnowledge.overview.indexedDocuments:{"indexed":1,"total":2}'),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: 'dataset.newKnowledge.overview.indexing' }),
+    ).toHaveAttribute('aria-valuenow', '1')
+    expect(
+      screen.queryByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('exposes first-indexing progress as indeterminate until the total is known', () => {
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 0
+    queryData.inventory.index_coverage.indexed = 0
+    queryData.tasks[0]!.operation = 'document_processing'
+    queryData.tasks[0]!.progress_completed = 0
+    queryData.tasks[0]!.progress_percent = 0
+    queryData.tasks[0]!.progress_total = 0
+    queryData.tasks[0]!.state = 'queued'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    const progressbar = screen.getByRole('progressbar', {
+      name: 'dataset.newKnowledge.overview.indexing',
+    })
+    expect(progressbar).not.toHaveAttribute('aria-valuemax')
+    expect(progressbar).not.toHaveAttribute('aria-valuenow')
   })
 
   it('keeps the generic first-indexing title when the task has no source', () => {
