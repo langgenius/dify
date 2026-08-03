@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from azure.core.exceptions import HttpResponseError
 from azure.keyvault.keys import KeyRotationPolicy
 
 from configs import dify_config
@@ -25,6 +26,10 @@ class FakeCryptographyClient:
     wrapped under another version's key.
     """
 
+    # Class-level so a test can mark a version "disabled" (mirroring Key Vault's real behavior
+    # for a disabled/deleted key version) without threading state through every fixture.
+    disabled_versions: set[str] = set()
+
     def __init__(self, key: SimpleNamespace, credential: object = None) -> None:
         self.version = key.properties.version
         self.credential = credential
@@ -35,6 +40,8 @@ class FakeCryptographyClient:
 
     def unwrap_key(self, algorithm: object, wrapped: bytes) -> SimpleNamespace:
         self.last_unwrap_algorithm = algorithm
+        if self.version in self.disabled_versions:
+            raise HttpResponseError(message="Operation unwrapKey is not allowed on a disabled key.")
         prefix = f"{self.version}:".encode()
         if not wrapped.startswith(prefix):
             raise ValueError(f"key version {self.version} cannot unwrap data wrapped by another version")
@@ -79,6 +86,7 @@ def fake_key_client(monkeypatch: pytest.MonkeyPatch) -> FakeKeyClient:
         "libs.key_providers.azure_keyvault_key_provider.DefaultAzureCredential",
         MagicMock(),
     )
+    FakeCryptographyClient.disabled_versions = set()
     return client
 
 
@@ -203,3 +211,25 @@ def test_decrypt_rejects_truncated_envelope_raises_value_error(truncate_at: int)
 
     with pytest.raises(ValueError):
         provider.decrypt_with_decoding(truncated, "tenant-1")
+
+
+def test_decrypt_translates_disabled_key_version_into_value_error(fake_key_client: FakeKeyClient) -> None:
+    """
+    A specific key_version can become unusable after a credential was encrypted (disabled,
+    deleted, or expired in Key Vault). Callers of decrypt_token_with_decoding
+    (core/provider_manager.py, services/model_load_balancing_service.py) only catch ValueError
+    for "this credential can't be decrypted right now" -- if the underlying Azure SDK error
+    leaked through untranslated, it would crash the whole call chain (e.g. building a tenant's
+    full provider configuration just to create an unrelated new credential).
+    """
+    provider = AzureKeyVaultKeyProvider()
+    provider.generate_key_pair("tenant-1")
+
+    encrypted = provider.encrypt("tenant-1", "secret")
+    assert _embedded_key_version(encrypted) == "v1"
+
+    # Simulate the vault operator disabling/deleting the version that encrypted this credential.
+    FakeCryptographyClient.disabled_versions.add("v1")
+
+    with pytest.raises(ValueError, match="Failed to unwrap credential"):
+        provider.decrypt_with_decoding(encrypted, "tenant-1")

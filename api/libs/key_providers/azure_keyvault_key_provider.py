@@ -2,6 +2,7 @@ import json
 import threading
 from typing import Any, override
 
+from azure.core.exceptions import AzureError
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.keys import (
     KeyClient,
@@ -211,8 +212,20 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
             raise ValueError("Malformed Azure Key Vault envelope") from exc
 
         wrap_alg = KeyWrapAlgorithm(metadata["wrap_alg"]) if metadata.get("wrap_alg") else _DEFAULT_WRAP_ALGORITHM
-        crypto_client, _ = self._get_crypto_client(tenant_id, version=metadata.get("key_version"))
-        aes_key = crypto_client.unwrap_key(wrap_alg, wrapped_key).key
+        try:
+            # A specific key_version can legitimately become unusable after this ciphertext was
+            # created -- disabled, deleted, or (if a rotation policy with an expiry was
+            # misconfigured despite generate_key_pair()'s warning against it) expired. Every
+            # caller of decrypt_token_with_decoding (core/provider_manager.py,
+            # services/model_load_balancing_service.py) already only expects/suppresses
+            # ValueError for "this particular credential can't be decrypted right now", so Azure
+            # SDK errors must be translated here rather than left to escape as a different type
+            # and crash the whole call chain (e.g. building a tenant's full provider
+            # configuration just to create an unrelated new credential).
+            crypto_client, _ = self._get_crypto_client(tenant_id, version=metadata.get("key_version"))
+            aes_key = crypto_client.unwrap_key(wrap_alg, wrapped_key).key
+        except AzureError as exc:
+            raise ValueError(f"Failed to unwrap credential via Azure Key Vault: {exc}") from exc
 
         cipher_aes = AES.new(aes_key, AES.MODE_EAX, nonce=nonce)
         return cipher_aes.decrypt_and_verify(ciphertext, tag).decode()
