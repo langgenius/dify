@@ -17,11 +17,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { parseAsString, useQueryStates } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import Link from '@/next/link'
-import { useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import {
   extractRetrievalEvidence,
@@ -822,15 +822,21 @@ function RecordButton({
 
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
-  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
-  const linkedTraceId = searchParams?.get('trace')
+  const [linkedSelection, setLinkedSelection] = useQueryStates({
+    research: parseAsString,
+    trace: parseAsString,
+  })
+  const { research: linkedResearchId, trace: linkedTraceId } = linkedSelection
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<RetrievalTestMode>('fast')
   const [localRun, setLocalRun] = useState<LocalQueryRun>()
-  const [selected, setSelected] = useState<SelectedRun | undefined>(() =>
-    linkedTraceId ? { id: linkedTraceId, kind: 'trace' } : undefined,
-  )
+  const [localSelected, setLocalSelected] = useState<SelectedRun>()
+  const selected: SelectedRun | undefined = linkedResearchId
+    ? { id: linkedResearchId, kind: 'research' }
+    : linkedTraceId
+      ? { id: linkedTraceId, kind: 'trace' }
+      : localSelected
   const [researchPlans, setResearchPlans] = useState<
     Record<string, KnowledgeFsResearchTaskPlanResponse>
   >({})
@@ -1081,7 +1087,19 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
 
   const selectRecord = (record: RetrievalTestRecord) => {
-    setSelected({ id: record.id, kind: record.kind })
+    if (record.kind === 'local') {
+      setLocalSelected({ id: record.id, kind: record.kind })
+      void setLinkedSelection({ research: null, trace: null }, { history: 'push' })
+    } else {
+      setLocalSelected(undefined)
+      void setLinkedSelection(
+        {
+          research: record.kind === 'research' ? record.id : null,
+          trace: record.kind === 'trace' ? record.id : null,
+        },
+        { history: 'push', shallow: false },
+      )
+    }
     setQuery(record.query)
     setMode(record.mode)
     setShowAll(false)
@@ -1145,7 +1163,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       startedAt,
       status: 'running',
     })
-    setSelected({ id, kind: 'local' })
+    setLocalSelected({ id, kind: 'local' })
+    void setLinkedSelection({ research: null, trace: null }, { history: 'replace' })
     setShowAll(false)
     const events: KnowledgeQueryEvent[] = []
     try {
@@ -1218,7 +1237,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     queryAbortControllerRef.current?.abort()
     queryAbortControllerRef.current = undefined
     setLocalRun(undefined)
-    setSelected(undefined)
+    setLocalSelected(undefined)
     setShowAll(false)
   }
 
@@ -1241,7 +1260,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       })
       setResearchPlans((current) => ({ ...current, [task.id]: plan }))
       setResearchExpanded((current) => ({ ...current, [task.id]: true }))
-      setSelected({ id: task.id, kind: 'research' })
+      setLocalSelected(undefined)
+      void setLinkedSelection(
+        { research: task.id, trace: null },
+        { history: 'push', shallow: false },
+      )
       setShowAll(false)
       await researchTasksQuery.refetch()
     } catch {

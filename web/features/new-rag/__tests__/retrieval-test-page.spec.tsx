@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { RetrievalTestPage } from '../retrieval-test-page'
 
 const apiMock = vi.hoisted(() => ({
@@ -24,16 +25,6 @@ const apiMock = vi.hoisted(() => ({
   evidence: undefined as Record<string, unknown> | undefined,
   traceDetail: undefined as Record<string, unknown> | undefined,
   traces: [] as Array<Record<string, unknown>>,
-}))
-
-const navigationMock = vi.hoisted(() => ({
-  trace: undefined as string | undefined,
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => ({
-    get: (key: string) => (key === 'trace' ? navigationMock.trace : undefined),
-  }),
 }))
 
 vi.mock('../services/knowledge-query-events', () => ({
@@ -152,17 +143,21 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function renderPage() {
+function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
       queries: { retry: false },
     },
   })
+  const { onUrlUpdate, wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryClientProvider>
   )
   return {
+    onUrlUpdate,
     queryClient,
     ...render(<RetrievalTestPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
   }
@@ -212,7 +207,6 @@ describe('RetrievalTestPage', () => {
     apiMock.partials = []
     apiMock.traceDetail = undefined
     apiMock.traces = []
-    navigationMock.trace = undefined
   })
 
   it('starts research from the segmented composer with the planned budget', async () => {
@@ -319,9 +313,8 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage()
+    renderPage({ searchParams: '?research=research-completed' })
 
-    await user.click(screen.getByText('Compare the refund policies'))
     const processLog = screen.getByRole('button', {
       name: 'dataset.newKnowledge.retrievalTest.processLog',
     })
@@ -422,10 +415,7 @@ describe('RetrievalTestPage', () => {
         return { cursor: '2', reconnect: false, terminal: false }
       },
     )
-    const user = userEvent.setup()
-    renderPage()
-
-    await user.click(screen.getByText('What is the warranty?'))
+    renderPage({ searchParams: '?research=research-active' })
 
     const answer = await screen.findByText('The warranty is two years.')
     expect(answer.closest('[aria-live="polite"]')).toBeInTheDocument()
@@ -471,6 +461,62 @@ describe('RetrievalTestPage', () => {
     ).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.retrievalTest.generating' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the selected research record in the URL', async () => {
+    apiMock.researchTasks = [
+      {
+        completed_at: 1_800_000_025,
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-completed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'What is the warranty?',
+        stage: 'completed',
+        updated_at: 1_800_000_025,
+      },
+    ]
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderPage()
+
+    await user.click(screen.getByText('What is the warranty?'))
+
+    await waitFor(() => {
+      const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.get('research')).toBe('research-completed')
+      expect(urlUpdate?.searchParams.get('trace')).toBeNull()
+      expect(urlUpdate?.options.history).toBe('push')
+      expect(urlUpdate?.options.shallow).toBe(false)
+    })
+  })
+
+  it('restores a selected research record from the URL', () => {
+    apiMock.researchTasks = [
+      {
+        completed_at: 1_800_000_025,
+        cost: {},
+        created_at: 1_800_000_000,
+        id: 'research-completed',
+        knowledge_space_id: 'space-1',
+        metadata: {},
+        mode: 'research',
+        query: 'What is the warranty?',
+        stage: 'completed',
+        updated_at: 1_800_000_025,
+      },
+    ]
+
+    renderPage({ searchParams: '?research=research-completed' })
+
+    expect(screen.getByText('What is the warranty?').closest('button')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.retrievalTest.researchResult' }),
     ).toBeInTheDocument()
   })
 
@@ -608,9 +654,8 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage()
+    renderPage({ searchParams: '?trace=trace-1' })
 
-    await user.click(screen.getByText('Why did retrieval miss the refund exception?'))
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
@@ -662,10 +707,9 @@ describe('RetrievalTestPage', () => {
       ],
     }
     const user = userEvent.setup()
-    const { queryClient } = renderPage()
+    const { queryClient } = renderPage({ searchParams: '?trace=trace-1' })
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-    await user.click(screen.getByText('What is useEffect?'))
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.retrievalTest.keepGoldenQuestion',
@@ -683,7 +727,6 @@ describe('RetrievalTestPage', () => {
   })
 
   it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
-    navigationMock.trace = 'trace-old'
     apiMock.traceDetail = {
       completed: true,
       created_at: '2026-07-01T00:00:00.000Z',
@@ -695,7 +738,7 @@ describe('RetrievalTestPage', () => {
       stages: [],
     }
     const user = userEvent.setup()
-    renderPage()
+    renderPage({ searchParams: '?trace=trace-old' })
 
     expect(
       screen.getByRole('heading', {
