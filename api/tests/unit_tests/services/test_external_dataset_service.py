@@ -784,6 +784,43 @@ class TestExternalDatasetServiceCheckEndpoint:
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
     @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_403_message_does_not_echo_api_key(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #39888: the 403 error message must not contain the raw api_key.
+
+        Before the fix, `external_knowledge_service.py:117` interpolated
+        `api_key` into the `ValueError` message, so the credential round-tripped
+        in the application log (via `current_app.logger.exception` in
+        `api/libs/external_api.py:94`) and in the 400 response body
+        (`{"code": "invalid_param", "message": str(e), ...}`). The 403 status
+        from the upstream provider was the only signal that the key was bad;
+        echoing it back is just a plaintext credential leak.
+        """
+        # Arrange -- a real-looking key with a prefix that would be a high-signal
+        # substring to grep for in logs.
+        api_key = "sk-abcdefghijklmnop1234567890ABCDEF"
+        settings = {"endpoint": "https://api.example.com", "api_key": api_key}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_proxy.post.return_value = mock_response
+
+        # Act
+        with pytest.raises(ValueError) as exc_info:
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        # Assert -- the message names the failure but does not include the key.
+        message = str(exc_info.value)
+        assert "Forbidden" in message
+        assert "Authorization failed" in message
+        assert api_key not in message
+        # Belt-and-braces: also check the prefix and a 6-char tail to catch
+        # regressions that only echo part of the key.
+        assert "sk-abcdef" not in message
+        assert "CDEF" not in message
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that other 4xx codes don't raise exceptions."""
         # Arrange
