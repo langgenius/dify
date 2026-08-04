@@ -717,6 +717,63 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
+@pytest.mark.parametrize(
+    ("quota_is_valid", "has_custom_provider", "has_custom_model", "expected_using_provider_type"),
+    [
+        (True, False, False, ProviderType.SYSTEM),
+        (False, False, False, ProviderType.SYSTEM),
+        (False, True, False, ProviderType.CUSTOM),
+        (False, False, True, ProviderType.CUSTOM),
+        (None, False, False, ProviderType.CUSTOM),
+    ],
+)
+def test_get_configurations_resolves_system_preference_with_quota_and_custom_fallback(
+    mock_provider_entity,
+    quota_is_valid: bool | None,
+    has_custom_provider: bool,
+    has_custom_model: bool,
+    expected_using_provider_type: ProviderType,
+):
+    manager = _build_provider_manager()
+    provider_configuration = Mock()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(
+        provider=Mock() if has_custom_provider else None,
+        models=[Mock()] if has_custom_model else [],
+    )
+    system_configuration = SimpleNamespace(
+        enabled=True,
+        quota_configurations=[] if quota_is_valid is None else [SimpleNamespace(is_valid=quota_is_valid)],
+        current_quota_type=None,
+    )
+    preferred_provider_records = {
+        "openai": SimpleNamespace(preferred_provider_type=ProviderType.SYSTEM),
+    }
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}),
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value=preferred_provider_records),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch(
+            "core.provider_manager.ProviderConfiguration",
+            return_value=provider_configuration,
+        ) as mock_provider_configuration,
+    ):
+        manager.get_configurations("tenant-id")
+
+    assert mock_provider_configuration.call_args.kwargs["using_provider_type"] == expected_using_provider_type
+
+
 def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity):
     manager = _build_provider_manager()
     provider_configuration = Mock()
