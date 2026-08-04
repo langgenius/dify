@@ -38,7 +38,7 @@ def _mint_account_token(
     record = OAuthAccessToken(
         subject_email=account.email,
         subject_issuer="dify:account",
-        account_id=str(account.id),
+        account_id=account.id,
         client_id=client_id,
         device_label=device_label,
         prefix=TokenType.OAUTH_ACCOUNT.prefix,

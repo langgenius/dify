@@ -182,7 +182,7 @@ class FilePreviewApi(Resource):
     @console_account_admission()
     def get(self, request_context: RequestContext, file_id: UUID) -> dict[str, object]:
         current_tenant_id = request_context.active_workspace_id
-        file_id_str = str(file_id)
+        file_id_str = file_id
         text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
         return dump_response(TextContentResponse, {"content": text})
 

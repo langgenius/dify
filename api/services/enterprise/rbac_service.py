@@ -403,9 +403,9 @@ class ResourcePermissionSnapshot(_RBACModel):
     overrides: list[ResourcePermissionKeys] = Field(default_factory=list)
 
     def permission_keys_by_resource_ids(self, resource_ids: list[str]) -> dict[str, list[str]]:
-        result = {str(resource_id): list(self.default_permission_keys) for resource_id in resource_ids}
+        result = {resource_id: list(self.default_permission_keys) for resource_id in resource_ids}
         for override in self.overrides:
-            resource_id = str(override.resource_id)
+            resource_id = override.resource_id
             if resource_id in result:
                 result[resource_id] = list(override.permission_keys)
         return result
@@ -782,7 +782,7 @@ def _legacy_resource_permission_keys_batch(
 ) -> dict[str, list[str]]:
     snapshot = _legacy_my_permissions(tenant_id, account_id, session=session)
     permission_keys = snapshot.resource_snapshot(resource_type).default_permission_keys
-    return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
+    return {resource_id: list(permission_keys) for resource_id in resource_ids}
 
 
 # ---------- Mutation request models ----------
@@ -915,8 +915,18 @@ def _inner_call(
 
 
 def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str) -> dict[str, str]:
+<<<<<<< HEAD
     resolved = resource_type if isinstance(resource_type, RBACResourceType) else RBACResourceType(resource_type)
     return {"resource_type": resolved.value, resolved.route.id_param: resource_id.strip()}
+=======
+    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else resource_type
+    resource_id = resource_id.strip()
+    if resource_type_value == RBACResourceType.APP.value:
+        return {"resource_type": resource_type_value, "app_id": resource_id}
+    if resource_type_value == RBACResourceType.DATASET.value:
+        return {"resource_type": resource_type_value, "dataset_id": resource_id}
+    raise ValueError(f"unsupported resource_type: {resource_type_value}")
+>>>>>>> 493909dc14 (fix: fix ci)
 
 
 def try_sync_creator_access_policy_member_bindings(
@@ -2331,5 +2341,5 @@ def _parse_resource_permission_keys_batch(data: Any, *, resource_id_key: str) ->
         if not resource_id:
             continue
         permission_keys = item.get("permission_keys") or []
-        result[str(resource_id)] = [str(permission_key) for permission_key in permission_keys]
+        result[resource_id] = [str(permission_key) for permission_key in permission_keys]
     return result

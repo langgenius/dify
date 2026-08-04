@@ -100,7 +100,7 @@ def get_app_model[**P, R](
                 raise ValueError("missing app_id in path parameters")
 
             app_id = kwargs.get("app_id")
-            app_id = str(app_id)
+            app_id = app_id
 
             del kwargs["app_id"]
 

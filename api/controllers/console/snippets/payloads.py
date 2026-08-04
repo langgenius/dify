@@ -46,7 +46,7 @@ class SnippetListQuery(BaseModel):
         if value is None:
             return None
         if isinstance(value, list):
-            return [str(item).strip() for item in value if str(item).strip()] or None
+            return [item.strip() for item in value if item.strip()] or None
         raise ValueError(f"Unsupported {field_name} type.")
 
 

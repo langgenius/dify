@@ -220,7 +220,7 @@ class AgentLogsQuery(BaseModel):
         if value in (None, ""):
             return []
         if isinstance(value, list):
-            return [str(item).strip() for item in value if str(item).strip()]
+            return [item.strip() for item in value if item.strip()]
         raise ValueError("Unsupported query list type.")
 
     @field_validator("sort_by")
@@ -407,7 +407,7 @@ def _serialize_agent_app_detail(
 
     access_mode = None
     if SystemFeatureService.is_webapp_auth_enabled():
-        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_model.id)
         access_mode = app_setting.access_mode
 
     roster_service = _agent_roster_service(session)
@@ -424,7 +424,7 @@ def _serialize_agent_app_detail(
             )
         )
         if agent_id
-        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
     )
     if not agent:
         raise AgentNotFoundError()
@@ -474,7 +474,7 @@ def _serialize_agent_app_pagination(
     Agent is present.
     """
 
-    app_ids = [str(app.id) for app in app_pagination.items]
+    app_ids = [app.id for app in app_pagination.items]
     roster_service = _agent_roster_service(session)
     agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
         tenant_id=tenant_id,
@@ -579,7 +579,7 @@ def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
     access_ready = _agent_app_access_ready(session, app_model)
     response = AgentApiAccessResponse(
         access_ready=access_ready,
-        enabled=bool(app_model.enable_api and access_ready),
+        enabled=(app_model.enable_api and access_ready),
         service_api_base_url=base_url,
         chat_endpoint=f"{base_url}/chat-messages",
         stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
@@ -1050,7 +1050,7 @@ class AgentApiKeyListApi(Resource):
     )
     def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
         with api_key_errors():
-            keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
+            keys = application_services().app_api_keys.list_agent_keys(request_context, agent_id)
         return dump_response(ApiKeyList, {"data": keys})
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
@@ -1061,7 +1061,7 @@ class AgentApiKeyListApi(Resource):
     )
     def post(self, request_context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], int]:
         with api_key_errors():
-            key = application_services().app_api_keys.create_agent_key(request_context, str(agent_id))
+            key = application_services().app_api_keys.create_agent_key(request_context, agent_id)
         return dump_response(ApiKeyItem, key), 201
 
 
@@ -1079,7 +1079,7 @@ class AgentApiKeyApi(Resource):
         api_key_id: UUID,
     ) -> tuple[str, int]:
         with api_key_errors():
-            application_services().app_api_keys.delete_agent_key(request_context, str(agent_id), str(api_key_id))
+            application_services().app_api_keys.delete_agent_key(request_context, agent_id, str(api_key_id))
         return "", 204
 
 

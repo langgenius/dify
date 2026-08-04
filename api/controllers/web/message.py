@@ -134,7 +134,7 @@ class MessageFeedbackApi(WebApiResource):
     @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
     @model_validate(MessageFeedbackPayload)
     def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         try:
             MessageService.create_feedback(
@@ -180,7 +180,7 @@ class MessageMoreLikeThisApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         streaming = query.response_mode == "streaming"
 
@@ -236,7 +236,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(

@@ -461,7 +461,7 @@ class ClearFreePlanTenantExpiredLogs:
 
                     tenants = []
                     for row in rs:
-                        tenant_id = str(row.id)
+                        tenant_id = row.id
                         try:
                             tenants.append(tenant_id)
                         except Exception:

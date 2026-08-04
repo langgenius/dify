@@ -1097,7 +1097,7 @@ class WorkflowRunArchiver:
             manifest_run_ids = manifest.get("run_ids")
             if not isinstance(manifest_run_ids, list):
                 raise ValueError(f"manifest run_ids must be a list: {manifest_key}")
-            run_ids.update(str(run_id) for run_id in manifest_run_ids)
+            run_ids.update(run_id for run_id in manifest_run_ids)
             campaign_id = manifest.get("campaign_id")
             if isinstance(campaign_id, str):
                 campaign_ids.add(campaign_id)

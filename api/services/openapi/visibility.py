@@ -29,4 +29,4 @@ def is_openapi_visible(app: App) -> bool:
     (``session.get`` / ``session.scalar``) and need the same visibility check
     the query gate would have applied.
     """
-    return bool(app.enable_api)
+    return app.enable_api

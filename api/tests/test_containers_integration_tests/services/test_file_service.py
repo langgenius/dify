@@ -109,7 +109,7 @@ class TestFileService:
         fake = Faker()
 
         end_user = EndUser(
-            tenant_id=str(fake.uuid4()),
+            tenant_id=fake.uuid4(),
             type=EndUserType.BROWSER,
             name=fake.name(),
             is_anonymous=False,
@@ -138,7 +138,7 @@ class TestFileService:
         fake = Faker()
 
         upload_file = UploadFile(
-            tenant_id=account.current_tenant_id if hasattr(account, "current_tenant_id") else str(fake.uuid4()),
+            tenant_id=account.current_tenant_id if hasattr(account, "current_tenant_id") else fake.uuid4(),
             storage_type=StorageType.LOCAL,
             key=f"upload_files/test/{fake.uuid4()}.txt",
             name="test_file.txt",
@@ -447,8 +447,8 @@ class TestFileService:
 
         # Mock current_user using create_autospec
         mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.current_tenant_id = str(fake.uuid4())
-        mock_current_user.id = str(fake.uuid4())
+        mock_current_user.current_tenant_id = fake.uuid4()
+        mock_current_user.id = fake.uuid4()
 
         upload_file = FileService(engine).upload_text(
             text=text,
@@ -480,8 +480,8 @@ class TestFileService:
 
         # Mock current_user using create_autospec
         mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.current_tenant_id = str(fake.uuid4())
-        mock_current_user.id = str(fake.uuid4())
+        mock_current_user.current_tenant_id = fake.uuid4()
+        mock_current_user.id = fake.uuid4()
 
         upload_file = FileService(engine).upload_text(
             text=text,
@@ -524,10 +524,10 @@ class TestFileService:
         Test file preview with non-existent file.
         """
         fake = Faker()
-        non_existent_id = str(fake.uuid4())
+        non_existent_id = fake.uuid4()
 
         with pytest.raises(NotFound, match="File not found"):
-            FileService(engine).get_file_preview(file_id=non_existent_id, tenant_id=str(fake.uuid4()))
+            FileService(engine).get_file_preview(file_id=non_existent_id, tenant_id=fake.uuid4())
 
     def test_get_file_preview_unsupported_file_type(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies
@@ -657,8 +657,8 @@ class TestFileService:
 
         # Mock current_user using create_autospec
         mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.current_tenant_id = str(fake.uuid4())
-        mock_current_user.id = str(fake.uuid4())
+        mock_current_user.current_tenant_id = fake.uuid4()
+        mock_current_user.id = fake.uuid4()
 
         upload_file = FileService(engine).upload_text(
             text=text,

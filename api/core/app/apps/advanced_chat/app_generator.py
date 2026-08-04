@@ -226,7 +226,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 invoke_from=invoke_from,
                 extras=extras,
                 trace_manager=trace_manager,
-                workflow_run_id=str(workflow_run_id),
+                workflow_run_id=workflow_run_id,
             )
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())

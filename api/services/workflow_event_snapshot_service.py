@@ -616,9 +616,9 @@ def _build_pause_event(
             reasons=reasons,
             status=workflow_run.status,
             created_at=int(workflow_run.created_at.timestamp()),
-            elapsed_time=float(workflow_run.elapsed_time or 0.0),
-            total_tokens=int(workflow_run.total_tokens or 0),
-            total_steps=int(workflow_run.total_steps or 0),
+            elapsed_time=workflow_run.elapsed_time or 0.0,
+            total_tokens=workflow_run.total_tokens or 0,
+            total_steps=workflow_run.total_steps or 0,
         ),
     )
     payload = response.model_dump(mode="json")

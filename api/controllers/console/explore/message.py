@@ -163,7 +163,7 @@ class MessageFeedbackApi(Resource):
         application_services().installed_apps.messages.set_feedback(
             installed_app=installed_app,
             account_id=request_context.account_id,
-            message_id=str(message_id),
+            message_id=message_id,
             rating=payload.rating,
             content=payload.content,
         )
@@ -191,7 +191,7 @@ class MessageMoreLikeThisApi(Resource):
         response = application_services().installed_apps.generation.generate_more_like_this(
             installed_app=installed_app,
             account_id=request_context.account_id,
-            message_id=str(message_id),
+            message_id=message_id,
             streaming=query.response_mode == "streaming",
         )
         # response-contract:ignore compact_generate_response

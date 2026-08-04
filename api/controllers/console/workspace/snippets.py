@@ -213,7 +213,7 @@ class CustomizedSnippetDetailApi(Resource):
         """Get customized snippet details."""
         snippet_service = _snippet_service(session)
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 

@@ -269,7 +269,7 @@ class MigrationImportService:
                         existing_app.id,
                     )
                 report_items.append(
-                    ResourceReportItem(ResourceType.WORKFLOW, str(app_id), workflow_data.get("name"), "skipped")
+                    ResourceReportItem(ResourceType.WORKFLOW, app_id, workflow_data.get("name"), "skipped")
                 )
                 continue
 

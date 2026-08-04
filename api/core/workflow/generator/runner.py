@@ -277,10 +277,10 @@ def _resolve_generation_mode(
     """
     if requested != "auto":
         return requested
-    planner_mode = str(plan.get("mode") or "").strip().lower()
+    planner_mode = (plan.get("mode") or "").strip().lower()
     if planner_mode in ("workflow", "advanced-chat"):
         return cast(WorkflowGenerationMode, planner_mode)
-    node_types = {str(node.get("node_type") or "") for node in plan.get("nodes") or [] if isinstance(node, dict)}
+    node_types = {node.get("node_type") or "" for node in plan.get("nodes") or [] if isinstance(node, dict)}
     if BuiltinNodeTypes.ANSWER in node_types:
         return "advanced-chat"
     if BuiltinNodeTypes.END in node_types:
@@ -302,15 +302,15 @@ def _build_plan_event(
     terse plan and default to empty strings.
     """
     return {
-        "title": str(plan.get("title") or ""),
-        "description": str(plan.get("description") or ""),
-        "app_name": str(plan.get("app_name") or "").strip(),
-        "icon": str(plan.get("icon") or "").strip(),
+        "title": (plan.get("title") or ""),
+        "description": (plan.get("description") or ""),
+        "app_name": (plan.get("app_name") or "").strip(),
+        "icon": (plan.get("icon") or "").strip(),
         "mode": mode,
         "nodes": [
             {
                 "label": str(node.get("label") or ""),
-                "node_type": str(node.get("node_type") or ""),
+                "node_type": node.get("node_type") or "",
                 "purpose": str(node.get("purpose") or ""),
             }
             for node in plan_nodes
@@ -629,9 +629,9 @@ class WorkflowGenerator:
         # to "" when the LLM omits them — the FE owns the fallback.
         result: WorkflowGenerateResultDict = {
             "graph": graph,
-            "message": plan.get("description", ""),
-            "app_name": str(plan.get("app_name") or "").strip(),
-            "icon": str(plan.get("icon") or "").strip(),
+            "message": (plan.get("description") or ""),
+            "app_name": (plan.get("app_name") or "").strip(),
+            "icon": (plan.get("icon") or "").strip(),
             "error": "",
             "errors": [],
         }
@@ -1284,7 +1284,7 @@ class WorkflowGenerator:
         label_to_id = {
             str(node.get("label")): str(node.get("id")) for node in plan_nodes if node.get("label") and node.get("id")
         }
-        type_by_id = {str(node.get("id")): str(node.get("node_type") or "") for node in plan_nodes}
+        type_by_id = {str(node.get("id")): node.get("node_type") or "" for node in plan_nodes}
         children_by_parent: dict[str, list[str]] = {}
         nodes: list[dict[str, Any]] = []
 
@@ -1514,9 +1514,9 @@ class WorkflowGenerator:
         viewport = graph.get("viewport") or _DEFAULT_VIEWPORT
         # Coerce to floats in case the LLM emitted strings.
         viewport = {
-            "x": float(viewport.get("x", 0.0)),
-            "y": float(viewport.get("y", 0.0)),
-            "zoom": float(viewport.get("zoom", 0.7)),
+            "x": (viewport.get("x", 0.0)),
+            "y": (viewport.get("y", 0.0)),
+            "zoom": viewport.get("zoom", 0.7),
         }
 
         # Variable-reference walker: every ``{#node-id.var#}`` and every

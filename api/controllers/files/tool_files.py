@@ -49,7 +49,7 @@ class ToolFileApi(Resource):
     def get(self, args: ToolFileQuery, file_id: UUID, extension: str) -> Response:
         try:
             download = application_services().tool_file_downloads.get_signed_file(
-                file_id=str(file_id),
+                file_id=file_id,
                 timestamp=args.timestamp,
                 nonce=args.nonce,
                 sign=args.sign,

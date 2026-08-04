@@ -90,7 +90,7 @@ class TriggerManager:
             contexts.plugin_trigger_providers_lock.set(Lock())
 
         plugin_trigger_providers = contexts.plugin_trigger_providers.get()
-        provider_id_str = str(provider_id)
+        provider_id_str = provider_id
         if provider_id_str in plugin_trigger_providers:
             return plugin_trigger_providers[provider_id_str]
 

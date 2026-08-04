@@ -289,7 +289,7 @@ class DatasetService:
             else:
                 if dify_config.RBAC_ENABLED:
                     can_manage_all_datasets = DatasetService._can_manage_all_datasets(
-                        str(tenant_id), str(user.id), session=session
+                        tenant_id, str(user.id), session=session
                     )
                     should_show_all_datasets = include_all and can_manage_all_datasets
                 else:
@@ -1848,7 +1848,7 @@ class DocumentService:
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
-        return str(upload_file_id)
+        return upload_file_id
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document, session: Session) -> UploadFile:
@@ -2597,7 +2597,7 @@ class DocumentService:
     #                 elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
     #                     website_info = knowledge_config.data_source.info_list.website_info_list
     #                     count = len(website_info.urls)
-    #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+    #                 batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
 
     #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
     #                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
@@ -2865,7 +2865,7 @@ class DocumentService:
         if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
             raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
 
-        batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+        batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
         if count > batch_upload_limit:
             raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 

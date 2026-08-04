@@ -57,16 +57,16 @@ class AgentRuntimeSupport:
                 case "variable":
                     variable = variable_pool.get(agent_input.value)  # type: ignore[arg-type]
                     if variable is None:
-                        raise AgentVariableNotFoundError(str(agent_input.value))
+                        raise AgentVariableNotFoundError(agent_input.value)
                     parameter_value = variable.value
                 case "mixed" | "constant":
                     try:
                         if not isinstance(agent_input.value, str):
                             parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
                         else:
-                            parameter_value = str(agent_input.value)
+                            parameter_value = agent_input.value
                     except TypeError:
-                        parameter_value = str(agent_input.value)
+                        parameter_value = agent_input.value
 
                     segment_group = convert_template(variable_pool, parameter_value)
                     parameter_value = segment_group.log if for_log else segment_group.text

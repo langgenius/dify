@@ -70,7 +70,7 @@ class PermittedExternalAppsListApi(Resource):
             return env
 
         apps_by_id: dict[str, AppSummary] = {
-            str(a.id): a for a in application_services().apps.queries.find_visible_apps_by_ids(page_result.app_ids)
+            a.id: a for a in application_services().apps.queries.find_visible_apps_by_ids(page_result.app_ids)
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
         tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=ctx.session)}
@@ -80,15 +80,15 @@ class PermittedExternalAppsListApi(Resource):
             app = apps_by_id.get(app_id)
             if not app or app.status != AppStatus.NORMAL:
                 continue
-            tenant = tenants_by_id.get(str(app.tenant_id))
+            tenant = tenants_by_id.get(app.tenant_id)
             items.append(
                 AppListRow(
-                    id=str(app.id),
+                    id=app.id,
                     name=app.name,
                     description=app.description,
                     mode=app.mode,
                     updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                    workspace_id=str(app.tenant_id),
+                    workspace_id=(app.tenant_id),
                     workspace_name=tenant.name if tenant else None,
                 )
             )

@@ -122,7 +122,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported tag_ids type.")
 
-        items = [str(item).strip() for item in value if item and str(item).strip()]
+        items = [item.strip() for item in value if item and item.strip()]
         if not items:
             return None
 
@@ -140,7 +140,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported creator_ids type.")
 
-        items = [str(item).strip() for item in value if item and str(item).strip()]
+        items = [item.strip() for item in value if item and item.strip()]
         if not items:
             return None
 
@@ -425,7 +425,7 @@ class AppApi(AppResource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppDetailWithSite.__name__])
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext, app_id: uuid.UUID):
-        response = _app_detail_response(application_services().apps.console.get(context, str(app_id)))
+        response = _app_detail_response(application_services().apps.console.get(context, app_id))
         return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("update_app")

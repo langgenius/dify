@@ -76,7 +76,7 @@ class DependencyDiscoveryService:
         kind = self._kind_from_provider_type(provider_type)
         return DiscoveredDependency(
             kind=kind,
-            provider_id=str(provider_id),
+            provider_id=provider_id,
             provider_name=config.get("provider_name"),
             source=source,
         )

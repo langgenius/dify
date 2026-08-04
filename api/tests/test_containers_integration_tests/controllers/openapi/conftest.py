@@ -81,7 +81,7 @@ def _account_auth(
     return AuthContext(
         subject_email=account.email,
         subject_issuer=None,
-        account_id=uuid.UUID(str(account.id)),
+        account_id=uuid.UUID(account.id),
         client_id=client_id,
         token_id=token_id or uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,

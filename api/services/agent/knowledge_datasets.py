@@ -49,7 +49,7 @@ def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, datas
         return {}
 
     rows, _ = DatasetService.get_datasets_by_ids(valid_ids, tenant_id, session=session)
-    return {str(row.id): row for row in rows}
+    return {row.id: row for row in rows}
 
 
 def list_missing_tenant_knowledge_dataset_ids(

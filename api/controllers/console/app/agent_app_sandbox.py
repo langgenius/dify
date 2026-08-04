@@ -239,7 +239,7 @@ class WorkflowAgentSandboxListResource(Resource):
         try:
             result = application_services().agent_apps.sandbox.list_files(
                 context,
-                WorkflowSandboxCaller(str(app_id), str(workflow_run_id), node_id, query.node_execution_id),
+                WorkflowSandboxCaller(app_id, workflow_run_id, node_id, query.node_execution_id),
                 query.path,
             )
         except Exception as exc:
@@ -266,10 +266,21 @@ class WorkflowAgentSandboxReadResource(Resource):
     def get(self, context: RequestContext, app_id: UUID, workflow_run_id: UUID, node_id: str):
         query = query_params_from_request(WorkflowAgentSandboxFileQuery)
         try:
+<<<<<<< HEAD
             result = application_services().agent_apps.sandbox.read_file(
                 context,
                 WorkflowSandboxCaller(str(app_id), str(workflow_run_id), node_id, query.node_execution_id),
                 query.path,
+=======
+            result = WorkflowAgentSandboxService().read_file(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                node_execution_id=query.node_execution_id,
+                path=query.path,
+                session=db.session(),
+>>>>>>> 493909dc14 (fix: fix ci)
             )
         except Exception as exc:
             return _handle(exc)
@@ -288,10 +299,21 @@ class WorkflowAgentSandboxDownloadResource(Resource):
     def post(self, context: RequestContext, app_id: UUID, workflow_run_id: UUID, node_id: str):
         query = validate_request(WorkflowAgentSandboxDownloadPayload)
         try:
+<<<<<<< HEAD
             result = application_services().agent_apps.sandbox.download_file(
                 context,
                 WorkflowSandboxCaller(str(app_id), str(workflow_run_id), node_id, query.node_execution_id),
                 query.path,
+=======
+            result = service.download_file(
+                tenant_id=tenant_id,
+                app_id=resolved_app_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                node_execution_id=req_data.node_execution_id,
+                account_id=current_user.id,
+                path=req_data.path,
+>>>>>>> 493909dc14 (fix: fix ci)
             )
         except Exception as exc:
             return _handle(exc)
