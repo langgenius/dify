@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { getWebAppApiPath, parseWebAppAddress } from './webapp-address'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { getWebAppApiPath, parseWebAppAddress, resolveWebAppAddress } from './webapp-address'
 
 describe('WebAppAddress', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('parses ordinary and environment workflow addresses without using the app code format', () => {
     expect(parseWebAppAddress('/workflow/env-prefix-is-still-ordinary')).toEqual({
       kind: 'default',
@@ -29,5 +33,11 @@ describe('WebAppAddress', () => {
     expect(getWebAppApiPath(address, '/workflows/tasks/task-1/stop')).toBe(
       '/environments/env-1/webapps/workflow-app/workflows/tasks/task-1/stop',
     )
+  })
+
+  it('does not resolve a browser address during server rendering', () => {
+    vi.stubGlobal('location', undefined)
+
+    expect(resolveWebAppAddress()).toBeNull()
   })
 })

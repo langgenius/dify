@@ -29,6 +29,8 @@ export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
 }
 
 export const resolveWebAppAddress = (): WebAppAddress | null => {
+  if (typeof globalThis.location === 'undefined') return null
+
   const currentAddress = parseWebAppAddress(globalThis.location.pathname)
   if (currentAddress) return currentAddress
 
