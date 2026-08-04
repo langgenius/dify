@@ -32,10 +32,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import {
   API_PREFIX,
-  APPDEPLOY_WEB_API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
-  isAppDeployShareCode,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
@@ -46,7 +44,7 @@ import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
-import { isAppDeployRoute, resolveShareCode } from './share-code'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -248,12 +246,13 @@ function requiredWebSSOLogin(message?: string, code?: number) {
 
 function formatURL(url: string, isPublicAPI: boolean) {
   let urlPrefix = API_PREFIX
-  if (isPublicAPI) {
-    const useAppDeploy = isAppDeployShareCode(resolveShareCode()) && isAppDeployRoute(url)
-    urlPrefix = useAppDeploy ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
-  }
+  if (isPublicAPI) urlPrefix = PUBLIC_API_PREFIX
   if (url.startsWith('http://') || url.startsWith('https://')) return url
-  const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
+  const urlWithoutProtocol = isPublicAPI
+    ? getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : url.startsWith('/')
+      ? url
+      : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
 }
 
@@ -486,18 +485,21 @@ export const upload = async (
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
-  const shareCode = resolveShareCode()
-  const publicApiPrefix = isAppDeployShareCode(shareCode)
-    ? APPDEPLOY_WEB_API_PREFIX
-    : PUBLIC_API_PREFIX
+  const address = resolveWebAppAddress()
+  const shareCode = address?.code
+  const publicApiPrefix = PUBLIC_API_PREFIX
   const urlPrefix = isPublicAPI ? publicApiPrefix : API_PREFIX
   const defaultOptions = {
     method: 'POST',
-    url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
+    url:
+      (url
+        ? `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, url) : url}`
+        : `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, '/files/upload') : '/files/upload'}`) +
+      (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(address),
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
     },
   }
   const mergedOptions = {
@@ -572,7 +574,7 @@ export const ssePost = async (
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = resolveShareCode()
+  const shareCode = resolveWebAppAddress()?.code
   const options = Object.assign(
     {},
     baseOptions,
@@ -581,8 +583,8 @@ export const ssePost = async (
       signal: abortController.signal,
       headers: new Headers({
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
       }),
     } as RequestInit,
     fetchOptions,
@@ -731,7 +733,7 @@ export const sseGet = async (
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = resolveShareCode()
+  const shareCode = resolveWebAppAddress()?.code
   const options = Object.assign(
     {},
     baseOptions,
@@ -739,8 +741,8 @@ export const sseGet = async (
       signal: abortController.signal,
       headers: new Headers({
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
       }),
     } as RequestInit,
     fetchOptions,
