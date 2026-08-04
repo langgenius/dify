@@ -248,10 +248,11 @@ or worker handoff.
 Horizontal scaling is possible by running multiple API processes against the same
 Redis prefix, but each process executes only the runs it accepted. Redis provides
 shared status/event visibility, not load balancing or queued-job recovery. The
-cancel endpoint can only signal a task owned by the process that receives the
-request; a request routed to a different process returns `409` while the run is
-still running. Retrying a cancellation after the run is already `cancelled` is
-idempotent.
+cancel endpoint can atomically accept a running run on any process. The process
+that owns the runner observes the shared `run_cancelled` event, then cancels and
+cleans up its local task. The HTTP response confirms that logical cancellation is
+durable; local runner cleanup may still be in progress. Retrying a cancellation
+after the run is already `cancelled` is idempotent.
 
 Atomic terminal finalization currently assumes the configured Redis URL targets
 one Redis deployment that can execute both run keys in a Lua script. The existing
@@ -259,8 +260,11 @@ record and event key names are unchanged and do not contain a shared Redis
 Cluster hash tag, so Redis Cluster is not supported for this transition. During
 a rolling upgrade, older processes can still use the former split event/status
 writes; treat the single-terminal invariant as active only after those processes
-have exited. Operators should then alert on more than one terminal event per run
-and on disagreement between the run record status and terminal event type.
+have exited. Deploy atomic terminal finalization everywhere first, then ensure
+every process that can own a runner has the cancellation observer before relying
+on route-independent cancellation. Operators should then alert on more than one
+terminal event per run and on disagreement between the run record status and
+terminal event type.
 
 ## Run inputs and session snapshots
 
@@ -301,9 +305,9 @@ progress:
 
 - `POST /runs` creates a running run and schedules it locally.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
-- `POST /runs/{run_id}/cancel` atomically accepts cancellation for a locally
-  owned running task and emits `run_cancelled`; it returns `409` for a non-local
-  running task or a run whose success/failure terminal already won.
+- `POST /runs/{run_id}/cancel` atomically accepts cancellation on any API process
+  and emits `run_cancelled`; it returns `409` only when a success/failure terminal
+  already won. Runner cleanup continues asynchronously on the owner process.
 - `GET /runs/{run_id}/events` polls the Redis Stream event log with `after` and
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE

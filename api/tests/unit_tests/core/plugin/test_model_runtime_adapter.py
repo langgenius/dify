@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
 
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
@@ -93,6 +94,7 @@ def _build_plugin_model_provider(*, tenant_id: str, provider: str = "openai") ->
         tenant_id=tenant_id,
         plugin_unique_identifier=f"langgenius/{provider}/{provider}",
         plugin_id=f"langgenius/{provider}",
+        installation_source=PluginInstallationSource.Marketplace,
         declaration=ProviderEntity(
             provider=provider,
             label=I18nObject(en_US=provider.title()),
@@ -116,6 +118,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="OpenAI"),
@@ -145,6 +148,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="acme/openai/openai",
                 plugin_id="acme/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="Acme OpenAI"),
@@ -160,6 +164,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="OpenAI"),
@@ -187,6 +192,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/gemini/google",
                 plugin_id="langgenius/gemini",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="google",
                     label=I18nObject(en_US="Google"),
@@ -821,6 +827,7 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -857,6 +864,7 @@ def test_get_provider_icon_rejects_unsupported_types_and_missing_variants() -> N
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -989,6 +997,7 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider()
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
