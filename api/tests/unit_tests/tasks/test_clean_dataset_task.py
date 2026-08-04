@@ -70,8 +70,11 @@ def pipeline_id() -> str:
 
 
 @pytest.fixture
-def orm_session_maker(sqlite_engine: Engine) -> sessionmaker[Session]:
-    """Create the cleanup tables and return an explicit real SQLite session factory."""
+def orm_session_maker(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> sessionmaker[Session]:
+    """Create the cleanup tables and return the suite's real SQLite session factory."""
     models = (
         Document,
         DocumentSegment,
@@ -86,7 +89,7 @@ def orm_session_maker(sqlite_engine: Engine) -> sessionmaker[Session]:
         Workflow,
     )
     TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])
-    return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    return sqlite_session_factory
 
 
 @pytest.fixture
@@ -124,7 +127,6 @@ def mock_get_image_upload_file_ids() -> Iterator[MagicMock]:
 
 def _run_clean_dataset(
     *,
-    session_maker: sessionmaker[Session],
     dataset_id: str,
     tenant_id: str,
     collection_binding_id: str,
@@ -138,7 +140,6 @@ def _run_clean_dataset(
         collection_binding_id=collection_binding_id,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
         pipeline_id=pipeline_id,
-        session_maker=session_maker,
     )
 
 
@@ -267,7 +268,6 @@ class TestErrorHandling:
         # Act
         try:
             _run_clean_dataset(
-                session_maker=orm_session_maker,
                 dataset_id=dataset_id,
                 tenant_id=tenant_id,
                 collection_binding_id=collection_binding_id,
@@ -316,7 +316,6 @@ class TestPipelineAndWorkflowDeletion:
 
         # Act
         _run_clean_dataset(
-            session_maker=orm_session_maker,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
             collection_binding_id=collection_binding_id,
@@ -353,7 +352,6 @@ class TestPipelineAndWorkflowDeletion:
 
         # Act
         _run_clean_dataset(
-            session_maker=orm_session_maker,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
             collection_binding_id=collection_binding_id,
@@ -405,7 +403,6 @@ class TestSegmentAttachmentCleanup:
 
         # Act
         _run_clean_dataset(
-            session_maker=orm_session_maker,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
             collection_binding_id=collection_binding_id,
@@ -444,7 +441,6 @@ class TestSegmentAttachmentCleanup:
 
         # Act
         _run_clean_dataset(
-            session_maker=orm_session_maker,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
             collection_binding_id=collection_binding_id,
@@ -486,7 +482,6 @@ class TestEdgeCases:
 
         # Act
         _run_clean_dataset(
-            session_maker=orm_session_maker,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
             collection_binding_id=collection_binding_id,
@@ -536,7 +531,6 @@ class TestIndexProcessorParameters:
                 index_struct=index_struct,
                 collection_binding_id=collection_binding_id,
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
-                session_maker=orm_session_maker,
             )
 
         # Assert
@@ -582,7 +576,6 @@ class TestIndexProcessorParameters:
                 index_struct='{"type": "paragraph"}',
                 collection_binding_id=collection_binding_id,
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
-                session_maker=orm_session_maker,
             )
 
         schedule_refresh.assert_not_called()
