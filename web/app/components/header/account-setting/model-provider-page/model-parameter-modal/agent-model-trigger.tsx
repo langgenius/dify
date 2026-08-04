@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -111,7 +112,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
                   if (scope?.includes(type)) updateModelList(type)
                 })
                 updateModelProviders()
-                invalidateInstalledPluginList()
+                invalidateInstalledPluginList(PluginCategoryEnum.model)
                 setInstalled(true)
               }}
             />

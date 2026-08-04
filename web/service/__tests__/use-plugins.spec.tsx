@@ -20,17 +20,21 @@ import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
   useInstallOrUpdate,
+  useInvalidateInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
 } from '../use-plugins'
 
-const { mockGet, mockPost, mockUninstallPlugin } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
-  mockPost: vi.fn(),
-  mockUninstallPlugin: vi.fn(),
-}))
+const { mockGet, mockPost, mockUninstallPlugin, mockInvalidateAllBuiltInTools } = vi.hoisted(
+  () => ({
+    mockGet: vi.fn(),
+    mockPost: vi.fn(),
+    mockUninstallPlugin: vi.fn(),
+    mockInvalidateAllBuiltInTools: vi.fn(),
+  }),
+)
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
@@ -59,7 +63,7 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => vi.fn(),
+  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
 }))
 
 const createQueryClient = () =>
@@ -668,6 +672,36 @@ describe('useInstalledPluginList', () => {
       ])
     })
     expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+  })
+})
+
+describe('useInvalidateInstalledPluginList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('only invalidates the requested category list', async () => {
+    const queryClient = createQueryClient()
+    const allPluginsKey = ['plugins', 'installedPluginList']
+    const modelPluginsKey = [...allPluginsKey, PluginCategoryEnum.model]
+    const toolPluginsKey = [...allPluginsKey, PluginCategoryEnum.tool]
+
+    queryClient.setQueryData(allPluginsKey, { plugins: [] })
+    queryClient.setQueryData(modelPluginsKey, { plugins: [] })
+    queryClient.setQueryData(toolPluginsKey, { plugins: [] })
+
+    const { result } = renderHook(() => useInvalidateInstalledPluginList(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current(PluginCategoryEnum.model)
+    })
+
+    expect(queryClient.getQueryState(modelPluginsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(allPluginsKey)?.isInvalidated).toBe(false)
+    expect(queryClient.getQueryState(toolPluginsKey)?.isInvalidated).toBe(false)
+    expect(mockInvalidateAllBuiltInTools).not.toHaveBeenCalled()
   })
 })
 

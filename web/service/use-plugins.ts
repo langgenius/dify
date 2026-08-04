@@ -675,10 +675,14 @@ export const useInstalledPluginList = (
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: useInstalledPluginListKey,
-    })
+  return (category?: PluginCategoryEnum) => {
+    if (category)
+      return queryClient.invalidateQueries({
+        queryKey: [...useInstalledPluginListKey, category],
+        exact: true,
+      })
+
+    queryClient.invalidateQueries({ queryKey: useInstalledPluginListKey })
     invalidateAllBuiltInTools()
   }
 }
@@ -1286,7 +1290,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
   })
 }
 
-export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
+export const usePluginTaskList = (category?: PluginCategoryEnum) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
