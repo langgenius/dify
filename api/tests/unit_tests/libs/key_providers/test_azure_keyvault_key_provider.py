@@ -69,9 +69,9 @@ class FakeKeyClient:
 
     def _register_current_version(self) -> None:
         if self.current_version not in self._version_created_on:
-            self._version_created_on[self.current_version] = datetime.datetime(
-                2024, 1, 1
-            ) + datetime.timedelta(seconds=len(self._version_created_on))
+            self._version_created_on[self.current_version] = datetime.datetime(2024, 1, 1) + datetime.timedelta(
+                seconds=len(self._version_created_on)
+            )
 
     def create_rsa_key(self, name: str, size: int = 2048) -> SimpleNamespace:
         self.created_keys[name] = size
