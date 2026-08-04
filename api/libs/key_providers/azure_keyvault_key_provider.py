@@ -136,10 +136,6 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
 
     @override
     def get_decrypt_decoding(self, tenant_id: str) -> str:
-        # No pre-fetch here: different ciphertexts for the same tenant may reference different
-        # key versions across rotations, so the actual CryptographyClient is resolved
-        # per-ciphertext in decrypt_with_decoding (cached internally by (tenant, version)).
-        # This "decoding" is just the tenant_id, kept opaque per the BaseKeyProvider contract.
         return tenant_id
 
     @override
