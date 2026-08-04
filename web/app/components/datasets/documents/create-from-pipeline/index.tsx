@@ -245,7 +245,6 @@ const CreateFormPipeline = () => {
                 datasourceType={datasourceType}
                 pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
-                localFileListLength={localFileList.length}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}
                 showSelect={showSelect}
                 totalOptions={totalOptions}
