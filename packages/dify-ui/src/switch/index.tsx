@@ -44,8 +44,6 @@ const switchThumbVariants = cva(
   },
 )
 
-export type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
-
 const switchSpinnerVariants = cva('absolute top-1/2 -translate-x-1/2 -translate-y-1/2', {
   variants: {
     size: {
@@ -67,7 +65,7 @@ type UncontrolledSwitchProps = {
 
 type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
 
-export type SwitchProps = Omit<
+type SwitchProps = Omit<
   BaseSwitchNS.Root.Props,
   'checked' | 'defaultChecked' | 'className' | 'size' | 'onCheckedChange'
 > &
@@ -78,7 +76,7 @@ export type SwitchProps = Omit<
     className?: string
   }
 
-export function Switch({
+function Switch({
   checked,
   size = 'md',
   disabled,
@@ -122,9 +120,12 @@ const switchSkeletonVariants = cva('bg-text-quaternary opacity-20', {
   },
 })
 
-export type SwitchSkeletonProps = React.ComponentProps<'div'> &
-  VariantProps<typeof switchSkeletonVariants>
+type SwitchSkeletonProps = React.ComponentProps<'div'> & VariantProps<typeof switchSkeletonVariants>
 
-export function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProps) {
+function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProps) {
   return <div className={cn(switchSkeletonVariants({ size }), className)} {...props} />
 }
+
+export { Switch, SwitchSkeleton }
+
+export type { SwitchProps, SwitchSkeletonProps }

@@ -3204,6 +3204,23 @@ Update MCP server configuration for an application
 | 403 | Insufficient permissions |  |
 | 404 | Server not found |  |
 
+### [POST] /apps/{app_id}/server/refresh
+Refresh MCP server configuration and regenerate server code
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | App ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
+| 403 | Insufficient permissions |  |
+| 404 | Server not found |  |
+
 ### [POST] /apps/{app_id}/site
 Update application site configuration
 
@@ -5139,23 +5156,6 @@ Restore a published workflow version into the draft workflow
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
-
-### [GET] /apps/{server_id}/server/refresh
-Refresh MCP server configuration and regenerate server code
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| server_id | path | Server ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
-| 403 | Insufficient permissions |  |
-| 404 | Server not found |  |
 
 ### [GET] /auth/plugin/datasource/default-list
 #### Responses
@@ -15800,6 +15800,15 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | data | [ [AverageSessionInteractionStatisticItem](#averagesessioninteractionstatisticitem) ] |  | Yes |
 
+#### BannerContentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| description | string |  | Yes |
+| img-src | string |  | Yes |
+| title | string |  | Yes |
+
 #### BannerListResponse
 
 | Name | Type | Description | Required |
@@ -15810,12 +15819,20 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | Yes |
-| created_at | string |  | No |
+| content | [BannerContentResponse](#bannercontentresponse) |  | Yes |
+| created_at | string |  | Yes |
 | id | string |  | Yes |
-| link | string |  | No |
+| link | string |  | Yes |
 | sort | integer |  | Yes |
-| status | string |  | Yes |
+| status | [BannerStatus](#bannerstatus) |  | Yes |
+
+#### BannerStatus
+
+ExporleBanner status
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BannerStatus | string | ExporleBanner status |  |
 
 #### BatchImportPayload
 
@@ -22989,6 +23006,7 @@ Payload for updating a snippet.
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |
+| skill_file_size_limit | integer |  | Yes |
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 

@@ -35,13 +35,11 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
     [nodeId, sourceHandle, handleNodeChange],
   )
 
-  const renderTrigger = useCallback(() => {
-    return (
-      <Button variant="ghost" size="medium" className="w-full justify-start px-2">
-        {t(($) => $['panel.change'], { ns: 'workflow' })}
-      </Button>
-    )
-  }, [t])
+  const triggerElement = (
+    <Button variant="ghost" size="medium" className="w-full justify-start px-2">
+      {t(($) => $['panel.change'], { ns: 'workflow' })}
+    </Button>
+  )
 
   return (
     <BlockSelector
@@ -49,7 +47,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
       placement="top-end"
       sideOffset={6}
       alignOffset={8}
-      trigger={renderTrigger}
+      trigger={triggerElement}
       popupClassName="w-[328px]!"
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(
         (item) => item !== nodeCatalogType,

@@ -171,8 +171,6 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 vi.mock('../sections', () => ({
   PublisherSummarySection: (props: Record<string, any>) => {
     sectionProps.summary = props

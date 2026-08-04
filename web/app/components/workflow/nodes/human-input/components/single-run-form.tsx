@@ -1,5 +1,4 @@
 'use client'
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
@@ -85,7 +84,7 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
             <Button
               key={action.id}
               disabled={isSubmitting || hasEmptySelectOrFileInput}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+              variant={getButtonStyle(action.button_style)}
               onClick={() => submit(action.id)}
             >
               {action.title}

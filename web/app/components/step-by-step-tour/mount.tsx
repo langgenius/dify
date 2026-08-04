@@ -8,7 +8,7 @@ import type {
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -29,7 +29,7 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 import { getStepByStepTourPermissionVariant, trackStepByStepTourEvent } from './analytics'
 import { StepByStepTourCoachmark } from './coachmark'
-import { FloatingChecklist } from './floating-widget'
+import { FloatingChecklist, MinimizedTourPill } from './floating-widget'
 import {
   activeStepByStepTourGuideGroupAtom,
   activeStepByStepTourGuideIndexAtom,
@@ -158,6 +158,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const shellMode = useStepByStepTourShellModeValue()
   const setShellMode = useSetStepByStepTourShellMode()
   const anchorRef = useRef<HTMLDivElement>(null)
+  const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const restoreTriggerRef = useRef<HTMLButtonElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
@@ -588,19 +590,19 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     setShellMode('expanded')
   }
 
+  const progress = {
+    ariaValueText: t(($) => $['stepByStepTour.progressAriaValueText'], {
+      completed: completedAvailableTaskIds.length,
+      total: availableTasks.length,
+    }),
+    completed: completedAvailableTaskIds.length,
+    total: availableTasks.length,
+  }
   const floatingChecklist = (
     <FloatingChecklist
       title={title}
       duration={t(($) => $['stepByStepTour.duration'])}
-      minimized={checklistMinimized}
-      progress={{
-        ariaValueText: t(($) => $['stepByStepTour.progressAriaValueText'], {
-          completed: completedAvailableTaskIds.length,
-          total: availableTasks.length,
-        }),
-        completed: completedAvailableTaskIds.length,
-        total: availableTasks.length,
-      }}
+      progress={progress}
       completionPrompt={
         completionPromptVisible
           ? {
@@ -613,9 +615,9 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
           : undefined
       }
       tasks={tasks}
+      closeButtonRef={checklistCloseButtonRef}
       skipLabel={t(($) => $['stepByStepTour.skip'])}
       minimizeLabel={t(($) => $['stepByStepTour.minimize'])}
-      restoreLabel={t(($) => $['stepByStepTour.restore'])}
       getTaskCompleteLabel={(taskTitle) =>
         t(($) => $['stepByStepTour.markTaskComplete'], { title: taskTitle })
       }
@@ -624,9 +626,6 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       }
       onMinimize={() => {
         setShellMode('collapsed')
-      }}
-      onRestore={() => {
-        setShellMode('expanded')
       }}
       onSkip={skipTour}
       onCompleteTask={(taskId) => {
@@ -730,13 +729,24 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         />
       )}
       {visible && (!allTasksCompleted || completionPromptVisible) && (
-        <Popover open={overlayVisible && expanded}>
+        <Popover
+          open={overlayVisible && expanded}
+          onOpenChange={(open) => {
+            if (open) setShellMode('expanded')
+          }}
+        >
           <div
             ref={anchorRef}
             aria-hidden="true"
             className="pointer-events-none absolute bottom-0 left-0 h-0 w-full"
           />
-          {checklistMinimized && floatingChecklist}
+          {checklistMinimized && (
+            <PopoverTrigger
+              ref={restoreTriggerRef}
+              aria-label={t(($) => $['stepByStepTour.restore'])}
+              render={(props) => <MinimizedTourPill {...props} title={title} progress={progress} />}
+            />
+          )}
           {overlayVisible && (
             <PopoverContent
               placement="top-start"
@@ -751,6 +761,10 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
                 },
               }}
               popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
+              popupProps={{
+                initialFocus: checklistCloseButtonRef,
+                finalFocus: restoreTriggerRef,
+              }}
             >
               {floatingChecklist}
             </PopoverContent>

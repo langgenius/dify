@@ -98,7 +98,11 @@ const AddCustomModel = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
-        render={<div className="inline-block">{renderTrigger(open)}</div>}
+        render={(props, state) => (
+          <div {...props} className={cn('inline-block', props.className)}>
+            {renderTrigger(state.open)}
+          </div>
+        )}
       />
       <PopoverContent
         placement="bottom-end"

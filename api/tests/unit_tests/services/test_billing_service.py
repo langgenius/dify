@@ -2055,3 +2055,17 @@ class TestBillingServiceSubscriptionInfoDataType:
 
         with pytest.raises(ValidationError):
             BillingService.get_info("tenant-type-test")
+
+
+def test_pooled_billing_client_carries_bounded_timeout() -> None:
+    """Regression for #39874: the pooled billing client must carry a
+    read/connect timeout so a stalled Stripe / cloud-billing proxy
+    fails fast instead of pinning a worker. Same shape as the
+    JinaReader / WaterCrawl hardening that landed in PR #39860 and #39824.
+    """
+    import services.billing_service as billing_service_module
+
+    client = billing_service_module._http_client
+    assert client.timeout is not None
+    assert client.timeout.read == 30.0
+    assert client.timeout.connect == 5.0

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
+  createDialogHandle,
   Dialog,
   DialogBackdrop,
   DialogCloseButton,
@@ -18,8 +19,8 @@ import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '.
 import { Form } from '../form'
 import { Input } from '../input'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -191,6 +192,59 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
+type WorkspaceDialogPayload = {
+  name: string
+  memberCount: number
+}
+
+const workspaceDialogPayloads = [
+  { name: 'Design', memberCount: 8 },
+  { name: 'Engineering', memberCount: 24 },
+] as const satisfies readonly WorkspaceDialogPayload[]
+
+function DetachedTriggersDemo() {
+  const [dialogHandle] = React.useState(() => createDialogHandle<WorkspaceDialogPayload>())
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex gap-2">
+        {workspaceDialogPayloads.map((payload) => (
+          <DialogTrigger
+            key={payload.name}
+            handle={dialogHandle}
+            payload={payload}
+            render={<Button variant="secondary" />}
+          >
+            Edit {payload.name}
+          </DialogTrigger>
+        ))}
+      </div>
+
+      <Dialog handle={dialogHandle}>
+        {({ payload }) => (
+          <DialogContent>
+            <DialogCloseButton />
+            <div className="grid gap-2 pr-8">
+              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+                {payload ? `Edit ${payload.name}` : 'Edit workspace'}
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-5 text-text-secondary">
+                {payload
+                  ? `${payload.memberCount} members currently have access to this workspace.`
+                  : 'Choose a workspace to edit.'}
+              </DialogDescription>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  render: () => <DetachedTriggersDemo />,
+}
+
 type ApiExtensionFormValues = {
   name: string
   endpoint: string
@@ -280,7 +334,7 @@ const OutsideScrollingContentDemo = () => {
       <DialogPortal>
         <DialogBackdrop className="duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
         <DialogViewport className="group/dialog">
-          <ScrollAreaRoot className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
+          <ScrollArea className="h-full group-data-ending-style/dialog:pointer-events-none">
             <ScrollAreaViewport
               aria-label="Scrollable dialog viewport"
               role="region"
@@ -305,7 +359,7 @@ const OutsideScrollingContentDemo = () => {
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         </DialogViewport>
       </DialogPortal>
     </Dialog>
@@ -364,11 +418,11 @@ const InsideScrollingContentDemo = () => {
               title="Release notes"
               description="Highlights from the latest workspace update."
             />
-            <ScrollAreaRoot className="relative flex min-h-0 flex-auto overflow-hidden">
+            <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
               <ScrollAreaViewport
                 aria-label="Release note improvements"
                 role="region"
-                className="h-full max-h-full max-w-full overflow-y-auto overscroll-contain"
+                className="h-full max-h-full max-w-full overscroll-contain"
               >
                 <ScrollAreaContent>
                   <ReleaseNoteSections />
@@ -377,7 +431,7 @@ const InsideScrollingContentDemo = () => {
               <ScrollAreaScrollbar>
                 <ScrollAreaThumb />
               </ScrollAreaScrollbar>
-            </ScrollAreaRoot>
+            </ScrollArea>
             <ReleaseNoteFooter onClose={() => setOpen(false)} />
           </DialogPopup>
         </DialogViewport>

@@ -256,8 +256,7 @@ class ConversationService:
 
         stmt = (
             select(ConversationVariable)
-            .where(ConversationVariable.app_id == app_model.id)
-            .where(ConversationVariable.conversation_id == conversation.id)
+            .where(ConversationVariable.app_id == app_model.id, ConversationVariable.conversation_id == conversation.id)
             .order_by(ConversationVariable.created_at)
         )
 
@@ -342,11 +341,10 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
 
         # Get the existing conversation variable
-        stmt = (
-            select(ConversationVariable)
-            .where(ConversationVariable.app_id == app_model.id)
-            .where(ConversationVariable.conversation_id == conversation.id)
-            .where(ConversationVariable.id == variable_id)
+        stmt = select(ConversationVariable).where(
+            ConversationVariable.app_id == app_model.id,
+            ConversationVariable.conversation_id == conversation.id,
+            ConversationVariable.id == variable_id,
         )
 
         existing_variable = session.scalar(stmt)

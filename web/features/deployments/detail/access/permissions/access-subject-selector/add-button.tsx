@@ -176,13 +176,12 @@ export function AccessSubjectAddButton({
               )}
               {hasResults ? (
                 <>
-                  <ComboboxList className="max-h-none p-1">
-                    {(subject: Subject) => (
+                  <ComboboxList<Subject> className="max-h-none p-1">
+                    {(subject) => (
                       <SubjectItem
                         key={getSubjectValue(subject)}
                         subject={subject}
                         selectedGroups={selectedGroups}
-                        selectedMembers={selectedMembers}
                         onExpandGroup={(group) => setBreadcrumbGroups([...breadcrumbGroups, group])}
                       />
                     )}

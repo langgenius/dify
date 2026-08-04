@@ -11,6 +11,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -208,9 +209,9 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         }}
                       >
                         <SelectTrigger className="w-full bg-gray-50">
-                          {typeof inputs[key] === 'string' && inputs[key] !== ''
-                            ? inputs[key]
-                            : t(($) => $['placeholder.select'], { ns: 'common' })}
+                          <SelectValue
+                            placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {(options || []).map((option) => (
