@@ -90,8 +90,7 @@ from typing import Annotated, Literal, NewType, Protocol
 
 from core.human_input_v2.approval.form import FrozenFormDefinition
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.shared import UtcTimestamp
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, NaiveDatetime
 
 
 class _ResolvedIMIntegrationCredentials(BaseModel):
@@ -265,9 +264,6 @@ class CredentialTestFailure:
     reason: str
 
 
-type CredentialTestResult = CredentialTestSuccess | CredentialTestFailure
-
-
 @dataclass(frozen=True, slots=True)
 class DirectoryEntry:
     """Current Provider identity observed in one complete directory snapshot.
@@ -305,9 +301,6 @@ class DirectoryReadFailure:
     reason: str
 
 
-type DirectoryReadResult = DirectorySnapshot | DirectoryReadFailure
-
-
 class IMDirectory(Protocol):
     """Complete-snapshot directory view backed by the root adapter context.
 
@@ -316,7 +309,7 @@ class IMDirectory(Protocol):
     and failure translation. Messaging is never invoked by this capability.
     """
 
-    def read_snapshot(self) -> DirectoryReadResult:
+    def read_snapshot(self) -> DirectorySnapshot | DirectoryReadFailure:
         """Return a complete immutable snapshot or one failure with no entries."""
         ...
 
@@ -380,7 +373,7 @@ class MessageAccepted:
 
 
 @dataclass(frozen=True, slots=True)
-class MessageRejected:
+class MessageSendingError:
     """Known send failure for which the adapter knows no message was accepted.
 
     This includes a Provider user that cannot be addressed or receive the
@@ -390,6 +383,9 @@ class MessageRejected:
 
     # Operator-safe diagnostic text that callers must not parse or branch on.
     reason: str
+
+
+type MessageSendingResult = MessageAccepted | MessageSendingError
 
 
 class MarkAsSubmittedFailureKind(StrEnum):
@@ -432,7 +428,7 @@ class IMMessaging(Protocol):
 
     def send_text(
         self, provider_user_id: ProviderUserId, body: str
-    ) -> MessageSendResult:
+    ) -> MessageSendingResult:
         """Send one fully rendered CommonMark body to one Provider user."""
         ...
 
@@ -464,7 +460,7 @@ class IMDynamicCardMessaging(Protocol):
         provider_user_id: ProviderUserId,
         intent: NormalizedCardIntent,
         metadata: Mapping[str, JsonValue],
-    ) -> MessageAccepted | MessageRejected:
+    ) -> MessageSendingResult:
         """Send one complete dynamic card and return its opaque exact reference."""
         ...
 
@@ -496,7 +492,7 @@ class WebhookRequest:
     body: bytes
 
     # Local trusted receive time used for timestamp and replay policy.
-    received_at: UtcTimestamp
+    received_at: NaiveDatetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -539,10 +535,10 @@ class AuthenticatedIMEvent:
     event_type: str | None
 
     # Provider event time retained only when its wire semantics are confirmed.
-    occurred_at: UtcTimestamp | None
+    occurred_at: NaiveDatetime
 
     # Trusted local time at which Dify received the delivery.
-    received_at: UtcTimestamp
+    received_at: NaiveDatetime
 
     # Immutable decrypted Provider-native JSON for independent consumers.
     payload: Mapping[str, JsonValue]
@@ -637,7 +633,7 @@ class IMProviderAdapter(Protocol):
         """Return the normalized Provider bound for the adapter lifetime."""
         ...
 
-    def test_credentials(self) -> CredentialTestResult:
+    def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         """Authenticate and identify the tenant without permission inspection."""
         ...
 
@@ -780,56 +776,3 @@ class MSTeamsIMProviderAdapter(IMProviderAdapter, Protocol):
 
     @property
     def stream_events(self) -> None: ...
-
-
-__all__ = [
-    "AuthenticatedIMEvent",
-    "CardAssessment",
-    "CardMarkedAsSubmitted",
-    "CredentialTestFailure",
-    "CredentialTestFailureKind",
-    "CredentialTestResult",
-    "CredentialTestSuccess",
-    "DingTalkIMIntegrationCredentials",
-    "DingTalkIMProviderAdapter",
-    "DirectoryEntry",
-    "DirectoryReadFailure",
-    "DirectoryReadResult",
-    "DirectorySnapshot",
-    "EventAcceptance",
-    "FeishuIMIntegrationCredentials",
-    "FeishuIMProviderAdapter",
-    "IMDirectory",
-    "IMDynamicCardMessaging",
-    "IMEventSink",
-    "IMIntegrationCredentials",
-    "IMMessaging",
-    "IMProviderAdapter",
-    "IMProviderAdapterClosedError",
-    "IMStreamEvents",
-    "IMStreamRunError",
-    "IMWebhookEvents",
-    "LarkIMIntegrationCredentials",
-    "LarkIMProviderAdapter",
-    "MSTeamsIMIntegrationCredentials",
-    "MSTeamsIMProviderAdapter",
-    "MarkAsSubmittedFailureKind",
-    "MarkAsSubmittedOutcomeUnknown",
-    "MarkAsSubmittedRejected",
-    "MarkAsSubmittedResult",
-    "MessageAccepted",
-    "MessageOutcomeUnknown",
-    "MessageReference",
-    "MessageRejected",
-    "MessageSendResult",
-    "NormalizedCardIntent",
-    "ProviderUserId",
-    "SlackIMIntegrationCredentials",
-    "SlackIMProviderAdapter",
-    "StopSignal",
-    "SubmittedCardIntent",
-    "WeComIMIntegrationCredentials",
-    "WeComIMProviderAdapter",
-    "WebhookRequest",
-    "WebhookResponse",
-]
