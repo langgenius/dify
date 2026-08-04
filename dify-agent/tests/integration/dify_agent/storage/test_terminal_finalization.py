@@ -1,4 +1,4 @@
-"""Real-Redis contracts for atomic terminal run finalization."""
+"""Real-Redis contracts for terminal finalization and cancellation observation."""
 
 import asyncio
 from collections.abc import Iterator
@@ -8,17 +8,22 @@ import subprocess
 import time
 from uuid import uuid4
 
+import httpx
 import pytest
 from redis.asyncio import Redis
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
+    CreateRunRequest,
     RunCancelledEvent,
     RunCancelledEventData,
+    RunComposition,
     RunSucceededEvent,
     RunSucceededEventData,
 )
 from dify_agent.runtime.event_sink import TerminalRunEvent, terminal_event_status_and_error
+from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
 from dify_agent.storage.redis_run_store import RedisRunStore
 
@@ -31,7 +36,7 @@ def redis_url() -> Iterator[str]:
     """Start an isolated Redis when the binary is available locally."""
     redis_server = shutil.which("redis-server")
     if redis_server is None:
-        pytest.skip("redis-server is required for the atomic finalization integration test")
+        pytest.skip("redis-server is required for run terminal integration tests")
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.bind(("127.0.0.1", 0))
@@ -129,5 +134,68 @@ def test_two_redis_clients_commit_exactly_one_matching_terminal(redis_url: str) 
         finally:
             await first_client.aclose()
             await second_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> None:
+    class BlockingRunner:
+        def __init__(self, *, started: asyncio.Event, stopped: asyncio.Event) -> None:
+            self.started = started
+            self.stopped = stopped
+
+        async def run(self) -> None:
+            self.started.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                self.stopped.set()
+
+    async def scenario() -> None:
+        owner_client = Redis.from_url(redis_url)
+        remote_client = Redis.from_url(redis_url)
+        prefix = f"route-independent-cancellation-{uuid4().hex}"
+        owner_store = RedisRunStore(owner_client, prefix=prefix, run_retention_seconds=60)
+        remote_store = RedisRunStore(remote_client, prefix=prefix, run_retention_seconds=60)
+        runner_started = asyncio.Event()
+        runner_stopped = asyncio.Event()
+        async with httpx.AsyncClient() as http_client:
+            owner_scheduler = RunScheduler(
+                store=owner_store,
+                plugin_daemon_http_client=http_client,
+                dify_api_http_client=http_client,
+                runner_factory=lambda _record, _request: BlockingRunner(
+                    started=runner_started,
+                    stopped=runner_stopped,
+                ),
+            )
+            remote_scheduler = RunScheduler(
+                store=remote_store,
+                plugin_daemon_http_client=http_client,
+                dify_api_http_client=http_client,
+            )
+            try:
+                record = await owner_scheduler.create_run(CreateRunRequest(composition=RunComposition(layers=[])))
+                owner_task = owner_scheduler.active_tasks[record.run_id]
+                await asyncio.wait_for(runner_started.wait(), timeout=1)
+
+                response = await remote_scheduler.cancel_run(
+                    record.run_id,
+                    CancelRunRequest(reason="remote_cancel"),
+                )
+
+                assert response.status == "cancelled"
+                assert remote_scheduler.active_tasks == {}
+                await asyncio.wait_for(runner_stopped.wait(), timeout=1)
+                await asyncio.wait_for(owner_task, timeout=1)
+                persisted = await owner_store.get_run(record.run_id)
+                events = await remote_store.get_events(record.run_id)
+                assert persisted.status == "cancelled"
+                assert [event.type for event in events.events] == ["run_cancelled"]
+            finally:
+                await owner_scheduler.shutdown()
+                await remote_scheduler.shutdown()
+                await owner_client.aclose()
+                await remote_client.aclose()
 
     asyncio.run(scenario())

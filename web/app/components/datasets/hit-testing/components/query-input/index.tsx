@@ -232,7 +232,7 @@ const QueryInput = ({
         }
         className="w-22"
       >
-        <RiPlayCircleLine className="mr-1 size-4" />
+        <RiPlayCircleLine className="size-4" />
         {t(($) => $['input.testing'], { ns: 'datasetHitTesting' })}
       </Button>
     )
@@ -266,7 +266,7 @@ const QueryInput = ({
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             >
               <RiEqualizer2Line className="size-3.5 text-components-button-secondary-text" />
-              <div className="flex items-center justify-center gap-1 px-0.75">
+              <div className="flex items-center justify-center gap-1">
                 <span className="system-xs-medium text-components-button-secondary-text">
                   {t(($) => $.settingTitle, { ns: 'datasetHitTesting' })}
                 </span>

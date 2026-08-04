@@ -100,9 +100,9 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
         ? t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })
         : t(($) => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflow' })}
       {!isLoading ? (
-        <span className="ml-1 i-ri-install-line size-3.5" />
+        <span className="i-ri-install-line size-3.5" />
       ) : (
-        <span className="ml-1 i-ri-loader-2-line size-3.5 animate-spin" />
+        <span className="i-ri-loader-2-line size-3.5 animate-spin" />
       )}
     </Button>
   )

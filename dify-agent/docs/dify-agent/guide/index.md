@@ -56,7 +56,8 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
 | `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` | `52428800` | Standalone Dify Agent maximum for whole-file Workspace upload capture; 50 MiB by default. Docker Compose derives it from `PLUGIN_MAX_FILE_SIZE`. |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
-| `DIFY_AGENT_STUB_API_BASE_URL` | empty | Public Agent Stub API base URL reachable from shellctl-managed remote machines. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_STUB_API_BASE_URL` | empty | Agent Stub API base URL reachable from the Sandbox. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
 | `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_API_BASE_URL` uses `grpc://`. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
 | `DIFY_AGENT_OUTBOUND_HTTP_CONNECT_TIMEOUT` | `10` | Shared outbound HTTP connect timeout in seconds. |
@@ -87,11 +88,29 @@ DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
 DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
+DIFY_AGENT_SANDBOX_FILES_BASE_URL=https://dify.example.com
 # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
 # Replace this development default in production.
 # Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
 DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
+
+The two Sandbox-facing base URLs have different owners. Agent Stub control
+requests use `DIFY_AGENT_STUB_API_BASE_URL`; signed file bytes use
+`DIFY_AGENT_SANDBOX_FILES_BASE_URL`. `DIFY_AGENT_INNER_API_URL` remains a
+trusted service-to-service URL and is never returned to the Sandbox.
+
+For a remote Sandbox, expose only `/agent-stub/*` from Agent Backend and the
+existing `/files/*` Dify API data plane. The `/files/*` ingress must preserve
+the complete signed query string, allow the configured upload body size, and
+use response streaming and timeouts suitable for large downloads. Do not expose
+Agent Backend `/runs`, Workspace, or Binding management routes through the
+Sandbox ingress.
+
+Browser presentation URLs are independent. Configure Dify API `FILES_URL` to a
+browser-reachable public origin, or leave it empty so responses use same-origin
+relative `/files/...` URIs. Never set `FILES_URL` to a Docker-only service name
+such as `http://api:5001`.
 
 `DIFY_AGENT_SHELLCTL_ENTRYPOINT` and `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` remain
 accepted only as legacy aliases for the two Local settings. New deployments
@@ -248,10 +267,11 @@ or worker handoff.
 Horizontal scaling is possible by running multiple API processes against the same
 Redis prefix, but each process executes only the runs it accepted. Redis provides
 shared status/event visibility, not load balancing or queued-job recovery. The
-cancel endpoint can only signal a task owned by the process that receives the
-request; a request routed to a different process returns `409` while the run is
-still running. Retrying a cancellation after the run is already `cancelled` is
-idempotent.
+cancel endpoint can atomically accept a running run on any process. The process
+that owns the runner observes the shared `run_cancelled` event, then cancels and
+cleans up its local task. The HTTP response confirms that logical cancellation is
+durable; local runner cleanup may still be in progress. Retrying a cancellation
+after the run is already `cancelled` is idempotent.
 
 Atomic terminal finalization currently assumes the configured Redis URL targets
 one Redis deployment that can execute both run keys in a Lua script. The existing
@@ -259,8 +279,11 @@ record and event key names are unchanged and do not contain a shared Redis
 Cluster hash tag, so Redis Cluster is not supported for this transition. During
 a rolling upgrade, older processes can still use the former split event/status
 writes; treat the single-terminal invariant as active only after those processes
-have exited. Operators should then alert on more than one terminal event per run
-and on disagreement between the run record status and terminal event type.
+have exited. Deploy atomic terminal finalization everywhere first, then ensure
+every process that can own a runner has the cancellation observer before relying
+on route-independent cancellation. Operators should then alert on more than one
+terminal event per run and on disagreement between the run record status and
+terminal event type.
 
 ## Run inputs and session snapshots
 
@@ -301,9 +324,9 @@ progress:
 
 - `POST /runs` creates a running run and schedules it locally.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
-- `POST /runs/{run_id}/cancel` atomically accepts cancellation for a locally
-  owned running task and emits `run_cancelled`; it returns `409` for a non-local
-  running task or a run whose success/failure terminal already won.
+- `POST /runs/{run_id}/cancel` atomically accepts cancellation on any API process
+  and emits `run_cancelled`; it returns `409` only when a success/failure terminal
+  already won. Runner cleanup continues asynchronously on the owner process.
 - `GET /runs/{run_id}/events` polls the Redis Stream event log with `after` and
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE

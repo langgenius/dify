@@ -244,13 +244,9 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
-          <Button
-            variant="secondary"
-            className="h-8 gap-0.5 px-3 system-sm-medium"
-            disabled={disabled}
-          >
+          <Button variant="secondary" className="h-8 system-sm-medium" disabled={disabled}>
             <span aria-hidden className="i-custom-vender-system-auto-update-line size-4" />
-            <span className="px-0.5">{t(($) => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
+            <span>{t(($) => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
             {selectedStrategyLabel && (
               <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                 {selectedStrategyLabel}

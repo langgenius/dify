@@ -55,8 +55,8 @@ func (c *grpcStubClient) CreateFileUploadURL(ctx context.Context, filename, mime
 	return result.UploadURL, nil
 }
 
-func (c *grpcStubClient) CreateFileDownloadURL(ctx context.Context, transferMethod string, reference, url *string, forExternal bool) (*FileDownloadResponse, error) {
-	result, err := c.grpc.CreateFileDownload(ctx, transferMethod, reference, url, forExternal)
+func (c *grpcStubClient) CreateFileDownloadURL(ctx context.Context, transferMethod string, reference, url *string, forFrontend bool) (*FileDownloadResponse, error) {
+	result, err := c.grpc.CreateFileDownload(ctx, transferMethod, reference, url, forFrontend)
 	if err != nil {
 		return nil, err
 	}

@@ -80,7 +80,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
             <Button
               variant="primary"
-              className="flex items-center justify-center gap-0.5 px-3 py-2"
+              className="flex items-center justify-center px-3 py-2"
               onClick={handleOpenExternalAPIModal}
             >
               <RiAddLine className="size-4 text-components-button-primary-text" />

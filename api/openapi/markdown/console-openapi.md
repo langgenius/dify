@@ -14399,6 +14399,14 @@ section may be empty, which is how callers express "no knowledge layer".
 | updated_at | integer |  | No |
 | user_rate | number |  | No |
 
+#### AgentLogFeedbackResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| from_source | string, <br>**Available values:** "admin", "user" | *Enum:* `"admin"`, `"user"` | Yes |
+| rating | string, <br>**Available values:** "dislike", "like" | *Enum:* `"dislike"`, `"like"` | Yes |
+
 #### AgentLogListResponse
 
 | Name | Type | Description | Required |
@@ -14419,6 +14427,8 @@ section may be empty, which is how callers express "no knowledge layer".
 | created_at | integer |  | No |
 | currency | string |  | Yes |
 | error | string |  | No |
+| feedback_enabled | boolean |  | No |
+| feedbacks | [ [AgentLogFeedbackResponse](#agentlogfeedbackresponse) ] |  | No |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | id | string |  | Yes |
@@ -17933,7 +17943,9 @@ declaration of an endpoint group
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| deleted_environment_variable_ids | [ string ] | Environment variable IDs to delete when patch is true | No |
 | environment_variables | [ [EnvironmentVariableItemPayload](#environmentvariableitempayload) ] | Environment variables for the draft workflow | Yes |
+| patch | boolean | Treat environment_variables as per-ID upserts instead of replacing the full collection | No |
 
 #### ErrorDocsResponse
 
@@ -22091,7 +22103,7 @@ The subscription constructor of the trigger provider
 | ---- | ---- | ----------- | -------- |
 | _is_collaborative | boolean |  | No |
 | conversation_variables | [ object ] |  | No |
-| environment_variables | [ object ] |  | No |
+| environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
 | features | object |  | Yes |
 | graph | object |  | Yes |
 | hash | string |  | No |
@@ -22103,6 +22115,13 @@ The subscription constructor of the trigger provider
 | hash | string |  | Yes |
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
+
+#### SyncEnvironmentVariablePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted_environment_variable_ids | [ string ] |  | No |
+| environment_variables | [ object ] |  | No |
 
 #### SystemConfigurationResponse
 
