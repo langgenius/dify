@@ -1,17 +1,23 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import PremiumBadge from '../../base/premium-badge'
 
-function LicenseNav() {
+function LicenseBadge() {
   const { t } = useTranslation()
   const { data: license } = useQuery(consoleQuery.systemFeatures.license.get.queryOptions())
+  const { data: expiryNoticeEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ enable_license_expiry_notice }) => enable_license_expiry_notice,
+  })
+  const isExpiring = license?.status === LicenseStatus.EXPIRING
 
-  if (license?.status === LicenseStatus.EXPIRING) {
+  if (isExpiring && expiryNoticeEnabled) {
     const count = dayjs(license.expired_at).diff(dayjs(), 'days')
     return (
       <PremiumBadge color="orange" className="select-none">
@@ -34,7 +40,7 @@ function LicenseNav() {
       </PremiumBadge>
     )
   }
-  if (license?.status === LicenseStatus.ACTIVE) {
+  if (license?.status === LicenseStatus.ACTIVE || isExpiring) {
     return (
       <PremiumBadge color="indigo" className="select-none">
         <span className="px-1 system-xs-medium">Enterprise</span>
@@ -44,4 +50,4 @@ function LicenseNav() {
   return null
 }
 
-export default LicenseNav
+export default LicenseBadge

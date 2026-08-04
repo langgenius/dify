@@ -197,6 +197,7 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_step_by_step_tour: bool = False
     rbac_enabled: bool = False
     knowledge_fs_enabled: bool = False
+    enable_license_expiry_notice: bool = True
 
 
 class FeatureService:
@@ -337,6 +338,7 @@ class FeatureService:
         system_features.webapp_auth.allow_public_access = dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED
         system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR
         system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
+        system_features.enable_license_expiry_notice = dify_config.ENABLE_LICENSE_EXPIRY_NOTICE
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
