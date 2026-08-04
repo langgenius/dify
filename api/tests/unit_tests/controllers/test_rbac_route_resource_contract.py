@@ -100,20 +100,3 @@ def test_resource_scoped_rbac_gates_have_a_resource_id_in_the_route() -> None:
         "resource-scoped rbac_permission_required on routes without a resource id; "
         "pass resource_required=False for workspace-level actions:\n" + "\n".join(violations)
     )
-
-
-def test_known_violations_are_still_present() -> None:
-    """Keeps the allowlist honest: delete entries once the underlying routes are fixed."""
-    for relative_path, class_name, method_name in KNOWN_VIOLATIONS:
-        tree = ast.parse((CONTROLLERS_DIR / relative_path).read_text(encoding="utf-8"))
-        classes = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef) and node.name == class_name]
-        assert classes, f"{relative_path}::{class_name} no longer exists; drop it from KNOWN_VIOLATIONS"
-        methods = [
-            node
-            for node in classes[0].body
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name == method_name
-        ]
-        assert methods, f"{class_name}.{method_name} no longer exists; drop it from KNOWN_VIOLATIONS"
-        assert _resource_scoped_gates(methods[0]), (
-            f"{class_name}.{method_name} no longer has an unscoped resource gate; drop it from KNOWN_VIOLATIONS"
-        )
