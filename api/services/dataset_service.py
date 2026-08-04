@@ -2109,7 +2109,7 @@ class DocumentService:
 
         unique_documents = list({document.id: document for document in documents}.values())
         retry_indexing_cache_keys = [f"document_{document.id}_is_retried" for document in unique_documents]
-        acquired_locks = []
+        acquired_locks: list[Any] = []
 
         def release_acquired_locks() -> None:
             for retry_lock in acquired_locks:
