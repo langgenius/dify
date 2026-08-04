@@ -1,4 +1,5 @@
 'use client'
+import type { ActivePluginType } from '../constants'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
@@ -7,11 +8,13 @@ import { useMarketplaceData } from '../state'
 import List from './index'
 
 type ListWrapperProps = {
+  activePluginType?: ActivePluginType
   className?: string
   showInstallButton?: boolean
   linkToMarketplaceDetail?: boolean
 }
 const ListWrapper = ({
+  activePluginType,
   className,
   showInstallButton,
   linkToMarketplaceDetail,
@@ -26,7 +29,7 @@ const ListWrapper = ({
     isLoading,
     isFetchingNextPage,
     page,
-  } = useMarketplaceData()
+  } = useMarketplaceData(activePluginType)
 
   return (
     <div
