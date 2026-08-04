@@ -232,7 +232,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData.resultText === 'string' && (
                   <Button
-                    className="mb-4 ml-4 space-x-1"
+                    className="mb-4 ml-4"
                     onClick={() => {
                       copy(workflowRunningData?.resultText || '')
                       toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))

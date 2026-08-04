@@ -68,7 +68,7 @@ function DeveloperApiEndpoint({ apiUrl }: { apiUrl: string }) {
         value={apiUrl}
         className="min-w-0 flex-1"
       />
-      <Button variant="secondary" className="shrink-0 gap-1.5" onClick={() => setApiDocsOpen(true)}>
+      <Button variant="secondary" className="shrink-0" onClick={() => setApiDocsOpen(true)}>
         <span className="i-ri-file-list-3-line size-3.5" />
         {t(($) => $['access.api.docs'])}
       </Button>
