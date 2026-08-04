@@ -227,9 +227,9 @@ describe('list-operator path', () => {
       expect(screen.getByText('items')).toBeInTheDocument()
     })
 
-    it('should resolve system variables through the start node and return null without a variable', () => {
+    it('should resolve built-in variables through the start node and return null without a variable', () => {
       const { rerender } = renderWorkflowFlowComponent(
-        <Node id="node-2" data={createData({ variable: ['sys', 'files'] as any })} />,
+        <Node id="node-2" data={createData({ variable: ['userinput', 'files'] as any })} />,
         {
           nodes: [
             {

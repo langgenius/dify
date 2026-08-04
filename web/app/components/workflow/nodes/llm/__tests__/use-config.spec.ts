@@ -242,7 +242,7 @@ describe('llm/use-config', () => {
         enabled: true,
         configs: {
           detail: Resolution.high,
-          variable_selector: ['sys', 'files'],
+          variable_selector: ['userinput', 'files'],
         },
       })
       result.current.handleCompletionParamsChange({ top_p: 0.5 })
@@ -260,7 +260,7 @@ describe('llm/use-config', () => {
           enabled: true,
           configs: {
             detail: Resolution.high,
-            variable_selector: ['sys', 'files'],
+            variable_selector: ['userinput', 'files'],
           },
         },
       }),

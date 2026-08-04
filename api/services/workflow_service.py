@@ -6,8 +6,11 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, inspect, select, update
+from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm.attributes import set_committed_value
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -146,6 +149,8 @@ from .human_input_delivery_test_service import (
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
+logger = logging.getLogger(__name__)
+
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -158,6 +163,7 @@ class WorkflowService:
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
@@ -214,7 +220,7 @@ class WorkflowService:
         )
 
         # return draft workflow
-        return workflow
+        return self._persist_legacy_sys_files_migration_on_load(workflow)
 
     def get_published_workflow_by_id(self, app_model: App, workflow_id: str, *, session: Session) -> Workflow | None:
         """
@@ -239,6 +245,7 @@ class WorkflowService:
                 f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
                 f"Please use a published workflow version or leave workflow_id empty."
             )
+        self._persist_legacy_sys_files_migration_on_load(workflow)
         return workflow
 
     def get_published_workflow(self, app_model: App, *, session: Session) -> Workflow | None:
@@ -261,6 +268,53 @@ class WorkflowService:
             )
             .limit(1)
         )
+
+        return self._persist_legacy_sys_files_migration_on_load(workflow)
+
+    def _persist_legacy_sys_files_migration_on_load(self, workflow: Workflow | None) -> Workflow | None:
+        """Persist a load-time graph rewrite without joining or dirtying the caller's transaction."""
+
+        if workflow is None:
+            return None
+        if inspect(workflow, raiseerr=False) is None:
+            return workflow
+
+        # TODO: Remove this load-time persistence path after the historical workflow migration is complete.
+        original_graph = workflow.graph
+        if not workflow.migrate_legacy_sys_files_graph_in_place():
+            return workflow
+
+        migrated_graph = workflow.graph
+        try:
+            with self._session_maker.begin() as session:
+                result = session.execute(
+                    update(Workflow)
+                    .where(
+                        Workflow.id == workflow.id,
+                        Workflow.tenant_id == workflow.tenant_id,
+                        Workflow.graph == original_graph,
+                    )
+                    .values(graph=migrated_graph)
+                )
+                if cast(CursorResult, result).rowcount == 0:
+                    logger.warning(
+                        "Skipped persisting legacy sys.files workflow migration because the workflow changed "
+                        "concurrently, "
+                        "workflow_id=%s tenant_id=%s",
+                        workflow.id,
+                        workflow.tenant_id,
+                    )
+        except SQLAlchemyError:
+            logger.warning(
+                "Failed to persist legacy sys.files workflow migration, workflow_id=%s tenant_id=%s",
+                workflow.id,
+                workflow.tenant_id,
+                exc_info=True,
+            )
+        finally:
+            # The conditional update owns persistence. Mark the caller's instance clean so its later flush cannot
+            # overwrite a concurrent workflow edit with the compatibility rewrite.
+            set_committed_value(workflow, "graph", migrated_graph)
 
         return workflow
 

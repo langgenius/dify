@@ -116,7 +116,6 @@ describe('use-single-run-form-params helpers', () => {
 
   it('should build used output vars and pass-to-server keys while filtering loop-local selectors', () => {
     const startNode = createNode('start-node', 'Start Node', BlockEnum.Start)
-    const sysNode = createNode('sys', 'System', BlockEnum.Start)
     const loopChildrenNodes = [
       createNode('tool-a', 'Tool A'),
       createNode('tool-b', 'Tool B'),
@@ -127,7 +126,7 @@ describe('use-single-run-form-params helpers', () => {
     mockGetNodeUsedVars.mockImplementation((node: Node) => {
       switch (node.id) {
         case 'tool-a':
-          return [['sys', 'files']]
+          return [['userinput', 'files']]
         case 'tool-b':
           return [
             ['start-node', 'answer'],
@@ -139,12 +138,16 @@ describe('use-single-run-form-params helpers', () => {
       }
     })
     mockGetNodeUsedVarPassToServerKey.mockImplementation((_node: Node, selector: string[]) => {
-      return selector[0] === 'sys' ? ['sys_files', 'sys_files_backup'] : 'answer_key'
+      return selector[0] === 'userinput'
+        ? ['userinput_files', 'userinput_files_backup']
+        : 'answer_key'
     })
     mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) =>
       nodes.find((node) => node.id === id),
     )
-    mockIsSystemVar.mockImplementation((selector: string[]) => selector[0] === 'sys')
+    mockIsSystemVar.mockImplementation((selector: string[]) =>
+      ['sys', 'userinput'].includes(selector[0]!),
+    )
 
     const toVarInputs = vi.fn((variables: Variable[]) =>
       variables.map((variable) =>
@@ -155,18 +158,18 @@ describe('use-single-run-form-params helpers', () => {
     const result = buildUsedOutVars({
       loopChildrenNodes,
       currentNodeId: 'current-node',
-      canChooseVarNodes: [startNode, sysNode, ...loopChildrenNodes],
+      canChooseVarNodes: [startNode, ...loopChildrenNodes],
       isNodeInLoop: (nodeId) => nodeId === 'inner-node',
       toVarInputs,
     })
 
     expect(toVarInputs).toHaveBeenCalledWith([
       expect.objectContaining({
-        variable: 'sys.files',
+        variable: 'userinput.files',
         label: {
           nodeType: BlockEnum.Start,
-          nodeName: 'System',
-          variable: 'sys.files',
+          nodeName: 'Start Node',
+          variable: 'userinput.files',
         },
       }),
       expect.objectContaining({
@@ -179,10 +182,10 @@ describe('use-single-run-form-params helpers', () => {
       }),
     ])
     expect(result.usedOutVars).toEqual([
-      createInputVar('sys.files', {
+      createInputVar('userinput.files', {
         nodeType: BlockEnum.Start,
-        nodeName: 'System',
-        variable: 'sys.files',
+        nodeName: 'Start Node',
+        variable: 'userinput.files',
       }),
       createInputVar('start-node.answer', {
         nodeType: BlockEnum.Start,
@@ -191,11 +194,11 @@ describe('use-single-run-form-params helpers', () => {
       }),
     ])
     expect(result.allVarObject).toEqual({
-      [['sys.files', 'tool-a', 0].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'sys_files',
+      [['userinput.files', 'tool-a', 0].join(VALUE_SELECTOR_DELIMITER)]: {
+        inSingleRunPassedKey: 'userinput_files',
       },
-      [['sys.files', 'tool-a', 1].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'sys_files_backup',
+      [['userinput.files', 'tool-a', 1].join(VALUE_SELECTOR_DELIMITER)]: {
+        inSingleRunPassedKey: 'userinput_files_backup',
       },
       [['start-node.answer', 'tool-b', 0].join(VALUE_SELECTOR_DELIMITER)]: {
         inSingleRunPassedKey: 'answer_key',

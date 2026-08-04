@@ -91,21 +91,20 @@ def format_parallel_plan(
 def format_mode_section(mode: str) -> str:
     """Tell each builder which app mode it is configuring for.
 
-    Matters most in advanced-chat, where ``sys.query`` / ``sys.files`` are the
-    sanctioned way to reference the user's message — without this the model
-    invents start-node variables that postprocess then materializes as
-    spurious form inputs.
+    ``sys.query`` is available in advanced-chat, while ``userinput.files`` is
+    available in both app modes. Without this guidance the model invents
+    start-node variables that postprocess then materializes as spurious inputs.
     """
     if mode == "advanced-chat":
         return (
             "# App mode\n\n"
             "advanced-chat: the user's chat message is available as sys.query and uploaded files "
-            'as sys.files — placeholder {{#sys.query#}}, selector ["sys", "query"]. Reference them '
-            "directly; do NOT invent start-node variables for the chat message.\n\n"
+            "as userinput.files. Use placeholder {{#sys.query#}} or selector "
+            '["userinput", "files"] directly; do NOT invent start-node variables for them.\n\n'
         )
     return (
         "# App mode\n\n"
-        "workflow: there are NO automatic system variables; reference user input only through "
+        "workflow: uploaded files are available as userinput.files; all other user input must use "
         "the start node's declared variables.\n\n"
     )
 

@@ -3798,11 +3798,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow-app/store/workflow/workflow-slice.ts": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -4123,9 +4118,6 @@
   },
   "web/app/components/workflow/nodes/_base/components/memory-config.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "unicorn/prefer-number-properties": {
       "count": 1
     }
   },
@@ -4973,19 +4965,9 @@
       "count": 8
     }
   },
-  "web/app/components/workflow/nodes/start/panel.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/start/use-config.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/start/use-single-run-form-params.ts": {
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/workflow/nodes/template-transform/use-config.ts": {

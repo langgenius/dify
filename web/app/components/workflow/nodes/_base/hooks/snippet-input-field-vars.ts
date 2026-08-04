@@ -22,7 +22,10 @@ export const filterSnippetSystemVars = (
   return availableVars
     .map((nodeVar) => ({
       ...nodeVar,
-      vars: nodeVar.vars.filter((variable) => !variable.variable.startsWith('sys.')),
+      vars: nodeVar.vars.filter(
+        (variable) =>
+          !['sys.', 'userinput.'].some((prefix) => variable.variable.startsWith(prefix)),
+      ),
     }))
     .filter((nodeVar) => nodeVar.vars.length > 0)
 }

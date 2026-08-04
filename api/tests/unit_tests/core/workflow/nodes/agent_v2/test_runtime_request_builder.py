@@ -230,12 +230,12 @@ def _previous_node_prompt_payload(result, selector: str) -> object:
 
 
 def _uploaded_workflow_files_prompt_payload(result) -> object:
-    prefix = "  - sys.files: "
+    prefix = "  - userinput.files: "
     user_prompt = _workflow_user_prompt(result)
     for line in user_prompt.splitlines():
         if line.startswith(prefix):
             return json.loads(line.removeprefix(prefix))
-    raise AssertionError("missing prompt payload for sys.files")
+    raise AssertionError("missing prompt payload for userinput.files")
 
 
 def test_builds_create_run_request_from_agent_soul_and_node_job():

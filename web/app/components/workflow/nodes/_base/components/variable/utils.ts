@@ -84,14 +84,15 @@ const translateWorkflowString = <const Selector extends SelectorParam<'workflow'
 }
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
-  return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+  return valueSelector.some((part) => ['sys', 'userinput'].includes(part))
 }
 
 export const isGlobalVar = (valueSelector: ValueSelector) => {
   if (!isSystemVar(valueSelector)) return false
-  const second = valueSelector[1]
+  const namespaceIndex = valueSelector.findIndex((part) => ['sys', 'userinput'].includes(part))
+  const variableName = valueSelector[namespaceIndex + 1]
 
-  if (['query', 'files'].includes(second!)) return false
+  if (variableName && ['query', 'files'].includes(variableName)) return false
   return true
 }
 
@@ -109,7 +110,7 @@ export const isRagVariableVar = (valueSelector: ValueSelector) => {
 }
 
 export const isSpecialVar = (prefix: string): boolean => {
-  return ['sys', 'env', 'conversation', 'rag'].includes(prefix)
+  return ['sys', 'userinput', 'env', 'conversation', 'rag'].includes(prefix)
 }
 
 const hasValidChildren = (children: any): boolean => {
@@ -358,7 +359,7 @@ const formatItem = (
         })
       }
       res.vars.push({
-        variable: 'sys.files',
+        variable: 'userinput.files',
         type: VarType.arrayFile,
       })
       break
@@ -1963,8 +1964,8 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
 
       if (isChatMode) {
         res.push([id, 'sys', 'query'])
-        res.push([id, 'sys', 'files'])
       }
+      res.push([id, 'userinput', 'files'])
       break
     }
 

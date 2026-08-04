@@ -239,6 +239,29 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables: l
     assert "{{#start.text_input#}}" in node["data"]["prompt_template"][0]["text"]
 
 
+def test__convert_to_llm_node_uses_userinput_files_for_vision(default_variables: list[VariableEntity]) -> None:
+    workflow_converter = WorkflowConverter()
+    graph = {"nodes": [workflow_converter._convert_to_start_node(default_variables)], "edges": []}
+    model_config = ModelConfigEntity(provider="openai", model="gpt-4", mode=LLMMode.CHAT.value, parameters={}, stop=[])
+    prompt_template = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+        simple_prompt_template="Describe the upload",
+    )
+    file_upload = MagicMock()
+    file_upload.image_config = None
+
+    node = workflow_converter._convert_to_llm_node(
+        original_app_mode=AppMode.CHAT,
+        new_app_mode=AppMode.ADVANCED_CHAT,
+        model_config=model_config,
+        graph=graph,
+        prompt_template=prompt_template,
+        file_upload=file_upload,
+    )
+
+    assert node["data"]["vision"]["variable_selector"] == ["userinput", "files"]
+
+
 def test__convert_to_llm_node_for_chatbot_simple_chat_model_with_empty_template(
     default_variables: list[VariableEntity],
     monkeypatch: pytest.MonkeyPatch,

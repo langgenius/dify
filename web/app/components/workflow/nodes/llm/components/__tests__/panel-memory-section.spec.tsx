@@ -94,6 +94,11 @@ describe('llm/panel-memory-section', () => {
 
     expect(screen.getByText('workflow.nodes.common.memories.title')).toBeInTheDocument()
     expect(screen.getByTestId('editor')).toHaveTextContent('{{#sys.query#}}')
+    expect(mockEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: '{{#sys.query#}}\n\n{{#userinput.files#}}',
+      }),
+    )
     expect(screen.getByTestId('memory-config')).toHaveTextContent('cannot-set-role')
     expect(mockEditor).toHaveBeenCalledWith(
       expect.objectContaining({

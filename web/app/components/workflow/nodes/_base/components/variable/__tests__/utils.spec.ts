@@ -4,6 +4,7 @@ import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-i
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
+import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import {
   BlockEnum,
@@ -13,7 +14,14 @@ import {
   VarType,
 } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
+import {
+  getNodeOutputVars,
+  getNodeUsedVars,
+  isGlobalVar,
+  isSystemVar,
+  toNodeAvailableVars,
+  updateNodeVars,
+} from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -49,6 +57,15 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 })
 
 describe('variable utils', () => {
+  describe('virtual input variables', () => {
+    it('recognizes userinput.files without treating it as a global variable', () => {
+      expect(isSystemVar(['userinput', 'files'])).toBe(true)
+      expect(isSystemVar(['start', 'userinput', 'files'])).toBe(true)
+      expect(isGlobalVar(['start', 'userinput', 'files'])).toBe(false)
+      expect(isGlobalVar(['sys', 'workflow_id'])).toBe(true)
+    })
+  })
+
   describe('toNodeAvailableVars', () => {
     it('uses Agent v2 default declared outputs for agent nodes', () => {
       const node = createNode<AgentV2NodeType>({
@@ -210,6 +227,51 @@ describe('variable utils', () => {
       })
 
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
+    })
+  })
+
+  describe('node output variables', () => {
+    it('should expose sys.query and userinput.files for start nodes in chat mode', () => {
+      const startNode = createStartNode({
+        id: 'start',
+        data: {
+          type: BlockEnum.Start,
+          variables: [
+            {
+              label: 'Files',
+              variable: 'files',
+              type: InputVarType.multiFiles,
+              required: false,
+            },
+          ],
+        },
+      })
+
+      expect(getNodeOutputVars(startNode, true)).toEqual([
+        ['start', 'files'],
+        ['start', 'sys', 'query'],
+        ['start', 'userinput', 'files'],
+      ])
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [startNode],
+        isChatMode: true,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'start',
+            vars: expect.arrayContaining([
+              expect.objectContaining({ variable: 'files', type: VarType.arrayFile }),
+              expect.objectContaining({ variable: 'sys.query', type: VarType.string }),
+              expect.objectContaining({ variable: 'userinput.files', type: VarType.arrayFile }),
+            ]),
+          }),
+        ]),
+      )
     })
   })
 

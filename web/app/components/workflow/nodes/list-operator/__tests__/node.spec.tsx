@@ -96,12 +96,12 @@ describe('list-operator/node', () => {
       <Node
         id="list-node"
         data={createData({
-          variable: ['sys', 'files'],
+          variable: ['userinput', 'files'],
         })}
       />,
     )
 
-    expect(screen.getByText('Start:start:sys.files')).toBeInTheDocument()
+    expect(screen.getByText('Start:start:userinput.files')).toBeInTheDocument()
   })
 
   it('returns null when no input variable is configured', () => {

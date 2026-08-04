@@ -26,6 +26,7 @@ class TestPlannerSystemPrompt:
         """Auto-mode resolution rides on the planner echoing its mode choice."""
         assert '"mode": "workflow | advanced-chat"' in PLANNER_SYSTEM_PROMPT
         assert "When the ``# Mode`` section says auto, YOU decide" in PLANNER_SYSTEM_PROMPT
+        assert "userinput.files" in PLANNER_SYSTEM_PROMPT
 
 
 class TestFormatIdealOutputSection:
@@ -74,6 +75,9 @@ class TestNodeBuilderPrompt:
         assert "- if-else:" not in prompt
         assert '"viewport":' not in prompt
         assert '"positionAbsolute":' not in prompt
+
+    def test_start_uses_user_input_files(self):
+        assert "userinput.files" in get_node_builder_system_prompt("start")
 
     def test_supports_main_human_input_and_assigner_contracts(self):
         human_input = get_node_builder_system_prompt("human-input")
@@ -130,17 +134,19 @@ class TestNodeBuilderUserSections:
 
 
 class TestModeSection:
-    def test_advanced_chat_documents_system_variables(self):
+    def test_advanced_chat_documents_built_in_variables(self):
         out = format_mode_section("advanced-chat")
 
         assert "sys.query" in out
-        assert '["sys", "query"]' in out
+        assert "userinput.files" in out
+        assert '["userinput", "files"]' in out
         assert "do NOT invent start-node variables" in out
 
-    def test_workflow_mode_forbids_system_variables(self):
+    def test_workflow_mode_documents_file_input(self):
         out = format_mode_section("workflow")
 
-        assert "NO automatic system variables" in out
+        assert "userinput.files" in out
+        assert "start node's declared variables" in out
 
 
 class TestExistingGraphSection:

@@ -1382,8 +1382,8 @@ class WorkflowGenerator:
         multiple outputs remain untouched so validation fails closed instead
         of guessing which value the workflow should consume.
 
-        For Advanced-Chat mode, ``sys.query`` and ``sys.files`` are always
-        treated as resolved without any declaration. Tool nodes' parameter
+        ``sys.query`` in Advanced-Chat mode and ``userinput.files`` in either mode
+        are treated as resolved without declarations. Tool nodes' parameter
         references aren't validated here because we don't know each tool's
         schema — the run time validates those.
         """
@@ -1398,9 +1398,12 @@ class WorkflowGenerator:
         for node in nodes:
             cls._collect_refs_in_data(node.get("data") or {}, refs)
 
+        automatic_refs = {("userinput", "files")}
+        if mode == "advanced-chat":
+            automatic_refs.add(("sys", "query"))
+
         for node_id, var in refs:
-            # Advanced-Chat system variables are always resolved.
-            if mode == "advanced-chat" and node_id == "sys":
+            if (node_id, var) in automatic_refs:
                 continue
             target = nodes_by_id.get(node_id)
             if target is None:

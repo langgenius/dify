@@ -1,6 +1,6 @@
 import type { InputVar, Node, ValueSelector, Variable } from '../../types'
 import type { CaseItem, Condition, LoopVariable } from './types'
-import { ValueType } from '@/app/components/workflow/types'
+import { BlockEnum, ValueType } from '@/app/components/workflow/types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import {
   getNodeInfoById,
@@ -91,7 +91,10 @@ export const buildUsedOutVars = ({
 
   const usedOutVars = toVarInputs(
     vars.map((valueSelector) => {
-      const varInfo = getNodeInfoById(canChooseVarNodes, valueSelector[0]!)
+      const varInfo =
+        valueSelector[0] === 'userinput'
+          ? canChooseVarNodes.find((node) => node.data.type === BlockEnum.Start)
+          : getNodeInfoById(canChooseVarNodes, valueSelector[0]!)
       return {
         label: {
           nodeType: varInfo?.data.type,

@@ -18,6 +18,7 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.variable_prefixes import USER_INPUT_VARIABLE_NODE_ID
 from events.app_event import app_was_created
 from graphon.file import FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -597,7 +598,7 @@ class WorkflowConverter:
                 },
                 "vision": {
                     "enabled": file_upload is not None,
-                    "variable_selector": ["sys", "files"] if file_upload is not None else None,
+                    "variable_selector": [USER_INPUT_VARIABLE_NODE_ID, "files"] if file_upload is not None else None,
                     "configs": {"detail": file_upload.image_config.detail}
                     if file_upload is not None and file_upload.image_config is not None
                     else None,

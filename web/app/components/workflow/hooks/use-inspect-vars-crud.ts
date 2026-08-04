@@ -17,7 +17,14 @@ const useInspectVarsCrud = () => {
   const { varsAppendStartNode, systemVars } = (() => {
     if (allSystemVars?.length === 0) return { varsAppendStartNode: [], systemVars: [] }
     const varsAppendStartNode =
-      allSystemVars?.filter(({ name }) => varsAppendStartNodeKeys.includes(name)) || []
+      allSystemVars
+        ?.filter(({ name }) => varsAppendStartNodeKeys.includes(name))
+        .map((variable) => {
+          if (variable.name !== 'files') return variable
+
+          // TODO: Remove this normalization after the system-variable API stops returning the legacy file selector.
+          return { ...variable, selector: ['userinput', 'files'] }
+        }) || []
     const systemVars =
       allSystemVars?.filter(({ name }) => !varsAppendStartNodeKeys.includes(name)) || []
     return { varsAppendStartNode, systemVars }

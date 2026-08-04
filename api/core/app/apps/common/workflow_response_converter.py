@@ -155,8 +155,10 @@ class WorkflowResponseConverter:
             # TODO(@future-refactor): store system variables separately from user inputs so we don't
             # need to flatten `sys.*` entries into the input payload just for rerun/export tooling.
             if field_name == SystemVariableKey.CONVERSATION_ID:
-                # Conversation IDs are session-scoped; omitting them keeps workflow inputs
-                # reusable without pinning new runs to a prior conversation.
+                # Conversation IDs are session-scoped; omitting them keeps workflow inputs reusable.
+                continue
+            if field_name == SystemVariableKey.FILES:
+                # When files are exposed as an input, application inputs use the canonical `userinput.files` key.
                 continue
             inputs[f"sys.{field_name}"] = value
         handled = WorkflowEntry.handle_special_values(inputs)

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
-from commands import system as system_commands
+from commands import app_maintenance as app_maintenance_commands
 
 
 def test_fix_app_site_missing_passes_loaded_session_to_signal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -30,15 +30,15 @@ def test_fix_app_site_missing_passes_loaded_session_to_signal(monkeypatch: pytes
     engine = MagicMock()
     engine.begin.return_value.__enter__.return_value = connection
 
-    monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=engine, session=scoped_session))
+    monkeypatch.setattr(app_maintenance_commands, "db", SimpleNamespace(engine=engine, session=scoped_session))
     send = MagicMock(side_effect=lambda *_args, **_kwargs: phase_events.append("signal"))
-    monkeypatch.setattr(system_commands.app_was_created, "send", send)
+    monkeypatch.setattr(app_maintenance_commands.app_was_created, "send", send)
 
-    system_commands.fix_app_site_missing.callback()
+    app_maintenance_commands.fix_app_site_missing.callback()
 
     scoped_session.assert_called_once_with()
     scalar.assert_called_once()
-    get.assert_called_once_with(system_commands.Tenant, app.tenant_id)
+    get.assert_called_once_with(app_maintenance_commands.Tenant, app.tenant_id)
     tenant.get_accounts.assert_called_once_with(session=session)
     send.assert_called_once_with(app, account=account, session=session)
     commit.assert_called_once_with()
@@ -62,15 +62,19 @@ def test_fix_app_site_missing_rolls_back_when_signal_fails(monkeypatch: pytest.M
     engine = MagicMock()
     engine.begin.return_value.__enter__.return_value = connection
 
-    monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=engine, session=MagicMock(return_value=session)))
+    monkeypatch.setattr(
+        app_maintenance_commands,
+        "db",
+        SimpleNamespace(engine=engine, session=MagicMock(return_value=session)),
+    )
 
     def fail_signal(*_args, **_kwargs) -> None:
         phase_events.append("signal")
         raise RuntimeError("failed")
 
-    monkeypatch.setattr(system_commands.app_was_created, "send", MagicMock(side_effect=fail_signal))
+    monkeypatch.setattr(app_maintenance_commands.app_was_created, "send", MagicMock(side_effect=fail_signal))
 
-    system_commands.fix_app_site_missing.callback()
+    app_maintenance_commands.fix_app_site_missing.callback()
 
     session.rollback.assert_called_once_with()
     session.commit.assert_not_called()

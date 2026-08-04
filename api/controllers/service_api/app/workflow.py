@@ -30,6 +30,10 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
     WorkflowVersionExecutionNotAllowedError,
 )
+from controllers.service_api.app.legacy_system_files import (
+    attach_legacy_system_file_warning_for_service_api,
+    normalize_legacy_system_file_args_for_service_api,
+)
 from controllers.service_api.schema import (
     expect_user_json,
     expect_with_user,
@@ -344,6 +348,12 @@ class WorkflowRunApi(Resource):
         streaming = payload.response_mode == "streaming"
 
         try:
+            args, legacy_system_file_compat = normalize_legacy_system_file_args_for_service_api(
+                session=session,
+                app_model=app_model,
+                args=args,
+                raw_payload=service_api_ns.payload,
+            )
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,
@@ -352,6 +362,7 @@ class WorkflowRunApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=streaming,
             )
+            response = attach_legacy_system_file_warning_for_service_api(response, legacy_system_file_compat)
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
@@ -471,6 +482,13 @@ class WorkflowRunByIdApi(Resource):
         streaming = payload.response_mode == "streaming"
 
         try:
+            args, legacy_system_file_compat = normalize_legacy_system_file_args_for_service_api(
+                session=session,
+                app_model=app_model,
+                args=args,
+                raw_payload=service_api_ns.payload,
+                workflow_id=workflow_id,
+            )
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,
@@ -479,6 +497,7 @@ class WorkflowRunByIdApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=streaming,
             )
+            response = attach_legacy_system_file_warning_for_service_api(response, legacy_system_file_compat)
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)

@@ -80,9 +80,9 @@ describe('var-reference-picker.helpers', () => {
         isLoopVar: false,
         iterationNode: null,
         loopNode: null,
-        outputVarNodeId: 'sys',
+        outputVarNodeId: 'userinput',
         startNode,
-        value: ['sys', 'files'],
+        value: ['userinput', 'files'],
       }),
     ).toEqual(startNode.data)
 
@@ -287,7 +287,7 @@ describe('var-reference-picker.helpers', () => {
   })
 
   it('should keep mapped variable names for known workflow aliases', () => {
-    expect(getVarDisplayName(true, ['sys', 'files'])).toBe('files')
+    expect(getVarDisplayName(true, ['userinput', 'files'])).toBe('files')
     expect(
       getVariableMeta({ type: VarType.string }, ['conversation', 'name'], 'name'),
     ).toMatchObject({

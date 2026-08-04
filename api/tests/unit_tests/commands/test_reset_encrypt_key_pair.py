@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import commands
-from commands import system as system_commands
+from commands import workspace as workspace_commands
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Tenant
@@ -83,11 +83,11 @@ def _encrypted_rows(tenant_id: str, *, suffix: str = "1") -> tuple[object, ...]:
 
 
 def _bind_command_to_sqlite(monkeypatch: pytest.MonkeyPatch, session: Session) -> None:
-    monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=session.get_bind()))
+    monkeypatch.setattr(workspace_commands, "db", SimpleNamespace(engine=session.get_bind()))
 
 
 def test_reset_aborts_when_not_self_hosted(monkeypatch, capsys):
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "CLOUD")
 
     exit_code = _invoke_reset()
     captured = capsys.readouterr()
@@ -106,8 +106,8 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
 ) -> None:
     """The command must purge LLM provider rows AND every tool provider table
     that stores ciphertext encrypted under the tenant key (#35396)."""
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(workspace_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
     _bind_command_to_sqlite(monkeypatch, sqlite_session)
 
     tenant = _tenant(TENANT_ID)
@@ -146,8 +146,8 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
 )
 def test_reset_iterates_all_tenants(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     """Multi-tenant deployments must purge every tenant, not just the first."""
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(workspace_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
 
     _bind_command_to_sqlite(monkeypatch, sqlite_session)
     tenant_ids = [f"11111111-1111-1111-1111-{index:012d}" for index in range(3)]

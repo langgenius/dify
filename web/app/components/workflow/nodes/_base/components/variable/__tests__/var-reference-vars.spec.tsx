@@ -106,6 +106,32 @@ describe('VarReferenceVars', () => {
     )
   })
 
+  it('should resolve userinput.files as a virtual input selector', () => {
+    const onChange = vi.fn()
+
+    render(
+      <VarReferenceVars
+        vars={createVars([
+          {
+            title: 'Start',
+            nodeId: 'start-node',
+            vars: [{ variable: 'userinput.files', type: VarType.arrayFile }],
+          },
+        ])}
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('files'))
+
+    expect(onChange).toHaveBeenCalledWith(
+      ['userinput', 'files'],
+      expect.objectContaining({
+        variable: 'userinput.files',
+      }),
+    )
+  })
+
   it('should render empty state and manage input action', () => {
     const onManageInputField = vi.fn()
 

@@ -96,10 +96,10 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
       - "text-input" for short single-line values (URLs, names),
       - "paragraph" for free-form multi-line text (descriptions, queries),
       - "number" / "select" / "file" / "file-list" for the obvious cases.
-    In Advanced-Chat mode the ``sys.query`` / ``sys.files`` system
-    variables are automatic — downstream nodes may reference them without
-    a ``start_inputs`` entry. In Workflow mode there is NO automatic
-    variable; everything the user supplies must be in ``start_inputs``.
+    In Advanced-Chat mode ``sys.query`` is automatic. ``userinput.files`` is
+    automatic in both app modes. Downstream nodes may reference these values
+    without a ``start_inputs`` entry; every other user-supplied Workflow value
+    must be declared in ``start_inputs``.
 11. Give every node a unique runtime-safe ``id`` using only letters, digits,
     and underscores. In create mode use ``node1``, ``node2``, ... in node-list
     order. In refine mode preserve the existing id for every retained node.

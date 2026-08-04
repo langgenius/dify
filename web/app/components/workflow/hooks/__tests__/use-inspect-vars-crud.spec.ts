@@ -52,6 +52,7 @@ describe('useInspectVarsCrud', () => {
         createInspectVar({
           id: 'files-var',
           name: 'files',
+          // TODO: Remove this legacy API fixture when the system-variable endpoint returns userinput.files.
           selector: ['sys', 'files'],
         }),
         createInspectVar({
@@ -132,6 +133,10 @@ describe('useInspectVarsCrud', () => {
     expect(result.current.nodesWithInspectVars[0]?.vars.map((item) => item.name)).toEqual([
       'answer',
       'query',
+      'files',
+    ])
+    expect(result.current.nodesWithInspectVars[0]?.vars.at(-1)?.selector).toEqual([
+      'userinput',
       'files',
     ])
     expect(result.current.hasNodeInspectVars).toBe(hasNodeInspectVars)

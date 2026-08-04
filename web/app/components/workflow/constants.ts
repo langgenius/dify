@@ -77,7 +77,7 @@ export const getGlobalVars = (isChatMode: boolean): Var[] => {
 
 export const VAR_SHOW_NAME_MAP: Record<string, string> = {
   'sys.query': 'query',
-  'sys.files': 'files',
+  'userinput.files': 'files',
 }
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{

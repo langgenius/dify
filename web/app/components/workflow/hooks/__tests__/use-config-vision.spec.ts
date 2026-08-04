@@ -42,7 +42,7 @@ describe('useConfigVision', () => {
     })
   })
 
-  it('should expose vision capability and enable default chat configs for vision models', () => {
+  it('should use userinput.files by default for vision models in chat mode', () => {
     const onChange = vi.fn()
     mockUseIsChatMode.mockReturnValue(true)
     mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
@@ -68,7 +68,7 @@ describe('useConfigVision', () => {
       enabled: true,
       configs: {
         detail: Resolution.high,
-        variable_selector: ['sys', 'files'],
+        variable_selector: ['userinput', 'files'],
       },
     })
   })
@@ -131,7 +131,7 @@ describe('useConfigVision', () => {
           enabled: true,
           configs: {
             detail: Resolution.high,
-            variable_selector: ['sys', 'files'],
+            variable_selector: ['userinput', 'files'],
           },
         }),
         onChange,
@@ -149,6 +149,7 @@ describe('useConfigVision', () => {
 
   it('should reset enabled vision configs when the model changes but still supports vision', () => {
     const onChange = vi.fn()
+    mockUseIsChatMode.mockReturnValue(true)
     mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
       currentModel: {
         features: [ModelFeatureEnum.vision],
@@ -170,6 +171,34 @@ describe('useConfigVision', () => {
 
     act(() => {
       result.current.handleModelChanged()
+    })
+
+    expect(onChange).toHaveBeenCalledWith({
+      enabled: true,
+      configs: {
+        detail: Resolution.high,
+        variable_selector: ['userinput', 'files'],
+      },
+    })
+  })
+
+  it('should require an explicit file variable in workflow mode', () => {
+    const onChange = vi.fn()
+    mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
+      currentModel: {
+        features: [ModelFeatureEnum.vision],
+      },
+    })
+
+    const { result } = renderHook(() =>
+      useConfigVision(createModel(), {
+        payload: createVisionPayload(),
+        onChange,
+      }),
+    )
+
+    act(() => {
+      result.current.handleVisionResolutionEnabledChange(true)
     })
 
     expect(onChange).toHaveBeenCalledWith({

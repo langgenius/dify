@@ -85,7 +85,7 @@ const outputVarsWithSystemVars: NodeOutPutVar[] = [
         type: VarType.string,
       },
       {
-        variable: 'sys.files',
+        variable: 'userinput.files',
         type: VarType.arrayFile,
       },
     ] satisfies Var[],
