@@ -1,9 +1,10 @@
 from datetime import datetime
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from services.workspace_member_query_service import WorkspaceMemberRecord
-from sqlalchemy.orm import Session, sessionmaker
 
 
 def make_account(

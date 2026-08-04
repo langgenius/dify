@@ -7,6 +7,9 @@ from typing import NamedTuple
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
+from flask import Flask
+from flask_restx import Resource
+
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -28,8 +31,6 @@ from controllers.console.workspace.members import (
     SendOwnerTransferEmailApi,
     _count_new_member_invites,
 )
-from flask import Flask
-from flask_restx import Resource
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError

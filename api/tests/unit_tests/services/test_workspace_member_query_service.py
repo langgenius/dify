@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 
 import pytest
+
 from machinery.context import RequestContext
 from services.workspace_member_query_service import (
     CurrentWorkspaceRequiredError,

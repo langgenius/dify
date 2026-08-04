@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+
 from services import workspace_member_role_resolver
 from services.enterprise.rbac_service import MemberRolesResponse, RBACRole
 from services.workspace_member_query_service import WorkspaceMemberRole, WorkspaceMemberRoleSubject
