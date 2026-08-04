@@ -89,13 +89,13 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
           >
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>
-                <PlusIcon className="mr-1 size-4" />
+                <PlusIcon className="size-4" />
                 <span className="text-xs">{t(($) => $['newApp.useTemplate'], { ns: 'app' })}</span>
               </Button>
             )}
             {canViewApp && (
               <Button onClick={handleShowTryAppPanel}>
-                <RiInformation2Line className="mr-1 size-4" />
+                <RiInformation2Line className="size-4" />
                 <span>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
               </Button>
             )}

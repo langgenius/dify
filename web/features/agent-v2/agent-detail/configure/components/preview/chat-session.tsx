@@ -181,7 +181,7 @@ export function AgentPreviewChatSession({
   )
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-150 flex-col overflow-hidden">
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
           key={conversationSessionKey}
@@ -220,18 +220,21 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? 'flex w-full max-w-150 flex-col items-start p-3 text-left'
+              ? 'flex w-full max-w-150 flex-col items-start text-left'
               : 'pointer-events-none relative w-full',
           )}
         >
-          {isEmptyChat &&
-            renderEmptyState({
-              agentIcon,
-              agentIconBackground,
-              agentIconType,
-              agentName,
-              showUnconfiguredNotice,
-            })}
+          {isEmptyChat && (
+            <div className="w-full p-3 pb-0">
+              {renderEmptyState({
+                agentIcon,
+                agentIconBackground,
+                agentIconType,
+                agentName,
+                showUnconfiguredNotice,
+              })}
+            </div>
+          )}
           <div className={cn(isEmptyChat && 'pointer-events-auto mt-5 w-full')}>
             {chatInputNode}
           </div>

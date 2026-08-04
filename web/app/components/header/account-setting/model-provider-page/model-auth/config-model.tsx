@@ -42,18 +42,18 @@ const ConfigModel = ({
       {credentialRemoved && (
         <>
           {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
-          <StatusDot status="error" className="ml-2" />
+          <StatusDot status="error" />
         </>
       )}
       {!loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiEqualizer2Line className="mr-1 size-4" />
+          <RiEqualizer2Line className="size-4" />
           {t(($) => $['operation.config'], { ns: 'common' })}
         </>
       )}
       {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiScales3Line className="mr-1 size-4" />
+          <RiScales3Line className="size-4" />
           {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
         </>
       )}

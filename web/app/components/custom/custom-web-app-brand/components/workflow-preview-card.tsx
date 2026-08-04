@@ -53,7 +53,7 @@ const WorkflowPreviewCard = ({
             <div className="h-2 w-10 rounded-xs bg-text-quaternary opacity-20"></div>
           </Button>
           <Button variant="primary" size="small" disabled>
-            <span className="mr-1 i-ri-play-large-line size-4" />
+            <span className="i-ri-play-large-line size-4" />
             <span>Execute</span>
           </Button>
         </div>

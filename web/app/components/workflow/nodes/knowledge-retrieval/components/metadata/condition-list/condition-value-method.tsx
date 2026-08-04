@@ -22,7 +22,7 @@ const ConditionValueMethod = ({
         render={
           <Button className="shrink-0" variant="ghost" size="small">
             {capitalize(valueMethod)}
-            <RiArrowDownSLine className="ml-px size-3.5" />
+            <RiArrowDownSLine className="size-3.5" />
           </Button>
         }
       />

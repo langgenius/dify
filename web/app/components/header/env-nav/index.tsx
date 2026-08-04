@@ -2,8 +2,6 @@
 
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { TerminalSquare } from '@/app/components/base/icons/src/vender/solid/development'
-import { Beaker02 } from '@/app/components/base/icons/src/vender/solid/education'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 
 const headerEnvClassName: { [k: string]: string } = {
@@ -26,18 +24,14 @@ const EnvNav = () => {
     >
       {langGeniusVersionInfo.current_env === 'TESTING' && (
         <>
-          <Beaker02 className="size-3" />
-          <div className="ml-1 max-[1280px]:hidden">
-            {t(($) => $['environment.testing'], { ns: 'common' })}
-          </div>
+          <span aria-hidden className="i-custom-vender-solid-education-beaker-02 size-3" />
+          <div className="ml-1">{t(($) => $['environment.testing'], { ns: 'common' })}</div>
         </>
       )}
       {langGeniusVersionInfo.current_env === 'DEVELOPMENT' && (
         <>
-          <TerminalSquare className="size-3" />
-          <div className="ml-1 max-[1280px]:hidden">
-            {t(($) => $['environment.development'], { ns: 'common' })}
-          </div>
+          <span aria-hidden className="i-custom-vender-solid-development-terminal-square size-3" />
+          <div className="ml-1">{t(($) => $['environment.development'], { ns: 'common' })}</div>
         </>
       )}
     </div>
