@@ -29,7 +29,7 @@ _ENVELOPE_VERSION = 1
 
 _DEFAULT_WRAP_ALGORITHM = KeyWrapAlgorithm.rsa_oaep_256
 
-_CRYPTO_CLIENT_CACHE_MAXSIZE = 1
+_CRYPTO_CLIENT_CACHE_MAXSIZE = 4096
 
 
 class _CryptoClientCache(LRUCache[tuple[str, str], CryptographyClient]):
