@@ -1,7 +1,7 @@
 # Dify Agent local capacity benchmarks
 
-The harness measures one fixed Agent capacity unit (`2 vCPU / 2 GiB`, one
-Uvicorn worker) with either:
+The harness measures one fixed Agent capacity unit (`2 vCPU / 2 GiB`, two
+Uvicorn workers) with either:
 
 - `local-runtime`: local Agent, local shellctl Runtime, local Redis, and
   deterministic fake dependencies.

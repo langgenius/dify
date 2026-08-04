@@ -53,7 +53,7 @@ def _capacity_result(mode: BenchmarkMode, points: list[CapacityPoint]) -> Capaci
     return CapacityResult(
         mode=mode,
         matrix_complete=True,
-        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 1},
+        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 2},
         target=TargetIdentity(
             commit="abc",
             dirty=True,

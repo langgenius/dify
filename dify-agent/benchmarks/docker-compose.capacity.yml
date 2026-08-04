@@ -35,8 +35,8 @@ services:
   runtime:
     image: ${BENCH_RUNTIME_IMAGE:-dify-agent-runtime-benchmark-unused}
     command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--state-dir", "/state"]
-    cpus: 4.0
-    mem_limit: 2g
+    cpus: 2.0
+    mem_limit: 1g
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5004/healthz"]
       interval: 1s
@@ -56,7 +56,7 @@ services:
         "--port",
         "5050",
         "--workers",
-        "1",
+        "2",
         "--no-access-log",
       ]
     cpus: 2.0

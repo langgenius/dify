@@ -140,6 +140,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
 
 def render_capacity_markdown(result: CapacityResult) -> str:
     """Render one compact report without quotas, SLOs, or monetary estimates."""
+    capacity_unit = _agent_capacity_unit_label(result.agent_capacity_unit)
     lines = [
         f"# Dify Agent capacity: {result.mode}",
         "",
@@ -147,7 +148,7 @@ def render_capacity_markdown(result: CapacityResult) -> str:
         "",
         "## Environment",
         "",
-        "- Agent capacity unit: **2 vCPU / 2 GiB**, one worker",
+        f"- Agent capacity unit: **{capacity_unit}**",
         f"- Commit: `{result.target.commit}` ({'dirty worktree' if result.target.dirty else 'clean worktree'})",
         f"- Matrix complete: `{str(result.matrix_complete).lower()}`",
         f"- Docker: `{result.environment.docker_engine}` on `{result.environment.architecture}`",
@@ -200,7 +201,7 @@ def render_capacity_markdown(result: CapacityResult) -> str:
             "",
             "## Sizing inputs",
             "",
-            "- Agent: use the measured `runs/s`, `CPU-ms/run`, and memory peak for one 2 vCPU / 2 GiB unit.",
+            "- Agent: use the measured `runs/s`, `CPU-ms/run`, and memory peak for the capacity unit above.",
             "- Redis: multiply `commands/run` by the expected Run count, then compare with cluster headroom.",
             "- E2B: Template inputs provide vCPU/RAM, lifecycle execution time provides Run Hours, and lifecycle resources cross-check the Template when available.",
             "- Network: raw bytes remain in `result.json`; KB/run is observed container traffic, not cloud billable egress.",
@@ -209,6 +210,14 @@ def render_capacity_markdown(result: CapacityResult) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _agent_capacity_unit_label(capacity_unit: dict[str, float | int]) -> str:
+    cpu_cores = float(capacity_unit["cpu_cores"])
+    memory_gib = float(capacity_unit["memory_mib"]) / 1024
+    workers = int(capacity_unit["workers"])
+    worker_label = "worker" if workers == 1 else "workers"
+    return f"{cpu_cores:g} vCPU / {memory_gib:g} GiB, {workers} {worker_label}"
 
 
 def _mean(values: Sequence[float]) -> float | None:

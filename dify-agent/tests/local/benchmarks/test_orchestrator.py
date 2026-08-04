@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
 import subprocess
-from typing import Sequence
+from typing import Sequence, cast
 
 import pytest
+import yaml
 
 from benchmarks.capacity import CapacityMatrixPoint
 from benchmarks.orchestrator import (
@@ -26,6 +27,21 @@ from benchmarks.schemas import BlockResult, RedisSnapshot, RunOutcomeSummary
 
 
 _AGENT_IMAGE_ID = f"sha256:{'a' * 64}"
+
+
+def test_compose_uses_fixed_local_capacity_resources() -> None:
+    compose_path = Path(__file__).parents[3] / "benchmarks" / "docker-compose.capacity.yml"
+    compose = cast(dict[str, object], yaml.safe_load(compose_path.read_text()))
+    services = cast(dict[str, object], compose["services"])
+    runtime = cast(dict[str, object], services["runtime"])
+    agent = cast(dict[str, object], services["agent"])
+    agent_command = cast(list[str], agent["command"])
+
+    assert runtime["cpus"] == 2.0
+    assert runtime["mem_limit"] == "1g"
+    assert agent["cpus"] == 2.0
+    assert agent["mem_limit"] == "2g"
+    assert agent_command[agent_command.index("--workers") + 1] == "2"
 
 
 def test_local_e2b_requires_credentials_and_selected_concurrency_limit() -> None:

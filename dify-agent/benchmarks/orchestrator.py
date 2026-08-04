@@ -62,7 +62,7 @@ _RUNTIME_INPUTS = (
 )
 _RESOURCE_LIMITS = {
     "agent": "2 CPU/2 GiB",
-    "runtime": "4 CPU/2 GiB",
+    "runtime": "2 CPU/1 GiB",
     "redis": "2 CPU/512 MiB",
     "fake-deps": "2 CPU/512 MiB",
     "driver": "2 CPU/1 GiB",
@@ -168,7 +168,7 @@ def run_capacity(options: CapacityOptions) -> tuple[Path, bool]:
         harness_version=_HARNESS_VERSION,
         mode=options.mode,
         matrix_complete=full_matrix and len(points) == len(manifest.scenarios) * len(CONCURRENCY_LEVELS),
-        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 1},
+        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 2},
         target=target,
         environment=environment,
         points=points,
