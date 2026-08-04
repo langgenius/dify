@@ -718,6 +718,9 @@ services:
     environment:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      # Keep Agent file traffic on the internal API by default. A custom
+      # internal file URL is added to the Agent proxy's narrow file allowlist.
+      AGENT_SSRF_PROXY_FILE_URL: ${INTERNAL_FILES_URL:-${SERVER_CONSOLE_API_URL:-${FILES_URL:-}}}
     networks:
       # Needs to reach api and agent_backend as forward-proxy destinations.
       - default

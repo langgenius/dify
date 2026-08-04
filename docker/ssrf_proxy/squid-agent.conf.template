@@ -6,8 +6,8 @@
 
 include /etc/squid/dify_common.conf
 
-acl dst_agent_backend dstdomain agent_backend
-acl dst_dify_api dstdomain api
+acl dst_agent_backend dstdomain -n agent_backend
+acl dst_dify_api dstdomain -n api
 acl path_files urlpath_regex -i ^/files/
 acl path_agent_stub urlpath_regex -i ^/agent-stub/
 
@@ -17,5 +17,6 @@ http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
 http_access allow dst_agent_backend path_agent_stub
 http_access allow dst_dify_api path_files
+include /etc/squid/dify_agent_file_targets.conf
 http_access deny to_private_networks
 http_access allow all

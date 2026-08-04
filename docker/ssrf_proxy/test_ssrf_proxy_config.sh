@@ -36,7 +36,7 @@ http_code_for() {
       wget -S -O /dev/null -T 10 "$target_url" 2>&1 || true
   )"
 
-  printf '%s\n' "$output" | awk '$1 ~ /^HTTP\// { code = $2 } END { print code }'
+  printf '%s\n' "$output" | sed -nE 's/.*HTTP\/[0-9.]+ ([0-9]{3}).*/\1/p' | tail -n 1
 }
 
 direct_http_code_for() {
@@ -51,7 +51,7 @@ direct_http_code_for() {
       wget -S -O /dev/null -T 10 "$target_url" 2>&1 || true
   )"
 
-  printf '%s\n' "$output" | awk '$1 ~ /^HTTP\// { code = $2 } END { print code }'
+  printf '%s\n' "$output" | sed -nE 's/.*HTTP\/[0-9.]+ ([0-9]{3}).*/\1/p' | tail -n 1
 }
 
 assert_private_target_blocked() {
@@ -78,6 +78,33 @@ assert_public_target_allowed() {
     docker logs "$CONTAINER_NAME" >&2 || true
     exit 1
   fi
+}
+
+assert_https_tunnel_allowed() {
+  local proxy_url="$1"
+  local target_authority="$2"
+  local proxy_container="$3"
+  local logs
+
+  docker run \
+    --rm \
+    --network "$NETWORK_NAME" \
+    --entrypoint openssl \
+    "$IMAGE" \
+    s_client -proxy "${proxy_url#http://}" -connect "$target_authority" -brief \
+    >/dev/null 2>&1 || true
+
+  for _ in {1..20}; do
+    logs="$(docker logs "$proxy_container" 2>&1 || true)"
+    if [[ "$logs" == *"TCP_TUNNEL/200"* && "$logs" == *"CONNECT $target_authority"* ]]; then
+      return
+    fi
+    sleep 0.1
+  done
+
+  echo "Expected an allowed HTTPS tunnel to $target_authority." >&2
+  printf '%s\n' "$logs" >&2
+  exit 1
 }
 
 assert_sandbox_bridge_allowed() {
@@ -159,8 +186,9 @@ docker run \
   --name "$API_CONTAINER_NAME" \
   --network "$NETWORK_NAME" \
   --network-alias api \
+  --network-alias files.internal.test \
   "$CLIENT_IMAGE" \
-  sh -c "mkdir -p /www/files && echo file-ok > /www/files/test && echo denied > /www/index.html && httpd -f -p 5001 -h /www" \
+  sh -c "mkdir -p /www/files && echo file-ok > /www/files/test && echo denied > /www/index.html && httpd -p 5001 -h /www && httpd -f -p 443 -h /www" \
   >/dev/null
 
 # Mock agent_backend server: serves /agent-stub/* (200) and everything else (404).
@@ -183,6 +211,7 @@ docker run \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
+  --env AGENT_SSRF_PROXY_FILE_URL=https://files.internal.test \
   "$IMAGE" \
   -c "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" \
   >/dev/null
@@ -217,6 +246,18 @@ assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test"
 
 # api non-/files paths must be blocked.
 assert_private_target_blocked "$agent_proxy_url" "http://api:5001/index.html"
+
+# A configured private file domain must allow only /files/* over HTTP.
+assert_public_target_allowed "$agent_proxy_url" "http://files.internal.test:5001/files/test"
+assert_private_target_blocked "$agent_proxy_url" "http://files.internal.test:5001/index.html"
+
+# HTTPS is an opaque CONNECT tunnel, so the explicitly configured file host is
+# trusted as a whole. The mock server is plain HTTP; Squid's successful 200
+# CONNECT is enough to verify the proxy rule before the expected TLS failure.
+assert_https_tunnel_allowed \
+  "$agent_proxy_url" \
+  "files.internal.test:443" \
+  "$AGENT_PROXY_CONTAINER_NAME"
 
 # External internet must be allowed.
 if [[ "$RUN_PUBLIC_CHECK" == "true" ]]; then
