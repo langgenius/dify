@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Protocol
 
 import pytest
 
@@ -710,6 +711,45 @@ def test_positive_feedback_rate_uses_rated_messages_as_denominator() -> None:
     assert AgentObservabilityService._positive_feedback_rate(like_count=2, total_count=4) == 0.5
     assert AgentObservabilityService._positive_feedback_rate(like_count=0, total_count=1) == 0
     assert AgentObservabilityService._positive_feedback_rate(like_count=None, total_count=0) is None
+
+
+def test_list_message_feedbacks_groups_feedbacks_by_message() -> None:
+    feedbacks = [
+        SimpleNamespace(message_id="message-1"),
+        SimpleNamespace(message_id="message-1"),
+        SimpleNamespace(message_id="message-2"),
+    ]
+
+    class Compilable(Protocol):
+        def compile(self) -> object: ...
+
+    class FakeScalarResult:
+        def all(self) -> list[SimpleNamespace]:
+            return feedbacks
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.scalar_calls = 0
+
+        def scalars(self, stmt: Compilable) -> FakeScalarResult:
+            stmt.compile()
+            self.scalar_calls += 1
+            return FakeScalarResult()
+
+    session = FakeSession()
+    service = AgentObservabilityService(session)  # type: ignore[arg-type]
+
+    grouped_feedbacks = service._list_message_feedbacks(
+        app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+        messages=[SimpleNamespace(id="message-1"), SimpleNamespace(id="message-2")],  # type: ignore[list-item]
+    )
+
+    assert grouped_feedbacks == {
+        "message-1": feedbacks[:2],
+        "message-2": feedbacks[2:],
+    }
+    assert service._list_message_feedbacks(app=SimpleNamespace(id="app-1"), messages=[]) == {}  # type: ignore[arg-type]
+    assert session.scalar_calls == 1
 
 
 def test_list_conversation_feedback_rates_maps_user_and_admin_sources() -> None:
