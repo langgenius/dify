@@ -259,7 +259,7 @@ def init_app(app: DifyApp) -> Celery:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {
             "task": "schedule.workflow_schedule_task.poll_workflow_schedules",
-            "schedule": timedelta(minutes=dify_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL),
+            "schedule": crontab(minute=f"*/{dify_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL}"),
         }
     if dify_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK:
         imports.append("schedule.trigger_provider_refresh_task")
