@@ -43,7 +43,7 @@
   "skillManagement.detail.builder.restart": "Builder を再開始",
   "skillManagement.detail.builder.send": "メッセージを送信",
   "skillManagement.detail.builder.sendFailed": "Skill Builder が応答できませんでした。",
-  "skillManagement.detail.builder.thinking": "思考中 {{seconds}} 秒",
+  "skillManagement.detail.builder.thinking": "思考中",
   "skillManagement.detail.builder.title": "Skill Builder",
   "skillManagement.detail.builder.tryExample": "例を試す",
   "skillManagement.detail.builder.voice": "音声入力",

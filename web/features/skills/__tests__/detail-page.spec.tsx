@@ -17,6 +17,7 @@ const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlK
 
 const mocks = vi.hoisted(() => ({
   fetchSkillFileBlob: vi.fn(),
+  checkDraftFilesMutationFn: vi.fn(),
   publishSkillMutationFn: vi.fn(),
   restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
@@ -191,6 +192,11 @@ vi.mock('@/service/client', () => ({
               },
             },
             files: {
+              check: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.checkDraftFilesMutationFn }),
+                },
+              },
               patch: {
                 mutationOptions: () => ({ mutationFn: mocks.saveDraftFileMutationFn }),
               },
@@ -552,6 +558,11 @@ async function openRootCreateMenu(user: ReturnType<typeof userEvent.setup>) {
   await user.click(trigger)
 }
 
+async function confirmUploadReview() {
+  const uploadButton = await screen.findByRole('button', { name: /uploadFilesButton/ })
+  fireEvent.click(uploadButton)
+}
+
 async function openVersionRowActions(
   user: ReturnType<typeof userEvent.setup>,
   versionName: string,
@@ -704,6 +715,32 @@ describe('SkillDetailPage', () => {
     mocks.versionPatchMutationFn.mockResolvedValue({})
     mocks.versionDeleteMutationFn.mockResolvedValue({})
     mocks.sendSkillAssistMessage.mockResolvedValue(undefined)
+    mocks.checkDraftFilesMutationFn.mockImplementation(
+      async (input: {
+        body: {
+          files?: Array<{
+            filename: string
+            mime_type?: string | null
+            path?: string | null
+            size: number
+          }>
+        }
+      }) => ({
+        data: Object.fromEntries(
+          (input.body.files ?? []).map((file) => [
+            file.filename,
+            {
+              errors: [],
+              extension: file.filename.includes('.') ? `.${file.filename.split('.').at(-1)}` : '',
+              filename: file.filename,
+              mime_type: file.mime_type ?? 'application/octet-stream',
+              path: file.path ?? file.filename,
+              size: file.size,
+            },
+          ]),
+        ),
+      }),
+    )
     mocks.uploadSkillFile.mockResolvedValue({
       id: 'tool-file-1',
       name: 'guide.md',
@@ -726,6 +763,10 @@ describe('SkillDetailPage', () => {
     expect(header.querySelector('.i-ri-arrow-left-s-line')).toBeInTheDocument()
     expect(header.querySelector('.i-custom-vender-main-nav-app-home')).toBeInTheDocument()
     expect(header).toHaveTextContent('SKILLS')
+    const skillsLink = screen.getByRole('link', { name: 'SKILLS' })
+    expect(skillsLink).toHaveAttribute('href', '/skills')
+    expect(skillsLink).toHaveClass('shrink-0')
+    expect(skillsLink).not.toHaveClass('flex-1')
     expect(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.searchFiles',
@@ -779,7 +820,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
@@ -807,7 +848,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
@@ -865,7 +906,7 @@ describe('SkillDetailPage', () => {
         name: "common.tag.create 'BrandNew'",
       }),
     )
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
@@ -901,7 +942,7 @@ describe('SkillDetailPage', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     expect(screen.queryByText('Search')).not.toBeInTheDocument()
 
@@ -2357,11 +2398,13 @@ describe('SkillDetailPage', () => {
       await screen.findByText('skill.skillManagement.detail.publishReferencesTitle'),
     ).toBeInTheDocument()
     expect(await screen.findByText('Support Agent')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute('target', '_blank')
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
     const publishDialog = screen.getByRole('dialog', {
       name: 'skill.skillManagement.detail.publishReferencesTitle',
     })
+    expect(screen.getByTestId('skill-publish-bar')).not.toBeVisible()
     expect(screen.getByTestId('skill-publish-reference-list')).not.toHaveAttribute(
       'data-scrollable',
     )
@@ -3528,7 +3571,7 @@ describe('SkillDetailPage', () => {
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     await user.type(fileNameInput, 'notes.md')
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3556,7 +3599,7 @@ describe('SkillDetailPage', () => {
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
     await user.type(fileNameInput, 'tool.schema.json')
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -3636,7 +3679,7 @@ describe('SkillDetailPage', () => {
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
     const fileNameInput = await screen.findByPlaceholderText('File name')
 
-    await user.click(screen.getByRole('heading', { name: 'SKILLS' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
       expect(fileNameInput).not.toBeInTheDocument()
@@ -4426,6 +4469,7 @@ describe('SkillDetailPage', () => {
     expect(screen.getByLabelText('Upload to root folder')).toBeInTheDocument()
 
     fireEvent.drop(contextRegion, { dataTransfer })
+    await confirmUploadReview()
 
     await waitFor(() => {
       expect(mocks.uploadSkillFile).toHaveBeenCalledWith(
@@ -4445,6 +4489,85 @@ describe('SkillDetailPage', () => {
         }),
         expect.anything(),
       )
+    })
+  })
+
+  it('reviews backend file checks and applies keep-both, suggestion, and skip decisions', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          content: null,
+          hash: 'report-hash',
+          id: 'report-file',
+          kind: 'file',
+          mime_type: 'application/pdf',
+          path: 'report.pdf',
+          size: 3,
+          storage: 'tool_file',
+          tool_file_id: 'existing-report',
+        },
+      ],
+    })
+    mocks.checkDraftFilesMutationFn.mockResolvedValueOnce({
+      data: {
+        'my notes!.md': {
+          errors: [{ code: 'invalid_filename', message: 'filename is invalid' }],
+          extension: '.md',
+          filename: 'my notes!.md',
+          mime_type: 'text/markdown',
+          path: 'my notes!.md',
+          size: 5,
+        },
+        'report.abcd': {
+          errors: [{ code: 'invalid_file_extension', message: 'extension is invalid' }],
+          extension: '.abcd',
+          filename: 'report.abcd',
+          mime_type: 'application/octet-stream',
+          path: 'report.abcd',
+          size: 4,
+        },
+        'report.pdf': {
+          errors: [{ code: 'file_already_exists', message: 'file already exists' }],
+          extension: '.pdf',
+          filename: 'report.pdf',
+          mime_type: 'application/pdf',
+          path: 'report.pdf',
+          size: 3,
+        },
+      },
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+
+    const uploads = [
+      new File(['pdf'], 'report.pdf', { type: 'application/pdf' }),
+      new File(['notes'], 'my notes!.md', { type: 'text/markdown' }),
+      new File(['bad'], 'report.abcd'),
+    ]
+    fireEvent.drop(getFileTreeContextRegion(), {
+      dataTransfer: createDataTransfer(uploads).dataTransfer,
+    })
+
+    const initialUploadButton = await screen.findByRole('button', { name: /uploadFilesButton/ })
+    expect(initialUploadButton).toBeDisabled()
+    expect(screen.getByText(/uploadSkippedGroup/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /uploadKeepBoth/ }))
+    await user.click(screen.getByRole('button', { name: /uploadSuggestion/ }))
+    const resolvedUploadButton = screen.getByRole('button', { name: /uploadFilesButton/ })
+    expect(resolvedUploadButton).toBeEnabled()
+    await user.click(resolvedUploadButton)
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillFile).toHaveBeenCalledTimes(2)
+      expect(
+        mocks.saveDraftFileMutationFn.mock.calls.map(([request]) => request.body.path),
+      ).toEqual(expect.arrayContaining(['report-2.pdf', 'my-notes.md']))
     })
   })
 
@@ -4476,6 +4599,7 @@ describe('SkillDetailPage', () => {
     expect(screen.getByLabelText('Upload to references')).toBeInTheDocument()
 
     fireEvent.drop(folder.closest('li')!, { dataTransfer })
+    await confirmUploadReview()
 
     await waitFor(() => {
       expect(mocks.uploadSkillFile).toHaveBeenCalledWith(
@@ -4516,7 +4640,7 @@ describe('SkillDetailPage', () => {
       ],
     })
     mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
-    const abortSpy = vi.spyOn(XMLHttpRequest.prototype, 'abort')
+    const abortSpy = vi.spyOn(XMLHttpRequest.prototype, 'abort').mockImplementation(() => undefined)
     renderSkillDetailPage()
 
     const folder = await waitFor(() => getFileTreeItem('references'))
@@ -4524,6 +4648,7 @@ describe('SkillDetailPage', () => {
     fireEvent.drop(folder.closest('li')!, {
       dataTransfer: createDataTransfer([upload]).dataTransfer,
     })
+    await confirmUploadReview()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
@@ -4566,6 +4691,7 @@ describe('SkillDetailPage', () => {
     fireEvent.drop(folder.closest('li')!, {
       dataTransfer: createDataTransfer([upload]).dataTransfer,
     })
+    await confirmUploadReview()
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
@@ -4573,7 +4699,8 @@ describe('SkillDetailPage', () => {
       )
     })
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(screen.getByRole('button', { name: /viewUploadErrors/ }))
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.retry' })[0]!)
 
     await waitFor(() => {
       expect(mocks.uploadSkillFile).toHaveBeenCalledTimes(2)
@@ -4584,6 +4711,85 @@ describe('SkillDetailPage', () => {
             path: 'references/guide.md',
             tool_file_id: 'tool-file-retry',
           }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('offers replace, keep-both, and skip when a file appears during upload', async () => {
+    const user = userEvent.setup()
+    const initialDetail = createSkillDetail({
+      files: [
+        ...createSkillDetail().files!,
+        {
+          content: null,
+          hash: 'directory-hash',
+          id: 'directory-1',
+          kind: 'directory',
+          mime_type: null,
+          path: 'references',
+          size: 0,
+          storage: 'text',
+          tool_file_id: null,
+        },
+      ],
+    })
+    mocks.skillDetail = initialDetail
+    mocks.saveDraftFileMutationFn
+      .mockImplementationOnce(async () => {
+        mocks.skillDetail = createSkillDetail({
+          updated_at: initialDetail.updated_at + 1,
+          files: [
+            ...initialDetail.files!,
+            {
+              content: null,
+              hash: 'late-guide-hash',
+              id: 'late-guide',
+              kind: 'file',
+              mime_type: 'text/markdown',
+              path: 'references/guide.md',
+              size: 5,
+              storage: 'tool_file',
+              tool_file_id: 'late-guide-tool-file',
+            },
+          ],
+        })
+        throw new Response(
+          JSON.stringify({
+            code: 'skill_conflict',
+            message: 'skill has been modified by another user',
+          }),
+          { status: 409 },
+        )
+      })
+      .mockImplementationOnce(async () => {
+        mocks.skillDetail = createSkillDetail({ updated_at: initialDetail.updated_at + 2 })
+        return mocks.skillDetail
+      })
+    renderSkillDetailPage()
+
+    const folder = await waitFor(() => getFileTreeItem('references'))
+    const upload = new File(['guide'], 'guide.md', { type: 'text/markdown' })
+    fireEvent.drop(folder.closest('li')!, {
+      dataTransfer: createDataTransfer([upload]).dataTransfer,
+    })
+    await confirmUploadReview()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /viewUploadErrors/ })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /viewUploadErrors/ }))
+    expect(screen.getByText(/uploadLateConflict/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /uploadReplace/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /uploadSkip/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /uploadKeepBoth/ }))
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillFile).toHaveBeenCalledTimes(2)
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({ path: 'references/guide-2.md' }),
         }),
         expect.anything(),
       )

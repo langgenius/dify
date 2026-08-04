@@ -499,6 +499,10 @@ describe('SkillsPage', () => {
       ),
     ).toBeInTheDocument()
     expect(await within(dialog).findByText('Support Agent')).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: /Support Agent/ })).toHaveAttribute(
+      'target',
+      '_blank',
+    )
     expect(within(dialog).getByTestId('skill-delete-reference-list')).toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))

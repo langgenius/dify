@@ -470,16 +470,13 @@ export function SkillPublishConfirmPanel({
     <div
       role="dialog"
       aria-labelledby="skill-publish-confirm-title"
-      className="pointer-events-auto absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5"
+      className="pointer-events-auto absolute right-0 bottom-[calc(100%+10px)] z-50 flex w-96 max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5"
     >
-      <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
-        <h2
-          id="skill-publish-confirm-title"
-          className="pr-8 pl-1 system-xl-semibold text-text-primary"
-        >
+      <div className="px-4 pt-4 pb-2">
+        <h2 id="skill-publish-confirm-title" className="system-xl-semibold text-text-primary">
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
-        <p className="px-1 system-xs-regular text-util-colors-warning-warning-600">
+        <p className="mt-1 system-xs-regular text-util-colors-warning-warning-600">
           {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
             count: referenceCount,
           })}
@@ -532,6 +529,8 @@ function SkillReferenceItem({
     return (
       <Link
         href={`/agents/${reference.agent_id}/configure`}
+        target="_blank"
+        rel="noreferrer"
         className={cn(
           'flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           compact

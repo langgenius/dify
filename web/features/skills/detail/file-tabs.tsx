@@ -92,7 +92,7 @@ export function FileTabs({
           })}
         </div>
       </div>
-      {endAction && <div className="flex shrink-0 items-center px-2">{endAction}</div>}
+      {endAction ? <div className="flex shrink-0 items-center px-2">{endAction}</div> : null}
     </div>
   )
 }
