@@ -148,7 +148,7 @@ def test_report_has_no_quota_or_binding_outputs() -> None:
     result = CapacityResult(
         mode="local-runtime",
         matrix_complete=False,
-        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 1},
+        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 2},
         target=TargetIdentity(
             commit="abc",
             dirty=True,
@@ -177,6 +177,7 @@ def test_report_has_no_quota_or_binding_outputs() -> None:
     report = render_capacity_markdown(result)
 
     assert "2 vCPU / 2 GiB" in report
+    assert "2 workers" in report
     assert "CPU-ms/run" in report
     assert "Memory peak MiB" in report
     assert "quota recommendation" not in report.lower()
