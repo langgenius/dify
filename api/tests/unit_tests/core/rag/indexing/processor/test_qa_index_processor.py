@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
-from sqlalchemy.orm import Session
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from core.entities.knowledge_entities import PreviewDetail
