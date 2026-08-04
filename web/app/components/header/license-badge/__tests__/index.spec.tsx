@@ -1,8 +1,8 @@
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
-import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
@@ -84,10 +84,7 @@ describe('LicenseBadge', () => {
   })
 
   it('should keep rendering the Enterprise badge for an active license when the expiry notice is disabled', () => {
-    renderLicenseBadge(
-      { status: LicenseStatus.ACTIVE },
-      { enable_license_expiry_notice: false },
-    )
+    renderLicenseBadge({ status: LicenseStatus.ACTIVE }, { enable_license_expiry_notice: false })
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 })

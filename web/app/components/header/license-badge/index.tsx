@@ -3,9 +3,9 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import PremiumBadge from '../../base/premium-badge'
 
 function LicenseBadge() {
