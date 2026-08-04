@@ -343,7 +343,7 @@ describe('ModelParameterModal', () => {
       expect(screen.queryByTestId('trigger')).not.toBeInTheDocument()
     })
 
-    it('should call renderTrigger with correct props', () => {
+    it('should call renderTrigger with the actual popover state', async () => {
       // Arrange
       const renderTrigger = vi.fn().mockReturnValue(<div>Custom</div>)
       const value = { provider: 'openai', model: 'gpt-4' }
@@ -352,7 +352,8 @@ describe('ModelParameterModal', () => {
       // Act
       render(<ModelParameterModal {...props} />)
 
-      // Assert
+      const trigger = screen.getByText('Custom').closest('button')
+      expect(trigger).not.toHaveAttribute('data-popup-open')
       expect(renderTrigger).toHaveBeenCalledWith(
         expect.objectContaining({
           open: false,
@@ -360,6 +361,19 @@ describe('ModelParameterModal', () => {
           modelId: 'gpt-4',
         }),
       )
+
+      fireEvent.click(screen.getByText('Custom'))
+
+      await waitFor(() => {
+        expect(renderTrigger).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            open: true,
+            providerName: 'openai',
+            modelId: 'gpt-4',
+          }),
+        )
+      })
+      expect(trigger).toHaveAttribute('data-popup-open', '')
     })
 
     it('should not render portal content when closed', () => {

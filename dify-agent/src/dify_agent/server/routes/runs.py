@@ -76,7 +76,7 @@ def create_runs_router(
         request: CancelRunRequest,
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CancelRunResponse:
-        """Cancel a process-local run and publish its terminal event/status."""
+        """Persist cancellation; the owner process observes it and stops its runner."""
         try:
             return await scheduler.cancel_run(run_id, request)
         except RunNotFoundError as exc:

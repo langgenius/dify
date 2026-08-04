@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview запускает готового агента так, как его увидят пользователи, с чистыми ответами и функциями чата.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Предпросмотр агента",
   "agentDetail.configure.skills.add": "Добавить навык",
-  "agentDetail.configure.skills.detail.contentRegion": "Содержимое деталей навыка",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} ФАЙЛОВ",
   "agentDetail.configure.skills.detail.files": "Файлы",
   "agentDetail.configure.skills.empty.description": "Навыки дают агенту переиспользуемую экспертизу, которую он может вызывать в работе",

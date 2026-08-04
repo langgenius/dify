@@ -46,6 +46,11 @@ if TYPE_CHECKING:
     type MetadataFilter = DictFilter | common_types.Filter
 
 
+# Bounded connect/read timeout so a slow or hanging TiDB Cloud API call
+# cannot block a cluster provisioning or password rotation forever.
+_TIDB_CLOUD_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+
+
 class TidbOnQdrantConfig(BaseModel):
     endpoint: str
     api_key: str | None = None
@@ -551,6 +556,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             f"{tidb_config.api_url}/clusters",
             json=cluster_data,
             auth=DigestAuth(tidb_config.public_key, tidb_config.private_key),
+            timeout=_TIDB_CLOUD_REQUEST_TIMEOUT,
         )
 
         if response.status_code == 200:
@@ -574,6 +580,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             f"{tidb_config.api_url}/clusters/{cluster_id}/password",
             json=body,
             auth=DigestAuth(tidb_config.public_key, tidb_config.private_key),
+            timeout=_TIDB_CLOUD_REQUEST_TIMEOUT,
         )
 
         if response.status_code == 200:

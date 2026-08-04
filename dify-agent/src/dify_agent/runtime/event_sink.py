@@ -1,16 +1,15 @@
 """Event sink contracts used by the runner and storage adapters.
 
-The runner only needs append-only event writes and status transitions, so tests
-can use ``InMemoryRunEventSink`` without Redis. Production storage implements the
-same protocol with Redis streams in ``dify_agent.storage.redis_run_store``. The
-terminal success helper writes either the final JSON-safe output or one deferred
-tool request together with the resumable session snapshot in a single event so
-consumers can stop at ``run_succeeded`` without correlating separate payload
-events.
+Non-terminal events remain append-only. Terminal events use ``finalize_run`` so
+the event and matching run status are committed as one compare-and-set
+transition. Tests can use ``InMemoryRunEventSink`` without Redis; production
+storage implements the same contract with Redis streams in
+``dify_agent.storage.redis_run_store``.
 """
 
 from collections import defaultdict
-from typing import Protocol, cast
+from dataclasses import dataclass
+from typing import Protocol, TypeAlias, cast
 
 from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
@@ -35,17 +34,28 @@ from dify_agent.protocol.schemas import (
 
 
 _UNSET = object()
+TerminalRunEvent: TypeAlias = RunSucceededEvent | RunFailedEvent | RunCancelledEvent
+NonTerminalRunEvent: TypeAlias = RunStartedEvent | PydanticAIStreamRunEvent
+
+
+@dataclass(frozen=True, slots=True)
+class RunFinalizationResult:
+    """Outcome of attempting the only terminal transition for one run."""
+
+    applied: bool
+    status: RunStatus
+    event_id: str | None = None
 
 
 class RunEventSink(Protocol):
     """Boundary used by runtime code to publish observable run progress."""
 
-    async def append_event(self, event: RunEvent) -> str:
-        """Persist ``event`` and return its cursor id."""
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        """Persist a non-terminal event and return its cursor id."""
         ...
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
-        """Persist the current run status."""
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        """Atomically persist the first terminal event and matching status."""
         ...
 
 
@@ -61,25 +71,44 @@ class InMemoryRunEventSink:
         self.statuses = {}
         self.errors = {}
 
-    async def append_event(self, event: RunEvent) -> str:
-        """Store an event and assign a monotonic per-run cursor."""
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        """Store a non-terminal event and assign a monotonic per-run cursor."""
         event_id = str(len(self.events[event.run_id]) + 1)
         stored = event.model_copy(update={"id": event_id})
         self.events[event.run_id].append(stored)
         return event_id
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
-        """Record the latest status; timestamps are owned by run stores."""
-        self.statuses[run_id] = status
-        self.errors[run_id] = error
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        """Store only the first terminal event and its derived status."""
+        current_status = self.statuses.get(event.run_id, "running")
+        if current_status != "running":
+            return RunFinalizationResult(applied=False, status=current_status)
+
+        status, error = terminal_event_status_and_error(event)
+        event_id = str(len(self.events[event.run_id]) + 1)
+        self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
+        self.statuses[event.run_id] = status
+        self.errors[event.run_id] = error
+        return RunFinalizationResult(applied=True, status=status, event_id=event_id)
+
+
+def terminal_event_status_and_error(event: TerminalRunEvent) -> tuple[RunStatus, str | None]:
+    """Derive the persisted terminal status fields from one typed event."""
+    match event:
+        case RunSucceededEvent():
+            return "succeeded", None
+        case RunFailedEvent():
+            return "failed", event.data.error
+        case RunCancelledEvent():
+            return "cancelled", event.data.message or event.data.reason
 
 
 async def emit_run_event(
     sink: RunEventSink,
     *,
-    event: RunEvent,
+    event: NonTerminalRunEvent,
 ) -> str:
-    """Append an already typed public run event."""
+    """Append an already typed non-terminal public run event."""
     return await sink.append_event(event)
 
 
@@ -118,8 +147,8 @@ async def emit_run_succeeded(
     deferred_tool_call: DeferredToolCallPayload | object = _UNSET,
     session_snapshot: CompositorSessionSnapshot,
     usage: AgentRunUsage | None = None,
-) -> str:
-    """Emit the terminal success event with output or deferred continuation.
+) -> RunFinalizationResult:
+    """Finalize a run as succeeded with output or deferred continuation.
 
     Callers must activate exactly one result branch. ``_UNSET`` is used instead
     of ``None`` to preserve the distinction between an omitted inactive branch
@@ -137,9 +166,8 @@ async def emit_run_succeeded(
     if usage is not None:
         data["usage"] = usage
 
-    return await emit_run_event(
-        sink,
-        event=RunSucceededEvent(
+    return await sink.finalize_run(
+        RunSucceededEvent(
             run_id=run_id,
             data=RunSucceededEventData.model_validate(data),
             created_at=utc_now(),
@@ -153,11 +181,10 @@ async def emit_run_failed(
     run_id: str,
     error: str,
     reason: str | None = None,
-) -> str:
-    """Emit the terminal failure lifecycle event."""
-    return await emit_run_event(
-        sink,
-        event=RunFailedEvent(run_id=run_id, data=RunFailedEventData(error=error, reason=reason), created_at=utc_now()),
+) -> RunFinalizationResult:
+    """Finalize a run with a failed terminal event."""
+    return await sink.finalize_run(
+        RunFailedEvent(run_id=run_id, data=RunFailedEventData(error=error, reason=reason), created_at=utc_now()),
     )
 
 
@@ -167,11 +194,10 @@ async def emit_run_cancelled(
     run_id: str,
     reason: str | None = None,
     message: str | None = None,
-) -> str:
-    """Emit the terminal cancellation lifecycle event."""
-    return await emit_run_event(
-        sink,
-        event=RunCancelledEvent(
+) -> RunFinalizationResult:
+    """Finalize a run with a cancelled terminal event."""
+    return await sink.finalize_run(
+        RunCancelledEvent(
             run_id=run_id,
             data=RunCancelledEventData(reason=reason, message=message),
             created_at=utc_now(),
@@ -181,11 +207,15 @@ async def emit_run_cancelled(
 
 __all__ = [
     "InMemoryRunEventSink",
+    "NonTerminalRunEvent",
     "RunEventSink",
+    "RunFinalizationResult",
+    "TerminalRunEvent",
     "emit_pydantic_ai_event",
     "emit_run_cancelled",
     "emit_run_event",
     "emit_run_failed",
     "emit_run_started",
     "emit_run_succeeded",
+    "terminal_event_status_and_error",
 ]
