@@ -2,10 +2,11 @@ name: CLI Edge Publish
 
 on:
   push:
-    branches: [main]
+    branches: [main, deploy/konwledge]
     paths:
       - 'cli/**'
       - 'packages/contracts/generated/api/openapi/**'
+      - '.github/workflows/cli-edge.yml'
   workflow_dispatch:
 
 concurrency:
