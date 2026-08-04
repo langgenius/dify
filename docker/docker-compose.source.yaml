@@ -1,0 +1,36 @@
+services:
+  api:
+    image: ""
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+  api_websocket:
+    image: ""
+    build:
+      context: ..
+      dockerfile: api/Dockerfile      
+  worker:
+    image: ""
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+  worker_beat:
+    image: ""
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+  web:
+    image: ""
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+  agent_backend:
+    image: ""
+    build:
+      context: ..
+      dockerfile: dify-agent/Dockerfile
+  local_sandbox:
+    image: ""
+    build:
+      context: ../dify-agent-runtime
+      dockerfile: docker/Dockerfile

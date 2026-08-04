@@ -31,6 +31,10 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
    cp .env.example .env
    docker compose up -d
    ```
+   - **Building from Source**: To build images from local source instead of pulling the published images (e.g. when developing against uncommitted local changes), add `-f docker-compose.source.yaml` and, if you want Compose to (re)build the images, `--build`:
+     ```bash
+     docker compose -f docker-compose.yaml -f docker-compose.source.yaml up -d --build
+     ```
 
 4. **SSL Certificate Setup**:
    - Refer to `docker/certbot/README.md` to set up SSL certificates using Certbot.
