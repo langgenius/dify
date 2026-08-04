@@ -35,13 +35,17 @@ def test_compose_uses_fixed_local_capacity_resources() -> None:
     services = cast(dict[str, object], compose["services"])
     runtime = cast(dict[str, object], services["runtime"])
     agent = cast(dict[str, object], services["agent"])
+    driver = cast(dict[str, object], services["driver"])
     agent_command = cast(list[str], agent["command"])
+    driver_environment = cast(dict[str, str], driver["environment"])
 
     assert runtime["cpus"] == 2.0
     assert runtime["mem_limit"] == "1g"
     assert agent["cpus"] == 2.0
     assert agent["mem_limit"] == "2g"
     assert agent_command[agent_command.index("--workers") + 1] == "2"
+    assert "BENCH_MINIMUM_MEASUREMENT_RUNS" in driver_environment
+    assert "BENCH_MAXIMUM_MEASUREMENT_SECONDS" in driver_environment
 
 
 def test_local_e2b_requires_credentials_and_selected_concurrency_limit() -> None:
@@ -136,9 +140,9 @@ def test_driver_timeout_covers_locust_drain_and_resume_setup() -> None:
     resume = basic.model_copy(update={"scenario": manifest.get("resume")})
     e2b_resume = resume.model_copy(update={"mode": "local-e2b"})
 
-    assert _driver_timeout_seconds(basic) == 675
-    assert _driver_timeout_seconds(resume) == 1095
-    assert _driver_timeout_seconds(e2b_resume) == 885
+    assert _driver_timeout_seconds(basic) == 975
+    assert _driver_timeout_seconds(resume) == 1395
+    assert _driver_timeout_seconds(e2b_resume) == 1185
 
 
 def test_local_e2b_never_keeps_failed_compose_project() -> None:

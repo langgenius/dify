@@ -31,9 +31,13 @@ make -C dify-agent bench-local-e2b
 
 Both commands run `basic`, `shell`, `resume`, `config`, and a 16 MiB `file`
 roundtrip at concurrency 1, 10, and 20. Each point warms up for 15 seconds,
-then admits Runs during a fixed 60-second measurement window. The driver waits
-for already admitted Runs to finish. Sample count is reported but is not a
-validity gate.
+then admits Runs until the measurement has lasted at least 60 seconds and
+produced at least 100 attempted Runs. Measurement admission is capped at 360
+seconds, after which a sample shortfall invalidates the point. The driver waits
+for already admitted Runs to finish. Capacity failures use a 99% success target;
+dependency ledger, SSE replay, payload integrity, lifecycle evidence, and
+cleanup remain strict correctness requirements where any failure invalidates
+the point.
 
 The Config workload pulls three Skills and ten Files through the real Agent
 Stub HTTP contract, then hashes every run-unique materialized Workspace file

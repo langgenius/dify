@@ -56,6 +56,37 @@ def test_phase_request_requires_exactly_one_limit(tmp_path: Path) -> None:
         raise AssertionError("phase request without a limit was accepted")
 
 
+def test_observation_target_requires_a_bounded_duration_phase(tmp_path: Path) -> None:
+    common = {
+        "mode": "local-runtime",
+        "phase": "measurement",
+        "agent_url": "http://agent",
+        "fake_deps_url": "http://fake",
+        "scenario_id": "basic",
+        "block_id": "block",
+        "contexts_path": tmp_path / "contexts.json",
+        "observations_path": tmp_path / "observations.jsonl",
+        "active_runs_path": tmp_path / "active-runs.json",
+        "stats_path": tmp_path / "stats.json",
+        "result_path": tmp_path / "result.json",
+        "sequence_stride": 1,
+        "duration_seconds": 60,
+        "minimum_observations": 100,
+        "maximum_duration_seconds": 360,
+    }
+
+    request = LoadPhaseRequest.model_validate(common)
+
+    assert request.minimum_observations == 100
+    assert request.maximum_duration_seconds == 360
+    try:
+        LoadPhaseRequest.model_validate({**common, "maximum_duration_seconds": 30})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("observation target accepted a maximum shorter than its minimum duration")
+
+
 def test_child_environment_excludes_e2b_secrets(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setenv("BENCH_E2B_API_KEY", "bench-secret")
     monkeypatch.setenv("DIFY_AGENT_E2B_API_KEY", "agent-secret")
@@ -243,6 +274,102 @@ def test_phase_deadline_stops_admission_but_drains_active_run(tmp_path: Path) ->
     assert phase.drain_seconds > 0
     assert not phase.timed_out
     assert phase.fatal_errors == []
+
+
+def test_measurement_continues_until_minimum_observation_target(tmp_path: Path) -> None:
+    _SseHandler.run_count = 0
+    _SseHandler.sse_delay_seconds = 0.03
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _SseHandler)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    origin = f"http://127.0.0.1:{server.server_port}"
+    settings = CapacityDriverSettings(
+        mode="local-runtime",
+        agent_url=origin,
+        runtime_url=origin,
+        fake_deps_url=origin,
+        redis_url="redis://unused",
+        redis_prefix="prefix",
+        results_dir=tmp_path,
+        scenario_id="basic",
+        block_id="block",
+        concurrency=1,
+        warmup_seconds=0,
+        measurement_seconds=1,
+    )
+
+    async def exercise() -> tuple[LoadPhaseResult, list[CapacityObservation]]:
+        return await _execute_load_phase(
+            settings=settings,
+            contexts=[WorkerContext(worker_index=0)],
+            phase="measurement",
+            private_dir=tmp_path / "private",
+            duration_seconds=0.01,
+            minimum_observations=3,
+            maximum_duration_seconds=1,
+            stats_path=tmp_path / "stats.json",
+        )
+
+    (tmp_path / "private").mkdir()
+    try:
+        phase, observations = asyncio.run(exercise())
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=5)
+
+    assert len(observations) == 3
+    assert phase.minimum_observations == 3
+    assert phase.minimum_observations_met
+    assert phase.elapsed_seconds >= 0.09
+    assert phase.fatal_errors == []
+
+
+def test_measurement_reports_target_shortfall_at_maximum_duration(tmp_path: Path) -> None:
+    _SseHandler.run_count = 0
+    _SseHandler.sse_delay_seconds = 0.03
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _SseHandler)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    origin = f"http://127.0.0.1:{server.server_port}"
+    settings = CapacityDriverSettings(
+        mode="local-runtime",
+        agent_url=origin,
+        runtime_url=origin,
+        fake_deps_url=origin,
+        redis_url="redis://unused",
+        redis_prefix="prefix",
+        results_dir=tmp_path,
+        scenario_id="basic",
+        block_id="block",
+        concurrency=1,
+        warmup_seconds=0,
+        measurement_seconds=1,
+    )
+
+    async def exercise() -> tuple[LoadPhaseResult, list[CapacityObservation]]:
+        return await _execute_load_phase(
+            settings=settings,
+            contexts=[WorkerContext(worker_index=0)],
+            phase="measurement",
+            private_dir=tmp_path / "private",
+            duration_seconds=0.01,
+            minimum_observations=10,
+            maximum_duration_seconds=0.08,
+            stats_path=tmp_path / "stats.json",
+        )
+
+    (tmp_path / "private").mkdir()
+    try:
+        phase, observations = asyncio.run(exercise())
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=5)
+
+    assert len(observations) < 10
+    assert not phase.minimum_observations_met
+    assert any("minimum is 10" in error for error in phase.fatal_errors)
 
 
 def test_on_start_failure_is_reported_as_fatal(tmp_path: Path) -> None:
