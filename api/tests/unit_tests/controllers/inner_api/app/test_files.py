@@ -121,9 +121,7 @@ def test_app_deploy_session_identity_separates_subject_types() -> None:
 def test_app_deploy_session_identity_separates_environments() -> None:
     assert module._session_identity(
         environment_id="environment-1", subject_type="anonymous", subject_id="subject-1"
-    ) != module._session_identity(
-        environment_id="environment-2", subject_type="anonymous", subject_id="subject-1"
-    )
+    ) != module._session_identity(environment_id="environment-2", subject_type="anonymous", subject_id="subject-1")
 
 
 def test_resolve_preserves_order_and_reuses_signed_urls(app: Flask) -> None:
