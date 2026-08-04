@@ -4,11 +4,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
 import { ApiSecretKeyButton } from './api-secret-key-button'
+import { getAppApiReferencePath } from './utils'
 
 type EnvironmentServiceApiCardProps = {
   appId: string
@@ -24,7 +27,11 @@ export function EnvironmentServiceApiCard({
   highlighted,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const queryClient = useQueryClient()
+  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const apiReferencePath = appMode ? getAppApiReferencePath(appMode) : undefined
+  const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined
   const params = {
     app_id: appId,
     environment_id: environmentId,
@@ -88,9 +95,15 @@ export function EnvironmentServiceApiCard({
           />
           <Button
             variant="secondary"
-            disabled={!apiQuery.isSuccess}
+            disabled={!apiQuery.isSuccess || !apiReferenceUrl}
             nativeButton={false}
-            render={<Link href={`/app/${appId}/develop`} />}
+            render={
+              apiReferenceUrl ? (
+                <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer" />
+              ) : (
+                <span />
+              )
+            }
             className="flex items-center gap-1"
           >
             <span aria-hidden className="i-ri-book-open-line size-4" />

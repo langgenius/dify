@@ -1,6 +1,7 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
@@ -8,6 +9,22 @@ import { basePath } from '@/utils/var'
 
 export type AccessPointAppInfo = AppDetailResponse & Partial<AppSSO>
 export type PublishedWorkflow = FetchWorkflowDraftResponse | null | undefined
+
+type AppRouteMode = Exclude<AppModeEnum, 'agent'>
+
+const APP_API_REFERENCE_PATHS: Record<AppRouteMode, DocPathWithoutLang> = {
+  'advanced-chat': '/api-reference/guides/chatflow',
+  'agent-chat': '/api-reference/guides/chat',
+  chat: '/api-reference/guides/chat',
+  completion: '/api-reference/guides/completion',
+  workflow: '/api-reference/guides/workflow',
+}
+
+export function getAppApiReferencePath(appMode: AppModeEnum) {
+  if (appMode === 'agent') return undefined
+
+  return APP_API_REFERENCE_PATHS[appMode]
+}
 
 export function getPublishedWorkflowState(
   appInfo: AccessPointAppInfo,

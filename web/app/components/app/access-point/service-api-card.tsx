@@ -3,11 +3,12 @@
 import type { AccessPointAppInfo } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
 import { ApiSecretKeyButton } from './api-secret-key-button'
-import { getBuiltInAccessUrls } from './utils'
+import { getAppApiReferencePath, getBuiltInAccessUrls } from './utils'
 
 type ServiceApiAccessPointCardProps = {
   appInfo: AccessPointAppInfo
@@ -25,7 +26,10 @@ export function ServiceApiAccessPointCard({
   onChangeStatus,
 }: ServiceApiAccessPointCardProps) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { api: apiUrl } = getBuiltInAccessUrls(appInfo)
+  const apiReferencePath = getAppApiReferencePath(appInfo.mode)
+  const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined
   const running = availability === 'available' && appInfo.enable_api
   const status = availability !== 'available' ? 'unavailable' : running ? 'inService' : 'disabled'
   const statusLabel =
@@ -53,8 +57,15 @@ export function ServiceApiAccessPointCard({
           <ApiSecretKeyButton appId={appInfo.id} canManage={canEdit} disabled={!running} />
           <Button
             variant="secondary"
-            disabled={availability !== 'available'}
-            render={<Link href={`/app/${appInfo.id}/develop`} />}
+            disabled={availability !== 'available' || !apiReferenceUrl}
+            nativeButton={false}
+            render={
+              apiReferenceUrl ? (
+                <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer" />
+              ) : (
+                <span />
+              )
+            }
             className="flex items-center gap-1"
           >
             <span aria-hidden className="i-ri-book-open-line size-4" />

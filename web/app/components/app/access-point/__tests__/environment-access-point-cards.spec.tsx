@@ -91,6 +91,10 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
+}))
+
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -375,10 +379,13 @@ describe('environment access point cards', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toHaveAttribute(
+    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
+    expect(apiReferenceLink).toHaveAttribute(
       'href',
-      '/app/app-1/develop',
+      'https://docs.example.test/en/api-reference/guides/workflow',
     )
+    expect(apiReferenceLink).toHaveAttribute('target', '_blank')
+    expect(apiReferenceLink).toHaveAttribute('rel', 'noopener noreferrer')
 
     await user.click(screen.getByRole('switch'))
 
