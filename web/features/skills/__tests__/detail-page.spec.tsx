@@ -2416,6 +2416,9 @@ describe('SkillDetailPage', () => {
         name: 'skill.skillManagement.detail.publishReferencesTitle',
       }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByText('skill.skillManagement.detail.publishReferencesDescription:{"count":1}'),
+    ).toBeInTheDocument()
     expect(await screen.findByText('Stale Count Agent')).toBeInTheDocument()
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
   })
