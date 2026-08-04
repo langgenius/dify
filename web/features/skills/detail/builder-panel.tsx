@@ -883,7 +883,7 @@ export function SkillBuilderPanel({
                     >
                       <span
                         aria-hidden
-                        className="i-ri-attachment-2 size-3.5 shrink-0 text-text-tertiary"
+                        className="i-ri-attachment-line size-3.5 shrink-0 text-text-tertiary"
                       />
                       <span className="min-w-0 truncate">{attachment.name}</span>
                       <button
@@ -942,7 +942,7 @@ export function SkillBuilderPanel({
                         className={cn(
                           isUploadingAttachment
                             ? 'i-ri-loader-4-line animate-spin'
-                            : 'i-ri-attachment-2',
+                            : 'i-ri-attachment-line',
                           'size-4',
                         )}
                       />
