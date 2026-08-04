@@ -10,8 +10,10 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom, UserFrom
 from core.moderation.base import ModerationError
 from core.workflow.node_runtime import DIFY_BEFORE_LLM_INVOKE_KEY
+from graphon.file import FileUploadConfig, ImageConfig
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, UserPromptMessage
 from models.model import App, AppMode, Message
+from services.workflow.workflow_converter import WorkflowGraph
 
 
 def _entity() -> CompletionAppGenerateEntity:
@@ -42,7 +44,10 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch: pytest.Monk
     entity = _entity()
     message = cast(Message, SimpleNamespace(id="message", conversation_id="conv"))
     queue_manager = MagicMock()
-    graph_config = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
+    graph_config: WorkflowGraph = {
+        "nodes": [{"id": "start", "position": None, "data": {"type": "start"}}],
+        "edges": [],
+    }
     build_runtime_workflow = MagicMock(return_value=graph_config)
     graph = MagicMock()
     adapter = MagicMock()
@@ -199,9 +204,7 @@ def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
     runner = CompletionWorkflowRunner()
     app_record = cast(App, SimpleNamespace(id="app", tenant_id="tenant"))
     entity = _entity()
-    entity.file_upload_config = SimpleNamespace(
-        image_config=SimpleNamespace(detail=ImagePromptMessageContent.DETAIL.HIGH)
-    )
+    entity.file_upload_config = FileUploadConfig(image_config=ImageConfig(detail=ImagePromptMessageContent.DETAIL.HIGH))
     message = cast(Message, SimpleNamespace(id="message"))
     runner.organize_prompt_messages = MagicMock(return_value=(["prompt"], None))
     runner.moderation_for_inputs = MagicMock(return_value=(None, {"name": "Grace"}, "moderated query"))

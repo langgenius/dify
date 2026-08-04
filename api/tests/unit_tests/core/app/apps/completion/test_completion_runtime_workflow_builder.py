@@ -6,13 +6,13 @@ import pytest
 
 from core.app.apps.completion.runtime_workflow_builder import build_runtime_completion_workflow
 from models.model import App, AppMode
-from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow.workflow_converter import WorkflowConverter, WorkflowGraph
 
 
 def test_builder_returns_runtime_graph_without_persisting_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = cast(App, SimpleNamespace(mode=AppMode.COMPLETION))
     app_config = MagicMock()
-    graph = {"nodes": [{"id": "start"}], "edges": []}
+    graph: WorkflowGraph = {"nodes": [{"id": "start", "position": None, "data": {}}], "edges": []}
     build_graph = MagicMock(return_value=(graph, {}))
     monkeypatch.setattr(WorkflowConverter, "build_graph_from_app_config", build_graph)
     session = MagicMock()
