@@ -17,6 +17,7 @@ from models.dataset import (
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     ExternalKnowledgeApiSetting,
@@ -300,6 +301,12 @@ class ExternalDatasetService:
         db.session.add(external_knowledge_binding)
 
         db.session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            user_id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
 
         return dataset
 
