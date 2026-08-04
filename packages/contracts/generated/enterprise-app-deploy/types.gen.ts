@@ -7,7 +7,6 @@ export type ClientOptions = {
 export const EnvironmentStatus = {
   ENVIRONMENT_STATUS_UNSPECIFIED: 'ENVIRONMENT_STATUS_UNSPECIFIED',
   ENVIRONMENT_STATUS_PENDING: 'ENVIRONMENT_STATUS_PENDING',
-  ENVIRONMENT_STATUS_BOOTSTRAPPING: 'ENVIRONMENT_STATUS_BOOTSTRAPPING',
   ENVIRONMENT_STATUS_READY: 'ENVIRONMENT_STATUS_READY',
   ENVIRONMENT_STATUS_FAILED: 'ENVIRONMENT_STATUS_FAILED',
   ENVIRONMENT_STATUS_DELETING: 'ENVIRONMENT_STATUS_DELETING',
@@ -52,6 +51,60 @@ export const DeploymentOperationType = {
 export type DeploymentOperationType =
   (typeof DeploymentOperationType)[keyof typeof DeploymentOperationType]
 
+export const DeploymentOperationOutcome = {
+  DEPLOYMENT_OPERATION_OUTCOME_UNSPECIFIED: 'DEPLOYMENT_OPERATION_OUTCOME_UNSPECIFIED',
+  DEPLOYMENT_OPERATION_OUTCOME_IN_PROGRESS: 'DEPLOYMENT_OPERATION_OUTCOME_IN_PROGRESS',
+  DEPLOYMENT_OPERATION_OUTCOME_SUCCEEDED: 'DEPLOYMENT_OPERATION_OUTCOME_SUCCEEDED',
+  DEPLOYMENT_OPERATION_OUTCOME_FAILED: 'DEPLOYMENT_OPERATION_OUTCOME_FAILED',
+  DEPLOYMENT_OPERATION_OUTCOME_REJECTED: 'DEPLOYMENT_OPERATION_OUTCOME_REJECTED',
+} as const
+
+export type DeploymentOperationOutcome =
+  (typeof DeploymentOperationOutcome)[keyof typeof DeploymentOperationOutcome]
+
+export const DeploymentOperationFailureCode = {
+  DEPLOYMENT_OPERATION_FAILURE_CODE_UNSPECIFIED: 'DEPLOYMENT_OPERATION_FAILURE_CODE_UNSPECIFIED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_IN_PROGRESS:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_IN_PROGRESS',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_ALREADY_DEPLOYED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_ALREADY_DEPLOYED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_UNDEPLOY:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_UNDEPLOY',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_STATE_CHANGED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_STATE_CHANGED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_APPLICATION_UNAVAILABLE:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_APPLICATION_UNAVAILABLE',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_UNAVAILABLE:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_UNAVAILABLE',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_REMOVED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_REMOVED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_INVALID:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_INVALID',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_ACCESS_DENIED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_ACCESS_DENIED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_UNAVAILABLE:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_UNAVAILABLE',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_NOT_DEPLOYABLE:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_NOT_DEPLOYABLE',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_REQUIRED_CONFIGURATION_MISSING:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_REQUIRED_CONFIGURATION_MISSING',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_CONFIGURATION_INVALID:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_CONFIGURATION_INVALID',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_CREDENTIAL_UNAVAILABLE:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_CREDENTIAL_UNAVAILABLE',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_RUNTIME_UNAVAILABLE:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_RUNTIME_UNAVAILABLE',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_TIMEOUT:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_TIMEOUT',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_INTERRUPTED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_INTERRUPTED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR',
+} as const
+
+export type DeploymentOperationFailureCode =
+  (typeof DeploymentOperationFailureCode)[keyof typeof DeploymentOperationFailureCode]
+
 export const DeploymentOperationStatus = {
   DEPLOYMENT_OPERATION_STATUS_UNSPECIFIED: 'DEPLOYMENT_OPERATION_STATUS_UNSPECIFIED',
   DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS: 'DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS',
@@ -69,6 +122,25 @@ export const EnvironmentBackend = {
 } as const
 
 export type EnvironmentBackend = (typeof EnvironmentBackend)[keyof typeof EnvironmentBackend]
+
+export const EnvironmentManagedBy = {
+  ENVIRONMENT_MANAGED_BY_UNSPECIFIED: 'ENVIRONMENT_MANAGED_BY_UNSPECIFIED',
+  ENVIRONMENT_MANAGED_BY_SYSTEM: 'ENVIRONMENT_MANAGED_BY_SYSTEM',
+  ENVIRONMENT_MANAGED_BY_USER: 'ENVIRONMENT_MANAGED_BY_USER',
+} as const
+
+export type EnvironmentManagedBy = (typeof EnvironmentManagedBy)[keyof typeof EnvironmentManagedBy]
+
+export const EnvironmentDeployedAppStatus = {
+  ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
+  ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
+  ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING: 'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING',
+  ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED',
+  ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED',
+} as const
+
+export type EnvironmentDeployedAppStatus =
+  (typeof EnvironmentDeployedAppStatus)[keyof typeof EnvironmentDeployedAppStatus]
 
 export const DeploymentStatus = {
   DEPLOYMENT_STATUS_UNSPECIFIED: 'DEPLOYMENT_STATUS_UNSPECIFIED',
@@ -235,6 +307,21 @@ export type DeploymentEnvironment = {
   description: string
 }
 
+export type DeploymentOperation = {
+  id: string
+  type: DeploymentOperationType
+  outcome: DeploymentOperationOutcome
+  workspace: NamedRef
+  operator: Operator
+  app: NamedRef
+  environment: NamedRef
+  version: WorkflowVersion
+  failureCode?: DeploymentOperationFailureCode
+  requestedAt: string
+  finalizedAt?: string
+  durationMilliseconds?: string
+}
+
 export type DeploymentOperationReceipt = {
   id: string
   type: DeploymentOperationType
@@ -258,6 +345,7 @@ export type Environment = {
   statusMessage: string
   lastError?: Error
   namespace?: string
+  managedBy?: EnvironmentManagedBy
   cpuCount: number
   createdAt: string
   updatedAt: string
@@ -284,6 +372,33 @@ export type EnvironmentApiKey = {
   token: string
   last_used_at?: string
   created_at: string
+}
+
+export type EnvironmentDeployedApp = {
+  deploymentId: string
+  workspace: NamedRef
+  app: NamedRef
+  status: EnvironmentDeployedAppStatus
+  currentVersion?: WorkflowVersion
+  lastDeployedAt?: string
+  deployedBy?: Operator
+  latestAttempt?: EnvironmentDeployedAppAttempt
+}
+
+export type EnvironmentDeployedAppAttempt = {
+  operationId: string
+  type: DeploymentOperationType
+  outcome: DeploymentOperationOutcome
+  failureCode?: DeploymentOperationFailureCode
+  requestedAt: string
+  finalizedAt?: string
+}
+
+export type EnvironmentDeployedAppSummary = {
+  total: number
+  deployed: number
+  deploying: number
+  failed: number
 }
 
 export type EnvironmentDeployment = {
@@ -402,6 +517,9 @@ export type Error = {
     | 'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID'
     | 'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED'
     | 'APPDEPLOY_INVALID_DEPLOYMENT_OPERATION_ID'
+    | 'APPDEPLOY_APP_LOG_EXPORT_RANGE_TOO_WIDE'
+    | 'APPDEPLOY_APP_LOG_EXPORT_TOO_MANY_ROWS'
+    | 'APPDEPLOY_APP_LOG_EXPORT_TOO_LARGE'
     | 'APPDEPLOY_UNAUTHORIZED'
     | 'APPDEPLOY_FORBIDDEN'
     | 'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED'
@@ -422,6 +540,10 @@ export type Error = {
     | 'APPDEPLOY_APP_RUNNER_NOT_FOUND'
     | 'APPDEPLOY_WORKFLOW_NOT_FOUND'
     | 'APPDEPLOY_DEPLOYMENT_OPERATION_NOT_FOUND'
+    | 'APPDEPLOY_RUN_FILE_NOT_FOUND'
+    | 'APPDEPLOY_APPLICATION_UNAVAILABLE'
+    | 'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED'
+    | 'APPDEPLOY_VERSION_UNAVAILABLE'
     | 'APPDEPLOY_CONFLICT'
     | 'APPDEPLOY_DEPLOYMENT_IN_PROGRESS'
     | 'APPDEPLOY_DEPLOYMENT_ALREADY_CURRENT'
@@ -433,6 +555,9 @@ export type Error = {
     | 'APPDEPLOY_ENV_VAR_KEY_CONFLICT'
     | 'APPDEPLOY_APP_HAS_ACTIVE_DEPLOYMENTS'
     | 'APPDEPLOY_SOURCE_VERSION_IN_USE'
+    | 'APPDEPLOY_VERSION_ALREADY_DEPLOYED'
+    | 'APPDEPLOY_NOTHING_TO_UNDEPLOY'
+    | 'APPDEPLOY_DEPLOYMENT_STATE_CHANGED'
     | 'APPDEPLOY_ENVIRONMENT_NOT_READY'
     | 'APPDEPLOY_ENVIRONMENT_CAPACITY_EXCEEDED'
     | 'APPDEPLOY_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED'
@@ -445,9 +570,20 @@ export type Error = {
     | 'APPDEPLOY_WORKFLOW_NOT_DEPLOYABLE'
     | 'APPDEPLOY_API_KEY_LIMIT_EXCEEDED'
     | 'APPDEPLOY_ENVIRONMENT_NOT_FAILED'
+    | 'APPDEPLOY_TARGET_ENVIRONMENT_UNAVAILABLE'
+    | 'APPDEPLOY_TARGET_ENVIRONMENT_INVALID'
+    | 'APPDEPLOY_TARGET_ENVIRONMENT_ACCESS_DENIED'
+    | 'APPDEPLOY_VERSION_NOT_DEPLOYABLE'
+    | 'APPDEPLOY_REQUIRED_CONFIGURATION_MISSING'
+    | 'APPDEPLOY_DEPLOYMENT_CONFIGURATION_INVALID'
+    | 'APPDEPLOY_CREDENTIAL_UNAVAILABLE'
+    | 'APPDEPLOY_RUNTIME_UNAVAILABLE'
+    | 'APPDEPLOY_DEPLOYMENT_TIMEOUT'
+    | 'APPDEPLOY_DEPLOYMENT_INTERRUPTED'
     | 'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED'
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
     | 'APPDEPLOY_REVISION_TIMEOUT'
+    | 'APPDEPLOY_INTERNAL_ERROR'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC'
@@ -468,6 +604,10 @@ export type Error = {
 
 export type GetApplicationInteractionResponse = {
   interaction: ApplicationInteraction
+}
+
+export type GetDeploymentOperationResponse = {
+  operation: DeploymentOperation
 }
 
 export type GetEnvironmentCapabilitiesResponse = {
@@ -517,8 +657,19 @@ export type ListAppsResponse = {
   pagination: Pagination
 }
 
+export type ListDeploymentOperationsResponse = {
+  data: Array<DeploymentOperation>
+  pagination: Pagination
+}
+
 export type ListEnvironmentApiKeysResponse = {
   data: Array<EnvironmentApiKey>
+}
+
+export type ListEnvironmentDeployedAppsResponse = {
+  data: Array<EnvironmentDeployedApp>
+  summary: EnvironmentDeployedAppSummary
+  pagination: Pagination
 }
 
 export type ListEnvironmentDeploymentsResponse = {
@@ -575,12 +726,13 @@ export type ResolveApiTokenRouteResponse = {
   unavailableReason?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
+  deploymentGeneration?: string
 }
 
 export type ResolveWebAppRouteRequest = {
   appCode?: string
   passport?: string
-  purpose?: string
+  environmentId?: string
 }
 
 export type ResolveWebAppRouteResponse = {
@@ -598,6 +750,7 @@ export type ResolveWebAppRouteResponse = {
   unavailableReason?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
+  deploymentGeneration?: string
   endUserId?: string
   authType?: string
 }
@@ -663,10 +816,10 @@ export type WorkflowDeploymentInput = {
 }
 
 export type WorkflowVersion = {
-  version: string
-  marked_name: string
+  version?: string
+  marked_name?: string
   id: string
-  marked_comment: string
+  marked_comment?: string
 }
 
 export type Pagination = {

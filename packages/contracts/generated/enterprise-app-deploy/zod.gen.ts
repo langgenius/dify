@@ -5,7 +5,6 @@ import * as z from 'zod'
 export const zEnvironmentStatus = z.enum([
   'ENVIRONMENT_STATUS_UNSPECIFIED',
   'ENVIRONMENT_STATUS_PENDING',
-  'ENVIRONMENT_STATUS_BOOTSTRAPPING',
   'ENVIRONMENT_STATUS_READY',
   'ENVIRONMENT_STATUS_FAILED',
   'ENVIRONMENT_STATUS_DELETING',
@@ -37,6 +36,36 @@ export const zDeploymentOperationType = z.enum([
   'DEPLOYMENT_OPERATION_TYPE_UNDEPLOY',
 ])
 
+export const zDeploymentOperationOutcome = z.enum([
+  'DEPLOYMENT_OPERATION_OUTCOME_UNSPECIFIED',
+  'DEPLOYMENT_OPERATION_OUTCOME_IN_PROGRESS',
+  'DEPLOYMENT_OPERATION_OUTCOME_SUCCEEDED',
+  'DEPLOYMENT_OPERATION_OUTCOME_FAILED',
+  'DEPLOYMENT_OPERATION_OUTCOME_REJECTED',
+])
+
+export const zDeploymentOperationFailureCode = z.enum([
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_UNSPECIFIED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_IN_PROGRESS',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_ALREADY_DEPLOYED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_UNDEPLOY',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_STATE_CHANGED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_APPLICATION_UNAVAILABLE',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_UNAVAILABLE',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_REMOVED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_INVALID',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_TARGET_ENVIRONMENT_ACCESS_DENIED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_UNAVAILABLE',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_VERSION_NOT_DEPLOYABLE',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_REQUIRED_CONFIGURATION_MISSING',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_CONFIGURATION_INVALID',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_CREDENTIAL_UNAVAILABLE',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_RUNTIME_UNAVAILABLE',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_TIMEOUT',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_INTERRUPTED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR',
+])
+
 export const zDeploymentOperationStatus = z.enum([
   'DEPLOYMENT_OPERATION_STATUS_UNSPECIFIED',
   'DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS',
@@ -48,6 +77,20 @@ export const zEnvironmentBackend = z.enum([
   'ENVIRONMENT_BACKEND_UNSPECIFIED',
   'ENVIRONMENT_BACKEND_KUBERNETES',
   'ENVIRONMENT_BACKEND_EXTERNAL',
+])
+
+export const zEnvironmentManagedBy = z.enum([
+  'ENVIRONMENT_MANAGED_BY_UNSPECIFIED',
+  'ENVIRONMENT_MANAGED_BY_SYSTEM',
+  'ENVIRONMENT_MANAGED_BY_USER',
+])
+
+export const zEnvironmentDeployedAppStatus = z.enum([
+  'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
+  'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
+  'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING',
+  'ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED',
+  'ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED',
 ])
 
 export const zDeploymentStatus = z.enum([
@@ -212,6 +255,34 @@ export const zEnvironmentApiKey = z.object({
   created_at: z.string(),
 })
 
+export const zEnvironmentDeployedAppAttempt = z.object({
+  operationId: z.string(),
+  type: zDeploymentOperationType,
+  outcome: zDeploymentOperationOutcome,
+  failureCode: zDeploymentOperationFailureCode.optional(),
+  requestedAt: z.iso.datetime(),
+  finalizedAt: z.iso.datetime().optional(),
+})
+
+export const zEnvironmentDeployedAppSummary = z.object({
+  total: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  deployed: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  deploying: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  failed: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+})
+
 export const zEnvironmentMcpServer = z.record(z.string(), z.unknown())
 
 export const zEnvironmentSite = z.object({
@@ -305,6 +376,9 @@ export const zError = z.object({
       'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID',
       'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED',
       'APPDEPLOY_INVALID_DEPLOYMENT_OPERATION_ID',
+      'APPDEPLOY_APP_LOG_EXPORT_RANGE_TOO_WIDE',
+      'APPDEPLOY_APP_LOG_EXPORT_TOO_MANY_ROWS',
+      'APPDEPLOY_APP_LOG_EXPORT_TOO_LARGE',
       'APPDEPLOY_UNAUTHORIZED',
       'APPDEPLOY_FORBIDDEN',
       'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED',
@@ -325,6 +399,10 @@ export const zError = z.object({
       'APPDEPLOY_APP_RUNNER_NOT_FOUND',
       'APPDEPLOY_WORKFLOW_NOT_FOUND',
       'APPDEPLOY_DEPLOYMENT_OPERATION_NOT_FOUND',
+      'APPDEPLOY_RUN_FILE_NOT_FOUND',
+      'APPDEPLOY_APPLICATION_UNAVAILABLE',
+      'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED',
+      'APPDEPLOY_VERSION_UNAVAILABLE',
       'APPDEPLOY_CONFLICT',
       'APPDEPLOY_DEPLOYMENT_IN_PROGRESS',
       'APPDEPLOY_DEPLOYMENT_ALREADY_CURRENT',
@@ -336,6 +414,9 @@ export const zError = z.object({
       'APPDEPLOY_ENV_VAR_KEY_CONFLICT',
       'APPDEPLOY_APP_HAS_ACTIVE_DEPLOYMENTS',
       'APPDEPLOY_SOURCE_VERSION_IN_USE',
+      'APPDEPLOY_VERSION_ALREADY_DEPLOYED',
+      'APPDEPLOY_NOTHING_TO_UNDEPLOY',
+      'APPDEPLOY_DEPLOYMENT_STATE_CHANGED',
       'APPDEPLOY_ENVIRONMENT_NOT_READY',
       'APPDEPLOY_ENVIRONMENT_CAPACITY_EXCEEDED',
       'APPDEPLOY_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED',
@@ -348,9 +429,20 @@ export const zError = z.object({
       'APPDEPLOY_WORKFLOW_NOT_DEPLOYABLE',
       'APPDEPLOY_API_KEY_LIMIT_EXCEEDED',
       'APPDEPLOY_ENVIRONMENT_NOT_FAILED',
+      'APPDEPLOY_TARGET_ENVIRONMENT_UNAVAILABLE',
+      'APPDEPLOY_TARGET_ENVIRONMENT_INVALID',
+      'APPDEPLOY_TARGET_ENVIRONMENT_ACCESS_DENIED',
+      'APPDEPLOY_VERSION_NOT_DEPLOYABLE',
+      'APPDEPLOY_REQUIRED_CONFIGURATION_MISSING',
+      'APPDEPLOY_DEPLOYMENT_CONFIGURATION_INVALID',
+      'APPDEPLOY_CREDENTIAL_UNAVAILABLE',
+      'APPDEPLOY_RUNTIME_UNAVAILABLE',
+      'APPDEPLOY_DEPLOYMENT_TIMEOUT',
+      'APPDEPLOY_DEPLOYMENT_INTERRUPTED',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
+      'APPDEPLOY_INTERNAL_ERROR',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC',
@@ -381,6 +473,7 @@ export const zEnvironment = z.object({
   statusMessage: z.string(),
   lastError: zError.optional(),
   namespace: z.string().optional(),
+  managedBy: zEnvironmentManagedBy.optional(),
   cpuCount: z.number(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -498,12 +591,13 @@ export const zResolveApiTokenRouteResponse = z.object({
   unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
+  deploymentGeneration: z.string().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
   appCode: z.string().optional(),
   passport: z.string().optional(),
-  purpose: z.string().optional(),
+  environmentId: z.string().optional(),
 })
 
 export const zResolveWebAppRouteResponse = z.object({
@@ -525,6 +619,7 @@ export const zResolveWebAppRouteResponse = z.object({
   unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
+  deploymentGeneration: z.string().optional(),
   endUserId: z.string().optional(),
   authType: z.string().optional(),
 })
@@ -600,10 +695,36 @@ export const zWorkflowDeploymentInput = z.object({
 })
 
 export const zWorkflowVersion = z.object({
-  version: z.string(),
-  marked_name: z.string(),
+  version: z.string().optional(),
+  marked_name: z.string().optional(),
   id: z.string(),
-  marked_comment: z.string(),
+  marked_comment: z.string().optional(),
+})
+
+export const zDeploymentOperation = z.object({
+  id: z.string(),
+  type: zDeploymentOperationType,
+  outcome: zDeploymentOperationOutcome,
+  workspace: zNamedRef,
+  operator: zOperator,
+  app: zNamedRef,
+  environment: zNamedRef,
+  version: zWorkflowVersion,
+  failureCode: zDeploymentOperationFailureCode.optional(),
+  requestedAt: z.iso.datetime(),
+  finalizedAt: z.iso.datetime().optional(),
+  durationMilliseconds: z.string().optional(),
+})
+
+export const zEnvironmentDeployedApp = z.object({
+  deploymentId: z.string(),
+  workspace: zNamedRef,
+  app: zNamedRef,
+  status: zEnvironmentDeployedAppStatus,
+  currentVersion: zWorkflowVersion.optional(),
+  lastDeployedAt: z.iso.datetime().optional(),
+  deployedBy: zOperator.optional(),
+  latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
 })
 
 export const zEnvironmentDeploymentOperation = z.object({
@@ -632,6 +753,10 @@ export const zEnvironmentDeployment = z.object({
   environment: zDeploymentEnvironment,
   deployment: zEnvironmentDeploymentState.optional(),
   access: zEnvironmentAccess,
+})
+
+export const zGetDeploymentOperationResponse = z.object({
+  operation: zDeploymentOperation,
 })
 
 export const zGetEnvironmentDeploymentResponse = z.object({
@@ -675,6 +800,17 @@ export const zListApplicationInteractionsResponse = z.object({
 
 export const zListAppsResponse = z.object({
   data: z.array(zDashboardApp),
+  pagination: zPagination,
+})
+
+export const zListDeploymentOperationsResponse = z.object({
+  data: z.array(zDeploymentOperation),
+  pagination: zPagination,
+})
+
+export const zListEnvironmentDeployedAppsResponse = z.object({
+  data: z.array(zEnvironmentDeployedApp),
+  summary: zEnvironmentDeployedAppSummary,
   pagination: zPagination,
 })
 
