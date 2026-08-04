@@ -2099,18 +2099,27 @@ class DocumentService:
 
     @staticmethod
     def retry_document(dataset_id: str, documents: list[Document], session: Session):
-        for document in documents:
-            # add retry flag
-            retry_indexing_cache_key = f"document_{document.id}_is_retried"
-            cache_result = redis_client.get(retry_indexing_cache_key)
-            if cache_result is not None:
-                raise ValueError("Document is being retried, please try again later")
-            # retry document indexing
-            document.indexing_status = IndexingStatus.WAITING
-            session.add(document)
-            session.commit()
+        # Reserve every document before changing any state. Committing one
+        # document as waiting and then finding the next one already retried
+        # would leave the first in waiting with no task ever dispatched.
+        claimed_keys: list[str] = []
+        try:
+            for document in documents:
+                retry_indexing_cache_key = f"document_{document.id}_is_retried"
+                if not redis_client.set(retry_indexing_cache_key, 1, ex=600, nx=True):
+                    raise ValueError("Document is being retried, please try again later")
+                claimed_keys.append(retry_indexing_cache_key)
 
-            redis_client.setex(retry_indexing_cache_key, 600, 1)
+            for document in documents:
+                document.indexing_status = IndexingStatus.WAITING
+                session.add(document)
+            session.commit()
+        except Exception:
+            if claimed_keys:
+                redis_client.delete(*claimed_keys)
+            session.rollback()
+            raise
+
         # trigger async task
         document_ids = [document.id for document in documents]
         if not current_user or not current_user.id:

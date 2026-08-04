@@ -219,10 +219,53 @@ class TestDocumentServiceMutations:
         session = MagicMock()
 
         with patch("services.dataset_service.redis_client") as mock_redis:
-            mock_redis.get.return_value = "1"
+            # the atomic claim loses the race
+            mock_redis.set.return_value = None
 
             with pytest.raises(ValueError, match="being retried"):
                 DocumentService.retry_document("dataset-1", [document], session)
+
+        session.rollback.assert_called_once()
+        session.commit.assert_not_called()
+
+    def test_retry_document_rolls_back_claims_and_status_when_a_later_document_is_retried(self):
+        first = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1")
+        second = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-2")
+        session = MagicMock()
+
+        with patch("services.dataset_service.redis_client") as mock_redis:
+            # doc-1 claims fine, doc-2 is already being retried
+            mock_redis.set.side_effect = [True, None]
+
+            with pytest.raises(ValueError, match="being retried"):
+                DocumentService.retry_document("dataset-1", [first, second], session)
+
+        # doc-1's flag is released and nothing was committed as waiting
+        mock_redis.delete.assert_called_once_with("document_doc-1_is_retried")
+        session.rollback.assert_called_once()
+        session.commit.assert_not_called()
+        assert first.indexing_status != "waiting"
+
+    def test_retry_document_commits_all_and_dispatches_when_batch_is_free(self):
+        first = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1")
+        second = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-2")
+        session = MagicMock()
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+            patch("services.dataset_service.current_user") as mock_user,
+        ):
+            mock_redis.set.return_value = True
+            mock_user.id = "user-1"
+
+            DocumentService.retry_document("dataset-1", [first, second], session)
+
+        assert first.indexing_status == "waiting"
+        assert second.indexing_status == "waiting"
+        session.commit.assert_called_once()
+        mock_redis.delete.assert_not_called()
+        retry_task.delay.assert_called_once_with("dataset-1", ["doc-1", "doc-2"], "user-1")
 
     def test_sync_website_document_raises_when_sync_flag_exists(self):
         document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1")
