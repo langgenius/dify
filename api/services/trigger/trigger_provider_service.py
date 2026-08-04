@@ -86,7 +86,7 @@ class TriggerProviderService:
                 select(TriggerSubscription)
                 .where(
                     TriggerSubscription.tenant_id == tenant_id,
-                    TriggerSubscription.provider_id == str(provider_id),
+                    TriggerSubscription.provider_id == provider_id,
                 )
                 .order_by(desc(TriggerSubscription.created_at))
             )
@@ -179,7 +179,7 @@ class TriggerProviderService:
                         session.scalar(
                             select(func.count(TriggerSubscription.id)).where(
                                 TriggerSubscription.tenant_id == tenant_id,
-                                TriggerSubscription.provider_id == str(provider_id),
+                                TriggerSubscription.provider_id == provider_id,
                             )
                         )
                         or 0
@@ -196,7 +196,7 @@ class TriggerProviderService:
                         select(TriggerSubscription)
                         .where(
                             TriggerSubscription.tenant_id == tenant_id,
-                            TriggerSubscription.provider_id == str(provider_id),
+                            TriggerSubscription.provider_id == provider_id,
                             TriggerSubscription.name == name,
                         )
                         .limit(1)
@@ -224,7 +224,7 @@ class TriggerProviderService:
                         user_id=user_id,
                         name=name,
                         endpoint_id=endpoint_id,
-                        provider_id=str(provider_id),
+                        provider_id=provider_id,
                         parameters=dict(parameters),
                         properties=dict(properties_encrypter.encrypt(dict(properties))),
                         credentials=dict(credential_encrypter.encrypt(dict(credentials)))
@@ -240,7 +240,7 @@ class TriggerProviderService:
 
                     return {
                         "result": "success",
-                        "id": str(subscription.id),
+                        "id": subscription.id,
                     }
 
         except Exception as e:
@@ -296,7 +296,7 @@ class TriggerProviderService:
                         select(TriggerSubscription)
                         .where(
                             TriggerSubscription.tenant_id == tenant_id,
-                            TriggerSubscription.provider_id == str(provider_id),
+                            TriggerSubscription.provider_id == provider_id,
                             TriggerSubscription.name == name,
                         )
                         .limit(1)
@@ -552,7 +552,7 @@ class TriggerProviderService:
             if subscription is None:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            if subscription.expires_at == -1 or int(subscription.expires_at) > now_ts:
+            if subscription.expires_at == -1 or subscription.expires_at > now_ts:
                 logger.debug(
                     "Subscription not due for refresh: tenant=%s id=%s expires_at=%s now=%s",
                     tenant_id,
@@ -560,7 +560,7 @@ class TriggerProviderService:
                     subscription.expires_at,
                     now_ts,
                 )
-                return {"result": "skipped", "expires_at": int(subscription.expires_at)}
+                return {"result": "skipped", "expires_at": subscription.expires_at}
 
             provider_id = TriggerProviderID(subscription.provider_id)
             controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
@@ -583,7 +583,7 @@ class TriggerProviderService:
             decrypted_properties = properties_encrypter.decrypt(subscription.properties)
 
             sub_entity: TriggerSubscriptionEntity = TriggerSubscriptionEntity(
-                expires_at=int(subscription.expires_at),
+                expires_at=subscription.expires_at,
                 endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
                 parameters=subscription.parameters,
                 properties=decrypted_properties,
@@ -597,7 +597,7 @@ class TriggerProviderService:
 
             # Persist refreshed properties and expires_at
             subscription.properties = dict(properties_encrypter.encrypt(dict(refreshed.properties)))
-            subscription.expires_at = int(refreshed.expires_at)
+            subscription.expires_at = refreshed.expires_at
             properties_cache.delete()
 
             logger.info(
@@ -607,7 +607,7 @@ class TriggerProviderService:
                 subscription.expires_at,
             )
 
-            return {"result": "success", "expires_at": int(refreshed.expires_at)}
+            return {"result": "success", "expires_at": refreshed.expires_at}
 
     @classmethod
     def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any] | None:

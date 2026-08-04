@@ -13,7 +13,7 @@ class _FakeRedis:
     def zadd(self, key: str, mapping: dict[str, float]) -> int:
         zset = self._zsets.setdefault(key, {})
         for member, score in mapping.items():
-            zset[str(member)] = float(score)
+            zset[member] = score
         return len(mapping)
 
     def zremrangebyscore(self, key: str, min_score: str | float, max_score: str | float) -> int:

@@ -55,7 +55,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             return []
 
         upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
-        upload_file_map = {str(upload_file.id): upload_file for upload_file in upload_files}
+        upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
         ordered_upload_files = [
             upload_file_map[upload_file_id] for upload_file_id in upload_file_ids if upload_file_id in upload_file_map
         ]
@@ -65,7 +65,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         if not image_upload_files:
             return []
 
-        grant_upload_file_access(str(upload_file.id) for upload_file in image_upload_files)
+        grant_upload_file_access(upload_file.id for upload_file in image_upload_files)
 
         image_detail_config = (
             self.application_generate_entity.file_upload_config.image_config.detail
@@ -87,7 +87,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 file_type=FileType.IMAGE,
                 transfer_method=FileTransferMethod.LOCAL_FILE,
                 remote_url=upload_file.source_url,
-                reference=build_file_reference(record_id=str(upload_file.id)),
+                reference=build_file_reference(record_id=upload_file.id),
                 size=upload_file.size,
                 storage_key=upload_file.key,
                 url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
@@ -214,7 +214,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             for content in chunk.delta.message.content:
                                 response += content.data
                         else:
-                            response += str(chunk.delta.message.content)
+                            response += chunk.delta.message.content
 
                     if chunk.delta.usage:
                         increase_usage(llm_usage, chunk.delta.usage)

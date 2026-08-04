@@ -460,7 +460,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             or 0
         )
 
-        return int(node_executions_count), int(offloads_count)
+        return node_executions_count, offloads_count
 
     @staticmethod
     def get_by_run(

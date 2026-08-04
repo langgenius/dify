@@ -376,7 +376,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
     args = payload.model_dump(exclude_none=True)
 
     dataset_id_str = str(dataset_id)
-    tenant_id_str = str(tenant_id)
+    tenant_id_str = tenant_id
     dataset = session.scalar(
         select(Dataset).where(Dataset.tenant_id == tenant_id_str, Dataset.id == dataset_id_str).limit(1)
     )
@@ -474,7 +474,7 @@ def _update_document_by_text(
         if not current_user:
             raise ValueError("current_user is required")
         upload_file = FileService(db.engine).upload_text(
-            text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
+            text=text, text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
         )
         data_source = {
             "type": "upload_file",
@@ -482,7 +482,7 @@ def _update_document_by_text(
         }
         args["data_source"] = data_source
 
-    args["original_document_id"] = str(document_id)
+    args["original_document_id"] = document_id
     knowledge_config = KnowledgeConfig.model_validate(args)
     DocumentService.document_create_args_validate(knowledge_config)
 
@@ -879,7 +879,7 @@ def _update_document_by_file(
         args["data_source"] = data_source
 
     # validate args
-    args["original_document_id"] = str(document_id)
+    args["original_document_id"] = document_id
 
     knowledge_config = KnowledgeConfig.model_validate(args)
     DocumentService.document_create_args_validate(knowledge_config)
@@ -1211,7 +1211,7 @@ class DocumentDownloadApi(DatasetApiResource):
         dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), str(tenant_id), session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        document = DocumentService.get_document(dataset.id, document_id, session=session)
 
         if not document:
             raise NotFound("Document not found.")
@@ -1269,7 +1269,7 @@ class DocumentApi(DatasetApiResource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
-        document_id_str = str(document_id)
+        document_id_str = document_id
 
         dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, str(tenant_id), session=session)
         if not dataset:
@@ -1466,7 +1466,7 @@ class DocumentApi(DatasetApiResource):
     @with_session
     def delete(self, session: Session, tenant_id, dataset_id: UUID, document_id: UUID):
         """Delete document."""
-        document_id_str = str(document_id)
+        document_id_str = document_id
         dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
 

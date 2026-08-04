@@ -169,7 +169,7 @@ class TestDeleteDraftVariablesBatch:
         assert result == 30
         mock_offload_cleanup.assert_called_once()
         _, called_file_ids = mock_offload_cleanup.call_args.args
-        assert {str(file_id) for file_id in called_file_ids} == {str(file_id) for file_id in file_id_by_index.values()}
+        assert set(called_file_ids) == set(file_id_by_index.values())
         info_records = [record for record in caplog.records if record.levelno == logging.INFO]
         assert len(info_records) == 2
 

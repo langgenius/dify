@@ -1026,7 +1026,7 @@ class TestAnnotationService:
             type="annotation",
             collection_name=f"annotation_collection_{fake.uuid4()}",
         )
-        collection_binding.id = str(fake.uuid4())
+        collection_binding.id = fake.uuid4()
         db_session_with_containers.add(collection_binding)
         db_session_with_containers.flush()
 
@@ -1086,7 +1086,7 @@ class TestAnnotationService:
             type="annotation",
             collection_name=f"annotation_collection_{fake.uuid4()}",
         )
-        collection_binding.id = str(fake.uuid4())
+        collection_binding.id = fake.uuid4()
         db_session_with_containers.add(collection_binding)
         db_session_with_containers.flush()
 
@@ -1192,7 +1192,7 @@ class TestAnnotationService:
             type="annotation",
             collection_name=f"annotation_collection_{fake.uuid4()}",
         )
-        collection_binding.id = str(fake.uuid4())
+        collection_binding.id = fake.uuid4()
         db_session_with_containers.add(collection_binding)
         db_session_with_containers.flush()
 
@@ -1255,7 +1255,7 @@ class TestAnnotationService:
             type="annotation",
             collection_name=f"annotation_collection_{fake.uuid4()}",
         )
-        collection_binding.id = str(fake.uuid4())
+        collection_binding.id = fake.uuid4()
         db_session_with_containers.add(collection_binding)
         db_session_with_containers.flush()
 
@@ -1333,7 +1333,7 @@ class TestAnnotationService:
             type="annotation",
             collection_name=f"annotation_collection_{fake.uuid4()}",
         )
-        collection_binding.id = str(fake.uuid4())
+        collection_binding.id = fake.uuid4()
         db_session_with_containers.add(collection_binding)
         db_session_with_containers.flush()
 
@@ -1399,7 +1399,7 @@ class TestAnnotationService:
             type="annotation",
             collection_name=f"annotation_collection_{fake.uuid4()}",
         )
-        collection_binding.id = str(fake.uuid4())
+        collection_binding.id = fake.uuid4()
         db_session_with_containers.add(collection_binding)
         db_session_with_containers.flush()
 

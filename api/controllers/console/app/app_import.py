@@ -56,11 +56,11 @@ register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesRe
 def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, str | None]:
     if current_user is None:
         account, tenant_id = current_account_with_tenant()
-        return account, str(tenant_id) if tenant_id else None
+        return account, tenant_id or None
 
     current_tenant_id = getattr(current_user, "current_tenant_id", None)
     if current_tenant_id:
-        return current_user, str(current_tenant_id)
+        return current_user, current_tenant_id
 
     current_tenant = getattr(current_user, "current_tenant", None)
     current_tenant_object_id = getattr(current_tenant, "id", None)
@@ -68,7 +68,7 @@ def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, 
         return current_user, str(current_tenant_object_id)
 
     account, fallback_tenant_id = current_account_with_tenant()
-    return account, str(fallback_tenant_id) if fallback_tenant_id else None
+    return account, fallback_tenant_id or None
 
 
 @console_ns.route("/apps/imports")

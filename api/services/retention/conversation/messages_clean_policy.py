@@ -160,8 +160,8 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
             if not tenant_plan:
                 continue
 
-            plan = str(tenant_plan["plan"])
-            expiration_date = int(tenant_plan["expiration_date"])
+            plan = tenant_plan["plan"]
+            expiration_date = tenant_plan["expiration_date"]
 
             # Only process sandbox plans
             if plan != CloudPlan.SANDBOX:

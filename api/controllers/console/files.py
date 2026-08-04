@@ -146,7 +146,7 @@ class FilePreviewApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     @with_current_tenant_id
     def get(self, current_tenant_id: str, file_id: UUID):
-        file_id_str = str(file_id)
+        file_id_str = file_id
         text = FileService(db.engine).get_file_preview(file_id_str, current_tenant_id)
         return TextContentResponse(content=text).model_dump(mode="json")
 

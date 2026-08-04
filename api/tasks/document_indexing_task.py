@@ -68,7 +68,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                 vector_space = features.vector_space
                 assert vector_space is not None
                 count = len(document_ids)
-                batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+                batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                 if count > batch_upload_limit:

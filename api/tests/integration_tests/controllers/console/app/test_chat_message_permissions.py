@@ -144,10 +144,10 @@ class TestChatMessageApiPermissions:
         conversation_id = uuid.uuid4()
         created_at = naive_utc_now()
 
-        mock_conversation = SimpleNamespace(id=str(conversation_id), app_id=str(mock_app_model.id))
+        mock_conversation = SimpleNamespace(id=conversation_id, app_id=str(mock_app_model.id))
         mock_message = SimpleNamespace(
             id=str(uuid.uuid4()),
-            conversation_id=str(conversation_id),
+            conversation_id=conversation_id,
             inputs=[],
             query="hello",
             message=[{"text": "hello"}],
@@ -192,7 +192,7 @@ class TestChatMessageApiPermissions:
         response = test_client.get(
             f"/console/api/apps/{mock_app_model.id}/chat-messages",
             headers=auth_header,
-            query_string={"conversation_id": str(conversation_id)},
+            query_string={"conversation_id": conversation_id},
         )
 
         assert response.status_code == status

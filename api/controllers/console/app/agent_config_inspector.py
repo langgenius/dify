@@ -1091,7 +1091,7 @@ class AgentConfigSkillFileDownloadApi(Resource):
                 name=name,
                 path=query.path,
                 raw_endpoint="console.agent_config_skill_file_download_content_api",
-                route_params={"app_id": str(app_model.id)},
+                route_params={"app_id": app_model.id},
                 extra_query_params={"node_id": query.node_id} if query.node_id else None,
             )
         except AgentConfigServiceError as exc:

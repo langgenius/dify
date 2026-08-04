@@ -1045,7 +1045,7 @@ class TestHandlePostRequestNew:
         t._handle_post_request(ctx)
         item = q.get_nowait()
         assert isinstance(item, ValueError)
-        assert "Unexpected content type" in str(item)
+        assert "Unexpected content type" in item
 
     def test_initialization_request_extracts_session_id(self):
         t = _new_transport()
@@ -1263,7 +1263,7 @@ class TestHandleUnexpectedContentTypeNew:
         t._handle_unexpected_content_type("text/html", q)
         item = q.get_nowait()
         assert isinstance(item, ValueError)
-        assert "text/html" in str(item)
+        assert "text/html" in item
 
 
 # ── _send_session_terminated_error ────────────────────────────────────────────

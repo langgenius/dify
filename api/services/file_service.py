@@ -317,7 +317,7 @@ class FileService:
             return {}
 
         # Normalize and deduplicate ids before using them in the IN clause.
-        upload_file_id_list: list[str] = [str(upload_file_id) for upload_file_id in upload_file_ids]
+        upload_file_id_list: list[str] = list(upload_file_ids)
         unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
 
         # Fetch upload files in one query for efficient batch access.
@@ -327,7 +327,7 @@ class FileService:
                 UploadFile.id.in_(unique_upload_file_ids),
             )
         ).all()
-        return {str(upload_file.id): upload_file for upload_file in upload_files}
+        return {upload_file.id: upload_file for upload_file in upload_files}
 
     @staticmethod
     def _sanitize_zip_entry_name(name: str) -> str:

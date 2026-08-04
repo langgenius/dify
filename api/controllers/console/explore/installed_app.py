@@ -161,7 +161,7 @@ class InstalledAppsListApi(Resource):
 
         installed_apps, has_more, next_cursor = InstalledAppService.get_visible_page(
             tenant_id=current_tenant_id,
-            user_id=str(current_user.id),
+            user_id=current_user.id,
             cursor=cursor,
             limit=query.limit,
             app_id=query.app_id,

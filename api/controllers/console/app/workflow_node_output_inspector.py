@@ -93,9 +93,7 @@ def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
     Flask request context.
     """
     try:
-        snapshot = _service().snapshot_workflow_run(
-            app_model=app_model, workflow_run_id=str(run_id), session=db.session()
-        )
+        snapshot = _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id, session=db.session())
     except NodeOutputInspectorError as error:
         raise _InspectorNotFound(error) from error
     return snapshot.model_dump(mode="json")
@@ -106,7 +104,7 @@ def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
     try:
         view = _service().node_detail(
             app_model=app_model,
-            workflow_run_id=str(run_id),
+            workflow_run_id=run_id,
             node_id=node_id,
             session=db.session(),
         )
@@ -120,7 +118,7 @@ def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_nam
     try:
         preview = _service().output_preview(
             app_model=app_model,
-            workflow_run_id=str(run_id),
+            workflow_run_id=run_id,
             node_id=node_id,
             output_name=output_name,
             session=db.session(),
@@ -244,7 +242,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
     silently. The Inspector never raises across the SSE boundary.
     """
     service = _service()
-    run_id_str = str(run_id)
+    run_id_str = run_id
 
     # Initial snapshot — also flushes a 404 back at the client right away
     # if the run is gone (raised before yielding any bytes, so Flask turns it

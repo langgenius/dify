@@ -98,7 +98,7 @@ class NotificationApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     def get(self, current_user: Account):
-        result = BillingService.get_account_notification(str(current_user.id))
+        result = BillingService.get_account_notification(current_user.id)
 
         # Proto JSON uses camelCase field names (Kratos default marshaling).
         response: NotificationResponseDict
@@ -145,6 +145,6 @@ class NotificationDismissApi(Resource):
     def post(self, payload: DismissNotificationPayload, current_user: Account):
         BillingService.dismiss_notification(
             notification_id=payload.notification_id,
-            account_id=str(current_user.id),
+            account_id=current_user.id,
         )
         return {"result": "success"}, 200

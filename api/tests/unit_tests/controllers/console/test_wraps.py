@@ -594,7 +594,7 @@ class TestBillingEnabled:
                         billing_view()
 
         assert exc_info.value.code == 403
-        assert "Billing feature is not enabled" in str(exc_info.value.description)
+        assert "Billing feature is not enabled" in exc_info.value.description
         get_features.assert_not_called()
 
 
@@ -642,7 +642,7 @@ class TestBillingPaidPlanRequired:
                 paid_view()
 
         assert exc_info.value.code == 403
-        assert "requires a paid plan" in str(exc_info.value.description)
+        assert "requires a paid plan" in exc_info.value.description
 
 
 class TestBillingResourceLimits:
@@ -725,7 +725,7 @@ class TestBillingResourceLimits:
                     with pytest.raises(HTTPException) as exc_info:
                         add_member()
                     assert exc_info.value.code == 403
-                    assert "members has reached the limit" in str(exc_info.value.description)
+                    assert "members has reached the limit" in exc_info.value.description
 
     def test_should_check_source_for_documents_limit(self):
         """Test document limit checks request source"""
@@ -840,7 +840,7 @@ class TestRateLimiting:
 
                     # Verify error
                     assert exc_info.value.code == 403
-                    assert "rate limit" in str(exc_info.value.description)
+                    assert "rate limit" in exc_info.value.description
 
                     rate_limit_log = sqlite_session.scalar(select(RateLimitLog))
                     assert rate_limit_log is not None

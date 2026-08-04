@@ -137,7 +137,7 @@ class TestTriggerProviderService:
             name=name or fake.word(),
             tenant_id=tenant_id,
             user_id=user_id,
-            provider_id=str(provider_id),
+            provider_id=provider_id,
             endpoint_id=fake.uuid4(),
             parameters={"param1": "value1"},
             properties={"prop1": "value1"},
