@@ -1,3 +1,4 @@
+from cachetools import LRUCache
 import json
 import threading
 from typing import Any, override
@@ -11,7 +12,7 @@ from azure.keyvault.keys import (
     KeyRotationPolicyAction,
 )
 from azure.keyvault.keys.crypto import CryptographyClient, KeyWrapAlgorithm
-from cachetools import LFUCache
+from cachetools import LRUCache
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 
@@ -63,7 +64,7 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         self._credential = DefaultAzureCredential()
         self._key_client = KeyClient(vault_url=vault_url, credential=self._credential)
         # Cached per (tenant_id, *concrete* version).
-        self._crypto_clients: LFUCache[tuple[str, str], CryptographyClient] = LFUCache(
+        self._crypto_clients: LRUCache[tuple[str, str], CryptographyClient] = LRUCache(
             maxsize=_CRYPTO_CLIENT_CACHE_MAXSIZE
         )
         self._lock = threading.Lock()
