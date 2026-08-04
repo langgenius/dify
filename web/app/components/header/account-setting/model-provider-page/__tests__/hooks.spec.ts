@@ -987,7 +987,7 @@ describe('hooks', () => {
       const queryPlugins = vi.fn()
       const queryPluginsWithDebounced = vi.fn()
       const cancelQueryPluginsWithDebounced = vi.fn()
-      const resetPlugins = vi.fn()
+      const resetQueryParams = vi.fn()
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
         plugins: [{ plugin_id: 'collection-only', type: 'plugin' }],
         isLoading: true,
@@ -997,7 +997,7 @@ describe('hooks', () => {
         queryPlugins,
         queryPluginsWithDebounced,
         cancelQueryPluginsWithDebounced,
-        resetPlugins,
+        resetQueryParams,
         isLoading: true,
       })
 
@@ -1007,8 +1007,8 @@ describe('hooks', () => {
       expect(queryPlugins).not.toHaveBeenCalled()
       expect(queryPluginsWithDebounced).not.toHaveBeenCalled()
       expect(cancelQueryPluginsWithDebounced).toHaveBeenCalled()
-      expect(resetPlugins).not.toHaveBeenCalled()
       expect(useMarketplacePlugins).toHaveBeenCalledWith(false)
+      expect(resetQueryParams).toHaveBeenCalled()
       expect(result.current.plugins).toEqual([])
       expect(result.current.isLoading).toBe(false)
     })
