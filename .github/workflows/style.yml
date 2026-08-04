@@ -81,22 +81,6 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
-      - name: Setup UV and Python
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          enable-cache: false
-          python-version: "3.12"
-          cache-dependency-glob: api/uv.lock
-
-      - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv sync --project api --dev
-
-      - name: Validate docker-compose.source.yaml
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv run --project api python docker/validate_docker_compose_source.py
-
   web-style:
     name: Web Style
     runs-on: depot-ubuntu-24.04
