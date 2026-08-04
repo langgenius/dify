@@ -63,6 +63,31 @@ describe("KnowledgeFS handler branch coverage", () => {
     }
   });
 
+  it("executes every command with a Capability v2 candidate scope", async () => {
+    const fixture = handlersFixture({
+      capability: capabilityGrant(),
+      decision: undefined,
+    });
+
+    for (const [route, command] of ROUTES) {
+      const response = await fixture.invoke(route);
+      expect(response).toEqual({ body: { command }, status: 200 });
+    }
+
+    expect(fixture.execute).toHaveBeenCalledTimes(ROUTES.length);
+    for (const [, command] of ROUTES) {
+      expect(fixture.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            candidatePermissionScope: ["scope:a", "scope:b"],
+            knowledgeSpaceId: SPACE_ID,
+          }),
+          name: command,
+        }),
+      );
+    }
+  });
+
   it("returns not found before executing every command when the space is absent", async () => {
     const fixture = handlersFixture({ space: null });
 
@@ -149,6 +174,7 @@ describe("KnowledgeFS handler branch coverage", () => {
 });
 
 interface FixtureOptions {
+  readonly capability?: unknown;
   readonly decision?: unknown;
   readonly executeError?: Error;
   readonly space?: unknown;
@@ -183,6 +209,7 @@ function handlersFixture(options: FixtureOptions = {}) {
       if (!callback) throw new Error("route was not registered");
       return callback(
         context({
+          capability: options.capability,
           decision:
             "decision" in options
               ? options.decision
@@ -200,9 +227,16 @@ function handlersFixture(options: FixtureOptions = {}) {
   };
 }
 
-function context({ decision }: { readonly decision: unknown }) {
+function context({
+  capability,
+  decision,
+}: {
+  readonly capability: unknown;
+  readonly decision: unknown;
+}) {
   const values = new Map<string, unknown>([
     ["authorizationDecision", decision],
+    ["capabilityV2Grant", capability],
     ["subject", SUBJECT],
     ["traceId", "trace-1"],
   ]);
@@ -216,5 +250,14 @@ function context({ decision }: { readonly decision: unknown }) {
         return { path: "/", pattern: "needle" };
       },
     },
+  };
+}
+
+function capabilityGrant() {
+  return {
+    contentScopeIds: ["scope:b", "scope:a", "scope:a"],
+    namespaceId: SUBJECT.tenantId,
+    resource: { id: SPACE_ID, parent_id: null, type: "knowledge_space" },
+    subject: SUBJECT.subjectId,
   };
 }

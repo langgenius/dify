@@ -65,6 +65,7 @@ export function registerKnowledgeFsHandlers({
       }
 
       const candidatePermissionScope = currentCandidateGrants({
+        capabilityGrant: context.get("capabilityV2Grant"),
         decision: context.get("authorizationDecision"),
         knowledgeSpaceId: params.id,
         subject,
@@ -125,6 +126,7 @@ export function registerKnowledgeFsHandlers({
       }
 
       const candidatePermissionScope = currentCandidateGrants({
+        capabilityGrant: context.get("capabilityV2Grant"),
         decision: context.get("authorizationDecision"),
         knowledgeSpaceId: params.id,
         subject,
@@ -185,6 +187,7 @@ export function registerKnowledgeFsHandlers({
       }
 
       const candidatePermissionScope = currentCandidateGrants({
+        capabilityGrant: context.get("capabilityV2Grant"),
         decision: context.get("authorizationDecision"),
         knowledgeSpaceId: params.id,
         subject,
@@ -245,6 +248,7 @@ export function registerKnowledgeFsHandlers({
       }
 
       const candidatePermissionScope = currentCandidateGrants({
+        capabilityGrant: context.get("capabilityV2Grant"),
         decision: context.get("authorizationDecision"),
         knowledgeSpaceId: params.id,
         subject,
@@ -305,6 +309,7 @@ export function registerKnowledgeFsHandlers({
       }
 
       const candidatePermissionScope = currentCandidateGrants({
+        capabilityGrant: context.get("capabilityV2Grant"),
         decision: context.get("authorizationDecision"),
         knowledgeSpaceId: params.id,
         subject,
@@ -355,6 +360,7 @@ export function registerKnowledgeFsHandlers({
     }
 
     const candidatePermissionScope = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -402,6 +408,7 @@ export function registerKnowledgeFsHandlers({
     }
 
     const candidatePermissionScope = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -449,6 +456,7 @@ export function registerKnowledgeFsHandlers({
     }
 
     const candidatePermissionScope = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -496,6 +504,7 @@ export function registerKnowledgeFsHandlers({
     }
 
     const candidatePermissionScope = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -560,6 +569,7 @@ export function registerKnowledgeFsHandlers({
     }
 
     const candidatePermissionScope = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
