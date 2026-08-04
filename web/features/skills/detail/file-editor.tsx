@@ -73,7 +73,6 @@ import {
   replaceMarkdownBody,
   runSkillFileMutation,
   serializeMarkdownLiveEditorNode,
-  setMarkdownDisplayName,
   setMarkdownFrontmatterField,
   setMarkdownLiveEditorSelectionOffset,
   setSkillDetailCache,
@@ -138,7 +137,6 @@ export function FileEditor({
   const [draftContent, setDraftContent] = useState(initialContent)
   const [markdownMode, setMarkdownMode] = useState<'live' | 'source'>('live')
   const [metadataAdding, setMetadataAdding] = useState(false)
-  const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [metadataKey, setMetadataKey] = useState('')
   const [metadataValue, setMetadataValue] = useState('')
   const [referencePicker, setReferencePicker] = useState<{
@@ -162,8 +160,6 @@ export function FileEditor({
   const metadataKeyInputRef = useRef<HTMLInputElement>(null)
   const metadataKeyDraftRef = useRef('')
   const metadataValueDraftRef = useRef('')
-  const pendingDisplayNameRenameRef = useRef(false)
-  const displayNameDraftRef = useRef(displayNameDraft)
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -198,7 +194,6 @@ export function FileEditor({
   const hasPublishedVersion = !!detail?.latest_published_version_id
   const latestPublishedAt = detail?.latest_published_at
   const hasUnpublishedChanges =
-    displayNameDraft !== markdownContent.displayName ||
     saveStatus === 'dirty' ||
     saveStatus === 'saving' ||
     saveStatus === 'error' ||
@@ -227,7 +222,6 @@ export function FileEditor({
     isSkillManifestFile &&
     (markdownContent.name ||
       markdownContent.description ||
-      markdownContent.displayName ||
       markdownContent.metadata.length > 0 ||
       !readonly)
   const referenceQuery = referencePicker?.query.trim().toLowerCase() ?? ''
@@ -244,11 +238,6 @@ export function FileEditor({
       return path.includes(referenceQuery) || getPathBaseName(path).includes(referenceQuery)
     })
   }, [referencePicker?.currentDirectory, referenceQuery, referenceTargets])
-
-  useEffect(() => {
-    displayNameDraftRef.current = markdownContent.displayName
-    setDisplayNameDraft(markdownContent.displayName)
-  }, [markdownContent.displayName])
 
   useEffect(() => {
     if (editableDraftContent === draftContent) return
@@ -330,8 +319,6 @@ export function FileEditor({
 
       setHasSaveConflict(false)
       setSaveStatus('saving')
-      const shouldNotifyDisplayNameRename =
-        currentFile.path === 'SKILL.md' && pendingDisplayNameRenameRef.current
       try {
         const nextCachedDetail = await runSkillFileMutation(
           fileMutationCoordinator,
@@ -362,10 +349,6 @@ export function FileEditor({
         setSaveStatus(draftContentRef.current === content ? 'saved' : 'dirty')
         setSkillDetailCache(queryClient, skillId, nextCachedDetail)
         onDraftDetailChange(nextCachedDetail)
-        if (shouldNotifyDisplayNameRename) {
-          pendingDisplayNameRenameRef.current = false
-          toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
-        }
         return true
       } catch (error) {
         const errorPayload = await getAsyncSkillErrorPayload(error)
@@ -868,14 +851,6 @@ export function FileEditor({
     setMetadataAdding(false)
   }
 
-  const handleDisplayNameCommit = () => {
-    const nextDisplayName = displayNameDraftRef.current
-    if (!isSkillManifestFile || readonly || nextDisplayName === markdownContent.displayName) return
-
-    pendingDisplayNameRenameRef.current = true
-    updateDraftContent(setMarkdownDisplayName(draftContentRef.current, nextDisplayName))
-  }
-
   const handleRemoveMetadata = (key: string) => {
     if (!isSkillManifestFile) return
 
@@ -895,12 +870,7 @@ export function FileEditor({
       return
     }
 
-    let contentToPublish = draftContentRef.current
-    if (canEdit && isSkillManifestFile && displayNameDraft !== markdownContent.displayName) {
-      contentToPublish = setMarkdownDisplayName(contentToPublish, displayNameDraft)
-      updateDraftContent(contentToPublish)
-    }
-
+    const contentToPublish = draftContentRef.current
     if (canEdit && contentToPublish !== lastSavedContentRef.current) {
       const saved = await saveDraftContent(contentToPublish)
       if (!saved) return
@@ -915,9 +885,6 @@ export function FileEditor({
   }, [
     canEdit,
     detail?.reference_count,
-    displayNameDraft,
-    isSkillManifestFile,
-    markdownContent.displayName,
     onPublish,
     publishDisabled,
     saveDraftContent,
@@ -1053,23 +1020,6 @@ export function FileEditor({
                                     value,
                                   ),
                                 )
-                        }
-                      />
-                    )}
-                    {(markdownContent.displayName || !readonly) && (
-                      <EditableMetadataField
-                        label="display-name"
-                        value={displayNameDraft}
-                        valuePlaceholder={detail?.display_name ?? ''}
-                        readOnly={readonly}
-                        onBlurCapture={handleDisplayNameCommit}
-                        onValueChange={
-                          readonly
-                            ? undefined
-                            : (nextDisplayName) => {
-                                displayNameDraftRef.current = nextDisplayName
-                                setDisplayNameDraft(nextDisplayName)
-                              }
                         }
                       />
                     )}

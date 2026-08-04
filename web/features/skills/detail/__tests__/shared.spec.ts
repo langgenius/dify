@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   createUploadItemId,
+  deriveSkillDetailFromDraftFiles,
   getErrorCode,
   getErrorDetailNumber,
   getErrorDetailString,
@@ -85,5 +86,33 @@ describe('skill detail shared utilities', () => {
         value: originalCrypto,
       })
     }
+  })
+
+  it('does not derive entity name or display name from SKILL.md draft content', () => {
+    const detail = {
+      description: 'Entity description',
+      display_name: 'Entity Display Name',
+      files: [
+        {
+          content:
+            '---\nname: skill-md-name\ndescription: Skill.md description\nmetadata:\n  display-name: Skill.md Display Name\n---\n# Body\n',
+          kind: 'file',
+          mime_type: 'text/markdown',
+          path: 'SKILL.md',
+          storage: 'text',
+        },
+      ],
+      name: 'entity-name',
+    }
+
+    expect(
+      deriveSkillDetailFromDraftFiles(
+        detail as Parameters<typeof deriveSkillDetailFromDraftFiles>[0],
+      ),
+    ).toMatchObject({
+      description: 'Skill.md description',
+      display_name: 'Entity Display Name',
+      name: 'entity-name',
+    })
   })
 })

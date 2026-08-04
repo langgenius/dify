@@ -677,9 +677,11 @@ def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> 
         assert agent.active_config_has_model is True
 
 
-def test_update_display_name_auto_syncs_name_for_unpublished_placeholder() -> None:
+def test_update_display_name_keeps_name_and_draft_content_unchanged() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    original = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    original_skill_md = next(item for item in original["files"] if item["path"] == "SKILL.md")
 
     updated = service.update_metadata(
         tenant_id=TENANT,
@@ -689,11 +691,10 @@ def test_update_display_name_auto_syncs_name_for_unpublished_placeholder() -> No
     )
 
     assert updated["display_name"] == "Finance Audit"
-    assert updated["name"] == "finance-audit"
+    assert updated["name"] == created["name"]
     assert updated["name_manually_edited"] is False
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
-    assert "name: finance-audit" in skill_md["content"]
-    assert "display-name: Finance Audit" in skill_md["content"]
+    assert skill_md["content"] == original_skill_md["content"]
 
 
 def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sync() -> None:
@@ -724,7 +725,7 @@ def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sy
     assert updated["display_name"] == "Finance Audit"
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
     assert "name: manual-name" in skill_md["content"]
-    assert "display-name: Finance Audit" in skill_md["content"]
+    assert "display-name: Finance Audit" not in skill_md["content"]
 
 
 def test_delete_unreferenced_placeholder_skill_deletes_initial_draft() -> None:

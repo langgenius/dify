@@ -1199,14 +1199,6 @@ class SkillManagementService:
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             if payload.display_name is not None:
                 skill.display_name = payload.display_name
-                if self._should_auto_sync_name(skill):
-                    skill.name = self._generate_name_from_display_name(
-                        session,
-                        tenant_id=tenant_id,
-                        display_name=payload.display_name,
-                        current_skill_id=skill.id,
-                    )
-                self._sync_skill_md_text_file(session, skill=skill)
             if payload.icon is not None:
                 skill.icon = payload.icon
             if payload.tags is not None:

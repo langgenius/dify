@@ -7,14 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { fetchSkillFileBlob } from '../client'
-import {
-  findFileByPath,
-  invalidateSkillDetail,
-  runSkillFileMutation,
-  setMarkdownDisplayName,
-  setSkillDetailCache,
-} from './shared'
+import { invalidateSkillDetail, runSkillFileMutation, setSkillDetailCache } from './shared'
 
 export function SkillDisplayNameEditor({
   detail,
@@ -38,12 +31,12 @@ export function SkillDisplayNameEditor({
     next: string
   }>()
   const [draftName, setDraftName] = useState(detail.display_name)
-  const fileMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
+  const metadataMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
       context: { silent: true },
     }),
   )
-  const saving = fileMutation.isPending
+  const saving = metadataMutation.isPending
   const displayName =
     displayNameOverride?.base === detail.display_name
       ? displayNameOverride.next
@@ -70,39 +63,18 @@ export function SkillDisplayNameEditor({
       return
     }
 
-    const skillFile = findFileByPath(detail.files ?? [], 'SKILL.md')
-    if (!skillFile) {
-      toast.error(t(($) => $['skillManagement.detail.fileMissing']))
-      return
-    }
-
     submittingRef.current = true
     try {
-      const currentContent =
-        skillFile.content ??
-        (await (
-          await fetchSkillFileBlob({
-            path: skillFile.path,
-            skillId,
-            versionId: null,
-          })
-        ).text())
-      const nextContent = setMarkdownDisplayName(currentContent, nextDisplayName)
       const nextDetail = await runSkillFileMutation(
         fileMutationCoordinator,
         async (expectedUpdatedAt) => {
-          return fileMutation.mutateAsync({
+          return metadataMutation.mutateAsync({
             params: {
               skill_id: skillId,
             },
             body: {
-              content: nextContent,
+              display_name: nextDisplayName,
               expected_updated_at: expectedUpdatedAt,
-              hash: skillFile.hash,
-              mime_type: skillFile.mime_type,
-              operation: 'upsert_text',
-              path: skillFile.path,
-              size: new Blob([nextContent]).size,
             },
           })
         },

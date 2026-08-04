@@ -1333,8 +1333,6 @@ export function deriveSkillDetailFromDraftFiles(detail: SkillDetailResponse) {
   return {
     ...detail,
     description: parsedSkillMd.description || detail.description,
-    display_name: parsedSkillMd.displayName || detail.display_name,
-    name: parsedSkillMd.name || detail.name,
   }
 }
 
