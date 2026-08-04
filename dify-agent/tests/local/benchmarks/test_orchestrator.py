@@ -316,4 +316,4 @@ def test_run_command_reports_timeout_output(monkeypatch: pytest.MonkeyPatch) -> 
     with pytest.raises(BenchmarkCommandError, match="timed out after 12s") as raised:
         _run_command(["driver"], timeout_seconds=12)
     assert "partial outputpartial error" in str(raised.value)
-    _agent_stub_api_base_url,
+    (_agent_stub_api_base_url,)
