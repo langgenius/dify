@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import replace
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock
 
@@ -15,12 +16,14 @@ from benchmarks.capacity_driver import (
     CapacityDriverSettings,
     _active_window_seconds_from_events,
     _active_windows_from_events,
+    _apply_e2b_execution_events,
     _cancel_and_drain_run,
     _execute_load_phase,
     _execution_windows_from_events,
     _fetch_e2b_pause_events,
     _invalid_reasons,
     _load_phase_integrity_errors,
+    _prepare_e2b_config_stubs,
     _managed_binding_pool,
     _record_skipped_load_phase,
     _read_active_run_checkpoint,
@@ -31,7 +34,7 @@ from benchmarks.capacity_driver import (
 )
 from benchmarks.capacity_protocol import CapacityObservation
 from benchmarks.load_phase import CompositeRequestStats, LoadPhaseResult, PhaseKind, WorkerContext
-from benchmarks.scenario import load_scenario_manifest
+from benchmarks.scenario import deterministic_file_payload_sha256, load_scenario_manifest
 from benchmarks.schemas import FakeDependencyLedger, RedisSnapshot, RunSample
 
 
@@ -228,6 +231,44 @@ def test_reused_binding_matches_each_pause_event_once() -> None:
     assert values == [0.1, 0.2]
 
 
+def test_file_observation_sums_both_e2b_active_windows() -> None:
+    observation = CapacityObservation(
+        sample=RunSample(
+            mode="local-e2b",
+            scenario_id="file",
+            block_id="block",
+            benchmark_run_id="run",
+            worker_index=0,
+            terminal_status="succeeded",
+        ),
+        binding_ref="sandbox",
+        started_at_ns=1767225600 * 1_000_000_000,
+        ended_at_ns=1767225602 * 1_000_000_000,
+        e2b_active_windows=[
+            (1767225600 * 1_000_000_000, 1767225601 * 1_000_000_000),
+            (1767225601 * 1_000_000_000, 1767225602 * 1_000_000_000),
+        ],
+    )
+    events = [
+        {
+            "type": "sandbox.lifecycle.paused",
+            "timestamp": "2026-01-01T00:00:01Z",
+            "event_data": {"execution": {"execution_time": 100, "vcpu_count": 2, "memory_mb": 1024}},
+        },
+        {
+            "type": "sandbox.lifecycle.paused",
+            "timestamp": "2026-01-01T00:00:02Z",
+            "event_data": {"execution": {"execution_time": 200, "vcpu_count": 2, "memory_mb": 1024}},
+        },
+    ]
+
+    _apply_e2b_execution_events([observation], events)
+
+    assert observation.sample.e2b_active_seconds == pytest.approx(0.3)
+    assert observation.sample.e2b_vcpu_count == 2
+    assert observation.sample.e2b_memory_mib == 1024
+
+
 def test_e2b_pause_events_use_supported_pagination() -> None:
     offsets: list[int] = []
 
@@ -260,7 +301,7 @@ def test_file_ledger_validates_payload_and_stub_calls() -> None:
     ledger = FakeDependencyLedger(
         benchmark_run_id="run",
         scenario_id="file",
-        scenario_version=1,
+        scenario_version=scenario.version,
         model_calls=2,
         tool_calls=1,
         text_chunks=1,
@@ -269,16 +310,131 @@ def test_file_ledger_validates_payload_and_stub_calls() -> None:
         stub_calls={
             "file_upload_request": 1,
             "signed_upload": 1,
-            "file_download_request": 2,
+            "file_download_request": 1,
             "signed_download": 1,
         },
-        stub_elapsed_ms=[1, 1, 1, 1, 1],
+        stub_elapsed_ms=[1, 1, 1, 1],
         payload_bytes=2 * 16 * 1024 * 1024,
-        payload_sha256=["a", "b"],
+        payload_sha256=[
+            deterministic_file_payload_sha256(scenario.payload_bytes),
+            deterministic_file_payload_sha256(scenario.payload_bytes),
+        ],
     )
 
     assert validate_ledger(ledger=ledger, scenario=scenario)
 
+
+def test_config_ledger_requires_materialized_content_evidence() -> None:
+    scenario = load_scenario_manifest().get("config")
+    ledger = FakeDependencyLedger(
+        benchmark_run_id="run",
+        scenario_id="config",
+        scenario_version=scenario.version,
+        model_calls=2,
+        tool_calls=1,
+        text_chunks=1,
+        model_stream_items=2,
+        model_start_elapsed_ms=[10, 10],
+        stub_calls={"config_skill_pull": 3, "config_file_pull": 10},
+        stub_elapsed_ms=[1] * 13,
+        payload_bytes=13 * 4096,
+        payload_sha256=["hash"] * 13,
+    )
+
+    assert not validate_ledger(ledger=ledger, scenario=scenario)
+    assert validate_ledger(
+        ledger=ledger.model_copy(
+            update={
+                "config_materialization_valid": True,
+                "config_materialization_sha256": "a" * 64,
+            }
+        ),
+        scenario=scenario,
+    )
+    assert validate_ledger(
+        ledger=ledger.model_copy(
+            update={
+                "stub_calls": {},
+                "stub_elapsed_ms": [],
+                "payload_bytes": 0,
+                "payload_sha256": [],
+                "config_materialization_valid": True,
+                "config_materialization_sha256": "a" * 64,
+            }
+        ),
+        scenario=scenario,
+        mode="local-e2b",
+    )
+
+
+def test_e2b_config_stub_is_started_and_paused_in_every_worker_sandbox(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sandboxes: dict[str, object] = {}
+
+    class Files:
+        def __init__(self) -> None:
+            self.writes: list[tuple[str, str]] = []
+
+        async def write(self, path: str, data: str) -> object:
+            self.writes.append((path, data))
+            return object()
+
+    class Commands:
+        def __init__(self) -> None:
+            self.commands: list[tuple[str, bool | None]] = []
+
+        async def run(
+            self,
+            command: str,
+            *,
+            background: bool | None = None,
+            timeout: float,
+        ) -> object:
+            assert timeout == 30
+            self.commands.append((command, background))
+            return SimpleNamespace(exit_code=0, stdout="", stderr="")
+
+    class Sandbox:
+        def __init__(self) -> None:
+            self.files = Files()
+            self.commands = Commands()
+            self.pause_calls = 0
+
+        async def pause(self, *, keep_memory: bool = True) -> bool:
+            assert keep_memory
+            self.pause_calls += 1
+            return True
+
+    async def connect(binding_ref: str, *, api_key: str) -> object:
+        assert api_key == "secret"
+        sandbox = Sandbox()
+        sandboxes[binding_ref] = sandbox
+        return sandbox
+
+    monkeypatch.setattr("benchmarks.capacity_driver._connect_e2b_config_sandbox", connect)
+
+    asyncio.run(
+        _prepare_e2b_config_stubs(
+            binding_refs=["sandbox-a", "sandbox-b"],
+            api_key="secret",
+            item_bytes=73,
+        )
+    )
+
+    assert set(sandboxes) == {"sandbox-a", "sandbox-b"}
+    for sandbox_object in sandboxes.values():
+        sandbox = cast(Sandbox, sandbox_object)
+        assert len(sandbox.files.writes) == 1
+        assert "Standalone deterministic Config data plane" in sandbox.files.writes[0][1]
+        assert len(sandbox.commands.commands) == 2
+        start_command, start_background = sandbox.commands.commands[0]
+        health_command, health_background = sandbox.commands.commands[1]
+        assert "BENCH_E2B_CONFIG_STUB_ITEM_BYTES=73" in start_command
+        assert start_background is True
+        assert "/health" in health_command
+        assert health_background is None
+        assert sandbox.pause_calls == 1
 
 def test_timeout_is_counted_as_capacity_evidence() -> None:
     sample = RunSample(
@@ -293,6 +449,27 @@ def test_timeout_is_counted_as_capacity_evidence() -> None:
     outcome = summarize_outcomes(samples=[sample], elapsed_seconds=1, max_active=0)
 
     assert outcome.timeout_runs == 1
+
+
+def test_post_terminal_validation_failure_is_not_counted_as_success() -> None:
+    sample = RunSample(
+        mode="local-e2b",
+        scenario_id="file",
+        block_id="block",
+        benchmark_run_id="run",
+        worker_index=0,
+        admitted=True,
+        terminal_status="succeeded",
+        failure_kind="validation_error",
+        error="file payload SHA256 mismatch",
+    )
+
+    outcome = summarize_outcomes(samples=[sample], elapsed_seconds=1, max_active=1)
+
+    assert outcome.terminal_runs == 1
+    assert outcome.successful_runs == 0
+    assert outcome.success_rate == 0
+    assert outcome.runs_per_second == 0
 
 
 def test_terminal_failure_reason_includes_compact_runtime_error() -> None:
@@ -483,6 +660,42 @@ def test_load_phase_integrity_requires_matching_composite_stats() -> None:
         "Locust measurement reported 1 composite requests for 2 observations",
         "Locust measurement reported 0 composite failures for 1 unsuccessful observations",
     ]
+
+    post_terminal_validation_failure = succeeded.model_copy(
+        update={
+            "sample": succeeded.sample.model_copy(
+                update={
+                    "failure_kind": "validation_error",
+                    "error": "file data-plane validation failed",
+                }
+            )
+        }
+    )
+    matching_validation_failure = missing.model_copy(
+        update={
+            "observation_count": 1,
+            "requested_users": 1,
+            "spawned_users": 1,
+            "composite_request": CompositeRequestStats(
+                request_count=1,
+                failure_count=1,
+                total_response_time_ms=10,
+                min_response_time_ms=10,
+                max_response_time_ms=10,
+                average_response_time_ms=10,
+            ),
+        }
+    )
+
+    assert (
+        _load_phase_integrity_errors(
+            result=matching_validation_failure,
+            observations=[post_terminal_validation_failure],
+            label="warmup",
+            scenario_id="file",
+        )
+        == []
+    )
 
 
 def test_interrupted_run_is_cancelled_and_drained_to_terminal() -> None:

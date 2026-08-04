@@ -35,6 +35,18 @@ then admits Runs during a fixed 60-second measurement window. The driver waits
 for already admitted Runs to finish. Sample count is reported but is not a
 validity gate.
 
+The Config workload pulls three Skills and ten Files through the real Agent
+Stub HTTP contract, then hashes every run-unique materialized Workspace file
+inside the same Run. In `local-e2b`, each worker Sandbox hosts a deterministic
+localhost Config stub; every run-scoped item may be pulled exactly once, and
+duplicate or out-of-range pulls fail the Run. The final digest therefore proves
+that the fixed three Skills and ten Files were each materialized with the exact
+bytes, without depending on a public tunnel. The
+File workload writes its fixed payload inside the Runtime and exports it
+through `POST /workspace/files/upload`; the Driver downloads and verifies the
+exact size and SHA256 over the local Docker data path. The 16 MiB File payload
+also never traverses a public tunnel.
+
 For focused debugging:
 
 ```bash

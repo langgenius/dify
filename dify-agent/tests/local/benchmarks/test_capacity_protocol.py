@@ -10,8 +10,11 @@ from benchmarks.capacity_protocol import (
     CapacityObservation,
     RequestMetric,
     build_capacity_run_request,
+    decode_observation_record,
+    encode_observation_record,
 )
 from benchmarks.scenario import load_scenario_manifest
+from benchmarks.schemas import RunSample
 
 
 class _Tracker:
@@ -224,6 +227,27 @@ def test_capacity_observation_roundtrip_preserves_run_sample_schema() -> None:
     assert restored.model_dump() == observation.model_dump()
 
 
+def test_private_observation_record_is_one_line_with_control_characters() -> None:
+    observation = CapacityObservation(
+        sample=RunSample(
+            mode="local-runtime",
+            scenario_id="config",
+            block_id="block",
+            benchmark_run_id="run",
+            worker_index=0,
+        ),
+        session_snapshot={"binary_like": bytes(range(256)).decode("latin-1")},
+        started_at_ns=1,
+        ended_at_ns=2,
+    )
+
+    record = encode_observation_record(observation)
+
+    assert record.startswith("base64:")
+    assert "\n" not in record
+    assert decode_observation_record(record) == observation
+
+
 def test_config_request_keeps_three_skills_and_ten_files() -> None:
     request = build_capacity_run_request(
         scenario=load_scenario_manifest().get("config"),
@@ -237,8 +261,187 @@ def test_config_request_keeps_three_skills_and_ten_files() -> None:
     layers = cast(list[dict[str, object]], composition["layers"])
     config_layer = next(layer for layer in layers if layer["name"] == "config")
     config = cast(dict[str, object], config_layer["config"])
-    assert len(cast(list[object], config["skills"])) == 3
-    assert len(cast(list[object], config["files"])) == 10
+    skills = cast(list[dict[str, object]], config["skills"])
+    files = cast(list[dict[str, object]], config["files"])
+    assert len(skills) == 3
+    assert len(files) == 10
+    assert skills[0]["name"] == "skill-0-run"
+    assert files[0]["name"] == "file-0-run.bin"
+
+
+def test_file_run_exports_workspace_payload_without_a_public_callback() -> None:
+    scenario = load_scenario_manifest().get("file")
+    payload = (bytes(range(256)) * ((scenario.payload_bytes + 255) // 256))[: scenario.payload_bytes]
+    requests_seen: list[httpx.Request] = []
+
+    def agent_handler(request: httpx.Request) -> httpx.Response:
+        requests_seen.append(request)
+        if request.method == "POST" and request.url.path == "/runs":
+            return httpx.Response(202, json={"run_id": "run-1"})
+        if request.method == "GET" and request.url.path.endswith("/events/sse"):
+            return httpx.Response(
+                200,
+                text='data: {"id":"1-0","type":"run_succeeded","data":{}}\n\n',
+            )
+        if request.method == "POST" and request.url.path == "/workspace/files/upload":
+            return httpx.Response(
+                200,
+                json={
+                    "path": "dify-bench-file/payload.bin",
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "dify-file-ref:record",
+                        "download_url": "http://fake/__bench/files/download/record",
+                    },
+                },
+            )
+        raise AssertionError(f"unexpected request: {request.method} {request.url.path}")
+
+    def fake_handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST" and request.url.path == "/__bench/prepare":
+            return httpx.Response(200, json={})
+        if request.method == "GET" and request.url.path == "/__bench/files/download/record":
+            return httpx.Response(200, content=payload)
+        raise AssertionError(f"unexpected request: {request.method} {request.url.path}")
+
+    metrics: list[RequestMetric] = []
+    agent, fake = _clients(
+        agent_handler=httpx.MockTransport(agent_handler),
+        fake_handler=httpx.MockTransport(fake_handler),
+    )
+    try:
+        observation = AgentRunClient(
+            mode="local-e2b",
+            agent_client=agent,
+            fake_client=fake,
+            scenario=scenario,
+            block_id="block",
+            recorder=metrics.append,
+        ).run_once(
+            sequence=0,
+            worker_index=0,
+            binding_ref="binding-1",
+            session_snapshot=None,
+            tracker=_Tracker(),
+        )
+    finally:
+        agent.close()
+        fake.close()
+
+    upload_request = next(request for request in requests_seen if request.url.path == "/workspace/files/upload")
+    upload_payload = cast(dict[str, object], json.loads(upload_request.content))
+    assert upload_payload["backend_binding_ref"] == "binding-1"
+    assert upload_payload["path"] == "dify-bench-file/payload.bin"
+    execution_context = cast(dict[str, object], upload_payload["execution_context"])
+    assert execution_context["user_id"] == observation.sample.benchmark_run_id
+    assert observation.sample.terminal_status == "succeeded"
+    assert observation.sample.failure_kind is None
+    assert len(observation.e2b_active_windows) == 2
+    assert [metric.name for metric in metrics][-3:] == [
+        "POST /workspace/files/upload",
+        "GET workspace file download",
+        "file",
+    ]
+
+
+def test_file_run_marks_corrupt_workspace_download_as_validation_error() -> None:
+    def agent_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/runs":
+            return httpx.Response(202, json={"run_id": "run-1"})
+        if request.url.path.endswith("/events/sse"):
+            return httpx.Response(200, text='data: {"type":"run_succeeded","data":{}}\n\n')
+        if request.url.path == "/workspace/files/upload":
+            return httpx.Response(
+                200,
+                json={
+                    "path": "dify-bench-file/payload.bin",
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "ref",
+                        "download_url": "http://fake/download",
+                    },
+                },
+            )
+        raise AssertionError(request.url.path)
+
+    def fake_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"corrupt" if request.method == "GET" else b"{}")
+
+    agent, fake = _clients(
+        agent_handler=httpx.MockTransport(agent_handler),
+        fake_handler=httpx.MockTransport(fake_handler),
+    )
+    try:
+        observation = AgentRunClient(
+            mode="local-runtime",
+            agent_client=agent,
+            fake_client=fake,
+            scenario=load_scenario_manifest().get("file"),
+            block_id="block",
+            recorder=lambda _metric: None,
+        ).run_once(
+            sequence=0,
+            worker_index=0,
+            binding_ref="binding-1",
+            session_snapshot=None,
+            tracker=None,
+        )
+    finally:
+        agent.close()
+        fake.close()
+
+    assert observation.sample.terminal_status == "succeeded"
+    assert observation.sample.failure_kind == "validation_error"
+    assert observation.sample.error is not None
+    assert "payload size" in observation.sample.error
+
+
+def test_file_run_preserves_workspace_upload_error_body() -> None:
+    metrics: list[RequestMetric] = []
+
+    def agent_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/runs":
+            return httpx.Response(202, json={"run_id": "run-1"})
+        if request.url.path.endswith("/events/sse"):
+            return httpx.Response(200, text='data: {"type":"run_succeeded","data":{}}\n\n')
+        if request.url.path == "/workspace/files/upload":
+            return httpx.Response(502, json={"detail": "runtime workspace acquire failed"})
+        raise AssertionError(request.url.path)
+
+    def fake_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/__bench/prepare":
+            return httpx.Response(200, json={})
+        raise AssertionError(request.url.path)
+
+    agent, fake = _clients(
+        agent_handler=httpx.MockTransport(agent_handler),
+        fake_handler=httpx.MockTransport(fake_handler),
+    )
+    try:
+        observation = AgentRunClient(
+            mode="local-runtime",
+            agent_client=agent,
+            fake_client=fake,
+            scenario=load_scenario_manifest().get("file"),
+            block_id="block",
+            recorder=metrics.append,
+        ).run_once(
+            sequence=0,
+            worker_index=0,
+            binding_ref="binding-1",
+            session_snapshot=None,
+            tracker=None,
+        )
+    finally:
+        agent.close()
+        fake.close()
+
+    assert observation.sample.failure_kind == "validation_error"
+    assert observation.sample.error is not None
+    assert "runtime workspace acquire failed" in observation.sample.error
+    upload_metric = next(metric for metric in metrics if metric.name == "POST /workspace/files/upload")
+    assert upload_metric.error is not None
+    assert "runtime workspace acquire failed" in upload_metric.error
 
 
 def test_recorder_delay_does_not_change_run_timings_or_observation_window() -> None:

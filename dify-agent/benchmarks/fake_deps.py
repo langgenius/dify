@@ -26,12 +26,13 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResul
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from benchmarks.scenario import CapacityScenario, load_scenario_manifest
+from benchmarks.scenario import CapacityScenario, config_file_name, config_skill_name, load_scenario_manifest
 from benchmarks.schemas import FakeDependencyLedger
 
 
 _MODEL_NAME = "benchmark-model"
 _SHELL_TOOL_NAME = "shell_run"
+_CONFIG_MATERIALIZATION_MARKER = "DIFY_CONFIG_MATERIALIZATION_SHA256="
 _ZERO_PRICE = Decimal(0)
 
 
@@ -152,6 +153,18 @@ class BenchmarkLedgerStore:
     async def record_capability_tool_plan(self, *, benchmark_run_id: str) -> None:
         async with self._lock:
             self._ledgers[benchmark_run_id].tool_calls += 1
+
+    async def record_config_materialization(
+        self,
+        *,
+        benchmark_run_id: str,
+        digest: str | None,
+        expected_digest: str,
+    ) -> None:
+        async with self._lock:
+            ledger = self._ledgers[benchmark_run_id]
+            ledger.config_materialization_sha256 = digest
+            ledger.config_materialization_valid = digest == expected_digest
 
     async def record_stub_call(
         self,
@@ -278,6 +291,13 @@ async def invoke_llm(tenant_id: str, request: PluginInvokeRequest) -> StreamingR
     )
     if round_number > scenario.model_rounds:
         raise HTTPException(status_code=409, detail="model invoked more times than configured")
+    if scenario.workload == "config" and round_number == scenario.model_rounds:
+        digest = _config_materialization_digest_from_request(request)
+        await ledger_store.record_config_materialization(
+            benchmark_run_id=benchmark_run_id,
+            digest=digest,
+            expected_digest=_expected_config_materialization_digest(scenario, benchmark_run_id),
+        )
 
     async def stream() -> AsyncIterator[str]:
         started_ns = time.perf_counter_ns()
@@ -288,7 +308,11 @@ async def invoke_llm(tenant_id: str, request: PluginInvokeRequest) -> StreamingR
         )
         if round_number <= scenario.tool_rounds:
             await ledger_store.record_capability_tool_plan(benchmark_run_id=benchmark_run_id)
-            item = _capability_tool_call_chunk(scenario=scenario, round_number=round_number)
+            item = _capability_tool_call_chunk(
+                scenario=scenario,
+                round_number=round_number,
+                benchmark_run_id=benchmark_run_id,
+            )
             await ledger_store.record_model_item(
                 benchmark_run_id=benchmark_run_id,
                 text_chunk=False,
@@ -335,7 +359,7 @@ async def config_manifest(benchmark_run_id: str) -> dict[str, object]:
         "skills": {
             "items": [
                 {
-                    "name": f"skill-{index}",
+                    "name": config_skill_name(benchmark_run_id, index),
                     "description": "deterministic benchmark skill",
                     "size": scenario.item_bytes,
                     "mime_type": "application/zip",
@@ -346,7 +370,7 @@ async def config_manifest(benchmark_run_id: str) -> dict[str, object]:
         "files": {
             "items": [
                 {
-                    "name": f"file-{index}.bin",
+                    "name": config_file_name(benchmark_run_id, index),
                     "size": scenario.item_bytes,
                     "mime_type": "application/octet-stream",
                 }
@@ -420,7 +444,7 @@ async def upload_file(benchmark_run_id: str, encoded_name: str, request: Request
         elapsed_ms=_elapsed_ms(started_ns),
     )
     reference = _canonical_file_reference(record_id)
-    return {"id": record_id, "reference": reference}
+    return {"reference": reference}
 
 
 @app.post("/inner/api/download/file/request")
@@ -560,8 +584,9 @@ def _capability_tool_call_chunk(
     *,
     scenario: CapacityScenario,
     round_number: int,
+    benchmark_run_id: str,
 ) -> LLMResultChunk:
-    script = _capability_script(scenario)
+    script = _capability_script(scenario, benchmark_run_id=benchmark_run_id)
     arguments: dict[str, str | float] = {"script": script}
     if scenario.workload == "file":
         arguments["timeout"] = 120.0
@@ -583,29 +608,107 @@ def _capability_tool_call_chunk(
     )
 
 
-def _capability_script(scenario: CapacityScenario) -> str:
+def _capability_script(scenario: CapacityScenario, *, benchmark_run_id: str = "run") -> str:
     if scenario.workload in {"shell", "resume"}:
         return "set -eu\nprintf 'DIFY_CAPABILITY_SHELL_OK\\n'"
+    if scenario.workload == "config":
+        paths = [
+            *(
+                f".dify_conf/skills/{config_skill_name(benchmark_run_id, index)}/SKILL.md"
+                for index in range(scenario.config_skill_count)
+            ),
+            *(
+                f".dify_conf/files/{config_file_name(benchmark_run_id, index)}"
+                for index in range(scenario.config_file_count)
+            ),
+        ]
+        return "\n".join(
+            [
+                "set -eu",
+                "python - <<'PY'",
+                "from hashlib import sha256",
+                "from pathlib import Path",
+                f"paths = {paths!r}",
+                "digest = sha256()",
+                "for raw_path in paths:",
+                "    payload = Path(raw_path).read_bytes()",
+                "    digest.update(raw_path.encode())",
+                "    digest.update(b'\\0')",
+                "    digest.update(len(payload).to_bytes(8, 'big'))",
+                "    digest.update(payload)",
+                f"print('{_CONFIG_MATERIALIZATION_MARKER}' + digest.hexdigest())",
+                "PY",
+            ]
+        )
     if scenario.workload != "file":
         raise ValueError(f"{scenario.workload} does not use shell_run")
     return "\n".join(
         [
             "set -eu",
-            'workdir="$(mktemp -d "$PWD/dify-bench-file-XXXXXX")"',
-            "trap 'rm -rf \"$workdir\"' EXIT",
+            "mkdir -p dify-bench-file",
             f'python -c "from pathlib import Path; size={scenario.payload_bytes}; '
-            "pattern=bytes(range(256)); Path('$workdir/payload.bin').write_bytes("
+            "pattern=bytes(range(256)); Path('dify-bench-file/payload.bin').write_bytes("
             '(pattern*((size+255)//256))[:size])"',
-            'upload_json="$(dify-agent file upload "$workdir/payload.bin")"',
-            'reference="$(printf \'%s\' "$upload_json" | python -c '
-            '\'import json,sys; print(json.load(sys.stdin)["reference"])\')"',
-            'mkdir -p "$workdir/download"',
-            'dify-agent file download tool_file "$reference" --to "$workdir/download" >/dev/null',
-            'test "$(sha256sum "$workdir/payload.bin" | cut -d\' \' -f1)" = '
-            '"$(sha256sum "$workdir/download/payload.bin" | cut -d\' \' -f1)"',
-            "printf 'DIFY_CAPABILITY_FILE_OK\\n'",
+            "printf 'DIFY_CAPABILITY_FILE_READY\\n'",
         ]
     )
+
+
+def _expected_config_materialization_digest(scenario: CapacityScenario, benchmark_run_id: str = "run") -> str:
+    digest = hashlib.sha256()
+    entries = [
+        *(
+            (
+                f".dify_conf/skills/{config_skill_name(benchmark_run_id, index)}/SKILL.md",
+                b"# Benchmark skill\n\n"
+                + _fixed_payload(
+                    f"skill:{config_skill_name(benchmark_run_id, index)}",
+                    scenario.item_bytes,
+                ),
+            )
+            for index in range(scenario.config_skill_count)
+        ),
+        *(
+            (
+                f".dify_conf/files/{config_file_name(benchmark_run_id, index)}",
+                _fixed_payload(
+                    f"config:{config_file_name(benchmark_run_id, index)}",
+                    scenario.item_bytes,
+                ),
+            )
+            for index in range(scenario.config_file_count)
+        ),
+    ]
+    for path, payload in entries:
+        digest.update(path.encode())
+        digest.update(b"\0")
+        digest.update(len(payload).to_bytes(8, "big"))
+        digest.update(payload)
+    return digest.hexdigest()
+
+
+def _config_materialization_digest_from_request(request: PluginInvokeRequest) -> str | None:
+    messages = request.data.get("prompt_messages")
+    if not isinstance(messages, list):
+        return None
+    for raw_message in reversed(messages):
+        if not isinstance(raw_message, dict):
+            continue
+        message = cast(dict[str, object], raw_message)
+        if message.get("role") != "tool" or message.get("name") != _SHELL_TOOL_NAME:
+            continue
+        content = message.get("content")
+        if not isinstance(content, str):
+            return None
+        for line in reversed(content.splitlines()):
+            if not line.startswith(_CONFIG_MATERIALIZATION_MARKER):
+                continue
+            digest = line.removeprefix(_CONFIG_MATERIALIZATION_MARKER)
+            if len(digest) == 64 and all(character in "0123456789abcdef" for character in digest):
+                return digest
+            return None
+        return None
+    return None
 
 
 def _text_chunk(*, index: int, final: bool) -> LLMResultChunk:

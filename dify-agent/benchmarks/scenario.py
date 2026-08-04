@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import ClassVar, Literal
 
@@ -32,7 +34,7 @@ class CapacityScenario(BaseModel):
 
     @property
     def tool_rounds(self) -> int:
-        return 1 if self.workload in {"shell", "resume", "file"} else 0
+        return 1 if self.workload in {"shell", "resume", "config", "file"} else 0
 
     @property
     def expected_model_stream_items(self) -> int:
@@ -77,10 +79,37 @@ def load_scenario_manifest(path: Path | None = None) -> ScenarioManifest:
     return ScenarioManifest.model_validate(json.loads(resolved_path.read_text()))
 
 
+@lru_cache(maxsize=16)
+def deterministic_file_payload_sha256(payload_bytes: int) -> str:
+    """Return the SHA256 for the fixed byte-pattern File workload."""
+    if payload_bytes < 1:
+        raise ValueError("payload_bytes must be positive")
+    pattern_block = bytes(range(256)) * 4096
+    full_blocks, remainder = divmod(payload_bytes, len(pattern_block))
+    digest = hashlib.sha256()
+    for _ in range(full_blocks):
+        digest.update(pattern_block)
+    digest.update(pattern_block[:remainder])
+    return digest.hexdigest()
+
+
+def config_skill_name(benchmark_run_id: str, index: int) -> str:
+    """Return a run-unique Config skill name safe for a URL and Workspace path."""
+    return f"skill-{index}-{benchmark_run_id}"
+
+
+def config_file_name(benchmark_run_id: str, index: int) -> str:
+    """Return a run-unique Config file name safe for a URL and Workspace path."""
+    return f"file-{index}-{benchmark_run_id}.bin"
+
+
 __all__ = [
     "BenchmarkMode",
     "CapacityScenario",
     "CapacityWorkload",
     "ScenarioManifest",
+    "config_file_name",
+    "config_skill_name",
+    "deterministic_file_payload_sha256",
     "load_scenario_manifest",
 ]

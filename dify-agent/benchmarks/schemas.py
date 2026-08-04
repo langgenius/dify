@@ -32,6 +32,8 @@ class FakeDependencyLedger(BaseModel):
     stub_elapsed_ms: list[float] = Field(default_factory=list)
     payload_bytes: int = 0
     payload_sha256: list[str] = Field(default_factory=list)
+    config_materialization_valid: bool = False
+    config_materialization_sha256: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

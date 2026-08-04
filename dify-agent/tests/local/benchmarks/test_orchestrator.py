@@ -9,6 +9,7 @@ from benchmarks.capacity import CapacityMatrixPoint
 from benchmarks.orchestrator import (
     BenchmarkCommandError,
     CapacityOptions,
+    _agent_stub_api_base_url,
     _cleanup_e2b_allocation_journal,
     _driver_timeout_seconds,
     _finalize_block_result,
@@ -90,7 +91,7 @@ def test_secret_redaction_covers_nested_text_artifacts(tmp_path: Path) -> None:
     assert artifact.read_text() == "before [redacted] after"
 
 
-def test_basic_e2b_point_does_not_start_public_callback_proxy() -> None:
+def test_local_e2b_points_do_not_start_a_public_callback_proxy() -> None:
     manifest = load_scenario_manifest()
     basic = CapacityMatrixPoint(
         mode="local-e2b",
@@ -98,9 +99,15 @@ def test_basic_e2b_point_does_not_start_public_callback_proxy() -> None:
         requested_concurrency=1,
     )
     shell = basic.model_copy(update={"scenario": manifest.get("shell")})
+    config = basic.model_copy(update={"scenario": manifest.get("config")})
+    file = basic.model_copy(update={"scenario": manifest.get("file")})
 
     assert _services_for_point(basic) == ("redis", "fake-deps", "agent")
-    assert _services_for_point(shell) == ("redis", "fake-deps", "agent", "agent-stub-proxy")
+    assert _services_for_point(shell) == ("redis", "fake-deps", "agent")
+    assert _services_for_point(file) == ("redis", "fake-deps", "agent")
+    assert _services_for_point(config) == ("redis", "fake-deps", "agent")
+    assert _agent_stub_api_base_url(config) == "http://127.0.0.1:8765/agent-stub"
+    assert _agent_stub_api_base_url(file) == "http://agent:5050/agent-stub"
 
 
 def test_driver_timeout_covers_locust_drain_and_resume_setup() -> None:
@@ -309,3 +316,4 @@ def test_run_command_reports_timeout_output(monkeypatch: pytest.MonkeyPatch) -> 
     with pytest.raises(BenchmarkCommandError, match="timed out after 12s") as raised:
         _run_command(["driver"], timeout_seconds=12)
     assert "partial outputpartial error" in str(raised.value)
+    _agent_stub_api_base_url,
