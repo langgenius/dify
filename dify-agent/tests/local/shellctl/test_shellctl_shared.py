@@ -7,11 +7,19 @@ from pydantic import ValidationError
 
 from shellctl.shared import (
     JOB_ID_ALPHABET,
+    JobMode,
     RunJobRequest,
     generate_job_id,
     read_output_window,
     tail_output_window,
 )
+
+
+def test_run_job_request_defaults_to_pty_and_rejects_unknown_mode() -> None:
+    assert RunJobRequest(script="true").mode is JobMode.PTY
+
+    with pytest.raises(ValidationError):
+        RunJobRequest(script="true", mode="stdout")  # pyright: ignore[reportArgumentType]
 
 
 def test_generate_job_id_matches_proposal_format() -> None:

@@ -28,6 +28,7 @@ from shellctl.shared.schemas import (
     DeleteJobResponse,
     HealthResponse,
     JobInfo,
+    JobMode,
     JobResult,
     JobStatusView,
     ListJobsResponse,
@@ -143,11 +144,14 @@ class ShellctlClient:
         env: dict[str, str] | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         terminal: TerminalSize | None = None,
+        mode: JobMode = JobMode.PTY,
     ) -> JobResult:
         """Create a new job and wait for initial output or completion.
 
         `cwd` and `env` preset the script's working directory and environment
-        overlay on the server side.
+        overlay on the server side. `mode="stdio"` provides stdout-only public
+        output for non-interactive commands; the default PTY mode remains
+        interactive and merges stdout with stderr.
         """
 
         payload = RunJobRequest(
@@ -155,6 +159,7 @@ class ShellctlClient:
             cwd=cwd,
             env=env,
             terminal=terminal,
+            mode=mode,
             timeout=timeout,
             output_limit=self.output_limit,
             idle_flush_seconds=self.idle_flush_seconds,

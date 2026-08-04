@@ -17,6 +17,7 @@ from typing import cast
 import httpx2 as httpx
 import pytest
 from shellctl.client import ShellctlClientError
+from shellctl.shared import JobMode
 
 from dify_agent.adapters.shell import shellctl
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellProviderError
@@ -58,6 +59,7 @@ class _RunCall:
     cwd: str | None
     env: dict[str, str] | None
     timeout: float
+    mode: JobMode = JobMode.PTY
 
 
 type _RunHandler = Callable[[str, str | None, dict[str, str] | None, float], _Job]
@@ -87,8 +89,9 @@ class FakeShellctlClient:
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         timeout: float = 30.0,
+        mode: JobMode = JobMode.PTY,
     ) -> _Job:
-        self.run_calls.append(_RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
+        self.run_calls.append(_RunCall(script=script, cwd=cwd, env=env, timeout=timeout, mode=mode))
         if self.run_handler is not None:
             return self.run_handler(script, cwd, env, timeout)
         return _Job(job_id="job", status="exited", done=True, exit_code=0)
@@ -385,7 +388,13 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
 
     async def scenario() -> None:
         commands = ShellctlCommands(_client_protocol(client))
-        run_result = await commands.run("pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)
+        run_result = await commands.run(
+            "pwd",
+            cwd="~/workspace/abc12ff",
+            env={"FOO": "bar"},
+            timeout=2.5,
+            mode="stdio",
+        )
         wait_result = await commands.wait("run-job", offset=3, timeout=4.0)
         read_result = await commands.read_output("run-job", offset=6)
         input_result = await commands.input("run-job", "ls\n", offset=6, timeout=5.0)
@@ -411,7 +420,15 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
 
     asyncio.run(scenario())
 
-    assert client.run_calls == [_RunCall(script="pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)]
+    assert client.run_calls == [
+        _RunCall(
+            script="pwd",
+            cwd="~/workspace/abc12ff",
+            env={"FOO": "bar"},
+            timeout=2.5,
+            mode=JobMode.STDIO,
+        )
+    ]
     assert client.wait_calls == [
         ("run-job", 3, 4.0),
         ("run-job", 6, 0.0),
@@ -623,6 +640,8 @@ def test_files_upload_and_download_still_work() -> None:
         assert downloaded == content
 
     asyncio.run(scenario())
+
+    assert all(call.mode is JobMode.PTY for call in client.run_calls)
 
 
 def test_file_transfer_timeout_is_an_end_to_end_budget(monkeypatch: pytest.MonkeyPatch) -> None:

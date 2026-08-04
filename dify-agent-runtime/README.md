@@ -14,6 +14,21 @@ cmd/
 internal/            - internal implementations
 ```
 
+## Job execution modes
+
+`POST /v1/jobs/run` accepts an optional `mode` field:
+
+- `pty` (default) keeps the interactive tmux PTY path. stdout and stderr are
+  merged, sanitized, and written to `output.log`; the job accepts `/input`.
+- `stdio` keeps tmux as the lifecycle owner but gives the child `/dev/null` as
+  stdin and captures stdout and stderr through separate pipes. Public output
+  and pagination read stdout from `output.log`; private diagnostics are written
+  to `stderr.log`. A stdio job completes only after both streams reach EOF and
+  does not accept `/input`.
+
+The response models are identical in both modes. Use `stdio` for bounded,
+machine-readable control commands and `pty` for interactive jobs.
+
 ## Building
 
 ```bash
