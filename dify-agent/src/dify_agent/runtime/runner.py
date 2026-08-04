@@ -199,9 +199,6 @@ class AgentRunRunner:
         """Execute the run and emit the documented event sequence."""
         if self.is_cancelled():
             return
-        await self.sink.update_status(self.run_id, "running")
-        if self.is_cancelled():
-            return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
@@ -210,9 +207,10 @@ class AgentRunRunner:
             if self.is_cancelled():
                 return
             message, reason = _run_failed_error_payload(exc)
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
-            await self.sink.update_status(self.run_id, "failed", message)
-            raise
+            finalization = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
+            if finalization.applied:
+                raise
+            return
 
         if self.is_cancelled():
             return
@@ -227,7 +225,6 @@ class AgentRunRunner:
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
         )
-        await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> RunSuccessOutcome:
         """Run the normalized request through the model path.

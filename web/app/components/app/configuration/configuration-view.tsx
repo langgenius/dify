@@ -194,9 +194,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         className="mr-2 h-8! text-[13px]! font-medium"
                         onClick={onOpenDebugPanel}
                       >
-                        <span className="mr-1">
-                          {t(($) => $['operation.debugConfig'], { ns: 'appDebug' })}
-                        </span>
+                        <span>{t(($) => $['operation.debugConfig'], { ns: 'appDebug' })}</span>
                         <CodeBracketIcon className="size-4 text-text-tertiary" />
                       </Button>
                     )}

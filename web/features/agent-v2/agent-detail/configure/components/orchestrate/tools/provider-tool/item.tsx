@@ -94,7 +94,7 @@ function UnauthorizedCredentialStatus({
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
       >
         {t(($) => $.notAuthorized, { ns: 'tools' })}
-        <StatusDot className="ml-2" status="warning" />
+        <StatusDot status="warning" />
       </Button>
     ),
     [t],

@@ -17,7 +17,7 @@ const AuthorizedInDataSourceNode = ({
 
   return (
     <Button size="small" onClick={onJumpToDataSourcePage}>
-      <StatusDot className="mr-1.5" status="success" />
+      <StatusDot status="success" />
       {authorizationsNum > 1
         ? t(($) => $['auth.authorizations'], { ns: 'plugin' })
         : t(($) => $['auth.authorization'], { ns: 'plugin' })}
