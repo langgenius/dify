@@ -25,7 +25,11 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
-import { AppDeployStateBoundary, getEnvironmentDeploymentActions } from '../state'
+import {
+  AppDeployStateBoundary,
+  getEnvironmentDeploymentActions,
+  latestPublishedWorkflowQueryOptions,
+} from '../state'
 
 const APP_ID = 'app-1'
 const ACTIVITY_AT = '2026-07-25T01:00:00.000Z'
@@ -505,14 +509,7 @@ const appEnvironmentDeploymentsQueryOptions =
       },
     },
   })
-const latestPublishedWorkflowQueryOptions =
-  consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
-    input: {
-      params: {
-        app_id: APP_ID,
-      },
-    },
-  })
+const latestPublishedWorkflowQuery = latestPublishedWorkflowQueryOptions(APP_ID)
 const appWorkflowVersionsInfiniteQueryOptions =
   consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
     input: (pageParam) => ({
@@ -579,6 +576,46 @@ function seedWorkflowDeploymentConfigurationQueries(queryClient: QueryClient) {
   })
 }
 
+const mockBuiltInEnvironment = vi.hoisted(() => ({
+  appDetail: {
+    enable_api: false,
+    enable_site: true,
+    id: 'app-1',
+    maintainer: 'user-2',
+    mode: 'workflow',
+  },
+  mcpServerDetail: {
+    status: 'active',
+  },
+  publishedWorkflow: {
+    conversation_variables: [],
+    created_at: 1_710_000_100,
+    created_by: {
+      email: 'alice@example.com',
+      id: 'user-2',
+      name: 'Alice',
+    },
+    environment_variables: [],
+    features: {},
+    graph: {
+      nodes: [{ data: { type: 'start' }, id: 'start' }],
+    },
+    hash: 'hash-workflow-version-7',
+    id: 'workflow-version-7',
+    marked_comment: 'Production-ready workflow',
+    marked_name: 'Release 7',
+    rag_pipeline_variables: [],
+    tool_published: false,
+    updated_at: 1_710_000_200,
+    updated_by: {
+      email: 'bob@example.com',
+      id: 'user-3',
+      name: 'Bob',
+    } as { email: string; id: string; name: string } | null,
+    version: '2026-07-30.1',
+  },
+}))
+
 function render(
   ui: ReactElement,
   {
@@ -603,8 +640,8 @@ function render(
     environment_deployments: environmentDeployments,
   })
   queryClient.setQueryData(
-    latestPublishedWorkflowQueryOptions.queryKey,
-    PUBLISHED_WORKFLOW_VERSIONS[0],
+    latestPublishedWorkflowQuery.queryKey,
+    mockBuiltInEnvironment.publishedWorkflow,
   )
   queryClient.setQueryData(appWorkflowVersionsInfiniteQueryOptions.queryKey, {
     pageParams: [1],
@@ -626,37 +663,6 @@ let appPermissionKeys: string[] = [AppACLPermission.Deploy]
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
-}))
-const mockBuiltInEnvironment = vi.hoisted(() => ({
-  appDetail: {
-    enable_api: false,
-    enable_site: true,
-    id: 'app-1',
-    maintainer: 'user-2',
-    mode: 'workflow',
-  },
-  mcpServerDetail: {
-    status: 'active',
-  },
-  publishedWorkflow: {
-    created_at: 1_710_000_100,
-    created_by: {
-      id: 'user-2',
-      name: 'Alice',
-    },
-    graph: {
-      nodes: [{ data: { type: 'start' }, id: 'start' }],
-    },
-    id: 'workflow-version-7',
-    marked_comment: 'Production-ready workflow',
-    marked_name: 'Release 7',
-    updated_at: 1_710_000_200,
-    updated_by: {
-      id: 'user-3',
-      name: 'Bob',
-    } as { id: string; name: string } | null,
-    version: '2026-07-30.1',
-  },
 }))
 
 vi.mock('react-i18next', async () => {
@@ -699,12 +705,6 @@ vi.mock('@/service/use-tools', () => ({
   }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useAppWorkflow: () => ({
-    data: mockBuiltInEnvironment.publishedWorkflow,
-  }),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -735,6 +735,7 @@ describe('AppDeploy', () => {
       { data: { type: 'start' }, id: 'start' },
     ]
     mockBuiltInEnvironment.publishedWorkflow.updated_by = {
+      email: 'bob@example.com',
       id: 'user-3',
       name: 'Bob',
     }

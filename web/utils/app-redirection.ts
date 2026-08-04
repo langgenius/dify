@@ -33,7 +33,7 @@ export const getRedirectionPath = (
   if (app.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canDeploy)
     return `/app/${app.id}/deploy`
 
-  return `/app/${app.id}/develop`
+  return `/app/${app.id}/access-point`
 }
 
 export const getRedirection = (

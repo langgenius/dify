@@ -1,15 +1,17 @@
 'use client'
 
+import type { Node } from '@/app/components/workflow/types'
 import { DeploymentStatus as DeploymentStatusEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
-import { useAppWorkflow } from '@/service/use-workflow'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
 import { DeploymentStatus } from './deployment-status'
+import { latestPublishedWorkflowQueryOptions } from './state'
 import { VersionLabel } from './version-label'
 
 function Divider() {
@@ -21,9 +23,11 @@ export function BuiltInEnvironmentCard() {
   const { formatTime } = useTimestamp()
   const appDetail = useAppStore((state) => state.appDetail)
   const appId = appDetail?.id ?? ''
-  const { data: publishedWorkflow } = useAppWorkflow(appId)
+  const { data: publishedWorkflow } = useQuery(latestPublishedWorkflowQueryOptions(appId || null))
   const { data: mcpServerDetail } = useMCPServerDetail(appId, Boolean(appId))
-  const publishedNodes = publishedWorkflow?.graph.nodes ?? []
+  const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
+    ? (publishedWorkflow.graph.nodes as Node[])
+    : []
   const hasStartNode = publishedNodes.some((node) => node.data.type === BlockEnum.Start)
   const hasTriggerNode = publishedNodes.some((node) => isTriggerNode(node.data.type))
   const serviceModeAvailable = Boolean(publishedWorkflow && hasStartNode && !hasTriggerNode)

@@ -65,9 +65,7 @@ function toDeploymentVersion(
   }
 }
 
-const latestPublishedWorkflowQueryAtom = atomWithQuery((get) => {
-  const appId = get(appDeployAppIdAtom)
-
+export function latestPublishedWorkflowQueryOptions(appId: string | null) {
   return consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
     input: appId
       ? {
@@ -77,6 +75,10 @@ const latestPublishedWorkflowQueryAtom = atomWithQuery((get) => {
         }
       : skipToken,
   })
+}
+
+const latestPublishedWorkflowQueryAtom = atomWithQuery((get) => {
+  return latestPublishedWorkflowQueryOptions(get(appDeployAppIdAtom))
 })
 
 const latestPublishedWorkflowAtom = selectAtom(

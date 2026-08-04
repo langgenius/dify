@@ -11,12 +11,10 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
   useMCPServerDetail,
@@ -27,11 +25,6 @@ import { AppModeEnum } from '@/types/app'
 import { AccessPointCard } from './access-point-card'
 import { AccessPointUrl } from './access-point-url'
 import { isAdvancedApp } from './utils'
-
-type BasicAppConfig = {
-  updated_at?: string
-  user_input_form?: Array<Record<string, unknown>>
-}
 
 type MCPAccessPointCardProps = {
   appInfo: AccessPointAppInfo
@@ -57,14 +50,8 @@ export function MCPAccessPointCard({
   const [showServerModal, setShowServerModal] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<boolean | null>(null)
-  const { data: basicConfig = {}, isPending: basicConfigLoading } = useQuery<BasicAppConfig>({
-    queryKey: ['access-point', 'basic-app-config', appInfo.id],
-    queryFn: async () => {
-      const appDetail = await fetchAppDetail({ url: '/apps', id: appInfo.id })
-      return (appDetail.model_config as BasicAppConfig) || {}
-    },
-    enabled: basicApp,
-  })
+  const basicConfig = appInfo.model_config
+  const basicAppInputForm = basicConfig?.user_input_form
   const { data: detail, isPending: serverDetailLoading } = useMCPServerDetail(
     appInfo.id,
     Boolean(appInfo.id),
@@ -82,21 +69,22 @@ export function MCPAccessPointCard({
   const workflowNodes = useMemo(() => workflow?.graph?.nodes ?? [], [workflow?.graph?.nodes])
   const missingStartNode =
     workflowApp && !workflowNodes.some((node) => node.data.type === BlockEnum.Start)
-  const appUnpublished = advancedApp ? !workflow?.graph : !basicConfig.updated_at
-  const loading = serverDetailLoading || (advancedApp ? workflowLoading : basicConfigLoading)
+  const appUnpublished = advancedApp ? !workflow?.graph : !basicConfig?.updated_at
+  const loading = serverDetailLoading || (advancedApp && workflowLoading)
   const unavailable = !loading && (appUnpublished || missingStartNode || triggerModeDisabled)
 
   const basicAppInputs = useMemo(() => {
-    if (!basicApp || !basicConfig.user_input_form) return []
+    if (!basicApp || !basicAppInputForm) return []
 
-    return basicConfig.user_input_form.map((item) => {
-      const type = Object.keys(item)[0]
+    return basicAppInputForm.map((item) => {
+      const [type = 'text-input'] = Object.keys(item)
+      const [config = {}] = Object.values(item) as object[]
       return {
-        ...(item[type!] as object),
-        type: type || 'text-input',
+        ...config,
+        type,
       }
     })
-  }, [basicApp, basicConfig.user_input_form])
+  }, [basicApp, basicAppInputForm])
 
   const latestParams = useMemo(() => {
     if (!advancedApp) return basicAppInputs
