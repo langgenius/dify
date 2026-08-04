@@ -5,7 +5,12 @@ import { createLoader } from 'nuqs/server'
 import { getQueryClient } from '@/app/get-query-client'
 import { marketplaceQuery } from '@/service/client'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
-import { marketplaceSearchParamsParsers } from './search-params'
+import { getMarketplacePluginsInfiniteQueryOptions } from './query-options'
+import {
+  getMarketplacePluginsSearchParams,
+  marketplaceSearchParamsParsers,
+  shouldSearchMarketplacePlugins,
+} from './search-params'
 import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './utils'
 
 // The server side logic should move to marketplace's codebase so that we can get rid of Next.js
@@ -17,11 +22,16 @@ async function getDehydratedState(searchParams?: Promise<SearchParams>) {
   const loadSearchParams = createLoader(marketplaceSearchParamsParsers)
   const params: MarketplaceSearchParams = await loadSearchParams(searchParams)
 
-  if (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(params.category)) {
-    return
+  const queryClient = getQueryClient()
+
+  if (shouldSearchMarketplacePlugins(params)) {
+    await queryClient.prefetchInfiniteQuery(
+      getMarketplacePluginsInfiniteQueryOptions(getMarketplacePluginsSearchParams(params)),
+    )
+    return dehydrate(queryClient)
   }
 
-  const queryClient = getQueryClient()
+  if (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(params.category)) return
 
   await queryClient.prefetchQuery({
     queryKey: marketplaceQuery.collections.queryKey({
