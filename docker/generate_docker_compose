@@ -109,13 +109,46 @@ def create_env_files_from_example(env_example_path):
     return created_files
 
 
+def strip_x_build_blocks(template_content):
+    """
+    Removes `x-build:` extension blocks (and their nested `context`/
+    `dockerfile` lines) from the template content. `x-build` is only meant to feed
+    docker-compose.source.yaml generation; docker-compose.yaml must not
+    carry it, even though Compose would otherwise silently ignore it.
+    """
+    lines = template_content.split("\n")
+    output_lines = []
+    skipping = False
+
+    for line in lines:
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+
+        if indent == 4 and stripped == "x-build:":
+            skipping = True
+            continue
+
+        if skipping:
+            if indent == 6 and (stripped.startswith("context:") or stripped.startswith("dockerfile:")):
+                continue
+            skipping = False
+
+        output_lines.append(line)
+
+    return "\n".join(output_lines)
+
+
 def insert_shared_env(template_path, output_path, header_comments):
     """
     Copies the template file to output path with header comments.
     The template now uses env_file references instead of a huge YAML anchor.
+    `x-build` extension blocks are stripped: docker-compose.yaml only ships
+    published images and never builds from source.
     """
     with open(template_path, "r", encoding="utf-8") as f:
         template_content = f.read()
+
+    template_content = strip_x_build_blocks(template_content)
 
     # Prepare the final content with header comments
     final_content = f"{header_comments}\n{template_content}"
@@ -125,11 +158,122 @@ def insert_shared_env(template_path, output_path, header_comments):
     print(f"Generated {output_path}")
 
 
+def extract_build_services(template_path):
+    """
+    Scans docker-compose-template.yaml for top-level services that declare an
+    `x-build:` extension field (a per-service `context`/`dockerfile` pair).
+
+    `x-build` is used instead of the real `build` key so that
+    docker-compose.yaml (generated from this same template) keeps shipping
+    published images unchanged: Compose ignores unknown `x-` fields, so
+    `x-build` has no effect there. It exists purely as the single source of
+    truth from which docker-compose.source.yaml is generated, guaranteeing
+    that the two files can never drift apart.
+
+    Returns an ordered list of (service_name, context, dockerfile) tuples.
+    """
+    with open(template_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    services = []
+    current_service = None
+    in_x_build = False
+    context = None
+    dockerfile = None
+
+    def line_indent(line):
+        return len(line) - len(line.lstrip(" "))
+
+    for line in lines:
+        stripped = line.rstrip("\n")
+        if not stripped.strip():
+            continue
+
+        indent = line_indent(stripped)
+
+        # Top-level service definitions are indented by exactly 2 spaces,
+        # e.g. "  api:".
+        service_match = re.match(r"^  ([a-zA-Z0-9_-]+):\s*$", stripped)
+        if indent == 2 and service_match:
+            current_service = service_match.group(1)
+            in_x_build = False
+            context, dockerfile = None, None
+            continue
+
+        if current_service is None:
+            continue
+
+        if indent == 4 and stripped.strip() == "x-build:":
+            in_x_build = True
+            continue
+
+        if in_x_build and indent == 6:
+            context_match = re.match(r"^\s*context:\s*(\S+)\s*$", stripped)
+            dockerfile_match = re.match(r"^\s*dockerfile:\s*(\S+)\s*$", stripped)
+            if context_match:
+                context = context_match.group(1)
+            elif dockerfile_match:
+                dockerfile = dockerfile_match.group(1)
+            continue
+
+        if indent <= 4:
+            # Left the x-build block (either a sibling key of the service,
+            # or a new service/section entirely).
+            if in_x_build and context and dockerfile:
+                services.append((current_service, context, dockerfile))
+            in_x_build = False
+
+    # Flush a trailing x-build block if the file ended immediately after it.
+    if in_x_build and context and dockerfile:
+        services.append((current_service, context, dockerfile))
+
+    return services
+
+
+def generate_docker_compose_source(template_path, output_path, docker_dir):
+    """
+    Generates docker-compose.source.yaml from the `x-build` extension fields
+    declared in docker-compose-template.yaml. Also validates that every
+    referenced Dockerfile actually exists, so a missing/renamed Dockerfile
+    fails fast at generation time instead of silently drifting.
+    """
+    services = extract_build_services(template_path)
+
+    if not services:
+        print(f"Warning: No x-build services found in {template_path}, skipping {output_path}")
+        return
+
+    missing = []
+    for service_name, context, dockerfile in services:
+        dockerfile_path = os.path.normpath(os.path.join(docker_dir, context, dockerfile))
+        if not os.path.isfile(dockerfile_path):
+            missing.append(f"{service_name}: {dockerfile_path}")
+
+    if missing:
+        print("Error: docker-compose-template.yaml references Dockerfiles that do not exist:")
+        for entry in missing:
+            print(f"  - {entry}")
+        sys.exit(1)
+
+    lines = ["services:"]
+    for service_name, context, dockerfile in services:
+        lines.append(f"  {service_name}:")
+        lines.append('    image: ""')
+        lines.append("    build:")
+        lines.append(f"      context: {context}")
+        lines.append(f"      dockerfile: {dockerfile}")
+
+    with open(output_path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"Generated {output_path}")
+
+
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     env_example_path = os.path.join(base_dir, ".env.example")
     template_path = os.path.join(base_dir, "docker-compose-template.yaml")
     output_path = os.path.join(base_dir, "docker-compose.yaml")
+    source_output_path = os.path.join(base_dir, "docker-compose.source.yaml")
 
     # Define header comments to be added at the top of docker-compose.yaml
     header_comments = (
@@ -154,6 +298,10 @@ def main():
     # Copy template to output with header comments
     # The template now uses env_file references instead of a huge YAML anchor
     insert_shared_env(template_path, output_path, header_comments)
+
+    # Generate docker-compose.source.yaml from the same template, so it can
+    # never drift from the services/Dockerfiles that actually exist.
+    generate_docker_compose_source(template_path, source_output_path, base_dir)
 
 
 if __name__ == "__main__":

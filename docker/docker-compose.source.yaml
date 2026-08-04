@@ -8,7 +8,7 @@ services:
     image: ""
     build:
       context: ..
-      dockerfile: api/Dockerfile      
+      dockerfile: api/Dockerfile
   worker:
     image: ""
     build:
@@ -24,13 +24,13 @@ services:
     build:
       context: ..
       dockerfile: web/Dockerfile
-  agent_backend:
-    image: ""
-    build:
-      context: ..
-      dockerfile: dify-agent/Dockerfile
   local_sandbox:
     image: ""
     build:
       context: ../dify-agent-runtime
       dockerfile: docker/Dockerfile
+  agent_backend:
+    image: ""
+    build:
+      context: ..
+      dockerfile: dify-agent/Dockerfile

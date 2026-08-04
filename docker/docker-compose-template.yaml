@@ -221,6 +221,9 @@ services:
   api:
     <<: *shared-api-worker-config
     image: langgenius/dify-api:1.16.1
+    x-build:
+      context: ..
+      dockerfile: api/Dockerfile
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -272,6 +275,9 @@ services:
   api_websocket:
     <<: *shared-api-worker-config
     image: langgenius/dify-api:1.16.1
+    x-build:
+      context: ..
+      dockerfile: api/Dockerfile
     profiles:
       - collaboration
     environment:
@@ -303,6 +309,9 @@ services:
   worker:
     <<: *shared-worker-config
     image: langgenius/dify-api:1.16.1
+    x-build:
+      context: ..
+      dockerfile: api/Dockerfile
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -353,6 +362,9 @@ services:
   worker_beat:
     <<: *shared-worker-beat-config
     image: langgenius/dify-api:1.16.1
+    x-build:
+      context: ..
+      dockerfile: api/Dockerfile
     environment:
       MODE: beat
     depends_on:
@@ -386,6 +398,9 @@ services:
   # Frontend web application.
   web:
     image: langgenius/dify-web:1.16.1
+    x-build:
+      context: ..
+      dockerfile: web/Dockerfile
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -546,6 +561,9 @@ services:
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
     image: langgenius/dify-agent-local-sandbox:1.16.1
+    x-build:
+      context: ../dify-agent-runtime
+      dockerfile: docker/Dockerfile
     restart: always
     env_file:
       - path: ./envs/core-services/local-sandbox.env
@@ -655,6 +673,9 @@ services:
   # Dify Agent backend service.
   agent_backend:
     image: langgenius/dify-agent-backend:1.16.1
+    x-build:
+      context: ..
+      dockerfile: dify-agent/Dockerfile
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env
