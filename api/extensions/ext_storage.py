@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Literal, Union, overload
+from typing import Literal, Union, overload, override
 
 from flask import Flask
 
@@ -13,10 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 class Storage:
+    storage_runner: BaseStorage
+    storage_type: StorageType | None
+
+    def __init__(self, storage_type: StorageType | None = None):
+        self.storage_type = storage_type
+
     def init_app(self, app: Flask):
-        storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
+        storage_type = StorageType(dify_config.STORAGE_TYPE)
+        storage_factory = self.get_storage_factory(storage_type)
         with app.app_context():
             self.storage_runner = storage_factory()
+        self.storage_type = storage_type
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
@@ -136,11 +144,56 @@ class Storage:
         return self.storage_runner.scan(path, files=files, directories=directories)
 
 
+class PublicStorage(Storage):
+    """Optional S3-compatible storage for upload purposes intended to be public."""
+
+    enabled: bool
+
+    def __init__(self):
+        super().__init__(StorageType.S3)
+        self.enabled = False
+
+    @override
+    def init_app(self, app: Flask):
+        if not dify_config.PUBLIC_STORAGE_ENABLED:
+            self.enabled = False
+            return
+
+        required_settings = (
+            dify_config.PUBLIC_STORAGE_ENDPOINT,
+            dify_config.PUBLIC_STORAGE_BUCKET_NAME,
+            dify_config.PUBLIC_STORAGE_ACCESS_KEY,
+            dify_config.PUBLIC_STORAGE_SECRET_KEY,
+        )
+        if not all(required_settings):
+            raise ValueError(
+                "Public storage configuration is incomplete. Required: PUBLIC_STORAGE_ENDPOINT, "
+                "PUBLIC_STORAGE_BUCKET_NAME, PUBLIC_STORAGE_ACCESS_KEY, and PUBLIC_STORAGE_SECRET_KEY"
+            )
+
+        from extensions.storage.aws_s3_storage import AwsS3Storage, AwsS3StorageSettings
+
+        settings = AwsS3StorageSettings(
+            endpoint=dify_config.PUBLIC_STORAGE_ENDPOINT,
+            region=dify_config.PUBLIC_STORAGE_REGION,
+            bucket_name=dify_config.PUBLIC_STORAGE_BUCKET_NAME,
+            access_key=dify_config.PUBLIC_STORAGE_ACCESS_KEY,
+            secret_key=dify_config.PUBLIC_STORAGE_SECRET_KEY,
+            address_style=dify_config.PUBLIC_STORAGE_ADDRESS_STYLE,
+            use_aws_managed_iam=False,
+        )
+        with app.app_context():
+            self.storage_runner = AwsS3Storage(settings)
+        self.enabled = True
+
+
 storage = Storage()
+public_storage = PublicStorage()
 
 
 def init_app(app: DifyApp):
     storage.init_app(app)
+    public_storage.init_app(app)
     from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
 
     bind_dify_workflow_file_runtime()

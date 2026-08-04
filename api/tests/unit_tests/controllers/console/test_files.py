@@ -15,6 +15,7 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console.files import (
+    ICON_FILE_EXTENSIONS,
     FileApi,
     FilePreviewApi,
     FileSupportTypeApi,
@@ -327,7 +328,21 @@ class TestIconFileApiPost:
         upload.assert_called_once_with(
             current_user=mock_account_context,
             purpose=UploadFilePurpose.ICON,
+            allowed_extensions=ICON_FILE_EXTENSIONS,
         )
+
+    def test_upload_rejects_unsupported_icon_type(self, app: Flask, mock_account_context, mock_file_service):
+        api = IconFileApi()
+        post_method = unwrap(api.post)
+
+        with app.test_request_context(
+            method="POST",
+            data={"file": (io.BytesIO(b"<svg></svg>"), "icon.svg")},
+        ):
+            with pytest.raises(UnsupportedFileTypeError):
+                post_method(api, mock_account_context)
+
+        mock_file_service.upload_file.assert_not_called()
 
 
 class TestFilePreviewApi:

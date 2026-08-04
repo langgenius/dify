@@ -39,6 +39,7 @@ register_schema_models(console_ns, UploadConfig, FileResponse)
 register_response_schema_models(console_ns, AllowedExtensionsResponse, TextContentResponse)
 
 PREVIEW_WORDS_LIMIT = 3000
+ICON_FILE_EXTENSIONS = frozenset({"gif", "jpeg", "jpg", "png", "webp"})
 
 FILE_UPLOAD_PARAMS = {
     "file": {
@@ -55,6 +56,7 @@ FILE_UPLOAD_PARAMS = {
         "required": False,
     },
 }
+ICON_FILE_UPLOAD_PARAMS = {"file": FILE_UPLOAD_PARAMS["file"]}
 
 
 def upload_file_from_request(
@@ -62,6 +64,7 @@ def upload_file_from_request(
     current_user: Account,
     resource_tenant_id: str | None = None,
     purpose: UploadFilePurpose | None = None,
+    allowed_extensions: frozenset[str] | None = None,
 ) -> UploadFile:
     """Validate the multipart request and persist the file under the requested resource tenant."""
     source_str = request.form.get("source")
@@ -76,6 +79,10 @@ def upload_file_from_request(
 
     if not file.filename:
         raise FilenameNotExistsError
+    if allowed_extensions is not None:
+        _, separator, extension = file.filename.rpartition(".")
+        if not separator or extension.lower() not in allowed_extensions:
+            raise UnsupportedFileTypeError()
     if source == "datasets" and not current_user.is_dataset_editor:
         raise Forbidden()
 
@@ -140,13 +147,14 @@ class IconFileApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("documents")
-    @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
+    @console_ns.doc(consumes=["multipart/form-data"], params=ICON_FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         upload_file = upload_file_from_request(
             current_user=current_user,
             purpose=UploadFilePurpose.ICON,
+            allowed_extensions=ICON_FILE_EXTENSIONS,
         )
 
         return dump_response(FileResponse, upload_file), 201

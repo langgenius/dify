@@ -20,7 +20,7 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
-from extensions.ext_storage import storage
+from extensions.ext_storage import Storage, public_storage, storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
@@ -32,6 +32,25 @@ from models.model import EndUser, UploadFile
 from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
+PRIVATE_UPLOAD_FILE_KEY_PREFIX = "upload_files/"
+PUBLIC_UPLOAD_FILE_KEY_PREFIX = "public/upload_files/"
+
+
+def resolve_upload_file_storage(purpose: UploadFilePurpose | None, *, key: str | None = None) -> Storage:
+    """Resolve an upload backend while preserving storage ownership across configuration changes."""
+    if purpose != UploadFilePurpose.ICON:
+        return storage
+
+    if key is not None:
+        if not key.startswith(PUBLIC_UPLOAD_FILE_KEY_PREFIX):
+            return storage
+        if not public_storage.enabled:
+            raise RuntimeError("Public storage is required to access this upload file")
+        return public_storage
+
+    if public_storage.enabled:
+        return public_storage
+    return storage
 
 
 class FileService:
@@ -88,15 +107,18 @@ class FileService:
 
         resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
 
-        file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
-
         # save file to storage
-        storage.save(file_key, content)
+        upload_storage = resolve_upload_file_storage(purpose)
+        key_prefix = (
+            PUBLIC_UPLOAD_FILE_KEY_PREFIX if upload_storage is public_storage else PRIVATE_UPLOAD_FILE_KEY_PREFIX
+        )
+        file_key = key_prefix + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
+        upload_storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
             tenant_id=resource_tenant_id or "",
-            storage_type=StorageType(dify_config.STORAGE_TYPE),
+            storage_type=upload_storage.storage_type or StorageType(dify_config.STORAGE_TYPE),
             purpose=purpose,
             key=file_key,
             name=filename,
@@ -139,8 +161,9 @@ class FileService:
             if not upload_file:
                 raise NotFound("File not found")
             upload_file_key = upload_file.key
+            upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file_key)
 
-        blob = storage.load_once(upload_file_key)
+        blob = upload_storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
     def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
@@ -159,8 +182,9 @@ class FileService:
 
             file_key = upload_file.key
             content_type = upload_file.mime_type
+            upload_storage = resolve_upload_file_storage(upload_file.purpose, key=file_key)
 
-        return storage.generate_presigned_url(
+        return upload_storage.generate_presigned_url(
             file_key,
             expires_in=dify_config.FILES_ACCESS_TIMEOUT,
             content_type=content_type,
@@ -236,7 +260,8 @@ class FileService:
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        generator = storage.load(upload_file.key, stream=True)
+        upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file.key)
+        generator = upload_storage.load(upload_file.key, stream=True)
 
         return generator, upload_file.mime_type
 
@@ -251,7 +276,8 @@ class FileService:
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
 
-        generator = storage.load(upload_file.key, stream=True)
+        upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file.key)
+        generator = upload_storage.load(upload_file.key, stream=True)
 
         return generator, upload_file
 
@@ -267,7 +293,8 @@ class FileService:
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        generator = storage.load(upload_file.key)
+        upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file.key)
+        generator = upload_storage.load(upload_file.key)
 
         return generator, upload_file.mime_type
 
@@ -277,7 +304,8 @@ class FileService:
 
         if not upload_file:
             raise NotFound("File not found")
-        content = storage.load(upload_file.key)
+        upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file.key)
+        content = upload_storage.load(upload_file.key)
 
         return content.decode("utf-8")
 
@@ -287,7 +315,8 @@ class FileService:
 
             if not upload_file:
                 return
-            storage.delete(upload_file.key)
+            upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file.key)
+            upload_storage.delete(upload_file.key)
             session.delete(upload_file)
 
     @staticmethod
@@ -376,7 +405,8 @@ class FileService:
 
                         # Stream file bytes from storage into the ZIP entry.
                         with zf.open(arcname, "w") as entry:
-                            for chunk in storage.load(upload_file.key, stream=True):
+                            upload_storage = resolve_upload_file_storage(upload_file.purpose, key=upload_file.key)
+                            for chunk in upload_storage.load(upload_file.key, stream=True):
                                 entry.write(chunk)
 
                 # Flush so `send_file(path, ...)` can re-open it safely on all platforms.
