@@ -32,11 +32,6 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
     """
     Envelope-encryption key provider backed by Azure Key Vault.
 
-    Each tenant gets its own RSA key inside the vault (created on tenant creation).
-    The RSA private key never leaves Key Vault: a random AES key is generated locally
-    for every token, used to encrypt the token, and then wrapped/unwrapped through Key
-    Vault's wrap_key/unwrap_key operations.
-
     Ciphertext envelope (self-describing, forward-compatible):
         PREFIX (7 bytes)
       + envelope_version (1 byte)
@@ -61,6 +56,7 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         if not vault_url:
             raise ValueError("AZURE_KEYVAULT_VAULT_URL must be configured when KEY_PROVIDER_TYPE=azure-keyvault")
 
+        self._vault_url = vault_url
         self._credential = DefaultAzureCredential()
         self._key_client = KeyClient(vault_url=vault_url, credential=self._credential)
         # Cached per (tenant_id, *concrete* version). A version's key material is immutable
@@ -78,13 +74,7 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
         Return a CryptographyClient bound to `version`, along with the resolved version string
         that was actually used.
 
-        When `version` is None (encrypt() asking for "whatever is current"), Key Vault is
-        always queried fresh for the key's current version -- this call is cheap (metadata
-        only, no crypto operation) and is what lets a rotation be picked up by the very next
-        encrypt(), instead of being masked behind a TTL that could keep wrapping under a
-        stale version for minutes after rotation. Once resolved to a concrete version, the
-        CryptographyClient itself is cached forever, since that version's key material can't
-        change.
+        None version indicates latest version, and is never cached.
         """
         key_name = self._key_name(tenant_id)
 
@@ -93,17 +83,22 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
                 cached = self._crypto_clients.get((key_name, version))
             if cached is not None:
                 return cached, version
-            key = self._key_client.get_key(key_name, version=version)
+            resolved_version = version
+            key_id = f"{self._vault_url}/keys/{key_name}/{version}"
         else:
-            key = self._key_client.get_key(key_name)
+            versions = list(self._key_client.list_properties_of_key_versions(key_name))
+            if not versions:
+                raise ValueError(f"No key versions found for key {key_name}")
+            current = max(versions, key=lambda properties: properties.created_on)
+            resolved_version = current.version or ""
+            key_id = current.id
 
-        resolved_version = key.properties.version or ""
         cache_key = (key_name, resolved_version)
         with self._lock:
             cached = self._crypto_clients.get(cache_key)
             if cached is not None:
                 return cached, resolved_version
-            client = CryptographyClient(key, credential=self._credential)
+            client = CryptographyClient(key_id, credential=self._credential)
             self._crypto_clients[cache_key] = client
         return client, resolved_version
 

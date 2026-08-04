@@ -6,6 +6,7 @@ so that Key Vault's native key rotation (a new "current" version appearing) does
 decryption of tokens encrypted before the rotation.
 """
 
+import datetime
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -24,14 +25,18 @@ class FakeCryptographyClient:
     tag the payload with the bound key version, so unwrapping with the "wrong" version's client
     can be detected -- mirroring how a real RSA key from a different version can't unwrap data
     wrapped under another version's key.
+
+    Constructed from a key *id string* (e.g. ".../keys/<name>/<version>"), mirroring how the
+    real provider now avoids ever handing CryptographyClient an already-materialized key --
+    see AzureKeyVaultKeyProvider._get_crypto_client().
     """
 
     # Class-level so a test can mark a version "disabled" (mirroring Key Vault's real behavior
     # for a disabled/deleted key version) without threading state through every fixture.
     disabled_versions: set[str] = set()
 
-    def __init__(self, key: SimpleNamespace, credential: object = None) -> None:
-        self.version = key.properties.version
+    def __init__(self, key: str, credential: object = None) -> None:
+        self.version = key.rsplit("/", 1)[-1]
         self.credential = credential
 
     def wrap_key(self, algorithm: object, key_bytes: bytes) -> SimpleNamespace:
@@ -57,14 +62,29 @@ class FakeKeyClient:
         self.current_version = "v1"
         self.rotation_policies: dict[str, KeyRotationPolicy] = {}
         self.created_keys: dict[str, int] = {}
+        # version -> created_on, in creation order; mirrors what list_properties_of_key_versions
+        # reports in real Key Vault, which the provider now relies on (instead of GetKey) to
+        # resolve "the current version" without ever fetching key material.
+        self._version_created_on: dict[str, datetime.datetime] = {}
+
+    def _register_current_version(self) -> None:
+        if self.current_version not in self._version_created_on:
+            self._version_created_on[self.current_version] = datetime.datetime(
+                2024, 1, 1
+            ) + datetime.timedelta(seconds=len(self._version_created_on))
 
     def create_rsa_key(self, name: str, size: int = 2048) -> SimpleNamespace:
         self.created_keys[name] = size
+        self._register_current_version()
         return SimpleNamespace(properties=SimpleNamespace(version=self.current_version))
 
-    def get_key(self, name: str, version: str | None = None) -> SimpleNamespace:
+    def list_properties_of_key_versions(self, name: str) -> list[SimpleNamespace]:
         assert name in self.created_keys, f"key {name} was never created"
-        return SimpleNamespace(properties=SimpleNamespace(version=version or self.current_version))
+        self._register_current_version()
+        return [
+            SimpleNamespace(version=version, created_on=created_on, id=f"{self.vault_url}/keys/{name}/{version}")
+            for version, created_on in self._version_created_on.items()
+        ]
 
     def update_key_rotation_policy(self, name: str, policy: KeyRotationPolicy) -> KeyRotationPolicy:
         self.rotation_policies[name] = policy
