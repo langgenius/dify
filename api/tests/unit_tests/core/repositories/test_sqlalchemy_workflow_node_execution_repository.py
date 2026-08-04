@@ -864,11 +864,7 @@ def test_get_by_workflow_execution_uses_repository_trigger_source_by_default(
 
     repo.get_by_workflow_execution("run", triggered_from=override)
 
-    trigger_filter = next(
-        expression
-        for expression in stmt.where_args
-        if getattr(getattr(expression, "left", None), "name", None) == "triggered_from"
-    )
+    trigger_filter = next(expression for expression in stmt.where_args if expression.left.name == "triggered_from")
     assert trigger_filter.right.value == expected
 
 
