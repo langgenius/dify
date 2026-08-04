@@ -1,42 +1,47 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.app.apps.completion.workflow_runner import CompletionWorkflowRunner, ModeratedCompletionInputs
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom, UserFrom
 from core.moderation.base import ModerationError
 from core.workflow.node_runtime import DIFY_BEFORE_LLM_INVOKE_KEY
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from models.model import AppMode
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, UserPromptMessage
+from models.model import App, AppMode, Message
 
 
-def _entity() -> SimpleNamespace:
-    return SimpleNamespace(
-        app_config=SimpleNamespace(app_id="app", tenant_id="tenant", prompt_template=MagicMock()),
-        model_conf=SimpleNamespace(model="model"),
-        user_id="user",
-        invoke_from=InvokeFrom.SERVICE_API,
-        task_id="task",
-        call_depth=2,
-        inputs={"name": "Ada"},
-        query="question",
-        files=[],
-        file_upload_config=None,
-        extras={"trace_session_id": "trace"},
-        stream=True,
-        trace_manager=None,
+def _entity() -> CompletionAppGenerateEntity:
+    return cast(
+        CompletionAppGenerateEntity,
+        SimpleNamespace(
+            app_config=SimpleNamespace(app_id="app", tenant_id="tenant", prompt_template=MagicMock()),
+            model_conf=SimpleNamespace(model="model"),
+            user_id="user",
+            invoke_from=InvokeFrom.SERVICE_API,
+            task_id="task",
+            call_depth=2,
+            inputs={"name": "Ada"},
+            query="question",
+            files=[],
+            file_upload_config=None,
+            extras={"trace_session_id": "trace"},
+            stream=True,
+            trace_manager=None,
+        ),
     )
 
 
-def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
+def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.app.apps.completion import workflow_runner as module
 
-    app = SimpleNamespace(id="app", tenant_id="tenant", mode=AppMode.COMPLETION)
+    app = cast(App, SimpleNamespace(id="app", tenant_id="tenant", mode=AppMode.COMPLETION))
     entity = _entity()
-    message = SimpleNamespace(id="message", conversation_id="conv")
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
+    message = cast(Message, SimpleNamespace(id="message", conversation_id="conv"))
+    queue_manager = MagicMock()
     runtime_workflow = SimpleNamespace(
         workflow_id="completion-runtime-1",
         root_node_id="start",
@@ -51,7 +56,7 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
     session.commit.side_effect = lambda: lifecycle_events.append("commit")
     session.close.side_effect = lambda: lifecycle_events.append("close")
 
-    def run_workflow():
+    def run_workflow() -> Iterator[str]:
         lifecycle_events.append("run")
         yield "event"
 
@@ -126,8 +131,8 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
     adapter.handle_event.assert_called_once_with("event")
 
 
-def test_runner_returns_when_input_moderation_stops(monkeypatch) -> None:
-    app = SimpleNamespace(id="app", tenant_id="tenant", mode=AppMode.COMPLETION)
+def test_runner_returns_when_input_moderation_stops(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = cast(App, SimpleNamespace(id="app", tenant_id="tenant", mode=AppMode.COMPLETION))
     entity = _entity()
     build_runtime_workflow = MagicMock()
     runner = CompletionWorkflowRunner()
@@ -145,7 +150,7 @@ def test_runner_returns_when_input_moderation_stops(monkeypatch) -> None:
     runner.run(
         application_generate_entity=entity,
         queue_manager=MagicMock(),
-        message=SimpleNamespace(id="message"),
+        message=cast(Message, SimpleNamespace(id="message")),
         session=MagicMock(),
     )
 
@@ -172,9 +177,9 @@ def test_runner_get_app_returns_record() -> None:
 
 def test_runner_direct_outputs_on_input_moderation() -> None:
     runner = CompletionWorkflowRunner()
-    app_record = SimpleNamespace(id="app", tenant_id="tenant")
+    app_record = cast(App, SimpleNamespace(id="app", tenant_id="tenant"))
     entity = _entity()
-    message = SimpleNamespace(id="message")
+    message = cast(Message, SimpleNamespace(id="message"))
     queue_manager = MagicMock()
     runner.organize_prompt_messages = MagicMock(return_value=(["prompt"], None))
     runner.moderation_for_inputs = MagicMock(side_effect=ModerationError("blocked"))
@@ -195,9 +200,9 @@ def test_runner_direct_outputs_on_input_moderation() -> None:
 
 def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
     runner = CompletionWorkflowRunner()
-    app_record = SimpleNamespace(id="app", tenant_id="tenant")
+    app_record = cast(App, SimpleNamespace(id="app", tenant_id="tenant"))
     entity = _entity()
-    message = SimpleNamespace(id="message")
+    message = cast(Message, SimpleNamespace(id="message"))
     runner.organize_prompt_messages = MagicMock(return_value=(["prompt"], None))
     runner.moderation_for_inputs = MagicMock(return_value=(None, {"name": "Grace"}, "moderated query"))
 
@@ -217,6 +222,7 @@ def test_runner_before_llm_invoke_hook_captures_and_moderates_final_prompt() -> 
     queue_manager = MagicMock()
     adapter = MagicMock()
     runner.check_hosting_moderation = MagicMock(return_value=True)
+    prompt_messages = [UserPromptMessage(content="final prompt")]
 
     hook = runner._build_before_llm_invoke_hook(
         application_generate_entity=entity,
@@ -225,13 +231,13 @@ def test_runner_before_llm_invoke_hook_captures_and_moderates_final_prompt() -> 
     )
 
     with pytest.raises(GenerateTaskStoppedError):
-        hook(["final prompt"], {"max_tokens": 128})
+        hook(prompt_messages, {"max_tokens": 128})
 
-    adapter.set_prompt_messages.assert_called_once_with(["final prompt"])
+    adapter.set_prompt_messages.assert_called_once_with(prompt_messages)
     runner.check_hosting_moderation.assert_called_once_with(
         application_generate_entity=entity,
         queue_manager=queue_manager,
-        prompt_messages=["final prompt"],
+        prompt_messages=prompt_messages,
     )
 
 
@@ -241,8 +247,9 @@ def test_runner_before_llm_invoke_hook_recalculates_graph_model_parameters() -> 
     queue_manager = MagicMock()
     adapter = MagicMock()
     runner.check_hosting_moderation = MagicMock(return_value=False)
+    prompt_messages = [UserPromptMessage(content="final prompt")]
 
-    def recalc(*, model_parameters, **_kwargs) -> None:
+    def recalc(*, model_parameters: dict[str, object], **_kwargs: object) -> None:
         model_parameters["max_tokens"] = 64
 
     runner.recalc_llm_max_tokens = MagicMock(side_effect=recalc)
@@ -252,27 +259,30 @@ def test_runner_before_llm_invoke_hook_recalculates_graph_model_parameters() -> 
         adapter=adapter,
     )
 
-    result = hook(["final prompt"], {"max_tokens": 128, "temperature": 0.2})
+    result = hook(prompt_messages, {"max_tokens": 128, "temperature": 0.2})
 
     assert result == {"max_tokens": 64, "temperature": 0.2}
     runner.recalc_llm_max_tokens.assert_called_once_with(
         model_config=entity.model_conf,
-        prompt_messages=["final prompt"],
+        prompt_messages=prompt_messages,
         model_parameters=result,
     )
 
 
 def test_runner_resolves_account_user_from() -> None:
-    entity = _entity()
-    entity.invoke_from = InvokeFrom.EXPLORE
+    entity = cast(CompletionAppGenerateEntity, SimpleNamespace(invoke_from=InvokeFrom.EXPLORE))
 
     assert CompletionWorkflowRunner._resolve_user_from(entity) == UserFrom.ACCOUNT
 
 
 def test_runner_resolves_configured_image_detail() -> None:
-    entity = _entity()
-    entity.file_upload_config = SimpleNamespace(
-        image_config=SimpleNamespace(detail=ImagePromptMessageContent.DETAIL.HIGH),
+    entity = cast(
+        CompletionAppGenerateEntity,
+        SimpleNamespace(
+            file_upload_config=SimpleNamespace(
+                image_config=SimpleNamespace(detail=ImagePromptMessageContent.DETAIL.HIGH),
+            )
+        ),
     )
 
     assert CompletionWorkflowRunner._resolve_image_detail_config(entity) == ImagePromptMessageContent.DETAIL.HIGH
