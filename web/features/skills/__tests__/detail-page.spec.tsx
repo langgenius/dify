@@ -2398,11 +2398,13 @@ describe('SkillDetailPage', () => {
       await screen.findByText('skill.skillManagement.detail.publishReferencesTitle'),
     ).toBeInTheDocument()
     expect(await screen.findByText('Support Agent')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute('target', '_blank')
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
     const publishDialog = screen.getByRole('dialog', {
       name: 'skill.skillManagement.detail.publishReferencesTitle',
     })
+    expect(screen.getByTestId('skill-publish-bar')).not.toBeVisible()
     expect(screen.getByTestId('skill-publish-reference-list')).not.toHaveAttribute(
       'data-scrollable',
     )

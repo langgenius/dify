@@ -1392,12 +1392,18 @@ export function FileEditor({
               referenceCount={detail?.reference_count ?? 0}
               skillId={skillId}
             />
-            <SkillPublishBar
-              metaLabel={publishMetaText}
-              onOpenVersions={onOpenVersions}
-              onPublish={handlePublish}
-              state={publishState}
-            />
+            <div
+              className={cn(publishConfirmOpen && 'pointer-events-none')}
+              aria-hidden={publishConfirmOpen || undefined}
+              style={{ visibility: publishConfirmOpen ? 'hidden' : undefined }}
+            >
+              <SkillPublishBar
+                metaLabel={publishMetaText}
+                onOpenVersions={onOpenVersions}
+                onPublish={handlePublish}
+                state={publishState}
+              />
+            </div>
           </div>
         </div>
       )}

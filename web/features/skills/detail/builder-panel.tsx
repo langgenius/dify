@@ -8,6 +8,7 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -712,9 +713,9 @@ export function SkillBuilderPanel({
             </div>
           )}
         </div>
-        <div className="relative flex shrink-0 items-end justify-end bg-gradient-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-4 py-2">
-          <div className="flex w-full flex-col items-end justify-end gap-2">
-            <div className="relative flex w-full flex-col items-start overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-lg backdrop-blur-[5px]">
+        <div className="relative flex shrink-0 items-end justify-end bg-gradient-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-4 pt-3 pb-4">
+          <div className="flex w-full flex-col items-end justify-end">
+            <div className="relative flex w-full flex-col items-start overflow-hidden rounded-xl border border-components-chat-input-border bg-background-default p-3 shadow-lg">
               <input
                 ref={attachmentInputRef}
                 type="file"
@@ -725,7 +726,7 @@ export function SkillBuilderPanel({
                 }}
               />
               {attachments.length > 0 && (
-                <div className="mb-1.5 flex flex-wrap gap-1.5 px-2 pt-1">
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   {attachments.map((attachment) => (
                     <span
                       key={attachment.id}
@@ -754,7 +755,7 @@ export function SkillBuilderPanel({
               <textarea
                 value={prompt}
                 rows={1}
-                className="[field-sizing:content] max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-1 body-md-regular text-text-secondary outline-hidden placeholder:text-text-quaternary"
+                className="[field-sizing:content] max-h-40 min-h-6 w-full resize-none bg-transparent px-0 py-0 body-md-regular text-text-secondary outline-hidden placeholder:text-text-quaternary"
                 placeholder={inputPlaceholder}
                 disabled={isSending}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -769,7 +770,7 @@ export function SkillBuilderPanel({
                   handleSend()
                 }}
               />
-              <div className="flex min-h-8 min-w-0 items-center justify-between pl-1">
+              <div className="mt-3 flex min-h-8 w-full min-w-0 items-center justify-between gap-2">
                 <div className="min-w-0 flex-1 overflow-hidden">
                   <BuilderModelSelector
                     isLoading={isTextGenerationModelListLoading}
@@ -778,8 +779,8 @@ export function SkillBuilderPanel({
                     onSelect={setSelectedModel}
                   />
                 </div>
-                <div className="ml-auto flex shrink-0 items-center gap-3">
-                  <div className="flex items-center gap-1">
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <div className="flex items-center gap-0.5">
                     <button
                       type="button"
                       aria-label={t(($) => $['skillManagement.detail.builder.attach'])}
@@ -812,26 +813,21 @@ export function SkillBuilderPanel({
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <button
-                    type="button"
+                  <Button
                     aria-label={t(($) => $['skillManagement.detail.builder.send'])}
-                    className="hover:bg-state-accent-solid-hover flex size-8 cursor-pointer items-center justify-center rounded-lg border-[0.5px] border-transparent bg-state-accent-solid text-text-primary-on-surface outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:border-components-button-primary-border-disabled disabled:bg-components-button-primary-bg-disabled disabled:text-components-button-primary-text-disabled"
+                    variant="primary"
+                    className="size-8 px-0 focus-visible:ring-inset"
                     disabled={
                       !canSendBuilderMessage ||
                       (!prompt.trim() && attachments.length === 0) ||
                       isSending ||
                       isUploadingAttachment
                     }
+                    loading={isSending}
                     onClick={() => handleSend()}
                   >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        isSending ? 'i-ri-loader-4-line animate-spin' : 'i-ri-arrow-up-line',
-                        'size-4',
-                      )}
-                    />
-                  </button>
+                    <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
+                  </Button>
                 </div>
               </div>
             </div>
