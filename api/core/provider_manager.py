@@ -1557,16 +1557,17 @@ class ProviderManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
-            trail_pool = CreditPoolService.get_pool(
-                tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.TRIAL,
-                session=db.session(),
-            )
-            paid_pool = CreditPoolService.get_pool(
-                tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.PAID,
-                session=db.session(),
-            )
+            with session_factory.create_session() as session:
+                trail_pool = CreditPoolService.get_pool(
+                    tenant_id=tenant_id,
+                    pool_type=ProviderQuotaType.TRIAL,
+                    session=session,
+                )
+                paid_pool = CreditPoolService.get_pool(
+                    tenant_id=tenant_id,
+                    pool_type=ProviderQuotaType.PAID,
+                    session=session,
+                )
         else:
             trail_pool = None
             paid_pool = None
