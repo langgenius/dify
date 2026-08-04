@@ -144,10 +144,13 @@ test("root workflow runs explicit local security gates", () => {
 
 test("production dependency security fixes stay locked", () => {
   assert.equal(apiPackageJson.dependencies.sharp, "^0.35.3");
-  assert.equal(packageJson.pnpm.overrides["fast-uri"], "3.1.4");
+  assert.equal(packageJson.pnpm.overrides["fast-uri"], "3.1.5");
+  assert.equal(packageJson.pnpm.overrides["ip-address"], "10.3.1");
   assert.equal(packageJson.pnpm.overrides.sharp, "0.35.3");
-  assert.match(lockfile, /^ {2}fast-uri@3\.1\.4:$/m);
-  assert.doesNotMatch(lockfile, /^ {2}fast-uri@3\.1\.2:$/m);
+  assert.match(lockfile, /^ {2}fast-uri@3\.1\.5:$/m);
+  assert.doesNotMatch(lockfile, /^ {2}fast-uri@3\.1\.4:$/m);
+  assert.match(lockfile, /^ {2}ip-address@10\.3\.1:$/m);
+  assert.doesNotMatch(lockfile, /^ {2}ip-address@10\.2\.0:$/m);
   assert.match(lockfile, /^ {2}sharp@0\.35\.3:$/m);
   assert.doesNotMatch(lockfile, /^ {2}sharp@0\.34\.5:$/m);
 });
