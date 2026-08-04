@@ -327,8 +327,7 @@ def run_load_phase(request: LoadPhaseRequest) -> LoadPhaseResult:
     )
     if not minimum_observations_met:
         state.fatal_errors.append(
-            f"Locust phase produced {len(state.observations)} observations; "
-            f"minimum is {request.minimum_observations}"
+            f"Locust phase produced {len(state.observations)} observations; minimum is {request.minimum_observations}"
         )
     if timed_out:
         state.fatal_errors.append("Locust phase exceeded its drain timeout")
