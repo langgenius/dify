@@ -71,7 +71,7 @@ const SuggestedAction = ({
         >
           {children}
         </span>
-        {description && (
+        {!!description && (
           <span
             className={cn(
               'grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none',
