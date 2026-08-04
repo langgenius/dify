@@ -523,6 +523,17 @@ describe('normalizeConsoleOpenAPIURL', () => {
     expect(searchParams.has('tag_ids[0]')).toBe(false)
     expect(searchParams.has('creators[0]')).toBe(false)
   })
+
+  it('should serialize skill list tag filters as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/workspaces/current/skills?tag%5B0%5D=support&tag%5B1%5D=sales',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag')).toEqual(['support', 'sales'])
+    expect(searchParams.has('tag[0]')).toBe(false)
+    expect(searchParams.has('tag[1]')).toBe(false)
+  })
 })
 
 // Scenario: oRPC query defaults own shared Agent detail fetch behavior.

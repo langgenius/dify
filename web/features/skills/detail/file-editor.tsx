@@ -146,6 +146,9 @@ export function FileEditor({
     slashIndex: number
   } | null>(null)
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
+  const [publishReferenceCountOverride, setPublishReferenceCountOverride] = useState<number | null>(
+    null,
+  )
   const [referenceSelectedIndex, setReferenceSelectedIndex] = useState(0)
   const [saveStatus, setSaveStatus] = useState<'dirty' | 'error' | 'saved' | 'saving'>('saved')
   const [hasSaveConflict, setHasSaveConflict] = useState(false)
@@ -879,6 +882,7 @@ export function FileEditor({
 
     const referenceCount = detail?.reference_count ?? 0
     if (referenceCount > 0) {
+      setPublishReferenceCountOverride(null)
       setPublishConfirmOpen(true)
       return
     }
@@ -892,7 +896,9 @@ export function FileEditor({
         },
       }),
     )
-    if ((references.data?.length ?? 0) > 0) {
+    const fetchedReferenceCount = references.data?.length ?? 0
+    if (fetchedReferenceCount > 0) {
+      setPublishReferenceCountOverride(fetchedReferenceCount)
       setPublishConfirmOpen(true)
       return
     }
@@ -1350,13 +1356,17 @@ export function FileEditor({
           <div className="relative flex max-w-[calc(100%-2rem)] justify-center">
             <SkillPublishConfirmPanel
               loading={publishing}
-              onCancel={() => setPublishConfirmOpen(false)}
+              onCancel={() => {
+                setPublishConfirmOpen(false)
+                setPublishReferenceCountOverride(null)
+              }}
               onConfirm={() => {
                 setPublishConfirmOpen(false)
+                setPublishReferenceCountOverride(null)
                 onPublish()
               }}
               open={publishConfirmOpen}
-              referenceCount={detail?.reference_count ?? 0}
+              referenceCount={publishReferenceCountOverride ?? detail?.reference_count ?? 0}
               skillId={skillId}
             />
             <div

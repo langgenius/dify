@@ -36,6 +36,8 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
@@ -45,6 +47,7 @@ import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
+import { SkillListTagManagementModal } from './skill-list-tag-management-modal'
 
 const placeholderCardIds = Array.from(
   { length: 16 },
@@ -74,14 +77,6 @@ function SkillIcon({ icon }: { icon?: string }) {
         <span aria-hidden className="i-ri-box-3-line size-5 text-text-tertiary" />
       )}
     </div>
-  )
-}
-
-function SkillTagBadge({ tag }: { tag: string }) {
-  return (
-    <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
-      <span className="max-w-28 truncate">{tag}</span>
-    </span>
   )
 }
 
@@ -319,7 +314,13 @@ function DeleteSkillDialog({
   )
 }
 
-function SkillCard({ skill }: { skill: SkillResponse }) {
+function SkillCard({
+  skill,
+  onOpenTagManagement,
+}: {
+  skill: SkillResponse
+  onOpenTagManagement: () => void
+}) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
@@ -337,7 +338,6 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
       toast.error(tCommon(($) => $['operation.downloadFailed']))
     },
   })
-  const tags = skill.tags ?? []
   const isDraft = !skill.latest_published_version_id
   const updatedAt = formatTime(
     skill.updated_at,
@@ -391,15 +391,13 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
             <div className="line-clamp-2 min-h-8">{skill.description}</div>
           </div>
         </Link>
-        <div className="relative h-6 shrink-0 px-3">
-          {tags.length > 0 && (
-            <div className="flex min-w-0 gap-1 overflow-hidden p-1">
-              {tags.slice(0, 4).map((tag) => (
-                <SkillTagBadge key={tag} tag={tag} />
-              ))}
-            </div>
-          )}
-          <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-14 bg-linear-to-r from-components-card-bg-transparent to-components-card-bg" />
+        <div className="relative flex h-6 shrink-0 items-start px-3">
+          <SkillCardTags
+            skillId={skill.id}
+            tags={skill.tags ?? []}
+            onOpenTagManagement={onOpenTagManagement}
+            onTagsChange={() => invalidateSkillListQueries(queryClient)}
+          />
         </div>
         <div className="flex min-w-0 shrink-0 items-center px-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -478,66 +476,44 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
   )
 }
 
-function SkillTagFilter({ tags }: { tags: string[] }) {
-  const { t } = useTranslation('skill')
+function SkillTagFilter({ onOpenTagManagement }: { onOpenTagManagement: () => void }) {
   const [selectedTags, setSelectedTags] = useQueryState(
     skillQueryParamNames.tag,
     skillTagQueryParser,
   )
-  const selectedTagSet = new Set(selectedTags)
-
-  const toggleTag = (tag: string) => {
-    const nextTags = selectedTagSet.has(tag)
-      ? selectedTags.filter((item) => item !== tag)
-      : [...selectedTags, tag]
-
-    void setSelectedTags(nextTags)
-  }
+  const { data: tagList = [] } = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: {
+        query: {
+          type: 'skill',
+        },
+      },
+    }),
+  )
+  const skillTags = tagList.filter((tag) => tag.type === 'skill')
+  const tagIdByName = new Map(skillTags.map((tag) => [tag.name, tag.id]))
+  const tagNameById = new Map(skillTags.map((tag) => [tag.id, tag.name]))
+  const selectedTagIds = selectedTags.flatMap((tagName) => {
+    const tagId = tagIdByName.get(tagName)
+    return tagId ? [tagId] : []
+  })
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          'flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 py-1 system-sm-regular text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-          selectedTags.length > 0 && 'text-text-secondary',
-        )}
-      >
-        <span>{t(($) => $['skillManagement.tags'])}</span>
-        {selectedTags.length > 0 && (
-          <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary tabular-nums">
-            {selectedTags.length}
-          </span>
-        )}
-        <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-52">
-        {tags.length === 0 ? (
-          <DropdownMenuItem disabled>{t(($) => $['skillManagement.noTags'])}</DropdownMenuItem>
-        ) : (
-          tags.map((tag) => (
-            <DropdownMenuItem key={tag} className="gap-2" onClick={() => toggleTag(tag)}>
-              <span
-                aria-hidden
-                className={cn(
-                  'i-ri-check-line size-4 shrink-0',
-                  selectedTagSet.has(tag) ? 'text-text-accent' : 'text-transparent',
-                )}
-              />
-              <span className="min-w-0 flex-1 truncate">{tag}</span>
-            </DropdownMenuItem>
-          ))
-        )}
-        {selectedTags.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2" onClick={() => setSelectedTags([])}>
-              <span aria-hidden className="i-ri-close-line size-4 shrink-0 text-text-tertiary" />
-              <span>{t(($) => $['skillManagement.clearTags'])}</span>
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <TagFilter
+      type="skill"
+      value={selectedTagIds}
+      onChange={(tagIds) => {
+        void setSelectedTags(
+          tagIds.flatMap((tagId) => {
+            const tagName = tagNameById.get(tagId)
+            return tagName ? [tagName] : []
+          }),
+        )
+      }}
+      onOpenTagManagement={onOpenTagManagement}
+      showLeadingIcon={false}
+      triggerClassName="min-w-0"
+    />
   )
 }
 
@@ -546,13 +522,13 @@ function SkillsToolbar({
   importing,
   onCreate,
   onImport,
-  tags,
+  onOpenTagManagement,
 }: {
   creating: boolean
   importing: boolean
   onCreate: () => void
   onImport: () => void
-  tags: string[]
+  onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation('skill')
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
@@ -560,7 +536,7 @@ function SkillsToolbar({
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <SkillTagFilter tags={tags} />
+      <SkillTagFilter onOpenTagManagement={onOpenTagManagement} />
       <SearchInput
         aria-label={t(($) => $['skillManagement.searchLabel'])}
         className="h-8 w-50 min-w-0 shrink"
@@ -605,6 +581,7 @@ function SkillGrid({
   isPending,
   onCreate,
   onImport,
+  onOpenTagManagement,
   skills,
 }: {
   creating: boolean
@@ -616,6 +593,7 @@ function SkillGrid({
   isPending: boolean
   onCreate: () => void
   onImport: () => void
+  onOpenTagManagement: () => void
   skills: SkillResponse[]
 }) {
   const { t } = useTranslation('skill')
@@ -644,7 +622,11 @@ function SkillGrid({
           }
         />
       )}
-      {!isPending && !isError && skills.map((skill) => <SkillCard key={skill.id} skill={skill} />)}
+      {!isPending &&
+        !isError &&
+        skills.map((skill) => (
+          <SkillCard key={skill.id} skill={skill} onOpenTagManagement={onOpenTagManagement} />
+        ))}
       {!isPending && !isError && isFetchingNextPage && <SkillCardSkeleton />}
     </section>
   )
@@ -655,6 +637,7 @@ export default function SkillsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const importInputRef = useRef<HTMLInputElement>(null)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const [selectedTags] = useQueryState(skillQueryParamNames.tag, skillTagQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
@@ -676,9 +659,7 @@ export default function SkillsPage() {
       initialPageParam: 1,
     }),
   })
-  const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
   const skills = skillsQuery.data?.pages.flatMap((page) => page.data ?? []) ?? []
-  const tags = (tagsQuery.data?.data ?? []).map((tag) => tag.tag)
 
   useDocumentTitle(t(($) => $['skillManagement.title']))
 
@@ -755,7 +736,7 @@ export default function SkillsPage() {
             importing={importMutation.isPending}
             onCreate={handleCreate}
             onImport={() => importInputRef.current?.click()}
-            tags={tags}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
           />
         </div>
       </div>
@@ -779,6 +760,7 @@ export default function SkillsPage() {
                 isPending={skillsQuery.isPending}
                 onCreate={handleCreate}
                 onImport={() => importInputRef.current?.click()}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
               />
             </ScrollAreaContent>
           </ScrollAreaViewport>
@@ -787,6 +769,11 @@ export default function SkillsPage() {
           </ScrollAreaScrollbar>
         </ScrollArea>
       </div>
+      <SkillListTagManagementModal
+        show={showTagManagementModal}
+        onClose={() => setShowTagManagementModal(false)}
+        onTagsChange={() => invalidateSkillListQueries(queryClient)}
+      />
     </div>
   )
 }
