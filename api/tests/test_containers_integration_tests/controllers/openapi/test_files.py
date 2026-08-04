@@ -60,4 +60,4 @@ class TestAppFileUpload:
         assert result.extension == "txt"
         assert result.mime_type == "text/plain"
         # Persisted under the caller's tenant.
-        assert result.tenant_id == str(tenant.id)
+        assert result.tenant_id == tenant.id

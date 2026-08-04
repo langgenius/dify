@@ -68,9 +68,9 @@ class DbMigrationAutoRenewLock:
     ) -> None:
         self._redis_client = redis_client
         self._name = name
-        self._ttl_seconds = float(ttl_seconds)
+        self._ttl_seconds = ttl_seconds
         self._renew_interval_seconds = (
-            float(renew_interval_seconds)
+            renew_interval_seconds
             if renew_interval_seconds is not None
             else max(MIN_RENEW_INTERVAL_SECONDS, self._ttl_seconds / DEFAULT_RENEW_INTERVAL_DIVISOR)
         )
@@ -116,7 +116,7 @@ class DbMigrationAutoRenewLock:
         if self._lock is None:
             return False
         try:
-            return bool(self._lock.owned())
+            return self._lock.owned()
         except Exception:
             # Ownership checks are best-effort and must not break callers.
             return False

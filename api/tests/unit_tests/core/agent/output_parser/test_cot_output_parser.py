@@ -189,7 +189,7 @@ class TestCotAgentOutputParser:
     def test_prefix_handling(self, make_chunk, usage_dict, content) -> None:
         chunks = [make_chunk(content)]
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
-        joined = "".join(str(item) for item in result)
+        joined = "".join(item for item in result)
         expected_word = "something" if "action:" in content.lower() else "reasoning"
         assert expected_word in joined
         assert "action:" not in joined.lower()

@@ -363,7 +363,7 @@ class RetrievalService:
                     ):
                         with Session(db.engine) as rerank_session:
                             data_post_processor = DataPostProcessor(
-                                str(dataset.tenant_id),
+                                dataset.tenant_id,
                                 str(RerankMode.RERANKING_MODEL),
                                 reranking_model,
                                 None,
@@ -443,7 +443,7 @@ class RetrievalService:
                     ):
                         with Session(db.engine) as rerank_session:
                             data_post_processor = DataPostProcessor(
-                                str(dataset.tenant_id),
+                                dataset.tenant_id,
                                 str(RerankMode.RERANKING_MODEL),
                                 reranking_model,
                                 None,
@@ -893,7 +893,7 @@ class RetrievalService:
                     return
                 with Session(db.engine) as rerank_session:
                     data_post_processor = DataPostProcessor(
-                        str(dataset.tenant_id),
+                        dataset.tenant_id,
                         reranking_mode,
                         reranking_model,
                         weights,
@@ -926,7 +926,7 @@ class RetrievalService:
                 .limit(1)
             )
             if attachment_binding:
-                grant_upload_file_access([str(upload_file.id)])
+                grant_upload_file_access([upload_file.id])
                 attachment_info: AttachmentInfoDict = {
                     "id": upload_file.id,
                     "name": upload_file.name,
@@ -964,7 +964,7 @@ class RetrievalService:
                         "size": upload_file.size,
                     }
                     if attachment_binding:
-                        granted_upload_file_ids.append(str(upload_file.id))
+                        granted_upload_file_ids.append(upload_file.id)
                         attachment_infos.append(
                             {
                                 "attachment_id": attachment_binding.attachment_id,

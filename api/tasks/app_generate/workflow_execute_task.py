@@ -365,7 +365,7 @@ def _publish_streaming_response(
     place that can guarantee SSE consumers eventually see a terminal workflow
     lifecycle event.
     """
-    normalized_workflow_run_id = str(workflow_run_id)
+    normalized_workflow_run_id = workflow_run_id
 
     def _publish_failed_terminal_event(error_message: str, task_id: str, publish_started: bool) -> None:
         timestamp = to_timestamp(naive_utc_now())

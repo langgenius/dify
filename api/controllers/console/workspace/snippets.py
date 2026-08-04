@@ -193,7 +193,7 @@ class CustomizedSnippetDetailApi(Resource):
         """Get customized snippet details."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -220,7 +220,7 @@ class CustomizedSnippetDetailApi(Resource):
         """Update customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -265,7 +265,7 @@ class CustomizedSnippetDetailApi(Resource):
         """Delete customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -304,7 +304,7 @@ class CustomizedSnippetExportApi(Resource):
         """Export snippet as DSL."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -422,7 +422,7 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
         """Check dependencies for a snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -452,7 +452,7 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
         """Increment snippet use count when it is inserted into a workflow."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 

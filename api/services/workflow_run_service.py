@@ -122,7 +122,7 @@ class WorkflowRunService:
         :param args: request args
         :param triggered_from: workflow run triggered from (default: DEBUGGING)
         """
-        limit = int(args.get("limit", 20))
+        limit = args.get("limit", 20)
         last_id = args.get("last_id")
         status = args.get("status")
 

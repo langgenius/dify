@@ -135,7 +135,7 @@ class AgentObservabilityService:
 
     @staticmethod
     def _total_tokens(message: Message) -> int:
-        return int(message.message_tokens or 0) + int(message.answer_tokens or 0)
+        return (message.message_tokens or 0) + (message.answer_tokens or 0)
 
     @classmethod
     def serialize_log_message(cls, message: Message, conversation: Conversation | None = None) -> dict[str, Any]:
@@ -153,8 +153,8 @@ class AgentObservabilityService:
             "from_source": message.from_source.value if message.from_source else None,
             "from_end_user_id": message.from_end_user_id,
             "from_account_id": message.from_account_id,
-            "message_tokens": int(message.message_tokens or 0),
-            "answer_tokens": int(message.answer_tokens or 0),
+            "message_tokens": (message.message_tokens or 0),
+            "answer_tokens": (message.answer_tokens or 0),
             "total_tokens": cls._total_tokens(message),
             "total_price": str(message.total_price or Decimal(0)),
             "currency": message.currency,
@@ -553,7 +553,7 @@ class AgentObservabilityService:
             "conversation_id": conversation.id,
             "title": conversation.name,
             "end_user_id": conversation.from_end_user_id,
-            "message_count": int(message_count or 0),
+            "message_count": (message_count or 0),
             "user_rate": None,
             "operation_rate": None,
             "unread": conversation.read_at is None,

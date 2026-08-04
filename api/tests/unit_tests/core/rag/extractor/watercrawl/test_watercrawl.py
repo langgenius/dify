@@ -45,7 +45,7 @@ class TestWaterCrawlExceptions:
         assert err.status_code == 400
         assert err.message == "bad request"
         assert "url" in parsed_errors
-        assert any("invalid" in str(item) for item in parsed_errors["url"])
+        assert any("invalid" in item for item in parsed_errors["url"])
         assert "WaterCrawlBadRequestError" in str(err)
 
     def test_permission_and_authentication_error_strings(self):

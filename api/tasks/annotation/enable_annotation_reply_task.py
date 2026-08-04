@@ -45,8 +45,8 @@ def enable_annotation_reply_task(
             return
 
         annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
+        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
 
         try:
             documents = []
@@ -131,7 +131,7 @@ def enable_annotation_reply_task(
         except Exception as e:
             logger.exception("Annotation batch created index failed")
             redis_client.setex(enable_app_annotation_job_key, 600, "error")
-            enable_app_annotation_error_key = f"enable_app_annotation_error_{str(job_id)}"
+            enable_app_annotation_error_key = f"enable_app_annotation_error_{job_id}"
             redis_client.setex(enable_app_annotation_error_key, 600, str(e))
             session.rollback()
         finally:

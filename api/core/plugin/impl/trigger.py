@@ -58,7 +58,7 @@ class PluginTriggerClient(BasePluginClient):
             data = json_response.get("data")
             if data:
                 for event in data.get("declaration", {}).get("events", []):
-                    event["identity"]["provider"] = str(provider_id)
+                    event["identity"]["provider"] = provider_id
 
             return json_response
 
@@ -70,11 +70,11 @@ class PluginTriggerClient(BasePluginClient):
             transformer=transformer,
         )
 
-        response.declaration.identity.name = str(provider_id)
+        response.declaration.identity.name = provider_id
 
         # override the provider name for each trigger to plugin_id/provider_name
         for event in response.declaration.events:
-            event.identity.provider = str(provider_id)
+            event.identity.provider = provider_id
 
         return response
 

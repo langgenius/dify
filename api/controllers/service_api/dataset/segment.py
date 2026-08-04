@@ -191,7 +191,7 @@ class SegmentApi(DatasetApiResource):
         )
         if not dataset:
             raise NotFound("Dataset not found.")
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset.id, document_id_str, session=session)
         if not document:
@@ -286,7 +286,7 @@ class SegmentApi(DatasetApiResource):
         )
         if not dataset:
             raise NotFound("Dataset not found.")
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset.id, document_id_str, session=session)
         if not document:
@@ -370,12 +370,12 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
         SegmentService.delete_segment(segment, document, dataset, session)
         return "", 204
@@ -414,7 +414,7 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
@@ -435,7 +435,7 @@ class DatasetSegmentApi(DatasetApiResource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
         payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
@@ -490,12 +490,12 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
         summary = SummaryIndexService.get_segment_summary(
@@ -556,13 +556,13 @@ class ChildChunkApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset.id, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
 
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
         # check embedding model setting
@@ -628,13 +628,13 @@ class ChildChunkApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset.id, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
 
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         _get_segment_for_document(session, dataset, document, segment_id_str)
 
         args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
@@ -710,13 +710,13 @@ class DatasetChildChunkApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # check document
         document = DocumentService.get_document(dataset.id, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
 
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         segment_ref, _ = _get_segment_for_document(session, dataset, document, segment_id_str)
 
         child_chunk_id_str = str(child_chunk_id)
@@ -780,13 +780,13 @@ class DatasetChildChunkApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        document_id_str = str(document_id)
+        document_id_str = document_id
         # get document
         document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
         if not document:
             raise NotFound("Document not found.")
 
-        segment_id_str = str(segment_id)
+        segment_id_str = segment_id
         segment_ref, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
         child_chunk_id_str = str(child_chunk_id)

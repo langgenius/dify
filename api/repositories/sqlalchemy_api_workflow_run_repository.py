@@ -891,10 +891,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "runs": len(runs),
                 "node_executions": node_executions_count,
                 "offloads": offloads_count,
-                "app_logs": int(app_logs_count),
+                "app_logs": app_logs_count,
                 "trigger_logs": trigger_logs_count,
                 "pauses": pauses_count,
-                "pause_reasons": int(pause_reasons_count),
+                "pause_reasons": pause_reasons_count,
             }
 
     @override
@@ -942,13 +942,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             trigger_logs_count = count_trigger_logs(session, run_ids) if count_trigger_logs else 0
 
             return {
-                "runs": int(runs_count),
+                "runs": runs_count,
                 "node_executions": node_executions_count,
                 "offloads": offloads_count,
-                "app_logs": int(app_logs_count),
+                "app_logs": app_logs_count,
                 "trigger_logs": trigger_logs_count,
                 "pauses": pauses_count,
-                "pause_reasons": int(pause_reasons_count),
+                "pause_reasons": pause_reasons_count,
             }
 
     @staticmethod

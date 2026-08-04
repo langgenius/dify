@@ -112,7 +112,7 @@ class WorkflowCollaborationService:
         if not user_id or not tenant_id:
             return None
 
-        if not self._can_access_workflow(workflow_id, str(tenant_id), session=session):
+        if not self._can_access_workflow(workflow_id, tenant_id, session=session):
             logger.warning(
                 "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
                 workflow_id,
@@ -473,7 +473,7 @@ class WorkflowCollaborationService:
         session_info = self._repository.get_session_info(workflow_id, sid)
         if session_info is None:
             return True
-        return bool(session_info.get("graph_active", True))
+        return session_info.get("graph_active", True)
 
     def _demote_leader_if_hidden(self, workflow_id: str, hidden_sid: str) -> None:
         current_leader = self._repository.get_current_leader(workflow_id)

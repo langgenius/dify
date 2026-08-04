@@ -260,8 +260,8 @@ class TestPauseStatePersistenceLayerTestContainers:
         tenant_id = getattr(self, "test_tenant_id", "tenant-123")
         app_id = getattr(self, "test_app_id", "app-123")
         app_config = WorkflowUIBasedAppConfig(
-            tenant_id=str(tenant_id),
-            app_id=str(app_id),
+            tenant_id=tenant_id,
+            app_id=app_id,
             app_mode=AppMode.WORKFLOW,
             workflow_id=str(wf_id),
         )

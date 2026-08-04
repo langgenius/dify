@@ -351,7 +351,7 @@ class AppService:
             session=session,
         )
 
-        app_ids = [str(app.id) for app in app_models.items]
+        app_ids = [app.id for app in app_models.items]
         starred_app_ids = self.get_starred_app_ids(
             session=session,
             tenant_id=tenant_id,
@@ -359,7 +359,7 @@ class AppService:
             app_ids=app_ids,
         )
         for app in app_models.items:
-            app.is_starred = str(app.id) in starred_app_ids
+            app.is_starred = app.id in starred_app_ids
 
         return app_models
 
@@ -396,7 +396,7 @@ class AppService:
 
         return [
             RecentAppListItem(
-                id=str(app_id),
+                id=app_id,
                 name=name,
                 icon_type=icon_type,
                 icon=icon,

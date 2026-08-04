@@ -106,7 +106,7 @@ class ExcelExtractor(BaseExtractor):
                                 if hasattr(cell, "hyperlink") and cell.hyperlink:
                                     target = getattr(cell.hyperlink, "target", None)
                                     if target:
-                                        display_value = value if value is not None and str(value).strip() else target
+                                        display_value = value if value is not None and value.strip() else target
                                         value = f"[{display_value}]({target})"
                                 cell_row = getattr(cell, "row", None)
                                 cell_column = getattr(cell, "column", None)

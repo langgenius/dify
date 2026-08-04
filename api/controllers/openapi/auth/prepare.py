@@ -36,7 +36,7 @@ def load_tenant(data: AuthData) -> None:
     if data.app is None:
         raise InternalServerError("pipeline_invariant_violated: app not loaded before load_tenant")
     with session_factory.create_session() as session:
-        tenant = TenantService.get_tenant_by_id(str(data.app.tenant_id), session=session)
+        tenant = TenantService.get_tenant_by_id(data.app.tenant_id, session=session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     data.tenant = tenant
@@ -80,7 +80,7 @@ def load_workspace_role(data: AuthData) -> None:
     if data.caller is not None and getattr(data.caller, "status", None) != AccountStatus.ACTIVE:
         return
     with session_factory.create_session() as session:
-        role = TenantService.get_account_role_in_tenant(str(data.account_id), str(data.tenant.id), session=session)
+        role = TenantService.get_account_role_in_tenant(str(data.account_id), data.tenant.id, session=session)
     if role is None:
         return
     data.tenant_role = role
@@ -91,8 +91,8 @@ def resolve_external_user(data: AuthData) -> None:
         raise Unauthorized("missing context for external user resolution")
     end_user = EndUserService.get_or_create_end_user_by_type(
         EndUserType.OPENAPI,
-        tenant_id=str(data.tenant.id),
-        app_id=str(data.app.id),
+        tenant_id=data.tenant.id,
+        app_id=data.app.id,
         user_id=data.external_identity.email,
     )
     data.caller = end_user
@@ -103,7 +103,7 @@ def load_app_access_mode(data: AuthData) -> None:
     if data.app is None:
         return
     try:
-        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(data.app.id))
+        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=data.app.id)
         if settings is None:
             data.app_access_mode = None
             return
