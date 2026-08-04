@@ -175,10 +175,10 @@ const InstallPluginDropdown = ({
               )}
             >
               <RiAddCircleFill className="size-4 shrink-0" />
-              <span className={cn(showTriggerArrow ? 'pl-1' : 'min-w-0 flex-1 px-0.5 text-left')}>
+              <span className={cn(!showTriggerArrow && 'min-w-0 flex-1 text-left')}>
                 {buttonLabel}
               </span>
-              {showTriggerArrow && <RiArrowDownSLine className="ml-1 size-4" />}
+              {showTriggerArrow && <RiArrowDownSLine className="size-4" />}
             </Button>
           )}
         />

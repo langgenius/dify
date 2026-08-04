@@ -71,7 +71,7 @@ const MetadataDocument: FC<Props> = ({
                 </div>
               ) : (
                 <Button variant="ghost" size="small" onClick={startToEdit}>
-                  <span className="mr-1 i-ri-edit-line size-3.5 cursor-pointer text-text-tertiary" />
+                  <span className="i-ri-edit-line size-3.5 cursor-pointer text-text-tertiary" />
                   <div>{t(($) => $['operation.edit'], { ns: 'common' })}</div>
                 </Button>
               ))

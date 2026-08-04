@@ -200,7 +200,7 @@ const SwitchAppModal = ({
                 {t(($) => $['newApp.Cancel'], { ns: 'app' })}
               </Button>
               <Button
-                className="border-red-700"
+                className="inset-ring-red-700"
                 disabled={isAppsFull || !name}
                 variant="primary"
                 tone="destructive"

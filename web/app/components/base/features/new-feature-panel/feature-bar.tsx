@@ -212,7 +212,7 @@ const FeatureBar = ({
               size="small"
               onClick={() => onFeatureBarClick?.(true)}
             >
-              <div className="mx-1">{t(($) => $['feature.bar.manage'], { ns: 'appDebug' })}</div>
+              <div>{t(($) => $['feature.bar.manage'], { ns: 'appDebug' })}</div>
               <RiArrowRightLine className="size-3.5 text-text-accent" />
             </Button>
           )}

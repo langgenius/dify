@@ -14,9 +14,9 @@ const InputFieldButton = () => {
   }, [setShowInputFieldPanel, setShowEnvPanel])
 
   return (
-    <Button variant="secondary" className="flex gap-x-0.5" onClick={handleClick}>
+    <Button variant="secondary" className="flex" onClick={handleClick}>
       <InputField className="size-4" />
-      <span className="px-0.5">{t(($) => $.inputField, { ns: 'datasetPipeline' })}</span>
+      <span>{t(($) => $.inputField, { ns: 'datasetPipeline' })}</span>
     </Button>
   )
 }

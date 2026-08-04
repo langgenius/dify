@@ -100,7 +100,6 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutOpen, setAboutOpen] = useState(false)
-  const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
   const canToggleStepByStepTour =
@@ -123,13 +122,9 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
         onSuccess: trackVisibilityToggled,
       })
     }
-
-    if (checked) setOpen(false)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-
     if (nextOpen) setSkipRecoveryVisible(false)
   }
 
@@ -137,7 +132,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
@@ -201,7 +196,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
               {systemFeatures.deployment_edition === 'CLOUD' && shouldShowStepByStepTourSwitch && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
-                  closeOnClick={false}
+                  closeOnClick={!stepByStepTourEnabled}
                   className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
                   disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
@@ -222,7 +217,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
-              <SupportMenu onContactUsClick={() => setOpen(false)} />
+              <SupportMenu />
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
@@ -249,10 +244,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
               {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
                 <DropdownMenuItem
                   className="mx-0 h-8 gap-1 px-3 py-1.5"
-                  onClick={() => {
-                    setOpen(false)
-                    setAboutOpen(true)
-                  }}
+                  onClick={() => setAboutOpen(true)}
                 >
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"
