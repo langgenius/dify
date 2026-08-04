@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Iterator
 from dataclasses import dataclass
+import hashlib
 import json
 import time
 from typing import ClassVar, Protocol, cast
@@ -12,12 +14,26 @@ from uuid import uuid4
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from benchmarks.scenario import BenchmarkMode, CapacityScenario
+from benchmarks.scenario import (
+    BenchmarkMode,
+    CapacityScenario,
+    config_file_name,
+    config_skill_name,
+    deterministic_file_payload_sha256,
+)
 from benchmarks.schemas import FailureKind, RunSample, TerminalStatus
 
 
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _RUN_RECOVERY_TIMEOUT_SECONDS = 30
+_HTTP_ERROR_BODY_LIMIT = 512
+
+
+def _http_error(response: httpx.Response) -> str:
+    body = " ".join(response.text.split())
+    if len(body) > _HTTP_ERROR_BODY_LIMIT:
+        body = f"{body[:_HTTP_ERROR_BODY_LIMIT]}..."
+    return f"HTTP {response.status_code}: {body}" if body else f"HTTP {response.status_code}"
 
 
 @dataclass(slots=True, frozen=True)
@@ -50,8 +66,26 @@ class CapacityObservation(BaseModel):
     binding_ref: str | None = None
     started_at_ns: int
     ended_at_ns: int
+    e2b_active_windows: list[tuple[int, int]] = Field(default_factory=list)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+_OBSERVATION_RECORD_PREFIX = "base64:"
+
+
+def encode_observation_record(observation: CapacityObservation) -> str:
+    """Encode one private Locust observation as an unambiguous single line."""
+    payload = observation.model_dump_json().encode()
+    return _OBSERVATION_RECORD_PREFIX + base64.b64encode(payload).decode("ascii")
+
+
+def decode_observation_record(record: str) -> CapacityObservation:
+    """Decode current records while accepting legacy plain-JSON private files."""
+    if not record.startswith(_OBSERVATION_RECORD_PREFIX):
+        return CapacityObservation.model_validate_json(record)
+    payload = base64.b64decode(record.removeprefix(_OBSERVATION_RECORD_PREFIX), validate=True)
+    return CapacityObservation.model_validate_json(payload)
 
 
 class AgentRunClient:
@@ -102,6 +136,7 @@ class AgentRunClient:
         sse_started_ns: int | None = None
         terminal_type: str | None = None
         recovered_terminal = False
+        run_ended_at_ns = started_at_ns
         try:
             response = self._agent_client.post(
                 "/runs",
@@ -175,6 +210,7 @@ class AgentRunClient:
             )
             if sample.terminal_status != "succeeded":
                 sample.failure_kind = "terminal_failed"
+            run_ended_at_ns = time.time_ns()
         except Exception as exc:
             sample.failure_kind = cast(FailureKind, "stream_error" if sample.admitted else "admission_error")
             sample.error = f"{type(exc).__name__}: {exc}"
@@ -206,8 +242,23 @@ class AgentRunClient:
         finally:
             if sample.run_id is not None and tracker:
                 tracker.finished(sample.run_id, terminal=terminal_type is not None or recovered_terminal)
-        composite_ms = sample.terminal_e2e_ms or (time.perf_counter_ns() - started_ns) / 1_000_000
-        composite_error = sample.failure_kind if sample.terminal_status != "succeeded" else None
+        e2b_active_windows: list[tuple[int, int]] = []
+        if sample.terminal_status == "succeeded":
+            e2b_active_windows.append((started_at_ns, run_ended_at_ns))
+            if self._scenario.workload == "file":
+                try:
+                    e2b_active_windows.append(
+                        self._export_workspace_file(
+                            benchmark_run_id=benchmark_run_id,
+                            binding_ref=binding_ref,
+                            metrics=metrics,
+                        )
+                    )
+                except Exception as exc:
+                    sample.failure_kind = "validation_error"
+                    sample.error = f"file data-plane validation failed: {type(exc).__name__}: {exc}"
+        composite_ms = (time.perf_counter_ns() - started_ns) / 1_000_000
+        composite_error = sample.failure_kind
         metrics.append(
             RequestMetric(
                 request_type="AGENT_RUN",
@@ -223,10 +274,75 @@ class AgentRunClient:
             binding_ref=binding_ref,
             started_at_ns=started_at_ns,
             ended_at_ns=time.time_ns(),
+            e2b_active_windows=e2b_active_windows,
         )
         for metric in metrics:
             self._recorder(metric)
         return observation
+
+    def _export_workspace_file(
+        self,
+        *,
+        benchmark_run_id: str,
+        binding_ref: str | None,
+        metrics: list[RequestMetric],
+    ) -> tuple[int, int]:
+        if binding_ref is None:
+            raise ValueError("File workload requires a Runtime binding")
+        upload_started_at_ns = time.time_ns()
+        upload_started_ns = time.perf_counter_ns()
+        response = self._agent_client.post(
+            "/workspace/files/upload",
+            json={
+                "backend_binding_ref": binding_ref,
+                "path": "dify-bench-file/payload.bin",
+                "execution_context": _execution_context(benchmark_run_id),
+            },
+        )
+        upload_elapsed_ms = (time.perf_counter_ns() - upload_started_ns) / 1_000_000
+        metrics.append(
+            RequestMetric(
+                request_type="HTTP",
+                name="POST /workspace/files/upload",
+                response_time_ms=upload_elapsed_ms,
+                error=None if response.is_success else _http_error(response),
+            )
+        )
+        if response.is_error:
+            raise RuntimeError(_http_error(response))
+        upload_ended_at_ns = time.time_ns()
+        payload = cast(object, response.json())
+        if not isinstance(payload, dict):
+            raise TypeError("workspace upload response was not an object")
+        file_payload = payload.get("file")
+        if not isinstance(file_payload, dict):
+            raise TypeError("workspace upload response did not contain file metadata")
+        download_url = file_payload.get("download_url")
+        if not isinstance(download_url, str) or not download_url:
+            raise TypeError("workspace upload response did not contain download_url")
+        download_started_ns = time.perf_counter_ns()
+        download = self._fake_client.get(download_url)
+        download_elapsed_ms = (time.perf_counter_ns() - download_started_ns) / 1_000_000
+        metrics.append(
+            RequestMetric(
+                request_type="HTTP",
+                name="GET workspace file download",
+                response_time_ms=download_elapsed_ms,
+                response_length=len(download.content),
+                error=None if download.is_success else f"HTTP {download.status_code}",
+            )
+        )
+        download.raise_for_status()
+        content = download.content
+        if len(content) != self._scenario.payload_bytes:
+            raise ValueError(
+                f"workspace payload size {len(content)} did not match {self._scenario.payload_bytes}"
+            )
+        actual_sha256 = hashlib.sha256(content).hexdigest()
+        expected_sha256 = deterministic_file_payload_sha256(self._scenario.payload_bytes)
+        if actual_sha256 != expected_sha256:
+            raise ValueError(f"workspace payload SHA256 {actual_sha256} did not match {expected_sha256}")
+        return upload_started_at_ns, upload_ended_at_ns
 
     def _cancel_and_drain_run(self, run_id: str) -> str | None:
         deadline = time.monotonic() + _RUN_RECOVERY_TIMEOUT_SECONDS
@@ -314,16 +430,7 @@ def build_capacity_run_request(
         "scenario_id": scenario.id,
         "scenario_version": scenario.version,
     }
-    execution_context = {
-        "tenant_id": "benchmark-tenant",
-        "user_id": benchmark_run_id,
-        "user_from": "account",
-        "agent_id": benchmark_run_id,
-        "agent_config_version_id": "benchmark-config",
-        "agent_config_version_kind": "snapshot",
-        "agent_mode": "workflow_run",
-        "invoke_from": "service-api",
-    }
+    execution_context = _execution_context(benchmark_run_id)
     layers: list[dict[str, object]] = [
         {
             "name": "prompt",
@@ -355,7 +462,7 @@ def build_capacity_run_request(
     if scenario.workload == "config":
         skills = [
             {
-                "name": f"skill-{index}",
+                "name": config_skill_name(benchmark_run_id, index),
                 "description": "deterministic benchmark skill",
                 "size": scenario.item_bytes,
                 "mime_type": "application/zip",
@@ -364,7 +471,7 @@ def build_capacity_run_request(
         ]
         files = [
             {
-                "name": f"file-{index}.bin",
+                "name": config_file_name(benchmark_run_id, index),
                 "size": scenario.item_bytes,
                 "mime_type": "application/octet-stream",
             }
@@ -412,6 +519,19 @@ def build_capacity_run_request(
     return request
 
 
+def _execution_context(benchmark_run_id: str) -> dict[str, object]:
+    return {
+        "tenant_id": "benchmark-tenant",
+        "user_id": benchmark_run_id,
+        "user_from": "account",
+        "agent_id": benchmark_run_id,
+        "agent_config_version_id": "benchmark-config",
+        "agent_config_version_kind": "snapshot",
+        "agent_mode": "workflow_run",
+        "invoke_from": "service-api",
+    }
+
+
 def iter_sse_data(response: httpx.Response) -> Iterator[dict[str, object]]:
     for line in response.iter_lines():
         if not line.startswith("data: "):
@@ -432,5 +552,7 @@ __all__ = [
     "CapacityObservation",
     "RequestMetric",
     "build_capacity_run_request",
+    "decode_observation_record",
+    "encode_observation_record",
     "iter_sse_data",
 ]

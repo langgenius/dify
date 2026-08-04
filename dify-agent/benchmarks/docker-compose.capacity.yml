@@ -103,39 +103,6 @@ services:
       retries: 90
     networks: [benchmark]
 
-  agent-stub-proxy:
-    image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
-    command:
-      [
-        "uvicorn",
-        "benchmarks.agent_stub_proxy:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8080",
-        "--workers",
-        "1",
-        "--no-access-log",
-      ]
-    cpus: 1.0
-    mem_limit: 256m
-    environment:
-      BENCH_AGENT_STUB_UPSTREAM: http://agent:5050
-      BENCH_FAKE_DEPS_UPSTREAM: http://fake-deps:5002
-    ports: ["127.0.0.1:${BENCH_STUB_PROXY_HOST_PORT:-15050}:8080"]
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=1)",
-        ]
-      interval: 1s
-      timeout: 2s
-      retries: 30
-    networks: [benchmark]
-
   driver:
     image: ${BENCH_HARNESS_IMAGE:?BENCH_HARNESS_IMAGE is required}
     command: ["python", "-m", "benchmarks.capacity_driver"]

@@ -13,9 +13,7 @@ import os
 from pathlib import Path
 import platform
 import re
-import socket
 import subprocess
-import time
 from typing import Iterable, Sequence, cast
 
 from pydantic import BaseModel
@@ -28,6 +26,7 @@ from benchmarks.capacity import (
     render_capacity_markdown,
 )
 from benchmarks.docker_stats import DockerStatsSampler, summarize_resource_window
+from benchmarks.e2b_config_stub import E2B_CONFIG_STUB_DEFAULT_HOST, E2B_CONFIG_STUB_DEFAULT_PORT
 from benchmarks.scenario import BenchmarkMode, CapacityWorkload, load_scenario_manifest
 from benchmarks.schemas import (
     BlockResult,
@@ -42,7 +41,6 @@ logger = logging.getLogger(__name__)
 
 _HARNESS_VERSION = 1
 _REDIS_IMAGE = "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
-_CLOUDFLARED_IMAGE = "cloudflare/cloudflared@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf"
 _COMPOSE_FILE = "docker-compose.capacity.yml"
 _E2B_ALLOCATION_JOURNAL = ".e2b-allocations.jsonl"
 _LOCUST_DRAIN_TIMEOUT_SECONDS = 180
@@ -68,7 +66,6 @@ _RESOURCE_LIMITS = {
     "redis": "2 CPU/512 MiB",
     "fake-deps": "2 CPU/512 MiB",
     "driver": "2 CPU/1 GiB",
-    "agent-stub-proxy": "1 CPU/256 MiB",
 }
 
 
@@ -134,53 +131,37 @@ def run_capacity(options: CapacityOptions) -> tuple[Path, bool]:
     points: list[CapacityPoint] = []
     blocks: list[BlockResult] = []
     command_failed = False
-    tunnel_name: str | None = None
-    public_tunnel: tuple[int, str] | None = None
-    try:
-        if options.mode == "local-e2b" and any(point.scenario.workload != "basic" for point in matrix):
-            host_port = _available_loopback_port()
-            tunnel_name = f"dify-agent-bench-{run_id[-12:]}-tunnel"
-            public_origin = _start_agent_stub_tunnel(
-                name=tunnel_name,
-                host_port=host_port,
-                log_path=logs_dir / "tunnel.log",
+    for position, matrix_point in enumerate(matrix):
+        logger.info(
+            "running %s %s c%s",
+            options.mode,
+            matrix_point.scenario.id,
+            matrix_point.requested_concurrency,
+        )
+        try:
+            block = _run_compose_block(
+                root=root,
+                invocation_id=run_id,
+                position=position,
+                point=matrix_point,
+                target=target,
+                harness_image=harness_image,
+                invocation_dir=invocation_dir,
+                logs_dir=logs_dir,
+                keep_containers=options.keep_containers,
+                e2b_api_key=options.e2b_api_key,
+                e2b_template=options.e2b_template,
             )
-            public_tunnel = (host_port, public_origin)
-        for position, matrix_point in enumerate(matrix):
-            logger.info(
-                "running %s %s c%s",
-                options.mode,
-                matrix_point.scenario.id,
-                matrix_point.requested_concurrency,
-            )
-            try:
-                block = _run_compose_block(
-                    root=root,
-                    invocation_id=run_id,
-                    position=position,
-                    point=matrix_point,
-                    target=target,
-                    harness_image=harness_image,
-                    invocation_dir=invocation_dir,
-                    logs_dir=logs_dir,
-                    keep_containers=options.keep_containers,
-                    e2b_api_key=options.e2b_api_key,
-                    e2b_template=options.e2b_template,
-                    public_tunnel=public_tunnel,
-                )
-            except Exception as exc:
-                command_failed = True
-                points.append(_invalid_point(matrix_point, f"{type(exc).__name__}: {exc}"))
-                logger.error("capacity point failed: %s", exc)
-                continue
-            blocks.append(block)
-            point = aggregate_capacity_point(block)
-            points.append(point)
-            if point.status == "invalid":
-                command_failed = True
-    finally:
-        if tunnel_name is not None:
-            _stop_agent_stub_tunnel(name=tunnel_name, log_path=logs_dir / "tunnel.log")
+        except Exception as exc:
+            command_failed = True
+            points.append(_invalid_point(matrix_point, f"{type(exc).__name__}: {exc}"))
+            logger.error("capacity point failed: %s", exc)
+            continue
+        blocks.append(block)
+        point = aggregate_capacity_point(block)
+        points.append(point)
+        if point.status == "invalid":
+            command_failed = True
 
     full_matrix = options.scenario_id is None and options.concurrency is None
     result = CapacityResult(
@@ -213,7 +194,6 @@ def _run_compose_block(
     keep_containers: bool,
     e2b_api_key: str | None,
     e2b_template: str | None,
-    public_tunnel: tuple[int, str] | None,
 ) -> BlockResult:
     block_name = f"{point.scenario.id}-c{point.requested_concurrency}"
     block_dir = invocation_dir / "blocks" / block_name
@@ -237,32 +217,17 @@ def _run_compose_block(
         "BENCH_RUNTIME_BACKEND": "e2b" if point.mode == "local-e2b" else "local",
         "BENCH_E2B_API_KEY": e2b_api_key or "",
         "BENCH_E2B_TEMPLATE": e2b_template or "",
-        "BENCH_AGENT_STUB_API_BASE_URL": "http://agent:5050/agent-stub",
+        "BENCH_AGENT_STUB_API_BASE_URL": _agent_stub_api_base_url(point),
         "BENCH_PUBLIC_DATA_BASE_URL": "http://fake-deps:5002/__bench",
-        "BENCH_STUB_PROXY_HOST_PORT": "15050",
     }
     compose = ["docker", "compose", "-f", str(compose_file), "-p", project]
     services = _services_for_point(point)
-    needs_public_tunnel = point.mode == "local-e2b" and point.scenario.workload != "basic"
     sampler: DockerStatsSampler | None = None
     sampler_stopped = False
     result: BlockResult | None = None
     driver_finished = False
     try:
-        if needs_public_tunnel:
-            if public_tunnel is None:
-                raise BenchmarkCommandError("local-e2b Runtime point requires a public callback tunnel")
-            host_port, public_origin = public_tunnel
-            environment["BENCH_STUB_PROXY_HOST_PORT"] = str(host_port)
-            environment["BENCH_AGENT_STUB_API_BASE_URL"] = f"{public_origin}/agent-stub"
-            environment["BENCH_PUBLIC_DATA_BASE_URL"] = f"{public_origin}/benchmark-data"
         _run_command([*compose, "up", "-d", "--wait", "--wait-timeout", "240", *services], env=environment)
-        if needs_public_tunnel:
-            _wait_for_public_proxy(
-                f"{environment['BENCH_AGENT_STUB_API_BASE_URL'].removesuffix('/agent-stub')}/health",
-                compose=compose,
-                environment=environment,
-            )
         container_ids = {
             service: _run_command([*compose, "ps", "-q", service], env=environment).stdout.strip()
             for service in services
@@ -747,7 +712,7 @@ def _capture_environment(
     limits = {
         name: value
         for name, value in _RESOURCE_LIMITS.items()
-        if name not in ({"runtime"} if mode == "local-e2b" else {"agent-stub-proxy"})
+        if name != "runtime" or mode != "local-e2b"
     }
     return EnvironmentFingerprint(
         captured_at=datetime.now(timezone.utc).isoformat(),
@@ -844,98 +809,16 @@ def _check_runtime_cleanup(
     return result.returncode == 0, result.stdout + result.stderr
 
 
-def _available_loopback_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.bind(("127.0.0.1", 0))
-        return cast(int, listener.getsockname()[1])
-
-
-def _start_agent_stub_tunnel(*, name: str, host_port: int, log_path: Path) -> str:
-    result = _run_command(
-        [
-            "docker",
-            "run",
-            "-d",
-            "--rm",
-            "--name",
-            name,
-            "--label",
-            "com.dify.benchmark=true",
-            "--add-host",
-            "host.docker.internal:host-gateway",
-            _CLOUDFLARED_IMAGE,
-            "tunnel",
-            "--no-autoupdate",
-            "--protocol",
-            "http2",
-            "--url",
-            f"http://host.docker.internal:{host_port}",
-        ],
-        check=False,
-    )
-    if result.returncode != 0:
-        raise BenchmarkCommandError(f"could not start temporary Agent Stub tunnel: {result.stderr}")
-    latest_logs = ""
-    try:
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline:
-            logs = _run_command(["docker", "logs", name], check=False)
-            latest_logs = logs.stdout + logs.stderr
-            match = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", latest_logs)
-            if match:
-                log_path.write_text(latest_logs)
-                return match.group(0)
-            inspect = _run_command(["docker", "inspect", "--format", "{{.State.Running}}", name], check=False)
-            if inspect.returncode != 0 or inspect.stdout.strip() != "true":
-                break
-            time.sleep(0.5)
-    except BaseException:
-        _stop_agent_stub_tunnel(name=name, log_path=log_path)
-        raise
-    _stop_agent_stub_tunnel(name=name, log_path=log_path)
-    raise BenchmarkCommandError("temporary Agent Stub tunnel did not publish a URL within 30 seconds")
-
-
-def _wait_for_public_proxy(
-    health_url: str,
-    *,
-    compose: Sequence[str],
-    environment: dict[str, str],
-) -> None:
-    deadline = time.monotonic() + 120
-    script = "\n".join(
-        [
-            "import sys, urllib.request",
-            "opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))",
-            "with opener.open(sys.argv[1], timeout=5) as response:",
-            "    raise SystemExit(0 if response.status == 200 else 1)",
-        ]
-    )
-    while time.monotonic() < deadline:
-        result = _run_command(
-            [*compose, "exec", "-T", "agent-stub-proxy", "python", "-c", script, health_url],
-            env=environment,
-            check=False,
-        )
-        if result.returncode == 0:
-            return
-        time.sleep(0.5)
-    raise BenchmarkCommandError("temporary Agent Stub tunnel was not reachable within 120 seconds")
-
-
 def _services_for_point(point: CapacityMatrixPoint) -> tuple[str, ...]:
     if point.mode == "local-runtime":
         return ("redis", "fake-deps", "runtime", "agent")
-    if point.scenario.workload == "basic":
-        return ("redis", "fake-deps", "agent")
-    return ("redis", "fake-deps", "agent", "agent-stub-proxy")
+    return ("redis", "fake-deps", "agent")
 
 
-def _stop_agent_stub_tunnel(*, name: str, log_path: Path) -> None:
-    logs = _run_command(["docker", "logs", name], check=False)
-    if logs.stdout or logs.stderr:
-        log_path.write_text(logs.stdout + logs.stderr)
-    _ = _run_command(["docker", "stop", "--time", "5", name], check=False)
+def _agent_stub_api_base_url(point: CapacityMatrixPoint) -> str:
+    if point.mode == "local-e2b" and point.scenario.workload == "config":
+        return f"http://{E2B_CONFIG_STUB_DEFAULT_HOST}:{E2B_CONFIG_STUB_DEFAULT_PORT}/agent-stub"
+    return "http://agent:5050/agent-stub"
 
 
 def _redact_secret_in_directory(directory: Path, secret: str) -> None:
@@ -953,16 +836,9 @@ def _redact_secret_in_directory(directory: Path, secret: str) -> None:
 
 
 def _verify_docker_environment(mode: BenchmarkMode) -> None:
+    del mode
     _run_command(["docker", "info"])
     _run_command(["docker", "compose", "version"])
-    if mode == "local-e2b":
-        pull = _run_command(["docker", "pull", "--quiet", _CLOUDFLARED_IMAGE], check=False)
-        inspect = _run_command(["docker", "image", "inspect", _CLOUDFLARED_IMAGE], check=False)
-        if pull.returncode != 0 or inspect.returncode != 0:
-            raise BenchmarkCommandError(
-                "could not pull or inspect the pinned Cloudflare tunnel image\n"
-                f"{pull.stdout}{pull.stderr}{inspect.stdout}{inspect.stderr}"
-            )
 
 
 def _hash_paths(root: Path, relative_paths: Iterable[str]) -> str:

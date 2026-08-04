@@ -7,6 +7,7 @@ from typing import cast
 import httpx2 as httpx
 import pytest
 from shellctl.client import ShellctlClientError
+from shellctl.shared import MAX_OUTPUT_LIMIT_BYTES
 
 from dify_agent.runtime_backend import (
     BindingAcquireError,
@@ -273,6 +274,19 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
 
     sandbox = next(iter(control.sandboxes.values()))
     assert sandbox.killed == 1
+
+
+@pytest.mark.anyio
+async def test_e2b_uses_max_shellctl_output_window_for_remote_file_reads(monkeypatch: pytest.MonkeyPatch) -> None:
+    _ = _mock_http(monkeypatch, lambda _request: httpx.Response(200, json={"status": "ok"}))
+    backend, sandbox = _connected_backend()
+
+    lease = await backend.acquire(sandbox.sandbox_id)
+
+    assert isinstance(lease, E2BRuntimeLease)
+    assert getattr(lease.data_plane.client, "output_limit") == MAX_OUTPUT_LIMIT_BYTES
+    await backend.release(lease)
+    assert sandbox.pauses == [True]
 
 
 @pytest.mark.anyio
