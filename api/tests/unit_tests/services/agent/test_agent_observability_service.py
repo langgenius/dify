@@ -309,6 +309,60 @@ def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: py
     }
 
 
+def test_list_webapp_conversation_logs_includes_feedback_rates(monkeypatch: pytest.MonkeyPatch) -> None:
+    timestamp = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    conversation = SimpleNamespace(
+        id="conversation-1",
+        name="Feedback conversation",
+        from_end_user_id="end-user-1",
+        read_at=None,
+    )
+
+    class FakeRow:
+        message_count = 2
+        paused_count = 0
+        failed_count = 0
+        created_at = timestamp
+        updated_at = timestamp
+
+        def __getitem__(self, index: int) -> SimpleNamespace:
+            if index != 0:
+                raise IndexError(index)
+            return conversation
+
+    class FakeResult:
+        def all(self) -> list[FakeRow]:
+            return [FakeRow()]
+
+    class FakeSession:
+        def execute(self, stmt: object) -> FakeResult:
+            str(stmt)
+            return FakeResult()
+
+    app = SimpleNamespace(
+        id="app-1",
+        name="Agent WebApp",
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+    service = AgentObservabilityService(FakeSession())
+    monkeypatch.setattr(
+        service,
+        "_list_conversation_feedback_rates",
+        lambda **kwargs: {"conversation-1": {"user_rate": 0.5, "operation_rate": 1.0}},
+    )
+
+    rows = service._list_webapp_conversation_logs(
+        app=app,  # type: ignore[arg-type]
+        params=AgentLogQueryParams(),
+        source_filter=AgentObservabilityService.resolve_source_filter("webapp"),
+    )
+
+    assert rows[0]["user_rate"] == 0.5
+    assert rows[0]["operation_rate"] == 1.0
+
+
 def test_list_workflow_logs_uses_node_executions_without_messages() -> None:
     created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
     node_execution = SimpleNamespace(
@@ -767,6 +821,12 @@ def test_list_conversation_feedback_rates_maps_user_and_admin_sources() -> None:
                     from_source=FeedbackFromSource.ADMIN,
                     like_count=1,
                     total_count=1,
+                ),
+                SimpleNamespace(
+                    conversation_id="conversation-without-ratings",
+                    from_source=FeedbackFromSource.USER,
+                    like_count=0,
+                    total_count=0,
                 ),
             ]
 
