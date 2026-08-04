@@ -183,8 +183,11 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=1.0.0",
+    "pyrefly>=1.2.0",
     "xinference-client>=2.7.0",
+    "types-pytz>=2026.3.1.20260727",
+    "types-bleach>=6.4.0.20260728",
+    "types-croniter>=6.2.4.20260711",
 ]
 
 ############################################################
@@ -304,4 +307,4 @@ python-platform = "linux"
 python-version = "3.12.0"
 infer-with-first-use = true
 min-severity = "warn"
-errors = { missing-override-decorator = "error" }
+errors = { missing-override-decorator = "error", unnecessary-type-conversion = "info" }
