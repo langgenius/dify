@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Mengedit dokumen {{num}}",
   "metadata.batchEditMetadata.editMetadata": "Edit Metadata",
   "metadata.batchEditMetadata.multipleValue": "Beberapa Nilai",
+  "metadata.checkName.duplicate": "Kolom metadata dengan nama ini sudah ada.",
   "metadata.checkName.empty": "Nama metadata tidak boleh kosong",
   "metadata.checkName.invalid": "Nama metadata hanya dapat berisi huruf kecil, angka, dan garis bawah dan harus dimulai dengan huruf kecil",
   "metadata.checkName.tooLong": "Nama metadata tidak boleh melebihi {{max}} karakter",

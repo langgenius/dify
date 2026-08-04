@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Редактирование {{num}} документов",
   "metadata.batchEditMetadata.editMetadata": "Редактировать метаданные",
   "metadata.batchEditMetadata.multipleValue": "Множественное значение",
+  "metadata.checkName.duplicate": "Поле метаданных с таким именем уже существует.",
   "metadata.checkName.empty": "Имя метаданных не может быть пустым",
   "metadata.checkName.invalid": "Имя метаданных может содержать только строчные буквы, цифры и знаки нижнего подчеркивания и должно начинаться со строчной буквы.",
   "metadata.checkName.tooLong": "Имя метаданных не может превышать {{max}} символов",

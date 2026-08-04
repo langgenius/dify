@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "{{num}} 개 문서 편집 중",
   "metadata.batchEditMetadata.editMetadata": "메타데이터 편집",
   "metadata.batchEditMetadata.multipleValue": "다중 값",
+  "metadata.checkName.duplicate": "이 이름의 메타데이터 필드가 이미 존재합니다.",
   "metadata.checkName.empty": "메타데이터 이름은 비어 있을 수 없습니다.",
   "metadata.checkName.invalid": "메타데이터 이름은 소문자, 숫자 및 밑줄만 포함할 수 있으며 소문자로 시작해야 합니다.",
   "metadata.checkName.tooLong": "메타데이터 이름은 {{max}}자를 초과할 수 없습니다.",

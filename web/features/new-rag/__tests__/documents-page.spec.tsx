@@ -63,6 +63,14 @@ const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const removeDocumentMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
+const listLogicalDocuments = vi.hoisted(() => vi.fn())
+const metadataDocumentsQuery = vi.hoisted(() => ({
+  data: undefined as LogicalDocument[] | undefined,
+  error: null as unknown,
+  isFetching: false,
+  isPending: false,
+  refetch: vi.fn(),
+}))
 const updateSourceMutation = vi.hoisted(() => vi.fn())
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
@@ -344,15 +352,25 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (options.mutationKind === 'bulk-upload') return bulkUploadMutation
       return uploadMutation
     },
-    useQuery: () => ({
-      data: {
-        configuration_state: settingsState.configurationState,
-        embedding: null,
-        retrieval: null,
-        revision: 1,
-      },
-      refetch: settingsState.refetch,
-    }),
+    useQuery: (options: { queryKey?: readonly unknown[] }) => {
+      if (options.queryKey?.includes('document-metadata-documents'))
+        return {
+          ...metadataDocumentsQuery,
+          data:
+            metadataDocumentsQuery.data ??
+            documentsQuery.data?.pages.flatMap((page) => page.items) ??
+            [],
+        }
+      return {
+        data: {
+          configuration_state: settingsState.configurationState,
+          embedding: null,
+          retrieval: null,
+          revision: 1,
+        },
+        refetch: settingsState.refetch,
+      }
+    },
     useQueryClient: () => queryClient,
   }
 })
@@ -404,6 +422,7 @@ vi.mock('@/service/client', () => ({
             },
           },
           logicalDocuments: {
+            get: listLogicalDocuments,
             byDocumentId: {
               delete: removeDocumentMutation,
             },
@@ -618,6 +637,11 @@ describe('DocumentsPage', () => {
     documentsQuery.isPending = false
     documentsQuery.isRefetching = false
     documentsQuery.refetch.mockResolvedValue({ error: null })
+    metadataDocumentsQuery.data = undefined
+    metadataDocumentsQuery.error = null
+    metadataDocumentsQuery.isFetching = false
+    metadataDocumentsQuery.isPending = false
+    metadataDocumentsQuery.refetch.mockResolvedValue({ error: null })
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.dataUpdatedAt = 0
     tasksQuery.dataUpdateCount = 0
@@ -682,15 +706,21 @@ describe('DocumentsPage', () => {
       job: { id: 'delete-1', state: 'accepted' },
       status_url: '/delete-1',
     })
-    renameDocumentMutation.mockImplementation(async ({ body }: { body: { patch: unknown } }) =>
-      documentApiResponse(
-        document({
-          rowVersion: 2,
-          userMetadata: {
-            displayName: String((body.patch as { displayName: string }).displayName),
-          },
-        }),
+    listLogicalDocuments.mockImplementation(async () => ({
+      data: (documentsQuery.data?.pages.flatMap((page) => page.items) ?? []).map(
+        documentApiResponse,
       ),
+      next_cursor: null,
+    }))
+    renameDocumentMutation.mockImplementation(
+      async ({ body }: { body: { patch: Record<string, unknown> } }) => {
+        const userMetadata = { ...document().userMetadata }
+        for (const [name, value] of Object.entries(body.patch)) {
+          if (value === null) delete userMetadata[name]
+          else userMetadata[name] = value
+        }
+        return documentApiResponse(document({ rowVersion: 2, userMetadata }))
+      },
     )
     updateSourceMutation.mockImplementation(
       async ({ body }: { body: { status: Source['status'] } }) =>
@@ -783,7 +813,26 @@ describe('DocumentsPage', () => {
     const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
     expect(metadata).toBeEnabled()
     await user.click(metadata)
-    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    expect(
+      await screen.findByRole('heading', { name: 'dataset.metadata.metadata' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      }),
+    ).toBeEnabled()
+    expect(screen.queryByText('sourceName')).not.toBeInTheDocument()
+    expect(screen.queryByText('document_name')).not.toBeInTheDocument()
+    expect(screen.queryByText('uploader')).not.toBeInTheDocument()
+    expect(screen.queryByText('upload_date')).not.toBeInTheDocument()
+    expect(screen.queryByText('last_update_date')).not.toBeInTheDocument()
+    expect(screen.queryByText('source')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('heading', { name: 'dataset.metadata.metadata' }),
+      ).not.toBeInTheDocument()
+    })
     const rowActions = screen.getByRole('button', {
       name: /dataset\.newKnowledge\.documentActions/,
     })
@@ -806,6 +855,378 @@ describe('DocumentsPage', () => {
     )
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
+  })
+
+  it('creates metadata through the KnowledgeFS document metadata endpoint', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+    }
+    listLogicalDocuments
+      .mockResolvedValueOnce({
+        data: [documentApiResponse(document({ id: 'one', title: 'One.pdf' }))],
+        next_cursor: 'next-page',
+      })
+      .mockResolvedValueOnce({
+        data: [
+          documentApiResponse(
+            document({ id: 'two', rowVersion: 4, title: 'Two.pdf', userMetadata: {} }),
+          ),
+        ],
+        next_cursor: null,
+      })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      'category',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 1, patch: { category: '' } },
+      params: { control_space_id: 'space-1', document_id: 'one' },
+    })
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 4, patch: { category: '' } },
+      params: { control_space_id: 'space-1', document_id: 'two' },
+    })
+    expect(listLogicalDocuments).toHaveBeenNthCalledWith(1, {
+      params: { control_space_id: 'space-1' },
+      query: {},
+    })
+    expect(listLogicalDocuments).toHaveBeenNthCalledWith(2, {
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'next-page' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('resumes a partially failed metadata creation without rewriting completed documents', async () => {
+    const user = userEvent.setup()
+    const currentDocuments = Array.from({ length: 6 }, (_, index) =>
+      document({
+        id: `document-${index + 1}`,
+        rowVersion: index + 1,
+        title: `Document ${index + 1}.pdf`,
+        userMetadata: {},
+      }),
+    )
+    documentsQuery.data = { pages: [{ items: currentDocuments }] }
+    listLogicalDocuments.mockImplementation(async () => ({
+      data: currentDocuments.map(documentApiResponse),
+      next_cursor: null,
+    }))
+    let rejectSecondDocument = true
+    renameDocumentMutation.mockImplementation(
+      async ({
+        body,
+        params,
+      }: {
+        body: { patch: Record<string, unknown> }
+        params: { document_id: string }
+      }) => {
+        if (params.document_id === 'document-2' && rejectSecondDocument) {
+          rejectSecondDocument = false
+          throw new Error('conflict')
+        }
+        const index = currentDocuments.findIndex((candidate) => candidate.id === params.document_id)
+        if (index < 0) throw new Error(`Unknown document ${params.document_id}`)
+        const candidate = currentDocuments[index]
+        if (!candidate) throw new Error(`Unknown document ${params.document_id}`)
+        const updatedMetadata = { ...candidate.userMetadata }
+        for (const [name, value] of Object.entries(body.patch)) {
+          if (value === null) delete updatedMetadata[name]
+          else updatedMetadata[name] = value
+        }
+        const updated = document({
+          ...candidate,
+          id: candidate.id,
+          rowVersion: candidate.rowVersion + 1,
+          userMetadata: updatedMetadata,
+        })
+        currentDocuments[index] = updated
+        return documentApiResponse(updated)
+      },
+    )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      }),
+    )
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.metadata.createMetadata.name',
+    })
+    await user.type(nameInput, 'category')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalled())
+    expect(nameInput).toBeInTheDocument()
+    expect(renameDocumentMutation).toHaveBeenCalledTimes(6)
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(nameInput).not.toBeInTheDocument())
+    expect(renameDocumentMutation).toHaveBeenCalledTimes(7)
+    expect(
+      renameDocumentMutation.mock.calls.filter(
+        ([request]) => request.params.document_id === 'document-1',
+      ),
+    ).toHaveLength(1)
+    expect(
+      renameDocumentMutation.mock.calls.filter(
+        ([request]) => request.params.document_id === 'document-2',
+      ),
+    ).toHaveLength(2)
+  })
+
+  it('disables metadata creation until the full document metadata query completes', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+    }
+    metadataDocumentsQuery.isPending = true
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      }),
+    ).toBeDisabled()
+  })
+
+  it('lets users retry when the metadata document query fails', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+    }
+    metadataDocumentsQuery.error = new Error('metadata query failed')
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    expect(
+      await screen.findByText('dataset.newKnowledge.documentLoadErrorDescription'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(metadataDocumentsQuery.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('validates a metadata name in the metadata drawer before submitting it', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              id: 'one',
+              title: 'One.pdf',
+              userMetadata: { existing_field: 'support' },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      }),
+    )
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.metadata.createMetadata.name',
+    })
+    const createDialog = nameInput.closest<HTMLElement>('[role="dialog"]')!
+    const save = within(createDialog).getByRole('button', { name: 'common.operation.save' })
+    expect(save).toBeDisabled()
+
+    await user.type(nameInput, '11')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.invalid',
+    )
+    expect(save).toBeDisabled()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'existing_field')
+    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.duplicate',
+    )
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'a'.repeat(256))
+    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.tooLong',
+    )
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'displayName')
+    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
+      'dataset.metadata.checkName.invalid',
+    )
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'priority_1')
+    expect(nameInput).not.toHaveAttribute('aria-invalid')
+    expect(within(createDialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(save).toBeEnabled()
+  })
+
+  it('renames metadata through the KnowledgeFS document metadata endpoint', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              id: 'one',
+              title: 'One.pdf',
+              userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.metadata.datasetMetadata.name',
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'topic')
+    await user.keyboard('{Enter}')
+
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: {
+        expectedRowVersion: 1,
+        patch: { category: null, topic: 'support' },
+      },
+      params: { control_space_id: 'space-1', document_id: 'one' },
+    })
+  })
+
+  it('resumes a partially failed metadata rename from the open dialog', async () => {
+    const user = userEvent.setup()
+    const currentDocuments = [
+      document({ id: 'one', userMetadata: { category: 'support' } }),
+      document({ id: 'two', rowVersion: 2, userMetadata: { category: 'sales' } }),
+    ]
+    documentsQuery.data = { pages: [{ items: currentDocuments }] }
+    listLogicalDocuments.mockImplementation(async () => ({
+      data: currentDocuments.map(documentApiResponse),
+      next_cursor: null,
+    }))
+    let rejectSecondDocument = true
+    renameDocumentMutation.mockImplementation(
+      async ({
+        body,
+        params,
+      }: {
+        body: { patch: Record<string, unknown> }
+        params: { document_id: string }
+      }) => {
+        if (params.document_id === 'two' && rejectSecondDocument) {
+          rejectSecondDocument = false
+          throw new Error('conflict')
+        }
+        const index = currentDocuments.findIndex((candidate) => candidate.id === params.document_id)
+        if (index < 0) throw new Error(`Unknown document ${params.document_id}`)
+        const candidate = currentDocuments[index]
+        if (!candidate) throw new Error(`Unknown document ${params.document_id}`)
+        const updatedMetadata = { ...candidate.userMetadata }
+        for (const [name, value] of Object.entries(body.patch)) {
+          if (value === null) delete updatedMetadata[name]
+          else updatedMetadata[name] = value
+        }
+        const updated = document({
+          ...candidate,
+          id: candidate.id,
+          rowVersion: candidate.rowVersion + 1,
+          userMetadata: updatedMetadata,
+        })
+        currentDocuments[index] = updated
+        return documentApiResponse(updated)
+      },
+    )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.metadata.datasetMetadata.name',
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'topic')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalled())
+    expect(nameInput).toBeInTheDocument()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(nameInput).not.toBeInTheDocument())
+    expect(renameDocumentMutation).toHaveBeenCalledTimes(3)
+    expect(
+      renameDocumentMutation.mock.calls.filter(([request]) => request.params.document_id === 'one'),
+    ).toHaveLength(1)
+    expect(
+      renameDocumentMutation.mock.calls.filter(([request]) => request.params.document_id === 'two'),
+    ).toHaveLength(2)
+  })
+
+  it('deletes metadata through the KnowledgeFS document metadata endpoint', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              id: 'one',
+              title: 'One.pdf',
+              userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.remove' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 1, patch: { category: null } },
+      params: { control_space_id: 'space-1', document_id: 'one' },
+    })
   })
 
   it('starts re-indexing from a document row action', async () => {

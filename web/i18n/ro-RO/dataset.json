@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Editarea {{num}} documente",
   "metadata.batchEditMetadata.editMetadata": "Editează metadatele",
   "metadata.batchEditMetadata.multipleValue": "Valoare multiplă",
+  "metadata.checkName.duplicate": "Există deja un câmp de metadate cu acest nume.",
   "metadata.checkName.empty": "Numele metadatelor nu poate fi gol",
   "metadata.checkName.invalid": "Numele metadatelor poate conține doar litere mici, cifre și underscore și trebuie să înceapă cu o literă mică.",
   "metadata.checkName.tooLong": "Numele metadatelor nu poate depăși {{max}} caractere",

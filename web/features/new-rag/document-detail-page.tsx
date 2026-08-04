@@ -351,6 +351,7 @@ export function DocumentDetailPage({
 
       <DocumentRevisionContent
         key={effectiveRevision ?? 'missing'}
+        canEdit={canEdit}
         document={document}
         documentId={documentId}
         effectiveRevision={effectiveRevision}

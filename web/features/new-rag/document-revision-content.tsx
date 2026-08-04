@@ -13,6 +13,7 @@ import { documentChunksQueryOptions } from './document-detail-queries'
 import { documentChunkListFromApi } from './document-models'
 
 export function DocumentRevisionContent({
+  canEdit,
   document,
   documentId,
   effectiveRevision,
@@ -23,6 +24,7 @@ export function DocumentRevisionContent({
   revisionHistoryPending,
   retryRevisionHistory,
 }: {
+  canEdit: boolean
   document: LogicalDocument
   documentId: string
   effectiveRevision?: number
@@ -74,6 +76,7 @@ export function DocumentRevisionContent({
 
   return (
     <LoadedDocumentRevisionContent
+      canEdit={canEdit}
       document={document}
       documentId={documentId}
       effectiveRevision={effectiveRevision}
@@ -85,6 +88,7 @@ export function DocumentRevisionContent({
 }
 
 function LoadedDocumentRevisionContent({
+  canEdit,
   document,
   documentId,
   effectiveRevision,
@@ -92,6 +96,7 @@ function LoadedDocumentRevisionContent({
   locale,
   revision,
 }: {
+  canEdit: boolean
   document: LogicalDocument
   documentId: string
   effectiveRevision: number
@@ -133,6 +138,8 @@ function LoadedDocumentRevisionContent({
       />
 
       <DocumentChunkDetail
+        canEdit={canEdit}
+        controlSpaceId={knowledgeSpaceId}
         chunks={chunks}
         chunksComplete={
           Boolean(chunksQuery.data) &&

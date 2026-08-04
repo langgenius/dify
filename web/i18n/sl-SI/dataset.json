@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Urejanje {{num}} dokumentov",
   "metadata.batchEditMetadata.editMetadata": "Uredi metapodatke",
   "metadata.batchEditMetadata.multipleValue": "Več vrednosti",
+  "metadata.checkName.duplicate": "Polje metapodatkov s tem imenom že obstaja.",
   "metadata.checkName.empty": "Ime metapodatkov ne more biti prazno",
   "metadata.checkName.invalid": "Ime metapodatkov lahko vsebuje samo male črke, številke in podčrtaje ter se mora začeti z malo črko.",
   "metadata.checkName.tooLong": "Ime metapodatkov ne sme presegati {{max}} znakov",

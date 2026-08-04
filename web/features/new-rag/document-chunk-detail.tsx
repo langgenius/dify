@@ -10,6 +10,7 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { chunkCharacterCount, chunkContentParts } from './document-detail-model'
+import { DocumentMetadataCard } from './document-metadata-card'
 
 function formatBytes(bytes: number, locale: string) {
   const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
@@ -52,6 +53,8 @@ function ChunkMarker({ label }: { label: string }) {
 }
 
 export function DocumentChunkDetail({
+  canEdit,
+  controlSpaceId,
   document,
   chunks,
   chunksComplete,
@@ -60,6 +63,8 @@ export function DocumentChunkDetail({
   revision,
   selectedChunkId,
 }: {
+  canEdit: boolean
+  controlSpaceId: string
   document: LogicalDocument
   chunks: DocumentRevisionChunk[]
   chunksComplete: boolean
@@ -180,20 +185,12 @@ export function DocumentChunkDetail({
       </article>
 
       <aside className="min-w-0 space-y-6 xl:pt-3 xl:pl-6">
-        <section className="flex flex-col items-start gap-2.5 rounded-xl bg-background-default-subtle p-4">
-          <h2 className="system-sm-semibold text-text-primary">
-            {t(($) => $['metadata.metadata'])}
-          </h2>
-          <p className="system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.documentOverviewDescription'])}
-          </p>
-          <Button
-            onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}
-            variant="primary"
-          >
-            {t(($) => $['metadata.documentMetadata.startLabeling'])}
-          </Button>
-        </section>
+        <DocumentMetadataCard
+          canEdit={canEdit}
+          controlSpaceId={controlSpaceId}
+          document={document}
+          locale={locale}
+        />
         <section>
           <dl className="space-y-3">
             <div className="flex gap-3">

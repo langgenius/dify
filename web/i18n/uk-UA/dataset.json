@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "Редагування {{num}} документів",
   "metadata.batchEditMetadata.editMetadata": "Редагувати метадані",
   "metadata.batchEditMetadata.multipleValue": "Кілька значень",
+  "metadata.checkName.duplicate": "Поле метаданих із такою назвою вже існує.",
   "metadata.checkName.empty": "Ім'я метаданих не може бути порожнім",
   "metadata.checkName.invalid": "Ім'я метаданих може містити лише малі літери, цифри та підкреслення, і повинно починатися з малої літери",
   "metadata.checkName.tooLong": "Назва метаданих не може перевищувати {{max}} символів",

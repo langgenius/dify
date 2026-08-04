@@ -100,6 +100,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "編輯 {{num}} 份文件",
   "metadata.batchEditMetadata.editMetadata": "編輯元資料",
   "metadata.batchEditMetadata.multipleValue": "多重價值",
+  "metadata.checkName.duplicate": "已存在同名的中繼資料欄位",
   "metadata.checkName.empty": "元數據名稱不能為空",
   "metadata.checkName.invalid": "元數據名稱只能包含小寫字母、數字和底線，並且必須以小寫字母開頭",
   "metadata.checkName.tooLong": "元數據名稱不能超過 {{max}} 個字符",
