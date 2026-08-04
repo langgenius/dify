@@ -73,7 +73,7 @@ const buttonVariants = cva(
         class: [
           'bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text inset-ring-components-button-destructive-secondary-border',
           'hover:bg-components-button-destructive-secondary-bg-hover hover:inset-ring-components-button-destructive-secondary-border-hover',
-          'data-disabled:bg-components-button-destructive-secondary-bg-disabled data-disabled:text-components-button-destructive-secondary-text-disabled data-disabled:inset-ring-components-button-destructive-secondary-border-disabled',
+          'data-disabled:text-components-button-destructive-secondary-text-disabled',
         ],
       },
       {
