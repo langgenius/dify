@@ -1,7 +1,7 @@
 import type { PluginBanner } from '../banners'
-import { render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import HomeTrending from '../home-trending'
 
 vi.mock('#i18n', async () => {
@@ -97,6 +97,10 @@ const banners: PluginBanner[] = [
     },
   },
 ]
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('HomeTrending', () => {
   it('renders and switches between the three API-backed banner layouts', async () => {
@@ -194,6 +198,150 @@ describe('HomeTrending', () => {
     ).toBeInTheDocument()
 
     matchMedia.mockRestore()
+  })
+
+  it('keeps embedded autoplay paused until every pause reason is cleared', () => {
+    const pause = vi.fn()
+    const play = vi.fn()
+    const cancel = vi.fn()
+    const progressAnimation = {
+      cancel,
+      onfinish: null,
+      pause,
+      play,
+    } as unknown as Animation
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => progressAnimation),
+    })
+    const intersectionObservers: {
+      callback: IntersectionObserverCallback
+      options?: IntersectionObserverInit
+    }[] = []
+    class MockIntersectionObserver {
+      disconnect = vi.fn()
+      observe = vi.fn()
+      root: Element | Document | null
+      rootMargin: string
+      takeRecords = vi.fn(() => [])
+      thresholds: readonly number[]
+      unobserve = vi.fn()
+
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        this.root = options?.root ?? null
+        this.rootMargin = options?.rootMargin ?? '0px'
+        this.thresholds = Array.isArray(options?.threshold)
+          ? options.threshold
+          : [options?.threshold ?? 0]
+        intersectionObservers.push({ callback, options })
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
+    let reducedMotion = false
+    let reducedMotionListener: (() => void) | undefined
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return reducedMotion
+      },
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: (_event: string, listener: () => void) => {
+        reducedMotionListener = listener
+      },
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+    const marketplaceContainer = document.createElement('div')
+    marketplaceContainer.id = 'marketplace-container'
+    document.body.appendChild(marketplaceContainer)
+
+    const { unmount } = render(<HomeTrending banners={banners} isMarketplacePlatform={false} />, {
+      container: marketplaceContainer,
+    })
+    const carouselRoot = marketplaceContainer.querySelector('[data-home-trending-carousel-root]')!
+    const viewportObserver = intersectionObservers.find(
+      (observer) => observer.options?.threshold === 0.25,
+    )
+    const setIntersectionRatio = (intersectionRatio: number) => {
+      act(() => {
+        viewportObserver?.callback(
+          [
+            {
+              intersectionRatio,
+              isIntersecting: intersectionRatio > 0,
+            } as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        )
+      })
+    }
+
+    expect(pause).toHaveBeenCalled()
+
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledOnce()
+
+    fireEvent.mouseEnter(carouselRoot)
+    setIntersectionRatio(0)
+    fireEvent.mouseLeave(carouselRoot)
+    expect(play).toHaveBeenCalledOnce()
+
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(2)
+
+    const playsBeforeFocus = play.mock.calls.length
+    const focusTarget = carouselRoot.querySelector('a')!
+    fireEvent.focusIn(focusTarget)
+    setIntersectionRatio(0)
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(playsBeforeFocus)
+    fireEvent.focusOut(focusTarget, { relatedTarget: null })
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeFocus)
+
+    const playsBeforeUserPause = play.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
+    setIntersectionRatio(0)
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(playsBeforeUserPause)
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }))
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeUserPause)
+
+    const playsBeforeVisibilityPause = play.mock.calls.length
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    })
+    fireEvent(document, new Event('visibilitychange'))
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(playsBeforeVisibilityPause)
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    })
+    fireEvent(document, new Event('visibilitychange'))
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeVisibilityPause)
+
+    const playsBeforeReducedMotion = play.mock.calls.length
+    reducedMotion = true
+    reducedMotionListener?.()
+    setIntersectionRatio(0)
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(playsBeforeReducedMotion)
+
+    reducedMotion = false
+    reducedMotionListener?.()
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeReducedMotion)
+
+    unmount()
+    marketplaceContainer.remove()
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: originalAnimate,
+    })
   })
 
   it('renders no carousel when the API returns no banners', () => {
