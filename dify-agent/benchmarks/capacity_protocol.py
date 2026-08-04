@@ -335,9 +335,7 @@ class AgentRunClient:
         download.raise_for_status()
         content = download.content
         if len(content) != self._scenario.payload_bytes:
-            raise ValueError(
-                f"workspace payload size {len(content)} did not match {self._scenario.payload_bytes}"
-            )
+            raise ValueError(f"workspace payload size {len(content)} did not match {self._scenario.payload_bytes}")
         actual_sha256 = hashlib.sha256(content).hexdigest()
         expected_sha256 = deterministic_file_payload_sha256(self._scenario.payload_bytes)
         if actual_sha256 != expected_sha256:

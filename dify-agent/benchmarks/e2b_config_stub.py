@@ -154,9 +154,7 @@ def _is_safe_name(name: str) -> bool:
 
 def _is_fixed_scenario_item(name: str, *, kind: Literal["skill", "file"]) -> bool:
     pattern, count = (
-        (_SKILL_NAME_PATTERN, _CONFIG_SKILL_COUNT)
-        if kind == "skill"
-        else (_FILE_NAME_PATTERN, _CONFIG_FILE_COUNT)
+        (_SKILL_NAME_PATTERN, _CONFIG_SKILL_COUNT) if kind == "skill" else (_FILE_NAME_PATTERN, _CONFIG_FILE_COUNT)
     )
     match = pattern.fullmatch(name)
     return match is not None and int(match.group("index")) < count

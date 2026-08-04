@@ -55,9 +55,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
     """Convert one measured block into the stable, friendly-unit report row."""
     reasons = list(block.invalid_reasons)
     successful_samples = [
-        sample
-        for sample in block.samples
-        if sample.terminal_status == "succeeded" and sample.failure_kind is None
+        sample for sample in block.samples if sample.terminal_status == "succeeded" and sample.failure_kind is None
     ]
     terminal_values = [sample.terminal_e2e_ms for sample in successful_samples if sample.terminal_e2e_ms is not None]
     e2b_active_values = [

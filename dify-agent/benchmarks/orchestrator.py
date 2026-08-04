@@ -709,11 +709,7 @@ def _capture_environment(
     docker_info = json.loads(_run_command(["docker", "info", "--format", "{{json .}}"]).stdout)
     server = json.loads(_run_command(["docker", "version", "--format", "{{json .Server}}"]).stdout)
     compose_file = root / "dify-agent" / "benchmarks" / _COMPOSE_FILE
-    limits = {
-        name: value
-        for name, value in _RESOURCE_LIMITS.items()
-        if name != "runtime" or mode != "local-e2b"
-    }
+    limits = {name: value for name, value in _RESOURCE_LIMITS.items() if name != "runtime" or mode != "local-e2b"}
     return EnvironmentFingerprint(
         captured_at=datetime.now(timezone.utc).isoformat(),
         os=str(docker_info.get("OperatingSystem", "")),

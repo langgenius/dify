@@ -436,6 +436,7 @@ def test_e2b_config_stub_is_started_and_paused_in_every_worker_sandbox(
         assert health_background is None
         assert sandbox.pause_calls == 1
 
+
 def test_timeout_is_counted_as_capacity_evidence() -> None:
     sample = RunSample(
         mode="local-runtime",
