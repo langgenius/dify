@@ -203,7 +203,7 @@ export const PublisherSummarySection = ({
                 <span aria-hidden className="my-1 h-px w-4 bg-divider-regular" />
               </>
             )}
-            {publishedTimestamp && (
+            {!!publishedTimestamp && (
               <p className="system-xs-regular text-text-tertiary">
                 {publisherName
                   ? t(($) => $['common.publishedBy'], {
@@ -221,7 +221,7 @@ export const PublisherSummarySection = ({
               <p className="truncate system-sm-semibold text-text-secondary">
                 {t(($) => $['common.latestPublished'], { ns: 'workflow' })}
               </p>
-              {publishedTimestamp && (
+              {!!publishedTimestamp && (
                 <p className="truncate system-xs-regular text-text-tertiary">
                   {publisherName
                     ? t(($) => $['common.publishedBy'], {
