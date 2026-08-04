@@ -47,6 +47,7 @@ describe('Splash', () => {
     vi.clearAllMocks()
     webAppState.shareCode = 'share-app'
     navigationMocks.pathname = '/chatbot/share-app'
+    window.history.replaceState({}, '', navigationMocks.pathname)
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: 'https://evil.example/chatbot/evil-app',
     })

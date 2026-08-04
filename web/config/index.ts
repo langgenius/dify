@@ -15,10 +15,6 @@ export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
   'http://localhost:5001/console/api',
 )
-export const APPDEPLOY_WEB_API_PREFIX = getStringConfig(
-  env.NEXT_PUBLIC_APPDEPLOY_WEB_API_PREFIX,
-  'http://localhost:8082/api/app-deploy/web',
-)
 export const PUBLIC_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
   'http://localhost:5001/api',
@@ -109,8 +105,6 @@ export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appC
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'
 
 export const WEB_APP_SHARE_CODE_HEADER_NAME = 'X-App-Code'
-export const isAppDeployShareCode = (code?: string | null): boolean =>
-  !!code && code.startsWith('env-')
 const zhRegex = /^[\u4E00-\u9FA5]$/m
 export const emailRegex = /^[\w.!#$%&'*+\-/=?^{|}~]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGTH = 8

@@ -6,17 +6,15 @@ import ky, { HTTPError } from 'ky'
 import {
   API_PREFIX,
   APP_VERSION,
-  APPDEPLOY_WEB_API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
   IS_MARKETPLACE,
-  isAppDeployShareCode,
   MARKETPLACE_API_PREFIX,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import { isAppDeployRoute, resolveShareCode } from './share-code'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -94,10 +92,10 @@ const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
     if (accessToken) request.headers.set('Authorization', `Bearer ${accessToken}`)
     else request.headers.delete('Authorization')
   }
-  const shareCode = resolveShareCode()
-  if (!shareCode) return
-  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
-  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(shareCode))
+  const address = resolveWebAppAddress()
+  if (!address) return
+  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, address.code)
+  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(address))
 }
 
 const baseHooks: Hooks = {
@@ -157,10 +155,8 @@ async function base<T>(
 
   let base: string
   if (isMarketplaceAPI) base = MARKETPLACE_API_PREFIX
-  else if (isPublicAPI) {
-    const useAppDeploy = isAppDeployShareCode(resolveShareCode()) && isAppDeployRoute(url)
-    base = useAppDeploy ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
-  } else base = API_PREFIX
+  else if (isPublicAPI) base = PUBLIC_API_PREFIX
+  else base = API_PREFIX
 
   if (getAbortController) {
     const abortController = new AbortController()
@@ -168,7 +164,9 @@ async function base<T>(
     options.signal = abortController.signal
   }
 
-  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  const fetchPathname = isPublicAPI
+    ? base + getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI) headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType) headers.delete('Content-Type')

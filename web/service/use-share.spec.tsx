@@ -76,12 +76,25 @@ const createConversationData = (
 })
 
 describe('shareQueryKeys', () => {
-  it('should isolate web app metadata by share code', () => {
-    expect(shareQueryKeys.appInfo('env-app-one')).not.toEqual(shareQueryKeys.appInfo('env-app-two'))
-    expect(shareQueryKeys.appParams('env-app-one')).not.toEqual(
-      shareQueryKeys.appParams('env-app-two'),
+  it('should isolate web app metadata by complete address', () => {
+    const firstAddress = {
+      kind: 'environment' as const,
+      environmentId: 'environment-1',
+      code: 'webapp',
+    }
+    const secondAddress = {
+      kind: 'environment' as const,
+      environmentId: 'environment-2',
+      code: 'webapp',
+    }
+    expect(shareQueryKeys.appAccessMode(firstAddress, 'webapp')).not.toEqual(
+      shareQueryKeys.appAccessMode(secondAddress, 'webapp'),
     )
-    expect(shareQueryKeys.appMeta('env-app-one')).not.toEqual(shareQueryKeys.appMeta('env-app-two'))
+    expect(shareQueryKeys.appInfo(firstAddress)).not.toEqual(shareQueryKeys.appInfo(secondAddress))
+    expect(shareQueryKeys.appParams(firstAddress)).not.toEqual(
+      shareQueryKeys.appParams(secondAddress),
+    )
+    expect(shareQueryKeys.appMeta(firstAddress)).not.toEqual(shareQueryKeys.appMeta(secondAddress))
   })
 })
 

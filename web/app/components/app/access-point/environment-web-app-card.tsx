@@ -143,7 +143,7 @@ export function EnvironmentWebAppCard({
       },
     ),
   )
-  const webAppUrl = getEnvironmentWebAppUrl(site)
+  const webAppUrl = getEnvironmentWebAppUrl(environmentId, site)
   const running = Boolean(siteQuery.isSuccess && site?.enabled)
   const status = siteQuery.isSuccess ? (running ? 'inService' : 'disabled') : 'unavailable'
   const statusLabel = siteQuery.isSuccess

@@ -11,6 +11,7 @@ import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
   setWebAppAccessToken,
   setWebAppPassport,
@@ -45,16 +46,16 @@ function Splash({ children }: PropsWithChildren) {
 
   const backToHome = useCallback(async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
-    const effectiveShareCode = loginRedirect?.appCode || shareCode
-    if (!effectiveShareCode || (isWebAppSigninPath(pathname) && !loginRedirect)) {
+    const address = loginRedirect?.address || resolveWebAppAddress()
+    if (!address || (isWebAppSigninPath(pathname) && !loginRedirect)) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
-    await webAppLogout(effectiveShareCode)
+    await webAppLogout(address)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, pathname, redirectUrl, router, shareCode])
+  }, [getSigninUrl, pathname, redirectUrl, router])
 
   const [isLoading, setIsLoading] = useState(true)
   const [unavailableShareCode, setUnavailableShareCode] = useState<string>()
@@ -66,8 +67,9 @@ function Splash({ children }: PropsWithChildren) {
       return
     }
 
-    const effectiveShareCode = loginRedirect?.appCode || shareCode
-    if (!effectiveShareCode) return
+    const address = loginRedirect?.address || resolveWebAppAddress()
+    if (!address) return
+    const effectiveShareCode = address.code
 
     if (message) return
 
@@ -86,6 +88,7 @@ function Splash({ children }: PropsWithChildren) {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
       const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
         effectiveShareCode,
+        webAppAccessMode,
         embeddedUserId || undefined,
       )
       if (userLoggedIn && appLoggedIn) {
@@ -100,15 +103,15 @@ function Splash({ children }: PropsWithChildren) {
             appCode: effectiveShareCode,
             userId: embeddedUserId || undefined,
           })
-          setWebAppPassport(effectiveShareCode, access_token)
+          setWebAppPassport(address, access_token)
           redirectOrFinish()
         } catch (error) {
           if (error instanceof Response && error.status === 404) {
             setUnavailableShareCode(effectiveShareCode)
-            await webAppLogout(effectiveShareCode)
+            await webAppLogout(address)
             return
           }
-          await webAppLogout(effectiveShareCode)
+          await webAppLogout(address)
           proceedToAuth()
         }
       }
