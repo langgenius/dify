@@ -136,8 +136,15 @@ def test__convert_to_http_request_node_for_chatbot(
     assert mapping == {"external_variable": "code_1"}
 
 
+@pytest.mark.parametrize(
+    ("use_sys_query", "expected_query"),
+    [(False, ""), (True, "{{#sys.query#}}")],
+)
 def test__convert_to_http_request_node_for_workflow_app(
-    default_variables: list[VariableEntity], unbound_session: Session
+    default_variables: list[VariableEntity],
+    unbound_session: Session,
+    use_sys_query: bool,
+    expected_query: str,
 ) -> None:
     app_model = MagicMock()
     app_model.id = "app_id"
@@ -169,10 +176,11 @@ def test__convert_to_http_request_node_for_workflow_app(
         variables=default_variables,
         external_data_variables=external_data_variables,
         session=unbound_session,
+        use_sys_query=use_sys_query,
     )
 
     body = json.loads(nodes[0]["data"]["body"]["data"])
-    assert body["params"]["query"] == ""
+    assert body["params"]["query"] == expected_query
 
 
 def test__convert_to_knowledge_retrieval_node_for_chatbot() -> None:

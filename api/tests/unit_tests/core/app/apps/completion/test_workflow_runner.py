@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.apps.completion.workflow_runner import CompletionWorkflowRunner, ModeratedCompletionInputs
+from core.app.apps.completion.workflow_runner import CompletionWorkflowRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom, UserFrom
 from core.moderation.base import ModerationError
@@ -42,12 +42,8 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch: pytest.Monk
     entity = _entity()
     message = cast(Message, SimpleNamespace(id="message", conversation_id="conv"))
     queue_manager = MagicMock()
-    runtime_workflow = SimpleNamespace(
-        workflow_id="completion-runtime-1",
-        root_node_id="start",
-        graph_dict={"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []},
-    )
-    build_runtime_workflow = MagicMock(return_value=runtime_workflow)
+    graph_config = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
+    build_runtime_workflow = MagicMock(return_value=graph_config)
     graph = MagicMock()
     adapter = MagicMock()
     workflow_entry = MagicMock()
@@ -89,7 +85,7 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch: pytest.Monk
     monkeypatch.setattr(
         runner,
         "_run_input_moderation",
-        MagicMock(return_value=ModeratedCompletionInputs(stopped=False, inputs={"name": "Grace"}, query="moderated")),
+        MagicMock(return_value=({"name": "Grace"}, "moderated")),
     )
 
     runner.run(
@@ -112,7 +108,7 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch: pytest.Monk
     assert build_system_variables.call_args.kwargs["query"] == "moderated"
     assert build_system_variables.call_args.kwargs["conversation_id"] == "conv"
     workflow_entry_class.assert_called_once()
-    assert workflow_entry_class.call_args.kwargs["workflow_id"] == "completion-runtime-1"
+    assert workflow_entry_class.call_args.kwargs["workflow_id"] == "task"
     assert workflow_entry_class.call_args.kwargs["user_from"] == UserFrom.END_USER
     assert workflow_entry_class.call_args.kwargs["call_depth"] == 2
     build_before_llm_invoke_hook.assert_called_once_with(
@@ -122,7 +118,7 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch: pytest.Monk
     )
     init_graph.assert_called_once()
     assert init_graph.call_args.kwargs["app_id"] == "app"
-    assert init_graph.call_args.kwargs["graph_config"] == runtime_workflow.graph_dict
+    assert init_graph.call_args.kwargs["graph_config"] == graph_config
     assert init_graph.call_args.kwargs["root_node_id"] == "start"
     assert init_graph.call_args.kwargs["call_depth"] == 2
     assert init_graph.call_args.kwargs["extra_context"][DIFY_BEFORE_LLM_INVOKE_KEY] is before_llm_invoke_hook
@@ -144,7 +140,7 @@ def test_runner_returns_when_input_moderation_stops(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(
         runner,
         "_run_input_moderation",
-        MagicMock(return_value=ModeratedCompletionInputs(stopped=True, inputs={}, query="")),
+        MagicMock(return_value=None),
     )
 
     runner.run(
@@ -192,16 +188,20 @@ def test_runner_direct_outputs_on_input_moderation() -> None:
         message=message,
     )
 
-    assert result.stopped is True
-    assert result.inputs == {"name": "Ada"}
-    assert result.query == "question"
+    assert result is None
     runner.direct_output.assert_called_once()
+    assert (
+        runner.organize_prompt_messages.call_args.kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.LOW
+    )
 
 
 def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
     runner = CompletionWorkflowRunner()
     app_record = cast(App, SimpleNamespace(id="app", tenant_id="tenant"))
     entity = _entity()
+    entity.file_upload_config = SimpleNamespace(
+        image_config=SimpleNamespace(detail=ImagePromptMessageContent.DETAIL.HIGH)
+    )
     message = cast(Message, SimpleNamespace(id="message"))
     runner.organize_prompt_messages = MagicMock(return_value=(["prompt"], None))
     runner.moderation_for_inputs = MagicMock(return_value=(None, {"name": "Grace"}, "moderated query"))
@@ -213,7 +213,10 @@ def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
         message=message,
     )
 
-    assert result == ModeratedCompletionInputs(stopped=False, inputs={"name": "Grace"}, query="moderated query")
+    assert result == ({"name": "Grace"}, "moderated query")
+    assert (
+        runner.organize_prompt_messages.call_args.kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.HIGH
+    )
 
 
 def test_runner_before_llm_invoke_hook_captures_and_moderates_final_prompt() -> None:
@@ -267,22 +270,3 @@ def test_runner_before_llm_invoke_hook_recalculates_graph_model_parameters() -> 
         prompt_messages=prompt_messages,
         model_parameters=result,
     )
-
-
-def test_runner_resolves_account_user_from() -> None:
-    entity = cast(CompletionAppGenerateEntity, SimpleNamespace(invoke_from=InvokeFrom.EXPLORE))
-
-    assert CompletionWorkflowRunner._resolve_user_from(entity) == UserFrom.ACCOUNT
-
-
-def test_runner_resolves_configured_image_detail() -> None:
-    entity = cast(
-        CompletionAppGenerateEntity,
-        SimpleNamespace(
-            file_upload_config=SimpleNamespace(
-                image_config=SimpleNamespace(detail=ImagePromptMessageContent.DETAIL.HIGH),
-            )
-        ),
-    )
-
-    assert CompletionWorkflowRunner._resolve_image_detail_config(entity) == ImagePromptMessageContent.DETAIL.HIGH

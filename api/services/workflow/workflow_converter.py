@@ -167,6 +167,7 @@ class WorkflowConverter:
         app_config: EasyUIBasedAppConfig,
         target_app_mode: AppMode,
         session: Session,
+        use_sys_query_for_external_data: bool = False,
     ) -> tuple[WorkflowGraph, dict[str, Any]]:
         """
         Build a workflow graph from an EasyUI app config without persisting it.
@@ -198,6 +199,7 @@ class WorkflowConverter:
                 variables=app_config.variables,
                 external_data_variables=app_config.external_data_variables,
                 session=session,
+                use_sys_query=use_sys_query_for_external_data,
             )
 
             for http_request_node in http_request_nodes:
@@ -320,6 +322,7 @@ class WorkflowConverter:
         variables: list[VariableEntity],
         external_data_variables: list[ExternalDataVariableEntity],
         session: Session,
+        use_sys_query: bool = False,
     ) -> tuple[list[_NodeType], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
@@ -363,7 +366,7 @@ class WorkflowConverter:
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
                     "inputs": inputs,
-                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT else "",
+                    "query": "{{#sys.query#}}" if use_sys_query or app_model.mode == AppMode.CHAT else "",
                 },
             }
 

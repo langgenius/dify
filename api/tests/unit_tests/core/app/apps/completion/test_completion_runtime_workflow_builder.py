@@ -1,71 +1,33 @@
-import json
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
+import pytest
+
 from core.app.apps.completion.runtime_workflow_builder import build_runtime_completion_workflow
-from graphon.nodes import BuiltinNodeTypes
 from models.model import App, AppMode
+from services.workflow.workflow_converter import WorkflowConverter
 
 
-def test_builder_returns_runtime_graph_without_workflow_record() -> None:
+def test_builder_returns_runtime_graph_without_persisting_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = cast(App, SimpleNamespace(mode=AppMode.COMPLETION))
     app_config = MagicMock()
-    workflow_converter = MagicMock(
-        build_graph_from_app_config=MagicMock(return_value=({"nodes": [{"id": "start"}], "edges": []}, {}))
-    )
+    graph = {"nodes": [{"id": "start"}], "edges": []}
+    build_graph = MagicMock(return_value=(graph, {}))
+    monkeypatch.setattr(WorkflowConverter, "build_graph_from_app_config", build_graph)
     session = MagicMock()
 
     result = build_runtime_completion_workflow(
         app_model=app_model,
         app_config=app_config,
         session=session,
-        workflow_converter=workflow_converter,
     )
 
-    assert result.workflow_id.startswith("completion-runtime-")
-    assert result.root_node_id == "start"
-    assert result.graph_dict == {"nodes": [{"id": "start"}], "edges": []}
-    workflow_converter.build_graph_from_app_config.assert_called_once_with(
+    assert result is graph
+    build_graph.assert_called_once_with(
         app_model=app_model,
         app_config=app_config,
         target_app_mode=AppMode.WORKFLOW,
         session=session,
+        use_sys_query_for_external_data=True,
     )
-
-
-def test_builder_routes_api_based_variable_query_to_runtime_sys_query() -> None:
-    app_model = cast(App, SimpleNamespace(mode=AppMode.COMPLETION))
-    app_config = MagicMock()
-    request_body = {"params": {"query": ""}}
-    workflow_converter = MagicMock(
-        build_graph_from_app_config=MagicMock(
-            return_value=(
-                {
-                    "nodes": [
-                        {
-                            "id": "http_request_1",
-                            "data": {
-                                "type": BuiltinNodeTypes.HTTP_REQUEST,
-                                "body": {"type": "json", "data": json.dumps(request_body)},
-                            },
-                        }
-                    ],
-                    "edges": [],
-                },
-                {},
-            )
-        )
-    )
-    session = MagicMock()
-
-    result = build_runtime_completion_workflow(
-        app_model=app_model,
-        app_config=app_config,
-        session=session,
-        workflow_converter=workflow_converter,
-    )
-
-    http_node = result.graph_dict["nodes"][0]
-    body = json.loads(http_node["data"]["body"]["data"])
-    assert body["params"]["query"] == "{{#sys.query#}}"
