@@ -1,296 +1,67 @@
 # E2E
 
-This package contains the repository-level end-to-end tests for Dify.
+This package contains Dify's repository-level Cucumber scenarios with Playwright as the browser layer. This file owns current package architecture, runtime, session and tag semantics, seed, protocol, and cleanup contracts. The repo-local `e2e-cucumber-playwright` skill owns authoring and review methodology; feature-specific facts belong in the nearest feature `AGENTS.md`.
 
-This file is the canonical package guide for `e2e/`. Keep detailed workflow, architecture, debugging, and reporting documentation here. Keep `README.md` as a minimal pointer to this file so the two documents do not drift.
+## Commands
 
-The suite uses Cucumber for scenario definitions and Playwright as the browser execution layer.
+Run commands from the repository root. Install dependencies and browsers once with `pnpm install` and `pnpm -C e2e e2e:install`. Run only one local `pnpm -C e2e e2e*` process at a time because runners share ports, auth state, and log paths.
 
-It tests:
+- Existing initialized instance: `pnpm -C e2e e2e`
+- Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
+- Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
+- Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`
+- Headed debugging: `pnpm -C e2e e2e:headed -- --tags @smoke`
+- Prepare and run external runtime scenarios: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:external`
+- Seed against existing middleware without running Cucumber: `pnpm -C e2e seed -- --profile <prepared|external-runtime|post-merge>`
+- Reset persisted E2E state: `pnpm -C e2e e2e:reset`
+- Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
+- Scoped static checks: `vp check e2e`
 
-- backend API started from source
-- frontend served from the production artifact
-- middleware services started from Docker
+The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
 
-## Prerequisites
+## Runtime Ownership
 
-- Node.js `^22.22.1`
-- `pnpm`
-- `uv`
-- Docker
+- `scripts/setup.ts` owns reset, middleware, backend, and frontend startup.
+- `scripts/run-cucumber.ts` is the only E2E runtime orchestrator. It owns service lifetime, optional seed execution, Cucumber invocation, and teardown.
+- `scripts/seed-runner.ts` owns fixture creation and verification against an already-running runtime; it never starts services.
+- `support/web-server.ts` owns frontend reuse, readiness, and shutdown.
+- `features/support/hooks.ts` owns shared auth bootstrap, scenario lifecycle, and diagnostics.
+- `features/support/world.ts` owns `DifyWorld`, the per-scenario behavior `BrowserContext`, and its authenticated setup and cleanup client. Browser and API identities remain separate so unauthenticated and logout journeys cannot invalidate fixture ownership.
+- Cross-actor scenarios keep each actor in a separate `BrowserContext` and typed `DifyWorld` state so diagnostics and cleanup cover every actor.
+- `features/step-definitions/` contains capability-oriented glue; `common/` is reserved for genuinely cross-capability steps.
+- Step definitions that access World state use `async function (this: DifyWorld, ...)`; arrow functions cannot receive Cucumber's bound World instance.
 
-Run the following commands from the repository root.
+An uninitialized instance is installed and authenticated lazily; an initialized instance signs in and reuses authenticated state. Full runs prove reset and bootstrap during setup rather than through a Gherkin scenario. Cucumber's exit status is the behavior gate, and the runner also requires at least one `testCaseStarted` message so an empty tag selection cannot pass. Do not replace this gate with scenario-count baselines or skipped-scenario allowlists.
 
-Install Playwright browsers once:
+## Tags And External Runtime
 
-```bash
-pnpm install
-pnpm -C e2e e2e:install
-pnpm -C e2e check
-```
+- Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
+- `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
+- `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
+- `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
+- `@browser-smoke` runs focused keyboard and navigation coverage in Chromium and WebKit CI lanes.
+- Feature-owned services use their own tags. Agent v2 runtime scenarios use `@agent-backend-runtime` and require the explicit runtime-availability step. Set `E2E_START_AGENT_BACKEND=1` to start it locally, or provide `E2E_AGENT_BACKEND_URL` / `AGENT_BACKEND_BASE_URL`.
 
-`pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
+Seed and Cucumber must share one runtime lifecycle. Combined commands own reset, middleware, services, seed, Cucumber, and teardown; CI must not reproduce that lifecycle in workflow YAML. `E2E_START_AGENT_BACKEND=1` starts a managed local backend before the API; it is mutually exclusive with an explicit Agent backend URL.
 
-Use `pnpm -C e2e check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
+Do not overload runtime tags to imply unrelated services or silently skip behavior when a required fixture is missing.
 
-Common commands:
+## Browser, API, And Contract Boundaries
 
-```bash
-# authenticated-only regression (default excludes @fresh)
-# expects backend API, frontend artifact, and middleware stack to already be running
-pnpm -C e2e e2e
+The action under test belongs to the browser. APIs may prepare fixtures, poll persistence, and clean up; they do not replace the user's `When` action. Prefer a user-observable browser result unless persisted backend state is the contract under test.
 
-# full reset + fresh install + authenticated scenarios
-# starts required middleware/dependencies for you
-pnpm -C e2e e2e:full
+For ordinary Console JSON and representable multipart operations, use the scenario- or process-owned generated oRPC client with request and response validation enabled. Call generated operations directly. Do not add handwritten endpoint URLs, duplicate DTOs or schemas, response casts, one-to-one forwarding wrappers, mutable cross-scenario clients, or TanStack Query caching.
 
-# run a tagged subset
-pnpm -C e2e e2e -- --tags @smoke
+Keep helpers only when they own fixture construction, multi-operation orchestration, cleanup registries, invariants, eventual-consistency polling, narrowed test views, or a protocol adapter. SSE, binary downloads, redirect-only flows, external services, and infrastructure readiness may use centralized adapters under their real owner.
 
-# headed browser
-pnpm -C e2e e2e:headed -- --tags @smoke
+Validation failures are contract failures. Trace them to the backend schema owner, update `api/controllers/API_SCHEMA_GUIDE.md` contracts when required, regenerate `@dify/contracts`, and keep the scenario aligned with the product's real state owner. Do not disable validation or add fallback schemas to make E2E pass.
 
-# slow down browser actions for local debugging
-E2E_SLOW_MO=500 pnpm -C e2e e2e:headed -- --tags @smoke
-```
+## Seeds, Cleanup, And Diagnostics
 
-Frontend artifact behavior:
+- Generate disposable resource names through `support/naming.ts` with an `E2E` prefix.
+- Keep deterministic upload material in `fixtures/test-materials/` and resolve it through `support/test-materials.ts`.
+- Seed scripts own shared long-lived fixtures; scenarios own disposable resources they create and must register cleanup.
+- Use typed `DifyWorld` cleanup fields for known resource types and `registerCleanup(...)` for additional lifecycle owners. Registered callbacks run LIFO after typed cleanup queues.
+- Remove child and referencing resources before owners. Attach cleanup failures to the report instead of swallowing them.
 
-- if `web/.next/BUILD_ID` exists, E2E reuses the existing build by default
-- if you set `E2E_FORCE_WEB_BUILD=1`, E2E rebuilds the frontend before starting it
-
-## Lifecycle
-
-```mermaid
-flowchart TD
-  A["Start E2E run"] --> B["run-cucumber.ts orchestrates setup/API/frontend"]
-  B --> C["support/web-server.ts starts or reuses frontend directly"]
-  C --> D["Cucumber loads config, steps, and support modules"]
-  D --> E["BeforeAll bootstraps shared auth state via /install"]
-  E --> F{"Which command is running?"}
-  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip"]
-  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip"]
-  G --> I["Per-scenario BrowserContext from shared browser"]
-  H --> I
-  I --> J["Failure artifacts written to cucumber-report/artifacts"]
-```
-
-Ownership is split like this:
-
-- `scripts/setup.ts` is the single environment entrypoint for reset, middleware, backend, and frontend startup
-- `run-cucumber.ts` orchestrates the E2E run and Cucumber invocation
-- `support/web-server.ts` manages frontend reuse, startup, readiness, and shutdown
-- `features/support/hooks.ts` manages auth bootstrap, scenario lifecycle, and diagnostics
-- `features/support/world.ts` owns per-scenario typed context
-- `features/step-definitions/` holds domain-oriented glue so the official VS Code Cucumber plugin works with default conventions when `e2e/` is opened as the workspace root
-
-Package layout:
-
-- `features/`: Gherkin scenarios grouped by capability
-- `features/step-definitions/`: domain-oriented step definitions
-- `features/support/hooks.ts`: suite lifecycle, auth-state bootstrap, diagnostics
-- `features/support/world.ts`: shared scenario context
-- `support/web-server.ts`: typed frontend startup/reuse logic
-- `scripts/setup.ts`: reset and service lifecycle commands
-- `scripts/run-cucumber.ts`: Cucumber orchestration entrypoint
-
-Behavior depends on instance state:
-
-- uninitialized instance: completes install and stores authenticated state
-- initialized instance: signs in and reuses authenticated state
-
-Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh` via Cucumber config tags so they can be re-run against an already initialized instance.
-
-Reset all persisted E2E state:
-
-```bash
-pnpm -C e2e e2e:reset
-```
-
-This removes:
-
-- `docker/volumes/db/data`
-- `docker/volumes/redis/data`
-- `docker/volumes/weaviate`
-- `docker/volumes/plugin_daemon`
-- `e2e/.auth`
-- `e2e/.logs`
-- `e2e/cucumber-report`
-
-Start the full middleware stack:
-
-```bash
-pnpm -C e2e e2e:middleware:up
-```
-
-Stop the full middleware stack:
-
-```bash
-pnpm -C e2e e2e:middleware:down
-```
-
-The middleware stack includes:
-
-- PostgreSQL
-- Redis
-- Weaviate
-- Sandbox
-- SSRF proxy
-- Plugin daemon
-
-Fresh install verification:
-
-```bash
-pnpm -C e2e e2e:full
-```
-
-Run the Cucumber suite against an already running middleware stack:
-
-```bash
-pnpm -C e2e e2e:middleware:up
-pnpm -C e2e e2e
-pnpm -C e2e e2e:middleware:down
-```
-
-Artifacts and diagnostics:
-
-- `cucumber-report/report.html`: HTML report
-- `cucumber-report/report.json`: JSON report
-- `cucumber-report/artifacts/`: failure screenshots and HTML captures
-- `.logs/cucumber-api.log`: backend startup log
-- `.logs/cucumber-web.log`: frontend startup log
-
-Open the HTML report locally with:
-
-```bash
-open cucumber-report/report.html
-```
-
-## Writing new scenarios
-
-### Workflow
-
-1. Create a `.feature` file under `features/<capability>/`
-1. Add step definitions under `features/step-definitions/<capability>/`
-1. Reuse existing steps from `common/` and other definition files before writing new ones
-1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-1. Run `pnpm -C e2e check` before committing
-
-### Feature file conventions
-
-Tag every feature or scenario with a capability tag. Add auth tags only when they clarify intent or change the browser session behavior:
-
-```gherkin
-@datasets @authenticated
-Feature: Create dataset
-  Scenario: Create a new empty dataset
-    Given I am signed in as the default E2E admin
-    When I open the datasets page
-    ...
-```
-
-- Capability tags (`@apps`, `@auth`, `@datasets`, …) group related scenarios for selective runs
-- Auth/session tags:
-  - default behavior — scenarios run with the shared authenticated storageState unless marked otherwise
-  - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
-  - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
-- `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
-- `@skip` — excluded from all runs
-
-Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
-
-### Step definition conventions
-
-```typescript
-import type { DifyWorld } from '../../support/world'
-import { Then, When } from '@cucumber/cucumber'
-import { expect } from '@playwright/test'
-
-When('I open the datasets page', async function (this: DifyWorld) {
-  await this.getPage().goto('/datasets')
-})
-```
-
-Rules:
-
-- Always type `this` as `DifyWorld` for proper context access
-- Use `async function` (not arrow functions — Cucumber binds `this`)
-- One step = one user-visible action or one assertion
-- Keep steps stateless across scenarios; use `DifyWorld` properties for in-scenario state
-
-### Locator priority
-
-Follow the Playwright recommended locator strategy, in order of preference:
-
-| Priority | Locator            | Example                                   | When to use                               |
-| -------- | ------------------ | ----------------------------------------- | ----------------------------------------- |
-| 1        | `getByRole`        | `getByRole('button', { name: 'Create' })` | Default choice — accessible and resilient |
-| 2        | `getByLabel`       | `getByLabel('App name')`                  | Form inputs with visible labels           |
-| 3        | `getByPlaceholder` | `getByPlaceholder('Enter name')`          | Inputs without visible labels             |
-| 4        | `getByText`        | `getByText('Welcome')`                    | Static text content                       |
-| 5        | `getByTestId`      | `getByTestId('workflow-canvas')`          | Only when no semantic locator works       |
-
-Avoid raw CSS/XPath selectors. They break when the DOM structure changes.
-
-### Assertions
-
-Use `@playwright/test` `expect` — it auto-waits and retries until the condition is met or the timeout expires:
-
-```typescript
-// URL assertion
-await expect(page).toHaveURL(/\/datasets\/[a-f0-9-]+\/documents/)
-
-// Element visibility
-await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
-
-// Element state
-await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled()
-
-// Negation
-await expect(page.getByText('Loading')).not.toBeVisible()
-```
-
-Do not use manual `waitForTimeout` or polling loops. If you need a longer wait for a specific assertion, pass `{ timeout: 30_000 }` to the assertion.
-
-### Cucumber expressions
-
-Use Cucumber expression parameter types to extract values from Gherkin steps:
-
-| Type       | Pattern       | Example step                       |
-| ---------- | ------------- | ---------------------------------- |
-| `{string}` | Quoted string | `I select the "Workflow" app type` |
-| `{int}`    | Integer       | `I should see {int} items`         |
-| `{float}`  | Decimal       | `the progress is {float} percent`  |
-| `{word}`   | Single word   | `I click the {word} tab`           |
-
-Prefer `{string}` for UI labels, names, and text content — it maps naturally to Gherkin's quoted values.
-
-### Scoping locators
-
-When the page has multiple similar elements, scope locators to a container:
-
-```typescript
-When('I fill in the app name in the dialog', async function (this: DifyWorld) {
-  const dialog = this.getPage().getByRole('dialog')
-  await dialog.getByPlaceholder('Give your app a name').fill('My App')
-})
-```
-
-### Failure diagnostics
-
-The `After` hook automatically captures on failure:
-
-- Full-page screenshot (PNG)
-- Page HTML dump
-- Console errors and page errors
-
-Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
-
-## Reusing existing steps
-
-Before writing a new step definition, inspect the existing step definition files first. Reuse a matching step when the wording and behavior already fit, and only add a new step when the scenario needs a genuinely new user action or assertion. Steps in `common/` are designed for broad reuse across all features.
-
-Or browse the step definition files directly:
-
-- `features/step-definitions/common/` — auth guards and navigation assertions shared by all features
-- `features/step-definitions/<capability>/` — domain-specific steps scoped to a single feature area
+Failures produce screenshots and HTML captures under `cucumber-report/artifacts/`; the HTML and Cucumber Messages reports live under `cucumber-report/`. Backend and frontend startup logs live under `.logs/`. Additional CI lanes preserve their own report and log directories.

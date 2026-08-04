@@ -10,35 +10,39 @@ export const useTextGeneration = () => {
   const [messageId, setMessageId] = useState<string | null>(null)
   const handleSend = async (url: string, data: any) => {
     if (isResponding) {
-      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.info(t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false
     }
     setIsResponding(true)
     setCompletion('')
     setMessageId('')
     let res: string[] = []
-    ssePost(url, {
-      body: {
-        response_mode: 'streaming',
-        ...data,
+    ssePost(
+      url,
+      {
+        body: {
+          response_mode: 'streaming',
+          ...data,
+        },
       },
-    }, {
-      onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
-        res.push(data)
-        setCompletion(res.join(''))
-        setMessageId(messageId)
+      {
+        onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
+          res.push(data)
+          setCompletion(res.join(''))
+          setMessageId(messageId)
+        },
+        onMessageReplace: (messageReplace) => {
+          res = [messageReplace.answer]
+          setCompletion(res.join(''))
+        },
+        onCompleted() {
+          setIsResponding(false)
+        },
+        onError() {
+          setIsResponding(false)
+        },
       },
-      onMessageReplace: (messageReplace) => {
-        res = [messageReplace.answer]
-        setCompletion(res.join(''))
-      },
-      onCompleted() {
-        setIsResponding(false)
-      },
-      onError() {
-        setIsResponding(false)
-      },
-    })
+    )
     return true
   }
   return {

@@ -13,7 +13,12 @@ import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, inject, it } from 'vitest'
-import { assertExitCode, assertJson, assertNonZeroExit, assertStderrContains } from '../../helpers/assert.js'
+import {
+  assertExitCode,
+  assertJson,
+  assertNonZeroExit,
+  assertStderrContains,
+} from '../../helpers/assert.js'
 import { run, withAuthFixture } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalDescribe } from '../../helpers/skip.js'
@@ -101,7 +106,10 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
       'json',
     ])
     assertExitCode(pauseResult, 0)
-    const { form_token, workflow_run_id } = assertJson<{ form_token: string, workflow_run_id: string }>(pauseResult)
+    const { form_token, workflow_run_id } = assertJson<{
+      form_token: string
+      workflow_run_id: string
+    }>(pauseResult)
     // hint must contain all three identifiers
     assertStderrContains(pauseResult, 'difyctl resume app')
     assertStderrContains(pauseResult, '--workflow-run-id')
@@ -147,8 +155,9 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
     ])
     assertExitCode(resumeResult, 0)
     // Spec 4.5.13: final output must signal workflow completion
-    expect(resumeResult.stdout + resumeResult.stderr)
-      .toMatch(/succeeded|finished|workflow_finished|completed/i)
+    expect(resumeResult.stdout + resumeResult.stderr).toMatch(
+      /succeeded|finished|workflow_finished|completed/i,
+    )
   })
 
   it('[P0] resume app auto-selects the single action — workflow continues execution', async () => {
@@ -156,16 +165,9 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
     // and the CLI auto-selects it.
     // Uses hitlSingleActionAppId (display_in_ui=true, 1 action, no required inputs).
     // hitlAppId now has 3 actions so it cannot be used here.
-    if (!E.hitlSingleActionAppId)
-      return
+    if (!E.hitlSingleActionAppId) return
 
-    const pause = await fx.r([
-      'run',
-      'app',
-      E.hitlSingleActionAppId,
-      '-o',
-      'json',
-    ])
+    const pause = await fx.r(['run', 'app', E.hitlSingleActionAppId, '-o', 'json'])
     assertExitCode(pause, 0)
     const { form_token, workflow_run_id, actions } = assertJson<{
       form_token: string
@@ -192,15 +194,18 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
     // Spec 4.5.7: --stream mode must still emit pause block and exit 0 on HITL.
     // Streaming HITL: SSE connection can be closed unexpectedly;
     // withRetry triggers on thrown errors so we throw when exit != 0.
-    const result = await withRetry(async () => {
-      const r = await run(
-        ['run', 'app', E.hitlAppId, '--inputs', JSON.stringify({ x: 'hitl-stream' }), '--stream'],
-        { configDir: fx.configDir, timeout: 60_000 },
-      )
-      if (r.exitCode !== 0)
-        throw new Error(`streaming HITL exited ${r.exitCode}: ${r.stderr.slice(0, 200)}`)
-      return r
-    }, { attempts: 3, delayMs: 3000 })
+    const result = await withRetry(
+      async () => {
+        const r = await run(
+          ['run', 'app', E.hitlAppId, '--inputs', JSON.stringify({ x: 'hitl-stream' }), '--stream'],
+          { configDir: fx.configDir, timeout: 60_000 },
+        )
+        if (r.exitCode !== 0)
+          throw new Error(`streaming HITL exited ${r.exitCode}: ${r.stderr.slice(0, 200)}`)
+        return r
+      },
+      { attempts: 3, delayMs: 3000 },
+    )
     assertExitCode(result, 0)
     expect(result.stdout + result.stderr).toMatch(/paused|pause|resume/i)
   })
@@ -254,19 +259,22 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
 
   it('[P1] resume with --inputs-file reads form values from JSON file (4.5.12)', async () => {
     // Spec 4.5.12: --inputs-file must read form field values from a local JSON file.
-    const pause = await withRetry(async () => {
-      const r = await fx.r([
-        'run',
-        'app',
-        E.hitlAppId,
-        '--inputs',
-        JSON.stringify({ x: 'inputs-file-test' }),
-        '-o',
-        'json',
-      ])
-      assertExitCode(r, 0)
-      return r
-    }, { attempts: 3, delayMs: 2000 })
+    const pause = await withRetry(
+      async () => {
+        const r = await fx.r([
+          'run',
+          'app',
+          E.hitlAppId,
+          '--inputs',
+          JSON.stringify({ x: 'inputs-file-test' }),
+          '-o',
+          'json',
+        ])
+        assertExitCode(r, 0)
+        return r
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
     const { form_token, workflow_run_id, actions } = assertJson<{
       form_token: string
       workflow_run_id: string
@@ -296,19 +304,22 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
   it('[P1] resume with --with-history returns node history in output (4.5.14)', async () => {
     // Spec 4.5.14: --with-history must request include_state_snapshot=true and
     // return historical node events; the CLI must exit 0 with non-empty output.
-    const pause = await withRetry(async () => {
-      const r = await fx.r([
-        'run',
-        'app',
-        E.hitlAppId,
-        '--inputs',
-        JSON.stringify({ x: 'with-history-test' }),
-        '-o',
-        'json',
-      ])
-      assertExitCode(r, 0)
-      return r
-    }, { attempts: 3, delayMs: 2000 })
+    const pause = await withRetry(
+      async () => {
+        const r = await fx.r([
+          'run',
+          'app',
+          E.hitlAppId,
+          '--inputs',
+          JSON.stringify({ x: 'with-history-test' }),
+          '-o',
+          'json',
+        ])
+        assertExitCode(r, 0)
+        return r
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
     const { form_token, workflow_run_id, actions } = assertJson<{
       form_token: string
       workflow_run_id: string
@@ -334,19 +345,22 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
   it('[P1] resume with --stream outputs workflow completion in real-time (4.5.17)', async () => {
     // Spec 4.5.17: resume --stream must stream continuation node outputs to stdout
     // and exit 0 after workflow_finished.
-    const pause = await withRetry(async () => {
-      const r = await fx.r([
-        'run',
-        'app',
-        E.hitlAppId,
-        '--inputs',
-        JSON.stringify({ x: 'resume-stream-test' }),
-        '-o',
-        'json',
-      ])
-      assertExitCode(r, 0)
-      return r
-    }, { attempts: 3, delayMs: 2000 })
+    const pause = await withRetry(
+      async () => {
+        const r = await fx.r([
+          'run',
+          'app',
+          E.hitlAppId,
+          '--inputs',
+          JSON.stringify({ x: 'resume-stream-test' }),
+          '-o',
+          'json',
+        ])
+        assertExitCode(r, 0)
+        return r
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
     const { form_token, workflow_run_id, actions } = assertJson<{
       form_token: string
       workflow_run_id: string
@@ -387,13 +401,7 @@ describeExternal('E2E / difyctl run app — HITL display_in_ui=false (4.5.8)', (
   })
 
   it('[P1] 4.5.8 HITL pause with display_in_ui=false: external-channel form is not CLI-resumable', async () => {
-    const result = await fx.r([
-      'run',
-      'app',
-      E.hitlExternalAppId,
-      '-o',
-      'json',
-    ])
+    const result = await fx.r(['run', 'app', E.hitlExternalAppId, '-o', 'json'])
     assertExitCode(result, 0)
 
     const parsed = assertJson<{
@@ -405,14 +413,18 @@ describeExternal('E2E / difyctl run app — HITL display_in_ui=false (4.5.8)', (
     }>(result)
 
     // display_in_ui must be false for this fixture
-    expect(parsed.display_in_ui, 'display_in_ui must be false for external-channel fixture').toBe(false)
+    expect(parsed.display_in_ui, 'display_in_ui must be false for external-channel fixture').toBe(
+      false,
+    )
 
     // status must be paused
     expect(parsed.status).toBe('paused')
 
     // external delivery is not CLI-resumable: no token, channels name the real route
     expect(parsed.form_token, 'form_token must be null for external delivery').toBeNull()
-    expect(parsed.approval_channels, 'approval_channels must name the delivery channel').toContain('email')
+    expect(parsed.approval_channels, 'approval_channels must name the delivery channel').toContain(
+      'email',
+    )
 
     // stderr hint must describe the channel, not offer a resume command
     expect(result.stderr).toMatch(/delivered via|resume only from/i)
@@ -473,7 +485,10 @@ describeMultiAction('E2E / difyctl resume app — HITL multiple actions (4.5.10)
       // intentionally omit --action
     ])
 
-    expect(resumeResult.exitCode, 'omitting --action with multiple actions must exit non-zero').toBe(1)
+    expect(
+      resumeResult.exitCode,
+      'omitting --action with multiple actions must exit non-zero',
+    ).toBe(1)
     expect(resumeResult.stderr).toMatch(/--action required|multiple.*action|action.*required/i)
   })
 })
@@ -501,18 +516,14 @@ describeMultiNode('E2E / difyctl run + resume — HITL 2 serial nodes (4.5.18)',
     // Both resumes must succeed; final output must indicate success.
 
     // ── Step 1: run — pauses at first HITL node ──────────────────────────
-    const pause1 = await withRetry(async () => {
-      const r = await fx.r([
-        'run',
-        'app',
-        E.hitlMultiNodeAppId,
-        '-o',
-        'json',
-      ])
-      if (r.exitCode !== 0)
-        throw new Error(`run failed: ${r.stderr.slice(0, 200)}`)
-      return r
-    }, { attempts: 3, delayMs: 3000 })
+    const pause1 = await withRetry(
+      async () => {
+        const r = await fx.r(['run', 'app', E.hitlMultiNodeAppId, '-o', 'json'])
+        if (r.exitCode !== 0) throw new Error(`run failed: ${r.stderr.slice(0, 200)}`)
+        return r
+      },
+      { attempts: 3, delayMs: 3000 },
+    )
 
     assertExitCode(pause1, 0)
     const node1 = assertJson<{
@@ -527,23 +538,25 @@ describeMultiNode('E2E / difyctl run + resume — HITL 2 serial nodes (4.5.18)',
     const actionId1 = node1.actions[0]?.id ?? 'action_1'
 
     // ── Step 2: resume node 1 — workflow continues to second HITL node ───
-    const pause2 = await withRetry(async () => {
-      const r = await fx.r([
-        'resume',
-        'app',
-        E.hitlMultiNodeAppId,
-        node1.form_token,
-        '--workflow-run-id',
-        node1.workflow_run_id,
-        '--action',
-        actionId1,
-        '-o',
-        'json',
-      ])
-      if (r.exitCode !== 0)
-        throw new Error(`resume 1 failed: ${r.stderr.slice(0, 200)}`)
-      return r
-    }, { attempts: 3, delayMs: 3000 })
+    const pause2 = await withRetry(
+      async () => {
+        const r = await fx.r([
+          'resume',
+          'app',
+          E.hitlMultiNodeAppId,
+          node1.form_token,
+          '--workflow-run-id',
+          node1.workflow_run_id,
+          '--action',
+          actionId1,
+          '-o',
+          'json',
+        ])
+        if (r.exitCode !== 0) throw new Error(`resume 1 failed: ${r.stderr.slice(0, 200)}`)
+        return r
+      },
+      { attempts: 3, delayMs: 3000 },
+    )
 
     assertExitCode(pause2, 0)
     const node2 = assertJson<{
@@ -552,28 +565,32 @@ describeMultiNode('E2E / difyctl run + resume — HITL 2 serial nodes (4.5.18)',
       workflow_run_id: string
       actions: Array<{ id: string }>
     }>(pause2)
-    expect(node2.status, 'after first resume the workflow must pause again at node 2').toBe('paused')
+    expect(node2.status, 'after first resume the workflow must pause again at node 2').toBe(
+      'paused',
+    )
     expect(node2.form_token, 'node 2 must return a new form_token').toBeTruthy()
     expect(node2.form_token, 'node 2 form_token must differ from node 1').not.toBe(node1.form_token)
 
     const actionId2 = node2.actions[0]?.id ?? 'action_1'
 
     // ── Step 3: resume node 2 — workflow finishes ─────────────────────────
-    const finish = await withRetry(async () => {
-      const r = await fx.r([
-        'resume',
-        'app',
-        E.hitlMultiNodeAppId,
-        node2.form_token,
-        '--workflow-run-id',
-        node2.workflow_run_id,
-        '--action',
-        actionId2,
-      ])
-      if (r.exitCode !== 0)
-        throw new Error(`resume 2 failed: ${r.stderr.slice(0, 200)}`)
-      return r
-    }, { attempts: 3, delayMs: 3000 })
+    const finish = await withRetry(
+      async () => {
+        const r = await fx.r([
+          'resume',
+          'app',
+          E.hitlMultiNodeAppId,
+          node2.form_token,
+          '--workflow-run-id',
+          node2.workflow_run_id,
+          '--action',
+          actionId2,
+        ])
+        if (r.exitCode !== 0) throw new Error(`resume 2 failed: ${r.stderr.slice(0, 200)}`)
+        return r
+      },
+      { attempts: 3, delayMs: 3000 },
+    )
 
     assertExitCode(finish, 0)
     expect(finish.stdout + finish.stderr).toMatch(/succeeded|finished/i)

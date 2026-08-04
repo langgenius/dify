@@ -388,7 +388,7 @@ class TriggerProviderService:
             return subscription
 
     @classmethod
-    def delete_trigger_provider(cls, session: Session, tenant_id: str, subscription_id: str):
+    def delete_trigger_provider(cls, tenant_id: str, subscription_id: str, *, session: Session):
         """
         Delete a trigger provider subscription within an existing session.
 

@@ -20,10 +20,14 @@ describe('dev proxy config', () => {
     delete process.env.DEV_PROXY_TEST_PORT
     delete process.env.DEV_PROXY_TEST_TARGET
 
-    await Promise.all(tempDirs.splice(0).map(tempDir => fs.rm(tempDir, {
-      force: true,
-      recursive: true,
-    })))
+    await Promise.all(
+      tempDirs.splice(0).map((tempDir) =>
+        fs.rm(tempDir, {
+          force: true,
+          recursive: true,
+        }),
+      ),
+    )
   })
 
   // Scenario: CLI options should support both inline and separated values.
@@ -53,7 +57,9 @@ describe('dev proxy config', () => {
   // Scenario: removed target shortcuts should fail instead of silently doing the wrong thing.
   it('should reject unsupported target shortcuts', () => {
     // Assert
-    expect(() => parseDevProxyCliArgs(['--target', 'enterprise'])).toThrow('Unsupported dev proxy option')
+    expect(() => parseDevProxyCliArgs(['--target', 'enterprise'])).toThrow(
+      'Unsupported dev proxy option',
+    )
   })
 
   // Scenario: package manager argument separators should not be treated as proxy options.
@@ -71,13 +77,16 @@ describe('dev proxy config', () => {
   // Scenario: CLI host and port should override config defaults.
   it('should resolve server options with CLI overrides', () => {
     // Act
-    const options = resolveDevProxyServerOptions({
-      host: '127.0.0.1',
-      port: 5001,
-    }, {
-      host: '0.0.0.0',
-      port: '9002',
-    })
+    const options = resolveDevProxyServerOptions(
+      {
+        host: '127.0.0.1',
+        port: 5001,
+      },
+      {
+        host: '0.0.0.0',
+        port: '9002',
+      },
+    )
 
     // Assert
     expect(options).toEqual({
@@ -90,12 +99,15 @@ describe('dev proxy config', () => {
   it('should load a TypeScript config file', async () => {
     // Arrange
     const tempDir = await createTempDir()
-    await fs.writeFile(path.join(tempDir, 'dev-proxy.config.ts'), `
+    await fs.writeFile(
+      path.join(tempDir, 'dev-proxy.config.ts'),
+      `
       export default {
         server: { host: '127.0.0.1', port: 7777 },
         routes: [{ paths: ['/api', '/files'], target: 'https://api.example.com' }],
       }
-    `)
+    `,
+    )
 
     // Act
     const config = await loadDevProxyConfig('dev-proxy.config.ts', tempDir)
@@ -117,16 +129,19 @@ describe('dev proxy config', () => {
   it('should load a TypeScript config file with env file values', async () => {
     // Arrange
     const tempDir = await createTempDir()
-    await fs.writeFile(path.join(tempDir, '.env.proxy'), [
-      'DEV_PROXY_TEST_PORT=7788',
-      'DEV_PROXY_TEST_TARGET=https://env.example.com',
-    ].join('\n'))
-    await fs.writeFile(path.join(tempDir, 'dev-proxy.config.ts'), `
+    await fs.writeFile(
+      path.join(tempDir, '.env.proxy'),
+      ['DEV_PROXY_TEST_PORT=7788', 'DEV_PROXY_TEST_TARGET=https://env.example.com'].join('\n'),
+    )
+    await fs.writeFile(
+      path.join(tempDir, 'dev-proxy.config.ts'),
+      `
       export default {
         server: { port: Number(process.env.DEV_PROXY_TEST_PORT) },
         routes: [{ paths: '/api', target: process.env.DEV_PROXY_TEST_TARGET }],
       }
-    `)
+    `,
+    )
 
     // Act
     const config = await loadDevProxyConfig('dev-proxy.config.ts', tempDir, {

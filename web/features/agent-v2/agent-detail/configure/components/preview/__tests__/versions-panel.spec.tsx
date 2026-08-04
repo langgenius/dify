@@ -1,5 +1,6 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { AgentPreviewVersionsPanel } from '../versions-panel'
 
 const versions: AgentConfigSnapshotSummaryResponse[] = [
@@ -13,9 +14,16 @@ const versions: AgentConfigSnapshotSummaryResponse[] = [
   {
     id: 'version-1',
     version: 1,
-    version_note: 'Initial release',
+    version_note: null,
     created_at: 1710000000,
     created_by: 'Bob',
+  },
+  {
+    id: 'version-0',
+    version: 0,
+    version_note: 'Initial release',
+    created_at: 1709999900,
+    created_by: 'user-1',
   },
 ]
 
@@ -51,6 +59,17 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
+
 describe('AgentPreviewVersionsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -71,7 +90,7 @@ describe('AgentPreviewVersionsPanel', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Initial release/i }))
 
-      expect(handleSelectVersion).toHaveBeenCalledWith('version-1')
+      expect(handleSelectVersion).toHaveBeenCalledWith('version-0')
     })
 
     it('should notify null when the current draft row is clicked', () => {
@@ -89,6 +108,43 @@ describe('AgentPreviewVersionsPanel', () => {
       fireEvent.click(screen.getByRole('button', { name: /currentDraft/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith(null)
+    })
+  })
+
+  describe('Version filter', () => {
+    it('should show filter options when the filter trigger is clicked', () => {
+      render(
+        <AgentPreviewVersionsPanel
+          agentId="agent-1"
+          activeVersionId="version-2"
+          onSelectVersion={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /filter/i }))
+
+      expect(screen.getByRole('button', { name: /all/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /onlyYours/i })).toBeInTheDocument()
+      expect(screen.queryByText(/onlyShowNamedVersions/i)).not.toBeInTheDocument()
+    })
+
+    it('should only show current user versions when only yours is selected', () => {
+      render(
+        <AgentPreviewVersionsPanel
+          agentId="agent-1"
+          activeVersionId="version-2"
+          onSelectVersion={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /filter/i }))
+      fireEvent.click(screen.getByRole('button', { name: /onlyYours/i }))
+
+      expect(screen.getByRole('button', { name: /Published update/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Initial release/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /versionName.*1/i })).not.toBeInTheDocument()
     })
   })
 })

@@ -7,7 +7,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Blurred circular glow used as a decorative background accent. Combine with relatively positioned containers.',
+        component:
+          'Blurred circular glow used as a decorative background accent. Combine with relatively positioned containers.',
       },
       source: {
         language: 'tsx',

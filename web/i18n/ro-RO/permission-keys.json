@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Gestionează Agents",
   "api_extension.manage": "Gestionează configurația extensiei API",
   "app.access_config": "Configurează permisiunile de acces ale aplicației",
   "app.acl.access_config": "Configurează permisiunile de acces ale aplicației",
@@ -50,5 +51,5 @@
   "snippets.management": "Gestionează fragmente",
   "tool.manage": "Gestionează instrumente",
   "workspace.member.manage": "Gestionează membrii",
-  "workspace.role.manage": "Gestionează permisiunile rolurilor și regulile de acces la resurse"
+  "workspace.role.manage": "Gestionează rolurile și seturile de permisiuni"
 }

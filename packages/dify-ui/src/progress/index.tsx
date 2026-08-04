@@ -5,21 +5,18 @@ import { Progress as BaseProgress } from '@base-ui/react/progress'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
-const progressCircleRootVariants = cva(
-  'inline-flex shrink-0 items-center justify-center',
-  {
-    variants: {
-      size: {
-        small: 'size-3',
-        medium: 'size-4',
-        large: 'size-5',
-      },
-    },
-    defaultVariants: {
-      size: 'small',
+const progressCircleRootVariants = cva('inline-flex shrink-0 items-center justify-center', {
+  variants: {
+    size: {
+      small: 'size-3',
+      medium: 'size-4',
+      large: 'size-5',
     },
   },
-)
+  defaultVariants: {
+    size: 'small',
+  },
+})
 
 const progressCircleColorClasses = {
   gray: {
@@ -49,8 +46,8 @@ const progressCircleColorClasses = {
   },
 } as const
 
-export type ProgressCircleSize = NonNullable<VariantProps<typeof progressCircleRootVariants>['size']>
-export type ProgressCircleColor = keyof typeof progressCircleColorClasses
+type ProgressCircleSize = NonNullable<VariantProps<typeof progressCircleRootVariants>['size']>
+type ProgressCircleColor = keyof typeof progressCircleColorClasses
 
 const progressCircleSizeValues = {
   small: 12,
@@ -58,36 +55,35 @@ const progressCircleSizeValues = {
   large: 20,
 } as const satisfies Record<ProgressCircleSize, number>
 
-type ProgressCircleAccessibleNameProps
-  = | {
-    'aria-label': string
-    'aria-labelledby'?: never
-  }
+type ProgressCircleAccessibleNameProps =
   | {
-    'aria-label'?: never
-    'aria-labelledby': string
-  }
-
-export type ProgressCircleProps
-  = Omit<BaseProgress.Root.Props, 'children' | 'className' | 'aria-label' | 'aria-labelledby'>
-    & ProgressCircleAccessibleNameProps
-    & {
-      className?: string
-      color?: ProgressCircleColor
-      size?: ProgressCircleSize
-      circleStrokeWidth?: number
+      'aria-label': string
+      'aria-labelledby'?: never
+    }
+  | {
+      'aria-label'?: never
+      'aria-labelledby': string
     }
 
+type ProgressCircleProps = Omit<
+  BaseProgress.Root.Props,
+  'children' | 'className' | 'aria-label' | 'aria-labelledby'
+> &
+  ProgressCircleAccessibleNameProps & {
+    className?: string
+    color?: ProgressCircleColor
+    size?: ProgressCircleSize
+    circleStrokeWidth?: number
+  }
+
 function getProgressPercentage(value: number | null, min: number, max: number) {
-  if (value === null || !Number.isFinite(value) || max <= min)
-    return null
+  if (value === null || !Number.isFinite(value) || max <= min) return null
 
   return Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))
 }
 
 function getSectorPath(size: number, percentage: number | null) {
-  if (percentage === null || percentage <= 0)
-    return ''
+  if (percentage === null || percentage <= 0) return ''
 
   const radius = size / 2
   const center = size / 2
@@ -115,7 +111,7 @@ function getSectorPath(size: number, percentage: number | null) {
   `
 }
 
-export function ProgressCircle({
+function ProgressCircle({
   className,
   color = 'blue',
   size = 'small',
@@ -165,3 +161,6 @@ export function ProgressCircle({
     </BaseProgress.Root>
   )
 }
+
+export { ProgressCircle }
+export type { ProgressCircleProps }

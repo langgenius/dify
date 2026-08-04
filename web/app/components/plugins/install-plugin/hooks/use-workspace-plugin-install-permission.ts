@@ -1,12 +1,12 @@
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { hasPermission } from '@/utils/permission'
 
 const useWorkspacePluginInstallPermission = () => {
-  const {
-    langGeniusVersionInfo,
-    workspacePermissionKeys,
-  } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const canInstallPlugin = useMemo(() => {
     return hasPermission(workspacePermissionKeys, 'plugin.install')

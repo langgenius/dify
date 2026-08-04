@@ -1,39 +1,74 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
+import { QueryClient } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import { useExpandModelProviderList } from '../../atoms'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
-let mockWorkspacePermissionKeys: string[] = ['plugin.model_config', 'credential.use', 'credential.create', 'credential.manage']
+let mockWorkspacePermissionKeys: string[] = [
+  'plugin.model_config',
+  'credential.use',
+  'credential.create',
+  'credential.manage',
+]
 const mockFetchModelProviderModels = vi.fn()
-const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
-  queryKey: ['console', 'modelProviders', 'models', input.params.provider],
-  queryFn: () => mockFetchModelProviderModels(input.params.provider),
-  ...options,
-}))
+const mockQueryOptions = vi.fn(
+  ({ input, ...options }: { input: { params: { provider: string } }; enabled?: boolean }) => ({
+    queryKey: ['console', 'modelProviders', 'models', input.params.provider],
+    queryFn: () => mockFetchModelProviderModels(input.params.provider),
+    ...options,
+  }),
+)
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryOptions: (options: {
+                  input: { params: { provider: string } }
+                  enabled?: boolean
+                }) => mockQueryOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
 
 // Mock internal components to simplify testing of the index file
 vi.mock('../credential-panel', () => ({
@@ -41,10 +76,20 @@ vi.mock('../credential-panel', () => ({
 }))
 
 vi.mock('../model-list', () => ({
-  default: ({ onCollapse, onChange }: { onCollapse: () => void, onChange: (provider: string) => void }) => (
+  default: ({
+    onCollapse,
+    onChange,
+  }: {
+    onCollapse: () => void
+    onChange: (provider: string) => void
+  }) => (
     <div data-testid="model-list">
-      <button type="button" onClick={onCollapse}>collapse list</button>
-      <button type="button" onClick={() => onChange('langgenius/openai/openai')}>refresh list</button>
+      <button type="button" onClick={onCollapse}>
+        collapse list
+      </button>
+      <button type="button" onClick={() => onChange('langgenius/openai/openai')}>
+        refresh list
+      </button>
     </div>
   ),
 }))
@@ -62,36 +107,60 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth'
   ManageCustomModelCredentials: () => <div data-testid="manage-custom-model" />,
 }))
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-  },
-})
+const createConsoleQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  })
 
-const renderWithQueryClient = (node: ReactNode) => {
-  const queryClient = createTestQueryClient()
-  const store = createStore()
-  return render(
-    <JotaiProvider store={store}>
-      <QueryClientProvider client={queryClient}>
-        {node}
-      </QueryClientProvider>
-    </JotaiProvider>,
-  )
+const renderWithQueryClient = (node: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedSystemFeatures(queryClient)
+  return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
 
 const ExternalExpandControls = () => {
   const expandModelProviderList = useExpandModelProviderList()
   return (
     <>
-      <button type="button" data-testid="expand-other-provider" onClick={() => expandModelProviderList('langgenius/anthropic/anthropic')}>
+      <button
+        type="button"
+        data-testid="expand-other-provider"
+        onClick={() => expandModelProviderList('langgenius/anthropic/anthropic')}
+      >
         expand other
       </button>
-      <button type="button" data-testid="expand-current-provider" onClick={() => expandModelProviderList('langgenius/openai/openai')}>
+      <button
+        type="button"
+        data-testid="expand-current-provider"
+        onClick={() => expandModelProviderList('langgenius/openai/openai')}
+      >
         expand current
       </button>
     </>
   )
+}
+
+const modelProviderModelsResponse = {
+  data: [
+    {
+      model: 'gpt-4',
+      label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+      model_type: 'llm',
+      features: [],
+      fetch_from: 'predefined-model',
+      status: 'active',
+      model_properties: {},
+      load_balancing_enabled: false,
+      provider: {
+        provider: 'langgenius/openai/openai',
+        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+        supported_model_types: ['llm'],
+        tenant_id: 'tenant-id',
+      },
+    },
+  ],
 }
 
 describe('ProviderAddedCard', () => {
@@ -105,7 +174,12 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
-    mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.use', 'credential.create', 'credential.manage']
+    mockWorkspacePermissionKeys = [
+      'plugin.model_config',
+      'credential.use',
+      'credential.create',
+      'credential.manage',
+    ]
   })
 
   it('should render provider added card component', () => {
@@ -115,7 +189,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should open, refresh and collapse model list', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
@@ -145,7 +219,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should handle concurrent getModelList calls (loading state coverage)', async () => {
-    let resolveOuter: (value: unknown) => void = () => { }
+    let resolveOuter: (value: unknown) => void = () => {}
     const promise = new Promise((resolve) => {
       resolveOuter = resolve
     })
@@ -172,7 +246,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should only react to external expansion for the matching provider', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(
       <>
         <ProviderAddedCard provider={mockProvider} />

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package dify.agent.stub.v1;
 
+option go_package = "dify/agent/stub/v1;stubv1";
+
 service AgentStubService {
   rpc Connect(ConnectRequest) returns (ConnectResponse);
   rpc CreateFileUploadRequest(FileUploadRequest) returns (FileUploadResponse);
@@ -36,6 +38,7 @@ message FileMapping {
 
 message FileDownloadRequest {
   FileMapping file = 1;
+  optional bool for_external = 2;
 }
 
 message FileDownloadResponse {

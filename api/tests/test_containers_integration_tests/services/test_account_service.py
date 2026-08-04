@@ -17,6 +17,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    SeatsLimitExceededError,
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
@@ -36,8 +37,9 @@ class TestAccountService:
         ):
             # Setup default mock returns
             mock_feature_service.get_system_features.return_value.is_allow_register = True
-            mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-            mock_feature_service.get_system_features.return_value.license.workspaces.is_available.return_value = True
+            mock_feature_service.is_workspace_creation_allowed.return_value = True
+            mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
 
@@ -399,12 +401,10 @@ class TestAccountService:
         password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         account = AccountService.create_account_and_tenant(
             email=email,
@@ -434,9 +434,7 @@ class TestAccountService:
         password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = False
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         with pytest.raises(WorkSpaceNotAllowedCreateError):
@@ -460,16 +458,40 @@ class TestAccountService:
         password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = False
+        ].get_license.return_value.workspaces.is_available.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         with pytest.raises(WorkspacesLimitExceededError):
             AccountService.create_account_and_tenant(
+                email=email,
+                name=name,
+                interface_language="en-US",
+                password=password,
+                session=db_session_with_containers,
+            )
+
+    def test_create_account_seats_limit_exceeded(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test account creation when the licensed seats limit is exceeded.
+        """
+        fake = Faker()
+        email = fake.email()
+        name = fake.name()
+        password = generate_valid_password(fake)
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_license.return_value.seats.is_available.return_value = False
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        with pytest.raises(SeatsLimitExceededError):
+            AccountService.create_account(
                 email=email,
                 name=name,
                 interface_language="en-US",
@@ -1120,10 +1142,12 @@ class TestAccountService:
             mock_sync.return_value = True
 
             # Delete account
-            AccountService.delete_account(account)
+            AccountService.delete_account(account, session=db_session_with_containers)
 
             # Verify sync was called
-            mock_sync.assert_called_once_with(account_id=account.id, source="account_deleted")
+            mock_sync.assert_called_once_with(
+                account_id=account.id, source="account_deleted", session=db_session_with_containers
+            )
 
             # Verify task was added to queue
             mock_delete_task.delay.assert_called_once_with(account.id)
@@ -1244,8 +1268,9 @@ class TestTenantService:
             patch("services.account_service.BillingService") as mock_billing_service,
         ):
             # Setup default mock returns
-            mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-            mock_feature_service.get_system_features.return_value.license.workspaces.is_available.return_value = True
+            mock_feature_service.is_workspace_creation_allowed.return_value = True
+            mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
 
             yield {
@@ -1260,9 +1285,7 @@ class TestTenantService:
         fake = Faker()
         tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1281,9 +1304,7 @@ class TestTenantService:
         fake = Faker()
         tenant_name = fake.company()
         # Setup mocks to disable workspace creation
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = False
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
 
         with pytest.raises(NotAllowedCreateWorkspace):  # NotAllowedCreateWorkspace exception
             TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1297,9 +1318,7 @@ class TestTenantService:
         fake = Faker()
         custom_tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = False
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
 
         # Create tenant with setup flag (should bypass workspace creation restriction)
         tenant = TenantService.create_tenant(
@@ -1323,9 +1342,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and account
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1359,9 +1376,7 @@ class TestTenantService:
         name2 = fake.name()
         password2 = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1399,9 +1414,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and account
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1434,9 +1447,7 @@ class TestTenantService:
         tenant1_name = fake.company()
         tenant2_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create account and tenants
         account = AccountService.create_account(
@@ -1473,9 +1484,7 @@ class TestTenantService:
         password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(
@@ -1511,9 +1520,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create account without setting current tenant
         account = AccountService.create_account(
@@ -1539,9 +1546,7 @@ class TestTenantService:
         tenant1_name = fake.company()
         tenant2_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create account and tenants
         account = AccountService.create_account(
@@ -1579,9 +1584,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create account
         account = AccountService.create_account(
@@ -1608,9 +1611,7 @@ class TestTenantService:
         password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(
@@ -1639,9 +1640,7 @@ class TestTenantService:
         admin_name = fake.name()
         admin_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1686,9 +1685,7 @@ class TestTenantService:
         tenant_name = fake.company()
         invalid_role = fake.word()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1707,9 +1704,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and account
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1744,9 +1739,7 @@ class TestTenantService:
         member_name = fake.name()
         member_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1787,9 +1780,7 @@ class TestTenantService:
         password = generate_valid_password(fake)
         invalid_action = "invalid_action_that_doesnt_exist"
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and account
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1822,9 +1813,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and account
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1860,9 +1849,7 @@ class TestTenantService:
         member_name = fake.name()
         member_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1950,9 +1937,7 @@ class TestTenantService:
         name = fake.name()
         password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and account
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -1986,9 +1971,7 @@ class TestTenantService:
         non_member_name = fake.name()
         non_member_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2029,9 +2012,7 @@ class TestTenantService:
         member_name = fake.name()
         member_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2082,9 +2063,7 @@ class TestTenantService:
         member_name = fake.name()
         member_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2143,9 +2122,7 @@ class TestTenantService:
         member_name = fake.name()
         member_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2183,9 +2160,7 @@ class TestTenantService:
         tenant2_name = fake.company()
         tenant3_name = fake.company()
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create multiple tenants
         tenant1 = TenantService.create_tenant(name=tenant1_name, session=db_session_with_containers)
@@ -2210,12 +2185,10 @@ class TestTenantService:
         password = generate_valid_password(fake)
         workspace_name = fake.company()
         # Setup mocks
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
 
         # Create account
         account = AccountService.create_account(
@@ -2251,12 +2224,10 @@ class TestTenantService:
         existing_tenant_name = fake.company()
         new_workspace_name = fake.company()
         # Setup mocks
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
 
         # Create account and existing tenant
         account = AccountService.create_account(
@@ -2294,9 +2265,7 @@ class TestTenantService:
         password = generate_valid_password(fake)
         workspace_name = fake.company()
         # Setup mocks to disable workspace creation
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = False
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
 
         # Create account
         account = AccountService.create_account(
@@ -2329,9 +2298,7 @@ class TestTenantService:
         normal_name = fake.name()
         normal_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2398,9 +2365,7 @@ class TestTenantService:
         normal_name = fake.name()
         normal_password = generate_valid_password(fake)
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant and accounts
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2449,9 +2414,7 @@ class TestTenantService:
         theme = fake.random_element(elements=("dark", "light"))
         language = fake.random_element(elements=("zh-CN", "en-US"))
         # Setup mocks
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
 
         # Create tenant with custom config
         tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
@@ -2484,8 +2447,9 @@ class TestRegisterService:
         ):
             # Setup default mock returns
             mock_feature_service.get_system_features.return_value.is_allow_register = True
-            mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-            mock_feature_service.get_system_features.return_value.license.workspaces.is_available.return_value = True
+            mock_feature_service.is_workspace_creation_allowed.return_value = True
+            mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
 
@@ -2597,12 +2561,10 @@ class TestRegisterService:
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration
@@ -2641,12 +2603,10 @@ class TestRegisterService:
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with OAuth
@@ -2690,12 +2650,10 @@ class TestRegisterService:
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with pending status
@@ -2736,9 +2694,7 @@ class TestRegisterService:
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = False
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # with pytest.raises(AccountRegisterError, match="Workspace is not allowed to create."):
@@ -2775,12 +2731,10 @@ class TestRegisterService:
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = False
+        ].get_license.return_value.workspaces.is_available.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # with pytest.raises(AccountRegisterError, match="Workspace is not allowed to create."):
@@ -2854,12 +2808,10 @@ class TestRegisterService:
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account

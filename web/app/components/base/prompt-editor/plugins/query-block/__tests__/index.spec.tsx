@@ -1,14 +1,14 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { QUERY_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   DELETE_QUERY_BLOCK_COMMAND,
   INSERT_QUERY_BLOCK_COMMAND,
@@ -16,16 +16,16 @@ import {
   QueryBlockNode,
 } from '../index'
 
-const renderQueryBlock = (props: {
-  onInsert?: () => void
-  onDelete?: () => void
-} = {}) => {
+const renderQueryBlock = (
+  props: {
+    onInsert?: () => void
+    onDelete?: () => void
+  } = {},
+) => {
   return renderLexicalEditor({
     namespace: 'query-block-plugin-test',
     nodes: [CustomTextNode, QueryBlockNode],
-    children: (
-      <QueryBlock {...props} />
-    ),
+    children: <QueryBlock {...props} />,
   })
 }
 

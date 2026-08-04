@@ -71,7 +71,9 @@ function TaskStatusIndicator({
 }: TaskStatusIndicatorProps) {
   const showErrorStyle = isInstallingWithError || isFailed
   const hasActiveInstall = isInstalling || isInstallingWithSuccess || isInstallingWithError
-  const showSuccessIcon = isSuccess || (!hasActiveInstall && !isFailed && successPluginsLength > 0 && runningPluginsLength === 0)
+  const showSuccessIcon =
+    isSuccess ||
+    (!hasActiveInstall && !isFailed && successPluginsLength > 0 && runningPluginsLength === 0)
   const showSuccessBadge = showSuccessIcon && !isInstallingWithError && !isFailed
   const showBadge = isInstallingWithError || showSuccessBadge || isFailed
   const isClickable = !disabled && (hasActiveInstall || isSuccess || isFailed)
@@ -79,7 +81,7 @@ function TaskStatusIndicator({
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <Button
             type="button"
             variant="secondary"
@@ -90,8 +92,11 @@ function TaskStatusIndicator({
               'relative size-8 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg p-2 shadow-none',
               'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               isClickable ? 'cursor-pointer' : 'cursor-default',
-              showErrorStyle && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover text-components-button-destructive-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:bg-state-destructive-hover-alt',
-              isOpen && !showErrorStyle && 'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
+              showErrorStyle &&
+                'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover text-components-button-destructive-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:bg-state-destructive-hover-alt',
+              isOpen &&
+                !showErrorStyle &&
+                'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
               isOpen && showErrorStyle && 'bg-state-destructive-hover-alt',
             )}
             id="plugin-task-trigger"
@@ -101,19 +106,13 @@ function TaskStatusIndicator({
 
             {showBadge && (
               <div className="absolute -top-1.5 -right-1.5 box-content flex size-3.5 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
-                {isInstallingWithError && (
-                  <ErrorBadgeIcon />
-                )}
-                {showSuccessBadge && (
-                  <SuccessBadgeIcon />
-                )}
-                {isFailed && (
-                  <ErrorBadgeIcon />
-                )}
+                {isInstallingWithError && <ErrorBadgeIcon />}
+                {showSuccessBadge && <SuccessBadgeIcon />}
+                {isFailed && <ErrorBadgeIcon />}
               </div>
             )}
           </Button>
-        )}
+        }
       />
       <TooltipContent sideOffset={8}>{tip}</TooltipContent>
     </Tooltip>

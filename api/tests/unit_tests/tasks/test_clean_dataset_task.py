@@ -434,14 +434,15 @@ class TestIndexProcessorParameters:
         index_struct = '{"type": "paragraph"}'
 
         # Act
-        clean_dataset_task(
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            indexing_technique=indexing_technique,
-            index_struct=index_struct,
-            collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        )
+        with patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+            clean_dataset_task(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                indexing_technique=indexing_technique,
+                index_struct=index_struct,
+                collection_binding_id=collection_binding_id,
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
 
         # Assert
         mock_index_processor_factory["processor"].clean.assert_called_once()
@@ -459,5 +460,31 @@ class TestIndexProcessorParameters:
         assert call_args[0][1] is None
 
         # Verify keyword arguments
+        assert call_args[1]["session"] is mock_db_session.session
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
+        schedule_refresh.assert_called_once_with(tenant_id)
+
+    def test_vector_cleanup_failure_does_not_schedule_billing_refresh(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_db_session,
+        mock_storage,
+        mock_index_processor_factory,
+        mock_get_image_upload_file_ids,
+    ):
+        mock_index_processor_factory["processor"].clean.side_effect = RuntimeError("vector cleanup failed")
+
+        with patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+            clean_dataset_task(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                index_struct='{"type": "paragraph"}',
+                collection_binding_id=collection_binding_id,
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
+
+        schedule_refresh.assert_not_called()

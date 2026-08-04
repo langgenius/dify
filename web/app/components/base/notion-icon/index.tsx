@@ -9,12 +9,7 @@ type NotionIconProps = {
   className?: string
   src?: string | null | DataSourceNotionPage['page_icon']
 }
-const NotionIcon = ({
-  type = 'workspace',
-  src,
-  name,
-  className,
-}: NotionIconProps) => {
+const NotionIcon = ({ type = 'workspace', src, name, className }: NotionIconProps) => {
   if (type === 'workspace') {
     if (typeof src === 'string') {
       if (src.startsWith('https://') || src.startsWith('http://')) {
@@ -26,12 +21,17 @@ const NotionIcon = ({
           />
         )
       }
-      return (
-        <div className={cn('flex size-5 items-center justify-center', className)}>{src}</div>
-      )
+      return <div className={cn('flex size-5 items-center justify-center', className)}>{src}</div>
     }
     return (
-      <div className={cn('flex size-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0]!.toLocaleUpperCase()}</div>
+      <div
+        className={cn(
+          'flex size-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500',
+          className,
+        )}
+      >
+        {name?.[0]!.toLocaleUpperCase()}
+      </div>
     )
   }
 
@@ -50,9 +50,7 @@ const NotionIcon = ({
     )
   }
 
-  return (
-    <RiFileTextLine className={cn('size-5 text-text-tertiary', className)} />
-  )
+  return <RiFileTextLine className={cn('size-5 text-text-tertiary', className)} />
 }
 
 export default NotionIcon

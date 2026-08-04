@@ -18,19 +18,20 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: (...args: unknown[]) => mockUploadRemoteFileInfo(...args),
 }))
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
-  enabled: true,
-  allowed_file_types: ['document'],
-  allowed_file_extensions: [],
-  allowed_file_upload_methods: [TransferMethod.remote_url],
-  number_limits: 5,
-  preview_config: {
-    enabled: false,
-    mode: 'current_page',
-    file_type_list: [],
-  },
-  ...overrides,
-} as FileUpload)
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
+  ({
+    enabled: true,
+    allowed_file_types: ['document'],
+    allowed_file_extensions: [],
+    allowed_file_upload_methods: [TransferMethod.remote_url],
+    number_limits: 5,
+    preview_config: {
+      enabled: false,
+      mode: 'current_page',
+      file_type_list: [],
+    },
+    ...overrides,
+  }) as FileUpload
 
 const renderChatInput = (fileConfig: FileUpload, readonly = false) => {
   return render(
@@ -65,7 +66,10 @@ describe('Base File Uploader Flow', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /fileUploader\.pasteFileLink/i }))
-    await user.type(screen.getByPlaceholderText(/fileUploader\.pasteFileLinkInputPlaceholder/i), 'https://example.com/guide.pdf')
+    await user.type(
+      screen.getByPlaceholderText(/fileUploader\.pasteFileLinkInputPlaceholder/i),
+      'https://example.com/guide.pdf',
+    )
     await user.click(screen.getByRole('button', { name: /operation\.ok/i }))
 
     await waitFor(() => {
@@ -96,7 +100,9 @@ describe('Base File Uploader Flow', () => {
     expect(activeTrigger).toBeEnabled()
 
     await user.click(activeTrigger)
-    expect(screen.getByPlaceholderText(/fileUploader\.pasteFileLinkInputPlaceholder/i)).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText(/fileUploader\.pasteFileLinkInputPlaceholder/i),
+    ).toBeInTheDocument()
     expect(screen.queryByText(/fileUploader\.uploadFromComputer/i)).not.toBeInTheDocument()
 
     unmount()

@@ -28,15 +28,17 @@ describe('WorkspaceRoleCheckboxList', () => {
     vi.clearAllMocks()
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
       data: {
-        pages: [{
-          data: mockRoles,
-          pagination: {
-            total_count: 2,
-            per_page: 20,
-            current_page: 1,
-            total_pages: 1,
+        pages: [
+          {
+            data: mockRoles,
+            pagination: {
+              total_count: 2,
+              per_page: 20,
+              current_page: 1,
+              total_pages: 1,
+            },
           },
-        }],
+        ],
         pageParams: [1],
       },
       isLoading: false,
@@ -70,27 +72,47 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByRole('radio', { name: /First role/i })).toBeInTheDocument()
+    const selectedRole = screen.getByRole('radio', { name: /First role/i })
+    const unselectedRole = screen.getByRole('radio', { name: /Second role/i })
+    expect(selectedRole).toHaveAttribute('data-checked', '')
+    expect(unselectedRole).not.toHaveAttribute('data-checked')
     expect(screen.queryByRole('checkbox', { name: /First role/i })).not.toBeInTheDocument()
+  })
+
+  it('should expose disabled state on single-role options', () => {
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={['role-1']}
+        selectedRoles={[mockRoles[0]!]}
+        allowMultipleRoles={false}
+        disabledRoleIds={['role-1']}
+        onSelectedRolesChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: /First role/i })).toHaveAttribute('data-disabled', '')
+    expect(screen.getByRole('radio', { name: /Second role/i })).not.toHaveAttribute('data-disabled')
   })
 
   it('should show legacy role descriptions when only one role is allowed', () => {
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
       data: {
-        pages: [{
-          data: [
-            createRole({ id: 'admin', name: 'admin' }),
-            createRole({ id: 'editor', name: 'editor' }),
-            createRole({ id: 'normal', name: 'normal' }),
-            createRole({ id: 'dataset_operator', name: 'dataset_operator' }),
-          ],
-          pagination: {
-            total_count: 4,
-            per_page: 20,
-            current_page: 1,
-            total_pages: 1,
+        pages: [
+          {
+            data: [
+              createRole({ id: 'admin', name: 'admin' }),
+              createRole({ id: 'editor', name: 'editor' }),
+              createRole({ id: 'normal', name: 'normal' }),
+              createRole({ id: 'dataset_operator', name: 'dataset_operator' }),
+            ],
+            pagination: {
+              total_count: 4,
+              per_page: 20,
+              current_page: 1,
+              total_pages: 1,
+            },
           },
-        }],
+        ],
         pageParams: [1],
       },
       isLoading: false,

@@ -150,8 +150,9 @@ def test_node_started_publishes_running(layer, capture_publishes):
     assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "running"}]
 
 
-def test_node_retry_publishes_retry(layer, capture_publishes):
+def test_node_retry_publishes_retry(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
     _seed_node_execution(layer, exec_id="exec-1", node_id="agent-1")
+    monkeypatch.setattr(layer, "_append_retry_history", lambda *args: None)
     event = MagicMock(id="exec-1", error="rate limit")
     layer._handle_node_retry(event)
     assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "retry"}]

@@ -1,4 +1,7 @@
-from fields.dataset_fields import DatasetDetailResponse
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 
 
 def _dataset_detail_payload(**overrides):
@@ -179,3 +182,47 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
             "embedding_provider_name": None,
         },
     }
+
+
+def test_dataset_detail_response_source_uses_caller_session_for_database_fields():
+    session = Mock()
+    getter_mocks = {
+        "get_app_count": Mock(return_value=3),
+        "get_document_count": Mock(return_value=4),
+        "get_word_count": Mock(return_value=500),
+        "get_author_name": Mock(return_value="Ada"),
+        "get_tags": Mock(return_value=[{"id": "tag-1", "name": "Tag", "type": "knowledge"}]),
+        "get_doc_form": Mock(return_value="paragraph"),
+        "get_external_knowledge_info": Mock(
+            return_value={
+                "external_knowledge_id": "knowledge-id",
+                "external_knowledge_api_id": "api-id",
+                "external_knowledge_api_name": "api",
+                "external_knowledge_api_endpoint": "https://example.com",
+            }
+        ),
+        "get_doc_metadata": Mock(return_value=[{"id": "metadata-1", "name": "Metadata", "type": "string"}]),
+        "get_is_published": Mock(return_value=True),
+        "get_total_documents": Mock(return_value=4),
+        "get_total_available_documents": Mock(return_value=2),
+    }
+    dataset = SimpleNamespace(**_dataset_detail_payload(), **getter_mocks)
+
+    response = DatasetDetailResponse.model_validate(
+        dataset_detail_response_source(dataset, session=session),
+        from_attributes=True,
+    )
+
+    assert response.app_count == 3
+    assert response.document_count == 4
+    assert response.word_count == 500
+    assert response.author_name == "Ada"
+    assert response.tags[0].id == "tag-1"
+    assert response.doc_form == "paragraph"
+    assert response.external_knowledge_info.external_knowledge_api_id == "api-id"
+    assert response.doc_metadata[0].id == "metadata-1"
+    assert response.is_published is True
+    assert response.total_documents == 4
+    assert response.total_available_documents == 2
+    for getter in getter_mocks.values():
+        getter.assert_called_once_with(session=session)

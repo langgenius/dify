@@ -1,10 +1,13 @@
 import { cva } from 'class-variance-authority'
 
-export const formLabelClassName = 'w-fit py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
+export const formLabelClassName =
+  'w-fit py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
 
-export const textControlFocusClassName = 'focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+export const textControlFocusClassName =
+  'focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
 
-export const textControlCompoundFocusClassName = 'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs'
+export const textControlCompoundFocusClassName =
+  'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs'
 
 export const textControlVariants = cva(
   [
@@ -21,9 +24,9 @@ export const textControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'rounded-md px-2 py-[3px] system-xs-regular',
-        medium: 'rounded-lg px-3 py-[7px] system-sm-regular',
-        large: 'rounded-[10px] px-4 py-[7px] system-md-regular',
+        small: 'rounded-md px-2 py-0.75 system-xs-regular',
+        medium: 'rounded-lg px-3 py-1.75 system-sm-regular',
+        large: 'rounded-[10px] px-4 py-1.75 system-md-regular',
       },
     },
     defaultVariants: {

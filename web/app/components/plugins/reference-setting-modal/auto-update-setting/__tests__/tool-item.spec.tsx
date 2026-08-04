@@ -6,11 +6,6 @@ import ToolItem from '../tool-item'
 vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/i18n-config', () => ({
   renderI18nObject: (value: Record<string, string>, language: string) => value[language],
 }))
@@ -36,8 +31,13 @@ describe('ToolItem', () => {
 
     expect(screen.getByText('Plugin One')).toBeInTheDocument()
     expect(screen.getByText('Dify')).toBeInTheDocument()
-    expect(screen.getByText('https://marketplace.example.com/plugins/dify/plugin-1/icon')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Plugin One' })).toHaveAttribute('aria-checked', 'true')
+    expect(
+      screen.getByText('https://marketplace.example.com/plugins/dify/plugin-1/icon'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Plugin One' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   })
 
   it('calls onCheckChange when checkbox is clicked', () => {

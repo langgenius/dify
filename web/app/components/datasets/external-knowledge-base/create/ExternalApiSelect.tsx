@@ -1,14 +1,12 @@
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
+import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 
 type ApiItem = {
   value: string
@@ -26,14 +24,17 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(
-    items.find(item => item.value === value) || null,
+    items.find((item) => item.value === value) || null,
   )
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
-  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
+  const queryClient = useQueryClient()
+  const externalKnowledgeApiQueryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
+    input: {},
+  }).queryKey
   const router = useRouter()
 
   useEffect(() => {
-    const newSelectedItem = items.find(item => item.value === value) || null
+    const newSelectedItem = items.find((item) => item.value === value) || null
     setSelectedItem(newSelectedItem)
   }, [value, items])
 
@@ -41,11 +42,8 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
     setShowExternalKnowledgeAPIModal({
       payload: { name: '', settings: { endpoint: '', api_key: '' } },
       onSaveCallback: async () => {
-        mutateExternalKnowledgeApis()
+        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
         router.refresh()
-      },
-      onCancelCallback: () => {
-        mutateExternalKnowledgeApis()
       },
       isEditMode: false,
     })
@@ -60,27 +58,30 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
   return (
     <div className="relative w-full">
       <div
-        className={`flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg bg-components-input-bg-normal px-2
-        py-1 hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
+        className={`flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        {selectedItem
-          ? (
-              <div className="flex items-center gap-2 self-stretch rounded-lg p-1">
-                <ApiConnectionMod className="size-4 text-text-secondary" />
-                <div className="flex grow items-center">
-                  <span className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled">{selectedItem.name}</span>
-                </div>
-              </div>
-            )
-          : (
-              <span className="system-sm-regular text-components-input-text-placeholder">{t('selectExternalKnowledgeAPI.placeholder', { ns: 'dataset' })}</span>
-            )}
-        <RiArrowDownSLine className={`size-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
+        {selectedItem ? (
+          <div className="flex items-center gap-2 self-stretch rounded-lg p-1">
+            <ApiConnectionMod className="size-4 text-text-secondary" />
+            <div className="flex grow items-center">
+              <span className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled">
+                {selectedItem.name}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <span className="system-sm-regular text-components-input-text-placeholder">
+            {t(($) => $['selectExternalKnowledgeAPI.placeholder'], { ns: 'dataset' })}
+          </span>
+        )}
+        <RiArrowDownSLine
+          className={`size-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`}
+        />
       </div>
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          {items.map(item => (
+          {items.map((item) => (
             <div
               key={item.value}
               className="flex cursor-pointer items-center p-1"
@@ -88,8 +89,12 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
             >
               <div className="flex w-full items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover">
                 <ApiConnectionMod className="size-4 text-text-secondary" />
-                <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">{item.name}</span>
-                <span className="overflow-hidden text-right system-xs-regular text-ellipsis text-text-tertiary">{item.url}</span>
+                <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
+                  {item.name}
+                </span>
+                <span className="overflow-hidden text-right system-xs-regular text-ellipsis text-text-tertiary">
+                  {item.url}
+                </span>
               </div>
             </div>
           ))}
@@ -99,7 +104,9 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               onClick={handleAddNewAPI}
             >
               <RiAddLine className="size-4 text-text-secondary" />
-              <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">{t('createNewExternalAPI', { ns: 'dataset' })}</span>
+              <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
+                {t(($) => $.createNewExternalAPI, { ns: 'dataset' })}
+              </span>
             </div>
           </div>
         </div>

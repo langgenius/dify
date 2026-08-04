@@ -1,15 +1,39 @@
-import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@/test/console/render'
 import useWorkspacePluginInstallPermission from '../use-workspace-plugin-install-permission'
 
 let mockWorkspacePermissionKeys: string[] = []
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: { current_version: '1.0.0' },
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    langGeniusVersionInfo: {
+      current_env: '',
+      current_version: '1.0.0',
+      latest_version: '',
+      release_date: '',
+      release_notes: '',
+      version: '',
+      can_auto_update: false,
+    },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => ({
+    langGeniusVersionInfo: {
+      current_env: '',
+      current_version: '1.0.0',
+      latest_version: '',
+      release_date: '',
+      release_notes: '',
+      version: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
 
 describe('useWorkspacePluginInstallPermission', () => {
   beforeEach(() => {

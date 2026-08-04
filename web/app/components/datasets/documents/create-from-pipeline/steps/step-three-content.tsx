@@ -8,16 +8,8 @@ type StepThreeContentProps = {
   documents: InitialDocumentDetail[]
 }
 
-const StepThreeContent = ({
-  batchId,
-  documents,
-}: StepThreeContentProps) => {
-  return (
-    <Processing
-      batchId={batchId}
-      documents={documents}
-    />
-  )
+const StepThreeContent = ({ batchId, documents }: StepThreeContentProps) => {
+  return <Processing batchId={batchId} documents={documents} />
 }
 
 export default memo(StepThreeContent)

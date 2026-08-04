@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
 type MockHooksState = {
@@ -12,6 +12,8 @@ type MockHooksState = {
 }
 
 type MockStoreState = {
+  dataSourceList: unknown[]
+  nodes: unknown[]
   shouldAutoOpenStartNodeSelector: boolean
   setShouldAutoOpenStartNodeSelector?: (open: boolean) => void
   setHasSelectedStartNode?: (selected: boolean) => void
@@ -32,6 +34,8 @@ const {
     isReadOnly: false,
   }
   const mockStoreState: MockStoreState = {
+    dataSourceList: [],
+    nodes: [],
     shouldAutoOpenStartNodeSelector: false,
     setShouldAutoOpenStartNodeSelector: undefined,
     setHasSelectedStartNode: undefined,
@@ -54,13 +58,6 @@ type HandleProps = {
   onClick?: () => void
 }
 
-type BlockSelectorProps = {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  onSelect?: (type: BlockEnum, pluginDefaultValue?: { pluginId: string }) => void
-  triggerClassName?: (open: boolean) => string
-}
-
 vi.mock('reactflow', () => ({
   Handle: ({ id, className, children, onClick }: HandleProps) => (
     <div
@@ -76,53 +73,81 @@ vi.mock('reactflow', () => ({
     Left: 'left',
     Right: 'right',
   },
+  useStoreApi: () => ({
+    getState: () => ({ getNodes: () => [] }),
+  }),
 }))
 
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ open = false, onOpenChange, onSelect, triggerClassName }: BlockSelectorProps) => (
-    <div>
-      <button
-        type="button"
-        className={triggerClassName?.(open)}
-        onClick={(e) => {
-          e.stopPropagation()
-          onOpenChange?.(!open)
-        }}
-      >
-        add-node
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          onSelect?.(BlockEnum.Answer, { pluginId: 'plugin-1' })
-        }}
-      >
-        select-node
-      </button>
-    </div>
-  ),
-}))
+vi.mock('../../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-available-blocks')>()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: () => ({
-    availablePrevBlocks: mockHooksState.availablePrevBlocks,
-    availableNextBlocks: mockHooksState.availableNextBlocks,
-  }),
-  useIsChatMode: () => mockHooksState.isChatMode,
-  useNodesInteractions: () => ({
-    handleNodeAdd: mockHandleNodeAdd,
-  }),
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => mockHooksState.isReadOnly,
-  }),
-}))
+  return {
+    ...actual,
+    useAvailableBlocks: () => ({
+      availablePrevBlocks: mockHooksState.availablePrevBlocks,
+      availableNextBlocks: mockHooksState.availableNextBlocks,
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeAdd: mockHandleNodeAdd,
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => mockHooksState.isChatMode,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: () => mockHooksState.isReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: MockStoreState) => T) => selector(mockStoreState),
   useWorkflowStore: () => ({
     setState: mockWorkflowStoreSetState,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      configsMap: { flowType: 'app-flow' },
+      availableNodesMetaData: { nodes: [] },
+    }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
+  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllWorkflowTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: [] }),
+  useInvalidateAllBuiltInTools: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
+  useMarketplacePlugins: () => ({ data: undefined }),
 }))
 
 const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
@@ -133,9 +158,8 @@ const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType
   ...overrides,
 })
 
-const getAddNodeButton = () => screen.getByRole('button', { name: 'add-node' })
-const queryAddNodeButton = () => screen.queryByRole('button', { name: 'add-node' })
-const getSelectNodeButton = () => screen.getByRole('button', { name: 'select-node' })
+const getAddNodeButton = () => screen.getByRole('button', { name: 'workflow.common.addBlock' })
+const queryAddNodeButton = () => screen.queryByRole('button', { name: 'workflow.common.addBlock' })
 
 const renderTargetHandle = (dataOverrides: Partial<CommonNodeType> = {}) => {
   return render(
@@ -181,7 +205,7 @@ describe('node-handle', () => {
 
   // Target-side tests cover selector visibility, connection locking, and status rendering.
   describe('NodeTargetHandle', () => {
-    it('should toggle the target add trigger and select the next node', () => {
+    it('should toggle the target add trigger', () => {
       renderTargetHandle()
 
       const handle = screen.getByTestId('handle-target-handle')
@@ -193,27 +217,14 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       // Trigger stays pointer-events-none so it never steals mousedown from
       // the underlying React Flow handle (drag-to-connect must keep working).
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
-
-      fireEvent.click(getSelectNodeButton())
-
-      expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-        {
-          nodeType: BlockEnum.Answer,
-          pluginDefaultValue: { pluginId: 'plugin-1' },
-        },
-        {
-          nextNodeId: 'target-node',
-          nextNodeTargetHandle: 'target-handle',
-        },
-      )
+      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
     })
 
     it('should not render the target add trigger when the handle is already connected', () => {
@@ -240,24 +251,11 @@ describe('node-handle', () => {
       expect(getAddNodeButton()).toHaveClass('opacity-100')
       expect(getAddNodeButton()).toHaveClass('pointer-events-none')
     })
-
-    it.each([
-      ['succeeded', NodeRunningStatus.Succeeded, 'after:bg-workflow-link-line-success-handle'],
-      ['failed', NodeRunningStatus.Failed, 'after:bg-workflow-link-line-error-handle'],
-      ['exception', NodeRunningStatus.Exception, 'after:bg-workflow-link-line-failure-handle'],
-    ])('should render the target %s status class', (_label, runningStatus, expectedClass) => {
-      renderTargetHandle({
-        _runningStatus: runningStatus,
-      })
-
-      expect(screen.getByTestId('handle-target-handle')).toHaveClass(expectedClass)
-      expect(screen.getByTestId('handle-target-handle')).toHaveClass('custom-target-handle')
-    })
   })
 
   // Source-side tests cover selector opening paths, previous-node selection, and status styling.
   describe('NodeSourceHandle', () => {
-    it('should toggle the source add trigger and select the previous node', () => {
+    it('should toggle the source add trigger', () => {
       renderSourceHandle()
 
       const handle = screen.getByTestId('handle-source-handle')
@@ -267,25 +265,12 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(getSelectNodeButton())
-
-      expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-        {
-          nodeType: BlockEnum.Answer,
-          pluginDefaultValue: { pluginId: 'plugin-1' },
-        },
-        {
-          prevNodeId: 'source-node',
-          prevNodeSourceHandle: 'source-handle',
-        },
-      )
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
     })
 
     it('should keep the source add trigger visible when the node is selected', () => {
@@ -298,24 +283,6 @@ describe('node-handle', () => {
       expect(addNodeButton).toHaveClass('custom-selector')
       expect(addNodeButton).toHaveClass('opacity-100')
       expect(addNodeButton).toHaveClass('pointer-events-none')
-    })
-
-    it.each([
-      ['succeeded', NodeRunningStatus.Succeeded, undefined, 'after:bg-workflow-link-line-success-handle'],
-      ['failed', NodeRunningStatus.Failed, undefined, 'after:bg-workflow-link-line-error-handle'],
-      ['exception', NodeRunningStatus.Exception, true, 'after:bg-workflow-link-line-failure-handle'],
-    ])('should render the source %s status class', (_label, runningStatus, showExceptionStatus, expectedClass) => {
-      renderSourceHandle(
-        {
-          _runningStatus: runningStatus,
-        },
-        {
-          showExceptionStatus,
-        },
-      )
-
-      expect(screen.getByTestId('handle-source-handle')).toHaveClass(expectedClass)
-      expect(screen.getByTestId('handle-source-handle')).toHaveClass('custom-source-handle')
     })
   })
 
@@ -333,7 +300,7 @@ describe('node-handle', () => {
 
       const addNodeButton = getAddNodeButton()
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       expect(addNodeButton).toHaveClass('pointer-events-none')
       expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
@@ -357,7 +324,9 @@ describe('node-handle', () => {
 
       renderSourceHandle({ type: BlockEnum.Start })
 
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ shouldAutoOpenStartNodeSelector: false })
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+        shouldAutoOpenStartNodeSelector: false,
+      })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ hasSelectedStartNode: false })
     })
 

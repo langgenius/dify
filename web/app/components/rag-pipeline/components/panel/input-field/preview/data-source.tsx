@@ -11,27 +11,24 @@ type DatasourceProps = {
   dataSourceNodeId: string
 }
 
-const DataSource = ({
-  onSelect: setDatasource,
-  dataSourceNodeId,
-}: DatasourceProps) => {
+const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourceProps) => {
   const { t } = useTranslation()
-  const pipelineId = useStore(state => state.pipelineId)
-  const { data: paramsConfig } = useDraftPipelinePreProcessingParams({
-    pipeline_id: pipelineId!,
-    node_id: dataSourceNodeId,
-  }, !!pipelineId && !!dataSourceNodeId)
+  const pipelineId = useStore((state) => state.pipelineId)
+  const { data: paramsConfig } = useDraftPipelinePreProcessingParams(
+    {
+      pipeline_id: pipelineId!,
+      node_id: dataSourceNodeId,
+    },
+    !!pipelineId && !!dataSourceNodeId,
+  )
 
   return (
     <div className="flex flex-col">
       <div className="px-4 pt-2 system-sm-semibold-uppercase text-text-secondary">
-        {t('inputFieldPanel.preview.stepOneTitle', { ns: 'datasetPipeline' })}
+        {t(($) => $['inputFieldPanel.preview.stepOneTitle'], { ns: 'datasetPipeline' })}
       </div>
       <div className="px-4 py-2">
-        <DataSourceOptions
-          onSelect={setDatasource}
-          dataSourceNodeId={dataSourceNodeId}
-        />
+        <DataSourceOptions onSelect={setDatasource} dataSourceNodeId={dataSourceNodeId} />
       </div>
       <Form variables={paramsConfig?.variables || []} />
     </div>

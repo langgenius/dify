@@ -3,6 +3,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -68,6 +69,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
+        session: Session,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke app
@@ -76,7 +78,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if not user_id:
             user = EndUserService.get_or_create_end_user(app)
         else:
-            user = cls._get_user(user_id, app)
+            try:
+                user = cls._get_user(user_id, app)
+            except ValueError:
+                # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
+                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
 
         conversation_id = conversation_id or ""
 
@@ -85,14 +91,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 if not query:
                     raise ValueError("missing query")
 
-                return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
+                return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files, session)
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app)
                 if not workflow:
                     raise ValueError("unexpected app type")
                 return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files)
             case AppMode.COMPLETION:
-                return cls.invoke_completion_app(app, user, stream, inputs, files)
+                return cls.invoke_completion_app(app, user, stream, inputs, files, session)
             case _:
                 raise ValueError("unexpected app type")
 
@@ -106,6 +112,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
+        session: Session,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke chat app
@@ -135,6 +142,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     workflow_run_id=str(uuid.uuid4()),
                     streaming=stream,
                     pause_state_config=pause_config,
+                    session=session,
                 )
             case AppMode.AGENT_CHAT:
                 return AgentChatAppGenerator().generate(
@@ -148,6 +156,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     },
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=stream,
+                    session=session,
                 )
             case AppMode.CHAT:
                 return ChatAppGenerator().generate(
@@ -161,6 +170,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     },
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=stream,
+                    session=session,
                 )
             case _:
                 raise ValueError("unexpected app type")
@@ -202,6 +212,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
+        session: Session,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke completion app
@@ -212,6 +223,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
+            session=session,
         )
 
     @classmethod
@@ -226,6 +238,13 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 EndUser.app_id == app.id,
             )
             user = session.scalar(stmt)
+            if not user:
+                stmt = select(EndUser).where(
+                    EndUser.session_id == user_id,
+                    EndUser.tenant_id == app.tenant_id,
+                    EndUser.app_id == app.id,
+                )
+                user = session.scalar(stmt)
             if not user:
                 stmt = select(Account).where(
                     Account.id == user_id,

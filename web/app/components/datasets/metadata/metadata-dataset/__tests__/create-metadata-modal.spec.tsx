@@ -30,7 +30,9 @@ describe('CreateMetadataModal', () => {
         />,
       )
       expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      ).toBeInTheDocument()
     })
 
     it('should render trigger element', () => {
@@ -57,7 +59,9 @@ describe('CreateMetadataModal', () => {
           hasBack
         />,
       )
-      expect(screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }),
+      ).toBeInTheDocument()
     })
 
     it('should pass hasBack=undefined when not provided', () => {
@@ -69,7 +73,9 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.queryByRole('button', { name: 'dataset.metadata.createMetadata.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'dataset.metadata.createMetadata.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should accept custom popupLeft', () => {
@@ -114,9 +120,12 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), {
-        target: { value: 'test' },
-      })
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+        {
+          target: { value: 'test' },
+        },
+      )
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(handleSave).toHaveBeenCalledWith({

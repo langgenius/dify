@@ -32,7 +32,16 @@ class TestDefaultModelApi:
             ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
-            service_mock.return_value.get_default_model_of_model_type.return_value = {"model": "gpt-4"}
+            service_mock.return_value.get_default_model_of_model_type.return_value = {
+                "model": "gpt-4",
+                "model_type": ModelType.LLM,
+                "provider": {
+                    "tenant_id": "tenant1",
+                    "provider": "openai",
+                    "label": {"en_US": "OpenAI", "zh_Hans": "OpenAI"},
+                    "supported_model_types": [ModelType.LLM],
+                },
+            }
 
             result = method(api, "tenant1")
 

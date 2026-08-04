@@ -1,17 +1,12 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
 import dynamic from '@/next/dynamic'
-import {
-  useIsChatMode,
-} from '../hooks'
+import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,
@@ -37,31 +32,49 @@ const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/pane
 const WorkflowCopilotPanel = dynamic(() => import('@/app/components/workflow/panel/workflow-copilot'), {
   ssr: false,
 })
+const ChatVariablePanel = dynamic(
+  () => import('@/app/components/workflow/panel/chat-variable-panel'),
+  {
+    ssr: false,
+  },
+)
+const GlobalVariablePanel = dynamic(
+  () => import('@/app/components/workflow/panel/global-variable-panel'),
+  {
+    ssr: false,
+  },
+)
 
 const WorkflowPanelOnLeft = () => {
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
-    currentLogItem: state.currentLogItem,
-    setCurrentLogItem: state.setCurrentLogItem,
-    showMessageLogModal: state.showMessageLogModal,
-    setShowMessageLogModal: state.setShowMessageLogModal,
-    currentLogModalActiveTab: state.currentLogModalActiveTab,
-  })))
+  const {
+    currentLogItem,
+    setCurrentLogItem,
+    showMessageLogModal,
+    setShowMessageLogModal,
+    currentLogModalActiveTab,
+  } = useAppStore(
+    useShallow((state) => ({
+      currentLogItem: state.currentLogItem,
+      setCurrentLogItem: state.setCurrentLogItem,
+      showMessageLogModal: state.showMessageLogModal,
+      setShowMessageLogModal: state.setShowMessageLogModal,
+      currentLogModalActiveTab: state.currentLogModalActiveTab,
+    })),
+  )
   return (
     <>
-      {
-        showMessageLogModal && (
-          <MessageLogModal
-            fixedWidth
-            width={400}
-            currentLogItem={currentLogItem}
-            onCancel={() => {
-              setCurrentLogItem()
-              setShowMessageLogModal(false)
-            }}
-            defaultTab={currentLogModalActiveTab}
-          />
-        )
-      }
+      {showMessageLogModal && (
+        <MessageLogModal
+          fixedWidth
+          width={400}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowMessageLogModal(false)
+          }}
+          defaultTab={currentLogModalActiveTab}
+        />
+      )}
     </>
   )
 }
@@ -111,12 +124,26 @@ const WorkflowPanelOnRight = () => {
           <WorkflowCopilotPanel />
         )
       }
+  const historyWorkflowData = useStore((s) => s.historyWorkflowData)
+  const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
+  const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
+  const showGlobalVariablePanel = useStore((s) => s.showGlobalVariablePanel)
+  const controlMode = useStore((s) => s.controlMode)
+
+  return (
+    <>
+      {historyWorkflowData && !isChatMode && <Record />}
+      {historyWorkflowData && isChatMode && <ChatRecord />}
+      {showDebugAndPreviewPanel && isChatMode && <DebugAndPreview />}
+      {showDebugAndPreviewPanel && !isChatMode && <WorkflowPreview />}
+      {showChatVariablePanel && isChatMode && <ChatVariablePanel />}
+      {showGlobalVariablePanel && <GlobalVariablePanel />}
       {controlMode === 'comment' && <CommentsPanel />}
     </>
   )
 }
 const WorkflowPanel = () => {
-  const appDetail = useAppStore(s => s.appDetail)
+  const appDetail = useAppStore((s) => s.appDetail)
   const versionHistoryPanelProps = useMemo(() => {
     const appId = appDetail?.id
     return {
@@ -138,9 +165,7 @@ const WorkflowPanel = () => {
     }
   }, [versionHistoryPanelProps])
 
-  return (
-    <Panel {...panelProps} />
-  )
+  return <Panel {...panelProps} />
 }
 
 export default memo(WorkflowPanel)

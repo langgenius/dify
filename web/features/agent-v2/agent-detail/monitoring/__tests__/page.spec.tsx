@@ -1,4 +1,7 @@
-import type { AgentLogSourceListResponse, AgentStatisticSummaryEnvelopeResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentLogSourceListResponse,
+  AgentStatisticSummaryEnvelopeResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { EChartsOption } from 'echarts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -29,7 +32,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('echarts-for-react', () => ({
-  default: ({ option, style }: { option: EChartsOption, style?: React.CSSProperties }) => {
+  default: ({ option, style }: { option: EChartsOption; style?: React.CSSProperties }) => {
     mocks.chartOptions.push(option)
 
     return <div data-testid="agent-monitoring-chart" style={style} />
@@ -98,30 +101,14 @@ const statisticsResponse: AgentStatisticSummaryEnvelopeResponse = {
     user_satisfaction_rate: 66.67,
   },
   charts: {
-    average_response_time: [
-      { date: '2026-06-22', latency: 1250 },
-    ],
-    average_session_interactions: [
-      { date: '2026-06-22', interactions: 1.5 },
-    ],
-    daily_conversations: [
-      { date: '2026-06-22', conversation_count: 2 },
-    ],
-    daily_end_users: [
-      { date: '2026-06-22', terminal_count: 3 },
-    ],
-    daily_messages: [
-      { date: '2026-06-22', message_count: 1250 },
-    ],
-    token_usage: [
-      { date: '2026-06-22', token_count: 2500, total_price: '0.005', currency: 'USD' },
-    ],
-    tokens_per_second: [
-      { date: '2026-06-22', tps: 4 },
-    ],
-    user_satisfaction_rate: [
-      { date: '2026-06-22', rate: 66.67 },
-    ],
+    average_response_time: [{ date: '2026-06-22', latency: 1250 }],
+    average_session_interactions: [{ date: '2026-06-22', interactions: 1.5 }],
+    daily_conversations: [{ date: '2026-06-22', conversation_count: 2 }],
+    daily_end_users: [{ date: '2026-06-22', terminal_count: 3 }],
+    daily_messages: [{ date: '2026-06-22', message_count: 1250 }],
+    token_usage: [{ date: '2026-06-22', token_count: 2500, total_price: '0.005', currency: 'USD' }],
+    tokens_per_second: [{ date: '2026-06-22', tps: 4 }],
+    user_satisfaction_rate: [{ date: '2026-06-22', rate: 66.67 }],
   },
 }
 
@@ -172,8 +159,7 @@ const renderPage = () => {
 const getLatestStatisticsQueryInput = () => {
   const latestCall = mocks.statisticsQueryOptions.mock.calls.at(-1)
 
-  if (!latestCall)
-    throw new Error('Expected statistics query options to be called')
+  if (!latestCall) throw new Error('Expected statistics query options to be called')
 
   return latestCall[0]
 }
@@ -223,9 +209,11 @@ describe('AgentMonitoringPage', () => {
     const firstChartOption = mocks.chartOptions[0]
 
     expect(firstChartOption).toBeDefined()
-    expect(firstChartOption).toEqual(expect.objectContaining({
-      grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
-    }))
+    expect(firstChartOption).toEqual(
+      expect.objectContaining({
+        grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
+      }),
+    )
     expect(firstChartOption?.xAxis).toEqual(expect.any(Array))
   })
 
@@ -254,20 +242,29 @@ describe('AgentMonitoringPage', () => {
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).toEqual(expect.objectContaining({
-        source: 'webapp:webapp-app-id',
-      }))
+      expect(getLatestStatisticsQueryInput().input.query).toEqual(
+        expect.objectContaining({
+          source: 'webapp:webapp-app-id',
+        }),
+      )
     })
 
     const sourceTrigger = screen.getByRole('combobox', { name: /Book Translation/ })
 
-    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass('system-sm-regular', 'text-text-tertiary')
-    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass('system-sm-medium', 'text-text-secondary')
+    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass(
+      'system-sm-regular',
+      'text-text-tertiary',
+    )
+    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass(
+      'system-sm-medium',
+      'text-text-secondary',
+    )
   })
 
   it('should keep previous statistics visible while a source filter refetches', async () => {
     const user = userEvent.setup()
-    let resolveNextStatistics: (value: AgentStatisticSummaryEnvelopeResponse) => void = () => undefined
+    let resolveNextStatistics: (value: AgentStatisticSummaryEnvelopeResponse) => void = () =>
+      undefined
     const nextStatisticsPromise = new Promise<AgentStatisticSummaryEnvelopeResponse>((resolve) => {
       resolveNextStatistics = resolve
     })
@@ -283,9 +280,11 @@ describe('AgentMonitoringPage', () => {
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).toEqual(expect.objectContaining({
-        source: 'webapp:webapp-app-id',
-      }))
+      expect(getLatestStatisticsQueryInput().input.query).toEqual(
+        expect.objectContaining({
+          source: 'webapp:webapp-app-id',
+        }),
+      )
     })
     expect(screen.getByText('1.3k')).toBeInTheDocument()
 

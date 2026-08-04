@@ -151,9 +151,7 @@ describe('DocumentPicker', () => {
   it('should keep focus in the search input when deleting from an empty result', async () => {
     const user = userEvent.setup()
     mockUseDocumentList.mockImplementation(({ query }) => ({
-      data: query.keyword === 'missing'
-        ? { data: [] }
-        : mockDocumentListData,
+      data: query.keyword === 'missing' ? { data: [] } : mockDocumentListData,
     }))
 
     renderDocumentPicker()
@@ -165,7 +163,9 @@ describe('DocumentPicker', () => {
     await user.type(searchInput, 'missing')
     expect(await screen.findByText('common.noData')).toBeInTheDocument()
 
-    await user.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}')
+    await user.keyboard(
+      '{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}',
+    )
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(searchInput).toHaveFocus()
@@ -192,10 +192,7 @@ describe('DocumentPicker', () => {
     const onChange = vi.fn()
     const selectedDocument = createDocument({ id: 'doc-2', name: 'Document 2' })
     mockDocumentListData = {
-      data: [
-        createDocument({ id: 'doc-1', name: 'Document 1' }),
-        selectedDocument,
-      ],
+      data: [createDocument({ id: 'doc-1', name: 'Document 1' }), selectedDocument],
     }
 
     renderDocumentPicker({ onChange })

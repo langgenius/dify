@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 from uuid import UUID
 
 import pytest
@@ -382,7 +382,9 @@ def test_serve_snapshot_happy_path(patch_service, app_model, run_id):
     result = ctrl._serve_snapshot(app_model, run_id)
     assert isinstance(result, dict)
     assert result["workflow_run_id"] == "00000000-0000-0000-0000-0000000000aa"
-    patch_service.snapshot_workflow_run.assert_called_once_with(app_model=app_model, workflow_run_id=str(run_id))
+    patch_service.snapshot_workflow_run.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), session=ANY
+    )
 
 
 def test_serve_snapshot_translates_inspector_error_to_404(patch_service, app_model, run_id):
@@ -399,7 +401,7 @@ def test_serve_node_detail_happy_path(patch_service, app_model, run_id):
     result = ctrl._serve_node_detail(app_model, run_id, "agent-1")
     assert result["node_id"] == "agent-1"
     patch_service.node_detail.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1"
+        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=ANY
     )
 
 
@@ -431,6 +433,7 @@ def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
         workflow_run_id=str(run_id),
         node_id="agent-1",
         output_name="text",
+        session=ANY,
     )
 
 

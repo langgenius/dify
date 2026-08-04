@@ -2,11 +2,13 @@ from flask import Blueprint
 from flask_restx import Namespace
 
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
+from controllers.openapi._version_gate import attach_version_gate
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
+attach_version_gate(bp)
 
 api = ExternalApi(
     bp,

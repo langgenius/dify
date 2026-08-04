@@ -1,4 +1,4 @@
-"""Integration tests for POST /openapi/v1/apps/<id>/run."""
+"""Integration tests for POST /openapi/v1/apps/<id>:run."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def test_run_chat_dispatches_to_chat_handler(
     monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService.generate", staticmethod(_fake_generate))
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app_in_workspace.id}/run",
+        f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi", "response_mode": "blocking", "user": "spoof@x.com"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -85,7 +85,7 @@ def test_run_chat_without_query_returns_422(
 ):
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app_in_workspace.id}/run",
+        f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -116,7 +116,7 @@ def test_run_completion_dispatches_to_completion_handler(
     monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService.generate", staticmethod(_fake_generate))
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app.id}/run",
+        f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -131,7 +131,7 @@ def test_run_workflow_with_query_returns_422(
     app = app_with_mode("workflow")
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app.id}/run",
+        f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "query": "hi", "response_mode": "blocking"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -154,7 +154,7 @@ def test_run_workflow_no_query_dispatches_to_workflow_handler(
     monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService.generate", staticmethod(_fake_generate))
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app.id}/run",
+        f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -170,7 +170,7 @@ def test_run_unsupported_mode_returns_422(
     app = app_with_mode("channel")
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app.id}/run",
+        f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -181,7 +181,7 @@ def test_run_unsupported_mode_returns_422(
 def test_run_without_bearer_returns_401(flask_app: Flask, app_in_workspace):
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app_in_workspace.id}/run",
+        f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi"},
     )
     assert res.status_code == 401
@@ -205,7 +205,7 @@ def test_run_with_insufficient_scope_returns_403(
 
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app_in_workspace.id}/run",
+        f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -215,7 +215,7 @@ def test_run_with_insufficient_scope_returns_403(
 def test_run_with_unknown_app_returns_404(flask_app: Flask, account_token):
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{uuid.uuid4()}/run",
+        f"/openapi/v1/apps/{uuid.uuid4()}:run",
         json={"inputs": {}, "query": "hi"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -235,7 +235,7 @@ def test_run_streaming_returns_event_stream(
 
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app_in_workspace.id}/run",
+        f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi", "response_mode": "streaming"},
         headers={"Authorization": f"Bearer {account_token}"},
     )
@@ -247,7 +247,7 @@ def test_run_streaming_returns_event_stream(
 def test_run_without_inputs_returns_422(flask_app: Flask, account_token, app_in_workspace):
     client = flask_app.test_client()
     res = client.post(
-        f"/openapi/v1/apps/{app_in_workspace.id}/run",
+        f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"query": "hi"},
         headers={"Authorization": f"Bearer {account_token}"},
     )

@@ -138,6 +138,7 @@ def test_get_signed_file_url_for_plugin_and_verify_roundtrip(monkeypatch: pytest
         mimetype="application/pdf",
         tenant_id="tenant-id",
         user_id="user-id",
+        conversation_id="conversation-id",
     )
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
@@ -146,12 +147,14 @@ def test_get_signed_file_url_for_plugin_and_verify_roundtrip(monkeypatch: pytest
     assert parsed.path == "/files/upload/for-plugin"
     assert query["tenant_id"] == ["tenant-id"]
     assert query["user_id"] == ["user-id"]
+    assert query["conversation_id"] == ["conversation-id"]
     assert (
         verify_plugin_file_signature(
             filename="report.pdf",
             mimetype="application/pdf",
             tenant_id="tenant-id",
             user_id="user-id",
+            conversation_id="conversation-id",
             timestamp=query["timestamp"][0],
             nonce=query["nonce"][0],
             sign=query["sign"][0],

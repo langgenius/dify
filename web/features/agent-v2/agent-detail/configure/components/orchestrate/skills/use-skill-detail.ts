@@ -1,79 +1,89 @@
 'use client'
 
-import type { AgentDriveSkillFileResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentDriveApiContext } from '../drive-context'
-import type { AgentSkillDetail } from './detail-dialog'
+import type { AgentConfigSkillFileResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigApiContext } from '../config-context'
+import type { AgentSkillDetail, AgentSkillDetailDownloadAction } from './detail-dialog'
 import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
-import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
+import Cookies from 'js-cookie'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { consoleQuery } from '@/service/client'
+import { downloadBlob } from '@/utils/download'
 import { getDriveFileIconType } from '../files/file-icon'
 
-const DIFY_SKILL_FULL_ARCHIVE_NAME = '.DIFY-SKILL-FULL.zip'
+const skillFileContentQueryKey = (url?: string) => ['agent-v2', 'skill-file-content', url] as const
 
-const getSkillDrivePath = (skill: AgentSkill) => {
-  const skillMdKeySlug = skill.skillMdKey?.split('/', 1)[0]
-  return skill.path ?? skillMdKeySlug ?? skill.id
+const resolveSkillFileContentUrl = (url: string) => {
+  const consoleApiUrl = new URL(API_PREFIX, globalThis.location.origin)
+  const consoleApiBaseUrl = consoleApiUrl.href.endsWith('/')
+    ? consoleApiUrl
+    : new URL(`${consoleApiUrl.href}/`)
+
+  return new URL(url, consoleApiBaseUrl).toString()
 }
 
-const getSkillFileName = (key: string, skillDrivePath: string) => key.startsWith(`${skillDrivePath}/`)
-  ? key.slice(skillDrivePath.length + 1)
-  : key
+const fetchSkillFileContent = async (url: string) => {
+  const response = await globalThis.fetch(resolveSkillFileContentUrl(url), {
+    credentials: 'include',
+    headers: {
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    },
+  })
+  if (!response.ok) throw new Error(`Failed to download skill file: ${response.status}`)
 
-const getSkillRelativePath = (path: string, skillDrivePath: string) =>
-  getSkillFileName(path, skillDrivePath).split('/').filter(Boolean).join('/')
+  return response.blob()
+}
 
-const isSkillArchiveFile = (path: string) =>
-  path === DIFY_SKILL_FULL_ARCHIVE_NAME || path.endsWith(`/${DIFY_SKILL_FULL_ARCHIVE_NAME}`)
+const getSkillFileContentQueryOptions = (url: string) =>
+  queryOptions({
+    queryKey: skillFileContentQueryKey(url),
+    queryFn: () => fetchSkillFileContent(url),
+    staleTime: Infinity,
+  })
 
-const isSkillFolder = (file: AgentDriveSkillFileResponse) =>
-  file.type === 'directory' || file.type === 'folder'
+const isSkillFolder = (file: AgentConfigSkillFileResponse) => file.type === 'directory'
 
-const toSkillFileNode = (item: AgentDriveSkillFileResponse, skillDrivePath: string): AgentFileNode => {
-  const filePath = getSkillFileName(item.path, skillDrivePath)
-  const fileName = item.name || filePath.split('/').pop() || filePath
-  const id = item.drive_key
-    ?? (item.path.startsWith(`${skillDrivePath}/`) ? item.path : `${skillDrivePath}/${item.path}`)
+const toSkillFileNode = (item: AgentConfigSkillFileResponse): AgentFileNode => {
+  const fileName = item.name || item.path.split('/').pop() || item.path
 
   return {
-    driveKey: item.available_in_drive ? item.drive_key ?? undefined : undefined,
+    id: item.path,
+    name: fileName,
+    configName: item.path,
     icon: isSkillFolder(item)
       ? 'folder'
       : getDriveFileIconType({
-          fileKind: item.type,
+          fileKind: undefined,
           fileName,
           mimeType: undefined,
         }),
-    id,
-    name: fileName,
   }
 }
 
-const sortSkillFileNodes = (files: AgentFileNode[]): AgentFileNode[] => [...files].sort((first, second) => {
-  const firstIsFolder = first.icon === 'folder'
-  const secondIsFolder = second.icon === 'folder'
+const sortSkillFileNodes = (files: AgentFileNode[]): AgentFileNode[] =>
+  [...files]
+    .sort((first, second) => {
+      const firstIsFolder = first.icon === 'folder'
+      const secondIsFolder = second.icon === 'folder'
 
-  if (firstIsFolder !== secondIsFolder)
-    return firstIsFolder ? -1 : 1
+      if (firstIsFolder !== secondIsFolder) return firstIsFolder ? -1 : 1
 
-  return first.name.localeCompare(second.name)
-}).map(file => file.children ? { ...file, children: sortSkillFileNodes(file.children) } : file)
+      return first.name.localeCompare(second.name)
+    })
+    .map((file) =>
+      file.children ? { ...file, children: sortSkillFileNodes(file.children) } : file,
+    )
 
-const toSkillFileTree = (files: AgentDriveSkillFileResponse[], skillDrivePath: string): AgentFileNode[] => {
+const toSkillFileTree = (files: AgentConfigSkillFileResponse[]): AgentFileNode[] => {
   const root: AgentFileNode[] = []
   const folders = new Map<string, AgentFileNode>()
-  const seenFilePaths = new Set<string>()
 
   for (const file of files) {
-    const relativePath = getSkillRelativePath(file.path, skillDrivePath)
-    if (!relativePath || isSkillArchiveFile(relativePath))
-      continue
-    if (!isSkillFolder(file)) {
-      if (seenFilePaths.has(relativePath))
-        continue
-
-      seenFilePaths.add(relativePath)
-    }
+    const relativePath = file.path.split('/').filter(Boolean).join('/')
+    if (!relativePath) continue
 
     const segments = relativePath.split('/').filter(Boolean)
     let siblings = root
@@ -104,7 +114,7 @@ const toSkillFileTree = (files: AgentDriveSkillFileResponse[], skillDrivePath: s
       }
 
       siblings.push({
-        ...toSkillFileNode(file, skillDrivePath),
+        ...toSkillFileNode(file),
         name: segment,
       })
     })
@@ -113,16 +123,14 @@ const toSkillFileTree = (files: AgentDriveSkillFileResponse[], skillDrivePath: s
   return sortSkillFileNodes(root)
 }
 
-const countSkillPackageFiles = (files: AgentDriveSkillFileResponse[] | undefined, skillDrivePath: string) => {
+const countSkillPackageFiles = (files: AgentConfigSkillFileResponse[] | undefined) => {
   const filePaths = new Set<string>()
 
   for (const file of files ?? []) {
-    if (isSkillFolder(file))
-      continue
+    if (isSkillFolder(file)) continue
 
-    const relativePath = getSkillRelativePath(file.path, skillDrivePath)
-    if (!relativePath || isSkillArchiveFile(relativePath))
-      continue
+    const relativePath = file.path.split('/').filter(Boolean).join('/')
+    if (!relativePath) continue
 
     filePaths.add(relativePath)
   }
@@ -132,37 +140,30 @@ const countSkillPackageFiles = (files: AgentDriveSkillFileResponse[] | undefined
 
 const getSkillMdFileId = (files: AgentFileNode[]): string | undefined => {
   for (const file of files) {
-    if (file.icon !== 'folder' && file.name === 'SKILL.md')
-      return file.id
+    if (file.icon !== 'folder' && file.name === 'SKILL.md') return file.id
 
     const childFileId = file.children ? getSkillMdFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
+    if (childFileId) return childFileId
   }
 }
 
 const getFirstSkillFileId = (files: AgentFileNode[]): string | undefined => {
   for (const file of files) {
-    if (file.icon !== 'folder')
-      return file.id
+    if (file.icon !== 'folder') return file.id
 
     const childFileId = file.children ? getFirstSkillFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
+    if (childFileId) return childFileId
   }
 }
 
 const findSkillFileById = (files: AgentFileNode[], fileId?: string): AgentFileNode | undefined => {
-  if (!fileId)
-    return undefined
+  if (!fileId) return undefined
 
   for (const file of files) {
-    if (file.id === fileId)
-      return file
+    if (file.id === fileId) return file
 
     const childFile = file.children ? findSkillFileById(file.children, fileId) : undefined
-    if (childFile)
-      return childFile
+    if (childFile) return childFile
   }
 }
 
@@ -172,33 +173,42 @@ export function useAgentSkillDetail({
   isOpen,
   skill,
 }: {
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   description: string
   isOpen: boolean
   skill: AgentSkill
 }): AgentSkillDetail {
+  const { t: tCommon } = useTranslation('common')
+  const queryClient = useQueryClient()
   const [selectedFileId, setSelectedFileId] = useState<string>()
-  const skillDrivePath = getSkillDrivePath(skill)
+  const [downloadActionLoadingTarget, setDownloadActionLoadingTarget] =
+    useState<AgentSkillDetailDownloadAction | null>(null)
   const agentSkillInspectQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.skills.bySkillPath.inspect.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.skills.byName.inspect.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
-          skill_path: skillDrivePath,
+          name: skill.name,
+        },
+        query: {
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
     enabled: isOpen && !apiContext.workflow,
   })
   const workflowSkillInspectQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.skills.bySkillPath.inspect.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
-          skill_path: skillDrivePath,
+          name: skill.name,
         },
         query: {
           node_id: apiContext.workflow?.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
@@ -206,102 +216,205 @@ export function useAgentSkillDetail({
   })
   const inspectQuery = apiContext.workflow ? workflowSkillInspectQuery : agentSkillInspectQuery
   const detailFiles = useMemo(
-    () => toSkillFileTree(inspectQuery.data?.files ?? [], skillDrivePath),
-    [inspectQuery.data?.files, skillDrivePath],
+    () => toSkillFileTree(inspectQuery.data?.files ?? []),
+    [inspectQuery.data?.files],
   )
-  const previewFileId = selectedFileId
-    ?? skill.skillMdKey
-    ?? inspectQuery.data?.skill_md.key
-    ?? (inspectQuery.isSuccess ? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles) : undefined)
+  const previewFileId =
+    selectedFileId ??
+    inspectQuery.data?.skill_md.path ??
+    (inspectQuery.isSuccess
+      ? (getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles))
+      : undefined)
   const selectedFile = findSkillFileById(detailFiles, previewFileId)
-  const isSkillMdSelected = previewFileId === inspectQuery.data?.skill_md.key
-    || previewFileId === skill.skillMdKey
-    || selectedFile?.name === 'SKILL.md'
-  const selectedPreviewKey = isSkillMdSelected
+  const isSkillMdSelected =
+    previewFileId === inspectQuery.data?.skill_md.path || selectedFile?.name === 'SKILL.md'
+  const selectedPreviewPath = isSkillMdSelected
     ? undefined
-    : selectedFile?.driveKey
+    : (selectedFile?.configName ?? selectedFile?.id)
   const agentPreviewQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.preview.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.skills.byName.files.preview.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
+          name: skill.name,
         },
         query: {
-          key: selectedPreviewKey ?? '',
+          path: selectedPreviewPath ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
-    enabled: isOpen && !!selectedPreviewKey && !apiContext.workflow,
+    enabled: isOpen && !!selectedPreviewPath && !apiContext.workflow,
   })
   const workflowPreviewQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.preview.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
+          name: skill.name,
         },
         query: {
           node_id: apiContext.workflow?.nodeId,
-          key: selectedPreviewKey ?? '',
+          path: selectedPreviewPath ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
-    enabled: isOpen && !!selectedPreviewKey && !!apiContext.workflow,
+    enabled: isOpen && !!selectedPreviewPath && !!apiContext.workflow,
   })
   const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
   const isImagePreviewFile = selectedFile?.icon === 'image'
+  const shouldLoadImagePreview = isOpen && !!selectedPreviewPath && isImagePreviewFile
   const agentDownloadQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.download.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
+          name: skill.name,
         },
         query: {
-          key: selectedPreviewKey ?? '',
+          path: selectedPreviewPath ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
-    enabled:
-      isOpen
-      && !!selectedPreviewKey
-      && (isImagePreviewFile || !!previewQuery.data?.binary)
-      && !apiContext.workflow,
+    enabled: shouldLoadImagePreview && !apiContext.workflow,
   })
   const workflowDownloadQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.download.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
+          name: skill.name,
         },
         query: {
           node_id: apiContext.workflow?.nodeId,
-          key: selectedPreviewKey ?? '',
+          path: selectedPreviewPath ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
-    enabled:
-      isOpen
-      && !!selectedPreviewKey
-      && (isImagePreviewFile || !!previewQuery.data?.binary)
-      && !!apiContext.workflow,
+    enabled: shouldLoadImagePreview && !!apiContext.workflow,
   })
   const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
+  const skillFileContentUrl = downloadQuery.data?.url
+  const imageContentQuery = useQuery(
+    skillFileContentUrl
+      ? {
+          ...getSkillFileContentQueryOptions(skillFileContentUrl),
+          enabled: shouldLoadImagePreview,
+        }
+      : {
+          queryKey: skillFileContentQueryKey(),
+          queryFn: skipToken,
+        },
+  )
+  const handleDownloadFile = useCallback(
+    async (action: AgentSkillDetailDownloadAction) => {
+      if (!selectedFile) return
+
+      const file = selectedFile
+      const path = file.configName ?? file.id
+      const isSkillMdFile = path === inspectQuery.data?.skill_md.path || file.name === 'SKILL.md'
+
+      if (isSkillMdFile && inspectQuery.data?.skill_md.text !== undefined) {
+        downloadBlob({
+          data: new Blob([inspectQuery.data.skill_md.text], {
+            type: 'text/markdown;charset=utf-8',
+          }),
+          fileName: file.name,
+        })
+        return
+      }
+
+      setDownloadActionLoadingTarget(action)
+      try {
+        if (apiContext.workflow) {
+          const result = await queryClient.fetchQuery(
+            consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
+              input: {
+                params: {
+                  app_id: apiContext.workflow.appId,
+                  name: skill.name,
+                },
+                query: {
+                  node_id: apiContext.workflow.nodeId,
+                  path,
+                  draft_type: apiContext.draftType,
+                  version_id: apiContext.versionId,
+                },
+              },
+            }),
+          )
+          const data = await queryClient.fetchQuery(getSkillFileContentQueryOptions(result.url))
+          downloadBlob({ data, fileName: file.name })
+          return
+        }
+
+        const result = await queryClient.fetchQuery(
+          consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
+            input: {
+              params: {
+                agent_id: apiContext.agentId,
+                name: skill.name,
+              },
+              query: {
+                path,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            },
+          }),
+        )
+        const data = await queryClient.fetchQuery(getSkillFileContentQueryOptions(result.url))
+        downloadBlob({ data, fileName: file.name })
+      } catch {
+        toast.error(tCommon(($) => $['operation.downloadFailed']))
+      } finally {
+        setDownloadActionLoadingTarget(null)
+      }
+    },
+    [
+      apiContext,
+      inspectQuery.data?.skill_md.path,
+      inspectQuery.data?.skill_md.text,
+      queryClient,
+      selectedFile,
+      skill.name,
+      tCommon,
+    ],
+  )
 
   return {
     description,
-    fileCount: countSkillPackageFiles(inspectQuery.data?.files, skillDrivePath),
+    fileCount: countSkillPackageFiles(inspectQuery.data?.files),
     files: detailFiles,
     filePreview: {
       binary: isSkillMdSelected ? inspectQuery.data?.skill_md.binary : previewQuery.data?.binary,
-      content: isSkillMdSelected ? inspectQuery.data?.skill_md.text ?? undefined : previewQuery.data?.text ?? undefined,
-      downloadUrl: downloadQuery.data?.url,
+      content: isSkillMdSelected
+        ? (inspectQuery.data?.skill_md.text ?? undefined)
+        : (previewQuery.data?.text ?? undefined),
+      downloadActionLoadingTarget,
       fileName: selectedFile?.name,
-      isDownloadError: downloadQuery.isError,
-      isDownloadLoading: !!selectedPreviewKey && (isImagePreviewFile || !!previewQuery.data?.binary) && downloadQuery.isPending,
-      isError: isSkillMdSelected ? inspectQuery.isError : !!selectedPreviewKey && previewQuery.isError,
+      imageData: imageContentQuery.data,
+      isDownloadError:
+        shouldLoadImagePreview && (downloadQuery.isError || imageContentQuery.isError),
+      isDownloadLoading:
+        shouldLoadImagePreview && (downloadQuery.isPending || imageContentQuery.isPending),
+      isError: isSkillMdSelected
+        ? inspectQuery.isError
+        : !!selectedPreviewPath && previewQuery.isError,
       isImage: isImagePreviewFile,
-      isLoading: isSkillMdSelected ? inspectQuery.isPending : !!selectedPreviewKey && previewQuery.isPending,
+      isLoading: isSkillMdSelected
+        ? inspectQuery.isPending
+        : !!selectedPreviewPath && previewQuery.isPending,
     },
-    onSelectFile: file => setSelectedFileId(file.id),
+    onDownloadFile: handleDownloadFile,
+    onSelectFile: (file) => setSelectedFileId(file.id),
     selectedFileId: previewFileId,
     sections: [],
   }

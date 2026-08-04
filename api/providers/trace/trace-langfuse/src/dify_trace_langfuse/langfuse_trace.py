@@ -186,6 +186,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

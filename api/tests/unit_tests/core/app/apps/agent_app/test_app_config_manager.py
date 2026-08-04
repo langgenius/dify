@@ -28,7 +28,7 @@ def _soul() -> AgentSoulConfig:
 
 
 def test_model_and_prompt_come_from_soul():
-    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None)
+    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
     assert d["model"] == {
         "provider": "langgenius/openai/openai",
         "name": "gpt-4o-mini",
@@ -45,14 +45,18 @@ def test_model_and_prompt_come_from_soul():
 def test_feature_flags_come_from_app_model_config_when_present():
     # Q3: opener/follow-up/etc. live on app_model_config; model/prompt stay from Soul.
     fake_amc = SimpleNamespace(
-        to_dict=lambda: {
+        to_dict=lambda **_: {
             "opening_statement": "Hi, I'm Iris.",
             "suggested_questions_after_answer": {"enabled": True},
             "model": {"provider": "should-be-overridden", "name": "old"},
             "pre_prompt": "old prompt",
         }
     )
-    d = AgentAppConfigManager._synthesize_config_dict(_soul(), fake_amc)  # type: ignore[arg-type]
+    d = AgentAppConfigManager._synthesize_config_dict(
+        _soul(),
+        fake_amc,
+        annotation_reply={"enabled": False},  # type: ignore[arg-type]
+    )
     # feature flags preserved
     assert d["opening_statement"] == "Hi, I'm Iris."
     assert d["suggested_questions_after_answer"] == {"enabled": True}
@@ -62,15 +66,49 @@ def test_feature_flags_come_from_app_model_config_when_present():
 
 
 def test_missing_soul_model_leaves_no_model_key():
-    d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None)
+    d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None, annotation_reply=None)
     assert "model" not in d
     assert d["pre_prompt"] == ""
+    assert d["file_upload"] == {
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
+    }
+
+
+def test_soul_file_upload_overrides_legacy_app_model_config():
+    fake_amc = SimpleNamespace(
+        to_dict=lambda **_: {
+            "file_upload": {
+                "enabled": False,
+                "image": {"enabled": False},
+            },
+        }
+    )
+
+    d = AgentAppConfigManager._synthesize_config_dict(
+        AgentSoulConfig(),
+        fake_amc,
+        annotation_reply={"enabled": False},  # type: ignore[arg-type]
+    )
+
+    assert d["file_upload"] == {
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
+    }
 
 
 def test_prompt_type_defaults_to_simple():
     # PromptTemplateConfigManager.convert requires prompt_type; an Agent App with
     # no legacy app_model_config must still get the "simple" slot synthesized.
-    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None)
+    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
     assert d["prompt_type"] == "simple"
 
 
@@ -85,6 +123,7 @@ def test_get_app_config_has_null_model_config_id_without_legacy_row():
     app_config = AgentAppConfigManager.get_app_config(
         app_model=app_model,  # type: ignore[arg-type]
         agent_soul=_soul(),
+        annotation_reply=None,
         app_model_config=None,
         conversation=None,
     )
