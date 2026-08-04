@@ -201,7 +201,7 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
               onClick={onCreate}
               disabled={!currentWorkspace.id || !canManage}
             >
-              <span className="mr-1 i-heroicons-plus-20-solid flex size-4 shrink-0" />
+              <span className="i-heroicons-plus-20-solid flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">
                 {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
               </div>

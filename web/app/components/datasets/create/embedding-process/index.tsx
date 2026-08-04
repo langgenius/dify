@@ -57,13 +57,13 @@ const ActionButtons: FC<{
   return (
     <div className="mt-6 flex items-center gap-x-2 py-2">
       <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-        <Button className="w-fit gap-x-0.5 px-3">
+        <Button className="w-fit">
           <RiTerminalBoxLine className="size-4" />
-          <span className="px-0.5">Access the API</span>
+          <span>Access the API</span>
         </Button>
       </Link>
-      <Button className="w-fit gap-x-0.5 px-3" variant="primary" onClick={onNavToDocuments}>
-        <span className="px-0.5">{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
+      <Button className="w-fit" variant="primary" onClick={onNavToDocuments}>
+        <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
         <RiArrowRightLine className="size-4 stroke-current stroke-1" />
       </Button>
     </div>

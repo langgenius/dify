@@ -56,21 +56,21 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
             <Button
               variant="ghost"
               size="small"
-              className="gap-x-px text-text-tertiary"
+              className="text-text-tertiary"
               disabled={!canManageSecretKey}
               onClick={onOpenSecretKeyModal}
             >
               <span className="i-ri-key-2-line size-3.5 shrink-0" />
-              <span className="px-0.75 system-xs-medium">
+              <span className="system-xs-medium">
                 {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
               </span>
             </Button>
           }
         />
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-          <Button variant="ghost" size="small" className="gap-x-px text-text-tertiary">
+          <Button variant="ghost" size="small" className="text-text-tertiary">
             <span className="i-ri-book-open-line size-3.5 shrink-0" />
-            <span className="px-0.75 system-xs-medium">
+            <span className="system-xs-medium">
               {t(($) => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
             </span>
           </Button>

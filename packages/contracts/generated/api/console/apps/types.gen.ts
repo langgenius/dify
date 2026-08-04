@@ -1011,9 +1011,7 @@ export type SyncDraftWorkflowPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
+  environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
   features: {
     [key: string]: unknown
   }
@@ -1042,7 +1040,9 @@ export type EnvironmentVariableListResponse = {
 }
 
 export type EnvironmentVariableUpdatePayload = {
+  deleted_environment_variable_ids?: Array<string>
   environment_variables: Array<EnvironmentVariableItemPayload>
+  patch?: boolean
 }
 
 export type WorkflowFeaturesPayload = {
@@ -1975,6 +1975,13 @@ export type PipelineVariableResponse = {
   type: string
   unit?: string | null
   variable: string
+}
+
+export type SyncEnvironmentVariablePatchPayload = {
+  deleted_environment_variable_ids?: Array<string>
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }>
 }
 
 export type ConversationVariableItemPayload = {
