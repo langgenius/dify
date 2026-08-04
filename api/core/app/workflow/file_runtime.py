@@ -13,7 +13,7 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
-from core.tools.signature import sign_tool_file_uri
+from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
@@ -65,7 +65,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         uri = self.resolve_file_uri(file=file)
         if uri is None or file.transfer_method == FileTransferMethod.REMOTE_URL:
             return uri
-        return f"{self._base_url(for_external=for_external)}{uri}"
+        return bind_file_uri(uri, self._base_url(for_external=for_external))
 
     def resolve_file_uri(self, *, file: File) -> str | None:
         """Resolve a signed file URI without binding Dify-owned files to an origin.
@@ -110,7 +110,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         for_external: bool = True,
     ) -> str:
         uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
-        return f"{self._base_url(for_external=for_external)}{uri}"
+        return bind_file_uri(uri, self._base_url(for_external=for_external))
 
     def resolve_upload_file_uri(
         self,
@@ -130,7 +130,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     @override
     def resolve_tool_file_url(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
         uri = self.resolve_tool_file_uri(tool_file_id=tool_file_id, extension=extension)
-        return f"{self._base_url(for_external=for_external)}{uri}"
+        return bind_file_uri(uri, self._base_url(for_external=for_external))
 
     def resolve_tool_file_uri(self, *, tool_file_id: str, extension: str) -> str:
         """Resolve a signed ToolFile URI without selecting an origin."""

@@ -4,8 +4,30 @@ import hmac
 import os
 import time
 import urllib.parse
+from urllib.parse import urlsplit
 
 from configs import dify_config
+
+
+def bind_file_uri(uri: str, base_url: str) -> str:
+    """Bind a Dify-owned file URI to one caller-selected origin.
+
+    Explicit remote HTTP(S) URLs are already complete and pass through. Other
+    values must be origin-free ``/files/...`` URIs.
+    """
+
+    parsed = urlsplit(uri)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return uri
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or parsed.fragment
+        or uri.startswith("//")
+        or not parsed.path.startswith("/files/")
+    ):
+        raise ValueError("file URI must be an absolute HTTP(S) URL or a /files/ URI")
+    return f"{base_url}{uri}"
 
 
 def _secret_key() -> bytes:
@@ -27,7 +49,7 @@ def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True)
     """Sign a ToolFile URL for the browser or an internal Dify service."""
 
     base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
-    return f"{base_url}{sign_tool_file_uri(tool_file_id, extension)}"
+    return bind_file_uri(sign_tool_file_uri(tool_file_id, extension), base_url)
 
 
 def sign_upload_file_preview_url(upload_file_id: str, extension: str) -> str:
@@ -86,15 +108,6 @@ def get_signed_file_uri_for_plugin(
         query_params["conversation_id"] = conversation_id
     query = urllib.parse.urlencode(query_params)
     return f"/files/upload/for-plugin?{query}"
-
-
-def get_signed_file_url_for_plugin(
-    filename: str, mimetype: str, tenant_id: str, user_id: str, conversation_id: str | None = None
-) -> str:
-    """Build the signed upload URL used by the plugin-facing file upload endpoint."""
-
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-    return f"{base_url}{get_signed_file_uri_for_plugin(filename, mimetype, tenant_id, user_id, conversation_id)}"
 
 
 def verify_plugin_file_signature(

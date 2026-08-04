@@ -44,7 +44,7 @@ type fileUploadClient interface {
 		ctx context.Context,
 		transferMethod string,
 		reference, url *string,
-		audience FileURLAudience,
+		forFrontend bool,
 	) (*FileDownloadResponse, error)
 }
 
@@ -86,7 +86,7 @@ func runFileUpload(client fileUploadClient, path string, output io.Writer) error
 
 	// Step 3: Request download URL for the uploaded file
 	ref := reference
-	dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, FrontendDisplayFileURL)
+	dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, true)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func RunFileDownload(env *Environment, transferMethod string, referenceOrURL str
 	}
 	defer func() { _ = client.Close() }()
 
-	dlResp, err := client.CreateFileDownloadURL(ctx, transferMethod, reference, url, SandboxTransferFileURL)
+	dlResp, err := client.CreateFileDownloadURL(ctx, transferMethod, reference, url, false)
 	if err != nil {
 		return err
 	}

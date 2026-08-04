@@ -156,7 +156,7 @@ class DifyApiAgentStubFileRequestHandler:
             "invoke_from": execution_context.invoke_from,
             "file": request.file.model_dump(mode="json", exclude_none=True),
         }
-        payload["for_external"] = request.for_external
+        payload["for_frontend"] = request.for_frontend
         data = await self._post_inner_api("/inner/api/agent/files/download-request", payload)
         download_uri = data.get("download_uri")
         if not isinstance(download_uri, str) or not download_uri:
@@ -202,7 +202,7 @@ class DifyApiAgentStubFileRequestHandler:
                 return download_uri
             raise AgentStubFileRequestError(502, "Dify API returned an invalid remote download URL")
 
-        if request.for_external:
+        if request.for_frontend:
             if self._is_absolute_http_url(download_uri) or self._is_safe_dify_file_uri(download_uri):
                 return download_uri
             raise AgentStubFileRequestError(502, "Dify API returned an unsafe frontend download URI")

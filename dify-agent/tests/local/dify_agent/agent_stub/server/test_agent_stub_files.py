@@ -91,7 +91,7 @@ def test_sandbox_download_request_binds_origin_free_uri(monkeypatch: pytest.Monk
             "user_from": "account",
             "invoke_from": "service-api",
             "file": {"transfer_method": "tool_file", "reference": reference},
-            "for_external": False,
+            "for_frontend": False,
         }
         return httpx.Response(
             200,
@@ -110,7 +110,7 @@ def test_sandbox_download_request_binds_origin_free_uri(monkeypatch: pytest.Monk
             principal=_principal(),
             request=AgentStubFileDownloadRequest(
                 file=AgentStubFileMapping(transfer_method="tool_file", reference=reference),
-                for_external=False,
+                for_frontend=False,
             ),
         )
         assert response.download_url == "https://sandbox-files.example.com/dify/files/tools/tool-file-1.pdf?sign=1"
@@ -130,7 +130,7 @@ def test_frontend_download_request_preserves_public_or_relative_uri(
     download_uri: str,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        assert json.loads(request.content)["for_external"] is True
+        assert json.loads(request.content)["for_frontend"] is True
         return httpx.Response(
             200,
             json={"filename": "report.pdf", "mime_type": "application/pdf", "size": 123, "download_uri": download_uri},
@@ -143,7 +143,7 @@ def test_frontend_download_request_preserves_public_or_relative_uri(
             principal=_principal(),
             request=AgentStubFileDownloadRequest(
                 file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
-                for_external=True,
+                for_frontend=True,
             ),
         )
         assert response.download_url == download_uri
@@ -167,7 +167,7 @@ def test_remote_download_url_is_never_rewritten(monkeypatch: pytest.MonkeyPatch)
             principal=_principal(),
             request=AgentStubFileDownloadRequest(
                 file=AgentStubFileMapping(transfer_method="remote_url", url=remote_url),
-                for_external=False,
+                for_frontend=False,
             ),
         )
         assert response.download_url == remote_url
@@ -192,7 +192,7 @@ def test_remote_download_rejects_relative_uri_for_frontend_audience(monkeypatch:
                     file=AgentStubFileMapping(
                         transfer_method="remote_url", url="https://remote.example.com/report.pdf"
                     ),
-                    for_external=True,
+                    for_frontend=True,
                 ),
             )
 
@@ -227,7 +227,7 @@ def test_sandbox_download_rejects_unsafe_dify_file_uri(
                 principal=_principal(),
                 request=AgentStubFileDownloadRequest(
                     file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
-                    for_external=False,
+                    for_frontend=False,
                 ),
             )
 
@@ -278,7 +278,7 @@ def test_handler_rejects_missing_download_uri(monkeypatch: pytest.MonkeyPatch) -
                 principal=_principal(),
                 request=AgentStubFileDownloadRequest(
                     file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
-                    for_external=False,
+                    for_frontend=False,
                 ),
             )
 
