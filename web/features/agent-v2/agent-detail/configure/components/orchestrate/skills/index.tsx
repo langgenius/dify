@@ -710,6 +710,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
+                canRemove={!isViewingVersion}
                 skill={skill}
                 onRemove={handleRemoveSkill}
               />

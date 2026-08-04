@@ -1293,9 +1293,39 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('should expose only download from an embedded skill row in read-only mode', async () => {
+  it('should keep delete available for an embedded skill while a build draft is read-only', async () => {
     const user = userEvent.setup()
-    renderAgentSkills({ readOnly: true })
+    renderAgentSkills({
+      apiContext: { agentId: 'agent-1', draftType: 'debug_build' },
+      readOnly: true,
+    })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
+      }),
+    )
+
+    expect(screen.getByText('common.operation.download')).toBeInTheDocument()
+    await user.click(screen.getByText('common.operation.delete'))
+
+    await waitFor(() => {
+      expect(mocks.deleteSkillMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+          name: 'Tender Analyzer',
+        },
+        query: {
+          draft_type: 'debug_build',
+          version_id: undefined,
+        },
+      })
+    })
+  })
+
+  it('should expose only download from an embedded skill row when viewing a version', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ readOnly: true, viewingVersion: true })
 
     await user.click(
       screen.getByRole('button', {
