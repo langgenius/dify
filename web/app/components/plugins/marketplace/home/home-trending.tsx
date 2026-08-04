@@ -30,7 +30,7 @@ const PAGINATION_ACTIVE_SHIFT = PAGINATION_ACTIVE_WIDTH - PAGINATION_DOT_SIZE
 const getPaginationItemOffset = (index: number, selectedIndex: number) =>
   index * PAGINATION_STEP + (index > selectedIndex ? PAGINATION_ACTIVE_SHIFT : 0)
 
-type AutoplayPauseReason = 'focus' | 'hover' | 'reduced-motion' | 'user' | 'visibility'
+type AutoplayPauseReason = 'focus' | 'hover' | 'reduced-motion' | 'user' | 'viewport' | 'visibility'
 
 function TrendingCopy({
   banner,
@@ -331,19 +331,23 @@ function TrendingNavigation({
   banners,
   selectedIndex,
   carouselRootRef,
+  pauseWhenOffscreen,
   onSelect,
   onNext,
 }: {
   banners: PluginBanner[]
   selectedIndex: number
   carouselRootRef: RefObject<HTMLDivElement | null>
+  pauseWhenOffscreen: boolean
   onSelect: (index: number) => void
   onNext: () => void
 }) {
   const { t } = useTranslation('plugin')
   const progressRef = useRef<HTMLSpanElement>(null)
   const progressAnimationRef = useRef<Animation | null>(null)
-  const pauseReasonsRef = useRef(new Set<AutoplayPauseReason>())
+  const pauseReasonsRef = useRef(
+    new Set<AutoplayPauseReason>(pauseWhenOffscreen ? ['viewport'] : []),
+  )
   const [isUserPaused, setIsUserPaused] = useState(false)
   const [isReducedMotionPaused, setIsReducedMotionPaused] = useState(false)
   const isExplicitlyPaused = isUserPaused || isReducedMotionPaused
@@ -404,6 +408,7 @@ function TrendingNavigation({
     carouselRoot.addEventListener('focusin', handleFocusIn)
     carouselRoot.addEventListener('focusout', handleFocusOut)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    handleVisibilityChange()
 
     return () => {
       carouselRoot.removeEventListener('mouseenter', handleMouseEnter)
@@ -413,6 +418,36 @@ function TrendingNavigation({
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [carouselRootRef, setPauseReason])
+
+  useEffect(() => {
+    if (!pauseWhenOffscreen) {
+      setPauseReason('viewport', false)
+      return
+    }
+
+    const carouselRoot = carouselRootRef.current
+    if (!carouselRoot) return
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setPauseReason('viewport', false)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const isVisible = !!entry?.isIntersecting && entry.intersectionRatio >= 0.25
+        setPauseReason('viewport', !isVisible)
+      },
+      {
+        root: document.getElementById('marketplace-container'),
+        threshold: 0.25,
+      },
+    )
+
+    observer.observe(carouselRoot)
+
+    return () => observer.disconnect()
+  }, [carouselRootRef, pauseWhenOffscreen, setPauseReason])
 
   useEffect(() => {
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -569,10 +604,15 @@ function HomeTrending({
             banners={banners}
             selectedIndex={selectedIndex}
             carouselRootRef={carouselRootRef}
+            pauseWhenOffscreen={!isMarketplacePlatform}
             onSelect={selectSlide}
             onNext={selectNextSlide}
           />
-          <div ref={carouselRootRef} className="h-full overflow-hidden rounded-2xl">
+          <div
+            ref={carouselRootRef}
+            className="h-full overflow-hidden rounded-2xl"
+            data-home-trending-carousel-root
+          >
             <div
               aria-live="polite"
               className={cn(styles.contentTrack, 'flex h-full')}

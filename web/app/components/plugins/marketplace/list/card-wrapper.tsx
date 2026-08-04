@@ -51,7 +51,10 @@ const CardWrapperComponent = ({
 
   if (showInstallAction) {
     return (
-      <div className="group relative cursor-pointer rounded-xl">
+      <div
+        className="group relative cursor-pointer rounded-xl"
+        data-marketplace-card={plugin.plugin_id}
+      >
         <Card
           key={plugin.name}
           payload={plugin}
@@ -102,7 +105,7 @@ const CardWrapperComponent = ({
   }
 
   const card = (
-    <div className="group relative rounded-xl">
+    <div className="group relative rounded-xl" data-marketplace-card={plugin.plugin_id}>
       <Card
         key={plugin.name}
         payload={plugin}
