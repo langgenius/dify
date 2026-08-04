@@ -12,8 +12,11 @@ from controllers.common.fields import BinaryFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -300,6 +303,7 @@ class WorkspaceSkillsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_VIEW, resource_required=False)
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         query_input: dict[str, object] = {
@@ -326,6 +330,7 @@ class WorkspaceSkillsApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_EDIT, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account):
@@ -419,6 +424,7 @@ class WorkspaceSkillApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_VIEW, resource_required=False)
     @with_current_tenant_id
     def get(self, current_tenant_id: str, skill_id: str):
         try:
@@ -433,6 +439,7 @@ class WorkspaceSkillApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_EDIT, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def patch(self, current_tenant_id: str, current_user: Account, skill_id: str):
@@ -458,6 +465,7 @@ class WorkspaceSkillApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_DELETE, resource_required=False)
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, skill_id: str):
         try:
@@ -699,6 +707,7 @@ class WorkspaceSkillPublishApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_PUBLISH, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, skill_id: str):
@@ -725,6 +734,7 @@ class WorkspaceSkillRestoreApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_PUBLISH, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, skill_id: str):
