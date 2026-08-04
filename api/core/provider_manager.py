@@ -248,7 +248,11 @@ class ProviderManager:
             has_valid_quota = any(quota_conf.is_valid for quota_conf in system_configuration.quota_configurations)
 
             if preferred_provider_type == ProviderType.SYSTEM:
-                if not system_configuration.enabled or not has_valid_quota:
+                if not system_configuration.enabled:
+                    using_provider_type = ProviderType.CUSTOM
+                elif not has_valid_quota and (custom_configuration.provider or custom_configuration.models):
+                    # Only configured alternatives can serve as fallbacks; otherwise downstream checks must surface
+                    # system quota exhaustion instead of reporting missing custom credentials.
                     using_provider_type = ProviderType.CUSTOM
 
             else:
