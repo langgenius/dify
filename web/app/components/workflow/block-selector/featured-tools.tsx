@@ -193,7 +193,7 @@ const FeaturedTools = ({
           <Button
             variant="ghost"
             size="medium"
-            className="group mt-1 w-full justify-start gap-x-2 pr-2 pl-3 text-left text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
+            className="group mt-1 w-full justify-start pr-2 pl-3 text-left text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
             onClick={() => {
               setVisibleCount((count) => {
                 if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
@@ -202,7 +202,7 @@ const FeaturedTools = ({
               })
             }}
           >
-            <div className="flex items-center px-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+            <div className="flex items-center pl-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
               <span
                 aria-hidden
                 className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"

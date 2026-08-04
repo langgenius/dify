@@ -953,3 +953,5 @@ redundant-cast = true
 unannotated-return = true
 unnecessary-type-conversion = true
 unused-ignore = true
+implicit-any-lambda = "info"
+missing-attribute = "warn"

@@ -427,7 +427,7 @@ const Debug: FC<IDebug> = ({
                   }
                   disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                 >
-                  <RiAddLine className="mr-1 size-3.5" />
+                  <RiAddLine className="size-3.5" />
                   {t(($) => $['modelProvider.addModel'], { ns: 'common' })}(
                   {multipleModelConfigs.length}
                   /4)
