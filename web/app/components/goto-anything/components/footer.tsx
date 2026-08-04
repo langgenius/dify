@@ -81,7 +81,7 @@ export function Footer({
 
   return (
     <div className="border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary">
-      <div className="flex min-h-[16px] items-center justify-between">
+      <div className="flex min-h-4 items-center justify-between">
         <span>{renderLeftContent()}</span>
         {renderRightContent()}
       </div>

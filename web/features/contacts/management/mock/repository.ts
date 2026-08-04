@@ -39,15 +39,37 @@ export function createContactsMockRepository({
   const availablePlatformContacts = structuredClone(scenario.availablePlatformContacts)
   let createdExternalCount = 0
 
-  const getExistingContactIds = () => new Set(contacts.map((contact) => contact.id))
-  const getExistingEmails = () =>
-    new Set(contacts.flatMap((contact) => (contact.email ? [normalizeEmail(contact.email)] : [])))
+  const getUnavailablePlatformContactIds = () =>
+    new Set(contacts.filter((contact) => contact.type !== 'external').map((contact) => contact.id))
+  const getUnavailablePlatformContactEmails = () =>
+    new Set(
+      contacts.flatMap((contact) =>
+        contact.type !== 'external' && contact.email ? [normalizeEmail(contact.email)] : [],
+      ),
+    )
   const getWorkspaceContact = (memberId: string) => {
     const contactId = scenario.memberContactIds[memberId]
     return contacts.find((contact) => contact.id === contactId && contact.type === 'workspace')
   }
 
   return {
+    async findExternalContactsByEmails(command) {
+      await wait()
+      const emails = new Set(command.emails.map(normalizeEmail))
+
+      return contacts.flatMap((contact) => {
+        if (
+          contact.type !== 'external' ||
+          !contact.email ||
+          !emails.has(normalizeEmail(contact.email))
+        ) {
+          return []
+        }
+
+        return [{ email: contact.email, id: contact.id, name: contact.name }]
+      })
+    },
+
     async listContacts(query) {
       await wait()
       if (scenario.failures.directory) throw new Error('contacts_directory_failed')
@@ -105,8 +127,8 @@ export function createContactsMockRepository({
       await wait()
       if (scenario.failures.platformContacts) throw new Error('platform_contacts_failed')
 
-      const existingContactIds = getExistingContactIds()
-      const existingEmails = getExistingEmails()
+      const existingContactIds = getUnavailablePlatformContactIds()
+      const existingEmails = getUnavailablePlatformContactEmails()
       const filtered = availablePlatformContacts.filter((contact) => {
         const isExisting =
           existingContactIds.has(contact.id) || existingEmails.has(normalizeEmail(contact.email))
@@ -122,24 +144,57 @@ export function createContactsMockRepository({
       const selectedContacts = availablePlatformContacts.filter((contact) =>
         command.contactIds.includes(contact.id),
       )
-      const existingEmails = getExistingEmails()
-      const newContacts = selectedContacts.filter(
-        (contact) => !existingEmails.has(normalizeEmail(contact.email)),
-      )
+      const conflicts = selectedContacts.flatMap((platformContact) => {
+        const existingContact = contacts.find(
+          (contact) =>
+            contact.type === 'external' &&
+            contact.email &&
+            normalizeEmail(contact.email) === normalizeEmail(platformContact.email),
+        )
+        if (!existingContact?.email) return []
+        return [
+          {
+            contactId: existingContact.id,
+            email: existingContact.email,
+            platformContactId: platformContact.id,
+          },
+        ]
+      })
+      if (conflicts.length > 0 && !command.upgradeExternalContacts) {
+        return { conflicts, kind: 'requires_external_contact_upgrade' }
+      }
 
-      contacts = [
-        ...contacts,
-        ...newContacts.map((contact) => ({
-          avatar_url: contact.avatar_url ?? '',
+      const nextContacts = [...contacts]
+      const contactIds: string[] = []
+      for (const platformContact of selectedContacts) {
+        const existingIndex = nextContacts.findIndex(
+          (contact) =>
+            contact.email &&
+            normalizeEmail(contact.email) === normalizeEmail(platformContact.email),
+        )
+        const existingContact = nextContacts[existingIndex]
+        if (existingContact) {
+          if (existingContact.type === 'external' && command.upgradeExternalContacts) {
+            nextContacts[existingIndex] = { ...existingContact, type: 'platform' }
+            contactIds.push(existingContact.id)
+          }
+          continue
+        }
+
+        nextContacts.push({
+          avatar_url: platformContact.avatar_url ?? '',
           created_at: MOCK_CREATED_AT,
-          email: contact.email,
-          id: contact.id,
+          email: platformContact.email,
+          id: platformContact.id,
           im_bindings: [],
-          name: contact.name,
+          name: platformContact.name,
           type: 'platform' as const,
-        })),
-      ]
-      return { contactIds: newContacts.map((contact) => contact.id), kind: 'added' }
+        })
+        contactIds.push(platformContact.id)
+      }
+
+      contacts = nextContacts
+      return { contactIds, kind: 'added' }
     },
 
     async removeContacts(command) {
@@ -182,6 +237,20 @@ export function createContactsMockRepository({
 
       contacts = contacts.filter((item) => item.id !== contact.id)
       return { contactId: contact.id, contactOutcome: 'removed', kind: 'removed' }
+    },
+
+    async upgradeExternalContactsToWorkspace(command) {
+      await wait()
+      const selectedIds = new Set(command.contactIds)
+      const contactIds: string[] = []
+
+      contacts = contacts.map((contact) => {
+        if (contact.type !== 'external' || !selectedIds.has(contact.id)) return contact
+        contactIds.push(contact.id)
+        return { ...contact, type: 'workspace' }
+      })
+
+      return { contactIds, kind: 'upgraded' }
     },
   }
 }

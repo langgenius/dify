@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "Procesul de flux de lucru este întrerupt",
   "common.workflowProcessRunning": "Procesul de flux de lucru rulează",
   "common.workflowProcessSucceeded": "Procesul de flux de lucru a reușit",
+  "common.workflowSaveStatus": "Starea salvării fluxului de lucru",
   "customWebhook": "Webhook personalizat",
   "debug.copyLastRun": "Copiază ultima execuție",
   "debug.copyLastRunError": "Nu s-au putut copia ultimele intrări de rulare",

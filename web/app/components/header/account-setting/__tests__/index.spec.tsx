@@ -1,7 +1,6 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
@@ -10,10 +9,8 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
-const mockResetModelProviderListExpanded = vi.fn()
 const mockConfig = vi.hoisted(() => ({
   ENABLE_FEATURE_PREVIEW: true,
-  IS_CLOUD_EDITION: true,
 }))
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
@@ -25,9 +22,6 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     get ENABLE_FEATURE_PREVIEW() {
       return mockConfig.ENABLE_FEATURE_PREVIEW
-    },
-    get IS_CLOUD_EDITION() {
-      return mockConfig.IS_CLOUD_EDITION
     },
   }
 })
@@ -86,10 +80,6 @@ vi.mock('next-themes', () => ({
     theme: 'system',
     setTheme: vi.fn(),
   })),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
-  useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
@@ -219,12 +209,14 @@ describe('AccountSetting', () => {
     onCancel?: () => void
     onTabChange?: (tab: AccountSettingTab) => void
     rbacEnabled?: boolean
+    deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
       onCancel = mockOnCancel,
       onTabChange = mockOnTabChange,
       rbacEnabled = true,
+      deploymentEdition = 'CLOUD',
     } = props ?? {}
 
     const StatefulAccountSetting = () => {
@@ -244,6 +236,7 @@ describe('AccountSetting', () => {
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         webapp_auth: { enabled: true },
         branding: { enabled: false },
         enable_marketplace: true,
@@ -256,7 +249,6 @@ describe('AccountSetting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConfig.ENABLE_FEATURE_PREVIEW = true
-    mockConfig.IS_CLOUD_EDITION = true
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
@@ -294,25 +286,6 @@ describe('AccountSetting', () => {
           .compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' })),
       ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
-    })
-
-    it('should keep hidden legacy tab metadata for direct entries', () => {
-      // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-
-      // Assert
-      expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
-    })
-
-    it('should normalize legacy language tab entries to preferences', () => {
-      // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.LANGUAGE })
-
-      // Assert
-      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
-      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
-      expect(screen.getByText('common.account.general')).toBeInTheDocument()
-      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
 
     it('should hide sidebar labels on mobile', () => {
@@ -546,10 +519,8 @@ describe('AccountSetting', () => {
 
     it('should hide workflow log archives outside cloud edition', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = false
-
       // Act
-      renderAccountSetting()
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
       // Assert
       expect(
@@ -628,10 +599,11 @@ describe('AccountSetting', () => {
 
     it('should not render workflow log archives page outside cloud edition', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = false
-
       // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES })
+      renderAccountSetting({
+        initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
+        deploymentEdition: 'COMMUNITY',
+      })
 
       // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
@@ -763,19 +735,6 @@ describe('AccountSetting', () => {
 
       // Assert
       expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should keep provider search controlled at the account setting boundary', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
-
-      // Act
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      await user.type(input, 'test-search')
-
-      // Assert
-      expect(input)!.toHaveValue('test-search')
     })
 
     it('should handle scroll event in panel', () => {

@@ -240,7 +240,7 @@ const ChunkPreview = ({
               </SkeletonRow>
               <SkeletonRectangle className="w-full" />
               <SkeletonRectangle className="w-full" />
-              <SkeletonRectangle className="w-[422px]" />
+              <SkeletonRectangle className="w-105.5" />
             </SkeletonContainer>
           ))}
         </div>

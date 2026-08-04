@@ -9,12 +9,17 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { IS_CLOUD_EDITION } from '@/config'
+import { useEducationExpireNotice } from '@/app/education-apply/use-expire-notice'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -131,7 +136,9 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const [educationExpireNotice] = useEducationExpireNotice()
+  const [settingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const completedTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
   const skipped = useAtomValue(stepByStepTourSkippedAtom)
   const firstWorkspaceId = useAtomValue(stepByStepTourFirstWorkspaceIdAtom)
@@ -182,8 +189,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     [],
   )
 
-  const learnDifyEnabled = systemFeatures?.enable_learn_app ?? true
-  const stepByStepTourFeatureEnabled = Boolean(systemFeatures?.enable_step_by_step_tour)
+  const learnDifyEnabled = systemFeatures.enable_learn_app
+  const stepByStepTourFeatureEnabled = systemFeatures.enable_step_by_step_tour
   const availableTasks = learnDifyEnabled
     ? STEP_BY_STEP_TOUR_TASKS
     : STEP_BY_STEP_TOUR_TASKS.filter((task) => task.id !== 'home')
@@ -229,11 +236,15 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         }
       : undefined
   const visible =
-    IS_CLOUD_EDITION &&
+    systemFeatures.deployment_edition === 'CLOUD' &&
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))
-  const overlayVisible = visible && !hasBlockingModalOpen
+  const overlayVisible =
+    visible &&
+    !hasBlockingModalOpen &&
+    !settingsDestination &&
+    !(pathname === '/apps' && educationExpireNotice)
   const completionPromptVisible = visible && allTasksCompleted && !activeTask
   const checklistMinimized = completionPromptVisible ? false : minimized
   const expanded = !checklistMinimized
@@ -778,7 +789,7 @@ function SkipRecoveryPrompt({
   return (
     <section
       aria-label={label}
-      className="fixed bottom-[76px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
+      className="fixed bottom-19 left-1.5 z-50 flex w-65 max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
     >
       <p className="system-sm-regular text-text-secondary">{message}</p>
       <div className="flex h-12 items-end justify-end pt-4">
@@ -794,11 +805,11 @@ function SkipRecoveryPrompt({
       </div>
       <span
         aria-hidden
-        className="absolute top-full left-[214px] h-7 w-0.5 bg-state-accent-hover-alt"
+        className="absolute top-full left-53.5 h-7 w-0.5 bg-state-accent-hover-alt"
       />
       <span
         aria-hidden
-        className="absolute top-[calc(100%+22px)] left-[209px] size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
+        className="absolute top-[calc(100%+22px)] left-52.25 size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
       />
     </section>
   )

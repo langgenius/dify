@@ -1,25 +1,18 @@
 import { cleanup, screen } from '@testing-library/react'
 import {
   clearAllMocks,
-  defaultModalContext,
   interactions,
-  mockUseModalContext,
+  mockSetSettingsDestination,
   scenarios,
+  setDeploymentEdition,
 } from './test-utils'
-
-vi.mock('@/config', () => ({ IS_CE_EDITION: false }))
 
 afterEach(cleanup)
 
 describe('APIKeyInfoPanel - Cloud Edition', () => {
-  const setShowAccountSettingModal = vi.fn()
-
   beforeEach(() => {
     clearAllMocks()
-    mockUseModalContext.mockReturnValue({
-      ...defaultModalContext,
-      setShowAccountSettingModal,
-    })
+    setDeploymentEdition('CLOUD')
   })
 
   it('hides the panel when an API key already exists', () => {
@@ -28,9 +21,9 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
   })
 
   it('opens provider settings from the primary action', () => {
-    scenarios.withMockModal(setShowAccountSettingModal)
+    scenarios.withAPIKeyNotSet()
     interactions.clickMainButton()
-    expect(setShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
   })
 
   it('does not show the self-hosted Cloud link', () => {

@@ -26,7 +26,6 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 let documentTitleCalls: string[] = []
-let educationInitCalls: number = 0
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
@@ -66,10 +65,12 @@ vi.mock('@/hooks/use-document-title', () => ({
   },
 }))
 
-vi.mock('@/app/education-apply/hooks', () => ({
-  useEducationInit: () => {
-    educationInitCalls++
-  },
+vi.mock('@/app/education-apply/expire-notice', () => ({
+  EducationExpireNotice: () => null,
+}))
+
+vi.mock('@/app/education-apply/external-action-boundary', () => ({
+  EducationExternalActionBoundary: ({ children }: { children: ReactNode }) => children,
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -106,7 +107,7 @@ vi.mock('../list', () => {
     onCreateLearnDify?: (app: App) => void
     onTryLearnDify?: (params: TryAppSelection) => void
   }) => {
-    const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
+    const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
     return React.createElement(
       'div',
       { 'data-testid': 'apps-list' },
@@ -116,7 +117,7 @@ vi.mock('../list', () => {
         {
           'data-testid': 'open-preview',
           onClick: () =>
-            setShowTryAppPanel(true, {
+            openTryAppPanel({
               appId: mockTemplateApp.app_id,
               app: mockTemplateApp,
             }),
@@ -255,7 +256,6 @@ describe('Apps', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     documentTitleCalls = []
-    educationInitCalls = 0
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSearchParams = new URLSearchParams()
     mockReplace.mockClear()
@@ -266,6 +266,7 @@ describe('Apps', () => {
       icon_background: '#fff',
       mode: AppModeEnum.CHAT,
       export_data: 'yaml-content',
+      can_trial: true,
     })
   })
 
@@ -303,6 +304,16 @@ describe('Apps', () => {
       await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
 
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+    })
+
+    it('should close the template preview', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByTestId('open-preview'))
+      await user.click(await screen.findByTestId('try-app-close'))
+
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
     })
 
     it('should open the create modal from Learn Dify', async () => {

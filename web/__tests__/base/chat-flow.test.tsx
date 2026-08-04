@@ -1,11 +1,11 @@
 import type { RefObject } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { fireEvent, renderHook, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
+import { useChatWithHistoryContext } from '@/app/components/base/chat/chat-with-history/context'
 import { useChatWithHistory } from '@/app/components/base/chat/chat-with-history/hooks'
-import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -13,6 +13,20 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 vi.mock('@/app/components/base/chat/chat-with-history/hooks', () => ({
   useChatWithHistory: vi.fn(),
 }))
+
+vi.mock('@/app/components/base/chat/chat-with-history/chat-wrapper', () => {
+  const ChatThemeProbe = () => {
+    const { theme } = useChatWithHistoryContext()
+
+    return (
+      <span aria-label="chat theme">
+        {theme?.primaryColor}:{String(theme?.chatColorThemeInverted)}
+      </span>
+    )
+  }
+
+  return { default: ChatThemeProbe }
+})
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: vi.fn(),
@@ -109,23 +123,16 @@ describe('Base Chat Flow', () => {
     vi.clearAllMocks()
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
     vi.mocked(useChatWithHistory).mockReturnValue(defaultHookReturn)
-    renderHook(() => useThemeContext()).result.current.buildTheme()
   })
 
   // Chat-with-history shell integration across layout, responsive shell, and theme setup.
   describe('Chat With History Shell', () => {
-    it('builds theme, updates the document title, and expands the collapsed desktop sidebar on hover', async () => {
-      const themeBuilder = renderHook(() => useThemeContext()).result.current
+    it('updates the document title and expands the collapsed desktop sidebar on hover', () => {
       const { container } = render(<ChatWithHistory className="chat-history-shell" />)
 
       const titles = screen.getAllByText('Test Chat')
       expect(titles.length).toBeGreaterThan(0)
       expect(useDocumentTitle).toHaveBeenCalledWith('Test Chat')
-
-      await waitFor(() => {
-        expect(themeBuilder.theme.primaryColor).toBe('blue')
-        expect(themeBuilder.theme.chatColorThemeInverted).toBe(false)
-      })
 
       vi.mocked(useChatWithHistory).mockReturnValue({
         ...defaultHookReturn,
@@ -143,8 +150,29 @@ describe('Base Chat Flow', () => {
         expect(hoverArea).toHaveClass('left-0')
 
         fireEvent.mouseLeave(hoverArea)
-        expect(hoverArea).toHaveClass('left-[-248px]')
+        expect(hoverArea).toHaveClass('-left-62')
       }
+    })
+
+    it('renders a new theme when site configuration changes', () => {
+      const { rerender } = render(<ChatWithHistory />)
+
+      expect(screen.getByLabelText('chat theme')).toHaveTextContent('blue:false')
+
+      vi.mocked(useChatWithHistory).mockReturnValue({
+        ...defaultHookReturn,
+        appData: {
+          ...mockAppData,
+          site: {
+            ...mockAppData.site,
+            chat_color_theme: '#654321',
+            chat_color_theme_inverted: true,
+          },
+        },
+      })
+      rerender(<ChatWithHistory />)
+
+      expect(screen.getByLabelText('chat theme')).toHaveTextContent('#654321:true')
     })
 
     it('falls back to the mobile loading shell when site metadata is unavailable', () => {

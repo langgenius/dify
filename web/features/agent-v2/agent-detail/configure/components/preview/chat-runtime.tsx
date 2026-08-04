@@ -5,10 +5,10 @@ import type { ReactNode, Ref } from 'react'
 import type { AgentChatMessageSender, AgentPreviewChatController } from './chat-conversation'
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import { consoleQuery } from '@/service/client'
-import { getFormattedAgentDebugChatTree, getLastWorkflowRunId } from './chat-history'
+import { getFormattedAgentDebugChatTree } from './chat-history'
 import { AgentPreviewChatSession } from './chat-session'
 
 export type AgentChatRuntimeEmptyStateProps = {
@@ -16,7 +16,7 @@ export type AgentChatRuntimeEmptyStateProps = {
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
   agentName?: string
-  hasInstructions: boolean
+  showUnconfiguredNotice: boolean
 }
 
 export type AgentChatRuntimeProps = {
@@ -30,6 +30,7 @@ export type AgentChatRuntimeProps = {
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
+  disabled?: boolean
   draftType?: 'debug_build'
   speechToTextDraftType?: 'draft' | 'debug_build'
   inputPlaceholder: string
@@ -40,7 +41,6 @@ export type AgentChatRuntimeProps = {
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
-  onWorkflowRunIdChange?: (workflowRunId: string | null) => void
   onBeforeSpeechToText?: () => Promise<unknown>
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
@@ -57,6 +57,7 @@ export function AgentChatRuntime({
   clearChatList,
   controllerRef,
   conversationId,
+  disabled,
   draftType,
   speechToTextDraftType,
   inputPlaceholder,
@@ -67,7 +68,6 @@ export function AgentChatRuntime({
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
-  onWorkflowRunIdChange,
   onBeforeSpeechToText,
   onSendInterrupted,
   onSaveDraftBeforeRun,
@@ -102,12 +102,6 @@ export function AgentChatRuntime({
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
-  useEffect(() => {
-    if (!conversationId || !historyQuery.data) return
-
-    onWorkflowRunIdChange?.(getLastWorkflowRunId(historyQuery.data.data ?? []))
-  }, [conversationId, historyQuery.data, onWorkflowRunIdChange])
-
   if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -136,6 +130,7 @@ export function AgentChatRuntime({
       clearChatList={clearChatList}
       controllerRef={controllerRef}
       conversationId={conversationId}
+      disabled={disabled}
       draftType={draftType}
       speechToTextDraftType={speechToTextDraftType}
       initialChatTree={initialChatTree}

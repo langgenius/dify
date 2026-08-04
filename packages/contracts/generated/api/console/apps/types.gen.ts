@@ -80,6 +80,10 @@ export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type RecentAppListResponse = {
+  data: Array<RecentAppResponse>
+}
+
 export type WorkflowOnlineUsersPayload = {
   app_ids?: Array<string>
 }
@@ -153,7 +157,7 @@ export type HumanInputFormSubmitResponse = {
 }
 
 export type MessageTemplateTestRequest = {
-  channel: DebugChannel
+  channel: Channel
   inputs?: {
     [key: string]: JsonValue
   }
@@ -881,7 +885,7 @@ export type SandboxReadResponse = {
 }
 
 export type WorkflowAgentSandboxUploadPayload = {
-  node_execution_id?: string | null
+  node_execution_id: string
   path: string
 }
 
@@ -1419,6 +1423,20 @@ export type PluginDependency = {
   value: Github | Marketplace | Package
 }
 
+export type RecentAppResponse = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  readonly icon_url: string | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
+}
+
 export type WorkflowOnlineUsersByApp = {
   app_id: string
   users: Array<WorkflowOnlineUser>
@@ -1440,14 +1458,7 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type DebugChannel =
-  | 'ding_talk'
-  | 'email'
-  | 'feishu'
-  | 'lark'
-  | 'ms_teams'
-  | 'slack'
-  | 'we_com'
+export type Channel = 'ding_talk' | 'email' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
 
 export type JsonValue = unknown
 
@@ -3134,6 +3145,10 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
+export type RecentAppListResponseWritable = {
+  data: Array<RecentAppResponseWritable>
+}
+
 export type MessageTemplateTestResponseWritable = {
   [key: string]: unknown
 }
@@ -3218,6 +3233,19 @@ export type AppDetailSiteResponseWritable = {
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type RecentAppResponseWritable = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowCommentBasicWritable = {
@@ -3379,6 +3407,21 @@ export type PostAppsImportsByImportIdConfirmResponses = {
 
 export type PostAppsImportsByImportIdConfirmResponse =
   PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
+
+export type GetAppsRecentData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+  }
+  url: '/apps/recent'
+}
+
+export type GetAppsRecentResponses = {
+  200: RecentAppListResponse
+}
+
+export type GetAppsRecentResponse = GetAppsRecentResponses[keyof GetAppsRecentResponses]
 
 export type GetAppsStarredData = {
   body?: never
@@ -5651,8 +5694,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     node_id: string
     workflow_run_id: string
   }
-  query?: {
-    node_execution_id?: string
+  query: {
+    node_execution_id: string
     path?: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
@@ -5673,7 +5716,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     workflow_run_id: string
   }
   query: {
-    node_execution_id?: string
+    node_execution_id: string
     path: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'

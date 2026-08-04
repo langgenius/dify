@@ -89,6 +89,12 @@ const availablePlatformContacts: AvailablePlatformContact[] = [
   },
   {
     avatar_url: null,
+    email: 'external@example.com',
+    id: 'available-platform-external',
+    name: 'Courtney Henry',
+  },
+  {
+    avatar_url: null,
     email: 'owner@example.com',
     id: 'available-platform-owner',
     name: 'Ralph Edwards',

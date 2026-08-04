@@ -169,7 +169,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
         <div className="flex flex-1 shrink-0 justify-end">
           <div className="px-10">
-            <div className="h-6 w-full 2xl:h-[139px]" />
+            <div className="h-6 w-full 2xl:h-34.75" />
             <div className="pt-1 pb-6">
               <span className="title-2xl-semi-bold text-text-primary">
                 {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
@@ -180,7 +180,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 {t(($) => $['newApp.chooseAppType'], { ns: 'app' })}
               </span>
             </div>
-            <div className="flex w-[660px] flex-col gap-4">
+            <div className="flex w-165 flex-col gap-4">
               <div>
                 <div className="flex flex-row gap-2">
                   <AppTypeCard
@@ -363,13 +363,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           </div>
         </div>
         <div className="relative flex h-full flex-1 shrink justify-start overflow-hidden">
-          <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-[139px]"></div>
-          <div className="max-w-[760px] border-x border-x-divider-subtle">
-            <div className="h-6 2xl:h-[139px]" />
+          <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-34.75"></div>
+          <div className="max-w-190 border-x border-x-divider-subtle">
+            <div className="h-6 2xl:h-34.75" />
             <AppPreview mode={appMode} />
             <div className="absolute inset-x-0 border-b border-b-divider-subtle"></div>
             <div
-              className="flex h-[448px] w-[664px] items-center justify-center"
+              className="flex h-112 w-166 items-center justify-center"
               style={{
                 background:
                   'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)',
@@ -440,7 +440,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
     <button
       type="button"
       className={cn(
-        'relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'relative box-content h-21 w-47.75 cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         active
           ? 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid'
           : '',

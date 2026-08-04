@@ -454,7 +454,7 @@ const Flowchart = (props: FlowchartProps) => {
       'bg-white': currentTheme === Theme.light,
       'bg-slate-900': currentTheme === Theme.dark,
     }),
-    errorMessage: cn('px-[26px] py-4', {
+    errorMessage: cn('px-6.5 py-4', {
       'text-red-500': currentTheme === Theme.light,
       'text-red-400': currentTheme === Theme.dark,
     }),
@@ -496,7 +496,7 @@ const Flowchart = (props: FlowchartProps) => {
     <div ref={props.ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
       <div className={themeClasses.segmented}>
         <div className="msh-segmented-group">
-          <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
+          <label className="msh-segmented-item m-2 flex w-50 items-center space-x-1">
             <div
               key="classic"
               className={getLookButtonClass('classic')}
@@ -537,7 +537,7 @@ const Flowchart = (props: FlowchartProps) => {
       />
 
       {isLoading && !svgString && (
-        <div className="px-[26px] py-4">
+        <div className="px-6.5 py-4">
           <LoadingAnim type="text" />
           <div className="mt-2 text-sm text-gray-500">
             {t(($) => $['mermaid.waitForCompletion'], { ns: 'app' })}

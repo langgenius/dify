@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "Proces przepływu pracy wstrzymany",
   "common.workflowProcessRunning": "Proces przepływu pracy w toku",
   "common.workflowProcessSucceeded": "Proces przepływu pracy zakończony powodzeniem",
+  "common.workflowSaveStatus": "Stan zapisu przepływu pracy",
   "customWebhook": "Niestandardowy webhook",
   "debug.copyLastRun": "Kopiuj ostatnie uruchomienie",
   "debug.copyLastRunError": "Nie udało się skopiować danych wejściowych z ostatniego uruchomienia",

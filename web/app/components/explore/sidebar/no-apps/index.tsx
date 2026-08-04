@@ -18,7 +18,7 @@ const NoApps: FC = () => {
     <div className="rounded-xl bg-background-default-subtle p-4">
       <div
         className={cn(
-          'h-[35px] w-[86px] bg-contain bg-center bg-no-repeat',
+          'h-8.75 w-21.5 bg-contain bg-center bg-no-repeat',
           theme === Theme.dark ? s.dark : s.light,
         )}
       ></div>

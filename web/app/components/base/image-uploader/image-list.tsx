@@ -119,7 +119,7 @@ const ImageList: FC<ImageListProps> = ({
             <button
               type="button"
               className={cn(
-                'absolute top-[-9px] right-[-9px] z-10 h-[18px] w-[18px] items-center justify-center border-none bg-transparent p-0',
+                'absolute -top-2.25 -right-2.25 z-10 h-4.5 w-4.5 items-center justify-center border-none bg-transparent p-0',
                 'rounded-2xl shadow-lg hover:bg-state-base-hover',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}

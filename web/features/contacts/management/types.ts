@@ -72,11 +72,40 @@ export type CreateExternalContactResult =
   | { contactId: string; kind: 'matches_platform_contact' }
   | { kind: 'failed' }
 
-export type AddPlatformContactsCommand = {
+export type FindExternalContactsByEmailsCommand = {
+  emails: string[]
+}
+
+export type ExternalContactInviteConflict = {
+  email: string
+  id: string
+  name: string
+}
+
+export type UpgradeExternalContactsToWorkspaceCommand = {
   contactIds: string[]
 }
 
-export type AddPlatformContactsResult = { contactIds: string[]; kind: 'added' } | { kind: 'failed' }
+export type UpgradeExternalContactsToWorkspaceResult = {
+  contactIds: string[]
+  kind: 'upgraded'
+}
+
+export type AddPlatformContactsCommand = {
+  contactIds: string[]
+  upgradeExternalContacts: boolean
+}
+
+export type PlatformContactUpgradeConflict = {
+  contactId: string
+  email: string
+  platformContactId: string
+}
+
+export type AddPlatformContactsResult =
+  | { contactIds: string[]; kind: 'added' }
+  | { conflicts: PlatformContactUpgradeConflict[]; kind: 'requires_external_contact_upgrade' }
+  | { kind: 'failed' }
 
 export type RemoveContactsCommand = {
   contactIds: string[]

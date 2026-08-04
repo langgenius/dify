@@ -21,7 +21,6 @@ import {
   useLearnDifyHiddenValue,
   useSetLearnDifyHidden,
 } from '@/app/components/explore/learn-dify/storage'
-import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import {
   ExternalLinkIndicator,
@@ -37,7 +36,6 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
@@ -48,6 +46,7 @@ import {
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import styles from './help-menu.module.css'
+import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
@@ -100,7 +99,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
-  const [aboutVisible, setAboutVisible] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
@@ -199,7 +198,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
                 </DropdownMenuCheckboxItem>
               )}
-              {IS_CLOUD_EDITION && shouldShowStepByStepTourSwitch && (
+              {systemFeatures.deployment_edition === 'CLOUD' && shouldShowStepByStepTourSwitch && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={false}
@@ -217,7 +216,9 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   <MenuSwitchIndicator checked={stepByStepTourEnabled} />
                 </DropdownMenuCheckboxItem>
               )}
-              {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
+              {systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceOwner && (
+                <Compliance />
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
@@ -235,7 +236,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   iconClassName="i-ri-github-line"
                   label={t(($) => $['userProfile.github'], { ns: 'common' })}
                   trailing={
-                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
+                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75">
                       <span
                         aria-hidden
                         className="i-ri-star-line size-3 shrink-0 text-text-tertiary"
@@ -249,8 +250,8 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                 <DropdownMenuItem
                   className="mx-0 h-8 gap-1 px-3 py-1.5"
                   onClick={() => {
-                    setAboutVisible(true)
                     setOpen(false)
+                    setAboutOpen(true)
                   }}
                 >
                   <MenuItemContent
@@ -273,12 +274,12 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
           </>
         </DropdownMenuContent>
       </DropdownMenu>
-      {aboutVisible && (
-        <AccountAbout
-          onCancel={() => setAboutVisible(false)}
-          langGeniusVersionInfo={langGeniusVersionInfo}
-        />
-      )}
+      <AccountAboutDialog
+        open={aboutOpen}
+        onOpenChange={setAboutOpen}
+        langGeniusVersionInfo={langGeniusVersionInfo}
+        deploymentEdition={systemFeatures.deployment_edition}
+      />
     </>
   )
 }

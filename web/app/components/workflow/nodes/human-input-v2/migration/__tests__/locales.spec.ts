@@ -31,4 +31,21 @@ describe('Human Input migration locales', () => {
       enUS['changeHistory.humanInputMigration'],
     )
   })
+
+  it('defines the refreshed Studio migration copy', () => {
+    expect(enUS['nodes.humanInputMigration.disabledBadge']).toBe('MIGRATION REQUIRED')
+    expect(enUS['nodes.humanInputMigration.dialog.title']).toBe(
+      'Migrate {{count}} Human Input nodes',
+    )
+    expect(enUS['nodes.humanInputMigration.dialog.description']).toBe(
+      'Your recipients, form, and actions carry over.',
+    )
+    expect(enUS['nodes.humanInputMigration.dialog.review']).toBe(
+      'Review the nodes and publish when ready.',
+    )
+    expect(enUS['nodes.humanInputMigration.dialog.draftNotice']).toBe(
+      'Only this draft changes. Published versions keep running until you publish again.',
+    )
+    expect(enUS['nodes.humanInputMigration.preview.author']).toBe('By Dify Team')
+  })
 })

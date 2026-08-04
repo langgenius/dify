@@ -40,13 +40,11 @@ from core.human_input_v2.approval import (
 )
 from core.human_input_v2.entities import HumanInputApproverGrantSubjectType, HumanInputDeliveryChannel
 from core.human_input_v2.shared import (
-    AccountId,
     AppId,
     ApproverGrantId,
     ContactId,
     DeliveryAttemptId,
     DeliveryEndpointId,
-    EmailProviderId,
     EndUserId,
     FormId,
     IMBindingId,
@@ -73,7 +71,12 @@ from models.human_input_v2 import (
     HumanInputV2FormDeliveryEndpoint,
     HumanInputV2FormUploadFile,
     HumanInputV2FormUploadToken,
-    ResendEmailProviderEncryptedCredentials,
+)
+from repositories.human_input_v2.email_channel.mappers import (
+    email_provider_from_record as _email_provider_from_record,
+)
+from repositories.human_input_v2.email_channel.mappers import (
+    email_provider_to_record as _email_provider_to_record,
 )
 
 _FORM_INPUT_ADAPTER: TypeAdapter[FormInputConfig] = TypeAdapter(FormInputConfig)
@@ -95,6 +98,18 @@ def _set_record_identity(
     record.id = record_id
     record.created_at = created_at.value
     record.updated_at = updated_at.value
+
+
+def email_provider_to_record(provider: EmailProviderConfiguration) -> HumanInputEmailProvider:
+    """Compatibility import for the repository that now owns Email mapping."""
+
+    return _email_provider_to_record(provider)
+
+
+def email_provider_from_record(record: HumanInputEmailProvider) -> EmailProviderConfiguration:
+    """Compatibility import for the repository that now owns Email mapping."""
+
+    return _email_provider_from_record(record)
 
 
 def _definition_to_record_value(definition: FrozenFormDefinition) -> HumanInputV2FormDefinition:
@@ -446,44 +461,6 @@ def delivery_attempt_from_record(
             FrozenJSONObject.from_mapping(record.provider_response.root)
             if record.provider_response is not None
             else None
-        ),
-        created_at=_timestamp(record.created_at),
-        updated_at=_timestamp(record.updated_at),
-    )
-
-
-def email_provider_to_record(provider: EmailProviderConfiguration) -> HumanInputEmailProvider:
-    credentials = ResendEmailProviderEncryptedCredentials.model_validate(
-        provider.encrypted_credentials.to_mapping(),
-    )
-    record = HumanInputEmailProvider(
-        provider=provider.provider,
-        sender_email=str(provider.sender_email),
-        encrypted_credentials=credentials,
-        tenant_id=str(provider.workspace_id),
-        sender_name=provider.sender_name,
-        configured_by_account_id=(
-            str(provider.configured_by_account_id) if provider.configured_by_account_id is not None else None
-        ),
-    )
-    _set_record_identity(
-        record, record_id=str(provider.id), created_at=provider.created_at, updated_at=provider.updated_at
-    )
-    return record
-
-
-def email_provider_from_record(record: HumanInputEmailProvider) -> EmailProviderConfiguration:
-    return EmailProviderConfiguration(
-        id=EmailProviderId(record.id),
-        workspace_id=WorkspaceId(record.tenant_id),
-        provider=record.provider,
-        sender_email=NormalizedEmail(record.sender_email),
-        sender_name=record.sender_name,
-        encrypted_credentials=FrozenJSONObject.from_mapping(
-            _JSON_OBJECT_ADAPTER.validate_python(record.encrypted_credentials.model_dump(mode="json"))
-        ),
-        configured_by_account_id=(
-            AccountId(record.configured_by_account_id) if record.configured_by_account_id is not None else None
         ),
         created_at=_timestamp(record.created_at),
         updated_at=_timestamp(record.updated_at),

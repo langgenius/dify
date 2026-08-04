@@ -9,8 +9,9 @@ import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
+import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
 
 type ChangeItemProps = {
   data: CommonNodeType
@@ -86,7 +87,7 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         alignOffset={-4}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
+        <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
           <div className="p-1">
             <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
             <div

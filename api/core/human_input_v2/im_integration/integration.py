@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
 from pydantic import JsonValue
@@ -17,7 +17,7 @@ from core.human_input_v2.shared import AccountId, IntegrationId, UtcTimestamp, W
 class EncryptedCredentials:
     """Immutable opaque encrypted configuration passed through the domain boundary."""
 
-    _serialized: str
+    _serialized: str = field(repr=False)
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, JsonValue]) -> EncryptedCredentials:

@@ -567,7 +567,7 @@ export const zSandboxReadResponse = z.object({
  * WorkflowAgentSandboxUploadPayload
  */
 export const zWorkflowAgentSandboxUploadPayload = z.object({
-  node_execution_id: z.string().nullish(),
+  node_execution_id: z.string().min(1),
   path: z.string().min(1),
 })
 
@@ -1084,9 +1084,33 @@ export const zAppImportResponse = z.object({
 })
 
 /**
- * DebugChannel
+ * RecentAppResponse
  */
-export const zDebugChannel = z.enum([
+export const zRecentAppResponse = z.object({
+  author_name: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * RecentAppListResponse
+ */
+export const zRecentAppListResponse = z.object({
+  data: z.array(zRecentAppResponse),
+})
+
+/**
+ * Channel
+ */
+export const zChannel = z.enum([
   'ding_talk',
   'email',
   'feishu',
@@ -1104,7 +1128,7 @@ export const zJsonValue = z.unknown()
  * Request body for sending one message-template test notification.
  */
 export const zMessageTemplateTestRequest = z.object({
-  channel: zDebugChannel,
+  channel: zChannel,
   inputs: z.record(z.string(), zJsonValue).optional(),
 })
 
@@ -3925,7 +3949,7 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -4317,6 +4341,29 @@ export const zAppDetailWithSiteWritable = z.object({
 })
 
 /**
+ * RecentAppResponse
+ */
+export const zRecentAppResponseWritable = z.object({
+  author_name: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * RecentAppListResponse
+ */
+export const zRecentAppListResponseWritable = z.object({
+  data: z.array(zRecentAppResponseWritable),
+})
+
+/**
  * AccountWithRoleResponse
  */
 export const zAccountWithRoleResponseWritable = z.object({
@@ -4478,6 +4525,15 @@ export const zPostAppsImportsByImportIdConfirmPath = z.object({
  * Import confirmed
  */
 export const zPostAppsImportsByImportIdConfirmResponse = zImport
+
+export const zGetAppsRecentQuery = z.object({
+  limit: z.int().gte(1).lte(8).optional().default(8),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsRecentResponse = zRecentAppListResponse
 
 export const zGetAppsStarredQuery = z.object({
   creator_ids: z.array(z.string()).optional(),
@@ -5927,7 +5983,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().optional().default('.'),
   })
 
@@ -5946,7 +6002,7 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery =
   z.object({
-    node_execution_id: z.string().optional(),
+    node_execution_id: z.string().min(1),
     path: z.string().min(1),
   })
 

@@ -40,12 +40,12 @@ While the current draft contains at least one legacy-rendered Human Input, the f
 
 ### Requirement: Legacy workflows shall show the Figma migration banner
 
-When the draft contains a legacy Human Input, the workflow MUST render the banner from Figma node `1333:5041` with a migration explanation, Learn more action, and Migrate action. The banner MUST disappear when no legacy nodes remain and MUST not alter graph data by rendering.
+When the draft contains a legacy Human Input, the workflow MUST render the compact full-width banner from Figma node `26157:58052` with the Human Input icon, the explanation `This workflow uses the old Human Input node. Migrate all old nodes before adding new ones.`, a Learn more action, and a `Migrate now` action. The banner MUST disappear when no legacy nodes remain and MUST not alter graph data by rendering.
 
 #### Scenario: Legacy workflow displays guidance
 
 - **WHEN** at least one legacy Human Input is present
-- **THEN** the banner MUST explain that all old Human Input nodes must be migrated before new ones can be added and MUST expose Learn more and Migrate actions to an editor
+- **THEN** the banner MUST explain that all old Human Input nodes must be migrated before new ones can be added and MUST expose inline Learn more and `Migrate now` actions to an editor
 
 #### Scenario: V2-only workflow omits guidance
 
@@ -59,7 +59,7 @@ When the draft contains a legacy Human Input, the workflow MUST render the banne
 
 ### Requirement: Legacy node and panel shall remain usable and visibly marked
 
-Every legacy-rendered Human Input canvas node and its legacy configuration panel MUST display the `OLD VERSION` marker from Figma node `1333:5041`. Apart from migration presentation and insertion gating, existing legacy data and editing behavior MUST remain unchanged until successful migration.
+Every legacy-rendered Human Input canvas node and its legacy configuration panel MUST display the `OLD VERSION` marker from Figma node `26157:58052`. Apart from migration presentation and insertion gating, existing legacy data and editing behavior MUST remain unchanged until successful migration.
 
 #### Scenario: Legacy node is marked on canvas
 
@@ -78,12 +78,12 @@ Every legacy-rendered Human Input canvas node and its legacy configuration panel
 
 ### Requirement: The blocked selector shall remain discoverable and provide migration entry
 
-In a legacy-containing workflow, the single Human Input candidate MUST remain visible and searchable but disabled, match the `DISABLED` state in Figma node `1333:5414`, and present the migration explanation and `Migrate now` entry from Figma node `1333:5404`. Disabled candidate activation MUST never insert a node.
+In a legacy-containing workflow, the single Human Input candidate MUST remain visible and searchable but disabled, match the `MIGRATION REQUIRED` state in Figma node `26161:43914`, and present the rich preview and migration tip from Figma node `26161:44013`. The preview MUST retain the Human Input icon, title, description, and Dify Team attribution before explaining `Migrate old Human Input nodes before adding a new one.` and offering `Migrate now`. Disabled candidate activation MUST never insert a node.
 
 #### Scenario: Search finds disabled Human Input
 
 - **WHEN** a user searches for Human Input while legacy nodes exist
-- **THEN** the selector MUST return the candidate with a `DISABLED` badge and disabled visual/semantic state
+- **THEN** the selector MUST return the candidate with a `MIGRATION REQUIRED` badge and disabled visual/semantic state
 
 #### Scenario: Disabled candidate cannot be activated
 
@@ -97,12 +97,12 @@ In a legacy-containing workflow, the single Human Input candidate MUST remain vi
 
 ### Requirement: Migration confirmation shall match the supplied dialog behavior
 
-The banner and selector migration entries MUST open one accessible confirmation dialog matching Figma node `1333:5522`. It MUST identify that all old nodes are updated together, state that existing configuration is preserved, remind the user to review migrated nodes before publishing, and offer Cancel and Migrate actions.
+The banner and selector migration entries MUST open one accessible confirmation dialog matching Figma node `26162:44366`. Its title MUST include the current number of legacy Human Input nodes. It MUST state that recipients, form, and actions carry over; emphasize that the migrated nodes must be reviewed and published when ready; clarify that only the draft changes while published versions keep running until the next publish; and offer Cancel and Migrate actions.
 
 #### Scenario: Dialog opens from either entry point
 
 - **WHEN** an editor selects Migrate in the banner or `Migrate now` in the preview
-- **THEN** the same dialog MUST open with title `Migrate Human Input nodes?`, preservation copy, review guidance, Cancel, and Migrate
+- **THEN** the same dialog MUST open with a count-aware title such as `Migrate 3 Human Input nodes`, the preservation and draft-publication copy, Cancel, and Migrate
 
 #### Scenario: Cancel preserves the workflow
 

@@ -5,7 +5,7 @@ Workflows that still contain legacy Human Input nodes need a clear, safe path to
 ## What Changes
 
 - Detect legacy Human Input nodes in the frontend using the persisted discriminator: a Human Input node is v2 only when `version` is the exact string `"2"`; existing non-v2 nodes continue to render and edit with the legacy implementation until migrated.
-- Add the Figma-defined legacy guidance states: workflow banner, `OLD VERSION` labels on the legacy canvas node and panel, a disabled Human Input entry in the node selector, and a migration call to action in its preview.
+- Add the updated Figma-defined legacy guidance states: a compact workflow banner, `OLD VERSION` labels on the legacy canvas node and panel, a disabled Human Input entry marked `MIGRATION REQUIRED`, a richer migration preview card, and a count-aware migration confirmation dialog.
 - **BREAKING**: Remove legacy Human Input from creation choices. New apps expose only the v2-backed Human Input entry, while any workflow containing a legacy Human Input keeps that entry visible but disabled until all legacy nodes are migrated.
 - Add a confirmation flow that sends every eligible legacy Human Input node in the current draft through one batch `node-data-migration` adapter call, validates the complete response, and applies one atomic graph transaction before using the existing draft synchronization path. The adapter is mock-backed until the backend client is available.
 - Prevent partial or lossy migration: unresolved recipients or unsupported legacy delivery configuration block the mutation and produce recoverable localized feedback; a draft-sync failure restores the original graph.

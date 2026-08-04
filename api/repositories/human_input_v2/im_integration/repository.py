@@ -95,6 +95,18 @@ class SQLAlchemyIMControlPlaneRepository:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker = session_maker
 
+    def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
+        """Load only the exact owner scope used by management."""
+
+        owner_predicate = (
+            HumanInputIMIntegration.tenant_id.is_(None)
+            if workspace_id is None
+            else HumanInputIMIntegration.tenant_id == str(workspace_id)
+        )
+        with self._session_maker() as session:
+            record = session.scalar(select(HumanInputIMIntegration).where(owner_predicate).limit(1))
+            return integration_from_record(record) if record is not None else None
+
     def create_integration(self, integration: IMIntegration) -> IMIntegration:
         """Create the first configuration after serializing its owner scope."""
 

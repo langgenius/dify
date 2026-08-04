@@ -250,6 +250,31 @@ def test_delivery_attempt_provider_and_upload_values_round_trip() -> None:
     assert upload_file_from_record(upload_file_to_record(upload), capability_record, endpoint_record) == upload
 
 
+@pytest.mark.parametrize(
+    "credentials",
+    [
+        {"provider": "wrong", "encrypted_api_key": "ciphertext"},
+        {"provider": "resend"},
+        {"provider": "resend", "encrypted_api_key": "ciphertext", "unexpected": "value"},
+    ],
+)
+def test_email_provider_mapper_strictly_validates_credentials(credentials: dict[str, str]) -> None:
+    provider = EmailProviderConfiguration(
+        id=EmailProviderId("provider-1"),
+        workspace_id=WorkspaceId("workspace-1"),
+        provider=EmailProviderType.RESEND,
+        sender_email=NormalizedEmail("sender@example.com"),
+        sender_name="Dify",
+        encrypted_credentials=FrozenJSONObject.from_mapping(credentials),
+        configured_by_account_id=None,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+
+    with pytest.raises(ValueError):
+        email_provider_to_record(provider)
+
+
 def test_mappers_reject_malformed_subject_and_endpoint_records() -> None:
     grant_record = HumanInputV2FormApproverGrant(
         tenant_id="workspace-1",

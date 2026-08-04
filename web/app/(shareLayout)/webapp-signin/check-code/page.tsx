@@ -105,7 +105,7 @@ export default function CheckCode() {
   }
 
   return (
-    <div className="flex w-[400px] flex-col gap-3">
+    <div className="flex w-100 flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>

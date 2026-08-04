@@ -1,12 +1,15 @@
 'use client'
 
 import type {
+  AddPlatformContactsCommand,
   AvailablePlatformContactsQuery,
   ContactsListQuery,
   ContactView,
   CreateExternalContactCommand,
+  FindExternalContactsByEmailsCommand,
   RemoveContactsCommand,
   RemoveMemberCommand,
+  UpgradeExternalContactsToWorkspaceCommand,
 } from './types'
 import {
   infiniteQueryOptions,
@@ -15,7 +18,11 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
+import {
+  useContactsFeatureContext,
+  useContactsManagementRepository,
+  useOptionalContactsManagement,
+} from './composition-context'
 import { contactsManagementQueryKeys } from './query-keys'
 
 function mergeContactPages(pages: ContactView[][]): ContactView[] {
@@ -111,7 +118,7 @@ export function useAddPlatformContacts() {
 
   return useMutation(
     mutationOptions({
-      mutationFn: (contactIds: string[]) => repository.addPlatformContacts({ contactIds }),
+      mutationFn: (command: AddPlatformContactsCommand) => repository.addPlatformContacts(command),
       onSuccess: (result) => {
         if (result.kind !== 'added') return
         void queryClient.invalidateQueries({
@@ -155,4 +162,39 @@ export function useRemoveContactMember() {
       },
     }),
   )
+}
+
+export function useOptionalMemberInviteContactUpgrade() {
+  const contactsManagement = useOptionalContactsManagement()
+  const queryClient = useQueryClient()
+  const findConflicts = useMutation(
+    mutationOptions({
+      mutationFn: async (command: FindExternalContactsByEmailsCommand) => {
+        if (!contactsManagement.repository) return []
+        return contactsManagement.repository.findExternalContactsByEmails(command)
+      },
+    }),
+  )
+  const upgradeContacts = useMutation(
+    mutationOptions({
+      mutationFn: async (command: UpgradeExternalContactsToWorkspaceCommand) => {
+        if (!contactsManagement.repository) return { contactIds: [], kind: 'upgraded' as const }
+        return contactsManagement.repository.upgradeExternalContactsToWorkspace(command)
+      },
+      onSuccess: (result) => {
+        if (!contactsManagement.context || result.contactIds.length === 0) return
+        void queryClient.invalidateQueries({
+          queryKey: contactsManagementQueryKeys.all(contactsManagement.context.workspaceId),
+        })
+      },
+    }),
+  )
+
+  return {
+    available: Boolean(contactsManagement.context && contactsManagement.repository),
+    findConflicts: findConflicts.mutateAsync,
+    isChecking: findConflicts.isPending,
+    isUpgrading: upgradeContacts.isPending,
+    upgradeContacts: upgradeContacts.mutateAsync,
+  }
 }

@@ -164,7 +164,7 @@ describe('CreateCard', () => {
     it('should have fixed height', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {

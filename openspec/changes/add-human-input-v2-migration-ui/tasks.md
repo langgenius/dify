@@ -20,21 +20,21 @@
 
 - [x] 3.1 Add failing catalog tests proving users see one candidate named Human Input, legacy defaults are not listed, and enabled creation always persists `type: human-input` with string `version: '2'`.
 - [x] 3.2 Replace the two user-facing Human Input catalog entries with the single v2-backed candidate while retaining legacy metadata/defaults only for existing-node routing.
-- [x] 3.3 Extend block-selector metadata/rendering to support a visible, searchable, per-candidate disabled state with the Figma `DISABLED` badge and accessible reason.
+- [x] 3.3 Extend block-selector metadata/rendering to support a visible, searchable, per-candidate disabled state with the Figma `MIGRATION REQUIRED` badge and accessible reason.
 - [x] 3.4 Apply the centralized insertion guard to selector, keyboard/quick-add, duplicate, clipboard paste, and template/snippet insertion boundaries without blocking restoration of a complete saved legacy DSL.
 - [x] 3.5 Add integration tests proving all insertion paths are blocked in legacy/mixed drafts and become available immediately after the last legacy node is migrated or removed.
 
 ## 4. Legacy Guidance Surfaces
 
-- [x] 4.1 Add component tests for the `1333:5041` workflow banner: legacy-only visibility, v2-only absence, Learn more behavior, editable Migrate action, and read-only presentation.
+- [x] 4.1 Add component tests for the workflow banner: legacy-only visibility, v2-only absence, Learn more behavior, editable Migrate action, and read-only presentation.
 - [x] 4.2 Implement the workflow-level migration controller/banner at the editor shell using derived graph state and the supplied Figma layout.
 - [x] 4.3 Add the presentation-only `OLD VERSION` badge to the existing legacy canvas node and legacy panel without changing their data or controls, with v2 exclusion tests.
-- [x] 4.4 Implement the `1333:5404` selector preview explanation and `Migrate now` action for the disabled candidate, sharing the workflow controller entry point and never inserting a node.
+- [x] 4.4 Implement the selector preview explanation and `Migrate now` action for the disabled candidate, sharing the workflow controller entry point and never inserting a node.
 - [x] 4.5 Add visual-state/component coverage for the banner, legacy node, legacy panel, disabled selector row, hover/preview state, and both dialog entry points.
 
 ## 5. Confirmation and Migration Orchestration
 
-- [x] 5.1 Add failing dialog tests for the `1333:5522` title/body/review copy, Cancel, Escape, focus trap/restore, accessible names, pending state, and duplicate-submit prevention.
+- [x] 5.1 Add failing dialog tests for the migration title/body/review copy, Cancel, Escape, focus trap/restore, accessible names, pending state, and duplicate-submit prevention.
 - [x] 5.2 Implement the shared migration confirmation dialog and connect both banner and selector-preview triggers.
 - [ ] 5.3 Add controller tests proving confirmation submits one complete adapter batch, validates it before mutation, reports request/response failures, and leaves history/synchronization untouched on Cancel or preflight failure.
 - [ ] 5.4 Implement the controller's pending lock and batch orchestration so all eligible nodes are submitted together and malformed legacy versions keep guidance/gating active.
@@ -58,12 +58,21 @@
 
 - [x] 8.1 Run the focused Human Input, block-selector, workflow-state/history, clipboard/duplicate, migration planner, dialog, and localization Vitest suites and resolve failures.
 - [x] 8.2 Run frontend formatting, Oxlint/ESLint checks, and TypeScript checking through the repository's `pnpm check` workflow; document any unrelated pre-existing failure.
-- [x] 8.3 Compare implemented banner, badges, disabled selector/preview, confirmation dialog, and success toast against Figma nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`, including keyboard and read-only states.
-- [ ] 8.4 Audit the final diff to prove it adds only OpenSpec and frontend integration with an API-shaped mock, preserves the legacy renderer and exact v2 wire keys, and changes no backend contract, generated client, graphon, runtime or database code.
+- [x] 8.3 Compare implemented banner, badges, disabled selector/preview, confirmation dialog, and success toast against the supplied Figma nodes, including keyboard and read-only states.
+- [x] 8.4 Audit the final diff to prove it adds only OpenSpec and frontend integration with an API-shaped mock, preserves the legacy renderer and exact v2 wire keys, and changes no backend contract, generated client, graphon, runtime or database code.
+
+## 9. Updated Studio Migration UI
+
+- [x] 9.1 Update component tests for the compact banner, `MIGRATION REQUIRED` selector state, rich preview card, and count-aware dialog copy from Studio nodes `26157:58052`, `26161:43914`, `26161:44013`, and `26162:44366`.
+- [x] 9.2 Implement the compact full-width banner and refreshed disabled selector row/preview without changing insertion gating or migration orchestration.
+- [x] 9.3 Pass the current legacy-node count to the shared confirmation dialog and implement the updated preservation and draft-publication copy while retaining pending, error, focus, and dismissal behavior.
+- [x] 9.4 Update only English and Simplified Chinese workflow locale keys required by the refreshed UI.
+- [x] 9.5 Run focused migration and block-selector tests, frontend static checks, and a final Figma/scope comparison.
 
 ## Verification Notes
 
-- Focused Human Input, migration, selector, insertion, history, and locale suites pass: 26 files and 174 tests.
-- `pnpm check` reaches pre-existing Markdown formatting failures under `openspec/changes/hitl-im-contact-domain-discovery/` and `openspec/changes/human-input-v2-api-contracts/`. The complete `web/` Vite+ formatting, lint, and type check passes with zero errors, and the repository ESLint fallback passes.
-- The rollout surfaces match the captured Figma states and copy for nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`; component tests cover keyboard focus, Escape/Cancel, pending submission, and read-only behavior.
+- Focused migration and block-selector suites pass: 8 files and 57 tests, including the refreshed banner, preview, count-aware dialog, read-only behavior, pending submission, and localization contracts.
+- Scoped Vite+ formatting, lint, and type checking passes for all 9 changed frontend code files. The complete `web/` check remains blocked by unrelated branch-wide diagnostics outside this change, including existing model-provider declarations and knowledge-retrieval selector accessibility findings; the repository ESLint fallback reports no errors for the changed locale files.
+- The rollout surfaces match Studio nodes `26157:58052`, `26161:43914`, `26161:44013`, and `26162:44366`: compact canvas banner, `MIGRATION REQUIRED` selector state, rich migration preview, and count-aware confirmation copy. The existing success state remains unchanged.
+- Strict OpenSpec validation passes, and the final diff contains only this OpenSpec change plus `web/` components, tests, and `en-US`/`zh-Hans` locale files; no backend contract, generated client, graphon, runtime, or database file is modified.
 - The executor now uses a one-call batch migration boundary while preserving exact string `version: '2'`, literal `recipients_spec`, absence of generated `recpients_spec`, legacy routing, atomic graph application and one draft synchronization. The boundary is mock-backed until the generated backend client is available.

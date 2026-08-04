@@ -4,23 +4,8 @@
       "count": 2
     }
   },
-  "cli/test/e2e/helpers/retry.ts": {
-    "no-throw-literal": {
-      "count": 1
-    }
-  },
   "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
     "prefer-const": {
-      "count": 1
-    }
-  },
-  "e2e/support/web-server.ts": {
-    "no-throw-literal": {
-      "count": 1
-    }
-  },
-  "packages/dev-proxy/src/cli.spec.ts": {
-    "no-throw-literal": {
       "count": 1
     }
   },
@@ -473,7 +458,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
@@ -1691,11 +1676,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/logo/dify-logo.tsx": {
-    "react/only-export-components": {
-      "count": 2
-    }
-  },
   "web/app/components/base/markdown-blocks/__tests__/paragraph.spec.tsx": {
     "jsx_a11y/anchor-is-valid": {
       "count": 1
@@ -1704,11 +1684,6 @@
   "web/app/components/base/markdown-blocks/audio-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/base/markdown-blocks/button.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/code-block.tsx": {
@@ -2143,11 +2118,6 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/voice-input/recorder.ts": {
-    "no-throw-literal": {
       "count": 1
     }
   },
@@ -3230,9 +3200,6 @@
     }
   },
   "web/app/components/plugins/marketplace/hooks.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -3634,11 +3601,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/hooks/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 9
-    }
-  },
   "web/app/components/rag-pipeline/hooks/use-DSL.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -3891,11 +3853,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow-app/hooks/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 13
-    }
-  },
   "web/app/components/workflow-app/hooks/use-DSL.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -4035,11 +3992,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 25
-    }
-  },
   "web/app/components/workflow/hooks/use-checklist.ts": {
     "typescript/no-empty-object-type": {
       "count": 1
@@ -4066,11 +4018,6 @@
   "web/app/components/workflow/hooks/use-serial-async-callback.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/hooks/use-workflow-run-event/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 19
     }
   },
   "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
@@ -5065,11 +5012,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/list.spec.tsx": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
@@ -5805,11 +5747,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/variable-inspect/display-content.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/variable-inspect/group.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -5946,11 +5883,6 @@
       "count": 1
     }
   },
-  "web/app/layout.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/reset-password/check-code/page.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -6024,16 +5956,6 @@
   },
   "web/app/signup/set-password/page.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/context/external-api-panel-context.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/context/external-knowledge-api-context.tsx": {
-    "react/only-export-components": {
       "count": 1
     }
   },
@@ -6374,9 +6296,6 @@
     }
   },
   "web/service/use-pipeline.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -6395,9 +6314,6 @@
     }
   },
   "web/service/use-workflow.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },

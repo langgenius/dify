@@ -6,14 +6,13 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
@@ -21,7 +20,7 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
-import DifyLogo from '../components/base/logo/dify-logo'
+import { DifyLogo } from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
 import SearchInput from './search-input'
@@ -50,9 +49,7 @@ const EducationApplyAgeContent = () => {
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
-  const queryClient = useQueryClient()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
-  const setEducationVerifying = useSetEducationVerifying()
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -72,7 +69,6 @@ const EducationApplyAgeContent = () => {
       if (res.message === 'success') {
         onPlanInfoChanged()
         updateEducationStatus()
-        setEducationVerifying(null)
         setHasSubmittedEducation(true)
       } else {
         toast.error(t(($) => $.submitError, { ns: 'education' }))
@@ -115,12 +111,7 @@ const EducationApplyAgeContent = () => {
 
     try {
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() }),
-        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.get.queryKey() }),
-      ])
-      onPlanInfoChanged()
-      updateEducationStatus()
+      globalThis.location.reload()
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
@@ -177,18 +168,18 @@ const EducationApplyAgeContent = () => {
 
   return (
     <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
-      <div className="mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle">
+      <div className="mx-auto w-full max-w-352 rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
-          className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
+          className="h-87.25 w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: 'url(/education/bg.png)',
           }}
         ></div>
-        <div className="mt-[-349px] box-content flex h-7 items-center justify-between p-6">
-          <DifyLogo size="large" style="monochromeWhite" />
+        <div className="-mt-87.25 box-content flex h-7 items-center justify-between p-6">
+          <DifyLogo alt="Dify" size="large" className="brightness-0 invert" />
         </div>
-        <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
-          <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
+        <div className="mx-auto max-w-180 px-8 pb-45">
+          <div className="mb-2 flex h-48 flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
             <div className="mb-2 title-5xl-bold shadow-xs">
               {t(($) => $.toVerified, { ns: 'education' })}
             </div>
@@ -211,6 +202,7 @@ const EducationApplyAgeContent = () => {
                 currentWorkspace={currentWorkspace}
                 plan={plan.type}
                 action={renderAppliedEducationAction()}
+                isSwitchingWorkspace={switchWorkspaceMutation.isPending}
                 onSwitchWorkspace={(value) => {
                   void handleSwitchWorkspace(value)
                 }}
@@ -303,6 +295,7 @@ type AppliedEducationWorkspaceBlockProps = {
   currentWorkspace: ICurrentWorkspace
   plan: PlanType
   action: ReactNode
+  isSwitchingWorkspace: boolean
   onSwitchWorkspace: (tenantId: string) => void
 }
 
@@ -310,6 +303,7 @@ function AppliedEducationWorkspaceContent({
   currentWorkspace,
   plan,
   action,
+  isSwitchingWorkspace,
   onSwitchWorkspace,
 }: AppliedEducationWorkspaceBlockProps) {
   const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
@@ -321,6 +315,7 @@ function AppliedEducationWorkspaceContent({
       currentWorkspace={currentWorkspace}
       plan={plan}
       action={action}
+      isSwitchingWorkspace={isSwitchingWorkspace}
       onSwitchWorkspace={onSwitchWorkspace}
     />
   )

@@ -10,9 +10,9 @@ import FireCrawl from '../index'
 // Mock API service
 const mockCreateFirecrawlTask = vi.fn()
 const mockCheckFirecrawlTaskStatus = vi.fn()
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,12 +26,10 @@ vi.mock('@/service/datasets', () => ({
   checkFirecrawlTaskStatus: (...args: unknown[]) => mockCheckFirecrawlTaskStatus(...args),
 }))
 
-// Mock modal context
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock sleep utility to speed up tests
 vi.mock('@/utils', () => ({
@@ -178,7 +176,7 @@ describe('FireCrawl', () => {
       const configButton = screen.getByText(/configureFirecrawl/i)
       await user.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })

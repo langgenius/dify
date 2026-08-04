@@ -5,7 +5,77 @@ import { ContactsManagementMockProvider } from '../composition'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 import { PlatformContactPickerDialog } from '../platform-contact-picker-dialog'
 
-describe('PlatformContactPickerDialog pending state', () => {
+describe('PlatformContactPickerDialog', () => {
+  it('asks before upgrading an External Contact and keeps the selection after cancellation', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    })
+    const onOpenChange = vi.fn()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactsManagementMockProvider
+          scenario={createContactsMockScenario(ContactsMockScenario.EeMixed)}
+        >
+          <PlatformContactPickerDialog open onOpenChange={onOpenChange} />
+        </ContactsManagementMockProvider>
+      </QueryClientProvider>,
+    )
+
+    const user = userEvent.setup()
+    const picker = screen.getByRole('dialog', { name: 'contacts.platformPicker.title' })
+    const option = await within(picker).findByRole('checkbox', { name: /Courtney Henry/ })
+    await user.click(option)
+    await user.click(within(picker).getByRole('button', { name: 'contacts.platformPicker.add' }))
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: /contacts\.platformPicker\.upgrade\.title/i,
+    })
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await user.click(within(confirmation).getByRole('button', { name: 'contacts.action.cancel' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('alertdialog', {
+          name: /contacts\.platformPicker\.upgrade\.title/i,
+        }),
+      ).not.toBeInTheDocument()
+    })
+    expect(option).toBeChecked()
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('adds and upgrades the selected External Contact after confirmation', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    })
+    const onOpenChange = vi.fn()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactsManagementMockProvider
+          scenario={createContactsMockScenario(ContactsMockScenario.EeMixed)}
+        >
+          <PlatformContactPickerDialog open onOpenChange={onOpenChange} />
+        </ContactsManagementMockProvider>
+      </QueryClientProvider>,
+    )
+
+    const user = userEvent.setup()
+    const picker = screen.getByRole('dialog', { name: 'contacts.platformPicker.title' })
+    await user.click(await within(picker).findByRole('checkbox', { name: /Courtney Henry/ }))
+    await user.click(within(picker).getByRole('button', { name: 'contacts.platformPicker.add' }))
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: /contacts\.platformPicker\.upgrade\.title/i,
+    })
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: 'contacts.platformPicker.upgrade.confirm',
+      }),
+    )
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
   it('keeps selection visible and prevents duplicate add while pending', async () => {
     const waits: Array<() => void> = []
     const wait = () =>

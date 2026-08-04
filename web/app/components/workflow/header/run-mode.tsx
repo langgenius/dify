@@ -7,18 +7,16 @@ import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  useWorkflowRun,
-  useWorkflowRunValidation,
-  useWorkflowStartRun,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useWorkflowRunValidation } from '../hooks/use-checklist'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
+import { useWorkflowStartRun } from '../hooks/use-workflow-start-run'
 import { TEST_RUN_MENU_HOTKEY } from '../hotkeys'
 import TestRunMenu, { TriggerType } from './test-run-menu'
 

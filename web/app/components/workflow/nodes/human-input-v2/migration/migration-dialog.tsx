@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 export type HumanInputMigrationDialogProps = {
   open: boolean
   pending: boolean
+  nodeCount: number
   error?: string
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
@@ -22,6 +23,7 @@ export type HumanInputMigrationDialogProps = {
 const HumanInputMigrationDialog = ({
   open,
   pending,
+  nodeCount,
   error,
   onOpenChange,
   onConfirm,
@@ -40,20 +42,22 @@ const HumanInputMigrationDialog = ({
       <AlertDialogContent className="w-[480px] max-w-[calc(100vw-2rem)]">
         <div className="px-6 pt-6">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['nodes.humanInputMigration.dialog.title'], { ns: 'workflow' })}
+            {t(($) => $['nodes.humanInputMigration.dialog.title'], {
+              ns: 'workflow',
+              count: nodeCount,
+            })}
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-3 system-sm-regular text-text-secondary">
-            {t(($) => $['nodes.humanInputMigration.dialog.description'], { ns: 'workflow' })}
-          </AlertDialogDescription>
-          <div className="mt-4 flex items-start gap-2 rounded-lg bg-background-section-burn px-3 py-2">
-            <span
-              aria-hidden
-              className="mt-0.5 i-ri-information-2-line size-4 shrink-0 text-text-accent"
-            />
-            <div className="system-xs-regular text-text-secondary">
+            <span>
+              {t(($) => $['nodes.humanInputMigration.dialog.description'], { ns: 'workflow' })}{' '}
+            </span>
+            <span className="system-sm-medium">
               {t(($) => $['nodes.humanInputMigration.dialog.review'], { ns: 'workflow' })}
-            </div>
-          </div>
+            </span>
+            <span className="mt-3 block">
+              {t(($) => $['nodes.humanInputMigration.dialog.draftNotice'], { ns: 'workflow' })}
+            </span>
+          </AlertDialogDescription>
           {error && (
             <div
               role="alert"

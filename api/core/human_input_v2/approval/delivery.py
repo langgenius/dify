@@ -2,16 +2,19 @@
 
 Endpoints describe where a form can be delivered or interacted with. Their
 tokens are scoped capabilities only; this module deliberately exposes no actor
-or verified-proof conversion. Delivery attempts are append-only diagnostics and
-cannot mutate :class:`HumanInputForm` lifecycle state.
+or verified-proof conversion. Delivery attempts have their own controlled
+lifecycle and cannot mutate :class:`HumanInputForm` lifecycle state.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from hashlib import sha256
 from typing import assert_never
 
+from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
+from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity
 from core.human_input_v2.entities import (
     EmailProviderType,
     HumanInputDeliveryAttemptStatus,
@@ -197,7 +200,7 @@ class DeliveryEndpoint:
 
 @dataclass(frozen=True, slots=True)
 class DeliveryAttempt:
-    """Append-only provider delivery outcome scoped to one endpoint."""
+    """Durable provider invocation lifecycle scoped to one endpoint."""
 
     id: DeliveryAttemptId
     endpoint_ref: DeliveryEndpointRef
@@ -227,6 +230,153 @@ class DeliveryAttempt:
             self.failure_code is not None or self.failure_reason is not None
         ):
             raise ValueError("only failed delivery attempts may contain failure diagnostics")
+
+    @property
+    def data(self) -> DeliveryAttemptData | LegacyDeliveryAttemptData | None:
+        if self.provider_response is None:
+            return None
+        return delivery_attempt_data_from_frozen(self.provider_response)
+
+
+@dataclass(frozen=True, slots=True)
+class ProtectedRenderedEmailRequest:
+    """Opaque workspace-protected provider-ready request."""
+
+    ciphertext: str = field(repr=False)
+    version: int = 1
+
+    def __post_init__(self) -> None:
+        if not self.ciphertext:
+            raise ValueError("protected rendered request must not be empty")
+        if self.version != 1:
+            raise ValueError("unsupported protected rendered request version")
+
+
+@dataclass(frozen=True, slots=True)
+class SafeDeliveryOutcome:
+    status: str
+    failure_code: str | None = None
+    provider_message_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.status not in {"accepted", "retryable_failure", "terminal_failure"}:
+            raise ValueError("unsupported safe delivery outcome")
+        if self.status == "accepted" and not self.provider_message_id:
+            raise ValueError("accepted delivery outcome requires provider message id")
+        if self.status != "accepted" and not self.failure_code:
+            raise ValueError("failed delivery outcome requires failure code")
+
+
+@dataclass(frozen=True, slots=True)
+class DeliveryAttemptData:
+    """Strict data stored in the existing provider-response JSON column."""
+
+    protected_request: ProtectedRenderedEmailRequest
+    selected_channel: ChannelRef
+    payload_fingerprint: str
+    idempotency_key: str = field(repr=False)
+    configuration_snapshot: ConfigurationSnapshotIdentity | None = None
+    outcome: SafeDeliveryOutcome | None = None
+    worker_retry_count: int = 0
+
+    def __post_init__(self) -> None:
+        _validate_sha256(self.payload_fingerprint, label="delivery payload fingerprint")
+        if self.selected_channel.kind is not ChannelKind.EMAIL:
+            raise ValueError("rendered Email attempt requires an Email channel")
+        if not self.idempotency_key or len(self.idempotency_key) > 256:
+            raise ValueError("delivery idempotency key must contain 1 to 256 characters")
+        if self.worker_retry_count < 0:
+            raise ValueError("delivery worker retry count must not be negative")
+
+    def to_frozen(self) -> FrozenJSONObject:
+        mapping: dict[str, object] = {
+            "schema_version": 1,
+            "protected_request": {
+                "version": self.protected_request.version,
+                "ciphertext": self.protected_request.ciphertext,
+            },
+            "selected_channel": {
+                "kind": self.selected_channel.kind.value,
+                "provider": self.selected_channel.provider.value,
+            },
+            "payload_fingerprint": self.payload_fingerprint,
+            "idempotency_key": self.idempotency_key,
+            "worker_retry_count": self.worker_retry_count,
+        }
+        if self.configuration_snapshot is not None:
+            mapping["configuration_snapshot"] = self.configuration_snapshot.to_mapping()
+        if self.outcome is not None:
+            mapping["outcome"] = {
+                "status": self.outcome.status,
+                "failure_code": self.outcome.failure_code,
+                "provider_message_id": self.outcome.provider_message_id,
+            }
+        return FrozenJSONObject.from_mapping(mapping)
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyDeliveryAttemptData:
+    """Compatibility wrapper for historical provider diagnostics."""
+
+    response: FrozenJSONObject = field(repr=False)
+
+
+def delivery_attempt_data_from_frozen(
+    value: FrozenJSONObject,
+) -> DeliveryAttemptData | LegacyDeliveryAttemptData:
+    mapping = value.to_mapping()
+    if mapping.get("schema_version") != 1:
+        return LegacyDeliveryAttemptData(value)
+    protected = mapping.get("protected_request")
+    selected = mapping.get("selected_channel")
+    if not isinstance(protected, dict) or not isinstance(selected, dict):
+        raise ValueError("delivery attempt data is malformed")
+    snapshot_mapping = mapping.get("configuration_snapshot")
+    snapshot = None
+    if snapshot_mapping is not None:
+        if not isinstance(snapshot_mapping, dict):
+            raise ValueError("delivery configuration snapshot is malformed")
+        snapshot = ConfigurationSnapshotIdentity(
+            EmailProviderId(str(snapshot_mapping["configuration_id"])),
+            UtcTimestamp(datetime.fromisoformat(str(snapshot_mapping["updated_at"]))),
+        )
+    outcome_mapping = mapping.get("outcome")
+    outcome = None
+    if outcome_mapping is not None:
+        if not isinstance(outcome_mapping, dict):
+            raise ValueError("delivery outcome is malformed")
+        outcome = SafeDeliveryOutcome(
+            status=str(outcome_mapping["status"]),
+            failure_code=(
+                str(outcome_mapping["failure_code"]) if outcome_mapping.get("failure_code") is not None else None
+            ),
+            provider_message_id=(
+                str(outcome_mapping["provider_message_id"])
+                if outcome_mapping.get("provider_message_id") is not None
+                else None
+            ),
+        )
+    return DeliveryAttemptData(
+        protected_request=ProtectedRenderedEmailRequest(
+            ciphertext=str(protected["ciphertext"]),
+            version=_json_integer(protected.get("version"), label="protected request version"),
+        ),
+        selected_channel=ChannelRef(
+            ChannelKind(str(selected["kind"])),
+            ChannelProvider(str(selected["provider"])),
+        ),
+        payload_fingerprint=str(mapping["payload_fingerprint"]),
+        idempotency_key=str(mapping["idempotency_key"]),
+        configuration_snapshot=snapshot,
+        outcome=outcome,
+        worker_retry_count=_json_integer(mapping.get("worker_retry_count", 0), label="worker retry count"),
+    )
+
+
+def _json_integer(value: object, *, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer")
+    return value
 
 
 @dataclass(frozen=True, slots=True)

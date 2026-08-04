@@ -8,7 +8,13 @@ from typing import Protocol
 from core.human_input_v2.entities import HumanInputV2FormStatus
 from core.human_input_v2.shared import UtcTimestamp, WorkspaceId
 
-from .delivery import DeliveryAttempt, DeliveryEndpoint, UploadCapability, UploadFileAssociation
+from .delivery import (
+    DeliveryAttempt,
+    DeliveryEndpoint,
+    ProtectedRenderedEmailRequest,
+    UploadCapability,
+    UploadFileAssociation,
+)
 from .form import FormCreation, FrozenFormDefinition, HumanInputForm
 from .grants import ApproverGrant, DeliveryEndpointRef, FormRef
 
@@ -41,7 +47,7 @@ class FormRepository(Protocol):
     """Deep adapter contract whose operations own their query and transaction shape."""
 
     def create_form(self, creation: FormCreation) -> HumanInputForm:
-        """Persist form, grants, and endpoints atomically."""
+        """Persist form, grants, endpoints, and initial attempts atomically."""
 
         ...
 
@@ -79,3 +85,11 @@ class FormRepository(Protocol):
         """Associate a file only after validating the full capability owner chain."""
 
         ...
+
+
+class RenderedEmailRequestProtector(Protocol):
+    """Protect provider-ready content before it enters durable storage."""
+
+    def protect(self, workspace_id: WorkspaceId, serialized_request: str) -> ProtectedRenderedEmailRequest: ...
+
+    def reveal(self, workspace_id: WorkspaceId, protected: ProtectedRenderedEmailRequest) -> str: ...

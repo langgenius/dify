@@ -4,7 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useClickAway } from 'ahooks'
 import { memo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodeDataUpdate, useNodesInteractions } from '../hooks'
+import { useNodeDataUpdate } from '../hooks/use-node-data-update'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import NodeResizer from '../nodes/_base/components/node-resizer'
 import { useStore } from '../store/workflow'
 import { THEME_MAP } from './constants'
@@ -71,7 +72,7 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
             className={cn('h-2 shrink-0 rounded-t-md opacity-50', THEME_MAP[theme]!.title)}
           ></div>
           {data.selected && !data._isTempNode && (
-            <div className="pointer-events-auto absolute top-[-41px] left-1/2 z-40 -translate-x-1/2">
+            <div className="pointer-events-auto absolute -top-10.25 left-1/2 z-40 -translate-x-1/2">
               <NoteEditorToolbar
                 theme={theme}
                 onThemeChange={handleThemeChange}

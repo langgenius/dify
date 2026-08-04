@@ -54,7 +54,7 @@ export function AgentPublishImpactDetails({
         <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
           {t(($) => $['agentDetail.configure.publishImpact.affectedWorkflows'])}
         </div>
-        <div className="flex max-h-[123px] flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
+        <div className="flex max-h-30.75 flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
           {references.map((reference) => (
             <ReferenceLink
               key={`${reference.app_id}-${reference.workflow_id}`}

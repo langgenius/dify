@@ -5,7 +5,7 @@ import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 const mockUseIsChatMode = vi.fn()
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('@/app/components/workflow-app/hooks/use-is-chat-mode', () => ({
+vi.mock('../use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 

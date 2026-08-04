@@ -372,7 +372,7 @@ describe('Install', () => {
       })
     })
 
-    it('should uninstall existing plugin before installing new version', async () => {
+    it('should preserve credentials when replacing an installed plugin', async () => {
       mockUseCheckInstalled.mockReturnValue({
         installedInfo: {
           'test-author/Test Plugin': {
@@ -394,7 +394,9 @@ describe('Install', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
 
       await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('installed-id-to-uninstall')
+        expect(mockUninstallPlugin).toHaveBeenCalledWith('installed-id-to-uninstall', {
+          preserveCredentials: true,
+        })
       })
 
       await waitFor(() => {

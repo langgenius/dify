@@ -1,10 +1,11 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
@@ -15,20 +16,6 @@ vi.mock('../../../app/type-selector', () => ({
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
-
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
 
 const createApp = (overrides?: Partial<App>): App => ({
   can_trial: true,
@@ -63,6 +50,7 @@ describe('AppCard', () => {
   const onCreate = vi.fn()
   const onTry = vi.fn()
   const mockTrackEvent = vi.mocked(trackEvent)
+  let deploymentEdition: DeploymentEdition = 'CLOUD'
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
@@ -73,11 +61,13 @@ describe('AppCard', () => {
       isExplore: false,
       ...props,
     }
-    return render(<AppCard {...mergedProps} />)
+    return renderWithConsoleQuery(<AppCard {...mergedProps} />, {
+      systemFeatures: { deployment_edition: deploymentEdition },
+    })
   }
 
   beforeEach(() => {
-    mockConfig.isCloudEdition = true
+    deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
   })
 
@@ -138,14 +128,14 @@ describe('AppCard', () => {
     })
 
     it('should make the app card clickable outside cloud edition when create is allowed', () => {
-      mockConfig.isCloudEdition = false
+      deploymentEdition = 'COMMUNITY'
       renderComponent({ canCreate: true, isExplore: true })
 
       expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
     })
 
     it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
-      mockConfig.isCloudEdition = false
+      deploymentEdition = 'COMMUNITY'
       renderComponent({ canCreate: false, isExplore: true })
 
       expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
@@ -195,7 +185,7 @@ describe('AppCard', () => {
     })
 
     it('should call onCreate when app card is clicked outside cloud edition', () => {
-      mockConfig.isCloudEdition = false
+      deploymentEdition = 'COMMUNITY'
 
       renderComponent({ canCreate: true, isExplore: true })
 

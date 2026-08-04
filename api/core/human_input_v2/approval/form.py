@@ -20,7 +20,7 @@ from core.human_input_v2.shared import (
     UtcTimestamp,
 )
 
-from .delivery import DeliveryEndpoint
+from .delivery import DeliveryAttempt, DeliveryEndpoint
 from .frozen_values import FrozenJSONObject
 from .grants import ApproverGrant, FormRef
 from .recipient_resolution import ResolvedApprovalPlan
@@ -120,13 +120,19 @@ class FormCreation:
 
     form: HumanInputForm
     endpoints: tuple[DeliveryEndpoint, ...]
+    attempts: tuple[DeliveryAttempt, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.endpoints, tuple):
             raise TypeError("form creation endpoints must be an immutable tuple")
+        if not isinstance(self.attempts, tuple):
+            raise TypeError("form creation attempts must be an immutable tuple")
         grant_refs = {grant.ref for grant in self.form.grants}
         if any(endpoint.grant_ref not in grant_refs for endpoint in self.endpoints):
             raise ValueError("form creation contains an endpoint outside its grants")
+        endpoint_refs = {endpoint.ref for endpoint in self.endpoints}
+        if any(attempt.endpoint_ref not in endpoint_refs for attempt in self.attempts):
+            raise ValueError("form creation contains a delivery attempt outside its endpoints")
 
 
 @dataclass(frozen=True, slots=True)

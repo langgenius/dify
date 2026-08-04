@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "İş Akışı Süreci duraklatıldı",
   "common.workflowProcessRunning": "İş Akışı Süreci çalışıyor",
   "common.workflowProcessSucceeded": "İş Akışı Süreci başarılı oldu",
+  "common.workflowSaveStatus": "İş akışı kaydetme durumu",
   "customWebhook": "Özel Webhook",
   "debug.copyLastRun": "Son Çalışmayı Kopyala",
   "debug.copyLastRunError": "Son çalışma girdilerini kopyalamak başarısız oldu.",

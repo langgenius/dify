@@ -104,19 +104,40 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: () => ({
-    availablePrevBlocks: mockHooksState.availablePrevBlocks,
-    availableNextBlocks: mockHooksState.availableNextBlocks,
-  }),
-  useIsChatMode: () => mockHooksState.isChatMode,
-  useNodesInteractions: () => ({
-    handleNodeAdd: mockHandleNodeAdd,
-  }),
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => mockHooksState.isReadOnly,
-  }),
-}))
+vi.mock('../../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: () => ({
+      availablePrevBlocks: mockHooksState.availablePrevBlocks,
+      availableNextBlocks: mockHooksState.availableNextBlocks,
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeAdd: mockHandleNodeAdd,
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => mockHooksState.isChatMode,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: () => mockHooksState.isReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: MockStoreState) => T) => selector(mockStoreState),

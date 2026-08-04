@@ -7,8 +7,8 @@ import type { ContactsFeatureContextValue } from './types'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { Plan } from '@/app/components/billing/type'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/context/system-features-state'
 import { currentWorkspaceIdAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { ContactsFeatureContext, ContactsManagementRepositoryContext } from './composition-context'
 import { createContactsMockRepository } from './mock/repository'
@@ -64,9 +64,10 @@ export function ContactsManagementMockProvider({
 export function ContactsManagementRuntimeProvider({ children }: { children: ReactNode }) {
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { plan } = useProviderContext()
   const deployment =
-    plan.type === Plan.enterprise ? 'ee' : IS_CLOUD_EDITION ? 'saas' : ('ce' as const)
+    plan.type === Plan.enterprise ? 'ee' : deploymentEdition === 'CLOUD' ? 'saas' : ('ce' as const)
   const scenario = useMemo(() => {
     const defaultScenario = createDefaultContactsScenario(deployment, canManage)
     return { ...defaultScenario, workspaceId: workspaceId || defaultScenario.workspaceId }

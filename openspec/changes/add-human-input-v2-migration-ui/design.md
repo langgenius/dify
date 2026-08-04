@@ -6,13 +6,13 @@ This change advances that rollout without removing the legacy renderer. Existing
 
 The target visual states are:
 
-| Surface                            | Figma node       | Required state                                                                                   |
-| ---------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------ |
-| Legacy workflow guidance           | `HITL 1333:5041` | Top banner with Learn more/Migrate actions; legacy canvas node and open panel show `OLD VERSION` |
-| Block selector                     | `HITL 1333:5414` | Human Input remains discoverable but disabled, carries `DISABLED`, and cannot be inserted        |
-| Selector preview / migration entry | `HITL 1333:5404` | Preview explains that old nodes must be migrated and offers `Migrate now`                        |
-| Confirmation                       | `HITL 1333:5522` | Batch-migration confirmation dialog with preservation and review messaging                       |
-| Completion                         | `HITL 1333:5532` | Success toast: `Human Input nodes migrated successfully`                                         |
+| Surface                            | Figma node           | Required state                                                                                                                                      |
+| ---------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Legacy workflow guidance           | `Studio 26157:58052` | Compact full-width top banner with Human Input icon and inline Learn more/Migrate now actions; legacy canvas node and open panel show `OLD VERSION` |
+| Block selector                     | `Studio 26161:43914` | Human Input remains discoverable but disabled, carries `MIGRATION REQUIRED`, and cannot be inserted                                                 |
+| Selector preview / migration entry | `Studio 26161:44013` | Rich Human Input preview with author metadata plus a distinct migration tip and compact `Migrate now` action                                        |
+| Confirmation                       | `Studio 26162:44366` | Count-aware batch-migration confirmation dialog with preservation, review, and draft-publication messaging                                          |
+| Completion                         | `HITL 1333:5532`     | Success toast: `Human Input nodes migrated successfully`                                                                                            |
 
 ## Goals / Non-Goals
 
@@ -57,7 +57,7 @@ When `hasLegacyHumanInput` is false, the v2-backed candidate is enabled. When it
 
 ### 3. Mount migration guidance at workflow and legacy-renderer boundaries
 
-A small workflow-level migration controller owns banner/dialog state and reads the centralized policy. It renders the Figma banner only while at least one legacy-rendered Human Input exists. The existing legacy node and legacy panel receive a presentation-only `OLD VERSION` badge; their data and controls otherwise remain unchanged.
+A small workflow-level migration controller owns banner/dialog state and reads the centralized policy. It renders the compact full-width Figma banner only while at least one legacy-rendered Human Input exists. The banner keeps the Human Input icon, explanation, Learn more link, and `Migrate now` action in one horizontal surface above the canvas. The existing legacy node and legacy panel receive a presentation-only `OLD VERSION` badge; their data and controls otherwise remain unchanged.
 
 The banner Migrate action and selector-preview `Migrate now` action open the same dialog. Learn more uses the repository's existing documentation-link convention. Users without workflow edit permission can see the legacy explanation but cannot start migration. Dialog focus is trapped, Cancel/Escape preserve the graph, focus returns to the invoking control, and the confirm action is locked while migration is pending.
 
@@ -95,7 +95,7 @@ This keeps frontend and collaborative/history state convergent and avoids per-no
 
 ### 6. Keep visual copy and tests local to the frontend
 
-All new strings live in the workflow locale namespace for `en-US` and `zh-Hans`; other locale files are not generated or modified. Component tests cover the Figma states, keyboard/accessibility behavior, and permission variants. Contract/adapter tests cover one-request batching, request/response correlation, malformed responses, graph preservation, stale-graph rejection, atomicity, single-sync behavior and rollback. Integration tests cover new, legacy-only, mixed, migrated, imported, duplicate, and clipboard flows.
+All new strings live in the workflow locale namespace for `en-US` and `zh-Hans`; other locale files are not generated or modified. The blocked selector uses the visible label `MIGRATION REQUIRED`, and its preview retains the normal Human Input identity, description, and Dify Team attribution before presenting the migration tip. The confirmation title includes the current legacy-node count and its body separates preserved-configuration guidance from the fact that only the draft changes. Component tests cover these Figma states, keyboard/accessibility behavior, and permission variants. Contract/adapter tests cover one-request batching, request/response correlation, malformed responses, graph preservation, stale-graph rejection, atomicity, single-sync behavior and rollback. Integration tests cover new, legacy-only, mixed, migrated, imported, duplicate, and clipboard flows.
 
 ## Risks / Trade-offs
 
