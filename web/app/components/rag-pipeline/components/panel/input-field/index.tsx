@@ -107,17 +107,12 @@ const InputFieldPanel = () => {
         <Button
           variant="ghost"
           size="small"
-          className={cn(
-            'shrink-0 gap-x-px px-1.5',
-            isPreviewing && 'bg-state-accent-active text-text-accent',
-          )}
+          className={cn('shrink-0', isPreviewing && 'bg-state-accent-active text-text-accent')}
           onClick={togglePreviewPanel}
           disabled={isEditing}
         >
           <RiEyeLine className="size-3.5" />
-          <span className="px-0.75">
-            {t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}
-          </span>
+          <span>{t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}</span>
         </Button>
         <Divider type="vertical" className="mx-1 h-3" />
         <button

@@ -1,12 +1,12 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, TypedDict, override
+from typing import Any, Concatenate, Self, TypedDict, override
 from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -27,6 +27,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.app.file_access import DatabaseFileAccessController
+from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories import variable_factory
@@ -109,6 +110,35 @@ class EnvironmentVariableUpdatePayload(BaseModel):
         ...,
         description="Environment variables for the draft workflow",
     )
+    patch: bool = Field(
+        default=False,
+        description="Treat environment_variables as per-ID upserts instead of replacing the full collection",
+    )
+    deleted_environment_variable_ids: list[str] = Field(
+        default_factory=list,
+        description="Environment variable IDs to delete when patch is true",
+    )
+
+    @model_validator(mode="after")
+    def validate_patch(self) -> Self:
+        """Validate the per-variable patch contract without changing legacy replacement requests."""
+        if not self.patch:
+            if self.deleted_environment_variable_ids:
+                raise ValueError("deleted_environment_variable_ids requires patch=true")
+            return self
+
+        upsert_ids = [variable.id for variable in self.environment_variables]
+        if any(not variable_id for variable_id in upsert_ids):
+            raise ValueError("patched environment variables require an id")
+        if len(set(upsert_ids)) != len(upsert_ids):
+            raise ValueError("patched environment variable ids must be unique")
+        if any(not variable_id for variable_id in self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must not be empty")
+        if len(set(self.deleted_environment_variable_ids)) != len(self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must be unique")
+        if set(upsert_ids).intersection(self.deleted_environment_variable_ids):
+            raise ValueError("an environment variable cannot be upserted and deleted in the same patch")
+        return self
 
 
 class EnvironmentVariableItemResponse(ResponseModel):
@@ -698,7 +728,7 @@ class EnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": str(v.value_type.exposed_type()),
+                    "value_type": environment_variable_value_type(v),
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,
@@ -737,11 +767,20 @@ class EnvironmentVariableCollectionApi(Resource):
             variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
         ]
 
-        workflow_service.update_draft_workflow_environment_variables(
-            app_model=app_model,
-            account=current_user,
-            environment_variables=environment_variables,
-            session=db.session(),
-        )
+        if payload.patch:
+            workflow_service.patch_draft_workflow_environment_variables(
+                app_model=app_model,
+                account=current_user,
+                environment_variables=environment_variables,
+                deleted_environment_variable_ids=payload.deleted_environment_variable_ids,
+                session=db.session(),
+            )
+        else:
+            workflow_service.update_draft_workflow_environment_variables(
+                app_model=app_model,
+                account=current_user,
+                environment_variables=environment_variables,
+                session=db.session(),
+            )
 
         return {"result": "success"}

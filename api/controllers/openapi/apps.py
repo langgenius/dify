@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Any, cast
+from typing import Any
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
@@ -247,8 +247,8 @@ class AppListApi(Resource):
         env = AppListResponse(
             page=query.page,
             limit=query.limit,
-            total=cast(int, pagination.total),
-            has_more=query.page * query.limit < cast(int, pagination.total),
+            total=pagination.total,
+            has_more=query.page * query.limit < pagination.total,
             data=items,
         )
         return env

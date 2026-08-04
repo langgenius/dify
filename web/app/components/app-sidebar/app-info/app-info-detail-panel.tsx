@@ -179,7 +179,7 @@ const AppInfoDetailPanel = ({
           <Button
             size="medium"
             variant="ghost"
-            className="gap-0.5"
+
             onClick={switchOperation.onClick}
           >
             {switchOperation.icon}
