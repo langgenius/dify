@@ -3062,6 +3062,8 @@ Request payload for bulk downloading documents as a zip archive.
 | completed_at | integer |  | Yes |
 | completed_segments | integer |  | No |
 | error | string |  | Yes |
+| error_code | string |  | No |
+| estimated_vector_space_mb | integer |  | No |
 | id | string |  | Yes |
 | indexing_status | string |  | Yes |
 | parsing_completed_at | integer |  | Yes |
@@ -3070,6 +3072,7 @@ Request payload for bulk downloading documents as a zip archive.
 | splitting_completed_at | integer |  | Yes |
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
+| vector_space_limit_mb | integer |  | No |
 
 #### DocumentTextCreatePayload
 
