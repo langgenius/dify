@@ -164,7 +164,7 @@ const Loaded: React.FC<LoadedProps> = ({
         )}
         <Button
           variant="primary"
-          className="flex min-w-18 space-x-0.5"
+          className="flex min-w-18"
           onClick={handleInstall}
           disabled={isInstalling || isLoading}
         >

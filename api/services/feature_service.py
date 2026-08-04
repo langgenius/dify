@@ -319,6 +319,10 @@ class FeatureService:
     def get_app_dsl_version(cls) -> str:
         return CURRENT_APP_DSL_VERSION
 
+    @staticmethod
+    def is_explore_banner_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_EXPLORE_BANNER
+
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
@@ -328,7 +332,7 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_change_email = dify_config.ENABLE_CHANGE_EMAIL
-        system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+        system_features.enable_explore_banner = cls.is_explore_banner_enabled()
         system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
         system_features.webapp_auth.allow_public_access = dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED
         system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR

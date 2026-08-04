@@ -102,10 +102,10 @@ export function RAGToolRecommendations({
               <Button
                 variant="ghost"
                 size="medium"
-                className="w-full justify-start gap-x-2 pr-2 pl-3 text-left focus-visible:ring-inset"
+                className="w-full justify-start pr-2 pl-3 text-left focus-visible:ring-inset"
                 onClick={onLoadMore}
               >
-                <div className="px-1">
+                <div className="pl-1">
                   <span
                     aria-hidden="true"
                     className="i-ri-more-line block size-4 text-text-tertiary"

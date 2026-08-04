@@ -81,7 +81,7 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
               aria-hidden="true"
             />
             {value.length > 0 && (
-              <span className="ml-1 system-xs-medium text-text-secondary">{value.length}</span>
+              <span className="system-xs-medium text-text-secondary">{value.length}</span>
             )}
           </Button>
         }
