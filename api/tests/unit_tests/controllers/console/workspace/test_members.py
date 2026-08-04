@@ -3,6 +3,7 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import NamedTuple
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,6 +36,20 @@ from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExcee
 from services.workspace_member_query_service import WorkspaceMemberRole, WorkspaceMemberSummary
 
 
+class _RecordingWorkspaceMemberQueries:
+    def __init__(self, result: tuple[WorkspaceMemberSummary, ...]) -> None:
+        self._result = result
+        self.contexts: list[RequestContext] = []
+
+    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+        self.contexts.append(context)
+        return self._result
+
+
+class _ApplicationServicesStub(NamedTuple):
+    workspace_member_queries: _RecordingWorkspaceMemberQueries
+
+
 class TestMemberListApi:
     def test_get_passes_context_and_serializes_application_result(self, app: Flask) -> None:
         api = MemberListApi()
@@ -46,31 +61,32 @@ class TestMemberListApi:
             active_workspace_id="workspace-1",
         )
         timestamp = datetime(2026, 1, 1)
-        workspace_member_queries = MagicMock()
-        workspace_member_queries.list_current.return_value = (
-            WorkspaceMemberSummary(
-                id="member-1",
-                name="Member",
-                email="member@example.com",
-                avatar=None,
-                last_login_at=None,
-                last_active_at=timestamp,
-                created_at=timestamp,
-                role="owner",
-                roles=(
-                    WorkspaceMemberRole(id="workspace.owner", name="Owner"),
-                    WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+        workspace_member_queries = _RecordingWorkspaceMemberQueries(
+            (
+                WorkspaceMemberSummary(
+                    id="member-1",
+                    name="Member",
+                    email="member@example.com",
+                    avatar=None,
+                    last_login_at=None,
+                    last_active_at=timestamp,
+                    created_at=timestamp,
+                    role="owner",
+                    roles=(
+                        WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+                        WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+                    ),
+                    status="active",
                 ),
-                status="active",
-            ),
+            )
         )
-        application_services_mock = SimpleNamespace(workspace_member_queries=workspace_member_queries)
+        application_services_stub = _ApplicationServicesStub(workspace_member_queries=workspace_member_queries)
 
         with (
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.members.application_services",
-                return_value=application_services_mock,
+                return_value=application_services_stub,
             ),
         ):
             result, status = method(api, request_context=request_context)
@@ -96,7 +112,7 @@ class TestMemberListApi:
                 }
             ]
         }
-        workspace_member_queries.list_current.assert_called_once_with(request_context)
+        assert workspace_member_queries.contexts == [request_context]
 
 
 class TestMemberInviteEmailApi:

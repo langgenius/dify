@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.db.session_factory import get_session_maker
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
-from services.workspace_member_query_compat import LegacyWorkspaceMemberRoleGateway
 from services.workspace_member_query_service import WorkspaceMemberQueryService
+from services.workspace_member_role_resolver import CompatibleWorkspaceMemberRoleResolver
 from services.workspace_query_compat import LegacyWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 
@@ -25,27 +25,27 @@ class ApplicationServices:
 
 def build_application_services(
     *,
-    database_client: sessionmaker[Session],
+    session_factory: sessionmaker[Session],
 ) -> ApplicationServices:
     return ApplicationServices(
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
-                client=database_client,
+                client=session_factory,
             ),
             plans=LegacyWorkspacePlanGateway(),
         ),
         workspace_member_queries=WorkspaceMemberQueryService(
             members=WorkspaceMemberQueryRepository(
-                client=database_client,
+                session_factory=session_factory,
             ),
-            roles=LegacyWorkspaceMemberRoleGateway(),
+            roles=CompatibleWorkspaceMemberRoleResolver(),
         ),
     )
 
 
 def init_app(app: Flask) -> None:
     app.extensions[_EXTENSION_KEY] = build_application_services(
-        database_client=get_session_maker(),
+        session_factory=get_session_maker(),
     )
 
 

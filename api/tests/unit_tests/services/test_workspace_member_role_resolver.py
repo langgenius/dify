@@ -1,33 +1,21 @@
-from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from services import workspace_member_query_compat
+from services import workspace_member_role_resolver
 from services.enterprise.rbac_service import MemberRolesResponse, RBACRole
-from services.workspace_member_query_service import WorkspaceMemberRecord, WorkspaceMemberRole
+from services.workspace_member_query_service import WorkspaceMemberRole, WorkspaceMemberRoleSubject
 
 
-def make_member(member_id: str, *, legacy_role: str = "normal") -> WorkspaceMemberRecord:
-    created_at = datetime(2026, 1, 1)
-    return WorkspaceMemberRecord(
-        id=member_id,
-        name=f"Member {member_id}",
-        email=f"{member_id}@example.com",
-        avatar=None,
-        last_login_at=None,
-        last_active_at=created_at,
-        created_at=created_at,
-        status="active",
-        legacy_role=legacy_role,
-    )
+def make_subject(account_id: str, *, legacy_role: str = "normal") -> WorkspaceMemberRoleSubject:
+    return WorkspaceMemberRoleSubject(account_id=account_id, legacy_role=legacy_role)
 
 
 @pytest.fixture
 def batch_get(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     batch_get = MagicMock()
     monkeypatch.setattr(
-        workspace_member_query_compat.enterprise_rbac_service.RBACService.MemberRoles,
+        workspace_member_role_resolver.enterprise_rbac_service.RBACService.MemberRoles,
         "batch_get",
         batch_get,
     )
@@ -36,7 +24,7 @@ def batch_get(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 def configure_rbac(monkeypatch: pytest.MonkeyPatch, *, enabled: bool) -> None:
     monkeypatch.setattr(
-        workspace_member_query_compat,
+        workspace_member_role_resolver,
         "dify_config",
         SimpleNamespace(RBAC_ENABLED=enabled),
     )
@@ -47,18 +35,18 @@ def test_legacy_mode_projects_join_roles_without_enterprise_call(
     batch_get: MagicMock,
 ) -> None:
     configure_rbac(monkeypatch, enabled=False)
-    owner = make_member("owner", legacy_role="owner")
-    member_without_role = make_member("no-role", legacy_role="")
+    owner = make_subject("owner", legacy_role="owner")
+    member = make_subject("member")
 
-    result = workspace_member_query_compat.LegacyWorkspaceMemberRoleGateway().resolve_many(
+    result = workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
-        [owner, member_without_role],
+        [owner, member],
     )
 
     assert result == {
         "owner": (WorkspaceMemberRole(id="owner", name="owner"),),
-        "no-role": (),
+        "member": (WorkspaceMemberRole(id="normal", name="normal"),),
     }
     batch_get.assert_not_called()
 
@@ -68,11 +56,11 @@ def test_rbac_mode_maps_batch_response_without_legacy_fallback(
     batch_get: MagicMock,
 ) -> None:
     configure_rbac(monkeypatch, enabled=True)
-    owner = make_member("owner", legacy_role="owner")
-    omitted = make_member("omitted", legacy_role="admin")
+    owner = make_subject("owner", legacy_role="owner")
+    omitted = make_subject("omitted", legacy_role="admin")
     batch_get.return_value = [
         MemberRolesResponse(
-            account_id=owner.id,
+            account_id=owner.account_id,
             roles=[
                 RBACRole(
                     id="workspace.owner",
@@ -88,7 +76,7 @@ def test_rbac_mode_maps_batch_response_without_legacy_fallback(
         )
     ]
 
-    result = workspace_member_query_compat.LegacyWorkspaceMemberRoleGateway().resolve_many(
+    result = workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
         [owner, omitted],
@@ -112,10 +100,10 @@ def test_rbac_failure_propagates(
     batch_get.side_effect = RoleResolutionError("enterprise unavailable")
 
     with pytest.raises(RoleResolutionError, match="enterprise unavailable"):
-        workspace_member_query_compat.LegacyWorkspaceMemberRoleGateway().resolve_many(
+        workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
             "workspace-1",
             "actor-1",
-            [make_member("member-1")],
+            [make_subject("member-1")],
         )
 
 
@@ -125,7 +113,7 @@ def test_empty_member_list_skips_enterprise_call(
 ) -> None:
     configure_rbac(monkeypatch, enabled=True)
 
-    result = workspace_member_query_compat.LegacyWorkspaceMemberRoleGateway().resolve_many(
+    result = workspace_member_role_resolver.CompatibleWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
         [],

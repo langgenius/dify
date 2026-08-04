@@ -32,12 +32,17 @@ class WorkspaceMemberQuery(Protocol):
     def list_for_workspace(self, workspace_id: str) -> Sequence[WorkspaceMemberRecord]: ...
 
 
-class WorkspaceMemberRoleGateway(Protocol):
+class WorkspaceMemberRoleSubject(NamedTuple):
+    account_id: str
+    legacy_role: str
+
+
+class WorkspaceMemberRoleResolver(Protocol):
     def resolve_many(
         self,
         workspace_id: str,
         actor_account_id: str,
-        members: Sequence[WorkspaceMemberRecord],
+        subjects: Sequence[WorkspaceMemberRoleSubject],
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]: ...
 
 
@@ -59,7 +64,7 @@ class WorkspaceMemberQueryService:
         self,
         *,
         members: WorkspaceMemberQuery,
-        roles: WorkspaceMemberRoleGateway,
+        roles: WorkspaceMemberRoleResolver,
     ) -> None:
         self._members = members
         self._roles = roles
@@ -70,10 +75,13 @@ class WorkspaceMemberQueryService:
             raise CurrentWorkspaceRequiredError("No current tenant")
 
         records = tuple(self._members.list_for_workspace(workspace_id))
+        role_subjects = tuple(
+            WorkspaceMemberRoleSubject(account_id=record.id, legacy_role=record.legacy_role) for record in records
+        )
 
         # The repository closes its read Session before role resolution
         # performs enterprise I/O.
-        roles_by_member = self._roles.resolve_many(workspace_id, context.account_id, records)
+        roles_by_member = self._roles.resolve_many(workspace_id, context.account_id, role_subjects)
 
         return tuple(
             WorkspaceMemberSummary(

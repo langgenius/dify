@@ -48,10 +48,13 @@ type = forbidden
 source_modules =
     services.workspace_member_query_service
 forbidden_modules =
+    configs
     controllers
     extensions
     flask
     models
     repositories
+    services.enterprise
+    services.workspace_member_role_resolver
     sqlalchemy
     werkzeug

@@ -36,6 +36,7 @@ def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle
 ) -> None:
     created_at = datetime(2026, 1, 1)
     active = make_account("active", status=AccountStatus.ACTIVE, created_at=created_at)
+    uninitialized = make_account("uninitialized", status=AccountStatus.UNINITIALIZED, created_at=created_at)
     pending = make_account("pending", status=AccountStatus.PENDING, created_at=created_at)
     banned = make_account("banned", status=AccountStatus.BANNED, created_at=created_at)
     closed = make_account("closed", status=AccountStatus.CLOSED, created_at=created_at)
@@ -50,6 +51,7 @@ def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle
                 workspace,
                 other_workspace,
                 active,
+                uninitialized,
                 pending,
                 banned,
                 closed,
@@ -59,6 +61,11 @@ def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle
                     tenant_id=workspace.id,
                     account_id=active.id,
                     role=TenantAccountRole.OWNER,
+                ),
+                TenantAccountJoin(
+                    tenant_id=workspace.id,
+                    account_id=uninitialized.id,
+                    role=TenantAccountRole.NORMAL,
                 ),
                 TenantAccountJoin(
                     tenant_id=workspace.id,
@@ -87,7 +94,7 @@ def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle
     result = WorkspaceMemberQueryRepository(sqlite_session_factory).list_for_workspace(workspace.id)
 
     by_id = {member.id: member for member in result}
-    assert set(by_id) == {"active", "pending", "banned", "closed"}
+    assert set(by_id) == {"active", "uninitialized", "pending", "banned", "closed"}
     assert by_id["active"] == WorkspaceMemberRecord(
         id=active.id,
         name=active.name,
@@ -99,6 +106,7 @@ def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle
         status=AccountStatus.ACTIVE.value,
         legacy_role=TenantAccountRole.OWNER.value,
     )
+    assert by_id["uninitialized"].status == AccountStatus.UNINITIALIZED.value
     assert by_id["pending"].status == AccountStatus.PENDING.value
     assert by_id["pending"].legacy_role == TenantAccountRole.NORMAL.value
     assert by_id["banned"].status == AccountStatus.BANNED.value

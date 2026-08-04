@@ -8,6 +8,8 @@ from services.workspace_member_query_service import (
     WorkspaceMemberQueryService,
     WorkspaceMemberRecord,
     WorkspaceMemberRole,
+    WorkspaceMemberRoleSubject,
+    WorkspaceMemberSummary,
 )
 
 
@@ -50,29 +52,29 @@ class RecordingMemberQuery:
         return self.records
 
 
-class RecordingRoleGateway:
+class RecordingRoleResolver:
     def __init__(self, roles: Mapping[str, Sequence[WorkspaceMemberRole]]) -> None:
         self.roles = roles
-        self.calls: list[tuple[str, str, tuple[WorkspaceMemberRecord, ...]]] = []
+        self.calls: list[tuple[str, str, tuple[WorkspaceMemberRoleSubject, ...]]] = []
 
     def resolve_many(
         self,
         workspace_id: str,
         actor_account_id: str,
-        members: Sequence[WorkspaceMemberRecord],
+        subjects: Sequence[WorkspaceMemberRoleSubject],
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
-        self.calls.append((workspace_id, actor_account_id, tuple(members)))
+        self.calls.append((workspace_id, actor_account_id, tuple(subjects)))
         return self.roles
 
 
-class FailingRoleGateway:
+class FailingRoleResolver:
     def resolve_many(
         self,
         workspace_id: str,
         actor_account_id: str,
-        members: Sequence[WorkspaceMemberRecord],
+        subjects: Sequence[WorkspaceMemberRoleSubject],
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
-        del workspace_id, actor_account_id, members
+        del workspace_id, actor_account_id, subjects
         raise RoleResolutionError
 
 
@@ -84,7 +86,7 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
     active = make_member("active", legacy_role="owner")
     pending = make_member("pending", status="pending")
     members = RecordingMemberQuery([active, pending])
-    roles = RecordingRoleGateway(
+    roles = RecordingRoleResolver(
         {
             active.id: [
                 WorkspaceMemberRole(id="workspace.owner", name="Owner"),
@@ -98,20 +100,39 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
 
     by_id = {member.id: member for member in result}
     assert set(by_id) == {"active", "pending"}
-    assert by_id["active"].role == "owner"
-    assert by_id["active"].roles == (
-        WorkspaceMemberRole(id="workspace.owner", name="Owner"),
-        WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+    assert by_id["active"] == WorkspaceMemberSummary(
+        id=active.id,
+        name=active.name,
+        email=active.email,
+        avatar=active.avatar,
+        last_login_at=active.last_login_at,
+        last_active_at=active.last_active_at,
+        created_at=active.created_at,
+        role=active.legacy_role,
+        roles=(
+            WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+            WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+        ),
+        status=active.status,
     )
     assert by_id["pending"].status == "pending"
     assert by_id["pending"].roles == ()
     assert members.workspace_ids == ["workspace-1"]
-    assert roles.calls == [("workspace-1", "actor-1", (active, pending))]
+    assert roles.calls == [
+        (
+            "workspace-1",
+            "actor-1",
+            (
+                WorkspaceMemberRoleSubject(account_id=active.id, legacy_role=active.legacy_role),
+                WorkspaceMemberRoleSubject(account_id=pending.id, legacy_role=pending.legacy_role),
+            ),
+        )
+    ]
 
 
 def test_list_current_rejects_missing_workspace_before_calling_ports() -> None:
     members = RecordingMemberQuery([])
-    roles = RecordingRoleGateway({})
+    roles = RecordingRoleResolver({})
     service = WorkspaceMemberQueryService(members=members, roles=roles)
 
     with pytest.raises(CurrentWorkspaceRequiredError, match="No current tenant"):
@@ -123,7 +144,7 @@ def test_list_current_rejects_missing_workspace_before_calling_ports() -> None:
 
 def test_list_current_propagates_role_resolution_failure() -> None:
     members = RecordingMemberQuery([make_member("member-1")])
-    service = WorkspaceMemberQueryService(members=members, roles=FailingRoleGateway())
+    service = WorkspaceMemberQueryService(members=members, roles=FailingRoleResolver())
 
     with pytest.raises(RoleResolutionError):
         service.list_current(make_context())
