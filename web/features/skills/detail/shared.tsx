@@ -3,9 +3,10 @@
 import type {
   SkillDetailResponse,
   SkillFileResponse,
+  SkillResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { useQueryClient } from '@tanstack/react-query'
+import type { InfiniteData, useQueryClient } from '@tanstack/react-query'
 import type {
   DefaultModel,
   FormValue,
@@ -141,6 +142,7 @@ export type BuilderChatMessage = {
   id: string
   rawContent?: string
   role: 'assistant' | 'user'
+  suggestions?: string[]
   thinkingDurationSeconds?: number
   tone?: 'error'
 }
@@ -181,6 +183,8 @@ const defaultSkillDescription = 'Describe what this Skill does and when an Agent
 
 const defaultSkillBody =
   '# Untitled skill\n\nDescribe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.'
+
+const untitledSkillDisplayName = 'Untitled skill'
 
 const emptySkillDraftContentPlaceholder = '<!-- dify-skill-empty-draft -->'
 
@@ -1318,7 +1322,7 @@ export function isDefaultSkillBuilderDraft(detail: SkillDetailResponse) {
   return (
     detail.latest_published_version_id == null &&
     detail.name.startsWith('untitled-skill') &&
-    detail.display_name === 'Untitled skill' &&
+    detail.display_name === untitledSkillDisplayName &&
     (description === '' || description === defaultSkillDescription) &&
     (skillMdBody === '' || skillMdBody === defaultSkillBody)
   )
@@ -1329,13 +1333,50 @@ export function deriveSkillDetailFromDraftFiles(detail: SkillDetailResponse) {
   if (!skillMd || !isTextFile(skillMd) || !skillMd.content) return detail
 
   const parsedSkillMd = parseMarkdownContent(skillMd.content)
+  const shouldDeriveUntitledSkillName =
+    detail.latest_published_version_id == null &&
+    !detail.name_manually_edited &&
+    detail.name.startsWith('untitled-skill') &&
+    detail.display_name === untitledSkillDisplayName
+  const derivedDisplayName = shouldDeriveUntitledSkillName
+    ? getDraftSkillDisplayName(parsedSkillMd)
+    : undefined
+  const derivedName = derivedDisplayName
+    ? getDraftSkillName(parsedSkillMd, derivedDisplayName)
+    : undefined
 
   return {
     ...detail,
     description: parsedSkillMd.description || detail.description,
-    display_name: parsedSkillMd.displayName || detail.display_name,
-    name: parsedSkillMd.name || detail.name,
+    ...(derivedDisplayName ? { display_name: derivedDisplayName } : {}),
+    ...(derivedName ? { name: derivedName } : {}),
   }
+}
+
+function getDraftSkillDisplayName(parsedSkillMd: ParsedMarkdownContent) {
+  if (parsedSkillMd.displayName && parsedSkillMd.displayName !== untitledSkillDisplayName)
+    return parsedSkillMd.displayName
+
+  const headingLine = parsedSkillMd.body
+    .split('\n')
+    .find((line) => line.startsWith('# ') && line.slice(2).trim())
+  const heading = headingLine?.slice(2).trim()
+  if (!heading || heading === untitledSkillDisplayName) return undefined
+
+  return heading
+}
+
+function getDraftSkillName(parsedSkillMd: ParsedMarkdownContent, displayName: string) {
+  if (parsedSkillMd.name && !parsedSkillMd.name.startsWith('untitled-skill'))
+    return parsedSkillMd.name
+
+  const generatedName = displayName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return generatedName || undefined
 }
 
 function parseServerMessage(message: string) {
@@ -1491,6 +1532,64 @@ export function setSkillDetailCache(
       },
     }),
     detail,
+  )
+  updateSkillListCache(queryClient, detail)
+}
+
+type SkillListCachePage = {
+  data?: SkillResponse[]
+}
+
+function updateSkillListCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  detail: SkillDetailResponse,
+) {
+  const updateSkill = (skill: SkillResponse): SkillResponse => {
+    if (skill.id !== detail.id) return skill
+
+    return {
+      ...skill,
+      description: detail.description,
+      display_name: detail.display_name,
+      icon: detail.icon,
+      latest_published_at: detail.latest_published_at,
+      latest_published_version_id: detail.latest_published_version_id,
+      latest_published_version_number: detail.latest_published_version_number,
+      name: detail.name,
+      name_manually_edited: detail.name_manually_edited,
+      reference_count: detail.reference_count,
+      tags: detail.tags,
+      updated_at: detail.updated_at,
+      updated_by: detail.updated_by,
+      updated_by_name: detail.updated_by_name,
+    }
+  }
+  const updatePage = <TPage extends SkillListCachePage>(page: TPage): TPage => {
+    if (!page.data?.some((skill) => skill.id === detail.id)) return page
+
+    return {
+      ...page,
+      data: page.data.map(updateSkill),
+    }
+  }
+
+  queryClient.setQueriesData<SkillListCachePage>(
+    {
+      queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
+    },
+    (page) => (page ? updatePage(page) : page),
+  )
+  queryClient.setQueriesData<InfiniteData<SkillListCachePage>>(
+    {
+      queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
+    },
+    (cache) =>
+      cache
+        ? {
+            ...cache,
+            pages: cache.pages.map(updatePage),
+          }
+        : cache,
   )
 }
 

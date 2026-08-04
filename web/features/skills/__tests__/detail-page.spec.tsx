@@ -1620,39 +1620,25 @@ describe('SkillDetailPage', () => {
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
   })
 
-  it('saves the live display name into SKILL.md before publishing', async () => {
+  it('does not expose display-name editing in the SKILL.md metadata editor before publishing', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
-    const displayNameInput = await screen.findByDisplayValue('Untitled skill')
-    await user.clear(displayNameInput)
-    await user.type(displayNameInput, '333333333')
+    expect(await screen.findByText('name')).toBeInTheDocument()
+    expect(screen.getByText('description')).toBeInTheDocument()
+    expect(screen.queryByText('display-name')).not.toBeInTheDocument()
+
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
     )
 
-    await waitFor(
-      () => {
-        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
-      },
-      { timeout: 2500 },
-    )
-    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          content: expect.stringContaining('display-name: 333333333'),
-          operation: 'upsert_text',
-          path: 'SKILL.md',
-        }),
-      }),
-      expect.anything(),
-    )
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
   })
 
-  it('renames the skill from the sidebar title and keeps SKILL.md metadata in sync', async () => {
+  it('renames the skill from the sidebar title without changing SKILL.md content', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
@@ -1675,23 +1661,17 @@ describe('SkillDetailPage', () => {
     await user.type(renameInput, 'Renamed skill{Enter}')
 
     await waitFor(() => {
-      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
         expect.objectContaining({
           body: expect.objectContaining({
-            content: expect.stringMatching(
-              /name: github-actions-failure-debugging[\s\S]*display-name: Renamed skill/,
-            ),
-            operation: 'upsert_text',
-            path: 'SKILL.md',
+            display_name: 'Renamed skill',
           }),
         }),
         expect.anything(),
       )
     })
-    const savedContent = mocks.saveDraftFileMutationFn.mock.calls[0]?.[0].body.content
-    expect(savedContent).not.toContain('name: renamed-skill')
-    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
-    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
     expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.renameSkillSuccess')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
@@ -1700,28 +1680,14 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('updates display-name from the manifest editor without changing name', async () => {
-    const user = userEvent.setup()
+  it('keeps display-name hidden in the SKILL.md metadata editor', async () => {
     renderSkillDetailPage()
 
-    const displayNameInput = await screen.findByDisplayValue('Untitled skill')
-    await user.clear(displayNameInput)
-    await user.type(displayNameInput, 'Editor Display Name')
-    await user.tab()
-
-    await waitFor(
-      () => {
-        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
-      },
-      { timeout: 2500 },
-    )
-    const savedContent = mocks.saveDraftFileMutationFn.mock.calls.at(-1)?.[0].body.content
-    expect(savedContent).toMatch(
-      /name: github-actions-failure-debugging[\s\S]*display-name: Editor Display Name/,
-    )
-    expect(savedContent).not.toContain('name: editor-display-name')
+    expect(await screen.findByText('name')).toBeInTheDocument()
+    expect(screen.getByText('description')).toBeInTheDocument()
+    expect(screen.queryByText('display-name')).not.toBeInTheDocument()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
     expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.detail.renameSkillSuccess')
   })
 
   it('cancels an empty sidebar rename when the field loses focus', async () => {
@@ -1764,9 +1730,12 @@ describe('SkillDetailPage', () => {
     expect(publishButton).toBeDisabled()
     expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.published')
 
-    const displayNameInput = screen.getByDisplayValue('Untitled skill')
-    await user.clear(displayNameInput)
-    await user.type(displayNameInput, 'Updated skill')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nUpdated published instructions')
 
     expect(publishButton).toBeEnabled()
     expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.publishUpdate')
@@ -2417,6 +2386,38 @@ describe('SkillDetailPage', () => {
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
+  })
+
+  it('checks references before publishing when the cached reference count is stale', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({
+        data: [
+          createAgentReference({
+            display_name: 'Stale Count Agent',
+            name: 'stale-count-agent',
+          }),
+        ],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'skill.skillManagement.detail.publishReferencesTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Stale Count Agent')).toBeInTheDocument()
+    expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
   })
 
   it('cancels publishing from the referenced skill confirmation dialog', async () => {
@@ -3282,12 +3283,6 @@ describe('SkillDetailPage', () => {
       await screen.findByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeDisabled()
 
-    await user.click(
-      screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.builder.followUpDisplayName',
-      }),
-    )
-
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledTimes(1)
   })
 
@@ -3389,8 +3384,12 @@ describe('SkillDetailPage', () => {
   it('sends Skill Builder follow-up suggestions after an assistant reply', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createDefaultSkillDraftDetail()
-    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData }) => {
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData, onUnhandledEvent }) => {
       onData?.('Drafted the skill.', true, {})
+      onUnhandledEvent?.({
+        event: 'skill_assistant_suggestions',
+        suggestions: ['Ask me about required inputs first'],
+      })
       onCompleted?.()
       return Promise.resolve()
     })
@@ -3406,14 +3405,14 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.builder.followUpDisplayName',
+        name: 'Ask me about required inputs first',
       }),
     )
 
     await waitFor(() => {
       expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'skill.skillManagement.detail.builder.followUpDisplayName',
+          message: 'Ask me about required inputs first',
         }),
       )
     })

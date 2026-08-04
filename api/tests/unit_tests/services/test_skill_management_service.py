@@ -404,6 +404,7 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
     model_output = json.dumps(
         {
             "reply": "Created the refund policy reference.",
+            "suggestions": ["Add escalation rules", "Include refund examples"],
             "operations": [
                 {
                     "operation": "upsert_text",
@@ -433,10 +434,16 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
         )
 
     events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
-    assert [event["event"] for event in events] == ["message", "skill_detail_updated", "message_end"]
+    assert [event["event"] for event in events] == [
+        "message",
+        "skill_assistant_suggestions",
+        "skill_detail_updated",
+        "message_end",
+    ]
     assert events[0]["answer"] == "Created the refund policy reference."
-    assert events[1]["operations"] == [{"operation": "upsert_text", "path": "references/refund-policy.md"}]
-    assert any(file["path"] == "references/refund-policy.md" for file in events[1]["detail"]["files"])
+    assert events[1]["suggestions"] == ["Add escalation rules", "Include refund examples"]
+    assert events[2]["operations"] == [{"operation": "upsert_text", "path": "references/refund-policy.md"}]
+    assert any(file["path"] == "references/refund-policy.md" for file in events[2]["detail"]["files"])
 
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     reference = next(file for file in draft["files"] if file["path"] == "references/refund-policy.md")
@@ -491,6 +498,58 @@ def test_create_assistant_action_stream_strips_skill_frontmatter_from_reference_
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     reference = next(file for file in draft["files"] if file["path"] == "references/refund-policy.md")
     assert reference["content"] == "# Refund Policy\n"
+
+
+def test_create_assistant_action_stream_generates_missing_suggestions() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="refund-sop", description="Handle refund requests."),
+    )
+    model_outputs = [
+        json.dumps(
+            {
+                "reply": "Created the refund policy reference.",
+                "operations": [
+                    {
+                        "operation": "upsert_text",
+                        "path": "references/refund-policy.md",
+                        "mime_type": "text/markdown",
+                        "content": "# Refund Policy\n",
+                    }
+                ],
+            }
+        ),
+        json.dumps({"follow_up_suggestions": ["Add SLA tiers", "Include refund denial templates"]}),
+    ]
+
+    def invoke_llm(**_kwargs):
+        return SimpleNamespace(
+            message=SimpleNamespace(get_text_content=lambda: model_outputs.pop(0)),
+        )
+
+    model = SimpleNamespace(invoke_llm=invoke_llm)
+    manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
+
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+        response = list(
+            service.create_assistant_action_stream(
+                tenant_id=TENANT,
+                user_id=USER,
+                skill_id=created["id"],
+                message="新建 references/refund-policy.md",
+            )
+        )
+
+    events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
+    assert [event["event"] for event in events] == [
+        "message",
+        "skill_assistant_suggestions",
+        "skill_detail_updated",
+        "message_end",
+    ]
+    assert events[1]["suggestions"] == ["Add SLA tiers", "Include refund denial templates"]
 
 
 def test_create_assistant_action_stream_reports_skill_name_database_conflict() -> None:
@@ -677,9 +736,10 @@ def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> 
         assert agent.active_config_has_model is True
 
 
-def test_update_display_name_auto_syncs_name_for_unpublished_placeholder() -> None:
+def test_update_display_name_keeps_name_and_draft_content_unchanged() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    original_skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
 
     updated = service.update_metadata(
         tenant_id=TENANT,
@@ -689,11 +749,10 @@ def test_update_display_name_auto_syncs_name_for_unpublished_placeholder() -> No
     )
 
     assert updated["display_name"] == "Finance Audit"
-    assert updated["name"] == "finance-audit"
+    assert updated["name"] == created["name"]
     assert updated["name_manually_edited"] is False
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
-    assert "name: finance-audit" in skill_md["content"]
-    assert "display-name: Finance Audit" in skill_md["content"]
+    assert skill_md["content"] == original_skill_md["content"]
 
 
 def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sync() -> None:
@@ -724,7 +783,7 @@ def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sy
     assert updated["display_name"] == "Finance Audit"
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
     assert "name: manual-name" in skill_md["content"]
-    assert "display-name: Finance Audit" in skill_md["content"]
+    assert "display-name: Finance Audit" not in skill_md["content"]
 
 
 def test_delete_unreferenced_placeholder_skill_deletes_initial_draft() -> None:

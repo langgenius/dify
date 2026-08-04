@@ -222,16 +222,10 @@ export function SkillBuilderPanel({
     t(($) => $['skillManagement.detail.builder.exampleSalesFollowUp']),
     t(($) => $['skillManagement.detail.builder.exampleOnboarding']),
   ]
-  const followUpSuggestions = [
-    t(($) => $['skillManagement.detail.builder.followUpNameIcon']),
-    t(($) => $['skillManagement.detail.builder.followUpDisplayName']),
-    t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),
-  ]
   const inputPlaceholder =
     messages.length > 0
       ? t(($) => $['skillManagement.detail.builder.modifyPlaceholder'])
       : t(($) => $['skillManagement.detail.builder.placeholder'])
-  const hasBuilderConversation = messages.some((message) => message.role === 'user')
 
   const updateMessages = (
     updater: (currentMessages: BuilderChatMessage[]) => BuilderChatMessage[],
@@ -460,6 +454,24 @@ export function SkillBuilderPanel({
         )
       },
       onUnhandledEvent: (event) => {
+        if (event.event === 'skill_assistant_suggestions') {
+          const nextSuggestions = Array.isArray(event.suggestions)
+            ? event.suggestions.filter(
+                (suggestion): suggestion is string => typeof suggestion === 'string',
+              )
+            : []
+          updateMessages((currentMessages) =>
+            currentMessages.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    suggestions: nextSuggestions,
+                  }
+                : message,
+            ),
+          )
+          return
+        }
         if (event.event !== 'skill_detail_updated' || !isRecord(event.detail)) return
 
         const nextDetail = event.detail as SkillDetailResponse
@@ -579,8 +591,18 @@ export function SkillBuilderPanel({
           </button>
         </div>
       </div>
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 scrollbar-thin overflow-y-auto px-4 pt-4 pb-[11px]">
+      <div
+        className={cn(
+          'relative z-10 flex min-h-0 flex-1 flex-col',
+          messages.length === 0 && 'justify-center',
+        )}
+      >
+        <div
+          className={cn(
+            'min-h-0 scrollbar-thin overflow-y-auto px-4 pt-4 pb-[11px]',
+            messages.length > 0 ? 'flex-1' : 'shrink-0',
+          )}
+        >
           {messages.length > 0 ? (
             <div className="flex flex-col gap-3">
               {messages.map((message, messageIndex) =>
@@ -653,6 +675,23 @@ export function SkillBuilderPanel({
                             <span aria-hidden className="i-ri-restart-line size-4" />
                           </button>
                         </div>
+                        {!!message.suggestions?.length && (
+                          <div className="mt-3 flex w-full flex-wrap items-end justify-end gap-1 py-2">
+                            {message.suggestions.map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={
+                                  isSending || isUploadingAttachment || !canSendBuilderMessage
+                                }
+                                onClick={() => handleSend(suggestion)}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </>
                     ) : message.thinkingDurationSeconds === undefined ? (
                       <SkillBuilderThinkingMessage seconds={thinkingElapsedSeconds} />
@@ -660,36 +699,21 @@ export function SkillBuilderPanel({
                   </div>
                 ),
               )}
-              {hasBuilderConversation && (
-                <div className="flex w-full flex-wrap items-end justify-end gap-1 py-2">
-                  {followUpSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
-                      onClick={() => handleSend(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           ) : (
-            <div className="flex min-h-full flex-col justify-end">
-              <div className="mb-[27px] flex flex-col items-start px-3 text-left">
+            <div className="flex flex-col px-3 text-left">
+              <div className="mb-7 flex flex-col items-start">
                 <div className="mb-4">
                   <SkillBuilderEmptyIcon />
                 </div>
-                <h3 className="system-sm-semibold text-text-secondary">
+                <h3 className="system-md-semibold text-text-secondary">
                   {t(($) => $['skillManagement.detail.builder.promptTitle'])}
                 </h3>
-                <p className="mt-1 max-w-64 system-xs-regular text-text-tertiary">
+                <p className="mt-1 max-w-[280px] system-xs-regular text-text-tertiary">
                   {t(($) => $['skillManagement.detail.builder.promptDescription'])}
                 </p>
               </div>
-              <div className="space-y-1.5 px-3">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <p className="shrink-0 system-2xs-semibold-uppercase text-text-quaternary">
                     {t(($) => $['skillManagement.detail.builder.tryExample'])}
@@ -713,7 +737,13 @@ export function SkillBuilderPanel({
             </div>
           )}
         </div>
-        <div className="relative flex shrink-0 items-end justify-end bg-gradient-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-4 pt-3 pb-4">
+        <div
+          className={cn(
+            'relative flex shrink-0 items-end justify-end px-4 pt-3 pb-4',
+            messages.length > 0 &&
+              'bg-gradient-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2',
+          )}
+        >
           <div className="flex w-full flex-col items-end justify-end">
             <div className="relative flex w-full flex-col items-start overflow-hidden rounded-xl border border-components-chat-input-border bg-background-default p-3 shadow-lg">
               <input

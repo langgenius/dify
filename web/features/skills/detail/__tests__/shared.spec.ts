@@ -1,6 +1,9 @@
+import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
+import { consoleQuery } from '@/service/client'
 import {
   createUploadItemId,
+  deriveSkillDetailFromDraftFiles,
   getErrorCode,
   getErrorDetailNumber,
   getErrorDetailString,
@@ -8,6 +11,7 @@ import {
   getUploadPath,
   isEditableKeyboardTarget,
   joinSkillPath,
+  setSkillDetailCache,
 } from '../shared'
 
 describe('skill detail shared utilities', () => {
@@ -85,5 +89,117 @@ describe('skill detail shared utilities', () => {
         value: originalCrypto,
       })
     }
+  })
+
+  it('does not derive entity name or display name from SKILL.md draft content', () => {
+    expect(
+      deriveSkillDetailFromDraftFiles({
+        description: 'Entity description',
+        display_name: 'Entity Display Name',
+        files: [
+          {
+            content:
+              '---\nname: skill-md-name\ndescription: Skill.md description\nmetadata:\n  display-name: Skill.md Display Name\n---\n# Body\n',
+            kind: 'file',
+            mime_type: 'text/markdown',
+            path: 'SKILL.md',
+            storage: 'text',
+          },
+        ],
+        latest_published_version_id: null,
+        name: 'entity-name',
+        name_manually_edited: false,
+      } as Parameters<typeof deriveSkillDetailFromDraftFiles>[0]),
+    ).toMatchObject({
+      description: 'Skill.md description',
+      display_name: 'Entity Display Name',
+      name: 'entity-name',
+    })
+  })
+
+  it('derives untitled builder draft name and display name from SKILL.md content', () => {
+    expect(
+      deriveSkillDetailFromDraftFiles({
+        description: 'Entity description',
+        display_name: 'Untitled skill',
+        files: [
+          {
+            content:
+              '---\nname: untitled-skill-12345678\ndescription: Skill.md description\nmetadata:\n  display-name: Untitled skill\n---\n# Customer Issue Triage\n',
+            kind: 'file',
+            mime_type: 'text/markdown',
+            path: 'SKILL.md',
+            storage: 'text',
+          },
+        ],
+        latest_published_version_id: null,
+        name: 'untitled-skill-12345678',
+        name_manually_edited: false,
+      } as Parameters<typeof deriveSkillDetailFromDraftFiles>[0]),
+    ).toMatchObject({
+      description: 'Skill.md description',
+      display_name: 'Customer Issue Triage',
+      name: 'customer-issue-triage',
+    })
+  })
+
+  it('updates cached skill list entries when detail cache changes', () => {
+    const queryClient = new QueryClient()
+    const detail = {
+      id: 'skill-1',
+      name: 'customer-issue-triage',
+      display_name: 'Customer Issue Triage',
+      icon: '📄',
+      description: 'Classify customer issues.',
+      tags: [],
+      name_manually_edited: false,
+      visibility: 'workspace',
+      latest_published_version_id: null,
+      latest_published_version_number: null,
+      latest_published_at: null,
+      reference_count: 0,
+      created_by: 'user-1',
+      created_by_name: 'Fate',
+      updated_by: 'user-1',
+      updated_by_name: 'Fate',
+      created_at: 1,
+      updated_at: 2,
+      files: [],
+    } as Parameters<typeof setSkillDetailCache>[2]
+    const infiniteKey = consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' })
+    queryClient.setQueryData(infiniteKey, {
+      pageParams: [1],
+      pages: [
+        {
+          data: [
+            {
+              ...detail,
+              name: 'untitled-skill-12345678',
+              display_name: 'Untitled skill',
+              latest_published_version_number: null,
+            },
+          ],
+          has_more: false,
+          limit: 20,
+          page: 1,
+          total: 1,
+        },
+      ],
+    })
+
+    setSkillDetailCache(queryClient, detail.id, detail)
+
+    expect(queryClient.getQueryData(infiniteKey)).toMatchObject({
+      pages: [
+        {
+          data: [
+            {
+              display_name: 'Customer Issue Triage',
+              name: 'customer-issue-triage',
+            },
+          ],
+        },
+      ],
+    })
   })
 })
