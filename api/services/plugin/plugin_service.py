@@ -293,10 +293,8 @@ class PluginService:
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
-            # already downloaded, skip, and record install event
-            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
         except Exception:
-            # plugin not installed, download and upload pkg
+            # plugin not downloaded yet, download and upload pkg
             pkg = download_plugin_pkg(new_plugin_unique_identifier)
             response = manager.upload_pkg(
                 tenant_id,
@@ -306,6 +304,11 @@ class PluginService:
 
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
+        else:
+            # already downloaded, the cached pkg still has to satisfy the installation scope
+            decode_response = manager.decode_plugin_from_identifier(tenant_id, new_plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(decode_response.verification)
+            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
 
         return manager.upgrade_plugin(
             tenant_id,
@@ -485,14 +488,8 @@ class PluginService:
         for plugin_unique_identifier in plugin_unique_identifiers:
             try:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
-                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                # already downloaded, skip
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
             except Exception:
-                # plugin not installed, download and upload pkg
+                # plugin not downloaded yet, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
                 response = manager.upload_pkg(
                     tenant_id,
@@ -504,6 +501,12 @@ class PluginService:
                 # use response plugin_unique_identifier
                 actual_plugin_unique_identifiers.append(response.unique_identifier)
                 metas.append({"plugin_unique_identifier": response.unique_identifier})
+            else:
+                # already downloaded, the cached pkg still has to satisfy the installation scope
+                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
+                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
 
         return manager.install_from_identifiers(
             tenant_id,
