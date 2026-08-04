@@ -15,6 +15,7 @@ import pytest
 
 from constants import HIDDEN_VALUE
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
+from services.enterprise.rbac_service import RBACResourceType
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     AuthorizationConfig,
@@ -1613,6 +1614,41 @@ class TestExternalDatasetServiceCreateDataset:
         mock_db.session.add.assert_called()
         mock_db.session.flush.assert_called_once()
         mock_db.session.commit.assert_called_once()
+
+    @patch("services.external_knowledge_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings")
+    @patch("services.external_knowledge_service.db")
+    def test_create_external_dataset_syncs_creator_access_policy_binding(
+        self, mock_db, mock_sync, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """The creator must be bound to the new dataset's access policy, as in create_empty_dataset."""
+
+        # Arrange
+        def assign_dataset_id(instance):
+            # The real INSERT populates the primary key; a mocked session never flushes.
+            if isinstance(instance, Dataset):
+                instance.id = "dataset-705"
+
+        args = {
+            "name": "Bound External Dataset",
+            "external_knowledge_api_id": "api-703",
+            "external_knowledge_id": "knowledge-704",
+        }
+        mock_db.session.scalar.side_effect = [None, factory.create_external_knowledge_api_mock(api_id="api-703")]
+        mock_db.session.add.side_effect = assign_dataset_id
+
+        # Act
+        dataset = ExternalDatasetService.create_external_dataset(
+            "tenant-701", "user-702", args, session=mock_db.session
+        )
+
+        # Assert
+        assert dataset.id == "dataset-705"
+        mock_sync.assert_called_once_with(
+            "tenant-701",
+            "user-702",
+            RBACResourceType.DATASET,
+            "dataset-705",
+        )
 
     @patch("services.external_knowledge_service.db")
     def test_create_external_dataset_duplicate_name_error(
