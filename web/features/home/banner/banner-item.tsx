@@ -1,8 +1,8 @@
-import type { Banner } from '@/models/app'
+import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { trackEvent } from '@/app/components/base/amplitude'
 
 type BannerItemProps = {
-  banner: Banner
+  banner: BannerResponse
   sort: number
   language: string
   accountId?: string
