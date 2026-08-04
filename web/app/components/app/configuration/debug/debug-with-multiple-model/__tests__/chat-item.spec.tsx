@@ -102,10 +102,6 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-}))
-
 const createModelAndParameter = (
   overrides: Partial<ModelAndParameter> = {},
 ): ModelAndParameter => ({

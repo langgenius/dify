@@ -29,15 +29,16 @@ const MobileOperationDropdown = ({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={
+        render={(props, state) => (
           <ActionButton
+            {...props}
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             size="l"
-            state={open ? ActionButtonState.Hover : ActionButtonState.Default}
+            state={state.open ? ActionButtonState.Hover : ActionButtonState.Default}
           >
             <div className="i-ri-more-fill h-4.5 w-4.5" aria-hidden="true" />
           </ActionButton>
-        }
+        )}
       />
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
         <DropdownMenuItem

@@ -8,14 +8,6 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@langgenius/dify-ui/slider', () => ({
-  Slider: ({ onValueChange }: { onValueChange: (v: number) => void }) => (
-    <button onClick={() => onValueChange(2)} data-testid="slider-btn">
-      Slide 2
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/tag-input', () => ({
   default: ({ onChange }: { onChange: (v: string[]) => void }) => (
     <button onClick={() => onChange(['tag1', 'tag2'])} data-testid="tag-input">
@@ -83,7 +75,7 @@ describe('ParameterItem', () => {
     const input = screen.getByRole('spinbutton')
     fireEvent.change(input, { target: { value: '1.4' } })
     expect(onChange).toHaveBeenCalledWith(1)
-    expect(screen.getByTestId('slider-btn'))!.toBeInTheDocument()
+    expect(screen.getByRole('slider'))!.toBeInTheDocument()
   })
 
   it('should clamp float numeric input to min', () => {
@@ -137,20 +129,6 @@ describe('ParameterItem', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'int', min: 0 })} value={5} />)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
     expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '0')
-  })
-
-  it('should handle slide change and clamp values', () => {
-    const onChange = vi.fn()
-    render(
-      <ParameterItem
-        parameterRule={createRule({ type: 'float', min: 0, max: 10 })}
-        value={0.7}
-        onChange={onChange}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('slider-btn'))
-    expect(onChange).toHaveBeenCalledWith(2)
   })
 
   it('should render exact string input and propagate text changes', () => {

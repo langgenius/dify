@@ -17,6 +17,14 @@ import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 
+const appModeLabelKeys = {
+  'advanced-chat': 'types.advanced',
+  'agent-chat': 'types.agent',
+  chat: 'types.chatbot',
+  completion: 'types.completion',
+  workflow: 'types.workflow',
+} as const satisfies Record<RecentAppResponse['mode'], string>
+
 type ContinueWorkItemProps = {
   app: RecentAppResponse
 }
@@ -27,8 +35,12 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const appNameId = React.useId()
+  const appModeId = React.useId()
+  const appMetadataId = React.useId()
   const isRbacEnabled = systemFeatures.rbac_enabled
   const updatedAt = app.updated_at * 1000
+  const appModeLabel = t(($) => $[appModeLabelKeys[app.mode]], { ns: 'app' })
   const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
   const href = getRedirectionPath(app, {
     currentUserId,
@@ -37,19 +49,12 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
     isRbacEnabled,
   })
   const cardClassName = cn(
-    'flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3',
+    'relative flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 text-left shadow-xs shadow-shadow-shadow-3',
     isPreviewOnly && 'cursor-not-allowed opacity-60',
   )
 
   const showPreviewOnlyAccessWarning = () => {
     toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
-  }
-
-  const handlePreviewOnlyCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-
-    event.preventDefault()
-    showPreviewOnlyAccessWarning()
   }
 
   const cardContent = (
@@ -69,10 +74,24 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
         />
       </div>
       <div className="min-w-0 py-px">
-        <h3 className="truncate system-md-semibold text-text-secondary">{app.name}</h3>
-        <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
-          <span className="shrink-0">{app.author_name}</span>
-          <span className="shrink-0">·</span>
+        <h3 id={appNameId} className="truncate system-md-semibold text-text-secondary">
+          {app.name}
+        </h3>
+        <span id={appModeId} className="sr-only">
+          {appModeLabel}
+        </span>
+        <div
+          id={appMetadataId}
+          className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary"
+        >
+          {app.author_name && (
+            <>
+              <span className="min-w-0 truncate">{app.author_name}</span>
+              <span className="shrink-0" aria-hidden="true">
+                ·
+              </span>
+            </>
+          )}
           <span className="min-w-0 truncate">
             {t(($) => $['continueWork.editedAt'], {
               ns: 'explore',
@@ -86,22 +105,30 @@ const ContinueWorkItem = ({ app }: ContinueWorkItemProps) => {
 
   if (isPreviewOnly) {
     return (
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={app.name}
-        aria-disabled="true"
-        className={cardClassName}
-        onClick={showPreviewOnlyAccessWarning}
-        onKeyDown={handlePreviewOnlyCardKeyDown}
-      >
+      <div className={cardClassName}>
+        <button
+          type="button"
+          aria-labelledby={`${appNameId} ${appModeId}`}
+          aria-describedby={appMetadataId}
+          aria-disabled="true"
+          className="absolute inset-0 z-10 cursor-not-allowed touch-manipulation appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          onClick={showPreviewOnlyAccessWarning}
+        />
         {cardContent}
       </div>
     )
   }
 
   return (
-    <Link href={href} className={cardClassName}>
+    <Link
+      href={href}
+      aria-labelledby={`${appNameId} ${appModeId}`}
+      aria-describedby={appMetadataId}
+      className={cn(
+        cardClassName,
+        'touch-manipulation outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+      )}
+    >
       {cardContent}
     </Link>
   )

@@ -648,6 +648,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     raise ValueError("Workflow not found")
 
                 workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+                if graph_runtime_state is not None:
+                    self._restore_workflow_run_graph(
+                        session=session,
+                        workflow=workflow,
+                        workflow_run_id=application_generate_entity.workflow_execution_id,
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

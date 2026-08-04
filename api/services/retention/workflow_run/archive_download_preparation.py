@@ -13,7 +13,6 @@ import logging
 import re
 import zipfile
 from collections.abc import Sequence
-from typing import cast
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -310,7 +309,7 @@ def _validate_manifest(
     if not manifest["tables"]:
         raise ValueError("manifest tables must not be empty")
     for table_name, raw_entry in manifest["tables"].items():
-        entry = cast(ArchiveBundleTableManifestEntry, raw_entry)
+        entry = raw_entry
         expected_object_key = f"{object_prefix}/{table_name}.parquet"
         if entry["object_key"] != expected_object_key:
             raise ValueError(

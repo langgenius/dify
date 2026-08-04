@@ -2,6 +2,7 @@
 
 import type { Placement } from '@langgenius/dify-ui/popover'
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
@@ -126,12 +127,16 @@ export function AppSelector({
       <PopoverTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
         disabled={disabled}
-        render={
-          <button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />
-        }
-      >
-        <AppTrigger open={isShow} appDetail={currentAppInfo} />
-      </PopoverTrigger>
+        render={(props, state) => (
+          <button
+            {...props}
+            type="button"
+            className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+          >
+            <AppTrigger open={state.open} appDetail={currentAppInfo} />
+          </button>
+        )}
+      />
       <PopoverContent
         placement={placement}
         sideOffset={offset}

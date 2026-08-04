@@ -594,6 +594,17 @@ describe('createWorkflowStreamHandlers', () => {
           workflow_run_id: 'run-1',
         },
       })
+      handlers.onWorkflowPaused({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_paused',
+        data: {
+          outputs: {},
+          paused_nodes: [],
+          reasons: [],
+          workflow_run_id: 'run-1',
+        },
+      })
       handlers.onWorkflowFinished({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -627,14 +638,35 @@ describe('createWorkflowStreamHandlers', () => {
       }),
     )
     expect(sseGetMock).toHaveBeenCalledWith(
-      '/workflow/run-1/events',
+      '/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true',
       {},
       expect.objectContaining({ isPublicAPI: true }),
     )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
     expect(setup.messageId()).toBe('run-1')
     expect(setup.onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', 3, true)
     expect(setup.setRespondingFalse).toHaveBeenCalled()
     expect(setup.resetRunState).toHaveBeenCalled()
+  })
+
+  it('should keep one resumable stream for installed apps', () => {
+    const { handlers } = setupHandlers({ isPublicAPI: false })
+    const onWorkflowPaused = handlers.onWorkflowPaused!
+    const pausedEvent = {
+      data: {
+        workflow_run_id: 'run-installed',
+      },
+    } as never
+
+    onWorkflowPaused(pausedEvent)
+    onWorkflowPaused(pausedEvent)
+
+    expect(sseGetMock).toHaveBeenCalledWith(
+      '/workflow/run-installed/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ isPublicAPI: false }),
+    )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
   })
 
   it('should finish timed-out workflow state and warn without applying late outputs', () => {

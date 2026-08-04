@@ -19,8 +19,8 @@ import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '.
 import { Form } from '../form'
 import { Input } from '../input'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -334,7 +334,7 @@ const OutsideScrollingContentDemo = () => {
       <DialogPortal>
         <DialogBackdrop className="duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
         <DialogViewport className="group/dialog">
-          <ScrollAreaRoot className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
+          <ScrollArea className="h-full group-data-ending-style/dialog:pointer-events-none">
             <ScrollAreaViewport
               aria-label="Scrollable dialog viewport"
               role="region"
@@ -359,7 +359,7 @@ const OutsideScrollingContentDemo = () => {
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         </DialogViewport>
       </DialogPortal>
     </Dialog>
@@ -418,11 +418,11 @@ const InsideScrollingContentDemo = () => {
               title="Release notes"
               description="Highlights from the latest workspace update."
             />
-            <ScrollAreaRoot className="relative flex min-h-0 flex-auto overflow-hidden">
+            <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
               <ScrollAreaViewport
                 aria-label="Release note improvements"
                 role="region"
-                className="h-full max-h-full max-w-full overflow-y-auto overscroll-contain"
+                className="h-full max-h-full max-w-full overscroll-contain"
               >
                 <ScrollAreaContent>
                   <ReleaseNoteSections />
@@ -431,7 +431,7 @@ const InsideScrollingContentDemo = () => {
               <ScrollAreaScrollbar>
                 <ScrollAreaThumb />
               </ScrollAreaScrollbar>
-            </ScrollAreaRoot>
+            </ScrollArea>
             <ReleaseNoteFooter onClose={() => setOpen(false)} />
           </DialogPopup>
         </DialogViewport>

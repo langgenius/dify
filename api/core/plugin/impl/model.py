@@ -19,6 +19,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage, Promp
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
@@ -614,7 +615,7 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         language: str | None = None,
-    ):
+    ) -> list[TTSModelVoice]:
         """
         Get tts model voices
         """
@@ -641,7 +642,7 @@ class PluginModelClient(BasePluginClient):
         )
 
         for resp in response:
-            voices = []
+            voices: list[TTSModelVoice] = []
             for voice in resp.voices:
                 voices.append({"name": voice.name, "value": voice.value})
 

@@ -3,7 +3,13 @@
 import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -129,46 +135,48 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
         </div>
       </header>
 
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        slotClassNames={{
-          content: 'px-6 pt-2 pb-3',
-        }}
-      >
-        {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
-        {shouldShowError && (
-          <AgentMonitoringState>
-            <div className="flex items-center justify-center gap-2">
-              <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => {
-                  void statisticsQuery.refetch()
-                }}
-              >
-                {tCommon(($) => $['operation.retry'])}
-              </Button>
-            </div>
-          </AgentMonitoringState>
-        )}
-        {!shouldShowInitialSkeleton && !shouldShowError && (
-          <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-            {metrics.map((metric) => (
-              <AgentMonitoringChart
-                key={metric.id}
-                titleKey={metric.titleKey}
-                explanationKey={metric.explanationKey}
-                summaryValue={metric.summaryValue}
-                rows={metric.rows}
-                chartType={metric.chartType}
-                valueKey={metric.valueKey}
-                unitKey={metric.unitKey}
-                yMaxWhenEmpty={metric.yMaxWhenEmpty}
-              />
-            ))}
-          </div>
-        )}
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaViewport>
+          <ScrollAreaContent className="px-6 pt-2 pb-3">
+            {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
+            {shouldShowError && (
+              <AgentMonitoringState>
+                <div className="flex items-center justify-center gap-2">
+                  <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => {
+                      void statisticsQuery.refetch()
+                    }}
+                  >
+                    {tCommon(($) => $['operation.retry'])}
+                  </Button>
+                </div>
+              </AgentMonitoringState>
+            )}
+            {!shouldShowInitialSkeleton && !shouldShowError && (
+              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                {metrics.map((metric) => (
+                  <AgentMonitoringChart
+                    key={metric.id}
+                    titleKey={metric.titleKey}
+                    explanationKey={metric.explanationKey}
+                    summaryValue={metric.summaryValue}
+                    rows={metric.rows}
+                    chartType={metric.chartType}
+                    valueKey={metric.valueKey}
+                    unitKey={metric.unitKey}
+                    yMaxWhenEmpty={metric.yMaxWhenEmpty}
+                  />
+                ))}
+              </div>
+            )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </AgentDetailSectionSurface>
   )

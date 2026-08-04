@@ -115,7 +115,6 @@ export function AgentLogDetailPanel({
             <Chat
               chatList={chatList}
               noChatInput
-              showPromptLog
               hideProcessDetail
               hideLogModal
               chatContainerInnerClassName="px-3"
