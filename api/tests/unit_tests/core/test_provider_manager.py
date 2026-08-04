@@ -1,8 +1,10 @@
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 
 import pytest
+from flask import has_app_context
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -290,6 +292,53 @@ def test_to_system_configuration_never_returns_hosting_credentials_for_package_w
 
     assert configuration.enabled is False
     assert configuration.credentials is None
+
+
+def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    owned_session = Mock()
+    session_context = MagicMock()
+    session_context.__enter__.return_value = owned_session
+    trial_pool = SimpleNamespace(quota_used=0, quota_limit=100)
+    paid_pool = SimpleNamespace(quota_used=0, quota_limit=0)
+
+    with (
+        patch.object(provider_manager_module.dify_config, "EDITION", "CLOUD"),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch(
+            "core.plugin.plugin_service.PluginService.is_plugin_verified",
+            return_value=True,
+        ),
+        patch.object(
+            provider_manager_module.session_factory,
+            "create_session",
+            return_value=session_context,
+        ) as create_session,
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            side_effect=[trial_pool, paid_pool],
+        ) as get_pool,
+    ):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            assert executor.submit(has_app_context).result() is False
+            configuration = executor.submit(
+                manager._to_system_configuration,
+                "tenant-id",
+                provider_entity,
+                [_build_trial_provider_record()],
+            ).result()
+
+    assert configuration.enabled is True
+    create_session.assert_called_once_with()
+    assert get_pool.call_args_list == [
+        call(tenant_id="tenant-id", pool_type=ProviderQuotaType.TRIAL, session=owned_session),
+        call(tenant_id="tenant-id", pool_type=ProviderQuotaType.PAID, session=owned_session),
+    ]
+    session_context.__exit__.assert_called_once_with(None, None, None)
 
 
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
