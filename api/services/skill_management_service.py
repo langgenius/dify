@@ -133,9 +133,21 @@ description, or metadata.display-name. Ordinary Markdown files under references/
 should contain only their own document content unless the user explicitly asks
 for YAML frontmatter in that file.
 
+Use a low-friction progressive flow. If the user's intent is clear enough,
+create or revise a useful draft immediately instead of blocking on questions.
+If important details are missing, make conservative assumptions and mention at
+most one optional clarification in the reply. Every reply should include 2-3
+short suggested user replies that the UI can show as clickable chips. The
+suggestions must be concrete next refinements the user could choose, not generic
+commands.
+
 Respond with JSON only:
 {
   "reply": "short user-facing summary",
+  "suggestions": [
+    "Use this for ecommerce refund escalation",
+    "Ask me about required inputs first"
+  ],
   "operations": [
     {
       "operation": "upsert_text",
@@ -398,6 +410,7 @@ class SkillAssistActionPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reply: str = Field(default="", max_length=4_000)
+    suggestions: list[str] = Field(default_factory=list, max_length=3)
     operations: list[SkillAssistDraftOperationPayload] = Field(default_factory=list, max_length=10)
 
 
@@ -788,6 +801,15 @@ class SkillManagementService:
                         "answer": reply,
                     }
                 )
+                suggestions = [suggestion.strip() for suggestion in plan.suggestions if suggestion.strip()]
+                if suggestions:
+                    yield self._assistant_sse(
+                        {
+                            "event": "skill_assistant_suggestions",
+                            "id": message_id,
+                            "suggestions": suggestions[:3],
+                        }
+                    )
 
                 detail: dict[str, Any] | None = None
                 applied_operations: list[dict[str, str]] = []
@@ -914,7 +936,7 @@ class SkillManagementService:
         except json.JSONDecodeError:
             parsed = json_repair.loads(raw_text)
         try:
-            return SkillAssistActionPlan.model_validate(parsed)
+            plan = SkillAssistActionPlan.model_validate(parsed)
         except ValidationError as exc:
             raise SkillManagementServiceError(
                 "invalid_skill_assistant_response",
@@ -922,6 +944,70 @@ class SkillManagementService:
                 status_code=422,
                 details={"raw_response": raw_text[:2_000]},
             ) from exc
+        if not any(suggestion.strip() for suggestion in plan.suggestions):
+            plan = plan.model_copy(
+                update={
+                    "suggestions": self._generate_assistant_suggestions(
+                        model_instance=model_instance,
+                        model_parameters=model_parameters,
+                        user_message=message,
+                        assistant_reply=plan.reply,
+                    )
+                }
+            )
+        return plan
+
+    def _generate_assistant_suggestions(
+        self,
+        *,
+        model_instance: Any,
+        model_parameters: dict[str, Any],
+        user_message: str,
+        assistant_reply: str,
+    ) -> list[str]:
+        prompt = (
+            "Generate 2-3 concise clickable follow-up replies the user could send next.\n"
+            "They must be specific to the user's Skill Builder request and the assistant reply.\n"
+            "Do not include generic actions like continue, ok, or looks good.\n"
+            "Return exactly one JSON object and no markdown fences, prose, or explanation.\n"
+            "Required schema: {\"suggestions\": [\"...\", \"...\"]}\n\n"
+            f"User request:\n{user_message}\n\n"
+            f"Assistant reply:\n{assistant_reply}"
+        )
+        try:
+            response = model_instance.invoke_llm(
+                prompt_messages=[
+                    SystemPromptMessage(content="You generate concise suggested user replies for Dify Skill Builder."),
+                    UserPromptMessage(content=prompt),
+                ],
+                model_parameters=model_parameters,
+                stream=False,
+            )
+            raw_text = response.message.get_text_content()
+            try:
+                parsed = json.loads(raw_text)
+            except json.JSONDecodeError:
+                parsed = json_repair.loads(raw_text)
+        except Exception:
+            logger.warning("skill_assistant_suggestions_failed", exc_info=True)
+            return []
+
+        if isinstance(parsed, list):
+            suggestions = parsed
+        elif isinstance(parsed, dict):
+            suggestions = (
+                parsed.get("suggestions")
+                or parsed.get("suggested_replies")
+                or parsed.get("follow_up_suggestions")
+                or parsed.get("quick_replies")
+            )
+        else:
+            return []
+        if not isinstance(suggestions, list):
+            return []
+        return [suggestion.strip() for suggestion in suggestions if isinstance(suggestion, str) and suggestion.strip()][
+            :3
+        ]
 
     def _resolve_assistant_model(
         self,

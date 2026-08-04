@@ -136,47 +136,52 @@ function SkillPlaceholderState({
       aria-labelledby="skill-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,345px))] grid-rows-4 content-start gap-6">
         {placeholderCardIds.map((id) => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
       </div>
       <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden px-8 py-10">
-        <div className="flex w-full max-w-[768px] flex-col items-center">
-          <div className="flex size-20 items-center justify-center rounded-2xl border border-dashed border-divider-regular bg-components-card-bg">
-            <div className="flex size-10 items-center justify-center">
-              <span aria-hidden className="i-ri-stack-line size-7 text-text-tertiary" />
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden px-2 pt-2 pb-16">
+        <div className="flex w-[520px] max-w-full flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex size-14 items-center justify-center rounded-[10px]">
+              <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
+                <span
+                  aria-hidden
+                  className="i-custom-vender-agent-v2-building-blocks size-6 text-text-tertiary"
+                />
+              </div>
             </div>
+            <h2
+              id="skill-placeholder-title"
+              className="system-sm-regular whitespace-nowrap text-text-tertiary"
+            >
+              {title}
+            </h2>
           </div>
-          <h2
-            id="skill-placeholder-title"
-            className="mt-4 system-md-regular whitespace-nowrap text-text-tertiary"
-          >
-            {title}
-          </h2>
           {!isEmptySearch && (
-            <div className="mt-8 flex w-full flex-col gap-3">
+            <div className="flex w-full flex-col gap-2">
               <button
                 type="button"
                 disabled={creating || importing}
-                className="flex min-h-[82px] w-full cursor-pointer items-center gap-4 rounded-2xl bg-components-card-bg px-4 text-left shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={onCreate}
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-background-section text-text-tertiary">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
                   <span
                     aria-hidden
                     className={cn(
-                      'size-6',
-                      creating ? 'i-ri-loader-4-line animate-spin' : 'i-ri-sparkling-2-line',
+                      'size-4 text-text-tertiary',
+                      creating ? 'i-ri-loader-4-line animate-spin' : 'i-ri-chat-ai-line',
                     )}
                   />
                 </span>
-                <span className="min-w-0 flex-1 py-3">
-                  <span className="block system-md-semibold text-text-secondary">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate system-md-medium text-text-secondary">
                     {t(($) => $['skillManagement.emptyAction.createTitle'])}
                   </span>
-                  <span className="mt-1 block system-sm-regular text-text-tertiary">
+                  <span className="block truncate system-xs-regular text-text-tertiary">
                     {t(($) => $['skillManagement.emptyAction.createDescription'])}
                   </span>
                 </span>
@@ -184,23 +189,23 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={creating || importing}
-                className="flex min-h-[82px] w-full cursor-pointer items-center gap-4 rounded-2xl bg-components-card-bg px-4 text-left shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={onImport}
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-background-section text-text-tertiary">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
                   <span
                     aria-hidden
                     className={cn(
-                      'size-6',
+                      'size-4 text-text-tertiary',
                       importing ? 'i-ri-loader-4-line animate-spin' : 'i-ri-upload-line',
                     )}
                   />
                 </span>
-                <span className="min-w-0 flex-1 py-3">
-                  <span className="block system-md-semibold text-text-secondary">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate system-md-medium text-text-secondary">
                     {t(($) => $['skillManagement.emptyAction.importTitle'])}
                   </span>
-                  <span className="mt-1 block system-sm-regular text-text-tertiary">
+                  <span className="block truncate system-xs-regular text-text-tertiary">
                     {t(($) => $['skillManagement.emptyAction.importDescription'])}
                   </span>
                 </span>

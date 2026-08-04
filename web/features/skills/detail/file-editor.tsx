@@ -871,12 +871,28 @@ export function FileEditor({
     }
 
     const contentToPublish = draftContentRef.current
+
     if (canEdit && contentToPublish !== lastSavedContentRef.current) {
       const saved = await saveDraftContent(contentToPublish)
       if (!saved) return
     }
 
-    if ((detail?.reference_count ?? 0) > 0) {
+    const referenceCount = detail?.reference_count ?? 0
+    if (referenceCount > 0) {
+      setPublishConfirmOpen(true)
+      return
+    }
+
+    const references = await queryClient.fetchQuery(
+      consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+        input: {
+          params: {
+            skill_id: skillId,
+          },
+        },
+      }),
+    )
+    if ((references.data?.length ?? 0) > 0) {
       setPublishConfirmOpen(true)
       return
     }
@@ -887,9 +903,10 @@ export function FileEditor({
     detail?.reference_count,
     onPublish,
     publishDisabled,
+    queryClient,
     saveDraftContent,
     saveStatus,
-    updateDraftContent,
+    skillId,
   ])
 
   useEffect(() => {

@@ -222,16 +222,10 @@ export function SkillBuilderPanel({
     t(($) => $['skillManagement.detail.builder.exampleSalesFollowUp']),
     t(($) => $['skillManagement.detail.builder.exampleOnboarding']),
   ]
-  const followUpSuggestions = [
-    t(($) => $['skillManagement.detail.builder.followUpNameIcon']),
-    t(($) => $['skillManagement.detail.builder.followUpDisplayName']),
-    t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),
-  ]
   const inputPlaceholder =
     messages.length > 0
       ? t(($) => $['skillManagement.detail.builder.modifyPlaceholder'])
       : t(($) => $['skillManagement.detail.builder.placeholder'])
-  const hasBuilderConversation = messages.some((message) => message.role === 'user')
 
   const updateMessages = (
     updater: (currentMessages: BuilderChatMessage[]) => BuilderChatMessage[],
@@ -460,6 +454,24 @@ export function SkillBuilderPanel({
         )
       },
       onUnhandledEvent: (event) => {
+        if (event.event === 'skill_assistant_suggestions') {
+          const nextSuggestions = Array.isArray(event.suggestions)
+            ? event.suggestions.filter(
+                (suggestion): suggestion is string => typeof suggestion === 'string',
+              )
+            : []
+          updateMessages((currentMessages) =>
+            currentMessages.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    suggestions: nextSuggestions,
+                  }
+                : message,
+            ),
+          )
+          return
+        }
         if (event.event !== 'skill_detail_updated' || !isRecord(event.detail)) return
 
         const nextDetail = event.detail as SkillDetailResponse
@@ -663,27 +675,29 @@ export function SkillBuilderPanel({
                             <span aria-hidden className="i-ri-restart-line size-4" />
                           </button>
                         </div>
+                        {!!message.suggestions?.length && (
+                          <div className="mt-3 flex w-full flex-wrap items-end justify-end gap-1 py-2">
+                            {message.suggestions.map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={
+                                  isSending || isUploadingAttachment || !canSendBuilderMessage
+                                }
+                                onClick={() => handleSend(suggestion)}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </>
                     ) : message.thinkingDurationSeconds === undefined ? (
                       <SkillBuilderThinkingMessage seconds={thinkingElapsedSeconds} />
                     ) : null}
                   </div>
                 ),
-              )}
-              {hasBuilderConversation && (
-                <div className="flex w-full flex-wrap items-end justify-end gap-1 py-2">
-                  {followUpSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
-                      onClick={() => handleSend(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
               )}
             </div>
           ) : (

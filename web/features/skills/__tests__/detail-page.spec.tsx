@@ -1730,9 +1730,12 @@ describe('SkillDetailPage', () => {
     expect(publishButton).toBeDisabled()
     expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.published')
 
-    const displayNameInput = screen.getByDisplayValue('Untitled skill')
-    await user.clear(displayNameInput)
-    await user.type(displayNameInput, 'Updated skill')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nUpdated published instructions')
 
     expect(publishButton).toBeEnabled()
     expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.publishUpdate')
@@ -2383,6 +2386,38 @@ describe('SkillDetailPage', () => {
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
+  })
+
+  it('checks references before publishing when the cached reference count is stale', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({
+        data: [
+          createAgentReference({
+            display_name: 'Stale Count Agent',
+            name: 'stale-count-agent',
+          }),
+        ],
+      }),
+    }))
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'skill.skillManagement.detail.publishReferencesTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Stale Count Agent')).toBeInTheDocument()
+    expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
   })
 
   it('cancels publishing from the referenced skill confirmation dialog', async () => {
@@ -3248,12 +3283,6 @@ describe('SkillDetailPage', () => {
       await screen.findByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeDisabled()
 
-    await user.click(
-      screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.builder.followUpDisplayName',
-      }),
-    )
-
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledTimes(1)
   })
 
@@ -3355,8 +3384,12 @@ describe('SkillDetailPage', () => {
   it('sends Skill Builder follow-up suggestions after an assistant reply', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createDefaultSkillDraftDetail()
-    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData }) => {
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData, onUnhandledEvent }) => {
       onData?.('Drafted the skill.', true, {})
+      onUnhandledEvent?.({
+        event: 'skill_assistant_suggestions',
+        suggestions: ['Ask me about required inputs first'],
+      })
       onCompleted?.()
       return Promise.resolve()
     })
@@ -3372,14 +3405,14 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.builder.followUpDisplayName',
+        name: 'Ask me about required inputs first',
       }),
     )
 
     await waitFor(() => {
       expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'skill.skillManagement.detail.builder.followUpDisplayName',
+          message: 'Ask me about required inputs first',
         }),
       )
     })
