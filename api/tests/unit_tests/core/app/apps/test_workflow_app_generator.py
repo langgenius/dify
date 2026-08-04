@@ -17,11 +17,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
+from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.enums import EndUserType, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
-from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 
 
 def _workflow(
@@ -424,6 +425,22 @@ def test_generate_appends_pause_layer_and_forwards_state(
 def test_resume_path_runs_worker_with_runtime_state(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     generator = WorkflowAppGenerator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
+    workflow_run = WorkflowRun(
+        id="run",
+        tenant_id=workflow.tenant_id,
+        app_id=app.id,
+        workflow_id=workflow.id,
+        type=workflow.type,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version=workflow.version,
+        graph=workflow.graph,
+        inputs="{}",
+        status=WorkflowExecutionStatus.RUNNING,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=end_user.id,
+    )
+    sqlite_session.add(workflow_run)
+    sqlite_session.commit()
     runtime_state = _runtime_state()
 
     queue_manager = MagicMock()
