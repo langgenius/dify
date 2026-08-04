@@ -103,6 +103,8 @@ class CapacityDriverSettings:
     concurrency: int
     warmup_seconds: float
     measurement_seconds: float
+    minimum_measurement_runs: int = 100
+    maximum_measurement_seconds: float = 360
     e2b_api_key: str | None = field(default=None, repr=False)
 
     @classmethod
@@ -123,6 +125,8 @@ class CapacityDriverSettings:
             concurrency=int(_required_environment("BENCH_CONCURRENCY")),
             warmup_seconds=float(_required_environment("BENCH_WARMUP_SECONDS")),
             measurement_seconds=float(_required_environment("BENCH_MEASUREMENT_SECONDS")),
+            minimum_measurement_runs=int(_required_environment("BENCH_MINIMUM_MEASUREMENT_RUNS")),
+            maximum_measurement_seconds=float(_required_environment("BENCH_MAXIMUM_MEASUREMENT_SECONDS")),
             e2b_api_key=os.environ.get("BENCH_E2B_API_KEY") or None,
         )
 
@@ -238,6 +242,8 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
                         phase="measurement",
                         private_dir=private_dir,
                         duration_seconds=settings.measurement_seconds,
+                        minimum_observations=settings.minimum_measurement_runs,
+                        maximum_duration_seconds=settings.maximum_measurement_seconds,
                         stats_path=settings.results_dir / "locust-measurement-stats.json",
                     )
                 load_engine_phases["measurement"] = measurement_phase.model_dump(mode="json")
@@ -867,6 +873,8 @@ async def _execute_load_phase(
     stats_path: Path,
     duration_seconds: float | None = None,
     iterations_per_user: int | None = None,
+    minimum_observations: int | None = None,
+    maximum_duration_seconds: float | None = None,
     suspend: bool = False,
     artifact_label: str | None = None,
 ) -> tuple[LoadPhaseResult, list[CapacityObservation]]:
@@ -891,11 +899,14 @@ async def _execute_load_phase(
         result_path=result_path,
         duration_seconds=duration_seconds,
         iterations_per_user=iterations_per_user,
+        minimum_observations=minimum_observations,
+        maximum_duration_seconds=maximum_duration_seconds,
         sequence_stride=settings.concurrency,
         suspend=suspend,
     )
     request_path.write_text(request.model_dump_json(indent=2))
-    timeout_seconds = (duration_seconds or 0) + request.drain_timeout_seconds + 30
+    admission_limit_seconds = maximum_duration_seconds or duration_seconds or 0
+    timeout_seconds = admission_limit_seconds + request.drain_timeout_seconds + 30
     parent_started_at_ns = time.time_ns()
     parent_started_perf = time.perf_counter()
     stdout = b""
@@ -987,6 +998,11 @@ async def _execute_load_phase(
             spawned_users=0,
             observed_max_active=0,
             observation_count=len(observations),
+            minimum_observations=minimum_observations,
+            minimum_observations_met=(
+                minimum_observations is None or len(observations) >= minimum_observations
+            ),
+            maximum_duration_seconds=maximum_duration_seconds,
             timed_out=timed_out,
             fatal_errors=[],
             locust_version=_installed_locust_version(),

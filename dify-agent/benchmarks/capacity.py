@@ -12,6 +12,9 @@ from benchmarks.schemas import BlockResult, CapacityPoint, CapacityResult
 
 
 CONCURRENCY_LEVELS = (1, 10, 20)
+CAPACITY_SUCCESS_RATE_TARGET = 0.99
+MINIMUM_MEASUREMENT_RUNS = 100
+MAXIMUM_MEASUREMENT_SECONDS = 360
 
 
 class CapacityMatrixPoint(BaseModel):
@@ -22,6 +25,8 @@ class CapacityMatrixPoint(BaseModel):
     requested_concurrency: int = Field(ge=1)
     warmup_seconds: float = Field(default=15, ge=0)
     measurement_seconds: float = Field(default=60, gt=0)
+    minimum_measurement_runs: int = Field(default=MINIMUM_MEASUREMENT_RUNS, ge=1)
+    maximum_measurement_seconds: float = Field(default=MAXIMUM_MEASUREMENT_SECONDS, gt=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
 
@@ -82,7 +87,13 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
             if sample.terminal_status == "succeeded"
         )
     )
-    saturated = not enough_concurrency or block.outcomes.timeout_runs > 0 or block.outcomes.throttle_runs > 0
+    success_target_met = block.outcomes.success_rate >= CAPACITY_SUCCESS_RATE_TARGET
+    if not success_target_met:
+        reasons.append(
+            f"capacity success rate {block.outcomes.success_rate:.2%} was below "
+            f"{CAPACITY_SUCCESS_RATE_TARGET:.0%}"
+        )
+    saturated = not enough_concurrency or not success_target_met
     if correctness_invalid or (block.requested_concurrency == 1 and saturated):
         status = "invalid"
     elif saturated:
@@ -139,7 +150,7 @@ def aggregate_capacity_point(block: BlockResult) -> CapacityPoint:
 
 
 def render_capacity_markdown(result: CapacityResult) -> str:
-    """Render one compact report without quotas, SLOs, or monetary estimates."""
+    """Render one compact report without quotas, production SLO commitments, or monetary estimates."""
     capacity_unit = _agent_capacity_unit_label(result.agent_capacity_unit)
     lines = [
         f"# Dify Agent capacity: {result.mode}",
@@ -151,6 +162,9 @@ def render_capacity_markdown(result: CapacityResult) -> str:
         f"- Agent capacity unit: **{capacity_unit}**",
         f"- Commit: `{result.target.commit}` ({'dirty worktree' if result.target.dirty else 'clean worktree'})",
         f"- Matrix complete: `{str(result.matrix_complete).lower()}`",
+        f"- Capacity success target: **{CAPACITY_SUCCESS_RATE_TARGET:.0%}**",
+        f"- Measurement target: **at least {MINIMUM_MEASUREMENT_RUNS} attempted Runs and 60 seconds, "
+        f"at most {MAXIMUM_MEASUREMENT_SECONDS} seconds**",
         f"- Docker: `{result.environment.docker_engine}` on `{result.environment.architecture}`",
     ]
     if result.environment.e2b_template:

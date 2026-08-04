@@ -25,9 +25,13 @@ def _block(
     workload: CapacityWorkload = "shell",
     concurrency: int = 10,
     successful: int = 100,
+    attempted: int | None = None,
+    timeout_runs: int = 0,
     observed_active: int = 10,
     active_seconds: float | None = None,
 ) -> BlockResult:
+    attempted_runs = successful if attempted is None else attempted
+    assert attempted_runs >= successful
     sample = RunSample(
         mode=mode,
         scenario_id=scenario_id,
@@ -42,6 +46,14 @@ def _block(
         ledger_valid=True,
         event_replay_valid=True,
         cleanup_valid=True,
+    )
+    failed_sample = sample.model_copy(
+        update={
+            "run_id": "timed-out-run-id",
+            "terminal_status": "not_terminal",
+            "failure_kind": "stream_error",
+            "error": "ReadTimeout: synthetic capacity timeout",
+        }
     )
     resources = ResourceSummary(
         components={
@@ -65,12 +77,13 @@ def _block(
         measurement_ended_at_ns=2,
         elapsed_seconds=10,
         outcomes=RunOutcomeSummary(
-            attempted_runs=successful,
-            admitted_runs=successful,
+            attempted_runs=attempted_runs,
+            admitted_runs=attempted_runs,
             terminal_runs=successful,
             successful_runs=successful,
-            success_rate=1,
-            runs_per_second=10,
+            timeout_runs=timeout_runs,
+            success_rate=successful / attempted_runs,
+            runs_per_second=successful / 10,
             observed_max_active=observed_active,
         ),
         redis_before=RedisSnapshot(total_net_input_bytes=100, total_net_output_bytes=200),
@@ -79,7 +92,8 @@ def _block(
             total_net_output_bytes=200 + successful * 2000,
         ),
         resources=resources,
-        samples=[sample.model_copy(deep=True) for _ in range(successful)],
+        samples=[sample.model_copy(deep=True) for _ in range(successful)]
+        + [failed_sample.model_copy(deep=True) for _ in range(attempted_runs - successful)],
         cleanup={"jobs_empty": True, "bindings_destroyed": True},
         valid=True,
     )
@@ -94,13 +108,34 @@ def test_each_mode_expands_five_scenarios_at_three_concurrency_levels() -> None:
     assert len(runtime) == len(e2b) == 15
     assert {point.requested_concurrency for point in runtime} == {1, 10, 20}
     assert all(point.measurement_seconds == 60 for point in runtime)
+    assert all(point.minimum_measurement_runs == 100 for point in runtime)
+    assert all(point.maximum_measurement_seconds == 360 for point in runtime)
 
 
-def test_low_sample_count_does_not_invalidate_capacity_point() -> None:
-    point = aggregate_capacity_point(_block(concurrency=1, successful=1, observed_active=1))
+def test_capacity_target_accepts_one_timeout_in_one_hundred_attempts() -> None:
+    point = aggregate_capacity_point(_block(successful=99, attempted=100, timeout_runs=1))
 
     assert point.status == "valid"
     assert not point.reasons
+
+
+def test_capacity_target_marks_below_ninety_nine_percent_as_saturated() -> None:
+    point = aggregate_capacity_point(_block(successful=98, attempted=100, timeout_runs=2))
+
+    assert point.status == "saturated"
+    assert any("99%" in reason for reason in point.reasons)
+
+
+def test_correctness_failure_is_invalid_even_at_one_hundred_percent_success_rate() -> None:
+    block = _block()
+    block.samples[0].failure_kind = "validation_error"
+    block.samples[0].error = "payload SHA256 mismatch"
+    block.valid = False
+    block.invalid_reasons.append("one or more succeeded Runs failed post-terminal validation")
+
+    point = aggregate_capacity_point(block)
+
+    assert point.status == "invalid"
 
 
 def test_filtered_matrix_accepts_positive_non_default_concurrency() -> None:
