@@ -60,7 +60,9 @@ type PublisherEnvironmentTabsProps = {
   onSelectEnvironment: (environmentId: string) => void
 }
 
-function estimateTextWidth(value: string) {
+// Used only for SSR, the first render, or when browser layout measurements are unavailable.
+// Once mounted, the hidden elements below provide the rendered widths with the actual styles.
+function estimateFallbackTextWidth(value: string) {
   return Array.from(value).reduce((width, character) => {
     const codePoint = character.codePointAt(0) ?? 0
     if (codePoint > 0x2e7f) return width + 13
@@ -69,10 +71,10 @@ function estimateTextWidth(value: string) {
   }, 0)
 }
 
-function estimateTabWidth(value: string) {
+function estimateFallbackTabWidth(value: string) {
   return Math.min(
     ENVIRONMENT_TAB_MAX_WIDTH,
-    estimateTextWidth(value) + ENVIRONMENT_TAB_HORIZONTAL_PADDING,
+    estimateFallbackTextWidth(value) + ENVIRONMENT_TAB_HORIZONTAL_PADDING,
   )
 }
 
@@ -138,7 +140,7 @@ function getEnvironmentTabLayout({
   }
 }
 
-function EnvironmentTab({
+function EnvironmentButton({
   active,
   name,
   textWidth,
@@ -157,8 +159,7 @@ function EnvironmentTab({
         render={
           <button
             type="button"
-            role="tab"
-            aria-selected={active}
+            aria-current={active ? 'true' : undefined}
             className={cn(
               'flex h-7 max-w-22 shrink-0 items-center justify-center rounded-lg px-2 py-1.5 text-center system-sm-medium text-text-tertiary outline-hidden',
               'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
@@ -209,13 +210,16 @@ export function PublisherEnvironmentTabs({
   })
   const [measurements, setMeasurements] = useState<EnvironmentTabMeasurements>(() => ({
     availableWidth: DEFAULT_TABS_WIDTH,
-    builtInWidth: estimateTabWidth(builtInLabel),
+    builtInWidth: estimateFallbackTabWidth(builtInLabel),
     environmentTextWidths: Object.fromEntries(
-      environments.map((environment) => [environment.id, estimateTextWidth(environment.name)]),
+      environments.map((environment) => [
+        environment.id,
+        estimateFallbackTextWidth(environment.name),
+      ]),
     ),
     moreEnvironmentsWidth:
-      estimateTextWidth(moreEnvironmentsLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
-    moreWidth: estimateTextWidth(moreLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
+      estimateFallbackTextWidth(moreEnvironmentsLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
+    moreWidth: estimateFallbackTextWidth(moreLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
   }))
 
   useEffect(() => {
@@ -239,7 +243,7 @@ export function PublisherEnvironmentTabs({
           environment.id,
           readElementWidth(
             environmentMeasureElements.get(environment.id) ?? null,
-            estimateTextWidth(environment.name),
+            estimateFallbackTextWidth(environment.name),
           ),
         ]),
       )
@@ -250,17 +254,19 @@ export function PublisherEnvironmentTabs({
           ENVIRONMENT_TAB_MAX_WIDTH,
           readWidth(
             '[data-built-in-measure]',
-            estimateTextWidth(builtInLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING,
+            estimateFallbackTextWidth(builtInLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING,
           ),
         ),
         environmentTextWidths,
         moreEnvironmentsWidth: readWidth(
           '[data-more-environments-measure]',
-          estimateTextWidth(moreEnvironmentsLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
+          estimateFallbackTextWidth(moreEnvironmentsLabel) +
+            ENVIRONMENT_TAB_HORIZONTAL_PADDING +
+            16,
         ),
         moreWidth: readWidth(
           '[data-more-measure]',
-          estimateTextWidth(moreLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
+          estimateFallbackTextWidth(moreLabel) + ENVIRONMENT_TAB_HORIZONTAL_PADDING + 16,
         ),
       }
 
@@ -309,7 +315,7 @@ export function PublisherEnvironmentTabs({
       Math.min(
         ENVIRONMENT_TAB_MAX_WIDTH,
         (measurements.environmentTextWidths[environment.id] ??
-          estimateTextWidth(environment.name)) + ENVIRONMENT_TAB_HORIZONTAL_PADDING,
+          estimateFallbackTextWidth(environment.name)) + ENVIRONMENT_TAB_HORIZONTAL_PADDING,
       ),
     ]),
   )
@@ -335,7 +341,7 @@ export function PublisherEnvironmentTabs({
     (layout.visibleEnvironmentIds.length > 0 ? moreLabel : moreEnvironmentsLabel)
   const selectedOverflowTextWidth = selectedOverflowEnvironment
     ? (measurements.environmentTextWidths[selectedOverflowEnvironment.id] ??
-      estimateTextWidth(selectedOverflowEnvironment.name))
+      estimateFallbackTextWidth(selectedOverflowEnvironment.name))
     : 0
   const selectedOverflowNameTruncated =
     Boolean(selectedOverflowEnvironment) &&
@@ -344,16 +350,17 @@ export function PublisherEnvironmentTabs({
     !selectedOverflowEnvironment && layout.visibleEnvironmentIds.length === 0
 
   return (
-    <div ref={containerRef} className="relative flex w-full items-start gap-1 pb-1">
-      <div
-        role="tablist"
-        aria-label={t(($) => $['studio.environments'], { ns: 'deployments' })}
-        className="flex min-w-0 items-start gap-1"
-      >
-        <EnvironmentTab
+    <div
+      ref={containerRef}
+      role="group"
+      aria-label={t(($) => $['studio.environments'], { ns: 'deployments' })}
+      className="relative flex w-full items-start gap-1 pb-1"
+    >
+      <div className="flex min-w-0 items-start gap-1">
+        <EnvironmentButton
           active={selectedEnvironmentId === BUILT_IN_ENVIRONMENT_ID}
           name={builtInLabel}
-          textWidth={estimateTextWidth(builtInLabel)}
+          textWidth={estimateFallbackTextWidth(builtInLabel)}
           onClick={() => onSelectEnvironment(BUILT_IN_ENVIRONMENT_ID)}
         />
         {layout.visibleEnvironmentIds.map((environmentId) => {
@@ -361,13 +368,13 @@ export function PublisherEnvironmentTabs({
           if (!environment) return null
 
           return (
-            <EnvironmentTab
+            <EnvironmentButton
               key={environment.id}
               active={selectedEnvironmentId === environment.id}
               name={environment.name}
               textWidth={
                 measurements.environmentTextWidths[environment.id] ??
-                estimateTextWidth(environment.name)
+                estimateFallbackTextWidth(environment.name)
               }
               onClick={() => onSelectEnvironment(environment.id)}
             />
@@ -380,6 +387,7 @@ export function PublisherEnvironmentTabs({
             render={
               <button
                 type="button"
+                aria-current={selectedOverflowEnvironment ? 'true' : undefined}
                 className={cn(
                   'flex h-7 min-w-0 items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-sm-medium text-text-tertiary outline-hidden',
                   'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',

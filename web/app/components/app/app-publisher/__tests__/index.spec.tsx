@@ -400,9 +400,10 @@ describe('AppPublisher', () => {
 
     expect(sectionProps.actions?.showDeployAction).toBe(true)
     expect(sectionProps.actions?.appURL).toContain('/workflow/token-1')
+    expect(screen.getByRole('group', { name: /studio\.environments/ })).toBeInTheDocument()
     expect(
-      screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }),
-    ).toBeInTheDocument()
+      screen.getByRole('button', { name: /nodes\.common\.memories\.builtIn/ }),
+    ).toHaveAttribute('aria-current', 'true')
   })
 
   it('should keep the workflow publisher single-environment without app deploy ACL', () => {
@@ -419,7 +420,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
 
     expect(sectionProps.actions?.showDeployAction).toBe(false)
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /studio\.environments/ })).not.toBeInTheDocument()
     expect(sectionProps.summary?.environmentTabs).toBeUndefined()
   })
 
@@ -430,7 +431,7 @@ describe('AppPublisher', () => {
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
 
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /studio\.environments/ })).not.toBeInTheDocument()
     expect(sectionProps.summary?.environmentTabs).toBeUndefined()
   })
 
@@ -565,7 +566,7 @@ describe('AppPublisher', () => {
     expect(screen.getByRole('button', { name: /studio\.allVersions/ })).toBeInTheDocument()
     expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('tab', { name: /nodes\.common\.memories\.builtIn/ }))
+    await user.click(screen.getByRole('button', { name: /nodes\.common\.memories\.builtIn/ }))
 
     expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
   })
@@ -654,10 +655,10 @@ describe('AppPublisher', () => {
 
     await user.click(publishButton)
     expect(publishButton).toHaveAttribute('aria-expanded', 'true')
-    const stagingTab = screen.getByRole('tab', { name: 'Staging' })
-    expect(stagingTab).toBeInTheDocument()
+    const stagingButton = screen.getByRole('button', { name: 'Staging' })
+    expect(stagingButton).toBeInTheDocument()
 
-    await user.click(stagingTab)
+    await user.click(stagingButton)
     await waitFor(() => {
       expect(detailRequests.length).toBeGreaterThan(0)
     })
@@ -665,12 +666,12 @@ describe('AppPublisher', () => {
     await user.click(publishButton)
 
     expect(publishButton).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('tab', { name: 'Staging' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Staging' })).not.toBeInTheDocument()
     const requestsBeforeReopen = detailRequests.length
 
     await user.click(publishButton)
     expect(publishButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('tab', { name: 'Staging' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Staging' })).toBeInTheDocument()
     await waitFor(() => {
       expect(detailRequests.length).toBeGreaterThan(requestsBeforeReopen)
     })

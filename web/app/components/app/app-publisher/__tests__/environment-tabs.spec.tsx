@@ -52,11 +52,17 @@ function EnvironmentTabsHarness({
 }
 
 describe('PublisherEnvironmentTabs', () => {
-  it('uses More environments as the only add entry, then adds and selects an environment tab', async () => {
+  it('uses More environments as the only add entry, then adds and selects an environment', async () => {
     const user = userEvent.setup()
     render(<EnvironmentTabsHarness />)
 
-    expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
+    const environmentGroup = screen.getByRole('group', { name: 'Environments' })
+    expect(within(environmentGroup).queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(within(environmentGroup).getByRole('button', { name: 'Built-in' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
 
     await user.click(screen.getByRole('button', { name: 'More environments' }))
 
@@ -70,11 +76,12 @@ describe('PublisherEnvironmentTabs', () => {
 
     await user.click(within(menu).getByRole('menuitem', { name: 'Staging' }))
 
-    expect(screen.getByRole('tab', { name: 'Staging' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: 'Staging' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('button', { name: 'Built-in' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('button', { name: 'More' })).toBeInTheDocument()
   })
 
-  it('keeps fixed visible tabs in place and promotes a selected overflow environment', async () => {
+  it('keeps fixed visible environments in place and marks a selected overflow environment', async () => {
     const user = userEvent.setup()
     render(
       <EnvironmentTabsHarness
@@ -82,21 +89,28 @@ describe('PublisherEnvironmentTabs', () => {
       />,
     )
 
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Built-in',
-      'Staging',
-      'Pre-release',
-    ])
+    const environmentGroup = screen.getByRole('group', { name: 'Environments' })
+    expect(
+      within(environmentGroup)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Built-in', 'Staging', 'Pre-release', 'More'])
 
     await user.click(screen.getByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('menuitem', { name: 'Testing' }))
 
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Built-in',
-      'Staging',
-      'Pre-release',
-    ])
-    expect(screen.getByRole('button', { name: 'Testing' })).toBeInTheDocument()
+    expect(
+      within(environmentGroup)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Built-in', 'Staging', 'Pre-release', 'Testing'])
+    expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-current', 'true')
+    expect(
+      within(environmentGroup)
+        .getAllByRole('button')
+        .filter((button) => button.hasAttribute('aria-current'))
+        .map((button) => button.textContent),
+    ).toEqual(['Testing'])
 
     await user.click(screen.getByRole('button', { name: 'Testing' }))
     const menu = screen.getByRole('menu')
@@ -139,7 +153,7 @@ describe('PublisherEnvironmentTabs', () => {
       />,
     )
 
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
       'Built-in',
       'Staging',
       'Pre-release',
@@ -148,7 +162,7 @@ describe('PublisherEnvironmentTabs', () => {
     expect(screen.queryByRole('button', { name: 'More environments' })).not.toBeInTheDocument()
   })
 
-  it('shows the full environment name in a tooltip when its tab is truncated', async () => {
+  it('shows the full environment name in a tooltip when its button is truncated', async () => {
     const user = userEvent.setup()
     const longEnvironment = {
       id: 'long-production',
@@ -164,7 +178,7 @@ describe('PublisherEnvironmentTabs', () => {
       />,
     )
 
-    await user.hover(screen.getByRole('tab', { name: longEnvironment.name }))
+    await user.hover(screen.getByRole('button', { name: longEnvironment.name }))
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(longEnvironment.name)
   })
