@@ -1,3 +1,4 @@
+import type { ActivePluginType } from '../constants'
 import type { PluginBanner } from './banners'
 import type { HomeCatalogTabLabels } from './home-catalog-tabs'
 import ListWrapper from '../list/list-wrapper'
@@ -12,21 +13,27 @@ import HomeTrending from './home-trending'
 
 type MarketplaceHomeProps = {
   actions?: React.ReactNode
+  activePluginType?: ActivePluginType
   banners: PluginBanner[]
+  catalogCategories?: React.ReactNode
   catalogLabels?: HomeCatalogTabLabels
   isMarketplacePlatform: boolean
   language?: string
   linkToMarketplaceDetail: boolean
+  search?: React.ReactNode
   showInstallButton: boolean
 }
 
 const MarketplaceHome = ({
   actions,
+  activePluginType,
   banners,
+  catalogCategories,
   catalogLabels,
   isMarketplacePlatform,
   language,
   linkToMarketplaceDetail,
+  search,
   showInstallButton,
 }: MarketplaceHomeProps) => {
   return (
@@ -40,7 +47,7 @@ const MarketplaceHome = ({
         />
         <div className="relative flex w-full flex-col">
           <HomeHero isMarketplacePlatform={isMarketplacePlatform} />
-          <HomeSearch />
+          <HomeSearch>{search}</HomeSearch>
           {banners.length > 0 && (
             <>
               <div aria-hidden="true" className="h-12 shrink-0" />
@@ -48,6 +55,7 @@ const MarketplaceHome = ({
             </>
           )}
           <HomeCatalogNavigation
+            catalogCategories={catalogCategories}
             catalogTabs={
               <HomeCatalogTabs
                 isMarketplacePlatform={isMarketplacePlatform}
@@ -58,6 +66,7 @@ const MarketplaceHome = ({
           />
           <div className="contents [&>div]:bg-background-default!">
             <ListWrapper
+              activePluginType={activePluginType}
               className={styles.catalogContent}
               showInstallButton={showInstallButton}
               linkToMarketplaceDetail={linkToMarketplaceDetail}
