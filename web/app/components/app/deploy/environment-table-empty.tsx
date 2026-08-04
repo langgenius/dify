@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeployMenu } from './environment-deploy-menu'
@@ -312,12 +313,25 @@ function EmptyTableSkeleton() {
   )
 }
 
-export function EnvironmentTableEmpty({
-  onSelectEnvironment,
-}: {
-  onSelectEnvironment?: (environment: AppEnvironment) => void
-}) {
+type EnvironmentTableEmptyProps =
+  | {
+      state: 'empty'
+      onSelectEnvironment?: (environment: AppEnvironment) => void
+    }
+  | {
+      state: 'error'
+      isRetrying: boolean
+      onRetry: () => void
+    }
+
+export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
   const { t } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation('common')
+  const isError = props.state === 'error'
+  const title = isError ? tCommon(($) => $['errorBoundary.title']) : t(($) => $['list.emptyTitle'])
+  const description = isError
+    ? t(($) => $['common.loadFailed'])
+    : t(($) => $['studio.emptyDescription'])
 
   return (
     <div className="relative h-full w-full min-w-0 overflow-hidden">
@@ -330,14 +344,20 @@ export function EnvironmentTableEmpty({
             </div>
           </div>
           <div className="flex w-full flex-col items-center gap-2">
-            <h3 className="system-md-medium text-text-secondary">
-              {t(($) => $['list.emptyTitle'])}
-            </h3>
-            <p className="system-sm-regular text-text-tertiary">
-              {t(($) => $['studio.emptyDescription'])}
-            </p>
+            <h3 className="system-md-medium text-text-secondary">{title}</h3>
+            <p className="system-sm-regular text-text-tertiary">{description}</p>
           </div>
-          <EnvironmentDeployMenu appearance="empty" onSelectEnvironment={onSelectEnvironment} />
+          {props.state === 'error' ? (
+            <Button variant="secondary" loading={props.isRetrying} onClick={props.onRetry}>
+              <span aria-hidden className="mr-1.5 i-ri-reset-left-line" />
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          ) : (
+            <EnvironmentDeployMenu
+              appearance="empty"
+              onSelectEnvironment={props.onSelectEnvironment}
+            />
+          )}
         </div>
       </div>
     </div>

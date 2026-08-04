@@ -23,6 +23,7 @@ import {
 import { useAtomValue } from 'jotai'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from './access-point'
 import { AccessPointIcon } from './access-point-icon'
@@ -32,7 +33,9 @@ import { EnvironmentTableEmpty } from './environment-table-empty'
 import {
   appEnvironmentDeploymentsAtom,
   appEnvironmentDeploymentsIsErrorAtom,
+  appEnvironmentDeploymentsIsFetchingAtom,
   appEnvironmentDeploymentsIsLoadingAtom,
+  appEnvironmentDeploymentsRefetchAtom,
   appEnvironmentUsageAtom,
   getEnvironmentDeploymentActions,
   getWorkflowVersionName,
@@ -335,15 +338,20 @@ export function EnvironmentTable({
   const deployments = useAtomValue(appEnvironmentDeploymentsAtom) ?? []
   const isLoading = useAtomValue(appEnvironmentDeploymentsIsLoadingAtom)
   const isError = useAtomValue(appEnvironmentDeploymentsIsErrorAtom)
+  const isFetching = useAtomValue(appEnvironmentDeploymentsIsFetchingAtom)
+  const refetchDeployments = useAtomValue(appEnvironmentDeploymentsRefetchAtom)
   const usage = useAtomValue(appEnvironmentUsageAtom)
   const used = usage?.used ?? deployments.length
   const total = usage?.total ?? deployments.length
+  const showLoadingState = isLoading && deployments.length === 0
+  const showErrorState = isError && deployments.length === 0
+  const isRetrying = showErrorState && isFetching
   const showEmptyState = !isLoading && !isError && deployments.length === 0
 
   return (
     <section
       aria-labelledby="deploy-environments-title"
-      aria-busy={isLoading}
+      aria-busy={showLoadingState || isRetrying}
       className="flex min-h-0 grow flex-col gap-3"
     >
       <div className="flex shrink-0 items-center justify-between">
@@ -373,8 +381,16 @@ export function EnvironmentTable({
           deployments.length > 0 ? 'overflow-x-auto' : 'overflow-x-hidden',
         )}
       >
-        {showEmptyState ? (
-          <EnvironmentTableEmpty onSelectEnvironment={onDeployToEnvironment} />
+        {showLoadingState ? (
+          <Loading className="h-full" />
+        ) : showErrorState ? (
+          <EnvironmentTableEmpty
+            state="error"
+            isRetrying={isRetrying}
+            onRetry={() => void refetchDeployments()}
+          />
+        ) : showEmptyState ? (
+          <EnvironmentTableEmpty state="empty" onSelectEnvironment={onDeployToEnvironment} />
         ) : (
           <table className="w-full min-w-260 table-fixed border-separate border-spacing-0">
             <colgroup>

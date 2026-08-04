@@ -234,6 +234,16 @@ export const appEnvironmentDeploymentsIsErrorAtom = selectAtom(
   (query) => query.isError,
 )
 
+export const appEnvironmentDeploymentsIsFetchingAtom = selectAtom(
+  appEnvironmentDeploymentsQueryAtom,
+  (query) => query.isFetching,
+)
+
+export const appEnvironmentDeploymentsRefetchAtom = selectAtom(
+  appEnvironmentDeploymentsQueryAtom,
+  (query) => query.refetch,
+)
+
 export function getWorkflowVersionName(version?: WorkflowVersion) {
   if (!version) return
 

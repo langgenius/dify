@@ -18,7 +18,7 @@ import {
   OperatorType,
   PluginCategory,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { act, screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -1442,6 +1442,7 @@ describe('AppDeploy', () => {
 
     expect(screen.getByText('deployments.list.emptyTitle')).toBeInTheDocument()
     expect(screen.getByText('deployments.studio.emptyDescription')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
 
     const deployButton = screen.getByRole('button', {
       name: 'deployments.studio.deployToEnvironment',
@@ -1450,6 +1451,77 @@ describe('AppDeploy', () => {
 
     expect(screen.getByText('deployments.card.notDeployed')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()
+  })
+
+  it('shows loading and retries after the environment deployment list fails', async () => {
+    const user = userEvent.setup()
+    const deploymentRequests: Request[] = []
+    let resolveInitialRequest: ((response: Response) => void) | undefined
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (
+        !new URL(request.url).pathname.endsWith(
+          '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments',
+        )
+      )
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+      deploymentRequests.push(request.clone())
+      if (deploymentRequests.length === 1) {
+        return new Promise((resolve) => {
+          resolveInitialRequest = resolve
+        })
+      }
+
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            environment_deployments: APP_ENVIRONMENT_DEPLOYMENTS,
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        ),
+      )
+    })
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
+      data: APP_ENVIRONMENTS,
+    })
+
+    renderWithConsoleQuery(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable appId={APP_ID} />
+      </AppDeployStateBoundary>,
+      { queryClient },
+    )
+
+    expect(screen.getByRole('status', { name: /loading/ })).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(deploymentRequests).toHaveLength(1)
+    })
+
+    resolveInitialRequest?.(
+      new Response(JSON.stringify({ message: 'Failed to load deployments' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 500,
+      }),
+    )
+
+    const retryButton = await screen.findByRole('button', {
+      name: 'common.operation.retry',
+    })
+    expect(screen.getByRole('heading', { name: 'common.errorBoundary.title' })).toBeInTheDocument()
+    expect(screen.getByText('deployments.common.loadFailed')).toBeInTheDocument()
+    expect(screen.queryByText('deployments.list.emptyTitle')).not.toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+
+    await user.click(retryButton)
+
+    expect(await screen.findByRole('cell', { name: /Staging/ })).toBeInTheDocument()
+    expect(deploymentRequests).toHaveLength(2)
   })
 
   it('shows the environment actions from the design menu', async () => {
