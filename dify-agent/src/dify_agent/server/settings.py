@@ -74,6 +74,10 @@ class ServerSettings(BaseSettings):
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
     sandbox_file_upload_max_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
+    sandbox_files_base_url: str | None = Field(
+        default=None,
+        validation_alias="DIFY_AGENT_SANDBOX_FILES_BASE_URL",
+    )
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
     server_secret_key: str | None = None
     api_token: str | None = None
@@ -106,6 +110,22 @@ class ServerSettings(BaseSettings):
             validated = str(TypeAdapter(AnyHttpUrl).validate_python(stripped))
             return normalize_agent_stub_api_base_url(validated)
         return normalize_agent_stub_api_base_url(stripped)
+
+    @field_validator("sandbox_files_base_url")
+    @classmethod
+    def normalize_sandbox_files_base_url_value(cls, value: str | None) -> str | None:
+        """Normalize the Dify API base URL reachable from the Sandbox."""
+
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            return None
+        validated = str(TypeAdapter(AnyHttpUrl).validate_python(stripped))
+        parsed = validated.rstrip("/")
+        if "?" in parsed or "#" in parsed:
+            raise ValueError("DIFY_AGENT_SANDBOX_FILES_BASE_URL must not include a query string or fragment")
+        return parsed
 
     @field_validator("agent_stub_grpc_bind_address")
     @classmethod
@@ -169,6 +189,14 @@ class ServerSettings(BaseSettings):
         """Require Agent Stub settings while allowing deployments without inner API calls."""
         if self.agent_stub_api_base_url is not None and self.server_secret_key is None:
             raise ValueError("DIFY_AGENT_SERVER_SECRET_KEY is required when DIFY_AGENT_STUB_API_BASE_URL is set.")
+        if (
+            self.agent_stub_api_base_url is not None
+            and self.inner_api_key is not None
+            and self.sandbox_files_base_url is None
+        ):
+            raise ValueError(
+                "DIFY_AGENT_SANDBOX_FILES_BASE_URL is required when Agent Stub file operations are enabled."
+            )
         if self.agent_stub_grpc_bind_address is not None:
             if self.agent_stub_api_base_url is None:
                 raise ValueError(
@@ -209,12 +237,14 @@ class ServerSettings(BaseSettings):
         return AgentStubTokenCodec.from_server_secret(self.server_secret_key)
 
     def create_agent_stub_file_request_handler(self) -> DifyApiAgentStubFileRequestHandler | None:
-        """Return the Dify API file bridge when both Dify API settings are configured."""
-        if self.inner_api_key is None:
+        """Return the file bridge when inner API and Sandbox data-plane settings are configured."""
+        if self.inner_api_key is None or self.sandbox_files_base_url is None:
             return None
         return DifyApiAgentStubFileRequestHandler(
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
+            sandbox_files_base_url=self.sandbox_files_base_url,
+            timeout=self.create_outbound_http_timeout(),
         )
 
     def create_agent_stub_config_request_handler(self) -> DifyApiAgentStubConfigRequestHandler | None:
