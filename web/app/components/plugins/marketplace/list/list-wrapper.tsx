@@ -10,12 +10,14 @@ import List from './index'
 type ListWrapperProps = {
   activePluginType?: ActivePluginType
   className?: string
+  deferOffscreenCollections?: boolean
   showInstallButton?: boolean
   linkToMarketplaceDetail?: boolean
 }
 const ListWrapper = ({
   activePluginType,
   className,
+  deferOffscreenCollections,
   showInstallButton,
   linkToMarketplaceDetail,
 }: ListWrapperProps) => {
@@ -57,6 +59,7 @@ const ListWrapper = ({
             marketplaceCollections={marketplaceCollections || []}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
+            deferOffscreenCollections={deferOffscreenCollections}
             showInstallButton={showInstallButton}
             linkToMarketplaceDetail={linkToMarketplaceDetail}
           />

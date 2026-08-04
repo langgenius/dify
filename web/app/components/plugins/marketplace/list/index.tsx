@@ -20,6 +20,7 @@ type ListProps = {
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   emptyClassName?: string
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
+  deferOffscreenCollections?: boolean
 }
 const List = ({
   marketplaceCollections,
@@ -31,6 +32,7 @@ const List = ({
   cardRender,
   emptyClassName,
   onCollectionMoreClick,
+  deferOffscreenCollections,
 }: ListProps) => {
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
   const pluginIds = useMemo(() => {
@@ -69,6 +71,7 @@ const List = ({
           cardRender={cardRender}
           onCollectionMoreClick={onCollectionMoreClick}
           installedPluginIds={installedPluginIds}
+          deferOffscreenCollections={deferOffscreenCollections}
         />
       )}
       {plugins && !!plugins.length && (

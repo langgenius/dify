@@ -1,20 +1,27 @@
 'use client'
 
 /* oxlint-disable eslint-react/set-state-in-effect */
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'
 import useEmblaCarousel from 'embla-carousel-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CAROUSEL_PAGE_CLASS } from './collection-constants'
 
-type CarouselApi = ReturnType<typeof useEmblaCarousel>[1]
+export type CarouselPage = {
+  id: string
+  content: ReactNode
+}
 
 type CarouselProps = {
-  children: React.ReactNode
+  pages: CarouselPage[]
   className?: string
   showNavigation?: boolean
   showPagination?: boolean
   autoPlay?: boolean
   autoPlayInterval?: number
+  deferMountPages?: boolean
+  pauseWhenOffscreen?: boolean
 }
 
 type NavButtonProps = {
@@ -42,21 +49,21 @@ const NavButton = ({ direction, disabled, onClick, iconClassName }: NavButtonPro
 )
 
 type CarouselControlsProps = {
-  api: CarouselApi
   showPagination: boolean
   selectedIndex: number
   scrollNext: () => void
   scrollPrev: () => void
   scrollSnaps: number[]
+  scrollTo: (index: number) => void
 }
 
 const CarouselControls = ({
-  api,
   showPagination,
   selectedIndex,
   scrollNext,
   scrollPrev,
   scrollSnaps,
+  scrollTo,
 }: CarouselControlsProps) => {
   const paginationItems = scrollSnaps.map((snap, index) => ({
     id: `${snap}-${index}`,
@@ -79,7 +86,7 @@ const CarouselControls = ({
                   ? 'w-4 bg-components-button-primary-bg'
                   : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
               )}
-              onClick={() => api?.scrollTo(index)}
+              onClick={() => scrollTo(index)}
               aria-label={`Go to page ${index + 1}`}
             />
           ))}
@@ -103,44 +110,97 @@ const CarouselControls = ({
   )
 }
 
+const normalizePageIndex = (index: number, pageCount: number) =>
+  ((index % pageCount) + pageCount) % pageCount
+
+const getPageWindowIds = (pages: CarouselPage[], centerIndex: number) => {
+  if (!pages.length) return []
+
+  return [-1, 0, 1].map(
+    (offset) => pages[normalizePageIndex(centerIndex + offset, pages.length)]!.id,
+  )
+}
+
 const Carousel = ({
-  children,
+  pages,
   className,
   showNavigation = true,
   showPagination = true,
   autoPlay = false,
   autoPlayInterval = 5000,
+  deferMountPages = false,
+  pauseWhenOffscreen = false,
 }: CarouselProps) => {
-  const plugins = useMemo(() => {
-    if (!autoPlay) return []
+  const carouselRootRef = useRef<HTMLDivElement>(null)
+  const autoplay = useMemo(() => {
+    if (!autoPlay) return undefined
 
-    return [
-      Autoplay({
-        delay: autoPlayInterval,
-        stopOnInteraction: false,
-        stopOnMouseEnter: true,
-      }),
-    ]
-  }, [autoPlay, autoPlayInterval])
+    return Autoplay({
+      delay: autoPlayInterval,
+      playOnInit: !pauseWhenOffscreen,
+      stopOnInteraction: false,
+      stopOnMouseEnter: !pauseWhenOffscreen,
+    })
+  }, [autoPlay, autoPlayInterval, pauseWhenOffscreen])
+  const plugins = useMemo(() => (autoplay ? [autoplay] : []), [autoplay])
   const [carouselRef, api] = useEmblaCarousel(
     { align: 'start', containScroll: 'trimSnaps', loop: true },
     plugins,
   )
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
+  const [mountedPageIds, setMountedPageIds] = useState(
+    () => new Set(deferMountPages ? getPageWindowIds(pages, 0) : pages.map((page) => page.id)),
+  )
+
+  const mountPageWindow = useCallback(
+    (centerIndex: number) => {
+      if (!deferMountPages || !pages.length) return
+
+      const pageIds = getPageWindowIds(pages, centerIndex)
+      setMountedPageIds((currentPageIds) => {
+        if (pageIds.every((pageId) => currentPageIds.has(pageId))) return currentPageIds
+
+        return new Set([...currentPageIds, ...pageIds])
+      })
+    },
+    [deferMountPages, pages],
+  )
+
+  const scheduleScroll = useCallback((scroll: () => void) => {
+    window.requestAnimationFrame(scroll)
+  }, [])
+
+  const scrollTo = useCallback(
+    (index: number) => {
+      mountPageWindow(index)
+      scheduleScroll(() => api?.scrollTo(index))
+    },
+    [api, mountPageWindow, scheduleScroll],
+  )
   const scrollPrev = useCallback(() => {
-    api?.scrollPrev()
-  }, [api])
+    mountPageWindow(selectedIndex - 1)
+    scheduleScroll(() => api?.scrollPrev())
+  }, [api, mountPageWindow, scheduleScroll, selectedIndex])
   const scrollNext = useCallback(() => {
-    api?.scrollNext()
-  }, [api])
+    mountPageWindow(selectedIndex + 1)
+    scheduleScroll(() => api?.scrollNext())
+  }, [api, mountPageWindow, scheduleScroll, selectedIndex])
+
+  useEffect(() => {
+    if (!deferMountPages) return
+
+    mountPageWindow(selectedIndex)
+  }, [deferMountPages, mountPageWindow, pages, selectedIndex])
 
   useEffect(() => {
     if (!api) return
 
     const handleSelect = () => {
-      setSelectedIndex(api.selectedScrollSnap())
+      const nextSelectedIndex = api.selectedScrollSnap()
+      setSelectedIndex(nextSelectedIndex)
       setScrollSnaps(api.scrollSnapList())
+      mountPageWindow(nextSelectedIndex)
     }
 
     handleSelect()
@@ -151,23 +211,108 @@ const Carousel = ({
       api.off('reInit', handleSelect)
       api.off('select', handleSelect)
     }
-  }, [api])
+  }, [api, mountPageWindow])
+
+  useEffect(() => {
+    if (!pauseWhenOffscreen || !autoplay || !api) return
+
+    const carouselRoot = carouselRootRef.current
+    if (!carouselRoot) return
+
+    let isInViewport = false
+    let isHovered = false
+    let isDocumentVisible = document.visibilityState === 'visible'
+    const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    let isReducedMotion = reducedMotionQuery?.matches ?? false
+
+    const syncAutoplay = () => {
+      if (isInViewport && isDocumentVisible && !isReducedMotion && !isHovered) autoplay.play()
+      else autoplay.stop()
+    }
+    const handleVisibilityChange = () => {
+      isDocumentVisible = document.visibilityState === 'visible'
+      syncAutoplay()
+    }
+    const handleReducedMotionChange = () => {
+      isReducedMotion = reducedMotionQuery?.matches ?? false
+      syncAutoplay()
+    }
+    const handleMouseEnter = () => {
+      isHovered = true
+      syncAutoplay()
+    }
+    const handleMouseLeave = () => {
+      isHovered = false
+      syncAutoplay()
+    }
+
+    const observer =
+      typeof IntersectionObserver === 'undefined'
+        ? undefined
+        : new IntersectionObserver(
+            ([entry]) => {
+              isInViewport = !!entry?.isIntersecting && entry.intersectionRatio >= 0.25
+              syncAutoplay()
+            },
+            {
+              root: document.getElementById('marketplace-container'),
+              threshold: 0.25,
+            },
+          )
+
+    if (observer) observer.observe(carouselRoot)
+    else isInViewport = true
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    reducedMotionQuery?.addEventListener('change', handleReducedMotionChange)
+    carouselRoot.addEventListener('mouseenter', handleMouseEnter)
+    carouselRoot.addEventListener('mouseleave', handleMouseLeave)
+    syncAutoplay()
+
+    return () => {
+      observer?.disconnect()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      reducedMotionQuery?.removeEventListener('change', handleReducedMotionChange)
+      carouselRoot.removeEventListener('mouseenter', handleMouseEnter)
+      carouselRoot.removeEventListener('mouseleave', handleMouseLeave)
+      autoplay.stop()
+    }
+  }, [api, autoplay, pauseWhenOffscreen])
 
   return (
-    <div className={cn('relative', className)} role="region" aria-roledescription="carousel">
+    <div
+      ref={carouselRootRef}
+      className={cn('relative', className)}
+      role="region"
+      aria-roledescription="carousel"
+    >
       {showNavigation && (
         <CarouselControls
-          api={api}
           showPagination={showPagination}
           selectedIndex={selectedIndex}
           scrollNext={scrollNext}
           scrollPrev={scrollPrev}
           scrollSnaps={scrollSnaps}
+          scrollTo={scrollTo}
         />
       )}
       <div ref={carouselRef} className="overflow-hidden rounded-[inherit]">
         <div className="flex" style={{ columnGap: '12px' }}>
-          {children}
+          {pages.map((page) => {
+            const isMounted = !deferMountPages || mountedPageIds.has(page.id)
+
+            return (
+              <div
+                key={page.id}
+                className={CAROUSEL_PAGE_CLASS}
+                data-carousel-page={page.id}
+                data-carousel-page-mounted={isMounted ? 'true' : 'false'}
+                style={{ scrollSnapAlign: 'start' }}
+              >
+                {isMounted ? page.content : null}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

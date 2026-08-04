@@ -68,6 +68,7 @@ const MarketplaceHome = ({
             <ListWrapper
               activePluginType={activePluginType}
               className={styles.catalogContent}
+              deferOffscreenCollections={!isMarketplacePlatform}
               showInstallButton={showInstallButton}
               linkToMarketplaceDetail={linkToMarketplaceDetail}
             />

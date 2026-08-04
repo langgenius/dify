@@ -115,6 +115,7 @@ describe('CardWrapper', () => {
     renderCardWrapper()
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(document.querySelector('[data-marketplace-card="plugin-a"]')).toBeInTheDocument()
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
   })
 
