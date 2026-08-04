@@ -140,7 +140,9 @@ type ParsedMarkdownContent = {
 export type BuilderChatMessage = {
   content: string
   id: string
+  progressStages?: string[]
   rawContent?: string
+  reasoningContent?: string
   role: 'assistant' | 'user'
   suggestions?: string[]
   thinkingDurationSeconds?: number

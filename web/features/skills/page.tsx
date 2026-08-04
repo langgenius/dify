@@ -658,6 +658,7 @@ export default function SkillsPage() {
       getNextPageParam: (lastPage) => (lastPage.has_more ? (lastPage.page ?? 1) + 1 : undefined),
       initialPageParam: 1,
     }),
+    refetchOnMount: 'always',
   })
   const skills = skillsQuery.data?.pages.flatMap((page) => page.data ?? []) ?? []
 

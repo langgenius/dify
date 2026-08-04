@@ -52,7 +52,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -280,6 +280,17 @@ export function FileTree({
   const [sidebarWidth, setSidebarWidth] = useState(skillSidebarMinWidth)
   const [sidebarFloating, setSidebarFloating] = useState(false)
   const [sidebarResizing, setSidebarResizing] = useState(false)
+  const referencesQuery = useQuery({
+    ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+      input: {
+        params: {
+          skill_id: skillId,
+        },
+      },
+    }),
+    refetchOnMount: 'always',
+  })
+  const referenceCount = referencesQuery.data?.data?.length ?? detail?.reference_count ?? 0
   const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
@@ -304,6 +315,21 @@ export function FileTree({
     document.addEventListener('pointerdown', handlePointerDown, true)
     return () => document.removeEventListener('pointerdown', handlePointerDown, true)
   }, [referencesOpen])
+
+  useEffect(() => {
+    const fetchedReferenceCount = referencesQuery.data?.data?.length
+    if (
+      fetchedReferenceCount == null ||
+      !detail ||
+      detail.reference_count === fetchedReferenceCount
+    )
+      return
+
+    setSkillDetailCache(queryClient, skillId, {
+      ...detail,
+      reference_count: fetchedReferenceCount,
+    })
+  }, [detail, queryClient, referencesQuery.data?.data?.length, skillId])
 
   useEffect(
     () => () => {
@@ -1574,7 +1600,7 @@ export function FileTree({
                 <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
                 <span className="min-w-0 flex-1 truncate">
                   {t(($) => $['skillManagement.detail.referencedBy'], {
-                    count: detail?.reference_count ?? 0,
+                    count: referenceCount,
                   })}
                 </span>
                 <span
