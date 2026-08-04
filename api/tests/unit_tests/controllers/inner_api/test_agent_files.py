@@ -1,7 +1,10 @@
 import inspect
+from collections.abc import Callable
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
+import pytest
 from flask import Flask
 
 from controllers.inner_api.agent.files import AgentFileDownloadRequestApi, AgentFileUploadRequestApi
@@ -11,8 +14,8 @@ from services.file_request_service import DownloadFileRequestResult
 MODULE = "controllers.inner_api.agent.files"
 
 
-def _raw(method):
-    return inspect.unwrap(method)
+def _raw[R](method: Callable[..., R]) -> Callable[..., R]:
+    return cast(Callable[..., R], inspect.unwrap(method))
 
 
 def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
@@ -86,7 +89,7 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask) -> Non
     )
 
 
-def test_download_request_binds_frontend_url(app: Flask, monkeypatch) -> None:
+def test_download_request_binds_frontend_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     reference = build_file_reference(record_id="tool-file-1")
     payload = {
         "tenant_id": "tenant-1",
