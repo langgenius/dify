@@ -1,4 +1,5 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -18,9 +19,11 @@ export function KnowledgeSpaceCard({
 }) {
   const { t } = useTranslation('dataset')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const linkedAppsDescriptionId = useId()
   const unavailable = t(($) => $['cornerLabel.unavailable'])
   const summary = knowledgeSpace.technical_summary
   const name = summary?.name ?? knowledgeSpace.control_space_id
+  const linkedApps = knowledgeSpace.linked_apps
   const iconName = getBuiltinIconName(summary?.icon ?? undefined)
   const updatedAt = Date.parse(knowledgeSpace.updated_at)
   const formattedUpdatedAt = Number.isNaN(updatedAt)
@@ -32,6 +35,7 @@ export function KnowledgeSpaceCard({
       <Link
         href={newKnowledgeOverviewPath(knowledgeSpace.control_space_id)}
         aria-label={name}
+        aria-describedby={linkedAppsDescriptionId}
         className="relative flex h-41.5 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
       >
         <div className="flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
@@ -68,8 +72,10 @@ export function KnowledgeSpaceCard({
           </span>
           <span className="flex shrink-0 items-center gap-1 text-text-disabled">
             <span aria-hidden className="i-ri-robot-2-line size-3.5" />
-            <span aria-hidden>—</span>
-            <span className="sr-only">{t(($) => $['newKnowledge.appsUnavailable'])}</span>
+            <span aria-hidden>{linkedApps}</span>
+            <span id={linkedAppsDescriptionId} className="sr-only">
+              {t(($) => $['newKnowledge.overview.linkedApps'])}: {linkedApps}
+            </span>
           </span>
           <span aria-hidden className="text-divider-deep">
             /

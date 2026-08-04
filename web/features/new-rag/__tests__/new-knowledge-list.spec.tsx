@@ -10,6 +10,7 @@ type KnowledgeSpaceList = {
     description?: string
     iconRef?: string
     id: string
+    linkedApps?: number
     name: string
     permissionKeys?: Array<
       'knowledge_space_delete' | 'knowledge_space_edit' | 'knowledge_space_read'
@@ -49,6 +50,7 @@ const knowledgeSpaceApiResponse = vi.hoisted(
     control_space_id: space.id,
     created_at: space.createdAt,
     knowledge_space_id: space.id,
+    linked_apps: space.linkedApps ?? 0,
     owner_account_id: 'account-1',
     permission_keys: space.permissionKeys ?? ['knowledge_space_read'],
     resource_version: space.revision,
@@ -287,9 +289,44 @@ describe('NewKnowledgeList', () => {
     expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
     expect(within(supportCard).getByText('12')).toBeInTheDocument()
-    expect(within(list).getByText('0')).toBeInTheDocument()
-    expect(within(list).getAllByText('dataset.newKnowledge.appsUnavailable')).toHaveLength(2)
+    expect(supportCard).toHaveAccessibleDescription('dataset.newKnowledge.overview.linkedApps: 0')
+    expect(
+      within(list).getByRole('link', { name: 'Engineering handbook' }),
+    ).toHaveAccessibleDescription('dataset.newKnowledge.overview.linkedApps: 0')
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('shows each knowledge space linked app count from the list response', () => {
+    setResolvedPage([
+      {
+        createdAt: '2026-07-15T00:00:00Z',
+        id: 'space-1',
+        linkedApps: 3,
+        name: 'Support knowledge',
+        revision: 1,
+        slug: 'support-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-18T00:00:00Z',
+      },
+      {
+        createdAt: '2026-07-16T00:00:00Z',
+        id: 'space-2',
+        linkedApps: 0,
+        name: 'Engineering handbook',
+        revision: 1,
+        slug: 'engineering-handbook',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-19T00:00:00Z',
+      },
+    ])
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: 'Support knowledge' })).toHaveAccessibleDescription(
+      'dataset.newKnowledge.overview.linkedApps: 3',
+    )
+    expect(screen.getByRole('link', { name: 'Engineering handbook' })).toHaveAccessibleDescription(
+      'dataset.newKnowledge.overview.linkedApps: 0',
+    )
   })
 
   it('shows legacy-style card actions and opens edit settings when permitted', async () => {
