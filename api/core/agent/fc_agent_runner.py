@@ -1,19 +1,25 @@
 import json
 import logging
+import re
 from collections.abc import Generator
 from copy import deepcopy
 from typing import Any, Union
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.app.file_access import grant_upload_file_access
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.signature import sign_upload_file_preview_url
 from core.tools.tool_engine import ToolEngine
-from graphon.file import file_manager
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -28,12 +34,70 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from models import UploadFile
 from models.model import Message
 
 logger = logging.getLogger(__name__)
 
+_FILE_PREVIEW_ID_PATTERN = re.compile(r"/files/([a-fA-F0-9-]{36})/file-preview")
+_KNOWLEDGE_RETRIEVAL_PROMPT_NAME = "knowledge_retrieval"
+
 
 class FunctionCallAgentRunner(BaseAgentRunner):
+    def _build_dataset_tool_image_contents(
+        self, session: Session, tool_response: str, tool_instance: Any
+    ) -> list[PromptMessageContentUnionTypes]:
+        if not self.vision_enabled or not isinstance(tool_instance, DatasetRetrieverTool):
+            return []
+
+        upload_file_ids = list(dict.fromkeys(_FILE_PREVIEW_ID_PATTERN.findall(tool_response)))
+        if not upload_file_ids:
+            return []
+
+        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+        upload_file_map = {str(upload_file.id): upload_file for upload_file in upload_files}
+        ordered_upload_files = [
+            upload_file_map[upload_file_id] for upload_file_id in upload_file_ids if upload_file_id in upload_file_map
+        ]
+        image_upload_files = [
+            upload_file for upload_file in ordered_upload_files if (upload_file.mime_type or "").startswith("image/")
+        ]
+        if not image_upload_files:
+            return []
+
+        grant_upload_file_access(str(upload_file.id) for upload_file in image_upload_files)
+
+        image_detail_config = (
+            self.application_generate_entity.file_upload_config.image_config.detail
+            if (
+                self.application_generate_entity.file_upload_config
+                and self.application_generate_entity.file_upload_config.image_config
+            )
+            else None
+        )
+        image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
+        for upload_file in image_upload_files:
+            prompt_file = File(
+                file_id=upload_file.id,
+                filename=upload_file.name,
+                extension="." + upload_file.extension,
+                mime_type=upload_file.mime_type,
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                remote_url=upload_file.source_url,
+                reference=build_file_reference(record_id=str(upload_file.id)),
+                size=upload_file.size,
+                storage_key=upload_file.key,
+                url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
+            )
+            prompt_message_contents.append(
+                file_manager.to_prompt_message_content(prompt_file, image_detail_config=image_detail_config)
+            )
+
+        return prompt_message_contents
+
     def run(
         self, session: Session, message: Message, query: str, **kwargs: Any
     ) -> Generator[LLMResultChunk, None, None]:
@@ -285,13 +349,29 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
                 tool_responses.append(tool_response)
                 if tool_response["tool_response"] is not None:
+                    tool_response_text = str(tool_response["tool_response"])
+                    dataset_image_contents = self._build_dataset_tool_image_contents(
+                        session=session,
+                        tool_response=tool_response_text,
+                        tool_instance=tool_instance,
+                    )
                     self._current_thoughts.append(
                         ToolPromptMessage(
-                            content=str(tool_response["tool_response"]),
+                            content=tool_response_text,
                             tool_call_id=tool_call_id,
                             name=tool_call_name,
                         )
                     )
+                    if dataset_image_contents:
+                        self._current_thoughts.append(
+                            UserPromptMessage(
+                                name=_KNOWLEDGE_RETRIEVAL_PROMPT_NAME,
+                                content=[
+                                    *dataset_image_contents,
+                                    TextPromptMessageContent(data=self.query or tool_response_text),
+                                ],
+                            )
+                        )
 
             if len(tool_responses) > 0:
                 # save agent thought
@@ -453,6 +533,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         for prompt_message in prompt_messages:
             if isinstance(prompt_message, UserPromptMessage):
+                if prompt_message.name == _KNOWLEDGE_RETRIEVAL_PROMPT_NAME:
+                    continue
                 if isinstance(prompt_message.content, list):
                     prompt_message.content = "\n".join(
                         [

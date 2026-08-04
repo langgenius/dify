@@ -19,6 +19,7 @@ from models.dataset import (
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     ExternalKnowledgeApiSetting,
@@ -102,7 +103,7 @@ class ExternalDatasetService:
         if response.status_code == 404:
             raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 403:
-            raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
+            raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
     @staticmethod
     def get_external_knowledge_api(
@@ -319,6 +320,12 @@ class ExternalDatasetService:
         session.add(external_knowledge_binding)
 
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            user_id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
 
         return dataset
 

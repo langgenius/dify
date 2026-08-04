@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
       bundler: 'turbopack',
     }),
   },
+  experimental: {
+    // TODO: Remove when the `typescript` package can point to TypeScript 7.
+    // Next.js resolves that package, while compiler-API consumers still require TypeScript 6.
+    useTypeScriptCli: false,
+  },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
