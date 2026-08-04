@@ -1,4 +1,5 @@
 import type { PluginsSort, SearchParamsFromCollection } from '@dify/contracts/marketplace'
+import type { ActivePluginType } from './constants'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
@@ -28,10 +29,11 @@ export function useFilterPluginTags() {
  */
 export const searchModeAtom = atom<true | null>(null)
 
-export function useMarketplaceSearchMode() {
+export function useMarketplaceSearchMode(activePluginTypeOverride?: ActivePluginType) {
   const [searchPluginText] = useSearchPluginText()
   const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
+  const [activePluginTypeFromUrl] = useActivePluginType()
+  const activePluginType = activePluginTypeOverride ?? activePluginTypeFromUrl
 
   const searchMode = useAtomValue(searchModeAtom)
   const isSearchMode =

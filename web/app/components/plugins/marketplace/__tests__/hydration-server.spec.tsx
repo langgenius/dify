@@ -17,15 +17,20 @@ vi.mock('@/utils/var', () => ({
 
 const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
+const mockSearchAdvanced = vi.fn()
 
 vi.mock('@/service/client', () => ({
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
   },
   marketplaceQuery: {
     collections: {
       queryKey: (params: unknown) => ['marketplace', 'collections', params],
+    },
+    searchAdvanced: {
+      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
     },
   },
 }))
@@ -49,6 +54,9 @@ describe('HydrateQueryClient', () => {
     })
     mockCollectionPlugins.mockResolvedValue({
       data: { plugins: [] },
+    })
+    mockSearchAdvanced.mockResolvedValue({
+      data: { plugins: [], total: 0 },
     })
   })
 
@@ -119,7 +127,28 @@ describe('HydrateQueryClient', () => {
     expect(mockCollections).toHaveBeenCalled()
   })
 
-  it('should not prefetch when category does not have collections (model)', async () => {
+  it('should prefetch plugin search when q is present', async () => {
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all', q: 'openai' }),
+      children: <div>Child</div>,
+    })
+
+    expect(mockCollections).not.toHaveBeenCalled()
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { kind: 'plugins' },
+        body: expect.objectContaining({
+          page: 1,
+          query: 'openai',
+        }),
+      }),
+      expect.any(Object),
+    )
+  })
+
+  it('should prefetch when category does not have collections (model)', async () => {
     const { HydrateQueryClient } = await import('../hydration-server')
 
     await HydrateQueryClient({
@@ -128,9 +157,10 @@ describe('HydrateQueryClient', () => {
     })
 
     expect(mockCollections).not.toHaveBeenCalled()
+    expect(mockSearchAdvanced).toHaveBeenCalled()
   })
 
-  it('should not prefetch when category does not have collections (bundle)', async () => {
+  it('should prefetch when category does not have collections (bundle)', async () => {
     const { HydrateQueryClient } = await import('../hydration-server')
 
     await HydrateQueryClient({
@@ -139,5 +169,6 @@ describe('HydrateQueryClient', () => {
     })
 
     expect(mockCollections).not.toHaveBeenCalled()
+    expect(mockSearchAdvanced).toHaveBeenCalled()
   })
 })

@@ -1,3 +1,4 @@
+import type { ActivePluginType } from './constants'
 import type { PluginBanner } from './home/banners'
 import type { HomeCatalogTabLabels } from './home/home-catalog-tabs'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
@@ -18,6 +19,9 @@ export type MarketplaceViewProps = {
   variant?: MarketplaceVariant
   homeHeaderActions?: React.ReactNode
   homeCatalogLabels?: HomeCatalogTabLabels
+  homeCatalogCategories?: React.ReactNode
+  homeActivePluginType?: ActivePluginType
+  homeSearch?: React.ReactNode
   language?: string
 }
 
@@ -31,6 +35,9 @@ export function MarketplaceView({
   variant = 'default',
   homeHeaderActions,
   homeCatalogLabels,
+  homeCatalogCategories,
+  homeActivePluginType,
+  homeSearch,
   language,
 }: MarketplaceViewProps) {
   return (
@@ -38,8 +45,11 @@ export function MarketplaceView({
       {variant === 'home' ? (
         <MarketplaceHome
           actions={homeHeaderActions}
+          activePluginType={homeActivePluginType}
           banners={banners}
+          catalogCategories={homeCatalogCategories}
           catalogLabels={homeCatalogLabels}
+          search={homeSearch}
           isMarketplacePlatform={isMarketplacePlatform}
           language={language}
           linkToMarketplaceDetail={linkToMarketplaceDetail}

@@ -4,6 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -116,6 +117,7 @@ describe('useMarketplaceData', () => {
 
     expect(result.current.plugins).toBeDefined()
     expect(result.current.pluginsTotal).toBeDefined()
+    expect(mockCollections).not.toHaveBeenCalled()
 
     document.body.removeChild(container)
   })
@@ -157,6 +159,35 @@ describe('useMarketplaceData', () => {
 
     // "model" triggers search mode automatically
     expect(result.current.plugins).toBeDefined()
+
+    document.body.removeChild(container)
+  })
+
+  it('should use the server route category for hydrated standalone search', async () => {
+    const { useMarketplaceData } = await import('../state')
+    const { Wrapper } = createWrapper('?q=openai')
+
+    const container = document.createElement('div')
+    container.id = 'marketplace-container'
+    document.body.appendChild(container)
+
+    const { result } = renderHook(() => useMarketplaceData(PLUGIN_TYPE_SEARCH_MAP.model), {
+      wrapper: Wrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          category: 'model',
+          query: 'openai',
+        }),
+      }),
+      expect.any(Object),
+    )
 
     document.body.removeChild(container)
   })
