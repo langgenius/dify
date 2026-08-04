@@ -127,13 +127,13 @@ export function MCPAccessPointCard({
     setShowRegenerate(false)
   }
 
-  const status = loading || unavailable ? 'unavailable' : activated ? 'inService' : 'disabled'
-  const statusLabel =
-    loading || unavailable
-      ? t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' })
+  const status = loading
+    ? 'loading'
+    : unavailable
+      ? 'unavailable'
       : activated
-        ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
-        : t(($) => $['overview.status.disable'], { ns: 'appOverview' })
+        ? 'inService'
+        : 'disabled'
 
   return (
     <>
@@ -144,7 +144,6 @@ export function MCPAccessPointCard({
         })}
         icon="i-custom-vender-integrations-mcp"
         status={status}
-        statusLabel={statusLabel}
         highlighted={highlighted}
         busy={statusUpdating}
         switchDisabled={!canEdit}

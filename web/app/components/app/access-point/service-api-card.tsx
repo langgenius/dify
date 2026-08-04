@@ -1,18 +1,20 @@
 'use client'
 
+import type { AccessPointAvailability } from './access-point-status'
 import type { AccessPointAppInfo } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { AccessPointCard } from './access-point-card'
+import { getAccessPointStatus } from './access-point-status'
 import { AccessPointUrl } from './access-point-url'
 import { ApiSecretKeyButton } from './api-secret-key-button'
 import { getAppApiReferencePath, getBuiltInAccessUrls } from './utils'
 
 type ServiceApiAccessPointCardProps = {
   appInfo: AccessPointAppInfo
-  availability: 'available' | 'loading' | 'unavailable'
+  availability: AccessPointAvailability
   canEdit: boolean
   highlighted?: boolean
   onChangeStatus: (enabled: boolean) => Promise<void>
@@ -31,13 +33,7 @@ export function ServiceApiAccessPointCard({
   const apiReferencePath = getAppApiReferencePath(appInfo.mode)
   const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined
   const running = availability === 'available' && appInfo.enable_api
-  const status = availability !== 'available' ? 'unavailable' : running ? 'inService' : 'disabled'
-  const statusLabel =
-    availability !== 'available'
-      ? t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' })
-      : running
-        ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
-        : t(($) => $['overview.status.disable'], { ns: 'appOverview' })
+  const status = getAccessPointStatus(availability, running)
 
   return (
     <AccessPointCard
@@ -47,14 +43,17 @@ export function ServiceApiAccessPointCard({
       })}
       icon="i-custom-vender-knowledge-api-aggregate"
       status={status}
-      statusLabel={statusLabel}
       highlighted={highlighted}
       switchDisabled={!canEdit}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}
       onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
       actions={
         <>
-          <ApiSecretKeyButton appId={appInfo.id} canManage={canEdit} disabled={!running} />
+          <ApiSecretKeyButton
+            appId={appInfo.id}
+            canManage={canEdit}
+            disabled={availability !== 'available'}
+          />
           <Button
             variant="secondary"
             disabled={availability !== 'available' || !apiReferenceUrl}

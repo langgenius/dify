@@ -120,12 +120,13 @@ export function EnvironmentWebAppCard({
   )
   const webAppUrl = getEnvironmentWebAppUrl(environmentId, site)
   const running = Boolean(siteQuery.isSuccess && site?.enabled)
-  const status = siteQuery.isSuccess ? (running ? 'inService' : 'disabled') : 'unavailable'
-  const statusLabel = siteQuery.isSuccess
-    ? running
-      ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
-      : t(($) => $['overview.status.disable'], { ns: 'appOverview' })
-    : t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' })
+  const status = siteQuery.isPending
+    ? 'loading'
+    : siteQuery.isError
+      ? 'unavailable'
+      : running
+        ? 'inService'
+        : 'disabled'
   const accessLabel =
     accessMode === AccessMode.ORGANIZATION
       ? t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })
@@ -168,7 +169,6 @@ export function EnvironmentWebAppCard({
           )
         }
         status={status}
-        statusLabel={statusLabel}
         highlighted={highlighted}
         switchDisabled={!canManage}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}

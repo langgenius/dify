@@ -1,12 +1,12 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { AccessPointStatus } from './access-point-status'
 import { cn } from '@langgenius/dify-ui/cn'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { StatusDot, StatusDotSkeleton } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
-
-export type AccessPointStatus = 'disabled' | 'inService' | 'unavailable'
+import { useTranslation } from 'react-i18next'
 
 type AccessPointCardProps = {
   actions?: ReactNode
@@ -14,7 +14,6 @@ type AccessPointCardProps = {
   description: string
   icon: ReactNode | string
   status: AccessPointStatus
-  statusLabel: string
   title: string
   busy?: boolean
   className?: string
@@ -36,18 +35,27 @@ export function AccessPointCard({
   onEnabledChange,
   showStatus = true,
   status,
-  statusLabel,
   switchDisabled = false,
   switchLabel,
   title,
 }: AccessPointCardProps) {
+  const { t } = useTranslation()
   const titleId = useId()
   const isEnabled = status === 'inService'
-  const showSwitch = status !== 'unavailable' && Boolean(onEnabledChange)
+  const isLoading = status === 'loading'
+  const showSwitch = (status === 'disabled' || status === 'inService') && Boolean(onEnabledChange)
+  const statusLabel: Record<AccessPointStatus, string> = {
+    disabled: t(($) => $['overview.status.disable'], { ns: 'appOverview' }),
+    inService: t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' }),
+    loading: t(($) => $.loading, { ns: 'common' }),
+    unavailable: t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' }),
+    unsupported: t(($) => $['studio.accessPoint.notSupported'], { ns: 'deployments' }),
+  }
 
   return (
     <article
       aria-labelledby={titleId}
+      aria-busy={isLoading || undefined}
       data-highlighted={highlighted || undefined}
       className={cn(
         'flex min-h-68 min-w-0 flex-col gap-0.5 rounded-xl bg-background-section-burn p-1',
@@ -72,13 +80,18 @@ export function AccessPointCard({
         {showStatus && (
           <>
             <span
+              aria-live="polite"
               className={cn(
                 'flex shrink-0 items-center gap-1 system-xs-semibold-uppercase',
                 status === 'inService' ? 'text-text-success' : 'text-text-tertiary',
               )}
             >
-              <StatusDot status={status === 'inService' ? 'success' : 'disabled'} />
-              {statusLabel}
+              {isLoading ? (
+                <StatusDotSkeleton className="animate-pulse motion-reduce:animate-none" />
+              ) : (
+                <StatusDot status={status === 'inService' ? 'success' : 'disabled'} />
+              )}
+              {statusLabel[status]}
             </span>
             {showSwitch && (
               <Switch
@@ -125,7 +138,7 @@ export function AccessPointEndpoint({
   value,
 }: AccessPointEndpointProps) {
   return (
-    <div className="flex flex-col gap-1 px-4 py-3">
+    <div aria-busy={loading || undefined} className="flex flex-col gap-1 px-4 py-3">
       <div className="flex h-6 items-center system-xs-medium text-text-secondary">{label}</div>
       <div className="flex h-9 min-w-0 items-center gap-0.5 rounded-lg border-[0.5px] border-divider-subtle bg-components-input-bg-normal py-1 pr-1 pl-2">
         {unavailable && !loading && (

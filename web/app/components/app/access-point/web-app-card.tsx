@@ -1,7 +1,8 @@
 'use client'
 
 import type { SelectorParam } from 'i18next'
-import type { AccessPointAppInfo } from './utils'
+import type { AccessPointAvailability } from './access-point-status'
+import type { AccessPointAppInfo, PublishedWorkflow } from './utils'
 import type { ConfigParams } from '@/app/components/app/overview/settings'
 import {
   AlertDialog,
@@ -24,10 +25,11 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
 import { AppModeEnum } from '@/types/app'
 import { AccessPointCard } from './access-point-card'
+import { getAccessPointStatus } from './access-point-status'
 import { AccessPointUrl } from './access-point-url'
-import { getBuiltInAccessUrls } from './utils'
+import { getBuiltInAccessUrls, getHiddenStartInputs } from './utils'
+import { AccessPointWorkflowLaunchDialog } from './workflow-launch-dialog'
 
-type Availability = 'available' | 'loading' | 'unavailable'
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'i-ri-lock-line',
@@ -44,7 +46,7 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
 
 type WebAppAccessPointCardProps = {
   appInfo: AccessPointAppInfo
-  availability: Availability
+  availability: AccessPointAvailability
   canEdit: boolean
   canDeploy: boolean
   canManageAccess: boolean
@@ -54,6 +56,7 @@ type WebAppAccessPointCardProps = {
   onRefreshApp: () => Promise<void>
   onRegenerate: () => Promise<void>
   onSaveSiteConfig: (params: ConfigParams) => Promise<void>
+  workflow: PublishedWorkflow
 }
 
 export function WebAppAccessPointCard({
@@ -68,6 +71,7 @@ export function WebAppAccessPointCard({
   onRegenerate,
   onSaveSiteConfig,
   showAccessControl,
+  workflow,
 }: WebAppAccessPointCardProps) {
   const { t } = useTranslation()
   const [showSettings, setShowSettings] = useState(false)
@@ -75,9 +79,13 @@ export function WebAppAccessPointCard({
   const [showCustomize, setShowCustomize] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
+  const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const { webApp: webAppUrl } = getBuiltInAccessUrls(appInfo)
   const running = availability === 'available' && appInfo.enable_site
+  const supportsEmbedded =
+    appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
+  const hiddenLaunchVariables = getHiddenStartInputs(workflow)
   const accessIcon = ACCESS_MODE_ICON_MAP[appInfo.access_mode]
   const accessLabel = ACCESS_MODE_LABEL_MAP[appInfo.access_mode]
   const { data: accessSubjects } = useAppWhiteListSubjects(
@@ -98,13 +106,7 @@ export function WebAppAccessPointCard({
     setShowRegenerate(false)
   }
 
-  const status = availability !== 'available' ? 'unavailable' : running ? 'inService' : 'disabled'
-  const statusLabel =
-    availability !== 'available'
-      ? t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' })
-      : running
-        ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
-        : t(($) => $['overview.status.disable'], { ns: 'appOverview' })
+  const status = getAccessPointStatus(availability, running)
 
   return (
     <>
@@ -123,14 +125,24 @@ export function WebAppAccessPointCard({
           />
         }
         status={status}
-        statusLabel={statusLabel}
         highlighted={highlighted}
         switchDisabled={!canEdit}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
         actions={
           <>
-            {appInfo.mode !== AppModeEnum.WORKFLOW && (
+            {hiddenLaunchVariables.length > 0 && (
+              <Button
+                className="flex items-center gap-1 px-3"
+                variant="secondary"
+                disabled={!running}
+                onClick={() => setShowWorkflowLaunch(true)}
+              >
+                <span aria-hidden className="i-ri-settings-2-line size-4" />
+                {t(($) => $['operation.config'], { ns: 'common' })}
+              </Button>
+            )}
+            {supportsEmbedded && (
               <Button
                 className="flex items-center gap-1 px-3"
                 variant="secondary"
@@ -235,13 +247,14 @@ export function WebAppAccessPointCard({
         onClose={() => setShowSettings(false)}
         onSave={onSaveSiteConfig}
       />
-      {appInfo.mode !== AppModeEnum.WORKFLOW && (
+      {supportsEmbedded && (
         <EmbeddedModal
           siteInfo={appInfo.site}
           isShow={showEmbedded}
           onClose={() => setShowEmbedded(false)}
           appBaseUrl={appInfo.site?.app_base_url}
           accessToken={appInfo.site?.access_token}
+          hiddenInputs={hiddenLaunchVariables}
         />
       )}
       <CustomizeModal
@@ -259,6 +272,13 @@ export function WebAppAccessPointCard({
             await onRefreshApp()
             setShowAccess(false)
           }}
+        />
+      )}
+      {showWorkflowLaunch && (
+        <AccessPointWorkflowLaunchDialog
+          hiddenVariables={hiddenLaunchVariables}
+          targetUrl={webAppUrl}
+          onClose={() => setShowWorkflowLaunch(false)}
         />
       )}
       <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>

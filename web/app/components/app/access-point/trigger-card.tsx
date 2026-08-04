@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
+import Link from '@/next/link'
 import {
   useAppTriggers,
   useInvalidateAppTriggers,
@@ -55,7 +57,6 @@ type TriggerAccessPointCardProps = {
   availability: 'available' | 'loading' | 'unavailable'
   canEdit: boolean
   highlighted?: boolean
-  unavailableReason: 'serviceMode' | 'unpublished'
   onToggleResult: (error: Error | null) => void
 }
 
@@ -65,9 +66,9 @@ export function TriggerAccessPointCard({
   canEdit,
   highlighted,
   onToggleResult,
-  unavailableReason,
 }: TriggerAccessPointCardProps) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { data: response, isLoading } = useAppTriggers(appInfo.id)
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()
   const { mutateAsync: updateTriggerStatus, isPending: statusUpdating } = useUpdateTriggerStatus()
@@ -76,6 +77,7 @@ export function TriggerAccessPointCard({
   const triggers = useMemo(() => response?.data ?? [], [response?.data])
   const loading = availability === 'loading' || isLoading
   const active = availability === 'available' && !loading
+  const status = loading ? 'loading' : active ? 'inService' : 'unavailable'
   const enabledCount = triggers.filter((trigger) => trigger.status === 'enabled').length
 
   useEffect(() => {
@@ -118,13 +120,8 @@ export function TriggerAccessPointCard({
         ns: 'deployments',
       })}
       icon="i-custom-vender-integrations-trigger"
-      status={active ? 'inService' : 'unavailable'}
+      status={status}
       highlighted={highlighted}
-      statusLabel={
-        active
-          ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
-          : t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' })
-      }
       showStatus={!active}
       busy={statusUpdating}
     >
@@ -137,21 +134,21 @@ export function TriggerAccessPointCard({
       )}
       {!loading && (!active || triggers.length === 0) && (
         <AccessPointEmptyContent>
-          {!active && unavailableReason === 'serviceMode' ? (
-            t(($) => $['studio.accessPoint.triggerServiceModeUnavailable'], {
-              ns: 'deployments',
-            })
-          ) : (
-            <span>
-              {t(($) => $['studio.accessPoint.noTriggerNodes'], {
-                ns: 'deployments',
+          <span>
+            {t(($) => $['overview.triggerInfo.triggerStatusDescription'], {
+              ns: 'appOverview',
+            })}{' '}
+            <Link
+              href={docLink('/use-dify/nodes/trigger/overview')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-text-accent hover:underline"
+            >
+              {t(($) => $['overview.triggerInfo.learnAboutTriggers'], {
+                ns: 'appOverview',
               })}
-              <br />
-              {t(($) => $['studio.accessPoint.addTriggerNodeDescription'], {
-                ns: 'deployments',
-              })}
-            </span>
-          )}
+            </Link>
+          </span>
         </AccessPointEmptyContent>
       )}
       {active && triggers.length > 0 && (
@@ -166,18 +163,13 @@ export function TriggerAccessPointCard({
           <div className="mt-1 flex flex-col gap-1">
             {triggers.map((trigger) => {
               const enabled = trigger.status === 'enabled'
-              const disconnected = trigger.status === 'unauthorized'
               const statusLabel = enabled
                 ? t(($) => $['agentDetail.access.status.inService'], {
                     ns: 'agentV2',
                   })
-                : disconnected
-                  ? t(($) => $['studio.accessPoint.triggerDisconnected'], {
-                      ns: 'deployments',
-                    })
-                  : t(($) => $['studio.accessPoint.triggerMuted'], {
-                      ns: 'deployments',
-                    })
+                : t(($) => $['overview.status.disable'], {
+                    ns: 'appOverview',
+                  })
 
               return (
                 <div
@@ -193,21 +185,14 @@ export function TriggerAccessPointCard({
                   </span>
                   <span
                     className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
-                      enabled
-                        ? 'text-text-success'
-                        : disconnected
-                          ? 'text-text-destructive'
-                          : 'text-text-tertiary'
+                      enabled ? 'text-text-success' : 'text-text-tertiary'
                     }`}
                   >
-                    <StatusDot
-                      size="small"
-                      status={enabled ? 'success' : disconnected ? 'error' : 'disabled'}
-                    />
+                    <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
                     {statusLabel}
                   </span>
                   <Switch
-                    checked={trigger.status !== 'disabled'}
+                    checked={enabled}
                     disabled={!canEdit || statusUpdating}
                     aria-label={trigger.title}
                     onCheckedChange={(nextEnabled) => void toggleTrigger(trigger, nextEnabled)}

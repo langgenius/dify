@@ -1,9 +1,12 @@
-import type { AccessPointAppInfo } from '../utils'
-import { screen } from '@testing-library/react'
+import type { AccessPointAppInfo, PublishedWorkflow } from '../utils'
+import type { InputVar, Node } from '@/app/components/workflow/types'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
+import { basePath } from '@/utils/var'
 import { WebAppAccessPointCard } from '../web-app-card'
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
@@ -29,8 +32,18 @@ vi.mock('@/app/components/app/overview/settings', () => ({
 }))
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div role="dialog" aria-label="embed into site" /> : null,
+  default: ({
+    hiddenInputs = [],
+    isShow,
+  }: {
+    hiddenInputs?: Array<{ variable: string }>
+    isShow: boolean
+  }) =>
+    isShow ? (
+      <div role="dialog" aria-label="embed into site">
+        {hiddenInputs.map((input) => input.variable).join(',')}
+      </div>
+    ) : null,
 }))
 
 function createAppInfo(mode: AppModeEnum): AccessPointAppInfo {
@@ -51,11 +64,15 @@ function createAppInfo(mode: AppModeEnum): AccessPointAppInfo {
   } as AccessPointAppInfo
 }
 
-function renderCard(mode: AppModeEnum) {
+function renderCard(
+  mode: AppModeEnum,
+  availability: 'available' | 'loading' | 'unavailable' = 'available',
+  workflow?: PublishedWorkflow,
+) {
   render(
     <WebAppAccessPointCard
       appInfo={createAppInfo(mode)}
-      availability="available"
+      availability={availability}
       canEdit
       canDeploy
       canManageAccess
@@ -64,18 +81,63 @@ function renderCard(mode: AppModeEnum) {
       onRefreshApp={vi.fn().mockResolvedValue(undefined)}
       onRegenerate={vi.fn().mockResolvedValue(undefined)}
       onSaveSiteConfig={vi.fn().mockResolvedValue(undefined)}
+      workflow={workflow}
     />,
   )
 }
 
-describe('WebAppAccessPointCard', () => {
-  it('does not offer Embed into site for workflow apps', () => {
-    renderCard(AppModeEnum.WORKFLOW)
+const startNode: Node<{ variables: InputVar[] }> = {
+  id: 'start',
+  position: { x: 0, y: 0 },
+  data: {
+    title: 'Start',
+    desc: '',
+    type: BlockEnum.Start,
+    variables: [
+      {
+        variable: 'secret',
+        label: 'Secret',
+        type: InputVarType.textInput,
+        hide: true,
+        required: true,
+        default: '',
+      },
+    ],
+  },
+}
 
-    expect(screen.queryByRole('button', { name: /embedIntoSite/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeInTheDocument()
+const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
+  id: 'workflow-id',
+  graph: {
+    nodes: [startNode],
+    edges: [],
+  },
+  created_at: 0,
+  created_by: { id: 'user-id', name: 'User', email: 'user@example.com' },
+  hash: 'workflow-hash',
+  updated_at: 0,
+  updated_by: { id: 'user-id', name: 'User', email: 'user@example.com' },
+  tool_published: false,
+  version: '1',
+  marked_name: '',
+  marked_comment: '',
+}
+
+describe('WebAppAccessPointCard', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
+
+  it.each([AppModeEnum.WORKFLOW, AppModeEnum.COMPLETION])(
+    'does not offer Embed into site for %s apps',
+    (mode) => {
+      renderCard(mode)
+
+      expect(screen.queryByRole('button', { name: /embedIntoSite/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeInTheDocument()
+    },
+  )
 
   it('keeps Embed into site for non-workflow Web apps', async () => {
     const user = userEvent.setup()
@@ -84,5 +146,42 @@ describe('WebAppAccessPointCard', () => {
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     expect(screen.getByRole('dialog', { name: 'embed into site' })).toBeInTheDocument()
+  })
+
+  it('passes hidden Chatflow inputs to the embed dialog', async () => {
+    const user = userEvent.setup()
+    renderCard(AppModeEnum.ADVANCED_CHAT, 'available', workflowWithHiddenInput)
+
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
+
+    expect(screen.getByRole('dialog', { name: 'embed into site' })).toHaveTextContent('secret')
+  })
+
+  it('configures hidden workflow inputs before opening the Web App', async () => {
+    const user = userEvent.setup()
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    renderCard(AppModeEnum.WORKFLOW, 'available', workflowWithHiddenInput)
+
+    await user.click(screen.getByRole('button', { name: /operation\.config/ }))
+    await user.type(screen.getByLabelText('Secret'), 'top-secret')
+    await user.click(screen.getByRole('button', { name: /overview\.appInfo\.launch/ }))
+
+    await waitFor(() => {
+      expect(openSpy).toHaveBeenCalledWith(
+        `https://site.example.test${basePath}/workflow/site-code?secret=top-secret`,
+        '_blank',
+      )
+    })
+  })
+
+  it('shows loading without reporting an environment failure', () => {
+    renderCard(AppModeEnum.WORKFLOW, 'loading')
+
+    const card = screen.getByRole('article', { name: /webApp\.title/ })
+    expect(card).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
+    ).not.toBeInTheDocument()
   })
 })

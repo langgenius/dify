@@ -140,7 +140,7 @@ describe('BuiltInAccessPoints', () => {
     )
   })
 
-  it('renders service cards as available when a published Start node exists', () => {
+  it('keeps Trigger unavailable when no trigger node is published', () => {
     mocks.workflow = {
       data: {
         graph: {
@@ -156,7 +156,7 @@ describe('BuiltInAccessPoints', () => {
       screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
     ).not.toBeInTheDocument()
     expect(mocks.webCard).toHaveBeenCalledWith(
-      expect.objectContaining({ availability: 'available' }),
+      expect.objectContaining({ availability: 'available', workflow: mocks.workflow.data }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'available' }),

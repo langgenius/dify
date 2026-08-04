@@ -2,7 +2,7 @@
 
 import type { AccessPoint } from '@/app/components/app/deploy/access-point'
 import { useTranslation } from 'react-i18next'
-import { AccessPointCard, AccessPointEmptyContent, AccessPointEndpoint } from './access-point-card'
+import { AccessPointCard, AccessPointEmptyContent } from './access-point-card'
 import { EnvironmentServiceApiCard } from './environment-service-api-card'
 import { EnvironmentWebAppCard } from './environment-web-app-card'
 
@@ -26,7 +26,7 @@ const ACCESS_POINT_CONFIG: Record<
   },
 }
 
-const UNAVAILABLE_ACCESS_POINTS = ['mcp', 'trigger'] as const
+const UNSUPPORTED_ACCESS_POINTS = ['mcp', 'trigger'] as const
 
 type DeployedEnvironmentAccessPointsProps = {
   appId: string
@@ -45,13 +45,13 @@ export function DeployedEnvironmentAccessPoints({
 }: DeployedEnvironmentAccessPointsProps) {
   const { t } = useTranslation()
 
-  const title = (accessPoint: (typeof UNAVAILABLE_ACCESS_POINTS)[number]) => {
+  const title = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {
     const key = ACCESS_POINT_CONFIG[accessPoint].title
     if (key === 'mcp') return t(($) => $['mcp.server.title'], { ns: 'tools' })
     return t(($) => $['settings.trigger'], { ns: 'common' })
   }
 
-  const description = (accessPoint: (typeof UNAVAILABLE_ACCESS_POINTS)[number]) => {
+  const description = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {
     const key = ACCESS_POINT_CONFIG[accessPoint].description
     if (key === 'mcp')
       return t(($) => $['studio.accessPoint.mcpDescription'], {
@@ -77,35 +77,21 @@ export function DeployedEnvironmentAccessPoints({
         canManage={canManage}
         highlighted={highlightedAccessPoint === 'serviceApi'}
       />
-      {UNAVAILABLE_ACCESS_POINTS.map((accessPoint) => {
-        const statusLabel = t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
-          ns: 'deployments',
-        })
-
+      {UNSUPPORTED_ACCESS_POINTS.map((accessPoint) => {
         return (
           <AccessPointCard
             key={accessPoint}
             title={title(accessPoint)}
             description={description(accessPoint)}
             icon={ACCESS_POINT_CONFIG[accessPoint].icon}
-            status="unavailable"
-            statusLabel={statusLabel}
+            status="unsupported"
             highlighted={highlightedAccessPoint === accessPoint}
           >
-            {accessPoint === 'trigger' ? (
-              <AccessPointEmptyContent>
-                {t(($) => $['studio.accessPoint.triggerServiceModeUnavailable'], {
-                  ns: 'deployments',
-                })}
-              </AccessPointEmptyContent>
-            ) : (
-              <AccessPointEndpoint
-                label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
-                value=""
-                unavailableLabel={statusLabel}
-                loading
-              />
-            )}
+            <AccessPointEmptyContent>
+              {t(($) => $['studio.accessPoint.unsupportedInDeployedEnvironment'], {
+                ns: 'deployments',
+              })}
+            </AccessPointEmptyContent>
           </AccessPointCard>
         )
       })}

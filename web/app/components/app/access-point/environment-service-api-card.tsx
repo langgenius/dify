@@ -54,12 +54,13 @@ export function EnvironmentServiceApiCard({
     }),
   )
   const running = Boolean(apiQuery.isSuccess && api?.enabled)
-  const status = apiQuery.isSuccess ? (running ? 'inService' : 'disabled') : 'unavailable'
-  const statusLabel = apiQuery.isSuccess
-    ? running
-      ? t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' })
-      : t(($) => $['overview.status.disable'], { ns: 'appOverview' })
-    : t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' })
+  const status = apiQuery.isPending
+    ? 'loading'
+    : apiQuery.isError
+      ? 'unavailable'
+      : running
+        ? 'inService'
+        : 'disabled'
 
   const handleEnabledChange = (enabled: boolean) => {
     if (!canManage) return
@@ -78,7 +79,6 @@ export function EnvironmentServiceApiCard({
       })}
       icon="i-custom-vender-knowledge-api-aggregate"
       status={status}
-      statusLabel={statusLabel}
       highlighted={highlighted}
       switchDisabled={!canManage}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}
@@ -91,7 +91,7 @@ export function EnvironmentServiceApiCard({
             environmentId={environmentId}
             apiKeyCount={api?.api_key_count}
             canManage={canManage}
-            disabled={!running}
+            disabled={!apiQuery.isSuccess}
           />
           <Button
             variant="secondary"

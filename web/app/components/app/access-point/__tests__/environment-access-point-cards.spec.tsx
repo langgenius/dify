@@ -155,7 +155,11 @@ vi.mock('@/app/components/app/access-point/api-secret-key-button', () => ({
     environmentId?: string
   }) => {
     mocks.apiKeyButtonProps(props)
-    return <button type="button">environment-api-keys</button>
+    return (
+      <button type="button" disabled={!props.canManage || props.disabled}>
+        environment-api-keys
+      </button>
+    )
   },
 }))
 
@@ -243,6 +247,19 @@ describe('environment access point cards', () => {
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
   })
 
+  it('shows the environment Web app query as loading instead of failed', () => {
+    mocks.getSite.mockImplementation(() => new Promise(() => {}))
+
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
+
+    const card = screen.getByRole('article', { name: /webApp\.title/ })
+    expect(card).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
+    ).not.toBeInTheDocument()
+  })
+
   it('uses environment Site mutations for status and URL reset, and opens its access container', async () => {
     const user = userEvent.setup()
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
@@ -307,7 +324,6 @@ describe('environment access point cards', () => {
         apiKeyCount: 3,
         appId: 'app-1',
         canManage: true,
-        disabled: false,
         environmentId: 'staging',
       }),
     )
@@ -330,5 +346,47 @@ describe('environment access point cards', () => {
         params: environmentParams,
       })
     })
+  })
+
+  it('keeps environment API keys and external documentation available when the API is stopped', async () => {
+    mocks.getApi.mockResolvedValue({
+      ...api,
+      enabled: false,
+    })
+
+    renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
+
+    await screen.findByText(api.base_url)
+    expect(await screen.findByRole('button', { name: 'environment-api-keys' })).toBeEnabled()
+    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
+    expect(apiReferenceLink).not.toHaveAttribute('aria-disabled')
+    expect(apiReferenceLink).toHaveAttribute(
+      'href',
+      'https://docs.example.test/en/api-reference/guides/workflow',
+    )
+  })
+
+  it('distinguishes the Service API loading and failed query states', async () => {
+    mocks.getApi.mockRejectedValue(new Error('API unavailable'))
+
+    renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
+
+    const card = screen.getByRole('article', { name: /serviceApi\.title/ })
+    expect(card).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
+    ).not.toBeInTheDocument()
+
+    expect(await screen.findAllByText('deployments.health.ENVIRONMENT_STATUS_FAILED')).toHaveLength(
+      2,
+    )
+    expect(card).not.toHaveAttribute('aria-busy')
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 })

@@ -1,3 +1,4 @@
+import type { AccessPointStatus } from '../access-point-status'
 import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { AccessPointCard } from '../access-point-card'
@@ -10,7 +11,6 @@ describe('AccessPointCard', () => {
         description="Web application access"
         icon="i-ri-robot-2-line"
         status="inService"
-        statusLabel="In service"
         highlighted
       >
         Access URL
@@ -21,5 +21,29 @@ describe('AccessPointCard', () => {
       'data-highlighted',
       'true',
     )
+  })
+
+  it.each<[AccessPointStatus, string, boolean]>([
+    ['loading', 'common.loading', true],
+    ['unsupported', 'deployments.studio.accessPoint.notSupported', false],
+    ['unavailable', 'deployments.health.ENVIRONMENT_STATUS_FAILED', false],
+  ])('renders the %s state independently', (status, label, busy) => {
+    render(
+      <AccessPointCard
+        title="Web App"
+        description="Web application access"
+        icon="i-ri-robot-2-line"
+        status={status}
+        onEnabledChange={vi.fn()}
+      >
+        Access URL
+      </AccessPointCard>,
+    )
+
+    expect(screen.getByText(label)).toBeInTheDocument()
+    const card = screen.getByRole('article', { name: 'Web App' })
+    if (busy) expect(card).toHaveAttribute('aria-busy', 'true')
+    else expect(card).not.toHaveAttribute('aria-busy')
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   })
 })

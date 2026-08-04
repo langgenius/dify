@@ -108,6 +108,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           onRefreshApp={actions.refreshAppDetail}
           onRegenerate={actions.regenerateSiteCode}
           onSaveSiteConfig={actions.saveSiteConfig}
+          workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}
         />
         <ServiceApiAccessPointCard
@@ -129,7 +130,6 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
           <TriggerAccessPointCard
             appInfo={appInfo}
             availability={triggerAvailability}
-            unavailableReason={workflowState.isUnpublished ? 'unpublished' : 'serviceMode'}
             canEdit={capabilities.canEdit}
             onToggleResult={actions.handleResult}
             highlighted={highlightedAccessPoint === 'trigger'}

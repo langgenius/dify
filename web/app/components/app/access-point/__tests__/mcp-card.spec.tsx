@@ -8,6 +8,10 @@ import { MCPAccessPointCard } from '../mcp-card'
 
 const mocks = vi.hoisted(() => ({
   invalidateServerDetail: vi.fn(),
+  serverDetail: {
+    data: undefined as undefined | { id: string; server_code: string; status: string },
+    isPending: false,
+  },
   modalProps: vi.fn(),
   refreshServerCode: vi.fn(),
   updateServer: vi.fn(),
@@ -15,10 +19,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/use-tools', () => ({
   useInvalidateMCPServerDetail: () => mocks.invalidateServerDetail,
-  useMCPServerDetail: () => ({
-    data: undefined,
-    isPending: false,
-  }),
+  useMCPServerDetail: () => mocks.serverDetail,
   useRefreshMCPServerCode: () => ({
     isPending: false,
     mutateAsync: mocks.refreshServerCode,
@@ -76,6 +77,8 @@ const publishedWorkflow = {
 describe('MCPAccessPointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.serverDetail.data = undefined
+    mocks.serverDetail.isPending = false
   })
 
   afterEach(() => {
@@ -136,5 +139,26 @@ describe('MCPAccessPointCard', () => {
         latestParams: [{ label: 'Query', variable: 'query' }],
       }),
     )
+  })
+
+  it('shows loading without reporting an environment failure', () => {
+    mocks.serverDetail.isPending = true
+
+    render(
+      <MCPAccessPointCard
+        appInfo={workflowAppInfo}
+        canEdit
+        triggerModeDisabled={false}
+        workflow={publishedWorkflow}
+        workflowLoading={false}
+      />,
+    )
+
+    const card = screen.getByRole('article', { name: /mcp\.server\.title/ })
+    expect(card).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
+    ).not.toBeInTheDocument()
   })
 })
