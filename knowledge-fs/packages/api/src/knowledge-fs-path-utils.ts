@@ -15,6 +15,10 @@ export function parseKnowledgeFsPhysicalPath(path: string): { path: string; view
   const normalized = normalizeKnowledgeFsPath(path);
   const [, , viewName] = normalized.split("/");
 
+  if (normalized === "/knowledge") {
+    return { path: normalized, viewName: "docs" };
+  }
+
   if (!viewName) {
     throw new KnowledgeFsValidationError("KnowledgeFS path must include a physical view name");
   }

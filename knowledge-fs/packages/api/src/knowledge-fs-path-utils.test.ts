@@ -21,13 +21,17 @@ describe("KnowledgeFS path utilities", () => {
     );
   });
 
-  it("parses physical paths with a required view name", () => {
+  it("parses physical paths and maps the knowledge root to the docs view", () => {
     expect(parseKnowledgeFsPhysicalPath("/knowledge/by-type/docs")).toEqual({
       path: "/knowledge/by-type/docs",
       viewName: "by-type",
     });
 
-    expect(() => parseKnowledgeFsPhysicalPath("/knowledge")).toThrow(KnowledgeFsValidationError);
+    expect(parseKnowledgeFsPhysicalPath("/knowledge")).toEqual({
+      path: "/knowledge",
+      viewName: "docs",
+    });
+    expect(() => parseKnowledgeFsPhysicalPath("/sources")).toThrow(KnowledgeFsValidationError);
   });
 
   it("classifies and decodes by-entity paths", () => {

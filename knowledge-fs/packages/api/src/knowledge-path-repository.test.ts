@@ -115,6 +115,41 @@ function createFakeKnowledgePathExecutor(returnInsertRows = true) {
 }
 
 describe("KnowledgePath repositories", () => {
+  it.each(["postgres", "tidb"] as const)(
+    "scopes published %s filesystem reads to the current publication head",
+    async (kind) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push({ ...input, params: [...input.params] });
+        return { rows: [], rowsAffected: 0 };
+      };
+      const repository = createDatabaseKnowledgePathRepository({
+        database: createSchemaDatabaseAdapter({ executor, kind }),
+        maxListLimit: 20,
+      });
+
+      await repository.get({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        publishedOnly: true,
+        virtualPath: "/knowledge/docs/readme.md",
+      });
+      await repository.listPhysicalDescendants({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 10,
+        parentPath: "/knowledge/docs",
+        publishedOnly: true,
+        viewName: "docs",
+      });
+
+      for (const call of calls) {
+        expect(call.sql).toContain("projection_set_publication_heads");
+        expect(call.sql).toContain("projection_set_publication_members");
+        expect(call.sql).toContain("knowledge-path");
+        expect(call.sql).toContain("publication_generation_id");
+      }
+    },
+  );
+
   it("keeps the same virtual path isolated across publication generations", async () => {
     const repository = createInMemoryKnowledgePathRepository({
       maxListLimit: 2,

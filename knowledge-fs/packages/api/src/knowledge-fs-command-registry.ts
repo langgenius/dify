@@ -521,6 +521,7 @@ async function listKnowledgeFsDirectory({
         knowledgeSpaceId: input.knowledgeSpaceId,
         limit,
         parentPath: parsedPath.path,
+        publishedOnly: true,
         viewName: parsedPath.viewName,
       }),
     nodes,
@@ -563,6 +564,7 @@ async function listKnowledgeFsByCommunity({
         knowledgeSpaceId: input.knowledgeSpaceId,
         limit,
         parentPath: normalizedPath,
+        publishedOnly: true,
         viewName: KNOWLEDGE_FS_BY_COMMUNITY_VIEW_NAME,
       }),
     nodes,
@@ -787,6 +789,7 @@ async function listKnowledgeFsByTopic({
         knowledgeSpaceId: input.knowledgeSpaceId,
         limit,
         parentPath: normalizedPath,
+        publishedOnly: true,
         viewName: KNOWLEDGE_FS_BY_TOPIC_VIEW_NAME,
       }),
     nodes,
@@ -827,6 +830,7 @@ async function findKnowledgeFsPaths({
 
   const exactPath = await paths.get({
     knowledgeSpaceId: input.knowledgeSpaceId,
+    publishedOnly: true,
     virtualPath: normalizeKnowledgeFsPath(input.path),
   });
 
@@ -959,6 +963,7 @@ async function collectMatchingPhysicalPaths({
       knowledgeSpaceId: input.knowledgeSpaceId,
       limit: input.limit,
       parentPath,
+      publishedOnly: true,
       viewName,
     });
 
@@ -1040,6 +1045,7 @@ async function grepKnowledgeFsPath({
 }): Promise<KnowledgeFsGrepResult> {
   const exactPath = await paths.get({
     knowledgeSpaceId: input.knowledgeSpaceId,
+    publishedOnly: true,
     virtualPath: normalizeKnowledgeFsPath(input.path),
   });
 
@@ -1092,6 +1098,7 @@ async function grepKnowledgeFsPath({
       knowledgeSpaceId: input.knowledgeSpaceId,
       limit: input.limit,
       parentPath: parsedPath.path,
+      publishedOnly: true,
       viewName: parsedPath.viewName,
     });
 
@@ -1187,6 +1194,9 @@ async function grepKnowledgePathResource({
     const node = await nodes.get({
       id: path.targetId,
       knowledgeSpaceId: input.knowledgeSpaceId,
+      ...(path.publicationGenerationId
+        ? { publicationGenerationId: path.publicationGenerationId }
+        : {}),
     });
 
     /* v8 ignore next 3 -- path/node drift is defensive; normal repositories keep node paths consistent. */
@@ -1576,6 +1586,9 @@ async function catKnowledgeFsPath({
     const node = await nodes.get({
       id: path.targetId,
       knowledgeSpaceId: input.knowledgeSpaceId,
+      ...(path.publicationGenerationId
+        ? { publicationGenerationId: path.publicationGenerationId }
+        : {}),
     });
 
     if (!node || !(await isCandidateReadableNodeWithAsset({ assets, input, node }))) {
@@ -2563,6 +2576,7 @@ async function resolveKnowledgeFsPath(
 ): Promise<KnowledgePath> {
   const path = await paths.get({
     knowledgeSpaceId: input.knowledgeSpaceId,
+    publishedOnly: true,
     virtualPath: normalizeKnowledgeFsPath(input.path),
   });
 
@@ -2699,6 +2713,9 @@ async function isCandidateReadablePath({
     const node = await nodes.get({
       id: path.targetId,
       knowledgeSpaceId: path.knowledgeSpaceId,
+      ...(path.publicationGenerationId
+        ? { publicationGenerationId: path.publicationGenerationId }
+        : {}),
     });
     return Boolean(node && (await isCandidateReadableNodeWithAsset({ assets, input, node })));
   }
@@ -2864,6 +2881,7 @@ async function treeKnowledgeFsDirectory({
         knowledgeSpaceId: input.knowledgeSpaceId,
         limit,
         parentPath: parsedPath.path,
+        publishedOnly: true,
         viewName: parsedPath.viewName,
       }),
     nodes,

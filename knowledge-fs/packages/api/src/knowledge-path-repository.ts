@@ -30,6 +30,8 @@ export interface KnowledgePathCursor {
 export interface KnowledgePathLookupInput {
   readonly knowledgeSpaceId: string;
   readonly publicationGenerationId?: string | undefined;
+  /** Resolve only paths in the current publication head, with legacy fallback before a head exists. */
+  readonly publishedOnly?: boolean | undefined;
   readonly virtualPath: string;
 }
 
@@ -38,6 +40,7 @@ export interface ListKnowledgePathsByPhysicalViewInput {
   readonly knowledgeSpaceId: string;
   readonly limit: number;
   readonly publicationGenerationId?: string | undefined;
+  readonly publishedOnly?: boolean | undefined;
   readonly viewName: string;
 }
 
@@ -47,6 +50,7 @@ export interface ListKnowledgePathDescendantsInput {
   readonly limit: number;
   readonly parentPath: string;
   readonly publicationGenerationId?: string | undefined;
+  readonly publishedOnly?: boolean | undefined;
   readonly viewName: string;
 }
 
@@ -520,12 +524,13 @@ export function createDatabaseKnowledgePathRepository({
         ? write(database)
         : database.transaction(write);
     },
-    get: async ({ knowledgeSpaceId, publicationGenerationId, virtualPath }) =>
+    get: async ({ knowledgeSpaceId, publicationGenerationId, publishedOnly, virtualPath }) =>
       getDatabaseKnowledgePathByLogicalKey({
         database,
         executor: database,
         knowledgeSpaceId,
         publicationGenerationId,
+        publishedOnly,
         tableName,
         virtualPath,
       }),
@@ -534,17 +539,19 @@ export function createDatabaseKnowledgePathRepository({
       knowledgeSpaceId,
       limit,
       publicationGenerationId,
+      publishedOnly,
       viewName,
     }) => {
       validateKnowledgePathListLimit(limit, maxListLimit);
       const readLimit = limit + 1;
       const params: DatabaseQueryValue[] = [knowledgeSpaceId, "physical", viewName];
-      const generationSql = publicationGenerationId
-        ? (() => {
-            params.push(publicationGenerationId);
-            return ` = ${databasePlaceholder(database, params.length)}`;
-          })()
-        : " IS NULL";
+      const generationSql = knowledgePathReadScopeSql({
+        database,
+        params,
+        publicationGenerationId,
+        publishedOnly,
+        tableName,
+      });
       const cursorSql = cursor
         ? (() => {
             params.push(cursor.virtualPath);
@@ -577,10 +584,7 @@ export function createDatabaseKnowledgePathRepository({
         )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
           database,
           "view_name",
-        )} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(
-          database,
-          "publication_generation_id",
-        )}${generationSql}${cursorSql} ORDER BY ${quoteDatabaseIdentifier(
+        )} = ${databasePlaceholder(database, 3)} AND ${generationSql}${cursorSql} ORDER BY ${quoteDatabaseIdentifier(
           database,
           "virtual_path",
         )} ASC, ${quoteDatabaseIdentifier(database, "id")} ASC LIMIT ${databasePlaceholder(
@@ -606,6 +610,7 @@ export function createDatabaseKnowledgePathRepository({
       limit,
       parentPath,
       publicationGenerationId,
+      publishedOnly,
       viewName,
     }) => {
       validateKnowledgePathListLimit(limit, maxListLimit);
@@ -616,6 +621,7 @@ export function createDatabaseKnowledgePathRepository({
         limit,
         parentPath,
         publicationGenerationId,
+        publishedOnly,
         tableName,
         viewName,
         viewType: "physical",
@@ -627,6 +633,7 @@ export function createDatabaseKnowledgePathRepository({
       limit,
       parentPath,
       publicationGenerationId,
+      publishedOnly,
       viewName,
     }) => {
       validateKnowledgePathListLimit(limit, maxListLimit);
@@ -637,6 +644,7 @@ export function createDatabaseKnowledgePathRepository({
         limit,
         parentPath,
         publicationGenerationId,
+        publishedOnly,
         tableName,
         viewName,
         viewType: "semantic",
@@ -774,6 +782,7 @@ async function getDatabaseKnowledgePathByLogicalKey({
   executor,
   knowledgeSpaceId,
   publicationGenerationId,
+  publishedOnly,
   tableName,
   virtualPath,
 }: {
@@ -781,16 +790,18 @@ async function getDatabaseKnowledgePathByLogicalKey({
   readonly executor: DatabaseExecutor;
   readonly knowledgeSpaceId: string;
   readonly publicationGenerationId?: string | undefined;
+  readonly publishedOnly?: boolean | undefined;
   readonly tableName: string;
   readonly virtualPath: string;
 }): Promise<KnowledgePath | null> {
   const params: DatabaseQueryValue[] = [knowledgeSpaceId, virtualPath];
-  const generationSql = publicationGenerationId
-    ? (() => {
-        params.push(publicationGenerationId);
-        return ` = ${databasePlaceholder(database, params.length)}`;
-      })()
-    : " IS NULL";
+  const generationSql = knowledgePathReadScopeSql({
+    database,
+    params,
+    publicationGenerationId,
+    publishedOnly,
+    tableName,
+  });
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
@@ -801,10 +812,7 @@ async function getDatabaseKnowledgePathByLogicalKey({
     )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
       database,
       "virtual_path",
-    )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
-      database,
-      "publication_generation_id",
-    )}${generationSql} LIMIT 1;`,
+    )} = ${databasePlaceholder(database, 2)} AND ${generationSql} LIMIT 1;`,
     tableName,
   });
 
@@ -861,6 +869,7 @@ async function listDatabaseKnowledgePathDescendants({
   limit,
   parentPath,
   publicationGenerationId,
+  publishedOnly,
   tableName,
   viewName,
   viewType,
@@ -871,6 +880,7 @@ async function listDatabaseKnowledgePathDescendants({
   readonly limit: number;
   readonly parentPath: string;
   readonly publicationGenerationId?: string | undefined;
+  readonly publishedOnly?: boolean | undefined;
   readonly tableName: string;
   readonly viewName: string;
   readonly viewType: KnowledgePath["viewType"];
@@ -878,12 +888,13 @@ async function listDatabaseKnowledgePathDescendants({
   const readLimit = limit + 1;
   const descendantPattern = `${knowledgePathDescendantPrefix(parentPath)}%`;
   const params: DatabaseQueryValue[] = [knowledgeSpaceId, viewType, viewName, descendantPattern];
-  const generationSql = publicationGenerationId
-    ? (() => {
-        params.push(publicationGenerationId);
-        return ` = ${databasePlaceholder(database, params.length)}`;
-      })()
-    : " IS NULL";
+  const generationSql = knowledgePathReadScopeSql({
+    database,
+    params,
+    publicationGenerationId,
+    publishedOnly,
+    tableName,
+  });
   const cursorSql = cursor
     ? (() => {
         params.push(cursor.virtualPath);
@@ -919,10 +930,7 @@ async function listDatabaseKnowledgePathDescendants({
     )} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(
       database,
       "virtual_path",
-    )} LIKE ${databasePlaceholder(database, 4)} AND ${quoteDatabaseIdentifier(
-      database,
-      "publication_generation_id",
-    )}${generationSql}${cursorSql} ORDER BY ${quoteDatabaseIdentifier(
+    )} LIKE ${databasePlaceholder(database, 4)} AND ${generationSql}${cursorSql} ORDER BY ${quoteDatabaseIdentifier(
       database,
       "virtual_path",
     )} ASC, ${quoteDatabaseIdentifier(database, "id")} ASC LIMIT ${databasePlaceholder(
@@ -940,6 +948,53 @@ async function listDatabaseKnowledgePathDescendants({
     items,
     ...(nextCursor ? { nextCursor } : {}),
   };
+}
+
+function knowledgePathReadScopeSql({
+  database,
+  params,
+  publicationGenerationId,
+  publishedOnly,
+  tableName,
+}: {
+  readonly database: DatabaseAdapter;
+  readonly params: DatabaseQueryValue[];
+  readonly publicationGenerationId?: string | undefined;
+  readonly publishedOnly?: boolean | undefined;
+  readonly tableName: string;
+}): string {
+  const q = (identifier: string) => quoteDatabaseIdentifier(database, identifier);
+  if (publicationGenerationId) {
+    params.push(publicationGenerationId);
+    return `${q("publication_generation_id")} = ${databasePlaceholder(database, params.length)}`;
+  }
+  if (!publishedOnly) {
+    return `${q("publication_generation_id")} IS NULL`;
+  }
+
+  const pathColumn = (column: string) => `${q(tableName)}.${q(column)}`;
+  const headTable = q("projection_set_publication_heads");
+  const memberTable = q("projection_set_publication_members");
+  return `(
+    EXISTS (
+      SELECT 1 FROM ${headTable} AS published_head
+      INNER JOIN ${memberTable} AS published_member
+        ON published_member.${q("tenant_id")} = published_head.${q("tenant_id")}
+        AND published_member.${q("knowledge_space_id")} = published_head.${q("knowledge_space_id")}
+        AND published_member.${q("publication_id")} = published_head.${q("publication_id")}
+      WHERE published_head.${q("knowledge_space_id")} = ${pathColumn("knowledge_space_id")}
+        AND published_member.${q("component_type")} = 'knowledge-path'
+        AND published_member.${q("component_key")} = ${pathColumn("id")}
+        AND published_member.${q("generation_id")} = ${pathColumn("publication_generation_id")}
+    )
+    OR (
+      ${pathColumn("publication_generation_id")} IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM ${headTable} AS current_head
+        WHERE current_head.${q("knowledge_space_id")} = ${pathColumn("knowledge_space_id")}
+      )
+    )
+  )`;
 }
 
 function mapKnowledgePathRow(row: DatabaseRow): KnowledgePath {

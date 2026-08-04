@@ -7436,15 +7436,17 @@ describe("createKnowledgeGateway", () => {
     await expect(unboundedTreeResponse.json()).resolves.toEqual({
       error: "Knowledge path list limit exceeds maxListLimit=1",
     });
-    const invalidPathResponse = await app.request(
+    const rootPathResponse = await app.request(
       `/knowledge-spaces/${space.id}/fs/ls?path=/knowledge&limit=1`,
       {
         headers: bearer(readToken),
       },
     );
-    expect(invalidPathResponse.status).toBe(400);
-    await expect(invalidPathResponse.json()).resolves.toEqual({
-      error: "KnowledgeFS path must include a physical view name",
+    expect(rootPathResponse.status).toBe(200);
+    await expect(rootPathResponse.json()).resolves.toEqual({
+      items: [],
+      path: "/knowledge",
+      truncated: false,
     });
     const invalidCursorResponse = await app.request(
       `/knowledge-spaces/${space.id}/fs/ls?path=/knowledge/by-type&limit=1&cursor=broken`,
