@@ -24,7 +24,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
-    resetPlugins,
+    resetQueryParams,
     queryPlugins,
     queryPluginsWithDebounced,
     isLoading: isPluginsLoading,
@@ -66,7 +66,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
           exclude,
           type: 'plugin',
         })
-        resetPlugins()
+        resetQueryParams()
       }
     }
   }, [
@@ -75,7 +75,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     queryPlugins,
     queryMarketplaceCollectionsAndPlugins,
     queryPluginsWithDebounced,
-    resetPlugins,
+    resetQueryParams,
     exclude,
     isSuccess,
   ])

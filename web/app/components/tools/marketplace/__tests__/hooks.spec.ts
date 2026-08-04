@@ -13,7 +13,7 @@ import { useMarketplace } from '../hooks'
 const mockQueryMarketplaceCollectionsAndPlugins = vi.fn()
 const mockQueryPlugins = vi.fn()
 const mockQueryPluginsWithDebounced = vi.fn()
-const mockResetPlugins = vi.fn()
+const mockResetQueryParams = vi.fn()
 const mockFetchNextPage = vi.fn()
 
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
@@ -65,7 +65,7 @@ const setupHookMocks = (overrides?: {
   })
   mockUseMarketplacePlugins.mockReturnValue({
     plugins: overrides?.plugins,
-    resetPlugins: mockResetPlugins,
+    resetQueryParams: mockResetQueryParams,
     queryPlugins: mockQueryPlugins,
     queryPluginsWithDebounced: mockQueryPluginsWithDebounced,
     isLoading: overrides?.isPluginsLoading ?? false,
@@ -109,7 +109,7 @@ describe('useMarketplace', () => {
         })
       })
       expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
-      expect(mockResetPlugins).not.toHaveBeenCalled()
+      expect(mockResetQueryParams).not.toHaveBeenCalled()
     })
 
     it('should query plugins immediately when only tags are provided', async () => {
@@ -147,7 +147,7 @@ describe('useMarketplace', () => {
           type: 'plugin',
         })
       })
-      expect(mockResetPlugins).toHaveBeenCalledTimes(1)
+      expect(mockResetQueryParams).toHaveBeenCalledTimes(1)
     })
   })
 

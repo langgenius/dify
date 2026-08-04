@@ -203,14 +203,14 @@ export const useMarketplaceAllPlugins = (
     queryPlugins,
     queryPluginsWithDebounced,
     cancelQueryPluginsWithDebounced = () => {},
-    resetPlugins = () => {},
+    resetQueryParams = () => {},
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
 
   useEffect(() => {
     if (!enabled) {
       cancelQueryPluginsWithDebounced()
-      resetPlugins()
+      resetQueryParams()
       return
     }
 
@@ -239,7 +239,7 @@ export const useMarketplaceAllPlugins = (
     enabled,
     queryPlugins,
     queryPluginsWithDebounced,
-    resetPlugins,
+    resetQueryParams,
     searchText,
     exclude,
   ])

@@ -5,7 +5,7 @@ import type {
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { Plugin } from '../types'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { postMarketplace } from '@/service/base'
@@ -81,7 +81,6 @@ export const useMarketplacePluginsByCollectionId = (
  * @deprecated Use useMarketplacePlugins from query.ts instead
  */
 export const useMarketplacePlugins = () => {
-  const queryClient = useQueryClient()
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
 
   const normalizeParams = useCallback((pluginsSearchParams: PluginsSearchParams) => {
@@ -156,12 +155,9 @@ export const useMarketplacePlugins = () => {
     retry: false,
   })
 
-  const resetPlugins = useCallback(() => {
+  const resetQueryParams = useCallback(() => {
     setQueryParams(undefined)
-    queryClient.removeQueries({
-      queryKey: ['marketplacePlugins'],
-    })
-  }, [queryClient])
+  }, [])
 
   const handleUpdatePlugins = useCallback(
     (pluginsSearchParams: PluginsSearchParams) => {
@@ -194,7 +190,7 @@ export const useMarketplacePlugins = () => {
   return {
     plugins,
     total,
-    resetPlugins,
+    resetQueryParams,
     queryPlugins: handleUpdatePlugins,
     queryPluginsWithDebounced,
     cancelQueryPluginsWithDebounced,
