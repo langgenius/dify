@@ -121,6 +121,14 @@ const EVENTUAL_PREVIEW_UNSUPPORTED_COMMANDS = new Set<CommandName>([
 ]);
 const KNOWLEDGE_FS_MAX_SCAN_PAGES = 10;
 const KNOWLEDGE_FS_MAX_PERMISSION_CLOSURE_ITEMS = 256;
+const KNOWLEDGE_FS_GENERATED_DOCUMENT_CONTENT_KINDS = new Set([
+  "document-multimodal-asset",
+  "document-multimodal-figure",
+  "document-multimodal-manifest",
+  "document-multimodal-page-thumbnail",
+  "document-multimodal-table",
+  "document-outline",
+]);
 
 export interface CreateKnowledgeFsCommandRegistryOptions {
   readonly artifactSegments: ArtifactSegmentRepository;
@@ -1086,8 +1094,19 @@ async function grepKnowledgeFsPath({
   const matches: Array<KnowledgeFsGrepMatch & { readonly cursor: KnowledgePathCursor }> = [];
   let cursor = input.cursor ? decodeKnowledgePathCursor(input.cursor) : undefined;
   let reachedEnd = false;
+  let activeDocumentTargetId: string | undefined;
+  let pendingDocumentRootMatch:
+    | (KnowledgeFsGrepMatch & { readonly cursor: KnowledgePathCursor })
+    | undefined;
 
-  for (let scannedPages = 0; scannedPages < KNOWLEDGE_FS_MAX_SCAN_PAGES; scannedPages += 1) {
+  const flushPendingDocumentRootMatch = () => {
+    if (pendingDocumentRootMatch) {
+      matches.push(pendingDocumentRootMatch);
+      pendingDocumentRootMatch = undefined;
+    }
+  };
+
+  scan: for (let scannedPages = 0; scannedPages < KNOWLEDGE_FS_MAX_SCAN_PAGES; scannedPages += 1) {
     /* v8 ignore next 3 -- timeout is a production guard for slow stores and is timing-sensitive in unit tests. */
     if (input.timeoutMs !== undefined && Date.now() - startedAt > input.timeoutMs) {
       break;
@@ -1104,6 +1123,26 @@ async function grepKnowledgeFsPath({
 
     for (const path of result.items) {
       if (path.resourceType !== "document" && path.resourceType !== "node") {
+        continue;
+      }
+
+      if (path.resourceType === "document") {
+        if (activeDocumentTargetId !== undefined && activeDocumentTargetId !== path.targetId) {
+          flushPendingDocumentRootMatch();
+          if (matches.length > input.limit) {
+            break scan;
+          }
+        }
+        activeDocumentTargetId = path.targetId;
+      } else if (activeDocumentTargetId !== undefined) {
+        flushPendingDocumentRootMatch();
+        activeDocumentTargetId = undefined;
+        if (matches.length > input.limit) {
+          break scan;
+        }
+      }
+
+      if (isGeneratedDocumentProjection(path)) {
         continue;
       }
 
@@ -1128,18 +1167,25 @@ async function grepKnowledgeFsPath({
       }
 
       if (match) {
-        matches.push({ ...match, cursor: knowledgePathCursor(path) });
+        const matchWithCursor = { ...match, cursor: knowledgePathCursor(path) };
+
+        if (isDocumentSectionProjection(path)) {
+          pendingDocumentRootMatch = undefined;
+          matches.push(matchWithCursor);
+        } else if (path.resourceType === "document") {
+          pendingDocumentRootMatch = matchWithCursor;
+        } else {
+          matches.push(matchWithCursor);
+        }
 
         if (matches.length > input.limit) {
-          break;
+          break scan;
         }
       }
     }
 
-    if (matches.length > input.limit) {
-      break;
-    }
     if (!result.nextCursor) {
+      flushPendingDocumentRootMatch();
       reachedEnd = true;
       break;
     }
@@ -1278,6 +1324,18 @@ function grepText({
     snippet: text,
     startOffset,
   };
+}
+
+function isGeneratedDocumentProjection(path: KnowledgePath): boolean {
+  return (
+    path.resourceType === "document" &&
+    typeof path.metadata.contentKind === "string" &&
+    KNOWLEDGE_FS_GENERATED_DOCUMENT_CONTENT_KINDS.has(path.metadata.contentKind)
+  );
+}
+
+function isDocumentSectionProjection(path: KnowledgePath): boolean {
+  return path.resourceType === "document" && path.metadata.contentKind === "document-section";
 }
 
 async function grepArtifactSegments({

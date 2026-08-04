@@ -1138,6 +1138,175 @@ describe("knowledge-fs command registry coverage", () => {
     });
   });
 
+  it("prefers section matches, skips generated projections, and returns complete content", async () => {
+    const harness = createHarness();
+    const assetId = uuid("ae10");
+    const artifactId = uuid("ae11");
+    const documentPath = "/knowledge/docs/invoice.pdf--018f0d60";
+    const sectionPath = `${documentPath}/sections/Document--n1.md`;
+    const matchingParagraph = `${"a".repeat(200)}发票${"b".repeat(200)}`;
+    const matchStartOffset = 200;
+
+    await addDocument(harness, {
+      assetId,
+      filename: "invoice.pdf",
+      mimeType: "application/pdf",
+      pathId: uuid("ae12"),
+      version: 1,
+      virtualPath: documentPath,
+    });
+    await harness.parseArtifacts.create(
+      makeParseArtifact({
+        documentAssetId: assetId,
+        elements: [
+          {
+            id: "e1",
+            metadata: {},
+            sectionPath: ["Document"],
+            text: matchingParagraph,
+            type: "paragraph",
+          },
+        ],
+        id: artifactId,
+      }),
+    );
+    await harness.outlines.create(
+      DocumentOutlineSchema.parse({
+        artifactHash: "a".repeat(64),
+        createdAt: "2026-05-27T10:00:00.000Z",
+        documentAssetId: assetId,
+        id: uuid("ae13"),
+        knowledgeSpaceId: SPACE_ID,
+        metadata: {},
+        nodes: [makeOutlineNode({ id: "n1", sectionPath: ["Document"], title: "发票" })],
+        outlineVersion: "v1",
+        parseArtifactId: artifactId,
+        version: 1,
+      }),
+    );
+    await addPath(harness, {
+      id: uuid("ae14"),
+      metadata: { contentKind: "document-outline" },
+      resourceType: "document",
+      targetId: assetId,
+      version: 1,
+      virtualPath: `${documentPath}/outline.json`,
+    });
+    await addPath(harness, {
+      id: uuid("ae15"),
+      metadata: { contentKind: "document-section", outlineNodeId: "n1" },
+      resourceType: "document",
+      targetId: assetId,
+      version: 1,
+      virtualPath: sectionPath,
+    });
+
+    await expect(
+      harness.execute("grep", {
+        knowledgeSpaceId: SPACE_ID,
+        limit: 1,
+        path: "/knowledge/docs",
+        q: "发票",
+      }),
+    ).resolves.toMatchObject({
+      output: {
+        matches: [
+          {
+            endOffset: matchStartOffset + 2,
+            path: sectionPath,
+            snippet: matchingParagraph,
+            startOffset: matchStartOffset,
+          },
+        ],
+        truncated: false,
+      },
+    });
+
+    await expect(
+      harness.execute("grep", {
+        knowledgeSpaceId: SPACE_ID,
+        limit: 5,
+        path: `${documentPath}/outline.json`,
+        q: "发票",
+      }),
+    ).resolves.toMatchObject({
+      output: {
+        matches: [{ path: `${documentPath}/outline.json` }],
+        truncated: false,
+      },
+    });
+  });
+
+  it("paginates canonical grep matches across document groups and nodes", async () => {
+    const harness = createHarness();
+    const nodeId = uuid("ae26");
+    await addOpenArtifactBackingAsset(harness);
+    await Promise.all([
+      addDocument(harness, {
+        assetId: uuid("ae20"),
+        content: "needle in a",
+        filename: "a.md",
+        pathId: uuid("ae21"),
+        virtualPath: "/knowledge/docs/paged/a.md",
+      }),
+      addDocument(harness, {
+        assetId: uuid("ae22"),
+        content: "needle in b",
+        filename: "b.md",
+        pathId: uuid("ae23"),
+        virtualPath: "/knowledge/docs/paged/b.md",
+      }),
+    ]);
+    await harness.nodes.createMany([makeNode({ id: nodeId, kind: "chunk", text: "needle in c" })]);
+    await addPath(harness, {
+      id: uuid("ae24"),
+      resourceType: "node",
+      targetId: nodeId,
+      virtualPath: "/knowledge/docs/paged/c-node",
+    });
+
+    const grepPage = (cursor?: string) =>
+      harness.execute("grep", {
+        ...(cursor ? { cursor } : {}),
+        knowledgeSpaceId: SPACE_ID,
+        limit: 1,
+        path: "/knowledge/docs/paged",
+        q: "needle",
+      });
+    const first = await grepPage();
+    const firstOutput = first.output as {
+      readonly matches: readonly { readonly path: string }[];
+      readonly nextCursor?: string;
+      readonly truncated: boolean;
+    };
+
+    expect(firstOutput).toMatchObject({
+      matches: [{ path: "/knowledge/docs/paged/a.md" }],
+      truncated: true,
+    });
+    expect(firstOutput.nextCursor).toBeDefined();
+
+    const second = await grepPage(firstOutput.nextCursor);
+    const secondOutput = second.output as {
+      readonly matches: readonly { readonly path: string }[];
+      readonly nextCursor?: string;
+      readonly truncated: boolean;
+    };
+
+    expect(secondOutput).toMatchObject({
+      matches: [{ path: "/knowledge/docs/paged/b.md" }],
+      truncated: true,
+    });
+    expect(secondOutput.nextCursor).toBeDefined();
+
+    await expect(grepPage(secondOutput.nextCursor)).resolves.toMatchObject({
+      output: {
+        matches: [{ kind: "node", path: "/knowledge/docs/paged/c-node" }],
+        truncated: false,
+      },
+    });
+  });
+
   it("greps artifact segments with offsets, cursors, and repository pagination", async () => {
     const harness = createHarness();
     await addOpenArtifactBackingAsset(harness);
