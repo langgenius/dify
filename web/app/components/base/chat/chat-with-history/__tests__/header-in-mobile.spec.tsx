@@ -37,23 +37,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
-
-// Mock Dialog to avoid Base UI focus/portal behavior in tests
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
-    if (!open) return null
-    return <div data-testid="modal">{children}</div>
-  },
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 // Sidebar mock removed to use real component
 
 const mockAppData: AppData = {

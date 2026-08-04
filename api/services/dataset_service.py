@@ -2402,13 +2402,14 @@ class DocumentService:
                                         truncated_page_name,
                                         batch,
                                     )
+                                    document.id = str(uuid.uuid4())
                                     session.add(document)
-                                    session.flush()
                                     document_ids.append(document.id)
                                     documents.append(document)
                                     position += 1
                                 else:
                                     exist_document.pop(page.page_id)
+                        session.flush()
                         # delete not selected documents
                         if len(exist_document) > 0:
                             clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
@@ -3313,6 +3314,7 @@ class DocumentService:
 
         # Only set async task and cache if document is currently enabled
         if document.enabled:
+            # pyrefly: ignore [bad-assignment]
             update_info["async_task"] = {"function": remove_document_from_index_task, "args": [document.id]}
             update_info["set_cache"] = True
 
@@ -3333,6 +3335,7 @@ class DocumentService:
 
         # Only re-index if the document is currently enabled
         if document.enabled:
+            # pyrefly: ignore [bad-assignment]
             update_info["async_task"] = {"function": add_document_to_index_task, "args": [document.id]}
             update_info["set_cache"] = True
 
